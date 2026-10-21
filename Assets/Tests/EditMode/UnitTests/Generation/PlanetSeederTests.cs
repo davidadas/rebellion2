@@ -509,7 +509,7 @@ namespace Rebellion.Tests.Generation
                 Sectors = new[] { sector },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
-                Summary = new GameSummary
+                Setup = new GameSetup
                 {
                     StartingFactionIDs = _factionIds,
                     ResourceAvailability = GameResourceAvailability.Abundant,
@@ -588,7 +588,7 @@ namespace Rebellion.Tests.Generation
                 Sectors = new[] { sector },
                 Classification = new GalaxyClassificationResult(),
                 Config = config,
-                Summary = new GameSummary
+                Setup = new GameSetup
                 {
                     StartingFactionIDs = _factionIds,
                     ResourceAvailability = GameResourceAvailability.Abundant,
@@ -621,7 +621,7 @@ namespace Rebellion.Tests.Generation
                 Sectors = sectors,
                 Classification = classification,
                 Config = config,
-                Summary = new GameSummary { StartingFactionIDs = factionIds },
+                Setup = new GameSetup { StartingFactionIDs = factionIds },
                 Rng = rng,
             };
             new PlanetSeeder().Seed(ctx);

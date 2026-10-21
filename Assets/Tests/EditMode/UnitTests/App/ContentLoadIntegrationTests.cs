@@ -1,10 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -99,7 +101,7 @@ namespace Rebellion.Tests.App
             AppBootstrap replacement = AppBootstrap.EnsureExists(candidate);
 
             Assert.AreSame(candidate, replacement.GetContentPack());
-            Assert.AreEqual(candidate.Definition.ID, GameLaunchContext.Summary.PackID);
+            Assert.AreEqual(candidate.Definition.ID, GameLaunchContext.Setup.PackID);
             Assert.IsTrue(operation.BeginRecovery());
 
             DestroyApplication();
@@ -127,10 +129,15 @@ namespace Rebellion.Tests.App
                     active.Scenario.ID,
                     previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
                 );
-                GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+                GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
                 summary.GalaxySize = GameSize.Small;
                 summary.Difficulty = GameDifficulty.Hard;
-                summary.DisabledEventCategories = new[] { GameEventCategory.Story };
+                summary.CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                };
+                summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                    new List<GameEventCategory> { GameEventCategory.Story };
 
                 LoadingScreenController.StartCustomGame(previous, selected, summary);
 
@@ -154,7 +161,7 @@ namespace Rebellion.Tests.App
                 Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
                 Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
                 GameRoot game = AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game;
-                Assert.AreEqual(GameDifficulty.Hard, game.Summary.Difficulty);
+                Assert.AreEqual(GameDifficulty.Hard, game.Setup.Difficulty);
                 Assert.IsFalse(
                     game.GetEventPool()
                         .Any(gameEvent => gameEvent.Category == GameEventCategory.Story)

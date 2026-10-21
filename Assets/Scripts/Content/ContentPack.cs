@@ -99,19 +99,19 @@ public sealed class ContentPack
     }
 
     /// <summary>
-    /// Checks whether a game summary belongs to this pack, version, and scenario.
+    /// Checks whether a game setup belongs to this pack, version, and scenario.
     /// </summary>
-    /// <param name="summary">The game summary to compare.</param>
+    /// <param name="setup">The game setup to compare.</param>
     /// <returns>True when every content identity field matches.</returns>
-    public bool MatchesContentIdentity(GameSummary summary)
+    public bool MatchesContentIdentity(GameSetup setup)
     {
-        return summary != null
+        return setup != null
             && MatchesContentIdentity(
-                summary.PackID,
-                summary.PackVersion,
-                summary.ScenarioID,
-                summary.ModIDs,
-                summary.ModVersions
+                setup.PackID,
+                setup.PackVersion,
+                setup.ScenarioID,
+                setup.ModIDs,
+                setup.ModVersions
             );
     }
 

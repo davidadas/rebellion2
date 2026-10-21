@@ -121,7 +121,7 @@ public sealed class UIContext
             game.GetPlayers()
                 .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
                 ?.FactionID
-            ?? game.Summary?.PlayerFactionID
+            ?? game.Setup?.PlayerFactionID
             ?? string.Empty;
         factionPresentations = game.GetFactions()
             .Where(faction => faction != null)

@@ -23,13 +23,13 @@ namespace Rebellion.Generation
         {
             List<StartingOfficerRule> startingOfficerRules = GetApplicableStartingOfficerRules(
                 ctx.Config.Officers,
-                ctx.Summary.GalaxySize
+                ctx.Setup.GalaxySize
             );
             DecorateOfficers(ctx.Officers, ctx.Rng);
             Officer[] selected = SelectOfficers(
                 ctx.Officers,
                 ctx.Config,
-                ctx.Summary,
+                ctx.Setup,
                 startingOfficerRules,
                 ctx.Rng
             );
@@ -45,14 +45,14 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="allOfficers">The full officer roster available for this game.</param>
         /// <param name="rules">Generation rules controlling officer selection.</param>
-        /// <param name="summary">Game summary; galaxy size determines per-faction officer count.</param>
+        /// <param name="setup">Game setup; galaxy size determines per-faction officer count.</param>
         /// <param name="startingOfficerRules">Guaranteed starting-officer rules for this galaxy size.</param>
         /// <param name="rng">Random number provider used for shuffling.</param>
         /// <returns>The officers selected for deployment.</returns>
         private Officer[] SelectOfficers(
             Officer[] allOfficers,
             GameGenerationConfig rules,
-            GameSummary summary,
+            GameSetup setup,
             IReadOnlyList<StartingOfficerRule> startingOfficerRules,
             IRandomNumberProvider rng
         )
@@ -74,7 +74,7 @@ namespace Rebellion.Generation
                 );
                 int recruitableLimit = ResolveOfficerCount(
                     factionSetup.NumStartingOfficers,
-                    summary.GalaxySize
+                    setup.GalaxySize
                 );
                 selected.AddRange(
                     PickFactionRoster(officers, factionId, recruitableLimit, guaranteedOfficerIDs)

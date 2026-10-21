@@ -523,8 +523,8 @@ namespace Rebellion.Tests.Generation
                 regimentTemplates: regimentTemplates,
                 rng: new SequenceRNG(intValues: new[] { 0 })
             );
-            context.Summary.GalaxySize = GameSize.Small;
-            context.Summary.Difficulty = GameDifficulty.Easy;
+            context.Setup.GalaxySize = GameSize.Small;
+            context.Setup.Difficulty = GameDifficulty.Easy;
 
             new UnitSeeder().Seed(context);
 
@@ -597,8 +597,8 @@ namespace Rebellion.Tests.Generation
                 new GalaxyClassificationResult(),
                 specialForcesTemplates: specialForcesTemplates
             );
-            context.Summary.GalaxySize = GameSize.Small;
-            context.Summary.Difficulty = GameDifficulty.Easy;
+            context.Setup.GalaxySize = GameSize.Small;
+            context.Setup.Difficulty = GameDifficulty.Easy;
 
             new UnitSeeder().Seed(context);
 
@@ -620,7 +620,7 @@ namespace Rebellion.Tests.Generation
             (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
                 StartingUnitBudgetCategory.Regiment
             );
-            context.Summary.Difficulty = GameDifficulty.Hard;
+            context.Setup.Difficulty = GameDifficulty.Hard;
 
             new UnitSeeder().Seed(context);
 
@@ -637,7 +637,7 @@ namespace Rebellion.Tests.Generation
             (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
                 StartingUnitBudgetCategory.Starfighter
             );
-            context.Summary.Difficulty = GameDifficulty.Hard;
+            context.Setup.Difficulty = GameDifficulty.Hard;
 
             new UnitSeeder().Seed(context);
 
@@ -651,8 +651,8 @@ namespace Rebellion.Tests.Generation
             (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
                 StartingUnitBudgetCategory.Regiment
             );
-            context.Summary.PlayerFactionID = "FNEMP1";
-            context.Summary.Difficulty = GameDifficulty.Hard;
+            context.Setup.PlayerFactionID = "FNEMP1";
+            context.Setup.Difficulty = GameDifficulty.Hard;
 
             new UnitSeeder().Seed(context);
 
@@ -669,7 +669,7 @@ namespace Rebellion.Tests.Generation
             (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
                 StartingUnitBudgetCategory.Regiment
             );
-            context.Summary.Difficulty = GameDifficulty.Medium;
+            context.Setup.Difficulty = GameDifficulty.Medium;
 
             new UnitSeeder().Seed(context);
 
@@ -828,7 +828,7 @@ namespace Rebellion.Tests.Generation
             ctx.Factions = factions;
             ctx.Config = config;
             ctx.Classification = classification;
-            ctx.Summary.PlayerFactionID = "FNALL1";
+            ctx.Setup.PlayerFactionID = "FNALL1";
             if (regimentTemplates != null)
                 ctx.Regiments = regimentTemplates;
             if (shipTemplates != null)

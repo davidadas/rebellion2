@@ -54,7 +54,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         _appBootstrap.LoadStarting += HandleLoadStarting;
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
-        currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
+        currentVictoryCondition = GameLaunchContext.Setup.VictoryCondition;
 
         if (view == null)
             return;
@@ -63,8 +63,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         if (mainMenuCanvas == null)
             throw new MissingReferenceException($"{name} has no main-menu canvas.");
         mainMenuCanvas.enabled = false;
-        view.RenderGalaxySize(GameLaunchContext.Summary.GalaxySize);
-        view.RenderDifficulty(GameLaunchContext.Summary.Difficulty);
+        view.RenderGalaxySize(GameLaunchContext.Setup.GalaxySize);
+        view.RenderDifficulty(GameLaunchContext.Setup.Difficulty);
     }
 
     /// <summary>
@@ -217,7 +217,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="factionId">The configured faction identifier.</param>
     internal void SelectFaction(string factionId)
     {
-        GameLaunchContext.Summary.PlayerFactionID = factionId;
+        GameLaunchContext.Setup.PlayerFactionID = factionId;
     }
 
     /// <summary>
@@ -226,7 +226,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="size">The selected galaxy size.</param>
     internal void SelectGalaxySize(GameSize size)
     {
-        GameLaunchContext.Summary.GalaxySize = size;
+        GameLaunchContext.Setup.GalaxySize = size;
     }
 
     /// <summary>
@@ -236,7 +236,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     internal void SelectVictoryCondition(GameVictoryCondition condition)
     {
         currentVictoryCondition = condition;
-        GameLaunchContext.Summary.VictoryCondition = condition;
+        GameLaunchContext.Setup.VictoryCondition = condition;
         view?.RenderVictoryCondition(condition);
     }
 
@@ -246,7 +246,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="difficulty">The selected difficulty.</param>
     internal void SelectGameDifficulty(GameDifficulty difficulty)
     {
-        GameLaunchContext.Summary.Difficulty = difficulty;
+        GameLaunchContext.Setup.Difficulty = difficulty;
     }
 
     /// <summary>
@@ -414,7 +414,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             _customGamePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
             _newGameSettingsView.Initialize(
                 contentPack,
-                GameLaunchContext.Summary,
+                GameLaunchContext.Setup,
                 _optionsMenuPrefab,
                 _customGamePresetManager,
                 _customGamePacks
@@ -455,7 +455,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         );
         _newGameSettingsView.Initialize(
             selected,
-            GameLaunchContext.CreateDefaultSummary(selected),
+            GameLaunchContext.CreateDefaultSetup(selected),
             _optionsMenuPrefab,
             _customGamePresetManager,
             _customGamePacks
@@ -466,18 +466,18 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// Applies the complete custom-game configuration and starts its strategy scene.
     /// </summary>
     /// <param name="contentPack">The selected content pack.</param>
-    /// <param name="summary">The configured launch summary.</param>
-    private void StartCustomGame(ContentPack contentPack, GameSummary summary)
+    /// <param name="setup">The configured game setup.</param>
+    private void StartCustomGame(ContentPack contentPack, GameSetup setup)
     {
-        currentVictoryCondition = summary.VictoryCondition;
-        if (_appBootstrap.GetContentPack().MatchesContentIdentity(summary))
+        currentVictoryCondition = setup.VictoryCondition;
+        if (_appBootstrap.GetContentPack().MatchesContentIdentity(setup))
         {
-            GameLaunchContext.ApplyCustomGameSummary(summary);
+            GameLaunchContext.ApplyCustomGameSetup(setup);
             StartGame();
             return;
         }
 
-        LoadingScreenController.StartCustomGame(_appBootstrap, contentPack, summary);
+        LoadingScreenController.StartCustomGame(_appBootstrap, contentPack, setup);
         CloseNewGameSettings();
     }
 

@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game
                 .GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
-            _game.Summary.PlayerFactionID = _playerFactionId;
+            _game.Setup.PlayerFactionID = _playerFactionId;
             _game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 _game,

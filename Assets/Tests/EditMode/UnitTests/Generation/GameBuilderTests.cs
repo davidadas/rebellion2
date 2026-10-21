@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Generation
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 Difficulty = GameDifficulty.Medium,
@@ -94,39 +94,58 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_ValidConfig_SetsGameSummary()
+        public void Build_ValidConfig_SetsGameSetup()
         {
             Assert.IsNotNull(_game, "Game should not be null.");
-            Assert.IsNotNull(_game.Summary, "Game summary should not be null.");
+            Assert.IsNotNull(_game.Setup, "Game setup should not be null.");
 
             Assert.IsTrue(
-                Enum.IsDefined(typeof(GameSize), _game.Summary.GalaxySize),
+                Enum.IsDefined(typeof(GameSize), _game.Setup.GalaxySize),
                 "GalaxySize should be a valid enum value."
             );
             Assert.IsTrue(
-                Enum.IsDefined(typeof(GameDifficulty), _game.Summary.Difficulty),
+                Enum.IsDefined(typeof(GameDifficulty), _game.Setup.Difficulty),
                 "Difficulty should be a valid enum value."
             );
             Assert.IsTrue(
-                Enum.IsDefined(typeof(GameVictoryCondition), _game.Summary.VictoryCondition),
+                Enum.IsDefined(typeof(GameVictoryCondition), _game.Setup.VictoryCondition),
                 "VictoryCondition should be a valid enum value."
             );
             Assert.IsTrue(
-                Enum.IsDefined(
-                    typeof(GameResourceAvailability),
-                    _game.Summary.ResourceAvailability
-                ),
+                Enum.IsDefined(typeof(GameResourceAvailability), _game.Setup.ResourceAvailability),
                 "ResourceAvailability should be a valid enum value."
             );
 
             Assert.IsFalse(
-                string.IsNullOrEmpty(_game.Summary.PlayerFactionID),
+                string.IsNullOrEmpty(_game.Setup.PlayerFactionID),
                 "PlayerFactionID should not be null or empty."
             );
         }
 
         [Test]
-        public void Build_GenerationConfigOverride_UsesOverrideForPlanetResources()
+        public void Build_InputSetupMutatedAfterConstruction_UsesDetachedSnapshot()
+        {
+            GameSetup setup = new GameSetup
+            {
+                GalaxySize = GameSize.Small,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+            };
+            GameBuilder builder = new GameBuilder(setup, TestContent.Data);
+
+            setup.GalaxySize = GameSize.Large;
+            setup.PlayerFactionID = "FNEMP1";
+            GameRoot game = builder.Build();
+
+            Assert.AreNotSame(setup, game.Setup);
+            Assert.AreEqual(GameSize.Small, game.Setup.GalaxySize);
+            Assert.AreEqual("FNALL1", game.Setup.PlayerFactionID);
+            Assert.IsEmpty(setup.StartingFactionIDs);
+            Assert.IsNotEmpty(game.Setup.StartingFactionIDs);
+        }
+
+        [Test]
+        public void Build_CustomGenerationConfig_UsesSettingsForPlanetResources()
         {
             GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
             PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
@@ -134,14 +153,14 @@ namespace Rebellion.Tests.Generation
             );
             resources.EnergyMin = 6;
             resources.EnergyMax = 6;
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 Difficulty = GameDifficulty.Medium,
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -166,14 +185,14 @@ namespace Rebellion.Tests.Generation
             {
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = settings },
             };
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 Difficulty = GameDifficulty.Medium,
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -197,11 +216,11 @@ namespace Rebellion.Tests.Generation
                 new FactionModifierConfig { FactionID = factionID },
                 new FactionModifierConfig { FactionID = factionID },
             };
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -217,12 +236,12 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
             Assert.AreEqual(
                 PlayerControllerType.Human,
-                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
+                _game.GetFactionPlayer(_game.Setup.PlayerFactionID).ControllerType
             );
             Assert.IsTrue(
                 _game
                     .GetPlayers()
-                    .Where(player => player.FactionID != _game.Summary.PlayerFactionID)
+                    .Where(player => player.FactionID != _game.Setup.PlayerFactionID)
                     .All(player => player.ControllerType == PlayerControllerType.AI)
             );
         }
@@ -528,13 +547,18 @@ namespace Rebellion.Tests.Generation
             GameEventCategory disabledCategory
         )
         {
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                DisabledEventCategories = new[] { disabledCategory },
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                },
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { disabledCategory };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
 
@@ -557,17 +581,18 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_AllClassifiedEventsDisabled_RetainsUnclassifiedEvents()
         {
-            GameSummary summary = new GameSummary
+            GameSetup summary = new GameSetup
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                DisabledEventCategories = new[]
+                CustomSettings = new CustomGameSettings
                 {
-                    GameEventCategory.Story,
-                    GameEventCategory.Disaster,
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
                 },
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
 

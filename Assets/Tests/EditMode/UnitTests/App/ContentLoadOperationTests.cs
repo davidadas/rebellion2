@@ -336,39 +336,43 @@ namespace Rebellion.Tests.App
         public void PrepareCustomGame_ValidSelection_PreservesDetachedConfigurationWithoutSaving()
         {
             ContentPack selected = TestContent.Pack;
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+            GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
             summary.Difficulty = GameDifficulty.Hard;
-            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
+            summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+            };
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();
 
             operation.PrepareCustomGame(selected, summary);
             summary.Difficulty = GameDifficulty.Easy;
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 999;
 
             Assert.AreSame(selected, operation.Pack);
             Assert.IsTrue(operation.RequiresContentRestart);
             Assert.AreEqual("StrategyView", operation.DestinationScene);
             Assert.IsNull(operation.SaveFileName);
-            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSetup.Difficulty);
             Assert.AreNotEqual(
                 999,
                 operation
-                    .CustomGameSummary
-                    .GenerationConfigOverride
+                    .CustomGameSetup
+                    .CustomSettings
+                    .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );
-            GameSummary exposed = operation.CustomGameSummary;
+            GameSetup exposed = operation.CustomGameSetup;
             exposed.Difficulty = GameDifficulty.Easy;
-            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSetup.Difficulty);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
         [Test]
         public void PrepareCustomGame_MismatchedIdentity_RejectsLaunchWithoutSaving()
         {
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            GameSetup summary = GameLaunchContext.CreateDefaultSetup(TestContent.Pack);
             summary.PackID = "missing";
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();
@@ -378,7 +382,7 @@ namespace Rebellion.Tests.App
             );
 
             Assert.AreSame(_previous, operation.Pack);
-            Assert.IsNull(operation.CustomGameSummary);
+            Assert.IsNull(operation.CustomGameSetup);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
@@ -388,7 +392,7 @@ namespace Rebellion.Tests.App
             ContentLoadOperation operation = CreateOperation();
             operation.PrepareCustomGame(
                 TestContent.Pack,
-                GameLaunchContext.CreateDefaultSummary(TestContent.Pack)
+                GameLaunchContext.CreateDefaultSetup(TestContent.Pack)
             );
             byte[] before = File.ReadAllBytes(_settingsPath);
 
@@ -397,7 +401,7 @@ namespace Rebellion.Tests.App
 
             Assert.AreSame(_previous, operation.Pack);
             Assert.AreEqual("MainMenu", operation.DestinationScene);
-            Assert.IsNull(operation.CustomGameSummary);
+            Assert.IsNull(operation.CustomGameSetup);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
@@ -412,7 +416,7 @@ namespace Rebellion.Tests.App
                 new[] { modID }
             );
             ContentLoadOperation operation = CreateOperation();
-            operation.PrepareCustomGame(selected, GameLaunchContext.CreateDefaultSummary(selected));
+            operation.PrepareCustomGame(selected, GameLaunchContext.CreateDefaultSetup(selected));
 
             operation.Complete(operation.Pack, _settings);
 
@@ -464,7 +468,7 @@ namespace Rebellion.Tests.App
             _saves.SaveGameData(
                 new GameRoot
                 {
-                    Summary = new GameSummary
+                    Setup = new GameSetup
                     {
                         PackID = pack.Definition.ID,
                         PackVersion = pack.Definition.Version,

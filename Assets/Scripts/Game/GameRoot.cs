@@ -35,17 +35,17 @@ namespace Rebellion.Game
         private GalaxyMap _galaxy;
 
         // Game details.
-        [PersistableMember(Name = nameof(Summary))]
-        private GameSummary _summary = new GameSummary();
+        [PersistableMember(Name = "Summary")]
+        private GameSetup _setup = new GameSetup();
 
         [PersistableMember(Name = nameof(Metadata))]
         private GameMetadata _metadata = new GameMetadata();
 
         [PersistableIgnore]
-        public GameSummary Summary
+        public GameSetup Setup
         {
-            get => _summary;
-            set => _summary = value;
+            get => _setup;
+            set => _setup = value;
         }
 
         [PersistableIgnore]
@@ -66,7 +66,7 @@ namespace Rebellion.Game
         [PersistableIgnore]
         public IRandomNumberProvider Random
         {
-            get => _random ??= new SystemRandomProvider(Summary.Seed, _restoredIndex);
+            get => _random ??= new SystemRandomProvider(Setup.Seed, _restoredIndex);
             set => _random = value;
         }
 
@@ -81,7 +81,7 @@ namespace Rebellion.Game
             {
                 _restoredIndex = value;
                 if (_random is SystemRandomProvider srp && srp.CallCount != value)
-                    _random = new SystemRandomProvider(Summary.Seed, value);
+                    _random = new SystemRandomProvider(Setup.Seed, value);
             }
         }
 
@@ -213,14 +213,14 @@ namespace Rebellion.Game
 
             if (IsFactionAIControlled(faction))
             {
-                if (Summary?.AIDifficultyModifiers != null)
-                    return Summary.AIDifficultyModifiers;
+                if (Setup?.CustomSettings?.AIDifficultyModifiers != null)
+                    return Setup.CustomSettings.AIDifficultyModifiers;
 
                 if (
-                    Summary != null
+                    Setup != null
                     && Config?.DifficultyModifiers != null
                     && Config.DifficultyModifiers.TryGetValue(
-                        Summary.Difficulty,
+                        Setup.Difficulty,
                         out DifficultyModifiers modifier
                     )
                 )
@@ -232,10 +232,10 @@ namespace Rebellion.Game
             }
 
             if (
-                Summary?.PlayerDifficultyModifiers != null
-                && faction.InstanceID == Summary.PlayerFactionID
+                Setup?.CustomSettings?.PlayerDifficultyModifiers != null
+                && faction.InstanceID == Setup.PlayerFactionID
             )
-                return Summary.PlayerDifficultyModifiers;
+                return Setup.CustomSettings.PlayerDifficultyModifiers;
 
             return new DifficultyModifiers();
         }

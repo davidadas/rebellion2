@@ -21,7 +21,7 @@ public static partial class HeadlessSimulationRunner
     /// Builds the JSON summary for a completed simulation.
     /// </summary>
     /// <param name="game">The completed game state.</param>
-    /// <param name="summary">The game generation summary.</param>
+    /// <param name="setup">The game setup used for generation.</param>
     /// <param name="options">The simulation options.</param>
     /// <param name="idleTracker">The manufacturing idle tracker.</param>
     /// <param name="manufacturedUnitTracker">The manufactured unit tracker.</param>
@@ -38,7 +38,7 @@ public static partial class HeadlessSimulationRunner
     /// <returns>The simulation summary.</returns>
     private static SimulationSummary BuildSimulationSummary(
         GameRoot game,
-        GameSummary summary,
+        GameSetup setup,
         SimulationOptions options,
         ManufacturingIdleTracker idleTracker,
         ManufacturedUnitTracker manufacturedUnitTracker,
@@ -59,7 +59,7 @@ public static partial class HeadlessSimulationRunner
             TicksRequested = options.TickCount,
             TicksCompleted = game.CurrentTick,
             Seed = options.Seed ?? -1,
-            GalaxySize = summary.GalaxySize.ToString(),
+            GalaxySize = setup.GalaxySize.ToString(),
             OutputPath = options.OutputPath,
             AITickInterval = game.Config.AI.TickInterval,
             MinimumAttackStrength = game.Config.AI.FleetDeployment.MinimumAttackStrength,

@@ -31,10 +31,10 @@ namespace Rebellion.Tests.App
             _settingsBytes = File.Exists(_settingsPath) ? File.ReadAllBytes(_settingsPath) : null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
-            GameLaunchContext.Summary.PlayerFactionID = null;
-            GameLaunchContext.Summary.PackID = null;
-            GameLaunchContext.Summary.PackVersion = null;
-            GameLaunchContext.Summary.ScenarioID = null;
+            GameLaunchContext.Setup.PlayerFactionID = null;
+            GameLaunchContext.Setup.PackID = null;
+            GameLaunchContext.Setup.PackVersion = null;
+            GameLaunchContext.Setup.ScenarioID = null;
 
             _gameObject = new GameObject("AppBootstrapUnderTest");
             _gameObject.SetActive(false);
@@ -239,14 +239,11 @@ namespace Rebellion.Tests.App
 
             Assert.AreEqual(
                 activeContent.Scenario.DefaultPlayerFactionID,
-                GameLaunchContext.Summary.PlayerFactionID
+                GameLaunchContext.Setup.PlayerFactionID
             );
-            Assert.AreEqual(activeContent.Definition.ID, GameLaunchContext.Summary.PackID);
-            Assert.AreEqual(
-                activeContent.Definition.Version,
-                GameLaunchContext.Summary.PackVersion
-            );
-            Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+            Assert.AreEqual(activeContent.Definition.ID, GameLaunchContext.Setup.PackID);
+            Assert.AreEqual(activeContent.Definition.Version, GameLaunchContext.Setup.PackVersion);
+            Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Setup.ScenarioID);
         }
 
         [Test]
@@ -254,26 +251,30 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack selected = _bootstrap.GetContentPack();
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+            GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
             summary.Difficulty = GameDifficulty.Hard;
-            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 17;
+            summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+            };
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             int transitionCount = 0;
             _bootstrap.LoadStarting += () => transitionCount++;
 
             LoadingScreenController.StartCustomGame(_bootstrap, selected, summary);
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 999;
 
             Assert.AreEqual(1, transitionCount);
             Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsTrue(GameLaunchContext.PlayIntroCutscene);
-            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Setup.Difficulty);
             Assert.AreEqual(
                 17,
                 GameLaunchContext
-                    .Summary
-                    .GenerationConfigOverride
+                    .Setup
+                    .CustomSettings
+                    .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );
@@ -469,7 +470,7 @@ namespace Rebellion.Tests.App
             return new GameRoot
             {
                 CurrentTick = tick,
-                Summary = new GameSummary
+                Setup = new GameSetup
                 {
                     PackID = contentPack.Definition.ID,
                     PackVersion = contentPack.Definition.Version,

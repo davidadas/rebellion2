@@ -40,7 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId, DisplayName = "Alliance" });
-            game.Summary.PlayerFactionID = _ownerId;
+            game.Setup.PlayerFactionID = _ownerId;
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

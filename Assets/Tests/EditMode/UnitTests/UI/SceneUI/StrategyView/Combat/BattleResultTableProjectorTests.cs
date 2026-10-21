@@ -459,7 +459,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" });
-            game.Summary.PlayerFactionID = _playerFactionId;
+            game.Setup.PlayerFactionID = _playerFactionId;
             return TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

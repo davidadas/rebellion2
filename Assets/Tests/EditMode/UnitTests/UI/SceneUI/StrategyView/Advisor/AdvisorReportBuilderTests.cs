@@ -130,7 +130,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         {
             GameRoot game = new GameRoot
             {
-                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
+                Setup = new GameSetup { VictoryCondition = GameVictoryCondition.Headquarters },
             };
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "faction" };
             game.NodesByInstanceID[planet.InstanceID] = planet;
@@ -199,7 +199,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         {
             GameRoot game = new GameRoot
             {
-                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Conquest },
+                Setup = new GameSetup { VictoryCondition = GameVictoryCondition.Conquest },
             };
             Faction faction = new Faction { InstanceID = "faction", HQInstanceID = "hq" };
             Planet headquarters = new Planet

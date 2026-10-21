@@ -66,7 +66,7 @@ namespace Rebellion.Simulation
             {
                 Winner = winner,
                 Loser = loser,
-                GameMode = _game.Summary.VictoryCondition,
+                GameMode = _game.Setup.VictoryCondition,
                 Tick = _game.CurrentTick,
             };
         }

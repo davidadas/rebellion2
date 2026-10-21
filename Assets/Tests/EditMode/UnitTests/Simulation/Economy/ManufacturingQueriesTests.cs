@@ -556,7 +556,7 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = CreateOrderTestGame();
             Faction empire = game.GetFactions().Single();
             empire.Settings.ResourceProcessingPointsPerFacility = 50;
-            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.Setup = new GameSetup { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {

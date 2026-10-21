@@ -72,8 +72,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MineOutputBelowNormal_AccumulatesFractionalProgress()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 MineOutputPercent = 50,
@@ -92,8 +92,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_RefineryOutputBelowNormal_AccumulatesFractionalProgress()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 RefineryOutputPercent = 50,
@@ -112,8 +112,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MineOutputAboveNormal_PreservesExcessProduction()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 MineOutputPercent = 150,
@@ -131,8 +131,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_RefineryOutputAboveNormal_PreservesExcessProduction()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 RefineryOutputPercent = 150,
@@ -151,8 +151,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MaximumMineOutput_CompletesAccumulatedCyclesInBulk()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 MineOutputPercent = int.MaxValue,
@@ -170,8 +170,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MaximumRefineryOutput_StopsAtAvailableRawMaterials()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 RefineryOutputPercent = int.MaxValue,
@@ -211,8 +211,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MaximumCustomMineOutputWithSmuggling_DivertsCompletedCycles()
         {
-            _game.Summary.Difficulty = GameDifficulty.Easy;
-            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Setup.Difficulty = GameDifficulty.Easy;
+            _game.Setup.PlayerFactionID = "FACTION2";
             _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 MineOutputPercent = 1000,
@@ -503,7 +503,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_HardAiMaintenanceBonus_IncreasesFacilityAllocationCapacity()
         {
-            _game.Summary.Difficulty = GameDifficulty.Hard;
+            _game.Setup.Difficulty = GameDifficulty.Hard;
             _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 MaintenanceCapacityPercent = 150,

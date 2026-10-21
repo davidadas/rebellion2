@@ -406,7 +406,7 @@ namespace Rebellion.Generation
                     CalculateDeployBudget(
                         allocation.AvailableCapacity,
                         allocation.Budget.BudgetLevels,
-                        (int)ctx.Summary.GalaxySize
+                        (int)ctx.Setup.GalaxySize
                     )
                 );
             }
@@ -430,7 +430,7 @@ namespace Rebellion.Generation
                         CalculateDeployBudget(
                             allocation.AvailableCapacity,
                             bonus.BudgetLevels,
-                            (int)ctx.Summary.GalaxySize
+                            (int)ctx.Setup.GalaxySize
                         )
                     );
                 }
@@ -525,14 +525,14 @@ namespace Rebellion.Generation
             StartingUnitBudgetBonus bonus
         )
         {
-            if (bonus.Difficulty != ctx.Summary.Difficulty)
+            if (bonus.Difficulty != ctx.Setup.Difficulty)
                 return false;
 
             if (!bonus.AIOnly)
                 return true;
 
-            return !string.IsNullOrEmpty(ctx.Summary.PlayerFactionID)
-                && faction.InstanceID != ctx.Summary.PlayerFactionID;
+            return !string.IsNullOrEmpty(ctx.Setup.PlayerFactionID)
+                && faction.InstanceID != ctx.Setup.PlayerFactionID;
         }
 
         /// <summary>

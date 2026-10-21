@@ -159,17 +159,17 @@ public sealed class GameFlowController : MonoBehaviour
     /// <returns>A task representing the asynchronous operation.</returns>
     private async Task StartNewGameAsync()
     {
-        GameSummary summary = GameLaunchContext.Summary;
+        GameSetup setup = GameLaunchContext.Setup;
 
-        if (summary == null)
+        if (setup == null)
         {
             throw new InvalidOperationException(
-                "GameLaunchContext.Summary is null. Cannot start new game."
+                "GameLaunchContext.Setup is null. Cannot start new game."
             );
         }
 
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
-        GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
+        GameBuilder builder = new GameBuilder(setup, contentPack.GameData);
         game = builder.Build();
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()

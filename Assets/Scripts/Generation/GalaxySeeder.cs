@@ -24,7 +24,7 @@ namespace Rebellion.Generation
             ctx.Classification = BuildClassification(
                 ctx.Sectors,
                 ctx.Factions,
-                ctx.Summary,
+                ctx.Setup,
                 ctx.Config,
                 ctx.Rng
             );
@@ -37,14 +37,14 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="factions">All factions in the game.</param>
-        /// <param name="summary">Selected game options and player faction.</param>
+        /// <param name="setup">Selected game options and player faction.</param>
         /// <param name="rules">Generation rules containing faction setups and ownership buckets.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>Classification result with bucket map, faction HQs, and starting-planet loyalty.</returns>
         private GalaxyClassificationResult BuildClassification(
             PlanetSector[] sectors,
             Faction[] factions,
-            GameSummary summary,
+            GameSetup setup,
             GameGenerationConfig rules,
             IRandomNumberProvider rng
         )
@@ -76,7 +76,7 @@ namespace Rebellion.Generation
             AssignCoreBuckets(
                 corePlanets,
                 config.FactionBuckets,
-                summary,
+                setup,
                 preassignedCoreCount,
                 strongCountAdjustments,
                 result,
@@ -263,7 +263,7 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="corePlanets">Unassigned core planets to classify.</param>
         /// <param name="factionBuckets">Per-faction bucket percentages.</param>
-        /// <param name="summary">Selected difficulty and player faction.</param>
+        /// <param name="setup">Selected difficulty and player faction.</param>
         /// <param name="preassignedCoreCount">Number of core planets already assigned as starting planets.</param>
         /// <param name="strongCountAdjustments">Per-faction count of pre-assigned core starting planets.</param>
         /// <param name="result">Classification result to populate with bucket assignments.</param>
@@ -271,7 +271,7 @@ namespace Rebellion.Generation
         private void AssignCoreBuckets(
             List<Planet> corePlanets,
             IReadOnlyList<FactionBucketConfig> factionBuckets,
-            GameSummary summary,
+            GameSetup setup,
             int preassignedCoreCount,
             Dictionary<string, int> strongCountAdjustments,
             GalaxyClassificationResult result,
@@ -284,7 +284,7 @@ namespace Rebellion.Generation
                 new List<(string factionID, int strongCount, int weakCount)>();
             foreach (FactionBucketConfig fb in factionBuckets)
             {
-                (int strongPct, int weakPct) = ResolveBucketPercentages(fb, summary);
+                (int strongPct, int weakPct) = ResolveBucketPercentages(fb, setup);
                 int strong = totalCore * strongPct / 100;
                 int weak = totalCore * weakPct / 100;
 
@@ -336,26 +336,26 @@ namespace Rebellion.Generation
         /// Resolves a faction's ownership percentages for the selected difficulty and controller.
         /// </summary>
         /// <param name="config">Faction ownership bucket configuration.</param>
-        /// <param name="summary">Selected difficulty and player faction.</param>
+        /// <param name="setup">Selected difficulty and player faction.</param>
         /// <returns>The applicable strong and weak ownership percentages.</returns>
         private static (int StrongPct, int WeakPct) ResolveBucketPercentages(
             FactionBucketConfig config,
-            GameSummary summary
+            GameSetup setup
         )
         {
             if (
-                summary == null
-                || string.IsNullOrEmpty(summary.PlayerFactionID)
+                setup == null
+                || string.IsNullOrEmpty(setup.PlayerFactionID)
                 || config.Overrides == null
             )
                 return (config.StrongPct, config.WeakPct);
 
             PlayerControllerType controllerType =
-                config.FactionID == summary.PlayerFactionID
+                config.FactionID == setup.PlayerFactionID
                     ? PlayerControllerType.Human
                     : PlayerControllerType.AI;
             FactionBucketOverride matchingOverride = config.Overrides.FirstOrDefault(candidate =>
-                candidate.Difficulty == summary.Difficulty
+                candidate.Difficulty == setup.Difficulty
                 && candidate.ControllerType == controllerType
             );
 

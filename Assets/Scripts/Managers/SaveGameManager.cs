@@ -266,15 +266,15 @@ public class SaveGameManager
 
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
-        game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
-        game.Metadata.Difficulty = game.Summary?.Difficulty;
-        game.Metadata.IsCustomGame = game.Summary?.IsCustomGame == true;
+        game.Metadata.PlayerFactionID = game.Setup?.PlayerFactionID;
+        game.Metadata.Difficulty = game.Setup?.Difficulty;
+        game.Metadata.IsCustomGame = game.Setup?.IsCustomGame == true;
         game.Metadata.CurrentTick = game.CurrentTick;
-        game.Metadata.PackID = game.Summary?.PackID;
-        game.Metadata.PackVersion = game.Summary?.PackVersion;
-        game.Metadata.ScenarioID = game.Summary?.ScenarioID;
-        game.Metadata.ModIDs = game.Summary?.ModIDs ?? Array.Empty<string>();
-        game.Metadata.ModVersions = game.Summary?.ModVersions ?? Array.Empty<string>();
+        game.Metadata.PackID = game.Setup?.PackID;
+        game.Metadata.PackVersion = game.Setup?.PackVersion;
+        game.Metadata.ScenarioID = game.Setup?.ScenarioID;
+        game.Metadata.ModIDs = game.Setup?.ModIDs ?? Array.Empty<string>();
+        game.Metadata.ModVersions = game.Setup?.ModVersions ?? Array.Empty<string>();
         string normalizedDisplayName = NormalizeDisplayName(displayName);
         if (normalizedDisplayName.Length > 0)
             game.Metadata.SaveDisplayName = normalizedDisplayName;

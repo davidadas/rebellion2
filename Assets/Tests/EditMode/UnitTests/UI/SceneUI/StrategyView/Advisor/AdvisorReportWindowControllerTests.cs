@@ -34,7 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
-            game.Summary.PlayerFactionID = _playerFactionId;
+            game.Setup.PlayerFactionID = _playerFactionId;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
-            game.Summary.PlayerFactionID = _playerFactionId;
+            game.Setup.PlayerFactionID = _playerFactionId;
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

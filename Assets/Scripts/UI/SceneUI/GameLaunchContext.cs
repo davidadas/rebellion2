@@ -11,7 +11,7 @@ public static class GameLaunchContext
     /// <summary>
     /// Gets the launch settings for a new game.
     /// </summary>
-    public static GameSummary Summary { get; private set; } = new GameSummary();
+    public static GameSetup Setup { get; private set; } = new GameSetup();
 
     public static string SaveFileName { get; set; }
 
@@ -39,36 +39,36 @@ public static class GameLaunchContext
     /// <param name="contentPack">The active content pack.</param>
     public static void Reset(ContentPack contentPack)
     {
-        Summary = CreateDefaultSummary(contentPack);
+        Setup = CreateDefaultSetup(contentPack);
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;
     }
 
     /// <summary>
-    /// Replaces the pending launch configuration with a detached custom-game summary.
+    /// Replaces the pending launch configuration with a detached custom-game setup.
     /// </summary>
-    /// <param name="summary">The complete custom-game configuration.</param>
-    internal static void ApplyCustomGameSummary(GameSummary summary)
+    /// <param name="setup">The complete custom-game configuration.</param>
+    internal static void ApplyCustomGameSetup(GameSetup setup)
     {
-        Summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
+        Setup = (setup ?? throw new ArgumentNullException(nameof(setup))).GetDeepCopy();
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;
     }
 
     /// <summary>
-    /// Creates the default launch summary.
+    /// Creates the default launch setup.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
-    /// <returns>The default launch summary.</returns>
-    internal static GameSummary CreateDefaultSummary(ContentPack contentPack)
+    /// <returns>The default launch setup.</returns>
+    internal static GameSetup CreateDefaultSetup(ContentPack contentPack)
     {
         if (contentPack == null)
             throw new ArgumentNullException(nameof(contentPack));
 
         string[] startingFactionIds = contentPack.Scenario.PlayableFactionIDs.ToArray();
-        return new GameSummary
+        return new GameSetup
         {
             Difficulty = GameDifficulty.Easy,
             GalaxySize = GameSize.Large,

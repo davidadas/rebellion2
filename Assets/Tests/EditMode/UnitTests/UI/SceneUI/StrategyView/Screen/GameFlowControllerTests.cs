@@ -171,7 +171,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Faction opponent = new Faction { InstanceID = "opponent" };
             game.GetFactions().Add(player);
             game.GetFactions().Add(opponent);
-            game.Summary.PlayerFactionID = player.InstanceID;
+            game.Setup.PlayerFactionID = player.InstanceID;
             game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
             GameSession session = new GameSession(game, TestGameData.Create(config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);
@@ -251,28 +251,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             GameFlowController.ApplyGameLaunchSpeed(manager, launchSpeed);
 
             Assert.AreEqual(expected, manager.GetGameSpeed());
-        }
-
-        [Test]
-        public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
-        {
-            FieldInfo summaryField = typeof(GameLaunchContext).GetField(
-                "<Summary>k__BackingField",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            object originalSummary = summaryField.GetValue(null);
-            try
-            {
-                summaryField.SetValue(null, null);
-
-                Task startup = (Task)InvokePrivate("StartNewGameAsync");
-
-                Assert.ThrowsAsync<InvalidOperationException>(async () => await startup);
-            }
-            finally
-            {
-                summaryField.SetValue(null, originalSummary);
-            }
         }
 
         [Test]

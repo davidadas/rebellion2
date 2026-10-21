@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Simulation
             // Create game with galaxy
             GameConfig config = TestContent.Data.GameConfig;
             _game = TestGame.Create(config);
-            _game.Summary.Difficulty = GameDifficulty.Medium;
+            _game.Setup.Difficulty = GameDifficulty.Medium;
             GalaxyMap galaxy = _game.Galaxy;
 
             // Create faction
@@ -5217,7 +5217,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingSpeedPercent = speedPercent,
             };
             _game.SetConfig(config);
-            _game.Summary.Difficulty = GameDifficulty.Hard;
+            _game.Setup.Difficulty = GameDifficulty.Hard;
         }
 
         /// <summary>

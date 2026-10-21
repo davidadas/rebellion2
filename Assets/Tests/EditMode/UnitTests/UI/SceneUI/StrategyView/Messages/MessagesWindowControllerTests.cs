@@ -476,7 +476,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             };
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
-            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.Setup.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
@@ -539,7 +539,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             faction.AddMessage(report);
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
-            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.Setup.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
@@ -596,7 +596,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             faction.Messages[MessageType.Mission] = new List<Message> { missionMessage };
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
-            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.Setup.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
@@ -689,7 +689,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             faction.Messages[MessageType.Fleet] = messages.ToList();
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
-            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.Setup.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,

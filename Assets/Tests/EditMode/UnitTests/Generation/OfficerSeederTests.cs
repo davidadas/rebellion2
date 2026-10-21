@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Generation
     public class OfficerSeederTests
     {
         private GameGenerationConfig _rules;
-        private GameSummary _summary;
+        private GameSetup _summary;
 
         /// <summary>
         /// Sets up.
@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Generation
                     },
                 },
             };
-            _summary = new GameSummary { GalaxySize = GameSize.Small };
+            _summary = new GameSetup { GalaxySize = GameSize.Small };
         }
 
         [Test]
@@ -476,7 +476,7 @@ namespace Rebellion.Tests.Generation
             Officer[] officers,
             PlanetSector[] sectors,
             GameGenerationConfig config,
-            GameSummary summary,
+            GameSetup summary,
             IRandomNumberProvider rng
         )
         {
@@ -485,7 +485,7 @@ namespace Rebellion.Tests.Generation
                 Officers = officers,
                 Sectors = sectors,
                 Config = config,
-                Summary = summary,
+                Setup = summary,
                 Rng = rng,
             };
             new OfficerSeeder().Seed(ctx);

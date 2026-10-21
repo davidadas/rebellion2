@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -48,8 +48,8 @@ internal sealed class CustomGameSettingsSession
     private readonly HashSet<string> aiCustomized = new();
     private readonly List<GenerationEntry> generationEntries = new();
     private readonly GameEventCategory[] eventCategories;
-    private readonly GameSummary summaryDefaults;
-    private readonly GameSummary summaryDraft;
+    private readonly GameSetup setupDefaults;
+    private readonly GameSetup setupDraft;
     private readonly ContentPack activePack;
     private readonly GameGenerationConfig generationDefaults;
     private readonly GameGenerationConfig generationDraft;
@@ -75,33 +75,33 @@ internal sealed class CustomGameSettingsSession
 
     internal ContentPack Pack => activePack;
 
-    internal GameSummary Draft => summaryDraft;
+    internal GameSetup Draft => setupDraft;
 
     /// <summary>
-    /// Creates an isolated editing session from active content and a launch summary.
+    /// Creates an isolated editing session from active content and a game setup.
     /// </summary>
     /// <param name="pack">The active content pack.</param>
-    /// <param name="summary">The launch configuration to edit.</param>
-    internal CustomGameSettingsSession(ContentPack pack, GameSummary summary)
+    /// <param name="setup">The launch configuration to edit.</param>
+    internal CustomGameSettingsSession(ContentPack pack, GameSetup setup)
     {
         activePack = pack ?? throw new ArgumentNullException(nameof(pack));
-        if (summary == null)
-            throw new ArgumentNullException(nameof(summary));
+        if (setup == null)
+            throw new ArgumentNullException(nameof(setup));
 
-        summaryDefaults = GameLaunchContext.CreateDefaultSummary(pack);
-        summaryDraft = summary.GetDeepCopy();
-        summaryDefaults.Seed = summaryDraft.Seed;
-        summaryDraft.StartingFactionIDs = summaryDefaults.StartingFactionIDs.ToArray();
-        summaryDraft.PackID = summaryDefaults.PackID;
-        summaryDraft.PackVersion = summaryDefaults.PackVersion;
-        summaryDraft.ScenarioID = summaryDefaults.ScenarioID;
-        summaryDraft.ModIDs = summaryDefaults.ModIDs.ToArray();
-        summaryDraft.ModVersions = summaryDefaults.ModVersions.ToArray();
-        if (!summaryDraft.StartingFactionIDs.Contains(summaryDraft.PlayerFactionID))
-            summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
+        setupDefaults = GameLaunchContext.CreateDefaultSetup(pack);
+        setupDraft = setup.GetDeepCopy();
+        setupDefaults.Seed = setupDraft.Seed;
+        setupDraft.StartingFactionIDs = setupDefaults.StartingFactionIDs.ToArray();
+        setupDraft.PackID = setupDefaults.PackID;
+        setupDraft.PackVersion = setupDefaults.PackVersion;
+        setupDraft.ScenarioID = setupDefaults.ScenarioID;
+        setupDraft.ModIDs = setupDefaults.ModIDs.ToArray();
+        setupDraft.ModVersions = setupDefaults.ModVersions.ToArray();
+        if (!setupDraft.StartingFactionIDs.Contains(setupDraft.PlayerFactionID))
+            setupDraft.PlayerFactionID = setupDefaults.PlayerFactionID;
         generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
         generationDraft =
-            summaryDraft.GenerationConfigOverride?.GetDeepCopy()
+            setupDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
             ?? pack.GameData.GenerationConfig.GetDeepCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
@@ -115,11 +115,13 @@ internal sealed class CustomGameSettingsSession
             .ToArray();
 
         DifficultyModifiers playerDefaults = new DifficultyModifiers();
-        DifficultyModifiers aiDefaults = ResolveAIDefaults(pack, summaryDraft.Difficulty);
-        DifficultyModifiers playerValues = summaryDraft.PlayerDifficultyModifiers ?? playerDefaults;
-        DifficultyModifiers aiValues = summaryDraft.AIDifficultyModifiers ?? aiDefaults;
+        DifficultyModifiers aiDefaults = ResolveAIDefaults(pack, setupDraft.Difficulty);
+        DifficultyModifiers playerValues =
+            setupDraft.CustomSettings?.PlayerDifficultyModifiers ?? playerDefaults;
+        DifficultyModifiers aiValues =
+            setupDraft.CustomSettings?.AIDifficultyModifiers ?? aiDefaults;
         AddDifficultyEntries(playerDefaults, aiDefaults, playerValues, aiValues);
-        if (summaryDraft.AIDifficultyModifiers != null)
+        if (setupDraft.CustomSettings?.AIDifficultyModifiers != null)
         {
             foreach (var entry in difficultyEntries)
             {
@@ -128,7 +130,7 @@ internal sealed class CustomGameSettingsSession
             }
         }
 
-        BuildGenerationEntries(pack, summaryDraft);
+        BuildGenerationEntries(pack, setupDraft);
     }
 
     /// <summary>
@@ -253,7 +255,7 @@ internal sealed class CustomGameSettingsSession
         if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int seed))
             return false;
 
-        summaryDraft.Seed = seed;
+        setupDraft.Seed = seed;
         return true;
     }
 
@@ -262,11 +264,11 @@ internal sealed class CustomGameSettingsSession
     /// </summary>
     internal void RandomizeSeed()
     {
-        int current = summaryDraft.Seed;
+        int current = setupDraft.Seed;
         int next;
         do next = Guid.NewGuid().GetHashCode();
         while (next == current);
-        summaryDraft.Seed = next;
+        setupDraft.Seed = next;
     }
 
     /// <summary>
@@ -275,8 +277,8 @@ internal sealed class CustomGameSettingsSession
     /// <param name="factionID">The selected faction instance ID.</param>
     internal void SetPlayerFaction(string factionID)
     {
-        summaryDraft.PlayerFactionID = factionID;
-        BuildGenerationEntries(activePack, summaryDraft);
+        setupDraft.PlayerFactionID = factionID;
+        BuildGenerationEntries(activePack, setupDraft);
     }
 
     /// <summary>
@@ -285,9 +287,9 @@ internal sealed class CustomGameSettingsSession
     /// <param name="difficulty">The selected difficulty.</param>
     internal void SetDifficulty(GameDifficulty difficulty)
     {
-        summaryDraft.Difficulty = difficulty;
+        setupDraft.Difficulty = difficulty;
         UpdateAIDifficultyDefaults(difficulty);
-        BuildGenerationEntries(activePack, summaryDraft);
+        BuildGenerationEntries(activePack, setupDraft);
     }
 
     /// <summary>
@@ -296,8 +298,8 @@ internal sealed class CustomGameSettingsSession
     /// <param name="size">The selected galaxy size.</param>
     internal void SetGalaxySize(GameSize size)
     {
-        summaryDraft.GalaxySize = size;
-        BuildGenerationEntries(activePack, summaryDraft);
+        setupDraft.GalaxySize = size;
+        BuildGenerationEntries(activePack, setupDraft);
     }
 
     /// <summary>
@@ -305,7 +307,7 @@ internal sealed class CustomGameSettingsSession
     /// </summary>
     /// <param name="condition">The selected victory condition.</param>
     internal void SetVictoryCondition(GameVictoryCondition condition) =>
-        summaryDraft.VictoryCondition = condition;
+        setupDraft.VictoryCondition = condition;
 
     /// <summary>
     /// Returns whether a classified event category is enabled in the draft campaign.
@@ -313,7 +315,7 @@ internal sealed class CustomGameSettingsSession
     /// <param name="category">The category to inspect.</param>
     /// <returns>True when the category is enabled.</returns>
     internal bool IsEventCategoryEnabled(GameEventCategory category) =>
-        summaryDraft.IsEventCategoryEnabled(category);
+        generationDraft.IsEventCategoryEnabled(category);
 
     /// <summary>
     /// Enables or disables one classified event category in the draft campaign.
@@ -326,8 +328,8 @@ internal sealed class CustomGameSettingsSession
             return;
 
         HashSet<GameEventCategory> disabled = new HashSet<GameEventCategory>(
-            summaryDraft.DisabledEventCategories.Where(candidate =>
-                candidate != GameEventCategory.None
+            (generationDraft.DisabledEventCategories ?? new List<GameEventCategory>()).Where(
+                candidate => candidate != GameEventCategory.None
             )
         );
         if (enabled)
@@ -335,7 +337,7 @@ internal sealed class CustomGameSettingsSession
         else
             disabled.Add(category);
 
-        summaryDraft.DisabledEventCategories = disabled.OrderBy(candidate => candidate).ToArray();
+        generationDraft.DisabledEventCategories = disabled.OrderBy(candidate => candidate).ToList();
     }
 
     /// <summary>
@@ -346,16 +348,17 @@ internal sealed class CustomGameSettingsSession
     {
         if (category == NewGameSettingsCategory.GameSetup)
         {
-            summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
-            summaryDraft.Difficulty = summaryDefaults.Difficulty;
-            summaryDraft.GalaxySize = summaryDefaults.GalaxySize;
-            summaryDraft.VictoryCondition = summaryDefaults.VictoryCondition;
-            summaryDraft.ResourceAvailability = summaryDefaults.ResourceAvailability;
-            summaryDraft.DisabledEventCategories =
-                summaryDefaults.DisabledEventCategories.ToArray();
-            summaryDraft.Seed = summaryDefaults.Seed;
-            UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
-            BuildGenerationEntries(activePack, summaryDraft);
+            setupDraft.PlayerFactionID = setupDefaults.PlayerFactionID;
+            setupDraft.Difficulty = setupDefaults.Difficulty;
+            setupDraft.GalaxySize = setupDefaults.GalaxySize;
+            setupDraft.VictoryCondition = setupDefaults.VictoryCondition;
+            setupDraft.ResourceAvailability = setupDefaults.ResourceAvailability;
+            generationDraft.DisabledEventCategories =
+                generationDefaults.DisabledEventCategories?.ToList()
+                ?? new List<GameEventCategory>();
+            setupDraft.Seed = setupDefaults.Seed;
+            UpdateAIDifficultyDefaults(setupDraft.Difficulty);
+            BuildGenerationEntries(activePack, setupDraft);
             return;
         }
 
@@ -379,13 +382,16 @@ internal sealed class CustomGameSettingsSession
     /// <summary>
     /// Captures the complete launch configuration represented by this session.
     /// </summary>
-    /// <returns>A detached launch summary.</returns>
-    internal GameSummary CreateSummarySnapshot()
+    /// <returns>A detached launch setup.</returns>
+    internal GameSetup CreateSetupSnapshot()
     {
-        GameSummary snapshot = summaryDraft.GetDeepCopy();
-        snapshot.PlayerDifficultyModifiers = CreateModifiers(playerDraft);
-        snapshot.AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft);
-        snapshot.GenerationConfigOverride = generationDraft.GetDeepCopy();
+        GameSetup snapshot = setupDraft.GetDeepCopy();
+        snapshot.CustomSettings = new CustomGameSettings
+        {
+            PlayerDifficultyModifiers = CreateModifiers(playerDraft),
+            AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
+            GenerationConfig = generationDraft.GetDeepCopy(),
+        };
         return snapshot;
     }
 
@@ -616,16 +622,16 @@ internal sealed class CustomGameSettingsSession
     /// Builds numeric launch settings from the selected scenario and faction configuration.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
-    /// <param name="summary">The selected launch settings that determine applicable values.</param>
-    private void BuildGenerationEntries(ContentPack pack, GameSummary summary)
+    /// <param name="setup">The selected game setup that determines applicable values.</param>
+    private void BuildGenerationEntries(ContentPack pack, GameSetup setup)
     {
         generationEntries.Clear();
         currentGenerationSection = "FACTION STARTING CONDITIONS";
         AddStartingResearchEntries(pack.GameData.Factions);
-        AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
-        AddStartingForceEntries(pack.GameData.Factions, summary.GalaxySize);
-        AddGalaxyClassificationEntries(pack, summary);
-        AddResourceEntries(summary.ResourceAvailability);
+        AddOfficerEntries(pack.GameData.Factions, setup.GalaxySize);
+        AddStartingForceEntries(pack.GameData.Factions, setup.GalaxySize);
+        AddGalaxyClassificationEntries(pack, setup);
+        AddResourceEntries(setup.ResourceAvailability);
         currentGenerationSection = "STARTING PLANET SUPPORT";
         AddPlanetSupportEntries();
         currentGenerationSection = "MINE GENERATION";
@@ -898,8 +904,8 @@ internal sealed class CustomGameSettingsSession
     /// Adds base and conditional core-planet ownership percentages for every faction.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
-    /// <param name="summary">The selected difficulty and player faction.</param>
-    private void AddGalaxyClassificationEntries(ContentPack pack, GameSummary summary)
+    /// <param name="setup">The selected difficulty and player faction.</param>
+    private void AddGalaxyClassificationEntries(ContentPack pack, GameSetup setup)
     {
         for (
             int bucketIndex = 0;
@@ -919,11 +925,11 @@ internal sealed class CustomGameSettingsSession
                 ?? bucket.FactionID;
             string factionKey = bucket.FactionID.ToLowerInvariant();
             PlayerControllerType controller =
-                bucket.FactionID == summary.PlayerFactionID
+                bucket.FactionID == setup.PlayerFactionID
                     ? PlayerControllerType.Human
                     : PlayerControllerType.AI;
             int overrideIndex = bucket.Overrides.FindIndex(candidate =>
-                candidate.Difficulty == summary.Difficulty && candidate.ControllerType == controller
+                candidate.Difficulty == setup.Difficulty && candidate.ControllerType == controller
             );
             Func<GameGenerationConfig, int> readStrong =
                 overrideIndex < 0

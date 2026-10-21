@@ -280,7 +280,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = factionId };
             game.GetFactions().Add(faction);
-            game.Summary.PlayerFactionID = factionId;
+            game.Setup.PlayerFactionID = factionId;
             game.SetFactionController(factionId, "PLAYER1", PlayerControllerType.Human);
             Planet planet = new Planet
             {

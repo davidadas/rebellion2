@@ -4556,7 +4556,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Summary = new GameSummary { Difficulty = difficulty, PlayerFactionID = "empire" };
+            game.Setup = new GameSetup { Difficulty = difficulty, PlayerFactionID = "empire" };
             game.SetFactionController("empire", "player", PlayerControllerType.AI);
             planet.AddVisitor("empire");
             game.Config.DifficultyModifiers[difficulty] = new DifficultyModifiers
@@ -4586,7 +4586,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            game.Summary = new GameSummary
+            game.Setup = new GameSetup
             {
                 Difficulty = GameDifficulty.Hard,
                 PlayerFactionID = "empire",
