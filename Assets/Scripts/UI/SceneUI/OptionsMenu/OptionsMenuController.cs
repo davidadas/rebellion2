@@ -648,7 +648,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                     ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
                     false,
                     entry.FileName,
-                    entry.Metadata?.Difficulty?.ToString(),
+                    entry.Metadata?.IsCustomGame == true
+                        ? "Custom"
+                        : entry.Metadata?.Difficulty?.ToString(),
                     entry.Metadata?.CurrentTick
                 )
             );

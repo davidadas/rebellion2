@@ -570,6 +570,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void RefreshSaveSlots_CustomGame_RendersCustomAndTurn()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.GalaxySize = GameSize.Small;
+            game.Summary.GenerationConfigOverride = new GameGenerationConfig();
+            game.CurrentTick = 42;
+            _saveGameManager.SaveGameData(game, "custom_save", "Custom Save");
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+
+            TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.AreEqual("Custom • Turn 42", metadata.text);
+        }
+
+        [Test]
         public void HandleSaveRequested_ValidNewSaveName_EnablesButtonAndCreatesSave()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());

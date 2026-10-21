@@ -268,6 +268,7 @@ public class SaveGameManager
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
         game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
         game.Metadata.Difficulty = game.Summary?.Difficulty;
+        game.Metadata.IsCustomGame = game.Summary?.IsCustomGame == true;
         game.Metadata.CurrentTick = game.CurrentTick;
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;

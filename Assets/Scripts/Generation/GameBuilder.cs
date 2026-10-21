@@ -125,7 +125,12 @@ namespace Rebellion.Generation
                 Regiments = CopyTemplates(_gameData.Regiments),
                 SpecialForces = CopyTemplates(_gameData.SpecialForces),
                 Officers = CopyTemplates(_gameData.Officers),
-                Events = _gameData.GameEvents.GetDeepCopy(),
+                Events = _gameData
+                    .GameEvents.Where(gameEvent =>
+                        _summary.IsEventCategoryEnabled(gameEvent.Category)
+                    )
+                    .ToArray()
+                    .GetDeepCopy(),
             };
         }
 

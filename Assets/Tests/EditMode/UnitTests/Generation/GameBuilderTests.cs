@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -518,6 +519,61 @@ namespace Rebellion.Tests.Generation
                 _game.GetEventPool().Count,
                 1,
                 "Game should have at least one event in the event pool."
+            );
+        }
+
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void Build_DisabledEventCategory_ExcludesOnlyThatCategory(
+            GameEventCategory disabledCategory
+        )
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                DisabledEventCategories = new[] { disabledCategory },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.IsFalse(
+                game.GetEventPool().Any(gameEvent => gameEvent.Category == disabledCategory)
+            );
+            foreach (
+                GameEvent template in TestContent.Data.GameEvents.Where(gameEvent =>
+                    gameEvent.Category != disabledCategory
+                )
+            )
+            {
+                Assert.IsTrue(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.InstanceID == template.InstanceID)
+                );
+            }
+        }
+
+        [Test]
+        public void Build_AllClassifiedEventsDisabled_RetainsUnclassifiedEvents()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                DisabledEventCategories = new[]
+                {
+                    GameEventCategory.Story,
+                    GameEventCategory.Disaster,
+                },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.IsNotEmpty(game.GetEventPool());
+            Assert.IsTrue(
+                game.GetEventPool().All(gameEvent => gameEvent.Category == GameEventCategory.None)
             );
         }
 

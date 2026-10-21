@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -15,6 +16,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
     [TestFixture]
     public sealed class NewGameSettingsViewTests
     {
+        private static readonly Color DefaultTextColor = new Color(0.875f, 0.910f, 0.941f);
+        private static readonly Color ModifiedTextColor = new Color(0.373f, 0.659f, 0.925f);
         private GameObject instance;
         private NewGameSettingsView view;
         private GameSummary summary;
@@ -145,18 +148,17 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void EditValue_ValidNumber_PreservesInputPresentation()
+        public void EditValue_ValidNumber_HighlightsModifiedValueAndPreservesInputGeometry()
         {
             view.Initialize(TestContent.Pack, summary);
             TMP_InputField input = Input("mine-output", "Player");
-            Color color = input.textComponent.color;
             RectInt viewportRect = UILayout.GetSourceRect(input.textViewport);
             RectInt textRect = UILayout.GetSourceRect(input.textComponent.rectTransform);
 
             input.onEndEdit.Invoke("125");
 
             input = Input("mine-output", "Player");
-            Assert.AreEqual(color, input.textComponent.color);
+            Assert.AreEqual(ModifiedTextColor, input.textComponent.color);
             Assert.AreEqual(viewportRect, UILayout.GetSourceRect(input.textViewport));
             Assert.AreEqual(textRect, UILayout.GetSourceRect(input.textComponent.rectTransform));
         }
@@ -260,6 +262,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual("100", Input("mine-output", "Player").text);
             Assert.AreEqual("175", Input("mine-output", "AI").text);
+            Assert.AreEqual(DefaultTextColor, Input("mine-output", "Player").textComponent.color);
+            Assert.AreEqual(ModifiedTextColor, Input("mine-output", "AI").textComponent.color);
         }
 
         [Test]
@@ -363,7 +367,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "Choice-difficulty",
                     "Choice-galaxy-size",
                     "Choice-victory-condition",
-                    "Choice-resource-availability",
                 },
                 instance
                     .GetComponentsInChildren<OptionsChoiceFieldView>()
@@ -388,6 +391,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 seedLabelY,
                 ((RectTransform)SeedResetButton().transform).anchoredPosition.y
+            );
+            CollectionAssert.AreEqual(
+                new[] { "CAMPAIGN", "EVENTS" },
+                instance
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Where(text => text.name.StartsWith("Section-", StringComparison.Ordinal))
+                    .Select(text => text.text)
+                    .ToArray()
             );
         }
 
@@ -422,6 +433,26 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     CultureInfo.InvariantCulture,
                     out _
                 )
+            );
+            Assert.AreEqual(DefaultTextColor, SeedInput().textComponent.color);
+        }
+
+        [Test]
+        public void ChangeGameSetup_WhenValuesDifferFromInitialState_RemainsNeutral()
+        {
+            summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            StepSetupChoice("difficulty", 1);
+            SeedResetButton().onClick.Invoke();
+            EventToggle(GameEventCategory.Story).GetComponentInChildren<Button>().onClick.Invoke();
+
+            Assert.AreEqual(DefaultTextColor, SetupChoiceValue("difficulty").color);
+            Assert.AreEqual(DefaultTextColor, SeedInput().textComponent.color);
+            Assert.AreNotEqual(
+                ModifiedTextColor,
+                ToggleStateText(EventToggle(GameEventCategory.Story)).color
             );
         }
 
@@ -503,6 +534,101 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void SelectCategory_GameSetup_ShowsOneTogglePerClassifiedEventCategory()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            OptionsToggleRowView[] toggles = instance
+                .GetComponentsInChildren<OptionsToggleRowView>()
+                .OrderBy(toggle => toggle.OptionIndex)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { GameEventCategory.Story, GameEventCategory.Disaster },
+                toggles.Select(toggle => (GameEventCategory)toggle.OptionIndex).ToArray()
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Story Events", "Disaster Events" },
+                instance
+                    .GetComponentsInChildren<Transform>()
+                    .Where(transform => transform.name.StartsWith("Setup-event-"))
+                    .OrderBy(transform =>
+                        transform.name.EndsWith(nameof(GameEventCategory.Story)) ? 0 : 1
+                    )
+                    .Select(transform => transform.Find("Label").GetComponent<TMP_Text>().text)
+                    .ToArray()
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Disables all story events in the game.",
+                    "Disables all disaster events in the game.",
+                },
+                instance
+                    .GetComponentsInChildren<Transform>()
+                    .Where(transform => transform.name.StartsWith("Setup-event-"))
+                    .OrderBy(transform =>
+                        transform.name.EndsWith(nameof(GameEventCategory.Story)) ? 0 : 1
+                    )
+                    .Select(transform =>
+                        transform.Find("Description").GetComponent<TMP_Text>().text
+                    )
+                    .ToArray()
+            );
+            Assert.IsTrue(toggles.All(toggle => ToggleState(toggle) == "ON"));
+        }
+
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void Apply_DisabledEventCategory_PublishesOnlySelectedCategory(
+            GameEventCategory category
+        )
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            EventToggle(category).GetComponentInChildren<Button>().onClick.Invoke();
+            ApplyButton().onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { category }, launched.DisabledEventCategories);
+            Assert.IsEmpty(summary.DisabledEventCategories);
+            Assert.AreEqual("OFF", ToggleState(EventToggle(category)));
+            Assert.AreNotEqual(ModifiedTextColor, ToggleStateText(EventToggle(category)).color);
+        }
+
+        [Test]
+        public void RestoreDefaults_GameSetup_ReenablesEveryEventCategory()
+        {
+            GameSummary launched = null;
+            summary.DisabledEventCategories = new[]
+            {
+                GameEventCategory.Story,
+                GameEventCategory.Disaster,
+            };
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            view.RestoreDefaults();
+            ApplyButton().onClick.Invoke();
+
+            Assert.IsEmpty(launched.DisabledEventCategories);
+            Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Story)));
+            Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Disaster)));
+            Assert.AreEqual(
+                Color.white,
+                ToggleStateText(EventToggle(GameEventCategory.Story)).color
+            );
+            Assert.AreEqual(
+                Color.white,
+                ToggleStateText(EventToggle(GameEventCategory.Disaster)).color
+            );
+        }
+
+        [Test]
         public void SelectCategory_GameSetup_ExplainsBaseDifficultyDefaults()
         {
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
@@ -574,7 +700,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             StepSetupChoice("difficulty", 1);
             StepSetupChoice("galaxy-size", 1);
             StepSetupChoice("victory-condition", 1);
-            StepSetupChoice("resource-availability", 1);
 
             ApplyButton().onClick.Invoke();
 
@@ -583,7 +708,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameDifficulty.Medium, launched.Difficulty);
             Assert.AreEqual(GameSize.Small, launched.GalaxySize);
             Assert.AreEqual(GameVictoryCondition.Headquarters, launched.VictoryCondition);
-            Assert.AreEqual(GameResourceAvailability.Abundant, launched.ResourceAvailability);
+            Assert.AreEqual(GameResourceAvailability.Normal, launched.ResourceAvailability);
             Assert.IsNotNull(launched.PlayerDifficultyModifiers);
             Assert.IsNull(launched.AIDifficultyModifiers);
             Assert.IsNotNull(launched.GenerationConfigOverride);
@@ -605,9 +730,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 expected.MineOutputPercent.ToString(CultureInfo.InvariantCulture),
                 Input("mine-output", "AI").text
             );
+            Assert.AreEqual(DefaultTextColor, Input("mine-output", "AI").textComponent.color);
             Assert.AreEqual(
                 expected.ManufacturingSpeedPercent.ToString(CultureInfo.InvariantCulture),
                 Input("manufacturing-speed", "AI").text
+            );
+            Assert.AreEqual(
+                DefaultTextColor,
+                Input("manufacturing-speed", "AI").textComponent.color
             );
         }
 
@@ -626,9 +756,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
 
             Assert.AreEqual("777", Input("mine-output", "AI").text);
+            Assert.AreEqual(ModifiedTextColor, Input("mine-output", "AI").textComponent.color);
             Assert.AreEqual(
                 expected.ManufacturingSpeedPercent.ToString(CultureInfo.InvariantCulture),
                 Input("manufacturing-speed", "AI").text
+            );
+            Assert.AreEqual(
+                DefaultTextColor,
+                Input("manufacturing-speed", "AI").textComponent.color
             );
         }
 
@@ -766,6 +901,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.SelectCategory(NewGameSettingsCategory.FactionModifiers);
 
             TableInput("uprising-resistance", "Player").onEndEdit.Invoke("3");
+            Assert.AreEqual(
+                ModifiedTextColor,
+                TableInput("uprising-resistance", "Player").textComponent.color
+            );
             ApplyButton().onClick.Invoke();
 
             GameGenerationConfig config = applied.GenerationConfigOverride;
@@ -801,6 +940,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .Pack.GameData.GenerationConfig.GalaxyClassification.FactionSetups[0]
                     .NumStartingOfficers.Small.ToString(CultureInfo.InvariantCulture),
                 TableInput("starting-officers", "Player").text
+            );
+            Assert.AreEqual(
+                DefaultTextColor,
+                TableInput("starting-officers", "Player").textComponent.color
             );
             Assert.AreEqual(
                 2,
@@ -885,9 +1028,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             CollectionAssert.IsSubsetOf(
                 new[]
                 {
-                    "STARTING RESEARCH",
-                    "STARTING OFFICERS",
-                    "CORE WORLD CONTROL",
+                    "FACTION STARTING CONDITIONS",
                     "PLANET ENERGY (NORMAL)",
                     "RAW MATERIALS (NORMAL)",
                     "PLANET RESOURCE LIMITS (NORMAL)",
@@ -898,6 +1039,17 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 },
                 labels
             );
+            CollectionAssert.IsEmpty(
+                labels.Intersect(
+                    new[]
+                    {
+                        "STARTING RESEARCH",
+                        "STARTING OFFICERS",
+                        "STARTING FORCES",
+                        "CORE WORLD CONTROL",
+                    }
+                )
+            );
         }
 
         [Test]
@@ -907,7 +1059,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
             TMP_Text actual = instance
                 .GetComponentsInChildren<TMP_Text>()
-                .Single(text => text.name == "Section-STARTING-OFFICERS");
+                .Single(text => text.name == "Section-FACTION-STARTING-CONDITIONS");
             TMP_Text expected = AssetDatabase
                 .LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab")
                 .GetComponentsInChildren<TMP_Text>(true)
@@ -928,7 +1080,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
             Transform[] transforms = instance.GetComponentsInChildren<Transform>();
             RectTransform section = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Section-STARTING-RESEARCH");
+                transforms.Single(candidate =>
+                    candidate.name == "Section-FACTION-STARTING-CONDITIONS"
+                );
             RectTransform header = transforms
                 .Where(candidate => candidate.name == "GenerationTableHeader")
                 .Cast<RectTransform>()
@@ -939,15 +1093,15 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Initialize_WorldGenerationSectionHeading_UsesEightPixelTopGap()
+        public void Initialize_WorldGenerationNextSection_UsesEightPixelTopGap()
         {
             view.Initialize(TestContent.Pack, summary);
             view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
             Transform[] transforms = instance.GetComponentsInChildren<Transform>();
             RectTransform previousRow = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Setting-starting-research");
+                transforms.Single(candidate => candidate.name == "Setting-weak-core-worlds");
             RectTransform section = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Section-STARTING-OFFICERS");
+                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY-(NORMAL)");
 
             Assert.AreEqual(
                 -previousRow.anchoredPosition.y + previousRow.sizeDelta.y + 8f,
@@ -1186,8 +1340,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(rowLabel.sizeDelta.y, playerField.sizeDelta.y);
             Assert.AreEqual(rowLabel.anchoredPosition.y, playerReset.anchoredPosition.y);
             Assert.AreEqual(rowLabel.anchoredPosition.y, aiField.anchoredPosition.y);
-            Assert.AreEqual(9f, rowLabel.GetComponent<TMP_Text>().fontSize);
-            Assert.IsFalse(rowLabel.GetComponent<TMP_Text>().enableAutoSizing);
+            TMP_Text expectedLabel = optionsPrefab
+                .GetComponentsInChildren<TMP_Text>(true)
+                .Single(text => text.name == "GameLaunchSpeedLabel");
+            Assert.AreEqual(expectedLabel.fontSize, rowLabel.GetComponent<TMP_Text>().fontSize);
+            Assert.AreEqual(
+                expectedLabel.enableAutoSizing,
+                rowLabel.GetComponent<TMP_Text>().enableAutoSizing
+            );
             Assert.AreEqual(9f, playerHeading.GetComponent<TMP_Text>().fontSize);
             Assert.AreEqual(9f, aiHeading.GetComponent<TMP_Text>().fontSize);
             Assert.AreEqual(
@@ -1227,18 +1387,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Initialize_WindowHeading_IsCentered()
+        public void Initialize_WindowHeading_MatchesSharedMenuTypography()
         {
             view.Initialize(TestContent.Pack, summary);
 
             TMP_Text header = instance
                 .transform.Find("ContentRoot/HeaderTextField")
                 .GetComponent<TMP_Text>();
+            TMP_Text expected = optionsPrefab
+                .transform.Find("ContentRoot/HeaderTextField")
+                .GetComponent<TMP_Text>();
 
-            Assert.AreEqual(TextAlignmentOptions.Midline, header.alignment);
-            Assert.IsTrue(header.enableAutoSizing);
-            Assert.AreEqual(14f, header.fontSizeMin);
-            Assert.AreEqual(19f, header.fontSizeMax);
+            Assert.AreEqual(expected.alignment, header.alignment);
+            Assert.AreEqual(expected.enableAutoSizing, header.enableAutoSizing);
+            Assert.AreEqual(expected.fontSize, header.fontSize);
+            Assert.LessOrEqual(header.preferredWidth, header.rectTransform.rect.width);
         }
 
         [Test]
@@ -1336,11 +1499,49 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             SeedInput().transform.parent.Find("WorldReset").GetComponent<Button>();
 
         /// <summary>
+        /// Finds the displayed value for one Game Setup selector.
+        /// </summary>
+        /// <param name="key">The stable setup-choice identity.</param>
+        /// <returns>The selector's value label.</returns>
+        private TMP_Text SetupChoiceValue(string key) =>
+            instance
+                .GetComponentsInChildren<OptionsChoiceFieldView>()
+                .Single(candidate => candidate.name == "Choice-" + key)
+                .transform.Find("Value")
+                .GetComponent<TMP_Text>();
+
+        /// <summary>
         /// Finds the Apply button.
         /// </summary>
         /// <returns>The Apply button.</returns>
         private Button ApplyButton() =>
             instance.transform.Find("ContentRoot/Apply").GetComponent<Button>();
+
+        /// <summary>
+        /// Finds the event-category toggle for the requested category.
+        /// </summary>
+        /// <param name="category">The event category represented by the toggle.</param>
+        /// <returns>The matching event-category toggle.</returns>
+        private OptionsToggleRowView EventToggle(GameEventCategory category) =>
+            instance
+                .GetComponentsInChildren<OptionsToggleRowView>()
+                .Single(toggle => toggle.OptionIndex == (int)category);
+
+        /// <summary>
+        /// Reads the state label displayed by an event-category toggle.
+        /// </summary>
+        /// <param name="toggle">The toggle to inspect.</param>
+        /// <returns>The currently displayed state label.</returns>
+        private static string ToggleState(OptionsToggleRowView toggle) =>
+            ToggleStateText(toggle).text;
+
+        /// <summary>
+        /// Finds the displayed state field for one event-category toggle.
+        /// </summary>
+        /// <param name="toggle">The toggle to inspect.</param>
+        /// <returns>The toggle's state label.</returns>
+        private static TMP_Text ToggleStateText(OptionsToggleRowView toggle) =>
+            toggle.transform.Find("StateTextField").GetComponent<TMP_Text>();
 
         /// <summary>
         /// Steps one active game-setup choice through its shared Options selector.

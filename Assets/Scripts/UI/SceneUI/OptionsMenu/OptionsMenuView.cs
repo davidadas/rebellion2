@@ -1152,6 +1152,32 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Clones the established Boolean toggle into another Options-style page.
+    /// </summary>
+    /// <param name="parent">The destination settings row.</param>
+    /// <param name="name">The cloned toggle name.</param>
+    /// <param name="optionIndex">The semantic option index emitted when toggled.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The destination toggle width.</param>
+    /// <returns>The reusable cloned toggle row.</returns>
+    internal OptionsToggleRowView CloneToggleRow(
+        Transform parent,
+        string name,
+        int optionIndex,
+        int x,
+        int y,
+        int width
+    )
+    {
+        OptionsToggleRowView source = _gameplayRows.FirstOrDefault(row => row != null);
+        if (source == null)
+            throw new MissingReferenceException("A gameplay toggle row is required.");
+
+        return OptionsToggleRowView.Clone(source, parent, name, optionIndex, x, y, width);
+    }
+
+    /// <summary>
     /// Composes reusable choice fields over the authored Options controls.
     /// </summary>
     private void EnsureChoiceFields()

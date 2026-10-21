@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Game
@@ -36,6 +37,46 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
+            Assert.IsEmpty(summary.DisabledEventCategories);
+            Assert.IsTrue(summary.IsEventCategoryEnabled(GameEventCategory.None));
+            Assert.IsTrue(summary.IsEventCategoryEnabled(GameEventCategory.Story));
+            Assert.IsTrue(summary.IsEventCategoryEnabled(GameEventCategory.Disaster));
+            Assert.IsFalse(summary.IsCustomGame);
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_DisabledEventCategories_PreservesSelections()
+        {
+            GameSummary summary = new GameSummary
+            {
+                DisabledEventCategories = new[]
+                {
+                    GameEventCategory.Story,
+                    GameEventCategory.Disaster,
+                },
+            };
+
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(summary)
+            );
+
+            CollectionAssert.AreEquivalent(
+                summary.DisabledEventCategories,
+                restored.DisabledEventCategories
+            );
+            Assert.IsFalse(restored.IsEventCategoryEnabled(GameEventCategory.Story));
+            Assert.IsFalse(restored.IsEventCategoryEnabled(GameEventCategory.Disaster));
+            Assert.IsTrue(restored.IsEventCategoryEnabled(GameEventCategory.None));
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_OmittedEventSettings_EnablesEveryCategory()
+        {
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>("<GameSummary/>");
+
+            Assert.IsEmpty(restored.DisabledEventCategories);
+            Assert.IsTrue(restored.IsEventCategoryEnabled(GameEventCategory.Story));
+            Assert.IsTrue(restored.IsEventCategoryEnabled(GameEventCategory.Disaster));
         }
 
         [Test]
@@ -145,6 +186,7 @@ namespace Rebellion.Tests.Game
                 deserialized.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
                 "Generation overrides should be correctly deserialized."
             );
+            Assert.IsTrue(deserialized.IsCustomGame);
         }
     }
 } // namespace Rebellion.Tests.Game

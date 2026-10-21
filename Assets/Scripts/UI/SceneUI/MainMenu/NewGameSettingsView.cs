@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using TMPro;
 using UnityEngine;
@@ -38,6 +39,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private const string _rowActiveAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_row_selected_background";
     private const int _controlTop = 1;
+    private const float _labelFontSize = 11f;
     private const float _descriptionFontSize = 9f;
     private const float _minimumRowHeight = 30f;
     private const float _rowSpacing = 4f;
@@ -52,6 +54,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private const float _tableSettingsScrollTop = 36f;
     private static readonly string[] _tableCellPrefixes = { "Player", "AI", "World" };
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
+    private static readonly Color _modifiedTextColor = new Color(0.373f, 0.659f, 0.925f);
 
     [SerializeField]
     private Button[] tabs;
@@ -94,6 +97,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private readonly List<GameObject> generationTableHeaderRows = new();
     private readonly List<GameObject> generationTableRows = new();
     private readonly Dictionary<string, OptionsChoiceFieldView> setupChoiceFields = new();
+    private readonly Dictionary<GameEventCategory, OptionsToggleRowView> eventToggleRows = new();
     private readonly List<OptionsSaveSlot> presetSlots = new();
     private readonly List<CustomGamePresetEntry> presetEntries = new();
     private IReadOnlyList<ContentPackDefinition> availablePacks =
@@ -197,22 +201,15 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             label.text = captions[index];
             label.alignment = TextAlignmentOptions.MidlineLeft;
             label.fontStyle = FontStyles.Normal;
+            RectTransform tabRect = (RectTransform)tabs[index].transform;
+            RectInt sourceRect = UILayout.GetSourceRect(tabRect);
+            int y = index == (int)NewGameSettingsCategory.SaveLoad ? 360 : 82 + index * 32;
+            UILayout.SetSourceRect(tabRect, sourceRect.x, y, sourceRect.width, sourceRect.height);
         }
-
-        RectTransform saveLoadRect = (RectTransform)
-            tabs[(int)NewGameSettingsCategory.SaveLoad].transform;
-        RectInt sourceRect = UILayout.GetSourceRect(saveLoadRect);
-        UILayout.SetSourceRect(
-            saveLoadRect,
-            sourceRect.x,
-            360,
-            sourceRect.width,
-            sourceRect.height
-        );
     }
 
     /// <summary>
-    /// Fits the custom-game caption inside the shared menu header bounds.
+    /// Applies the shared menu-window typography to the custom-game caption.
     /// </summary>
     private void ConfigureWindowHeader()
     {
@@ -221,9 +218,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             return;
 
         header.text = "CUSTOM GAME";
-        header.enableAutoSizing = true;
-        header.fontSizeMin = 14f;
-        header.fontSizeMax = 19f;
+        header.enableAutoSizing = false;
+        header.fontSize = 22f;
+        UILayout.SetSourceRect(header.rectTransform, 41, 32, 174, 26);
     }
 
     /// <summary>
@@ -256,6 +253,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Vector4 border = new Vector4(7f, 7f, 7f, 7f);
         rowIdleSprite = ContentBindings.RequireSprite(contentAssets, _rowIdleAddress, border);
         rowActiveSprite = ContentBindings.RequireSprite(contentAssets, _rowActiveAddress, border);
+        foreach (OptionsToggleRowView row in eventToggleRows.Values)
+            row.InitializeContent(contentAssets);
         presetSaveList?.InitializeContent(contentAssets);
         presetConfirmDialog?.InitializeContent(contentAssets);
     }
@@ -363,6 +362,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         if (!saveLoadSelected)
             ConfigureSettingsScrollLayout(difficultySelected);
         HideSetupChoiceButtons();
+        HideEventToggleRows();
 
         if (saveLoadSelected)
         {
@@ -558,12 +558,17 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void RenderGameSetup()
     {
-        HideGenerationSectionRowsAfter(0);
         HideGenerationTableHeaderRowsAfter(0);
         HideGenerationTableRowsAfter(0);
         float contentOffset = 0f;
+        int sectionIndex = 0;
+        int rowIndex = 0;
+
+        GameObject campaignSection = GetGenerationSectionRow(sectionIndex++);
+        ConfigureGenerationSectionRow(campaignSection, "CAMPAIGN", contentOffset);
+        contentOffset += _sectionStride;
         contentOffset += ConfigureSetupRow(
-            0,
+            rowIndex++,
             contentOffset,
             "content-pack",
             "Content Pack",
@@ -574,7 +579,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleContentPack
         );
         contentOffset += ConfigureSetupRow(
-            1,
+            rowIndex++,
             contentOffset,
             "faction",
             "Player Faction",
@@ -583,7 +588,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleFaction
         );
         contentOffset += ConfigureSetupRow(
-            2,
+            rowIndex++,
             contentOffset,
             "difficulty",
             "Base Difficulty",
@@ -592,7 +597,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleDifficulty
         );
         contentOffset += ConfigureSetupRow(
-            3,
+            rowIndex++,
             contentOffset,
             "galaxy-size",
             "Galaxy Size",
@@ -601,7 +606,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleGalaxySize
         );
         contentOffset += ConfigureSetupRow(
-            4,
+            rowIndex++,
             contentOffset,
             "victory-condition",
             "Victory Condition",
@@ -609,17 +614,38 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             settingsSession.Draft.VictoryCondition.ToString(),
             CycleVictoryCondition
         );
-        contentOffset += ConfigureSetupRow(
-            5,
-            contentOffset,
-            "resource-availability",
-            "Resource Availability",
-            "Selects the planet-resource generation profile.",
-            settingsSession.Draft.ResourceAvailability.ToString(),
-            CycleResourceAvailability
-        );
-        contentOffset += ConfigureSeedRow(6, contentOffset);
-        HideRowsAfter(7);
+        contentOffset += ConfigureSeedRow(rowIndex++, contentOffset);
+
+        if (settingsSession.EventCategories.Count > 0)
+        {
+            contentOffset += _sectionSpacing - _rowSpacing;
+            GameObject eventsSection = GetGenerationSectionRow(sectionIndex++);
+            ConfigureGenerationSectionRow(eventsSection, "EVENTS", contentOffset);
+            contentOffset += _sectionStride;
+
+            foreach (GameEventCategory category in settingsSession.EventCategories)
+            {
+                GameObject row = GetRow(rowIndex++);
+                row.name = "Setup-event-" + category;
+                row.SetActive(true);
+                contentOffset += ConfigureTextRow(
+                    row,
+                    contentOffset,
+                    GetEventCategoryLabel(category),
+                    GetEventCategoryDescription(category),
+                    _defaultLabelWidth
+                );
+                SetAllValueControlsVisible(row.transform, false);
+
+                OptionsToggleRowView toggle = GetEventToggleRow(category, row.transform);
+                toggle.gameObject.SetActive(true);
+                bool enabled = settingsSession.IsEventCategoryEnabled(category);
+                toggle.Render(enabled, string.Empty);
+            }
+        }
+
+        HideRowsAfter(rowIndex);
+        HideGenerationSectionRowsAfter(sectionIndex);
         scrollArea.SetContentHeight(
             Mathf.Max(0f, contentOffset - _rowSpacing),
             _minimumRowHeight,
@@ -675,6 +701,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         input.SetTextWithoutNotify(
             settingsSession.Draft.Seed.ToString(CultureInfo.InvariantCulture)
         );
+        input.textComponent.color = _textColor;
         input.onEndEdit.AddListener(EditSeed);
 
         Button randomize = row.transform.Find("WorldReset").GetComponent<Button>();
@@ -750,6 +777,106 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Returns or creates the themed toggle for one classified event category.
+    /// </summary>
+    /// <param name="category">The event category represented by the toggle.</param>
+    /// <param name="parent">The reusable settings row hosting the toggle.</param>
+    /// <returns>The configured toggle row.</returns>
+    private OptionsToggleRowView GetEventToggleRow(GameEventCategory category, Transform parent)
+    {
+        const int controlLeft = 171;
+        int width = Mathf.RoundToInt(scrollArea.ViewportWidth) - controlLeft;
+        if (!eventToggleRows.TryGetValue(category, out OptionsToggleRowView toggle))
+        {
+            if (optionsMenuPrefab == null)
+                throw new MissingReferenceException(
+                    "The shared Options toggle is required for event settings."
+                );
+
+            toggle = optionsMenuPrefab.CloneToggleRow(
+                parent,
+                "EventToggle-" + category,
+                (int)category,
+                controlLeft,
+                _controlTop,
+                width
+            );
+            toggle.ToggleRequested += ToggleEventCategory;
+            if (contentAssets != null)
+                toggle.InitializeContent(contentAssets);
+            eventToggleRows.Add(category, toggle);
+        }
+        else
+        {
+            toggle.transform.SetParent(parent, false);
+            UILayout.SetSourceRect(
+                (RectTransform)toggle.transform,
+                controlLeft,
+                _controlTop,
+                width,
+                14
+            );
+        }
+
+        return toggle;
+    }
+
+    /// <summary>
+    /// Hides event toggles retained on reusable rows while another page is visible.
+    /// </summary>
+    private void HideEventToggleRows()
+    {
+        foreach (OptionsToggleRowView toggle in eventToggleRows.Values)
+            toggle.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Toggles one event category and preserves the gameplay page's scroll position.
+    /// </summary>
+    /// <param name="option">The event-category value emitted by the selected row.</param>
+    private void ToggleEventCategory(int option)
+    {
+        GameEventCategory category = (GameEventCategory)option;
+        settingsSession.SetEventCategoryEnabled(
+            category,
+            !settingsSession.IsEventCategoryEnabled(category)
+        );
+        float position = scrollArea.VerticalNormalizedPosition;
+        SelectCategory(NewGameSettingsCategory.GameSetup);
+        scrollArea.VerticalNormalizedPosition = position;
+    }
+
+    /// <summary>
+    /// Returns the player-facing name of one event category.
+    /// </summary>
+    /// <param name="category">The event category.</param>
+    /// <returns>The category label.</returns>
+    private static string GetEventCategoryLabel(GameEventCategory category)
+    {
+        return category switch
+        {
+            GameEventCategory.Story => "Story Events",
+            GameEventCategory.Disaster => "Disaster Events",
+            _ => category + " Events",
+        };
+    }
+
+    /// <summary>
+    /// Returns the player-facing explanation of one event category.
+    /// </summary>
+    /// <param name="category">The event category.</param>
+    /// <returns>The category description.</returns>
+    private static string GetEventCategoryDescription(GameEventCategory category)
+    {
+        return category switch
+        {
+            GameEventCategory.Story => "Disables all story events in the game.",
+            GameEventCategory.Disaster => "Disables all disaster events in the game.",
+            _ => "Disables all " + category.ToString().ToLowerInvariant() + " events in the game.",
+        };
+    }
+
+    /// <summary>
     /// Requests the next installed content pack so the owner can load its dependent data.
     /// </summary>
     /// <param name="delta">The requested step direction.</param>
@@ -819,18 +946,6 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     {
         settingsSession.SetVictoryCondition(
             CycleEnum(settingsSession.Draft.VictoryCondition, delta)
-        );
-        SelectCategory(selectedCategory);
-    }
-
-    /// <summary>
-    /// Advances the selected resource profile and rebuilds applicable generation rows.
-    /// </summary>
-    /// <param name="delta">The requested step direction.</param>
-    private void CycleResourceAvailability(int delta)
-    {
-        settingsSession.SetResourceAvailability(
-            CycleEnum(settingsSession.Draft.ResourceAvailability, delta)
         );
         SelectCategory(selectedCategory);
     }
@@ -1367,7 +1482,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         TMP_Text description = row.transform.Find("Description").GetComponent<TMP_Text>();
         label.text = labelText;
         label.enableAutoSizing = false;
-        label.fontSize = 9f;
+        label.fontSize = _labelFontSize;
         description.text = descriptionText;
         description.fontSize = _descriptionFontSize;
         description.gameObject.SetActive(true);
@@ -1517,6 +1632,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         input.SetTextWithoutNotify(
             Format(settingsSession.GetDifficultyValue(entry.Key, !isPlayer))
         );
+        input.textComponent.color = settingsSession.IsDifficultyValueDefault(entry.Key, !isPlayer)
+            ? _textColor
+            : _modifiedTextColor;
         input.onEndEdit.AddListener(value => EditValue(recipient, entry.Key, value));
 
         Button reset = row.Find(prefix + "Reset").GetComponent<Button>();
@@ -1551,6 +1669,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         input.contentType = TMP_InputField.ContentType.IntegerNumber;
         input.onEndEdit.RemoveAllListeners();
         input.SetTextWithoutNotify(value.ToString(CultureInfo.InvariantCulture));
+        input.textComponent.color = settingsSession.IsGenerationValueDefault(entry)
+            ? _textColor
+            : _modifiedTextColor;
         input.onEndEdit.AddListener(text => EditGenerationValue(entry.Key, text));
 
         Button reset = row.Find(prefix + "Reset").GetComponent<Button>();
