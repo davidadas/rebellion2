@@ -227,7 +227,9 @@ public sealed class FacilityWindowController
         );
     }
 
-    /// <summary>Refreshes open manufacturing cards only for the player's producing planet.</summary>
+    /// <summary>
+    /// Refreshes open manufacturing cards only for the player's producing planet.
+    /// </summary>
     /// <param name="producer">The planet whose manufacturing queue advanced.</param>
     public void RenderManufacturingProgress(Planet producer)
     {

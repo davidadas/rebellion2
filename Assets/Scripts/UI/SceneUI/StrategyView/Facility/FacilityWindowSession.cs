@@ -67,7 +67,9 @@ internal sealed class FacilityWindowSession
         Reconcile();
     }
 
-    /// <summary>Refreshes queue membership while retaining the current planet projection and selections.</summary>
+    /// <summary>
+    /// Refreshes queue membership while retaining the current planet projection and selections.
+    /// </summary>
     /// <param name="producer">The matching producer already authorized by the facility controller.</param>
     public void RefreshManufacturingQueue(Planet producer)
     {
