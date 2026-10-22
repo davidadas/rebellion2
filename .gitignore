@@ -87,12 +87,14 @@ CLAUDE.md
 **/*.ini
 *.bak
 *.log
+/Native/FrameGeneration/build/
 
 # 3D model assets (binaries, materials, render textures, metas) live in
 # rebellion2-media and sync to disk. Nothing under MainMenu is tracked here.
 Assets/Art/Models/**/*.fbx
 Assets/Art/Models/**/*.png
 Assets/Art/Models/MainMenu/
+/Assets/Art/MainMenu/
 
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/

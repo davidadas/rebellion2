@@ -12,6 +12,8 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
@@ -45,7 +47,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _actions = new TestActions();
             _contextMenuController = new ContextMenuController();
             _controller = new IdleBarController(
-                () => _faction,
+                () => null,
+                () => _faction.InstanceID,
                 _uiState.IgnoredItems,
                 _contextMenuController,
                 () => null,
@@ -71,6 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                () => string.Empty,
                 new List<IgnoredItem>(),
                 new ContextMenuController(),
                 () => null,
@@ -221,7 +225,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             _controller.ToggleIdleBarTracking(_officer);
             IdleBarController recreated = new IdleBarController(
-                () => _faction,
+                () => null,
+                () => _faction.InstanceID,
                 _uiState.IgnoredItems,
                 new ContextMenuController(),
                 () => null,
@@ -297,9 +302,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
+            GalaxyMapModel factionView = new GalaxyMapModel();
+            GalaxyPlanetSector sector = new GalaxyPlanetSector();
+            factionView.AddChild(sector);
+            sector.SetParent(factionView);
+            sector.AddChild(planet);
+            planet.SetParent(sector);
             _controller.Dispose();
             _controller = new IdleBarController(
-                () => faction,
+                () => factionView,
+                () => factionId,
                 _uiState.IgnoredItems,
                 _contextMenuController,
                 () => uiContext,
@@ -323,6 +335,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                () => string.Empty,
                 new List<IgnoredItem>(),
                 new ContextMenuController(),
                 () => null,

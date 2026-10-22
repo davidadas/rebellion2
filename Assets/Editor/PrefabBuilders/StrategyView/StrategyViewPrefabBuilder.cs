@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Generation;
+using Rebellion.Game;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -14,6 +14,8 @@ public static class StrategyViewPrefabBuilder
 {
     private const string _fallbackPreviewThemeId = "DEFAULT";
     private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+    private const string _galacticInformationDisplayPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
     private const string _planetSectorWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSectorWindow.prefab";
     private const string _planetSectorPlanetPrefabPath =
@@ -177,12 +179,7 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_status_close_button.png";
     private const string _statusCloseButtonDownPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed.png";
-    private const string _scrollUpArrowPreviewPath =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
-    private const string _scrollDownArrowPreviewPath =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
-    private const string _scrollBarMiddlePreviewPath =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
+
     private const float _sourcePixelsPerUnit = UILayout.HdPixelsPerSourceUnit;
     private const float _screenWidth = 3840f / _sourcePixelsPerUnit;
     private const float _screenHeight = 2160f / _sourcePixelsPerUnit;
@@ -653,6 +650,10 @@ public static class StrategyViewPrefabBuilder
         );
         PlanetSectorClusterView planetSectorClusterPrefab =
             LoadPrefabComponent<PlanetSectorClusterView>(_planetSectorClusterPrefabPath);
+        GalacticInformationDisplayView galacticInformationDisplayPrefab =
+            LoadPrefabComponent<GalacticInformationDisplayView>(
+                _galacticInformationDisplayPrefabPath
+            );
 
         GameObject sceneRoot = new GameObject(_sceneInstanceName);
         BuildSceneInfrastructure(sceneRoot);
@@ -930,9 +931,6 @@ public static class StrategyViewPrefabBuilder
         StrategyOverlayView overlayView = CreateStrategyOverlayView(root.transform);
         GalacticInformationLegendView galacticInformationLegend =
             CreateGalacticInformationLegendView(root.transform);
-        GalacticInformationDisplayView galacticInformationDisplay =
-            CreateGalacticInformationDisplayView(root.transform);
-
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
         ConfirmationDialogView briefingSkipConfirmation =
             CommonUIPrefabBuilder.InstantiateConfirmationDialog(root.transform);
@@ -951,7 +949,11 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "strategyWindowLayerView", windowsView);
         AssignReference(controller, "idleBar", idleBar);
         AssignReference(controller, "strategyWindowManager", windowManager);
-        AssignReference(controller, "galacticInformationDisplay", galacticInformationDisplay);
+        AssignReference(
+            controller,
+            "galacticInformationDisplayPrefab",
+            galacticInformationDisplayPrefab
+        );
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
         AssignReference(windowsView, "modelessWindowLayer", modelessWindowLayer);
         AssignReference(windowsView, "modalWindowLayer", modalWindowLayer);
@@ -1404,6 +1406,7 @@ public static class StrategyViewPrefabBuilder
         PlanetSectorPlanetView planetPrefab = BuildPlanetSectorPlanetPrefab();
         BuildPlanetSectorWindowPrefab(planetPrefab);
         BuildPlanetSectorClusterPrefab();
+        BuildGalacticInformationDisplayPrefab();
         BuildConfirmDialogWindowPrefab();
         BuildBattleAlertWindowPrefab();
         BuildFacilityWindowPrefab();
@@ -4161,26 +4164,6 @@ public static class StrategyViewPrefabBuilder
             );
 
         component.enabled = true;
-        return component;
-    }
-
-    /// <summary>
-    /// Finds one required direct child component in a generated or nested prefab hierarchy.
-    /// </summary>
-    /// <typeparam name="T">The required child component type.</typeparam>
-    /// <param name="parent">The direct parent transform.</param>
-    /// <param name="childName">The required child name.</param>
-    /// <returns>The matching child component.</returns>
-    private static T FindRequiredChild<T>(Transform parent, string childName)
-        where T : Component
-    {
-        Transform child = parent.Find(childName);
-        T component = child == null ? null : child.GetComponent<T>();
-        if (component == null)
-            throw new MissingReferenceException(
-                $"{parent.name}/{childName} is missing {typeof(T).Name}."
-            );
-
         return component;
     }
 
@@ -6944,110 +6927,15 @@ public static class StrategyViewPrefabBuilder
         out RectTransform contentRoot
     )
     {
-        ScrollAreaView view = InstantiatePrefabComponent<ScrollAreaView>(
+        return CommonUIPrefabBuilder.CreateScrollAreaView(
             _commonScrollAreaPrefabPath,
-            parent
+            parent,
+            name,
+            new RectInt(x, y, width, height),
+            new RectInt(viewportX, viewportY, viewportWidth, viewportHeight),
+            new RectInt(scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight),
+            out contentRoot
         );
-        GameObject root = view.gameObject;
-        root.name = name;
-        root.SetActive(false);
-        SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
-        view.enabled = true;
-
-        RectTransform scrollRoot = view.ScrollRoot;
-        SetSourceRect(scrollRoot, viewportX, viewportY, viewportWidth, viewportHeight);
-        ScrollRect scrollRect = scrollRoot.GetComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.inertia = false;
-
-        RectTransform viewportRect = view.ViewportRoot;
-        SetSourceRect(viewportRect, 0, 0, viewportWidth, viewportHeight);
-        Image viewportImage = viewportRect.GetComponent<Image>();
-        viewportImage.color = Color.clear;
-        viewportImage.raycastTarget = true;
-
-        contentRoot = view.ContentRoot;
-        SetSourceRect(contentRoot, 0, 0, viewportWidth, viewportHeight);
-        scrollRect.viewport = viewportRect;
-        scrollRect.content = contentRoot;
-
-        Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
-        if (scrollbar == null)
-            throw new MissingReferenceException($"{name}/Scrollbar is missing.");
-        scrollbar.handleRect = null;
-        RectTransform scrollbarRect = scrollbar.transform as RectTransform;
-        SetSourceRect(scrollbarRect, scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight);
-
-        Texture2D scrollUpTexture = LoadTexture(_scrollUpArrowPreviewPath);
-        Texture2D scrollDownTexture = LoadTexture(_scrollDownArrowPreviewPath);
-        int upArrowHeight = GetTextureSourceHeightOrDefault(scrollUpTexture, 9);
-        int downArrowHeight = GetTextureSourceHeightOrDefault(scrollDownTexture, 9);
-        int trackHeight = Mathf.Max(0, scrollbarHeight - upArrowHeight - downArrowHeight);
-
-        Image scrollbarBackground = scrollbar.GetComponent<Image>();
-        scrollbarBackground.color = Color.clear;
-        scrollbarBackground.raycastTarget = true;
-        scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-        Image trackBackground = FindRequiredChild<Image>(
-            scrollbar.transform,
-            "TrackBackgroundImage"
-        );
-        trackBackground.color = Color.black;
-        SetSourceRect(trackBackground.rectTransform, 0, upArrowHeight, scrollbarWidth, trackHeight);
-
-        RawImage scrollUpImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollUpButtonImage"
-        );
-        scrollUpImage.texture = scrollUpTexture;
-        AttachTextureBinding(scrollUpImage, _scrollUpArrowPreviewPath);
-        SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
-        scrollUpImage.raycastTarget = true;
-        Button scrollUpButton = scrollUpImage.GetComponent<Button>();
-        scrollUpButton.targetGraphic = scrollUpImage;
-        scrollUpButton.transition = Selectable.Transition.None;
-
-        RawImage scrollDownImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollDownButtonImage"
-        );
-        scrollDownImage.texture = scrollDownTexture;
-        AttachTextureBinding(scrollDownImage, _scrollDownArrowPreviewPath);
-        SetSourceRect(
-            scrollDownImage.rectTransform,
-            0,
-            scrollbarHeight - downArrowHeight,
-            scrollbarWidth,
-            downArrowHeight
-        );
-        scrollDownImage.raycastTarget = true;
-        Button scrollDownButton = scrollDownImage.GetComponent<Button>();
-        scrollDownButton.targetGraphic = scrollDownImage;
-        scrollDownButton.transition = Selectable.Transition.None;
-
-        RectTransform slidingArea = FindRequiredChild<RectTransform>(
-            scrollbar.transform,
-            "SlidingArea"
-        );
-        SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
-        RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
-        handleImage.texture = LoadTexture(_scrollBarMiddlePreviewPath);
-        AttachTextureBinding(handleImage, _scrollBarMiddlePreviewPath);
-        FillParent(handleImage.rectTransform);
-        handleImage.raycastTarget = true;
-        scrollbar.handleRect = handleImage.rectTransform;
-        handleImage.rectTransform.anchoredPosition = Vector2.zero;
-        handleImage.rectTransform.sizeDelta = Vector2.zero;
-        scrollbar.targetGraphic = handleImage;
-        scrollbar.transition = Selectable.Transition.None;
-        scrollRect.verticalScrollbar = scrollbar;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-
-        root.SetActive(true);
-        return view;
     }
 
     /// <summary>
@@ -7407,6 +7295,22 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "displayOffHitArea", displayOffHitArea);
         root.SetActive(false);
         return view;
+    }
+
+    /// <summary>
+    /// Builds the selector as an independent prefab so the strategy scene can create it on demand.
+    /// </summary>
+    /// <returns>The saved selector prefab component.</returns>
+    private static GalacticInformationDisplayView BuildGalacticInformationDisplayPrefab()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_galacticInformationDisplayPrefabPath));
+        GalacticInformationDisplayView view = CreateGalacticInformationDisplayView(null);
+        GameObject saved = SaveGeneratedPrefabAsset(
+            view.gameObject,
+            _galacticInformationDisplayPrefabPath
+        );
+        Object.DestroyImmediate(view.gameObject);
+        return saved.GetComponent<GalacticInformationDisplayView>();
     }
 
     /// <summary>

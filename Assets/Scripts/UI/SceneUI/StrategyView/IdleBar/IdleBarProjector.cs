@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -34,22 +33,31 @@ internal sealed class IdleBarProjector
     /// Projects available officers, special-forces units, and manufacturing planets in order,
     /// with main characters ahead of other officers.
     /// </summary>
-    /// <param name="playerFaction">The faction whose available entities are projected.</param>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The represented faction identifier.</param>
     /// <param name="desktopBounds">The strategy desktop bounds.</param>
     /// <returns>The ordered idle-bar presentation.</returns>
-    internal IdleBarRenderData Project(Faction playerFaction, RectInt desktopBounds)
+    internal IdleBarRenderData Project(
+        GalaxyMap factionView,
+        string playerFactionId,
+        RectInt desktopBounds
+    )
     {
         UIContext uiContext = getUIContext();
-        List<IdleBarEntry> entries = FindAvailableParticipants<Officer>(playerFaction)
+        List<IdleBarEntry> entries = FindAvailableParticipants<Officer>(
+                factionView,
+                playerFactionId
+            )
             .OrderByDescending(officer => officer.IsMain)
             .Select(officer => CreateEntry(officer, uiContext))
             .Concat(
-                FindAvailableParticipants<SpecialForces>(playerFaction)
+                FindAvailableParticipants<SpecialForces>(factionView, playerFactionId)
                     .Select(specialForces => CreateEntry(specialForces, uiContext))
             )
             .Concat(
-                playerFaction
-                    ?.GetOwnedUnitsByType<Planet>()
+                factionView
+                    ?.GetChildren<Planet>(recursive: true)
+                    .Where(planet => planet.OwnerInstanceID == playerFactionId)
                     .Where(HasIdleManufacturing)
                     .OrderBy(
                         candidate => candidate.GetDisplayName(),
@@ -67,16 +75,24 @@ internal sealed class IdleBarProjector
     /// <summary>
     /// Enumerates artwork needed by the current idle-bar entries without loading it.
     /// </summary>
-    /// <param name="playerFaction">The faction whose available entities are displayed.</param>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The represented faction identifier.</param>
     /// <returns>The configured texture paths.</returns>
-    internal static IEnumerable<string> GetTexturePaths(Faction playerFaction)
+    internal static IEnumerable<string> GetTexturePaths(
+        GalaxyMap factionView,
+        string playerFactionId
+    )
     {
-        IEnumerable<ISceneNode> entities = FindAvailableParticipants<Officer>(playerFaction)
+        IEnumerable<ISceneNode> entities = FindAvailableParticipants<Officer>(
+                factionView,
+                playerFactionId
+            )
             .Cast<ISceneNode>()
-            .Concat(FindAvailableParticipants<SpecialForces>(playerFaction))
+            .Concat(FindAvailableParticipants<SpecialForces>(factionView, playerFactionId))
             .Concat(
-                playerFaction
-                    ?.GetOwnedUnitsByType<Planet>()
+                factionView
+                    ?.GetChildren<Planet>(recursive: true)
+                    .Where(planet => planet.OwnerInstanceID == playerFactionId)
                     .Where(HasIdleManufacturing)
                     .Cast<ISceneNode>()
                     ?? Enumerable.Empty<ISceneNode>()
@@ -95,18 +111,46 @@ internal sealed class IdleBarProjector
     /// Selects all available mission participants of one type by display name.
     /// </summary>
     /// <typeparam name="T">The mission-participant type to select.</typeparam>
-    /// <param name="playerFaction">The faction whose participants are selected.</param>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The represented faction identifier.</param>
     /// <returns>The available participants in display order.</returns>
-    private static IEnumerable<T> FindAvailableParticipants<T>(Faction playerFaction)
+    private static IEnumerable<T> FindAvailableParticipants<T>(
+        GalaxyMap factionView,
+        string playerFactionId
+    )
         where T : class, IMissionParticipant
     {
-        return playerFaction
-                ?.GetAvailableMissionParticipants()
+        return factionView
+                ?.GetChildren<T>(recursive: true)
+                .Where(participant => participant.OwnerInstanceID == playerFactionId)
+                .Where(IsAvailableParticipant)
                 .OfType<T>()
                 .Where(IsHealthyParticipant)
                 .OrderBy(candidate => candidate.GetDisplayName(), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
             ?? Enumerable.Empty<T>();
+    }
+
+    /// <summary>
+    /// Reports whether a visible participant can currently receive mission orders.
+    /// </summary>
+    /// <param name="participant">The participant to inspect.</param>
+    /// <returns>True when the participant is available.</returns>
+    private static bool IsAvailableParticipant(IMissionParticipant participant)
+    {
+        if (
+            participant?.IsOnMission() != false
+            || !participant.IsMovable()
+            || participant.GetTransitMovement() != null
+        )
+            return false;
+
+        if (participant is Officer officer)
+            return !officer.IsCaptured && !officer.IsKilled;
+
+        return participant is not SpecialForces specialForces
+            || specialForces.ManufacturingStatus == ManufacturingStatus.Complete
+                && specialForces.AllowedMissionTypeIDs.Count > 0;
     }
 
     /// <summary>

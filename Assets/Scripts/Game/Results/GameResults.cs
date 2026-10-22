@@ -177,7 +177,7 @@ namespace Rebellion.Game.Results
     public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
 
     /// <summary>
-    /// A mobile headquarters was destroyed when its planet fell to an opposing faction.
+    /// A faction's headquarters was destroyed.
     /// </summary>
     public sealed class HeadquartersDestroyedResult : HeadquartersLostResult
     {
@@ -352,6 +352,7 @@ namespace Rebellion.Game.Results
     public class OfficerKilledResult : GameResult
     {
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtDeath { get; set; }
         public IGameEntity Assassin { get; set; }
         public IGameEntity Context { get; set; }
     }
@@ -697,7 +698,7 @@ namespace Rebellion.Game.Results
         }
 
         /// <summary>
-        /// Captures one owner's units stationed on a planet.
+        /// Captures one owner's planetary units, excluding units assigned to fleets.
         /// </summary>
         /// <param name="planet">The planet whose units will be captured.</param>
         /// <param name="ownerInstanceId">The owner whose units will be captured.</param>
@@ -709,7 +710,11 @@ namespace Rebellion.Game.Results
         {
             return planet
                     ?.GetChildren<ISceneNode>(recursive: true)
-                    .Where(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
+                    .Where(unit =>
+                        unit.GetOwnerInstanceID() == ownerInstanceId
+                        && unit is not Fleet
+                        && unit.GetParentOfType<Fleet>() == null
+                    )
                     .Distinct()
                     .Select(unit => new CombatUnitSnapshot(unit))
                     .ToList()
@@ -789,11 +794,9 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PendingCombatResult : GameResult
     {
-        public Fleet AttackerFleet { get; set; }
-        public Fleet DefenderFleet { get; set; }
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
-        public Planet Planet { get; set; }
+        public string PlanetInstanceID { get; set; }
         public bool AttackerCanRetreat { get; set; }
         public bool DefenderCanRetreat { get; set; }
     }
@@ -827,6 +830,7 @@ namespace Rebellion.Game.Results
         public int AllocatedEnergyDamage { get; set; }
         public bool HeadquartersDestroyed { get; set; }
         public bool PlanetDestroyed { get; set; }
+        public string PlanetDestroyerTypeID { get; set; }
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();

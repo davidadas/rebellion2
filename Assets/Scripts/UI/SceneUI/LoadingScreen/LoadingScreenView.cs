@@ -27,10 +27,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const string _shuttleRelativePath =
         "Application/Loading/Models/lambda-imperial-shuttle.glb";
     private const string _flightAudioRelativePath = "Application/Loading/Audio/shuttle-reactor.wav";
+    private const string _exhaustShaderName = "Custom/LoadingShuttleExhaust";
     private const float _flightAudioVolume = 0.22f;
     private const int _presentationLayer = 31;
-    private const int _renderTextureWidth = 1280;
-    private const int _renderTextureHeight = 720;
     private const float _maximumFlightYaw = 24f;
     private const float _maximumFlightPitch = 15f;
     private const float _maximumFlightRoll = 10f;
@@ -38,6 +37,8 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const float _maximumFlightOffsetY = 0.55f;
     private const float _flightPositionSmoothTime = 0.28f;
     private const float _flightAttitudeSmoothTime = 0.08f;
+    private const float _engineBankCenterOffsetRatio = 0.3044f;
+    private const float _enginePlumeWidthRatio = 0.36f;
 
     [SerializeField]
     private TextMeshProUGUI statusText;
@@ -174,6 +175,8 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        EnsureRenderTargetMatchesDisplay();
+
         float time = Time.unscaledTime;
         if (presentationState == PresentationState.Loading)
         {
@@ -513,42 +516,83 @@ public sealed class LoadingScreenView : MonoBehaviour
                 DestroyImmediate(shuttleExhaustMesh);
             shuttleExhaustMesh = null;
         }
-        if (shuttleCamera != null)
-            shuttleCamera.targetTexture = null;
-        if (shuttleViewport != null)
-            shuttleViewport.texture = null;
-        if (shuttleRenderTexture != null)
-        {
-            shuttleRenderTexture.Release();
-            if (Application.isPlaying)
-                Destroy(shuttleRenderTexture);
-            else
-                DestroyImmediate(shuttleRenderTexture);
-            shuttleRenderTexture = null;
-        }
+        ReleaseRenderTarget();
     }
 
     /// <summary>
-    /// Creates the transparent render target composited over the hyperspace starfield.
+    /// Creates a transparent render target matching the display aspect ratio so the shuttle is not
+    /// stretched differently across displays.
     /// </summary>
     private void CreateRenderTarget()
     {
+        Vector2Int renderSize = LoadingScreenRenderTargetSizing.Calculate(
+            Screen.width,
+            Screen.height
+        );
+
         shuttleRenderTexture = new RenderTexture(
-            _renderTextureWidth,
-            _renderTextureHeight,
+            renderSize.x,
+            renderSize.y,
             24,
             RenderTextureFormat.ARGB32
         )
         {
             name = "Loading Shuttle",
-            antiAliasing = 4,
+            antiAliasing = 1,
+            useDynamicScale = false,
             useMipMap = false,
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Clamp,
         };
         shuttleRenderTexture.Create();
+        shuttleCamera.aspect = (float)renderSize.x / renderSize.y;
         shuttleCamera.targetTexture = shuttleRenderTexture;
         shuttleViewport.texture = shuttleRenderTexture;
+    }
+
+    /// <summary>
+    /// Recreates the shuttle render target after a display-aspect change.
+    /// </summary>
+    private void EnsureRenderTargetMatchesDisplay()
+    {
+        if (shuttleRenderTexture == null)
+        {
+            CreateRenderTarget();
+            return;
+        }
+
+        Vector2Int renderSize = LoadingScreenRenderTargetSizing.Calculate(
+            Screen.width,
+            Screen.height
+        );
+        if (
+            shuttleRenderTexture.width == renderSize.x
+            && shuttleRenderTexture.height == renderSize.y
+        )
+            return;
+
+        ReleaseRenderTarget();
+        CreateRenderTarget();
+    }
+
+    /// <summary>
+    /// Detaches and destroys the current shuttle render target.
+    /// </summary>
+    private void ReleaseRenderTarget()
+    {
+        if (shuttleCamera != null)
+            shuttleCamera.targetTexture = null;
+        if (shuttleViewport != null)
+            shuttleViewport.texture = null;
+        if (shuttleRenderTexture == null)
+            return;
+
+        shuttleRenderTexture.Release();
+        if (Application.isPlaying)
+            Destroy(shuttleRenderTexture);
+        else
+            DestroyImmediate(shuttleRenderTexture);
+        shuttleRenderTexture = null;
     }
 
     /// <summary>
@@ -728,13 +772,11 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <param name="engineBounds">The ion-engine bounds in engine-root space.</param>
     private void CreateEngineExhaust(Transform engineRoot, Bounds engineBounds)
     {
-        Shader exhaustShader = Shader.Find("Legacy Shaders/Particles/Additive");
-        if (exhaustShader == null)
-            exhaustShader = Shader.Find("Sprites/Default");
+        Shader exhaustShader = Shader.Find(_exhaustShaderName);
         if (exhaustShader == null)
         {
             Debug.LogWarning(
-                "Loading shuttle exhaust skipped because no particle shader is available."
+                $"Loading shuttle exhaust skipped because shader '{_exhaustShaderName}' is unavailable."
             );
             return;
         }
@@ -757,10 +799,10 @@ public sealed class LoadingScreenView : MonoBehaviour
             engineBounds.min.z
         );
         float width = engineBounds.size.x;
-        float bankWidth = width * 0.49f;
+        float bankWidth = width * _enginePlumeWidthRatio;
         float bankHeight = Mathf.Max(engineBounds.size.y * 0.72f, width * 0.055f);
         float plumeLength = width * 0.62f;
-        float[] horizontalOffsets = { -0.25f, 0.25f };
+        float[] horizontalOffsets = { -_engineBankCenterOffsetRatio, _engineBankCenterOffsetRatio };
         shuttleExhaustPlumes = new Transform[horizontalOffsets.Length * 2];
         shuttleExhaustScales = new Vector3[shuttleExhaustPlumes.Length];
         int plumeIndex = 0;

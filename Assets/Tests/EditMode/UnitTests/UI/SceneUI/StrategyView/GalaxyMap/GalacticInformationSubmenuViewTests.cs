@@ -11,7 +11,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
     [TestFixture]
     public class GalacticInformationSubmenuViewTests
     {
-        private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+        private const string _prefabPath =
+            "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
 
         private GameObject _rootObject;
         private Texture2D _texture;

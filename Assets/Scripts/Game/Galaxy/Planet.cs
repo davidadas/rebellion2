@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Galaxy
@@ -229,6 +231,8 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
+            if (IsDestroyed)
+                return false;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
                 f.Movement == null
@@ -263,20 +267,20 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
-        /// <returns>True during a blockade or uprising.</returns>
+        /// <returns>True when destroyed, blockaded, or in uprising.</returns>
         public bool IsResourceProductionSuspended()
         {
-            return IsBlockaded() || IsInUprising;
+            return IsDestroyed || IsBlockaded() || IsInUprising;
         }
 
         /// <summary>
         /// Returns true if planet has any faction presence.
         /// Used by uprising system to filter unpopulated planets.
         /// </summary>
-        /// <returns>True if any faction has popular support on this planet.</returns>
+        /// <returns>True if the planet is intact and any faction has popular support.</returns>
         public bool IsPopulated()
         {
-            return PopularSupport.Any(kvp => kvp.Value > 0);
+            return !IsDestroyed && PopularSupport.Any(kvp => kvp.Value > 0);
         }
 
         /// <summary>
@@ -284,7 +288,7 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         public void BeginUprising()
         {
-            if (IsInUprising)
+            if (IsDestroyed || IsInUprising)
                 return;
 
             IsInUprising = true;
@@ -298,6 +302,23 @@ namespace Rebellion.Game.Galaxy
         {
             IsInUprising = false;
             ResetUprisingTimers();
+        }
+
+        /// <summary>
+        /// Clears a destroyed planet's control, population, and scheduled planetary activity.
+        /// Registered planets must be removed from their faction's ownership index first.
+        /// </summary>
+        internal void ClearDestroyedControl()
+        {
+            if (!IsDestroyed)
+                return;
+
+            SetOwnerInstanceID(null);
+            IsColonized = false;
+            IsHeadquarters = false;
+            EndUprising();
+            NextBlockadeSupportShiftTick = 0;
+            BlockadeSupportShiftIntervalTicks = 0;
         }
 
         /// <summary>
@@ -350,10 +371,10 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the remaining energy available for new facilities.
         /// </summary>
-        /// <returns>Remaining energy units (capacity minus used).</returns>
+        /// <returns>Remaining energy units, or zero when the planet is destroyed.</returns>
         public int GetAvailableEnergy()
         {
-            return Math.Max(0, EnergyCapacity - GetEnergyUsed());
+            return IsDestroyed ? 0 : Math.Max(0, EnergyCapacity - GetEnergyUsed());
         }
 
         /// <summary>
@@ -378,9 +399,12 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of raw resource nodes without any mine assigned.
         /// </summary>
-        /// <returns>The number of unmined raw resource nodes.</returns>
+        /// <returns>The number of unmined raw resource nodes, or zero when destroyed.</returns>
         public int GetUnminedResourceNodeCount()
         {
+            if (IsDestroyed)
+                return 0;
+
             return Math.Max(
                 0,
                 GetRawResourceNodes() - GetTotalBuildingTypeCount(BuildingType.Mine)
@@ -463,6 +487,149 @@ namespace Rebellion.Game.Galaxy
         public int GetOpposingPopularSupport(string factionInstanceId)
         {
             return _maximumPopularSupport - GetPopularSupport(factionInstanceId);
+        }
+
+        /// <summary>
+        /// Resolves control from stationary regiment owners before falling back to popular support.
+        /// </summary>
+        /// <param name="game">The game supplying faction identities and the control threshold.</param>
+        /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
+        {
+            return ResolveController(
+                game,
+                regimentOwners.Count,
+                regimentOwners.Count == 1 ? regimentOwners[0] : null
+            );
+        }
+
+        /// <summary>
+        /// Resolves control from an assessed regiment-owner count without allocating owner lists.
+        /// </summary>
+        /// <param name="game">The game supplying factions and the control threshold.</param>
+        /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
+        /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(
+            GameRoot game,
+            int regimentOwnerCount,
+            string soleRegimentOwner
+        )
+        {
+            if (IsDestroyed)
+                return null;
+
+            if (regimentOwnerCount == 1)
+                return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
+            if (regimentOwnerCount > 1)
+                return null;
+
+            int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            Faction controller = null;
+            int highestSupport = threshold;
+            foreach (Faction faction in game.GetFactions())
+            {
+                int support = GetPopularSupport(faction.InstanceID);
+                if (support >= threshold && (controller == null || support > highestSupport))
+                {
+                    controller = faction;
+                    highestSupport = support;
+                }
+            }
+            return controller;
+        }
+
+        /// <summary>
+        /// Applies a signed support shift, transferring lost support to the opposing faction.
+        /// </summary>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <param name="game">The game supplying factions in their established order.</param>
+        internal void ChangePopularSupport(Faction faction, int shift, GameRoot game)
+        {
+            if (faction == null || shift == 0 || !IsPopulated())
+                return;
+
+            SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
+            if (
+                faction.Settings.SupportResistance == direction
+                && GetParentOfType<PlanetSector>()?.SectorSuppressionDivisor > 1
+                && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
+            )
+                shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;
+
+            int currentSupport = GetPopularSupport(faction.InstanceID);
+            int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
+            if (newSupport == currentSupport)
+                return;
+            if (shift > 0)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            Faction opposingFaction = game.GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
+            if (opposingFaction == null)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        /// <summary>
+        /// Calculates the controlling faction's required stationary garrison from support and uprising state.
+        /// </summary>
+        /// <param name="faction">The faction whose garrison requirement is evaluated.</param>
+        /// <param name="config">The configured support threshold, divisor, and uprising multiplier.</param>
+        /// <returns>The required regiment count.</returns>
+        internal int GetGarrisonRequirement(Faction faction, GameConfig.GarrisonConfig config)
+        {
+            int popularSupport = GetPopularSupport(faction.InstanceID);
+            if (popularSupport >= config.SupportThreshold)
+                return 0;
+            int garrison = (int)
+                Math.Ceiling(
+                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
+                );
+            PlanetSector sector = GetParentOfType<PlanetSector>();
+            garrison /= sector?.SectorSuppressionDivisor ?? 1;
+            if (IsInUprising)
+                garrison *= config.UprisingMultiplier;
+            return garrison;
+        }
+
+        /// <summary>
+        /// Calculates the deterministic incident-score contribution from support, garrison, and missions.
+        /// </summary>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">The configured support threshold and garrison divisor.</param>
+        /// <param name="support">The controlling faction's support before the incident.</param>
+        /// <param name="troops">The controlling faction's active regiment count.</param>
+        /// <param name="missionAdjustment">The signed adjustment from active mission teams.</param>
+        /// <returns>The incident score before dice are added.</returns>
+        internal long GetUprisingIncidentBaseScore(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int support,
+            int troops,
+            int missionAdjustment
+        )
+        {
+            int threshold =
+                support >= config.SupportThreshold
+                    ? 0
+                    : (int)
+                        Math.Ceiling(
+                            (config.SupportThreshold - support) / (double)config.GarrisonDivisor
+                        );
+            int multiplier =
+                GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                && faction.Settings.UprisingResistance > 1
+                    ? faction.Settings.UprisingResistance
+                    : 1;
+            return (long)threshold - (long)multiplier * troops + missionAdjustment;
         }
 
         /// <summary>
@@ -713,6 +880,9 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The active production facilities ordered by production cycle length.</returns>
         public List<Building> GetProductionFacilities(ManufacturingType type)
         {
+            if (IsDestroyed)
+                return new List<Building>();
+
             return _buildings
                 .Where(building =>
                     building.GetProductionType() == type
@@ -1141,7 +1311,8 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns true if this planet can accept the child. Fleets and Missions are always
+        /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
+        /// surface units. Fleets and Missions are always
         /// accepted. Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
@@ -1151,6 +1322,9 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
         public override bool CanAcceptChild(ISceneNode child)
         {
+            if (IsDestroyed && child is IManufacturable)
+                return false;
+
             switch (child)
             {
                 case Fleet _:
@@ -1232,6 +1406,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="child">The game node to add as a reference.</param>
         public override void AddChild(ISceneNode child)
         {
+            if (IsDestroyed && child is IManufacturable)
+                throw new SceneAccessException(child, this);
+
             switch (child)
             {
                 case Fleet fleet:

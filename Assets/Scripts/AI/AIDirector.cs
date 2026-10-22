@@ -55,9 +55,6 @@ namespace Rebellion.AI
         /// </summary>
         public event Action<Faction> FactionTurnCompleted;
 
-        /// <summary>Exposes selected actions to passive campaign diagnostics.</summary>
-        public event Action<AITurnContext> DiagnosticSelectionCompleted;
-
         /// <summary>
         /// Creates an AI director using the current game systems.
         /// </summary>
@@ -71,6 +68,7 @@ namespace Rebellion.AI
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         /// <param name="officerCommands">Officer command appointment operations.</param>
+        /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -81,7 +79,8 @@ namespace Rebellion.AI
             IRandomNumberProvider random,
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
-            OfficerCommandCommands officerCommands = null
+            OfficerCommandCommands officerCommands = null,
+            GameResultBus results = null
         )
         {
             _game = game;
@@ -130,7 +129,7 @@ namespace Rebellion.AI
                 ),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
-                new AIExecutionPhase(),
+                new AIExecutionPhase(results),
             };
         }
 
@@ -231,8 +230,6 @@ namespace Rebellion.AI
 
             foreach (IAITurnPhase phase in _turnPhases)
             {
-                if (phase is AIExecutionPhase)
-                    DiagnosticSelectionCompleted?.Invoke(context);
                 string stepName = phase.GetType().Name;
                 FactionTurnStepStarted?.Invoke(faction, stepName);
                 try

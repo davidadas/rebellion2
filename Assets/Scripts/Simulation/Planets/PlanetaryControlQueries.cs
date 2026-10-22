@@ -24,21 +24,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Finds the faction whose support qualifies it to control a planet.
-        /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The qualifying faction with the greatest support, or null when none qualifies.</returns>
-        private Faction GetSupportController(Planet planet)
-        {
-            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
-            return _game
-                .GetFactions()
-                .Where(faction => planet.GetPopularSupport(faction.InstanceID) >= threshold)
-                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
-                .FirstOrDefault();
-        }
-
-        /// <summary>
         /// Resolves control from active regiments before falling back to popular support.
         /// </summary>
         /// <param name="planet">The planet to evaluate.</param>
@@ -88,13 +73,7 @@ namespace Rebellion.Simulation
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction GetPlanetController(Planet planet, List<string> regimentOwners)
         {
-            if (regimentOwners.Count == 1)
-                return _game.GetFactionByOwnerInstanceID(regimentOwners[0]);
-
-            if (regimentOwners.Count > 1)
-                return null;
-
-            return GetSupportController(planet);
+            return planet.ResolveController(_game, regimentOwners);
         }
     }
 }

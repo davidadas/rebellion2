@@ -416,6 +416,67 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetFoilProbability_MaximumDetectionWithCommander_SaturatesNegativeScore()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 100;
+            SetFoilTable(game, new Dictionary<int, int> { { int.MinValue, 100 }, { 0, 0 } });
+            MissionQueries queries = new MissionQueries(game);
+            Assert.IsTrue(
+                queries.TryCreateMission(
+                    CreateContext(EspionageMission.MissionTypeID, spy, planet),
+                    out Mission mission
+                )
+            );
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 50);
+            detector.DetectionRating = int.MaxValue;
+
+            int probability = queries.GetFoilProbability(
+                mission,
+                detector,
+                0,
+                new[] { spy },
+                planet
+            );
+
+            Assert.AreEqual(100, probability);
+        }
+
+        [Test]
+        public void GetDecoyProbability_MaximumDetectionWithCommander_SaturatesNegativeScore()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 100;
+            SetDecoyTable(game, new Dictionary<int, int> { { int.MinValue, 100 }, { 0, 0 } });
+            MissionQueries queries = new MissionQueries(game);
+            Assert.IsTrue(
+                queries.TryCreateMission(
+                    CreateContext(
+                        EspionageMission.MissionTypeID,
+                        new List<IMissionParticipant> { spy },
+                        new List<IMissionParticipant> { decoy },
+                        planet
+                    ),
+                    out Mission mission
+                )
+            );
+            decoy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 50);
+            detector.DetectionRating = int.MaxValue;
+
+            int probability = queries.GetDecoyProbability(mission, decoy, detector, planet);
+
+            Assert.AreEqual(100, probability);
+        }
+
+        [Test]
         public void GetMissionOdds_GroundDetector_OnlyChecksBeforeObjective()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
@@ -491,7 +552,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetOperationalMissionOdds_MultipleDecoysAndDetectors_MatchesCompleteOdds()
+        public void GetMissionOdds_OmittedPersonnelLoss_MatchesCompleteSuccessAndFoilOdds()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
@@ -516,7 +577,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             MissionOdds complete = system.GetMissionOdds(context);
-            MissionOdds operational = system.GetOperationalMissionOdds(context);
+            MissionOdds operational = system.GetMissionOdds(context, includePersonnelLoss: false);
 
             Assert.IsNotNull(complete);
             Assert.IsNotNull(operational);
@@ -1373,6 +1434,419 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
+        [Test]
+        public void GetMissionOdds_InciteStrongGarrison_ReturnsZeroForBothRiskDetailLevels()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            for (int index = 0; index < 20; index++)
+                game.AttachNode(CreateCompletedRegiment($"guard-{index}", "rebels"), target);
+            MissionContext context = CreateContext(
+                InciteUprisingMission.MissionTypeID,
+                officer,
+                target
+            );
+
+            MissionOdds displayed = queries.GetMissionOdds(context);
+            MissionOdds operational = queries.GetMissionOdds(context, includePersonnelLoss: false);
+
+            Assert.AreEqual(0, displayed.ObjectiveSuccessProbability);
+            Assert.AreEqual(
+                displayed.ObjectiveSuccessProbability,
+                operational.ObjectiveSuccessProbability
+            );
+        }
+
+        [Test]
+        public void GetMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.Uprising.DiceRange = 1;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.MissionLeadershipDivisor = 10;
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.AttachNode(CreateCompletedRegiment("guard", "rebels"), target);
+
+            MissionOdds odds = queries.GetMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
+            );
+
+            Assert.AreEqual(37.5, odds.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(37.5, odds.OverallSuccessProbability, 0.000001);
+        }
+
+        [Test]
+        public void GetMissionOdds_ObservedGarrison_DoesNotReadHiddenLiveRegiments()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            for (int index = 0; index < 20; index++)
+                game.AttachNode(CreateCompletedRegiment($"guard-{index}", "rebels"), target);
+            Planet observed = (Planet)target.CreateCopy();
+            observed.SetParent(target.GetParent());
+
+            MissionOdds visible = queries.GetMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, observed)
+            );
+            MissionOdds live = queries.GetMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
+            );
+
+            Assert.AreEqual(100, visible.ObjectiveSuccessProbability);
+            Assert.AreEqual(0, live.ObjectiveSuccessProbability);
+            Assert.AreEqual(20, target.GetRegimentCount());
+            Assert.AreEqual(60, target.GetPopularSupport("rebels"));
+        }
+
+        [TestCase(1, 50)]
+        [TestCase(2, 75)]
+        public void GetMissionOdds_InciteTeam_CombinesIndependentSkillRolls(
+            int participantCount,
+            double expected
+        )
+        {
+            (GameRoot game, Planet origin, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            List<IMissionParticipant> participants = new List<IMissionParticipant> { officer };
+            if (participantCount == 2)
+            {
+                Officer second = EntityFactory.CreateOfficer("second", "empire");
+                game.AttachNode(second, origin);
+                participants.Add(second);
+            }
+
+            MissionOdds odds = queries.GetMissionOdds(
+                CreateContext(
+                    InciteUprisingMission.MissionTypeID,
+                    participants,
+                    new List<IMissionParticipant>(),
+                    target
+                )
+            );
+
+            Assert.AreEqual(expected, odds.ObjectiveSuccessProbability, 0.000001);
+        }
+
+        [Test]
+        public void GetMissionOdds_NullContext_ReturnsNull()
+        {
+            MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
+
+            Assert.IsNull(queries.GetMissionOdds(null));
+        }
+
+        [Test]
+        public void GetMissionOdds_UnstartedInciteProposal_DoesNotConsumeInstanceIdentifiers()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            MissionContext context = CreateContext(
+                InciteUprisingMission.MissionTypeID,
+                officer,
+                target
+            );
+            try
+            {
+                BaseGameEntity.SetInstanceIdSeed(12345);
+                string expected = new Regiment().InstanceID;
+                BaseGameEntity.SetInstanceIdSeed(12345);
+
+                Assert.IsNotNull(queries.GetMissionOdds(context));
+                string actual = new Regiment().InstanceID;
+
+                Assert.AreEqual(expected, actual);
+            }
+            finally
+            {
+                BaseGameEntity.SetInstanceIdSeed(null);
+            }
+        }
+
+        [Test]
+        public void GetMissionOdds_SharedPlanetAssessment_KeepsEachTeamsSkillProbability()
+        {
+            (GameRoot game, Planet origin, Planet target, Officer first, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.Uprising.DiceRange = 1;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.MissionLeadershipDivisor = 10;
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            first.SetBaseRating(SkillRating.Leadership, 100);
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            second.SetBaseRating(SkillRating.Leadership, 100);
+            game.AttachNode(second, origin);
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.AttachNode(CreateCompletedRegiment("guard", "rebels"), target);
+            Mission.MissionEvaluationState state = new Mission.MissionEvaluationState(game, target);
+
+            MissionOdds single = queries.GetMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, first, target),
+                (_, _, _, _) => Array.Empty<ISceneNode>(),
+                includePersonnelLoss: false,
+                evaluationState: state
+            );
+            MissionOdds team = queries.GetMissionOdds(
+                CreateContext(
+                    InciteUprisingMission.MissionTypeID,
+                    new List<IMissionParticipant> { first, second },
+                    new List<IMissionParticipant>(),
+                    target
+                ),
+                (_, _, _, _) => Array.Empty<ISceneNode>(),
+                includePersonnelLoss: false,
+                evaluationState: state
+            );
+
+            Assert.AreEqual(37.5, single.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(56.25, team.ObjectiveSuccessProbability, 0.000001);
+        }
+
+        /// <summary>
+        /// Prevents defender-count growth from multiplying commander scene-graph scans.
+        /// </summary>
+        [Test]
+        public void GetMissionOdds_MoreDefenders_DoesNotRepeatCommanderContainerTraversals()
+        {
+            int small = MeasureCommanderTraversals(8);
+            int large = MeasureCommanderTraversals(128);
+
+            Assert.That(small, Is.GreaterThan(0));
+            Assert.That(large, Is.EqualTo(small));
+        }
+
+        /// <summary>
+        /// Checks indexed fleet and planetary commanders against direct commander resolution.
+        /// </summary>
+        [Test]
+        public void GetMissionOdds_DifferentCommanderScopes_MatchesAnalyticalRisk()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer general) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            spy.SetBaseRating(SkillRating.Combat, 75);
+            spy.SetBaseRating(SkillRating.Espionage, 80);
+            general.SetBaseRating(SkillRating.Combat, 10);
+            general.SetBaseRating(SkillRating.Espionage, 20);
+            SetFoilTable(
+                game,
+                new Dictionary<int, int>
+                {
+                    { -1000, 95 },
+                    { -30, 70 },
+                    { 0, 40 },
+                    { 30, 5 },
+                }
+            );
+            SetEvasionTable(
+                game,
+                new Dictionary<int, int>
+                {
+                    { -1000, 5 },
+                    { -30, 20 },
+                    { 0, 50 },
+                    { 30, 80 },
+                    { 60, 98 },
+                }
+            );
+            Fleet firstFleet = planet.GetChildren<Fleet>().Single();
+            Fleet secondFleet = new Fleet
+            {
+                InstanceID = "second-fleet",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(secondFleet, planet);
+            CapitalShip firstShip = new CapitalShip
+            {
+                InstanceID = "first-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 30,
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                InstanceID = "second-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 45,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 55,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(firstShip, firstFleet);
+            game.AttachNode(secondShip, secondFleet);
+            game.AttachNode(fighter, firstShip);
+            Officer unavailable = EntityFactory.CreateOfficer("unavailable-admiral", "rebels");
+            unavailable.CurrentRank = OfficerRank.Admiral;
+            unavailable.InjuryPoints = 1;
+            game.AttachNode(unavailable, firstShip);
+            Officer admiral = EntityFactory.CreateOfficer("first-admiral", "rebels");
+            admiral.CurrentRank = OfficerRank.Admiral;
+            admiral.SetBaseRating(SkillRating.Combat, 60);
+            admiral.SetBaseRating(SkillRating.Espionage, 50);
+            game.AttachNode(admiral, firstShip);
+            Officer commander = EntityFactory.CreateOfficer("fighter-commander", "rebels");
+            commander.CurrentRank = OfficerRank.Commander;
+            commander.SetBaseRating(SkillRating.Combat, 20);
+            commander.SetBaseRating(SkillRating.Espionage, 10);
+            game.AttachNode(commander, firstShip);
+            Officer secondAdmiral = EntityFactory.CreateOfficer("second-admiral", "rebels");
+            secondAdmiral.CurrentRank = OfficerRank.Admiral;
+            secondAdmiral.SetBaseRating(SkillRating.Combat, 95);
+            secondAdmiral.SetBaseRating(SkillRating.Espionage, 80);
+            game.AttachNode(secondAdmiral, secondShip);
+            ISceneNode[] detectors =
+            {
+                planet.GetChildren<Regiment>().Single(),
+                firstShip,
+                secondShip,
+                fighter,
+            };
+            MissionQueries queries = new MissionQueries(game);
+            MissionContext context = CreateContext(EspionageMission.MissionTypeID, spy, planet);
+            Assert.That(queries.TryCreateMission(context, out Mission mission), Is.True);
+            double expectedFoil =
+                1
+                - detectors.Aggregate(
+                    1d,
+                    (value, detector) =>
+                        value * (1 - queries.GetFoilProbability(mission, detector) / 100d)
+                );
+            double expectedEvasion = detectors.Average(detector =>
+                Math.Clamp(
+                    queries.GetEvasionProbability(
+                        spy.GetEffectiveRating(SkillRating.Combat)
+                            - (
+                                mission
+                                    .FindDetectorCommander(detector)
+                                    ?.GetEffectiveRating(SkillRating.Combat)
+                                ?? 0
+                            )
+                    ) / 100d,
+                    0,
+                    1
+                )
+            );
+
+            MissionOdds odds = queries.GetMissionOdds(
+                context,
+                (_, _, phase, _) =>
+                    phase == MissionEncounterPhase.PreObjective
+                        ? detectors
+                        : Array.Empty<ISceneNode>()
+            );
+
+            Assert.That(odds.FoilProbability, Is.EqualTo(expectedFoil * 100).Within(1e-9));
+            Assert.That(
+                odds.PersonnelLossProbability,
+                Is.EqualTo(expectedFoil * (1 - expectedEvasion) * 100).Within(1e-9)
+            );
+        }
+
+        /// <summary>
+        /// Measures commander-container enumeration independently of wall-clock timing.
+        /// </summary>
+        /// <param name="defenderCount">The number of ships whose odds are requested.</param>
+        /// <returns>The number of traversals of their shared fleet container.</returns>
+        private int MeasureCommanderTraversals(int defenderCount)
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            CountingFleet fleet = new CountingFleet
+            {
+                InstanceID = "counted-fleet",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(fleet, planet);
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            for (int index = 0; index < defenderCount; index++)
+            {
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "counted-ship-" + index,
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 30,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(ship, fleet);
+                detectors.Add(ship);
+            }
+            MissionQueries queries = new MissionQueries(game);
+            MissionContext context = CreateContext(EspionageMission.MissionTypeID, spy, planet);
+            Assert.That(queries.TryCreateMission(context, out _), Is.True);
+            fleet.ChildEnumerationCount = 0;
+
+            Assert.That(queries.GetMissionOdds(context, detectors), Is.Not.Null);
+
+            return fleet.ChildEnumerationCount;
+        }
+
         /// <summary>
         /// Builds scene.
         /// </summary>
@@ -1891,6 +2365,30 @@ namespace Rebellion.Tests.Simulation
 
             MissionQueries missions = new MissionQueries(game);
             return (game, origin, targetPlanet, participant, target, missions);
+        }
+
+        /// <summary>
+        /// Counts container traversal without adding timing instrumentation to production code.
+        /// </summary>
+        private sealed class CountingFleet : Fleet
+        {
+            public int ChildEnumerationCount { get; set; }
+
+            /// <summary>
+            /// Creates a copy that preserves the fleet's diagnostic subtype.
+            /// </summary>
+            /// <returns>An empty counting fleet.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new CountingFleet();
+
+            /// <summary>
+            /// Counts enumeration calls before using the standard fleet children.
+            /// </summary>
+            /// <returns>The fleet's direct child nodes.</returns>
+            protected override IEnumerable<ISceneNode> EnumerateChildren()
+            {
+                ChildEnumerationCount++;
+                return base.EnumerateChildren();
+            }
         }
     }
 }

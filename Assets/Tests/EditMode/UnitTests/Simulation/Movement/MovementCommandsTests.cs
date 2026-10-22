@@ -19,6 +19,86 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(typeof(Building))]
+        [TestCase(typeof(Regiment))]
+        [TestCase(typeof(SpecialForces))]
+        [TestCase(typeof(Starfighter))]
+        public void ProcessTick_SurfaceDestinationDestroyedDuringTransit_ReroutesWithoutArrival(
+            Type unitType
+        )
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            IManufacturable unit = (IManufacturable)Activator.CreateInstance(unitType);
+            unit.InstanceID = "incoming-unit";
+            unit.SetOwnerInstanceID("empire");
+            unit.ManufacturingStatus = ManufacturingStatus.Delivering;
+            if (unit is Building building)
+                building.BuildingType = BuildingType.Headquarters;
+            if (unit is Starfighter fighter)
+                fighter.Hyperdrive = 1;
+            game.AttachNode(unit, destination);
+            unit.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(origin, unit.GetParent());
+            Assert.IsNotNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Delivering, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
+            Assert.IsEmpty(results.OfType<UnitArrivedResult>());
+
+            unit.Movement.TicksElapsed = unit.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> arrival = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(arrival.OfType<GameObjectEnrouteResult>().Any());
+            Assert.AreSame(origin, arrival.OfType<UnitArrivedResult>().Single().Destination);
+            Assert.IsNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+        }
+
+        [Test]
+        public void ProcessTick_OrbitalDestinationDestroyedDuringTransit_CompletesFleetArrival()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("incoming-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            game.AttachNode(CreateMovableCapitalShip("incoming-ship"), fleet);
+            fleet.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any(result => result.Unit == fleet));
+            Assert.IsFalse(destination.IsColonized);
+        }
+
         [Test]
         public void RequestMove_SingleUnit_QueuesResultsUntilMovementPass()
         {
@@ -3151,7 +3231,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.CompleteMissionAtLocation(
                 new IMissionParticipant[] { officer },
-                destination
+                destination,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3189,7 +3270,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out Planet returnLocation
+                out Planet returnLocation,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3217,7 +3299,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3240,7 +3323,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
@@ -3275,7 +3359,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3312,7 +3397,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3341,7 +3427,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
@@ -3373,7 +3460,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { escort },
                 new IMovable[] { passenger },
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3398,7 +3486,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3431,7 +3520,8 @@ namespace Rebellion.Tests.Simulation
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                new List<GameResult>()
             );
             Assert.IsFalse(officer.IsCaptured, "Departure must not resolve the encounter.");
             game.MoveNode(hostileFleet, returnPlanet);
@@ -3491,7 +3581,8 @@ namespace Rebellion.Tests.Simulation
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[] { captive },
-                out _
+                out _,
+                new List<GameResult>()
             );
             int previousTransitTicks = officer.Movement.TransitTicks;
             string movementGroupID = officer.Movement.MovementGroupID;
@@ -3587,7 +3678,8 @@ namespace Rebellion.Tests.Simulation
             movement.ReturnFromMission(
                 new IMissionParticipant[] { forceTraveler, companion },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                new List<GameResult>()
             );
             game.MoveNode(hostileFleet, returnPlanet);
             forceTraveler.Movement.TicksElapsed = forceTraveler.Movement.TransitTicks - 1;
@@ -3627,7 +3719,8 @@ namespace Rebellion.Tests.Simulation
             movement.ReturnFromMission(
                 new IMissionParticipant[] { safe, exposed },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                new List<GameResult>()
             );
             Assert.AreEqual(safe.Movement.MovementGroupID, exposed.Movement.MovementGroupID);
             game.MoveNode(safe, origin);
@@ -3665,7 +3758,8 @@ namespace Rebellion.Tests.Simulation
             movement.ReturnFromMission(
                 new IMissionParticipant[] { specialForces },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                new List<GameResult>()
             );
             game.MoveNode(hostileFleet, returnPlanet);
             specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks - 1;
@@ -3707,7 +3801,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { escort },
                 new IMovable[] { captive },
-                out Planet returnLocation
+                out Planet returnLocation,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3765,7 +3860,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { escort },
                 new IMovable[] { captive },
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);
@@ -3794,7 +3890,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[0],
                 new IMovable[] { passenger },
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             CollectionAssert.AreEqual(new IMovable[] { passenger }, stranded);
@@ -3840,7 +3937,8 @@ namespace Rebellion.Tests.Simulation
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { firstOfficer, secondOfficer },
                 new IMovable[0],
-                out _
+                out _,
+                new List<GameResult>()
             );
 
             Assert.IsEmpty(stranded);

@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -13,6 +14,7 @@ using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -430,6 +432,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void RenderWindow_EighteenFleets_ShowsUsableFleetListScrollbar()
+        {
+            _windowManager.SetContentSource(TestContent.Assets);
+            for (int index = 2; index <= 18; index++)
+            {
+                GameFleet fleet = CreateFleet($"fleet-{index}", $"Fleet {index}", out _);
+                _planet.Planet.AddChild(fleet);
+                AttachFleetGraph(_planet.Planet, fleet);
+            }
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            _controller.RenderWindow(view, window, true);
+
+            FleetListRowView[] rows = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Where(row => row.gameObject.activeInHierarchy)
+                .ToArray();
+            ScrollAreaView scrollArea = rows[0].GetComponentInParent<ScrollAreaView>();
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData scroll = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0f, -1f),
+            };
+
+            scrollArea.RelayScroll(scroll);
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(18, rows.Length);
+            Assert.IsTrue(scrollbar.gameObject.activeInHierarchy);
+            Assert.IsNotNull(scrollbar.handleRect.GetComponent<RawImage>().texture);
+            Assert.Greater(scrollArea.ContentRoot.anchoredPosition.y, 0f);
+        }
+
+        [Test]
         public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
@@ -796,11 +833,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             bool selected = contextMenuController.TrySelectCommand(command);
 
             Assert.IsTrue(selected);
-            Assert.IsInstanceOf<BombardmentResult>(_actions.LastBattleResult);
-            Assert.AreEqual(
-                BombardmentType.General,
-                ((BombardmentResult)_actions.LastBattleResult).Type
-            );
+            Assert.IsNotNull(_actions.LastBattleResult);
+            Assert.AreEqual(CombatReportType.Bombardment, _actions.LastBattleResult.CombatType);
+            Assert.AreEqual(BombardmentType.General, _actions.LastBattleResult.BombardmentType);
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
@@ -932,7 +967,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(_session);
+            return new StrategyFleetCommandController(
+                _session,
+                () => _game.GetPlayerFaction().InstanceID
+            );
         }
 
         /// <summary>
@@ -1105,7 +1143,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
-            public GameResult LastBattleResult { get; private set; }
+            public CombatReport LastBattleResult { get; private set; }
 
             public OfficerRank LastOfficerRank { get; private set; }
 
@@ -1162,10 +1200,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <summary>
             /// Opens fleet battle result.
             /// </summary>
-            /// <param name="result">The result.</param>
-            public void OpenFleetBattleResult(GameResult result)
+            /// <param name="report">The faction-visible combat report.</param>
+            public void OpenFleetBattleResult(CombatReport report)
             {
-                LastBattleResult = result;
+                LastBattleResult = report;
             }
 
             /// <summary>
@@ -1180,6 +1218,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="sourceWindow">The source window.</param>
             /// <param name="items">The items.</param>
             public void OpenFleetStatusWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            /// <summary>
+            /// Opens mission abort confirmation.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The selected missions.</param>
+            public void OpenMissionAbortConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

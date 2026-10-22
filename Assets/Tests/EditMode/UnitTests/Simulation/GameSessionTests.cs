@@ -69,6 +69,154 @@ namespace Rebellion.Tests.Simulation
             _session.Dispose();
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessResults_PlanetDestructionDestroysHeadquarters_PublishesLossAndVictory(
+            bool mobileHeadquarters
+        )
+        {
+            Faction attacker = new Faction { InstanceID = "attacker" };
+            _game.GetFactions().Add(attacker);
+            _faction.Settings.Headquarters = new HeadquartersSettings
+            {
+                IsMobile = mobileHeadquarters,
+                FacilityTypeID = "headquarters",
+            };
+            _faction.HQInstanceID = _planet.InstanceID;
+            _planet.IsHeadquarters = true;
+            _planet.EnergyCapacity = 2;
+            Building headquarters = null;
+            if (mobileHeadquarters)
+            {
+                headquarters = new Building
+                {
+                    InstanceID = "headquarters",
+                    TypeID = "headquarters",
+                    OwnerInstanceID = _faction.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                _game.AttachNode(headquarters, _planet);
+            }
+            Fleet fleet = EntityFactory.CreateFleet("destroyer-fleet", attacker.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "destroyer",
+                    OwnerInstanceID = attacker.InstanceID,
+                    CanDestroyPlanets = true,
+                    CurrentHullStrength = 100,
+                    MaxHullStrength = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
+            HeadquartersLostResult loss = null;
+            VictoryResult victory = null;
+            _session.Pipeline.HeadquartersLost += result => loss = result;
+            _session.Pipeline.VictoryDeclared += result => victory = result;
+
+            BombardmentResult bombardment = _session
+                .GetService<BombardmentCommands>()
+                .TryExecute(new[] { fleet }, _planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsTrue(bombardment.PlanetDestroyed);
+            Assert.IsInstanceOf<HeadquartersDestroyedResult>(loss);
+            Assert.AreSame(loss, bombardment.Events.OfType<HeadquartersDestroyedResult>().Single());
+            Assert.AreSame(headquarters, ((HeadquartersDestroyedResult)loss).Headquarters);
+            Assert.AreSame(_faction, loss.Defender);
+            Assert.AreSame(attacker, loss.Attacker);
+            Assert.AreSame(attacker, victory.Winner);
+            Assert.AreSame(_faction, victory.Loser);
+            Assert.IsNull(_faction.HQInstanceID);
+            PlanetSector sector = _planet.GetParentOfType<PlanetSector>();
+            foreach (Faction faction in new[] { _faction, attacker })
+            {
+                PlanetSnapshot snapshot = faction.Fog.Snapshots[sector.InstanceID].Planets[
+                    _planet.InstanceID
+                ];
+                Assert.IsTrue(snapshot.IsDestroyed);
+                Assert.IsFalse(snapshot.IsColonized);
+                Assert.IsNull(snapshot.OwnerInstanceID);
+            }
+        }
+
+        [Test]
+        public void Constructor_LoadedDestroyedProducer_ClearsLocalAndRemoteOrdersBeforeTick()
+        {
+            string saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion-destroyed-production-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                _planet.EnergyCapacity = 5;
+                Planet remote = new Planet
+                {
+                    InstanceID = "remote-destination",
+                    OwnerInstanceID = _faction.InstanceID,
+                    IsColonized = true,
+                };
+                _game.AttachNode(remote, _planet.GetParent());
+                Building localOrder = new Building
+                {
+                    InstanceID = "local-order",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ProducerOwnerID = _faction.InstanceID,
+                    ProducerPlanetID = _planet.InstanceID,
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 7,
+                };
+                Regiment remoteOrder = new Regiment
+                {
+                    InstanceID = "remote-order",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ProducerOwnerID = _faction.InstanceID,
+                    ProducerPlanetID = _planet.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 11,
+                };
+                _game.AttachNode(localOrder, _planet);
+                _game.AttachNode(remoteOrder, remote);
+                _planet.IsDestroyed = true;
+                Assert.AreEqual(18, _faction.GetTotalProjectedMaintenanceCost());
+                SaveGameManager saves = new SaveGameManager(saveDirectoryPath);
+                saves.SaveGameData(_game, "destroyed-production");
+                GameRoot loaded = saves.LoadGameData("destroyed-production");
+                using GameSession session = new GameSession(
+                    loaded,
+                    TestGameData.Create(_game.Config)
+                );
+                Planet producer = loaded.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
+                Faction owner = loaded.GetFactionByOwnerInstanceID(_faction.InstanceID);
+
+                Assert.IsNull(producer.OwnerInstanceID);
+                Assert.IsEmpty(producer.GetManufacturingQueue());
+                Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(localOrder.InstanceID));
+                Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(remoteOrder.InstanceID));
+                Assert.Zero(owner.GetTotalProjectedMaintenanceCost());
+
+                new ManufacturingTickProcessor(
+                    session.GetService<ManufacturingCommands>(),
+                    session.GetService<MovementCommands>()
+                ).ProcessTick(loaded);
+
+                Assert.IsEmpty(producer.GetManufacturingQueue());
+                Assert.Zero(owner.GetTotalProjectedMaintenanceCost());
+                Assert.IsFalse(producer.IsColonized);
+                Assert.IsTrue(
+                    loaded.GetSceneNodeByInstanceID<Planet>(remote.InstanceID).IsColonized
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(saveDirectoryPath))
+                    Directory.Delete(saveDirectoryPath, recursive: true);
+            }
+        }
+
         [Test]
         public void Constructor_NullContent_ThrowsArgumentNullException()
         {
@@ -1274,6 +1422,111 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(observed.Movement);
         }
 
+        /// <summary>
+        /// Verifies departure capture finishes before a paused game can be saved or displayed.
+        /// </summary>
+        /// <param name="reload">Whether to replace the session with a serialized copy.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MissionCommands_DepartureCaptureWhilePaused_EstablishesEnemyCustody(bool reload)
+        {
+            (GameRoot game, Planet planet, CapitalShip ship, Officer officer, Regiment target) =
+                CreateFleetMissionCaptureScene();
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            using GameSession session = TestContent.CreateGameSession(game);
+            List<GameResult> resolved = new List<GameResult>();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+            int tick = game.CurrentTick;
+
+            Assert.IsTrue(
+                session
+                    .GetService<MissionCommands>()
+                    .InitiateMission(CreateFleetMissionContext(game, planet, officer, target))
+            );
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsFalse(ship.GetChildren<Officer>().Contains(officer));
+            Assert.IsNull(officer.Movement);
+            Assert.Greater(officer.NextEscapeAttemptTick, tick);
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+            Assert.AreEqual(
+                MissionOutcome.Foiled,
+                resolved.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+
+            if (reload)
+            {
+                GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+                session.ReplaceGame(restored);
+                officer = restored.GetSceneNodeByInstanceID<Officer>(officer.InstanceID);
+                Assert.IsTrue(officer.IsCaptured);
+                Assert.AreEqual("rebels", officer.CaptorInstanceID);
+                Assert.AreEqual(planet.InstanceID, officer.GetParent().InstanceID);
+            }
+
+            session.Tick.ProcessTick();
+            Assert.AreEqual(tick, session.Game.CurrentTick);
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+        }
+
+        /// <summary>
+        /// Verifies an encounter during an immediate mission return settles in the abort operation.
+        /// </summary>
+        [Test]
+        public void MissionCommands_AbortReturnCapturedInOrbit_EstablishesEnemyCustodyImmediately()
+        {
+            (GameRoot game, Planet planet, CapitalShip ship, Officer officer, Regiment target) =
+                CreateFleetMissionCaptureScene();
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            using GameSession session = TestContent.CreateGameSession(game);
+            Assert.IsTrue(
+                session
+                    .GetService<MissionCommands>()
+                    .InitiateMission(CreateFleetMissionContext(game, planet, officer, target))
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            officer.Movement = null;
+            Fleet enemyFleet = new Fleet { InstanceID = "enemy-fleet", OwnerInstanceID = "rebels" };
+            CapitalShip enemyShip = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(enemyFleet, planet);
+            game.AttachNode(enemyShip, enemyFleet);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            List<GameResult> resolved = new List<GameResult>();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+
+            Assert.IsTrue(session.GetService<MissionCommands>().AbortMission(mission.InstanceID));
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsFalse(ship.GetChildren<Officer>().Contains(officer));
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+            Assert.IsEmpty(
+                session
+                    .GetService<MovementCommands>()
+                    .TakePendingResults()
+                    .OfType<OfficerCaptureStateResult>()
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+        }
+
         [Test]
         public void CaptiveCommands_TryCaptureOfficer_CompletesCustodyLifecycle()
         {
@@ -1967,11 +2220,9 @@ namespace Rebellion.Tests.Simulation
                     .GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
-            Assert.AreSame(arrivingFleet, pending.AttackerFleet);
-            Assert.IsNull(pending.DefenderFleet);
             Assert.AreEqual(alliance.InstanceID, pending.AttackerOwnerInstanceID);
             Assert.AreEqual(empire.InstanceID, pending.DefenderOwnerInstanceID);
-            Assert.AreSame(destination, pending.Planet);
+            Assert.AreEqual(destination.InstanceID, pending.PlanetInstanceID);
         }
 
         [Test]
@@ -2294,7 +2545,6 @@ namespace Rebellion.Tests.Simulation
 
             diplomat.Movement = null;
             IReadOnlyList<GameResult> missionResults = new MissionTickProcessor(
-                manager.GetService<MissionCommands>(),
                 manager.GetService<MissionResolver>()
             ).ProcessTick(game);
 
@@ -2707,6 +2957,82 @@ namespace Rebellion.Tests.Simulation
                 MessageType = messageType,
                 Subject = resultType.ToString(),
                 Body = resultType.ToString(),
+            };
+        }
+
+        /// <summary>
+        /// Creates a paused officer mission originating aboard a friendly ship over an enemy planet.
+        /// </summary>
+        /// <returns>The game, target planet, friendly ship, officer, and sabotage target.</returns>
+        private static (
+            GameRoot game,
+            Planet planet,
+            CapitalShip ship,
+            Officer officer,
+            Regiment target
+        ) CreateFleetMissionCaptureScene()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.SetGameSpeed(TickSpeed.Paused);
+            game.Random = new FixedRNG(0.01);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "capture-sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = CreatePlanet("enemy-planet", "rebels", 0);
+            game.AttachNode(planet, sector);
+            Fleet fleet = new Fleet { InstanceID = "own-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "own-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+            Officer officer = EntityFactory.CreateOfficer("Needa", "empire");
+            game.AttachNode(officer, ship);
+            Regiment target = new Regiment
+            {
+                InstanceID = "enemy-regiment",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, planet);
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
+            return (game, planet, ship, officer, target);
+        }
+
+        /// <summary>
+        /// Describes a sabotage mission for one officer against an enemy regiment.
+        /// </summary>
+        /// <param name="game">The active game.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="officer">The assigned officer.</param>
+        /// <param name="target">The target regiment.</param>
+        /// <returns>The mission request.</returns>
+        private static MissionContext CreateFleetMissionContext(
+            GameRoot game,
+            Planet planet,
+            Officer officer,
+            Regiment target
+        )
+        {
+            return new MissionContext
+            {
+                Game = game,
+                MissionTypeID = SabotageMission.MissionTypeID,
+                OwnerInstanceId = officer.OwnerInstanceID,
+                Location = planet,
+                SelectedTarget = target,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
             };
         }
 

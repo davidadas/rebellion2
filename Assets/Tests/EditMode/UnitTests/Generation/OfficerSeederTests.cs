@@ -24,13 +24,13 @@ namespace Rebellion.Tests.Generation
         {
             _rules = new GameGenerationConfig
             {
-                Officers = new OfficerSection
+                Officers = new OfficerSection(),
+                GalaxyClassification = new GalaxyClassificationSection
                 {
-                    NumStartingOfficers = new PlanetSizeProfile
+                    FactionSetups = new List<FactionSetup>
                     {
-                        Small = 2,
-                        Medium = 3,
-                        Large = 5,
+                        CreateFactionSetup("FNALL1"),
+                        CreateFactionSetup("FNEMP1"),
                     },
                 },
             };
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_GuaranteedStarter_IsIncludedWithoutBecomingMainCharacter()
         {
-            _rules.Officers.NumStartingOfficers.Small = 1;
+            _rules.GalaxyClassification.FactionSetups[0].NumStartingOfficers.Small = 1;
             _rules.Officers.StartingOfficers.Add(
                 new StartingOfficerRule { OfficerInstanceID = "STARTER" }
             );
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_StartingOfficerRuleForDifferentGalaxySize_DoesNotGuaranteeOfficer()
         {
-            _rules.Officers.NumStartingOfficers.Small = 0;
+            _rules.GalaxyClassification.FactionSetups[0].NumStartingOfficers.Small = 0;
             _rules.Officers.StartingOfficers.Add(
                 new StartingOfficerRule
                 {
@@ -233,13 +233,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
+        public void Seed_WithMultipleFactions_UsesEachFactionOfficerLimit()
         {
             Officer allianceOfficer1 = MakeOfficer("A1", "FNALL1");
             Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            _rules.GalaxyClassification.FactionSetups[1].NumStartingOfficers.Small = 1;
             sector.AddChild(
                 new Planet
                 {
@@ -265,7 +266,7 @@ namespace Rebellion.Tests.Generation
                 new StubRNG()
             );
 
-            Assert.AreEqual(4, results.Deployed.Length);
+            Assert.AreEqual(3, results.Deployed.Length);
         }
 
         [Test]
@@ -310,7 +311,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_UnrecruitedOfficer_RollsRatings()
         {
-            _rules.Officers.NumStartingOfficers.Small = 0;
+            _rules.GalaxyClassification.FactionSetups[0].NumStartingOfficers.Small = 0;
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.Ratings[SkillRating.Espionage] = 5;
             officer.EspionageVariance = 10;
@@ -383,7 +384,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_WithStartingOfficerDestinationType_DeploysPinnedOfficerOutsideLimit()
         {
-            _rules.Officers.NumStartingOfficers.Small = 0;
+            _rules.GalaxyClassification.FactionSetups[0].NumStartingOfficers.Small = 0;
 
             Planet yavin = new Planet
             {
@@ -536,6 +537,25 @@ namespace Rebellion.Tests.Generation
                 );
             }
             return sector;
+        }
+
+        /// <summary>
+        /// Creates one faction setup with the default officer limits used by these tests.
+        /// </summary>
+        /// <param name="factionID">The faction instance ID.</param>
+        /// <returns>The populated faction setup.</returns>
+        private static FactionSetup CreateFactionSetup(string factionID)
+        {
+            return new FactionSetup
+            {
+                FactionID = factionID,
+                NumStartingOfficers = new PlanetSizeProfile
+                {
+                    Small = 2,
+                    Medium = 3,
+                    Large = 5,
+                },
+            };
         }
     }
 }

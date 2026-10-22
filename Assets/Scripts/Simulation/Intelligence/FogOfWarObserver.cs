@@ -121,11 +121,19 @@ namespace Rebellion.Simulation
                     result.AttackingUnits.Concat(result.DefendingUnits)
                 );
             foreach (BombardmentResult result in results.OfType<BombardmentResult>())
+            {
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
                     result.AttackingUnits.Concat(result.DefendingUnits)
                 );
+                if (result.PlanetDestroyed)
+                    _commands.ObservePlanetLoss(
+                        FindFaction(result.DefenderOwnerInstanceID),
+                        result.Planet,
+                        result.Tick
+                    );
+            }
             foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
@@ -336,7 +344,7 @@ namespace Rebellion.Simulation
                 return;
 
             if (result.PreviousOwner != null)
-                _commands.ObservePlanet(result.PreviousOwner, result.Planet, result.Tick);
+                _commands.ObservePlanetLoss(result.PreviousOwner, result.Planet, result.Tick);
 
             IEnumerable<Faction> observers = (
                 result.ObserverFactionInstanceIDs ?? new List<string>()

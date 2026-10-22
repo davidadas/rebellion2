@@ -19,6 +19,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private InputManager _inputManager;
         private string _settingsPath;
         private OptionsSettingsSession _session;
+        private UserSettingsManager _userSettings;
 
         /// <summary>
         /// Creates a settings session backed by deterministic display and input services.
@@ -45,15 +46,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Path.GetTempPath(),
                 $"rebellion2-options-session-{Guid.NewGuid():N}.json"
             );
-            UserSettingsManager settings = new UserSettingsManager(
+            _userSettings = new UserSettingsManager(
                 _audioManager,
                 _displayManager,
                 _inputManager,
                 _settingsPath
             );
-            settings.Load();
+            _userSettings.Load();
             _session = new OptionsSettingsSession(
-                settings,
+                _userSettings,
                 _displayManager,
                 _audioManager,
                 _inputManager
@@ -105,6 +106,183 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
+        [TestCase(UserFrameGenerationMode.Off)]
+        [TestCase(UserFrameGenerationMode.On)]
+        public void StepFullScreen_ExclusiveMode_PreservesFrameGenerationPreference(
+            UserFrameGenerationMode preference
+        )
+        {
+            GameObject graphicsOwner = new GameObject("Options Graphics Test Owner");
+            GraphicsManager graphicsManager = new GraphicsManager(
+                graphicsOwner.transform,
+                () => true,
+                _ => { }
+            );
+            OptionsSettingsSession session = new OptionsSettingsSession(
+                _userSettings,
+                _displayManager,
+                _audioManager,
+                _inputManager,
+                graphicsManager
+            );
+            try
+            {
+                session.Begin();
+                session.Video.FullScreenMode = (int)FullScreenMode.FullScreenWindow;
+                session.Video.FrameGenerationMode = (int)preference;
+
+                session.StepFullScreen(-1);
+
+                Assert.AreEqual(
+                    (int)FullScreenMode.ExclusiveFullScreen,
+                    session.Video.FullScreenMode
+                );
+                Assert.AreEqual("Fullscreen", session.FullScreenLabel);
+                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
+                OptionsGraphicsValue exclusiveValue = session.GetGraphicsValues()[
+                    UserGraphicsSetting.FrameGeneration
+                ];
+                Assert.IsFalse(exclusiveValue.Available);
+                Assert.AreEqual("Off (Fullscreen)", exclusiveValue.Label);
+
+                session.StepFullScreen(1);
+
+                Assert.AreEqual((int)FullScreenMode.FullScreenWindow, session.Video.FullScreenMode);
+                Assert.AreEqual("Borderless", session.FullScreenLabel);
+                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
+            }
+            finally
+            {
+                graphicsManager.Dispose();
+                UnityEngine.Object.DestroyImmediate(graphicsOwner);
+            }
+        }
+
+        /// <summary>
+        /// Verifies returning a graphics setting to its snapshot clears the dirty state.
+        /// </summary>
+        [Test]
+        public void StepGraphics_ReturnedToSnapshot_ClearsDirtyState()
+        {
+            _session.StepGraphics(UserGraphicsSetting.AntiAliasing, 1);
+            Assert.IsTrue(_session.IsDirty);
+
+            _session.StepGraphics(UserGraphicsSetting.AntiAliasing, -1);
+
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        /// <summary>
+        /// Verifies stepping the quality preset updates all preset-owned settings.
+        /// </summary>
+        [Test]
+        public void StepGraphics_QualityPreset_UpdatesPresetOwnedSettings()
+        {
+            _session.StepGraphics(UserGraphicsSetting.QualityPreset, -1);
+
+            Assert.AreEqual(4, _session.Video.QualityLevel);
+            Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
+            Assert.IsTrue(_session.Video.AmbientOcclusion);
+            Assert.IsTrue(_session.Video.Bloom);
+            Assert.IsFalse(_session.Video.MotionBlur);
+            Assert.IsFalse(_session.Video.GraphicsPresetCustomized);
+        }
+
+        /// <summary>
+        /// Verifies editing a preset-owned setting changes the preset label to Custom.
+        /// </summary>
+        [Test]
+        public void StepGraphics_PresetOwnedSetting_MarksPresetCustom()
+        {
+            _session.StepGraphics(UserGraphicsSetting.AntiAliasing, -1);
+
+            Assert.IsTrue(_session.Video.GraphicsPresetCustomized);
+            Assert.AreEqual(
+                "Custom",
+                _session.GetGraphicsValues()[UserGraphicsSetting.QualityPreset].Label
+            );
+        }
+
+        /// <summary>
+        /// Verifies that VSync communicates and enforces its ownership of frame pacing.
+        /// </summary>
+        [Test]
+        public void GetGraphicsValues_VSyncEnabled_DisablesFrameRateLimitControl()
+        {
+            OptionsGraphicsValue value = _session.GetGraphicsValues()[
+                UserGraphicsSetting.FrameRateLimit
+            ];
+
+            Assert.IsFalse(value.Available);
+            Assert.AreEqual("Controlled by VSync", value.Label);
+
+            _session.StepGraphics(UserGraphicsSetting.FrameRateLimit, 1);
+
+            Assert.AreEqual(0, _session.Video.FrameRateLimit);
+
+            _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
+            value = _session.GetGraphicsValues()[UserGraphicsSetting.FrameRateLimit];
+
+            Assert.IsTrue(value.Available);
+            Assert.AreEqual("Unlimited", value.Label);
+        }
+
+        /// <summary>
+        /// Verifies that changing a setting outside preset ownership preserves the preset label.
+        /// </summary>
+        [Test]
+        public void StepGraphics_VerticalSyncChanged_PreservesPresetSelection()
+        {
+            _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
+
+            Assert.IsFalse(_session.Video.GraphicsPresetCustomized);
+            Assert.AreEqual(
+                "Ultra",
+                _session.GetGraphicsValues()[UserGraphicsSetting.QualityPreset].Label
+            );
+        }
+
+        /// <summary>
+        /// Verifies settings that require runtime hardware support expose availability separately
+        /// from their player-facing value.
+        /// </summary>
+        [Test]
+        public void GetGraphicsValues_RuntimeManagerUnavailable_MarksHardwareOptionsUnavailable()
+        {
+            Dictionary<UserGraphicsSetting, OptionsGraphicsValue> values =
+                _session.GetGraphicsValues();
+
+            Assert.IsFalse(values[UserGraphicsSetting.RayTracing].Available);
+            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.RayTracing].Label);
+            Assert.IsFalse(values[UserGraphicsSetting.FrameGeneration].Available);
+            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.FrameGeneration].Label);
+            Assert.IsFalse(values[UserGraphicsSetting.HdrOutput].Available);
+            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.HdrOutput].Label);
+            Assert.IsTrue(values[UserGraphicsSetting.Bloom].Available);
+
+            _session.StepGraphics(UserGraphicsSetting.RayTracing, 1);
+
+            Assert.IsFalse(_session.Video.RayTracing);
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        /// <summary>
+        /// Verifies Graphics-page defaults restore the complete default graphics profile.
+        /// </summary>
+        [Test]
+        public void RestoreDefaults_GraphicsSelected_RestoresGraphicsDefaults()
+        {
+            _session.StepGraphics(UserGraphicsSetting.AntiAliasing, 1);
+            _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
+            _session.StepGraphics(UserGraphicsSetting.FrameRateLimit, 1);
+
+            _session.RestoreDefaults(OptionsMenuTab.Graphics);
+
+            Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
+            Assert.AreEqual(0, _session.Video.FrameRateLimit);
+            Assert.IsTrue(_session.Video.VerticalSync);
+        }
+
         [Test]
         public void DisplayChanges_Default_ApplyOnlyWhenCommitted()
         {
@@ -138,21 +316,24 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void RestoreDefaults_GameplaySelected_PreservesUserInterfaceSettings()
+        public void RestoreDefaults_GameplaySelected_RestoresGameplayAndPreservesUserInterfaceSettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Fast);
 
             _session.RestoreDefaults(OptionsMenuTab.Gameplay);
 
             Assert.IsTrue(_session.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]
-        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceSettings()
+        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceAndPreservesGameplaySettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+            _session.ToggleUserInterface(UserInterfaceOption.ShowFrameRate);
             _session.SetIdleBarLocation(IdleBarLocation.BottomLeft);
             _session.SetGameLaunchSpeed(GameLaunchSpeed.Fast);
 
@@ -161,8 +342,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_session.UserInterface.ShowIdleBar);
             Assert.IsFalse(_session.UserInterface.KeepIdleBarOpen);
             Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
+            Assert.IsFalse(_session.UserInterface.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);
-            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.UserInterface.GameLaunchSpeed);
+            Assert.AreEqual(GameLaunchSpeed.Fast, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]

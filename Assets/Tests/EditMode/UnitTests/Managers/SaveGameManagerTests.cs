@@ -417,6 +417,29 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_CustomGame_WritesCustomGameMetadata()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    GalaxySize = GameSize.Small,
+                    GenerationConfigOverride = new GameGenerationConfig(),
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.IsTrue(metadata.IsCustomGame);
+            Assert.AreEqual(GameDifficulty.Hard, metadata.Difficulty);
+            Assert.AreEqual(GameSize.Small, restored.Summary.GalaxySize);
+        }
+
+        [Test]
         public void GetSaveMetadata_SavedContentIdentity_ReturnsContentIdentity()
         {
             GameRoot game = new GameRoot
@@ -944,6 +967,40 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveAndLoadGame_FleetNameSequence_PreservesNextNumber()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Fleet fleet = loadedGame.GetFactions().Single().CreateFleet();
+
+            Assert.AreEqual("Fleet 3", fleet.GetDisplayName());
+        }
+
+        [Test]
+        public void LoadGameData_SaveWithoutFleetNameSequence_LoadsFaction()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<NextFleetNumber>2</NextFleetNumber>", string.Empty);
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNALL1", loadedGame.GetFactions().Single().InstanceID);
+        }
+
+        [Test]
         public void SaveGameData_PlayerWithUIState_WritesUIState()
         {
             GameRoot game = BuildGameWithIgnoredItems();
@@ -1047,7 +1104,6 @@ namespace Rebellion.Tests.Managers
                 ResourceAvailability = GameResourceAvailability.Limited,
                 PlayerFactionID = "FNEMP1",
                 StartingFactionIDs = new string[] { "FNALL1", "FNEMP1" },
-                StartingResearchLevel = 3,
             };
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
@@ -1066,7 +1122,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.Summary.StartingFactionIDs.Length);
             Assert.AreEqual("FNALL1", loadedGame.Summary.StartingFactionIDs[0]);
             Assert.AreEqual("FNEMP1", loadedGame.Summary.StartingFactionIDs[1]);
-            Assert.AreEqual(3, loadedGame.Summary.StartingResearchLevel);
         }
 
         [Test]

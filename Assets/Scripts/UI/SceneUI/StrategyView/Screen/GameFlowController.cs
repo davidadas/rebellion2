@@ -25,6 +25,7 @@ public sealed class GameFlowController : MonoBehaviour
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
+    private PlanetDestructionCutsceneController planetDestructionCutsceneController;
     private bool campaignEnding;
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
@@ -61,7 +62,13 @@ public sealed class GameFlowController : MonoBehaviour
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             await bootstrap.InitializeMainMenuContentAsync();
+            if (!CanContinueStartup(bootstrap))
+                return;
+
             await bootstrap.InitializeStrategyContentAsync();
+            if (!CanContinueStartup(bootstrap))
+                return;
+
             ContentPack contentPack = bootstrap.GetContentPack();
             themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
             GameRuntime runtime = bootstrap.GetRuntime();
@@ -70,6 +77,9 @@ public sealed class GameFlowController : MonoBehaviour
                 GameSession session = runtime.GetActiveGameSession();
                 InitializeStrategy(session);
                 await strategyController.PrepareInitialContentAsync();
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 await ActivateGameplayAsync(session, false);
                 return;
             }
@@ -77,9 +87,15 @@ public sealed class GameFlowController : MonoBehaviour
             if (GameLaunchContext.IsLoadGame)
             {
                 await LoadGameAsync(runtime);
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
                 await strategyController.PrepareInitialContentAsync();
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 await ActivateGameplayAsync(session, false);
             }
             else
@@ -87,9 +103,26 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
+            if (!Application.isPlaying || this == null)
+                return;
+
             if (!LoadingScreenController.RecoverFromLoadFailure(exception))
                 Debug.LogException(exception);
         }
+    }
+
+    /// <summary>
+    /// Determines whether an asynchronous startup continuation still belongs to the active scene
+    /// and application services.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap captured before the asynchronous operation.</param>
+    /// <returns>True when startup may safely continue.</returns>
+    private bool CanContinueStartup(AppBootstrap bootstrap)
+    {
+        return Application.isPlaying
+            && this != null
+            && bootstrap != null
+            && AppBootstrap.Instance == bootstrap;
     }
 
     /// <summary>
@@ -125,6 +158,7 @@ public sealed class GameFlowController : MonoBehaviour
     private void OnDestroy()
     {
         DisposeActiveTick();
+        planetDestructionCutsceneController?.Dispose();
 
         if (activeGameManager != null)
         {
@@ -179,15 +213,23 @@ public sealed class GameFlowController : MonoBehaviour
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
-        Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
+        bool deferIntro =
+            GameLaunchContext.PlayIntroCutscene && LoadingScreenController.IsLoadInProgress;
+        Task intro = deferIntro
+            ? Task.CompletedTask
+            : PlayFactionIntroAsync(game.GetPlayerFaction());
         GameSession session = StartGameSession(loadedGame: false);
         InitializeStrategy(session);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
         Task initialContentReady = strategyController.PrepareInitialContentAsync();
+        AppBootstrap bootstrap = AppBootstrap.Instance;
         await Task.WhenAll(intro, briefingReady, initialContentReady);
-        await ActivateGameplayAsync(session, playBriefing);
+        if (!CanContinueStartup(bootstrap))
+            return;
+
+        await ActivateGameplayAsync(session, playBriefing, deferIntro);
     }
 
     /// <summary>
@@ -223,16 +265,26 @@ public sealed class GameFlowController : MonoBehaviour
         if (!GameLaunchContext.PlayIntroCutscene)
             return Task.CompletedTask;
 
+        TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+        PlayFactionIntro(faction, () => completion.TrySetResult(true));
+        return completion.Task;
+    }
+
+    /// <summary>
+    /// Plays an introduction after the loading overlay has released the screen, when deferred.
+    /// </summary>
+    /// <param name="faction">The faction whose introduction should play.</param>
+    /// <param name="completed">The gameplay activation to resume after playback.</param>
+    private void PlayFactionIntro(Faction faction, Action completed)
+    {
         FactionTheme theme = themeLibrary.GetTheme(faction.InstanceID);
         if (string.IsNullOrEmpty(theme.IntroCutscenePath))
-            return Task.CompletedTask;
+        {
+            completed();
+            return;
+        }
 
-        TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
-        AppBootstrap
-            .EnsureExists()
-            .GetCutsceneManager()
-            .Play(theme.IntroCutscenePath, () => completion.TrySetResult(true));
-        return completion.Task;
+        AppBootstrap.EnsureExists().GetCutsceneManager().Play(theme.IntroCutscenePath, completed);
     }
 
     /// <summary>
@@ -247,7 +299,7 @@ public sealed class GameFlowController : MonoBehaviour
         GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
         ApplyGameLaunchSpeed(
             runtime.GetActiveGameManager(),
-            bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+            bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
         );
         return session;
     }
@@ -310,6 +362,13 @@ public sealed class GameFlowController : MonoBehaviour
         }
         session.Pipeline.HeadquartersLost += HandleHeadquartersLost;
         session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
+        planetDestructionCutsceneController?.Dispose();
+        planetDestructionCutsceneController = new PlanetDestructionCutsceneController(
+            session.Pipeline,
+            themeLibrary,
+            () => session.Game.GetPlayerFaction()?.InstanceID,
+            EnqueueCutscene
+        );
 
         strategyController.Initialize(
             session,
@@ -329,6 +388,15 @@ public sealed class GameFlowController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(cutscenePath))
             return;
 
+        EnqueueCutscene(cutscenePath);
+    }
+
+    /// <summary>
+    /// Adds an event movie to the ordered playback queue and starts playback when idle.
+    /// </summary>
+    /// <param name="cutscenePath">The configured movie content address.</param>
+    private void EnqueueCutscene(string cutscenePath)
+    {
         cutsceneQueue.Enqueue(cutscenePath);
         PlayNextQueuedCutscene();
     }
@@ -338,16 +406,25 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
+    /// <param name="deferIntro">Whether to play the faction introduction after the loading overlay exits.</param>
     /// <returns>A task that completes after gameplay is active.</returns>
-    private async Task ActivateGameplayAsync(GameSession session, bool requestBriefing)
+    private async Task ActivateGameplayAsync(
+        GameSession session,
+        bool requestBriefing,
+        bool deferIntro = false
+    )
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
+        AppBootstrap bootstrap = AppBootstrap.Instance;
         await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
-        GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
+        if (!CanContinueStartup(bootstrap))
+            return;
+
+        GameManager clock = bootstrap.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
-        bool briefingsDisabled = AppBootstrap
-            .Instance.GetUserSettingsManager()
+        bool briefingsDisabled = bootstrap
+            .GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = ShouldPlayOpeningBriefing(
             requestBriefing,
@@ -359,10 +436,18 @@ public sealed class GameFlowController : MonoBehaviour
         if (loadingTransitionActive)
         {
             LoadingScreenController.CompletePendingLoad(
+                bootstrap,
                 () =>
                 {
-                    strategyController.ResumeMusic();
-                    FinishGameplayActivation(session, clock, metadata, playBriefing);
+                    Action activate = () =>
+                    {
+                        strategyController.ResumeMusic();
+                        FinishGameplayActivation(session, clock, metadata, playBriefing);
+                    };
+                    if (deferIntro)
+                        PlayFactionIntro(session.Game.GetPlayerFaction(), activate);
+                    else
+                        activate();
                 },
                 StrategyController.PlayStrategyReadySound,
                 () => AudioManager.EnsureExists().PlaySfx(StrategyUISoundPaths.ControlPress)

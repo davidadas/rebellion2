@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -122,6 +123,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     "Popular Support:|63",
                     "Energy:|12",
                 },
+                info.Rows.Select(row => row.Left + "|" + row.Right)
+            );
+        }
+
+        [Test]
+        public void Build_DestroyedPlanet_HidesOperationalStatusRows()
+        {
+            _planet.IsDestroyed = true;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            CollectionAssert.AreEqual(
+                new[] { "Location:|Core Sector", "Status:|Destroyed" },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
             );
         }
@@ -1181,6 +1195,194 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, mission));
 
             Assert.AreEqual("Corellia", info.Rows.Single(row => row.Left == "Target:").Right);
+        }
+
+        [TestCase(100)]
+        [TestCase(110)]
+        [TestCase(113)]
+        public void Build_StaleOfficerIntelligence_PreservesObservedArrivalDay(int currentTick)
+        {
+            Officer officer = ObserveMovingEnemyOfficer();
+            _game.CurrentTick = currentTick;
+            officer.Movement = null;
+
+            StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
+
+            Assert.AreEqual(
+                "Day 110",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+        }
+
+        [Test]
+        public void Build_PartialPlanetIntelligence_PreservesOlderOfficerArrivalDay()
+        {
+            Officer officer = ObserveMovingEnemyOfficer();
+            _game.CurrentTick = 110;
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _game.GetPlayerFaction(),
+                _planet,
+                _planetSector,
+                110,
+                PlanetIntelligenceCategory.Planet
+            );
+
+            StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
+
+            Assert.AreEqual(
+                "Day 110",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+        }
+
+        [Test]
+        public void Build_FreshOfficerIntelligence_UpdatesObservedArrivalDay()
+        {
+            Officer officer = ObserveMovingEnemyOfficer();
+            _game.CurrentTick = 110;
+            officer.Movement = new MovementState { TransitTicks = 30, TicksElapsed = 5 };
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _game.GetPlayerFaction(),
+                _planet,
+                _planetSector,
+                110,
+                PlanetIntelligenceCategory.Officers
+            );
+
+            StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
+
+            Assert.AreEqual(
+                "Day 135",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+        }
+
+        [Test]
+        public void Build_LegacyMovementIntelligence_OmitsUnknownArrivalDay()
+        {
+            Officer officer = ObserveMovingEnemyOfficer();
+            MovementState legacyMovement = _game
+                .GetPlayerFaction()
+                .Fog.Snapshots[_planetSector.InstanceID]
+                .Planets[_planet.InstanceID]
+                .Officers.Single()
+                .Movement;
+            legacyMovement.ObservedAtTick = null;
+            legacyMovement.IsObservation = false;
+            _game.CurrentTick = 110;
+
+            StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "ETA Destination:"));
+            Assert.AreEqual("Enroute", info.Rows.Single(row => row.Left == "Status:").Right);
+        }
+
+        [TestCase(100, 10)]
+        [TestCase(105, 15)]
+        [TestCase(109, 19)]
+        public void Build_LiveOfficerMovement_UsesCurrentProgress(int currentTick, int elapsed)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "friendly-moving",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 20, TicksElapsed = elapsed },
+            };
+            _game.AttachNode(officer, _planet);
+            _game.CurrentTick = currentTick;
+
+            StrategyStatusInfo info = CreateBuilder(_game, _sector)
+                .Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual(
+                "Day 110",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+            Assert.IsFalse(officer.Movement.IsObservation);
+            Assert.IsNull(officer.Movement.ObservedAtTick);
+        }
+
+        [Test]
+        public void Build_OfficerCarriedByObservedFleet_UsesFleetObservationTime()
+        {
+            _game.ChangeOwnership(_planet, _opponentId);
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "observed-fleet",
+                OwnerInstanceID = _opponentId,
+                Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 },
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _opponentId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "carried-officer",
+                OwnerInstanceID = _opponentId,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(officer, ship);
+            new FogOfWarRecorder().RecordEspionageSnapshot(
+                _game.GetPlayerFaction(),
+                _planet,
+                _planetSector,
+                100
+            );
+            _game.CurrentTick = 113;
+
+            StrategyStatusInfo info = BuildObservedOfficerStatus(officer.InstanceID);
+
+            Assert.AreEqual(
+                "Day 110",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+        }
+
+        /// <summary>
+        /// Records a moving enemy officer through the espionage observation boundary.
+        /// </summary>
+        /// <returns>The authoritative officer whose observed copy has ten travel ticks remaining.</returns>
+        private Officer ObserveMovingEnemyOfficer()
+        {
+            _game.ChangeOwnership(_planet, _opponentId);
+            Officer officer = new Officer
+            {
+                InstanceID = "observed-officer",
+                DisplayName = "Observed Officer",
+                OwnerInstanceID = _opponentId,
+                Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 },
+            };
+            _game.AttachNode(officer, _planet);
+            new FogOfWarRecorder().RecordEspionageSnapshot(
+                _game.GetPlayerFaction(),
+                _planet,
+                _planetSector,
+                100
+            );
+            return officer;
+        }
+
+        /// <summary>
+        /// Projects an observed officer through the faction view and the status presentation boundary.
+        /// </summary>
+        /// <param name="instanceId">The observed officer's instance identifier.</param>
+        /// <returns>The officer status presented from the faction's permitted information.</returns>
+        private StrategyStatusInfo BuildObservedOfficerStatus(string instanceId)
+        {
+            var galaxy = new FogOfWarQueries(_game).BuildFactionView(_game.GetPlayerFaction());
+            var sector = galaxy.GetChildren<GalaxyPlanetSector>().Single();
+            Planet planet = sector.GetChildren<Planet>().Single();
+            Officer officer = planet
+                .GetChildren<Officer>(recursive: true)
+                .Single(item => item.InstanceID == instanceId);
+            var mapPlanet = new GalaxyMapPlanet(sector, planet, "planet/icon");
+            var mapSector = new GalaxyMapSector(sector, new[] { mapPlanet });
+            return CreateBuilder(_game, mapSector)
+                .Build(new StrategyStatusTarget(mapPlanet, officer));
         }
 
         /// <summary>

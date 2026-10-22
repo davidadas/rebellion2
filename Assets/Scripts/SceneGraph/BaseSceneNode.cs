@@ -61,6 +61,16 @@ namespace Rebellion.SceneGraph
             ParentNode = newParent;
             LastParentInstanceID = ParentInstanceID;
             ParentInstanceID = newParent?.InstanceID;
+            OnHierarchyChanged();
+        }
+
+        /// <summary>
+        /// Notifies this subtree after its ancestor chain changes.
+        /// </summary>
+        protected virtual void OnHierarchyChanged()
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+                ((BaseSceneNode)child).OnHierarchyChanged();
         }
 
         /// <summary>
@@ -284,8 +294,13 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="recursive">Whether to copy descendants at every depth.</param>
         /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <param name="configureCopy">Optional configuration applied to each detached node copy.</param>
         /// <returns>A detached copy of this node.</returns>
-        public ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false)
+        public ISceneNode CreateCopy(
+            bool recursive = false,
+            bool includeDisabled = false,
+            Action<ISceneNode> configureCopy = null
+        )
         {
             BaseSceneNode copy = CreateNodeCopy();
             if (copy == null || copy.GetType() != GetType())
@@ -296,8 +311,9 @@ namespace Rebellion.SceneGraph
             }
 
             CopyStateTo(copy);
+            configureCopy?.Invoke(copy);
             if (recursive)
-                CopyChildrenTo(copy, includeDisabled);
+                CopyChildrenTo(copy, includeDisabled, configureCopy);
             return copy;
         }
 
@@ -336,7 +352,12 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="copy">The destination parent.</param>
         /// <param name="includeDisabled">Whether disabled branches should be copied.</param>
-        private void CopyChildrenTo(BaseSceneNode copy, bool includeDisabled)
+        /// <param name="configureCopy">Optional configuration applied to each detached node copy.</param>
+        private void CopyChildrenTo(
+            BaseSceneNode copy,
+            bool includeDisabled,
+            Action<ISceneNode> configureCopy
+        )
         {
             foreach (ISceneNode child in EnumerateChildren())
             {
@@ -345,7 +366,8 @@ namespace Rebellion.SceneGraph
 
                 ISceneNode childCopy = child.CreateCopy(
                     recursive: true,
-                    includeDisabled: includeDisabled
+                    includeDisabled: includeDisabled,
+                    configureCopy: configureCopy
                 );
                 AttachCopiedChild(copy, child, childCopy);
             }

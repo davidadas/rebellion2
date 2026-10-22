@@ -14,6 +14,57 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionFactoryTests
     {
+        [TestCase(InciteUprisingMission.MissionTypeID)]
+        [TestCase(SubdueUprisingMission.MissionTypeID)]
+        [TestCase(EspionageMission.MissionTypeID)]
+        [TestCase(DiplomacyMission.MissionTypeID)]
+        public void TryCreateMission_DestroyedLocation_ReturnsFalse(string missionTypeId)
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.AddVisitor("empire");
+            if (
+                missionTypeId == InciteUprisingMission.MissionTypeID
+                || missionTypeId == EspionageMission.MissionTypeID
+            )
+                game.ChangeOwnership(planet, "rebels");
+            if (missionTypeId == SubdueUprisingMission.MissionTypeID)
+                planet.BeginUprising();
+            MissionContext context = CreateContext(game, missionTypeId, "empire", officer, planet);
+            Assert.IsTrue(factory.TryCreateMission(context, out _));
+
+            planet.IsDestroyed = true;
+
+            Assert.IsFalse(factory.TryCreateMission(context, out Mission mission));
+            Assert.IsNull(mission);
+            Assert.IsEmpty(factory.GetAvailableMissionOptions(context));
+        }
+
+        [Test]
+        public void TryCreateMission_IntactSnapshotOfDestroyedLocation_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            game.ChangeOwnership(planet, "rebels");
+            Planet snapshot = new Planet
+            {
+                InstanceID = planet.InstanceID,
+                OwnerInstanceID = "rebels",
+            };
+            MissionContext context = CreateContext(
+                game,
+                InciteUprisingMission.MissionTypeID,
+                "empire",
+                officer,
+                snapshot
+            );
+            Assert.IsTrue(factory.TryCreateMission(context, out _));
+
+            planet.IsDestroyed = true;
+
+            Assert.IsFalse(factory.TryCreateMission(context, out _));
+            Assert.IsEmpty(factory.GetAvailableMissionOptions(context));
+            Assert.IsFalse(snapshot.IsDestroyed);
+        }
+
         [Test]
         public void TryCreateMission_ValidSabotageTarget_ReturnsMissionWithMatchingConfigKey()
         {

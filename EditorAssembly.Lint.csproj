@@ -55,6 +55,22 @@
       Condition="'$(RecorderEditorHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.Recorder.Editor.dll')"
       >Library/ScriptAssemblies/Unity.Recorder.Editor.dll</RecorderEditorHintPath
     >
+    <RenderPipelinesCoreHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.RenderPipelines.Core.Runtime.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.RenderPipelines.Core.Runtime.dll</RenderPipelinesCoreHintPath
+    >
+    <RenderPipelinesCoreHintPath
+      Condition="'$(RenderPipelinesCoreHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll')"
+      >Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll</RenderPipelinesCoreHintPath
+    >
+    <HighDefinitionRenderPipelineHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
+    >
+    <HighDefinitionRenderPipelineHintPath
+      Condition="'$(HighDefinitionRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
+      >Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
+    >
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -173,6 +189,20 @@
     </Reference>
     <Reference Include="Unity.Recorder.Editor" Condition="'$(RecorderEditorHintPath)' != ''">
       <HintPath>$(RecorderEditorHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Unity.RenderPipelines.Core.Runtime"
+      Condition="'$(RenderPipelinesCoreHintPath)' != ''"
+    >
+      <HintPath>$(RenderPipelinesCoreHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Unity.RenderPipelines.HighDefinition.Runtime"
+      Condition="'$(HighDefinitionRenderPipelineHintPath)' != ''"
+    >
+      <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

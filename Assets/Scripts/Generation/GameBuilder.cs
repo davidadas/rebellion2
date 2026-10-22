@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -104,24 +105,138 @@ namespace Rebellion.Generation
                 )
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
+            GameGenerationConfig generationConfig =
+                _summary.GenerationConfigOverride?.GetDeepCopy()
+                ?? _gameData.GenerationConfig.GetDeepCopy();
+            Faction[] factions = _gameData.Factions.GetDeepCopy();
+            ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
             {
                 Summary = _summary,
-                Config = _gameData.GenerationConfig.GetDeepCopy(),
+                Config = generationConfig,
                 GameConfig = _gameData.GameConfig.GetDeepCopy(),
                 Rng = _randomProvider,
 
                 Sectors = sectors,
-                Factions = _gameData.Factions.GetDeepCopy(),
+                Factions = factions,
                 Buildings = CopyTemplates(_gameData.Buildings),
                 CapitalShips = CopyTemplates(_gameData.CapitalShips),
                 Starfighters = CopyTemplates(_gameData.Starfighters),
                 Regiments = CopyTemplates(_gameData.Regiments),
                 SpecialForces = CopyTemplates(_gameData.SpecialForces),
                 Officers = CopyTemplates(_gameData.Officers),
-                Events = _gameData.GameEvents.GetDeepCopy(),
+                Events = FilterEvents(_gameData.GameEvents, _summary).GetDeepCopy(),
             };
+        }
+
+        /// <summary>
+        /// Excludes disabled event categories and any retained events whose authored
+        /// prerequisite chain includes an excluded event.
+        /// </summary>
+        /// <param name="events">The authored event definitions.</param>
+        /// <param name="summary">The selected game settings.</param>
+        /// <returns>The event definitions available to the generated campaign.</returns>
+        private static GameEvent[] FilterEvents(
+            IReadOnlyCollection<GameEvent> events,
+            GameSummary summary
+        )
+        {
+            HashSet<string> authoredEventIDs = new HashSet<string>(
+                events.Select(gameEvent => gameEvent.InstanceID),
+                StringComparer.Ordinal
+            );
+            List<GameEvent> retained = events
+                .Where(gameEvent => summary.IsEventCategoryEnabled(gameEvent.Category))
+                .ToList();
+            HashSet<string> retainedEventIDs = new HashSet<string>(
+                retained.Select(gameEvent => gameEvent.InstanceID),
+                StringComparer.Ordinal
+            );
+
+            bool removedDependency;
+            do
+            {
+                GameEvent[] dependents = retained
+                    .Where(gameEvent =>
+                        GetEventDependencies(gameEvent)
+                            .Any(dependencyID =>
+                                authoredEventIDs.Contains(dependencyID)
+                                && !retainedEventIDs.Contains(dependencyID)
+                            )
+                    )
+                    .ToArray();
+                removedDependency = dependents.Length > 0;
+                foreach (GameEvent dependent in dependents)
+                {
+                    retained.Remove(dependent);
+                    retainedEventIDs.Remove(dependent.InstanceID);
+                }
+            } while (removedDependency);
+
+            return retained.ToArray();
+        }
+
+        /// <summary>
+        /// Enumerates the event identifiers required by one authored schedule.
+        /// </summary>
+        /// <param name="gameEvent">The event whose schedule is inspected.</param>
+        /// <returns>The schedule's prerequisite event identifiers.</returns>
+        private static IEnumerable<string> GetEventDependencies(GameEvent gameEvent)
+        {
+            if (gameEvent.Schedule?.After != null)
+            {
+                yield return gameEvent.Schedule.After.EventInstanceID;
+                yield break;
+            }
+
+            AfterEvents dependencies = gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny;
+            if (dependencies == null)
+                yield break;
+
+            foreach (EventDependency dependency in dependencies.Events)
+                yield return dependency.EventInstanceID;
+        }
+
+        /// <summary>
+        /// Applies launch-specific settings to the detached faction templates.
+        /// </summary>
+        /// <param name="factions">The detached factions used by generation.</param>
+        /// <param name="modifiers">The configured faction overrides.</param>
+        private static void ApplyFactionModifiers(
+            IReadOnlyList<Faction> factions,
+            IReadOnlyList<FactionModifierConfig> modifiers
+        )
+        {
+            if (modifiers == null)
+                return;
+
+            HashSet<string> appliedFactionIDs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (FactionModifierConfig modifier in modifiers)
+            {
+                if (modifier == null || string.IsNullOrWhiteSpace(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        "Game generation config contains an unidentified faction modifier."
+                    );
+                if (!appliedFactionIDs.Add(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        $"Game generation config contains duplicate faction modifier '{modifier.FactionID}'."
+                    );
+
+                Faction faction = factions.SingleOrDefault(candidate =>
+                    candidate.InstanceID == modifier.FactionID
+                );
+                if (faction == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier references unknown faction '{modifier.FactionID}'."
+                    );
+                if (modifier.Settings == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier '{modifier.FactionID}' requires settings."
+                    );
+
+                faction.Settings = modifier.Settings.GetDeepCopy();
+            }
         }
 
         /// <summary>

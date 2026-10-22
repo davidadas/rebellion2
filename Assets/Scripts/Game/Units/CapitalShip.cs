@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -163,7 +164,26 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(HasGravityWell))]
         private bool _hasGravityWell;
 
+        private int? _sectorSuppression;
+        private PlanetSector _suppressionSector;
+
+        /// <summary>
+        /// Whether this ship can destroy planets.
+        /// </summary>
         public bool CanDestroyPlanets { get; set; }
+
+        /// <summary>
+        /// Sector garrison divisor while operational and stationary; values zero or one have no effect.
+        /// </summary>
+        public int SectorSuppression
+        {
+            get => _sectorSuppression.GetValueOrDefault();
+            set
+            {
+                _sectorSuppression = Math.Max(value, 0);
+                UpdateSuppressionSector();
+            }
+        }
 
         [PersistableMember(Name = nameof(DetectionRating))]
         private int _detectionRating;
@@ -303,6 +323,38 @@ namespace Rebellion.Game.Units
         public CapitalShip() { }
 
         /// <summary>
+        /// Updates sector membership after this ship or an ancestor is reparented.
+        /// </summary>
+        protected override void OnHierarchyChanged()
+        {
+            UpdateSuppressionSector();
+            base.OnHierarchyChanged();
+        }
+
+        /// <summary>
+        /// Supplies content defaults only when a retained unit predates the suppression property.
+        /// </summary>
+        /// <param name="suppression">The divisor authored on the unit template.</param>
+        internal void ApplySectorSuppressionDefault(int suppression)
+        {
+            if (!_sectorSuppression.HasValue)
+                SectorSuppression = suppression;
+        }
+
+        /// <summary>
+        /// Maintains suppression membership without scanning sector descendants.
+        /// </summary>
+        private void UpdateSuppressionSector()
+        {
+            PlanetSector sector = SectorSuppression > 1 ? GetParentOfType<PlanetSector>() : null;
+            if (_suppressionSector == sector)
+                return;
+            _suppressionSector?.UnregisterSuppressionSource(this);
+            _suppressionSector = sector;
+            sector?.RegisterSuppressionSource(this);
+        }
+
+        /// <summary>
         /// Creates an empty capital-ship copy.
         /// </summary>
         /// <returns>The created node copy.</returns>
@@ -365,6 +417,7 @@ namespace Rebellion.Game.Units
             copy.TractorBeamnRange = TractorBeamnRange;
             copy.HasGravityWell = HasGravityWell;
             copy.CanDestroyPlanets = CanDestroyPlanets;
+            copy.SectorSuppression = SectorSuppression;
             copy.DetectionRating = DetectionRating;
             copy.InitialParentInstanceID = InitialParentInstanceID;
         }

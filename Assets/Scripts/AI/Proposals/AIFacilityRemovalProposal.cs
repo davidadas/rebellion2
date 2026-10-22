@@ -129,7 +129,7 @@ namespace Rebellion.AI.Proposals
                         context.Game,
                         context.Faction
                     );
-                    context.CommitMaintenanceCost(Math.Max(0, before - after));
+                    context.RecordManufacturingMutation(Math.Max(0, before - after), 0);
                 }
                 return;
             }

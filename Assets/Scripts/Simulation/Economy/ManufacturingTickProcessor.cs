@@ -103,7 +103,7 @@ namespace Rebellion.Simulation
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,
-                    hasQueuedItems,
+                    items,
                     cycleIncrement
                 );
                 if (!hasQueuedItems)
@@ -198,8 +198,8 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Cancels unfinished building and troop orders whose planet destination is no longer
-        /// controlled by the producing faction.
+        /// Cancels unfinished orders assigned to destroyed planets and building or troop orders
+        /// whose planet destination is no longer controlled by the producing faction.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
         /// <param name="items">The production lane to validate.</param>
@@ -221,8 +221,8 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether an unfinished building or troop has a directly assigned planet that
-        /// is not controlled by its producer. Fleet and capital-ship destinations are excluded.
+        /// Returns whether an unfinished item targets a destroyed planet or a building or troop
+        /// targets a planet outside its producer's control. Orbital destinations are excluded.
         /// </summary>
         /// <param name="item">The item.</param>
         /// <returns>True when the invalid planet destination condition is met; otherwise false.</returns>
@@ -231,18 +231,21 @@ namespace Rebellion.Simulation
             if (
                 item is not ISceneNode sceneNode
                 || item is CapitalShip
-                || item is Starfighter
                 || sceneNode.GetParent() is not Planet destination
             )
             {
                 return false;
             }
 
-            return !string.Equals(
-                destination.GetOwnerInstanceID(),
-                item.ProducerOwnerID,
-                StringComparison.Ordinal
-            );
+            return destination.IsDestroyed
+                || (
+                    item is not Starfighter
+                    && !string.Equals(
+                        destination.GetOwnerInstanceID(),
+                        item.ProducerOwnerID,
+                        StringComparison.Ordinal
+                    )
+                );
         }
 
         /// <summary>
@@ -250,13 +253,13 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
-        /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
+        /// <param name="items">The active manufacturing queue.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
         /// <returns>Facilities with a ready production point.</returns>
         private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
-            bool hasQueuedItems,
+            IReadOnlyList<IManufacturable> items,
             double cycleIncrement
         )
         {
@@ -270,15 +273,21 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
+            long usefulPointCount =
+                items?.Sum(item => (long)Math.Max(0, GetRemainingProgress(item))) ?? 0;
             List<Building> readyFacilities = new List<Building>();
             foreach (Building facility in productionFacilities)
             {
                 int readyPointCount = AdvanceProductionFacility(
                     facility,
-                    hasQueuedItems,
+                    items?.Count > 0,
                     cycleIncrement
                 );
-                for (int pointIndex = 0; pointIndex < readyPointCount; pointIndex++)
+                int pointsToApply = (int)Math.Min(readyPointCount, usefulPointCount);
+                usefulPointCount -= pointsToApply;
+                if (readyPointCount > pointsToApply)
+                    facility.ProductionPointReady = false;
+                for (int pointIndex = 0; pointIndex < pointsToApply; pointIndex++)
                     readyFacilities.Add(facility);
             }
 
@@ -326,11 +335,13 @@ namespace Rebellion.Simulation
             }
 
             facility.ProductionCycleProgress += cycleIncrement;
-            int readyPointCount = (int)(facility.ProductionCycleProgress / processRate);
+            double readyPointValue = facility.ProductionCycleProgress / processRate;
+            int readyPointCount =
+                readyPointValue >= int.MaxValue ? int.MaxValue : (int)readyPointValue;
             if (readyPointCount <= 0)
                 return 0;
 
-            facility.ProductionCycleProgress -= readyPointCount * processRate;
+            facility.ProductionCycleProgress -= (double)readyPointCount * processRate;
             facility.ProductionPointReady = true;
             return readyPointCount;
         }

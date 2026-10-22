@@ -6,7 +6,10 @@
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
-        "glTFast"
+        "glTFast",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Runtime",
+        "GUID:fc53d371d58bc8b419af58ae12c9680a"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

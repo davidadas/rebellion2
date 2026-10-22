@@ -27,6 +27,26 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Gets the unlocked manufacturing templates available to a faction.
+        /// </summary>
+        /// <param name="type">The manufacturing category.</param>
+        /// <param name="ownerInstanceId">The faction identifier.</param>
+        /// <returns>The unlocked templates, or an empty list when the faction is unavailable.</returns>
+        public IReadOnlyList<IManufacturable> GetUnlockedManufacturables(
+            ManufacturingType type,
+            string ownerInstanceId
+        )
+        {
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            return faction == null
+                ? Array.Empty<IManufacturable>()
+                : faction
+                    .GetUnlockedTechnologies(type)
+                    .Select(technology => technology.GetReference())
+                    .ToArray();
+        }
+
+        /// <summary>
         /// Gets the active order assigned to one manufacturing lane.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -132,6 +152,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = ResolveRegisteredPlanet(producer);
+            destination = ResolveRegisteredNode(destination);
             if (
                 !CanAcceptManufacturingOrder(
                     producer,
@@ -169,6 +191,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = ResolveRegisteredPlanet(producer);
+            destination = ResolveRegisteredNode(destination);
             if (
                 !HasValidManufacturingOrderContext(
                     producer,
@@ -211,6 +235,30 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Resolves a planet snapshot to the registered game node.
+        /// </summary>
+        /// <param name="planet">The planet or visible snapshot.</param>
+        /// <returns>The registered planet, or null.</returns>
+        internal Planet ResolveRegisteredPlanet(Planet planet)
+        {
+            return string.IsNullOrEmpty(planet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Resolves a scene-node snapshot to the registered game node.
+        /// </summary>
+        /// <param name="node">The scene node or visible snapshot.</param>
+        /// <returns>The registered node, or null.</returns>
+        internal ISceneNode ResolveRegisteredNode(ISceneNode node)
+        {
+            return string.IsNullOrEmpty(node?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
+        }
+
+        /// <summary>
         /// Validates the invariant parts of a manufacturing order without reserving capacity.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -227,9 +275,10 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            return producer != null
+            return producer?.IsDestroyed == false
                 && template != null
                 && destination != null
+                && destination is not Planet { IsDestroyed: true }
                 && count > 0
                 && !string.IsNullOrEmpty(ownerInstanceId)
                 && string.Equals(
@@ -854,10 +903,12 @@ namespace Rebellion.Simulation
             if (maintenanceCost <= 0 || ManufacturingRules.IsResourceFacility(item))
                 return true;
 
-            int projectedHeadroom =
-                ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction)
-                - faction.GetTotalProjectedMaintenanceCost();
-            return projectedHeadroom + releasedMaintenance - maintenanceCost * count >= 0;
+            long projectedHeadroom =
+                (long)ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction)
+                - faction.GetTotalProjectedMaintenanceCost()
+                + releasedMaintenance;
+            long requiredMaintenance = (long)maintenanceCost * count;
+            return projectedHeadroom >= requiredMaintenance;
         }
     }
 }

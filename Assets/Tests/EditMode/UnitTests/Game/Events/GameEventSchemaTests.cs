@@ -10,6 +10,40 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventSchemaTests
     {
+        /// <summary>
+        /// Verifies that the category is optional and accepts only supported classifications.
+        /// </summary>
+        /// <param name="attribute">The optional category attribute.</param>
+        [TestCase("")]
+        [TestCase(" Category=\"None\"")]
+        [TestCase(" Category=\"Story\"")]
+        [TestCase(" Category=\"Disaster\"")]
+        public void Validate_OptionalEventCategory_AcceptsDocument(string attribute)
+        {
+            string xml =
+                $"<GameEvents><GameEvent{attribute}><InstanceID>EVENT</InstanceID>"
+                + "<Schedule><At Tick=\"1\"/></Schedule></GameEvent></GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        /// <summary>
+        /// Verifies that invalid category names cannot enter authored content.
+        /// </summary>
+        /// <param name="category">The unsupported category.</param>
+        [TestCase("Random")]
+        [TestCase("story")]
+        [TestCase("")]
+        [TestCase("1")]
+        public void Validate_UnknownEventCategory_RejectsDocument(string category)
+        {
+            string xml =
+                $"<GameEvents><GameEvent Category=\"{category}\"><InstanceID>EVENT</InstanceID>"
+                + "<Schedule><At Tick=\"1\"/></Schedule></GameEvent></GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
+        }
+
         [Test]
         public void Validate_ChangeEnergyCapacityWithOfficerSelector_RejectsDocument()
         {

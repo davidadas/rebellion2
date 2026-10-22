@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -1239,6 +1240,177 @@ namespace Rebellion.Game.Missions
                     && regiment.Movement == null
                 );
             return opposingFactionControlsPlanet || missionFactionHasTroops;
+        }
+
+        /// <summary>
+        /// Includes the incident and control requirements for the next execution to report success.
+        /// </summary>
+        /// <param name="participants">The single proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance of reporting success if the objective is reached.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
+        {
+            IReadOnlyList<IMissionParticipant> team =
+                participants as IReadOnlyList<IMissionParticipant>
+                ?? participants?.ToArray()
+                ?? Array.Empty<IMissionParticipant>();
+            double skillProbability = base.GetObjectiveSuccessProbability(team, context);
+            if (skillProbability <= 0)
+                return 0;
+            GameRoot game = context.Game;
+            Planet planet = GetMissionPlanet(context);
+            MissionEvaluationState state =
+                context.State ?? new MissionEvaluationState(game, planet);
+            if (state.GetGarrisonCount(OwnerInstanceID) > 0)
+                return 0;
+            int adjustment = GetMissionAdjustment(
+                state,
+                this,
+                team,
+                game.Config.Uprising.MissionLeadershipDivisor
+            );
+            if (
+                state.TryGetOutcomeProbability(
+                    ConfigKey,
+                    OwnerInstanceID,
+                    adjustment,
+                    out double probability
+                )
+            )
+                return skillProbability * probability;
+            string opponent = game.GetFactions()
+                .Select(faction => faction.InstanceID)
+                .FirstOrDefault(id => id != OwnerInstanceID);
+            Faction controller =
+                string.IsNullOrEmpty(planet.OwnerInstanceID) || !planet.IsPopulated()
+                    ? null
+                    : game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+            if (controller == null)
+                return GetProjectedController(game, planet, state, null, 0) != opponent
+                    ? skillProbability
+                    : 0;
+            GameConfig.UprisingConfig config = game.Config.Uprising;
+            Planet projection = state.GetSupportProjection(
+                controller,
+                config.InciteMissionSupportShift
+            );
+            int troopCount = state.GetGarrisonCount(controller.InstanceID);
+            int completionMask = 0;
+            for (int losses = 0; losses < 3; losses++)
+            {
+                if (
+                    GetProjectedController(game, projection, state, controller.InstanceID, losses)
+                    != opponent
+                )
+                    completionMask |= 1 << losses;
+            }
+            long baseScore = planet.GetUprisingIncidentBaseScore(
+                controller,
+                game.Config.AI.Garrison,
+                planet.GetPopularSupport(controller.InstanceID),
+                troopCount,
+                adjustment
+            );
+            double successes = 0;
+            for (int sum = 0; sum <= 2 * config.DiceRange; sum++)
+            {
+                int score = IntegerMath.SaturateToInt(sum + 2L * config.DiceAddend + baseScore);
+                int effect = GameConfig.UprisingConfig.GetConsequence(
+                    config.PrimaryConsequenceTable,
+                    score
+                );
+                int severity =
+                    effect > 0
+                        ? GameConfig.UprisingConfig.GetConsequence(
+                            config.SecondaryConsequenceTable,
+                            score
+                        )
+                        : 0;
+                int losses = (effect == 2 ? 1 : 0) + (severity == 2 ? 1 : 0);
+                if ((completionMask & (1 << losses)) != 0)
+                    successes += config.DiceRange + 1 - Math.Abs(sum - config.DiceRange);
+            }
+            probability = successes / ((config.DiceRange + 1d) * (config.DiceRange + 1d));
+            state.CacheOutcomeProbability(ConfigKey, OwnerInstanceID, adjustment, probability);
+            return skillProbability * probability;
+        }
+
+        /// <summary>
+        /// Resolves projected control after controller losses without rebuilding regiment collections.
+        /// </summary>
+        /// <param name="game">The game supplying factions and control configuration.</param>
+        /// <param name="planet">The projected planet support and colonization state.</param>
+        /// <param name="state">The captured garrison assessment.</param>
+        /// <param name="losingOwner">The owner whose regiments may be destroyed.</param>
+        /// <param name="losses">The maximum regiment losses.</param>
+        /// <returns>The projected controlling faction identifier.</returns>
+        private static string GetProjectedController(
+            GameRoot game,
+            Planet planet,
+            MissionEvaluationState state,
+            string losingOwner,
+            int losses
+        )
+        {
+            IReadOnlyList<string> owners = state.GetGarrisonOwners();
+            if (!planet.IsColonized)
+                return
+                    state.GetGarrisonCount(planet.OwnerInstanceID)
+                    > (planet.OwnerInstanceID == losingOwner ? losses : 0)
+                    ? planet.OwnerInstanceID
+                    : null;
+            int ownerCount = 0;
+            string soleOwner = null;
+            for (int index = 0; index < owners.Count; index++)
+            {
+                string owner = owners[index];
+                if (state.GetGarrisonCount(owner) <= (owner == losingOwner ? losses : 0))
+                    continue;
+                ownerCount++;
+                soleOwner = owner;
+            }
+            return planet.ResolveController(game, ownerCount, soleOwner)?.InstanceID;
+        }
+
+        /// <summary>
+        /// Combines captured active mission contributions with the supplied proposed team.
+        /// </summary>
+        /// <param name="state">The observed planet assessment shared by candidate evaluations.</param>
+        /// <param name="proposed">The proposed mission, counted exactly once.</param>
+        /// <param name="participants">The same proposed team used for skill probability.</param>
+        /// <param name="divisor">The configured leadership divisor.</param>
+        /// <returns>The signed incident-score adjustment.</returns>
+        private static int GetMissionAdjustment(
+            MissionEvaluationState state,
+            Mission proposed,
+            IReadOnlyList<IMissionParticipant> participants,
+            int divisor
+        )
+        {
+            int adjustment = 0;
+            string proposedId = proposed.PeekInstanceID();
+            IReadOnlyList<Mission> active = state.GetActiveMissions();
+            for (int index = 0; index < active.Count; index++)
+            {
+                Mission mission = active[index];
+                if (
+                    ReferenceEquals(mission, proposed)
+                    || (!string.IsNullOrEmpty(proposedId) && mission.PeekInstanceID() == proposedId)
+                )
+                    continue;
+                if (mission is InciteUprisingMission)
+                    adjustment += state.GetAverageLeadership(mission) / divisor;
+                else if (mission is SubdueUprisingMission)
+                    adjustment -= state.GetAverageLeadership(mission) / divisor;
+            }
+            int total = 0;
+            for (int index = 0; index < participants.Count; index++)
+                total += participants[index].GetEffectiveRating(SkillRating.Leadership);
+            int average = participants.Count == 0 ? 0 : total / participants.Count;
+            return adjustment + average / divisor;
         }
     }
 
@@ -2934,6 +3106,73 @@ namespace Rebellion.Game.Missions
             return !GetMissionInvalidationReason(game).HasValue
                 && GetParent() is Planet planet
                 && planet.GetOwnerInstanceID() == OwnerInstanceID;
+        }
+
+        /// <summary>
+        /// Includes the support and garrison requirements for the next execution to report success.
+        /// </summary>
+        /// <param name="participants">The proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance of reporting success if the objective is reached.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
+        {
+            double skillProbability = base.GetObjectiveSuccessProbability(participants, context);
+            if (skillProbability <= 0)
+                return 0;
+            GameRoot game = context.Game;
+            Planet planet = GetMissionPlanet(context);
+            if (planet?.IsInUprising != true)
+                return 0;
+            MissionEvaluationState state =
+                context.State ?? new MissionEvaluationState(game, planet);
+            if (
+                state.TryGetOutcomeProbability(
+                    ConfigKey,
+                    OwnerInstanceID,
+                    0,
+                    out double probability
+                )
+            )
+                return skillProbability * probability;
+            GameConfig.UprisingConfig config = game.Config.Uprising;
+            Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            IReadOnlyList<string> owners = state.GetGarrisonOwners();
+            int successes = 0;
+            for (int roll = 0; roll <= config.SubdueOwnedSupportRange; roll++)
+            {
+                Planet projection = state.GetSupportProjection(
+                    faction,
+                    config.SubdueOwnedSupportBase + roll
+                );
+                string owner = !projection.IsColonized
+                    ? (
+                        state.GetGarrisonCount(projection.OwnerInstanceID) > 0
+                            ? projection.OwnerInstanceID
+                            : null
+                    )
+                    : projection.ResolveController(game, owners)?.InstanceID;
+                if (owner != planet.OwnerInstanceID)
+                {
+                    successes++;
+                    continue;
+                }
+                if (string.IsNullOrEmpty(owner) || !projection.IsPopulated())
+                    continue;
+                if (
+                    state.GetGarrisonCount(owner)
+                    >= projection.GetGarrisonRequirement(
+                        game.GetFactionByOwnerInstanceID(owner),
+                        game.Config.AI.Garrison
+                    )
+                )
+                    successes++;
+            }
+            probability = successes / (config.SubdueOwnedSupportRange + 1d);
+            state.CacheOutcomeProbability(ConfigKey, OwnerInstanceID, 0, probability);
+            return skillProbability * probability;
         }
     }
 }

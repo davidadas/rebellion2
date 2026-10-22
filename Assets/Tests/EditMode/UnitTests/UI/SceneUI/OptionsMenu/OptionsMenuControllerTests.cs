@@ -69,6 +69,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void TearDown()
         {
             _controller?.Dispose();
+            LoadingScreenController loadingController =
+                UnityEngine.Object.FindAnyObjectByType<LoadingScreenController>(
+                    FindObjectsInactive.Include
+                );
+            if (loadingController != null)
+                UnityEngine.Object.DestroyImmediate(loadingController.gameObject);
             if (_windowRoot != null)
                 UnityEngine.Object.DestroyImmediate(_windowRoot);
             if (_bootstrapObject != null)
@@ -217,8 +223,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             GetField<Button>(view, "_applyButton").onClick.Invoke();
 
+            Assert.IsFalse(_controller.IsOpen);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             CollectionAssert.AreEqual(
-                new[] { compatibleModID, otherPackModID },
+                new[] { otherPackModID },
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
             );
         }
@@ -306,6 +314,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyShowingStats = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowUnitCardStats;
+            bool initiallyShowingFrameRate = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.ShowFrameRate;
             OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_userInterfaceRows"
@@ -318,6 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView statsRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
+            );
+            OptionsToggleRowView frameRateRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.ShowFrameRate
             );
 
             GetField<Button>(showRow, "_button").onClick.Invoke();
@@ -336,6 +350,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyShowingStats,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowUnitCardStats
+            );
+
+            GetField<Button>(frameRateRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyShowingFrameRate,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowFrameRate
             );
         }
 
@@ -356,14 +376,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleGameLaunchSpeedChanged_DropdownSelection_StagesSpeed()
         {
-            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_gameLaunchSpeedDropdown");
 
             dropdown.value = (int)GameLaunchSpeed.Fast;
 
             Assert.AreEqual(
                 GameLaunchSpeed.Fast,
-                _bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
             );
         }
 
@@ -401,6 +421,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(view, "_backToGameButton").onClick.Invoke();
             Assert.IsFalse(_controller.IsOpen);
             Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
+        }
+
+        [Test]
+        public void HandleBackToGame_UnavailableSavedPack_ClosesWindow()
+        {
+            _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = "missing-pack";
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender();
+
+            GetField<Button>(view, "_backToGameButton").onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsOpen);
         }
 
         [Test]
@@ -533,6 +567,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotMetadata0");
             Assert.AreEqual("Hard • Turn 42", metadata.text);
+        }
+
+        [Test]
+        public void RefreshSaveSlots_CustomGame_RendersCustomAndTurn()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.GalaxySize = GameSize.Small;
+            game.Summary.GenerationConfigOverride = new GameGenerationConfig();
+            game.CurrentTick = 42;
+            _saveGameManager.SaveGameData(game, "custom_save", "Custom Save");
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+
+            TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.AreEqual("Custom • Turn 42", metadata.text);
         }
 
         [Test]

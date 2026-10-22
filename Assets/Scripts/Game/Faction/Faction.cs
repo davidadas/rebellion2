@@ -8,6 +8,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -32,6 +33,8 @@ namespace Rebellion.Game.Factions
     public class Faction : BaseGameEntity
     {
         private FactionSettings _settings = new FactionSettings();
+
+        [PersistableMember(Name = "NextFleetNumber")]
         private int _nextFleetNumber = 1;
 
         [PersistableMember(Name = "NextGenericShipNameNumbers")]
@@ -133,11 +136,20 @@ namespace Rebellion.Game.Factions
         public int RawMaterials => RawMaterialStockpile;
         public int RefinedMaterials => RefinedMaterialStockpile;
         public int RawMaterialSupply =>
-            GetTotalAvailableMinedResources() * Settings.RefinementMultiplier;
+            IntegerMath.SaturatingMultiply(
+                GetTotalAvailableMinedResources(),
+                Settings.RefinementMultiplier
+            );
         public int RefinedMaterialSupply =>
-            GetTotalAvailableMaterialsRaw() * Settings.RefinementMultiplier;
+            IntegerMath.SaturatingMultiply(
+                GetTotalAvailableMaterialsRaw(),
+                Settings.RefinementMultiplier
+            );
         public int MaintenanceCapacity =>
-            GetTotalAvailableMaterialsRaw() * Settings.ResourceProcessingPointsPerFacility;
+            IntegerMath.SaturatingMultiply(
+                GetTotalAvailableMaterialsRaw(),
+                Settings.ResourceProcessingPointsPerFacility
+            );
         public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
         public int ProjectedMaintenanceHeadroom =>
             MaintenanceCapacity - GetTotalProjectedMaintenanceCost();

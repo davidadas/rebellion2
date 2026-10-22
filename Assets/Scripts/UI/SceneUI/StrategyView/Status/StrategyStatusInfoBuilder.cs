@@ -183,9 +183,14 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Status:",
-                string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral" : "Active"
+                planet.IsDestroyed ? "Destroyed"
+                    : string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral"
+                    : "Active"
             )
         );
+        if (planet.IsDestroyed)
+            return info;
+
         AddHeadquartersEtaRow(info, planet);
         info.Rows.Add(
             new StrategyStatusRow("General:", FindPlanetOfficerByRank(planet, OfficerRank.General))
@@ -947,7 +952,10 @@ internal sealed class StrategyStatusInfoBuilder
         if (movement == null)
             return;
 
-        AddEtaDestinationRow(info, Math.Max(movement.TicksRemaining(), 0));
+        if (movement.IsObservation && !movement.ObservedAtTick.HasValue)
+            return;
+
+        AddEtaDestinationRow(info, Math.Max(movement.TicksRemaining(), 0), movement.ObservedAtTick);
     }
 
     /// <summary>
@@ -955,9 +963,14 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="info">The status information receiving the ETA row.</param>
     /// <param name="remainingTicks">The non-negative number of ticks remaining.</param>
-    private void AddEtaDestinationRow(StrategyStatusInfo info, int remainingTicks)
+    /// <param name="observedAtTick">The frozen observation tick, or null for current information.</param>
+    private void AddEtaDestinationRow(
+        StrategyStatusInfo info,
+        int remainingTicks,
+        int? observedAtTick = null
+    )
     {
-        long arrivalDay = (long)currentTick + Math.Max(remainingTicks, 0);
+        long arrivalDay = (long)(observedAtTick ?? currentTick) + Math.Max(remainingTicks, 0);
         info.Rows.Add(new StrategyStatusRow("ETA Destination:", $"Day {arrivalDay}"));
     }
 

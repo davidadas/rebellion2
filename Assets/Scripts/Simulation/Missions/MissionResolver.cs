@@ -181,6 +181,35 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Removes killed officers from an attached mission and reevaluates the remaining team.
+        /// </summary>
+        /// <param name="mission">The mission that contained the officers when they died.</param>
+        /// <param name="officers">The killed officers to remove from the mission.</param>
+        /// <param name="results">The batch receiving relocation or interruption results.</param>
+        internal void RemoveKilledParticipants(
+            Mission mission,
+            IReadOnlyCollection<Officer> officers,
+            List<GameResult> results
+        )
+        {
+            if (mission?.GetParent() is not Planet missionPlanet || officers == null)
+                return;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            List<IMissionParticipant> attachedOfficers = officers
+                .Where(officer => officer?.IsKilled == true && officer.GetParent() == mission)
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            _movementManager.CompleteMissionAtLocation(attachedOfficers, missionPlanet, results);
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results);
+        }
+
+        /// <summary>
         /// Immediately interrupts missions containing newly captured officers.
         /// </summary>
         /// <param name="officers">The newly captured officers.</param>
@@ -336,14 +365,17 @@ namespace Rebellion.Simulation
         /// <param name="results">The mission results to apply.</param>
         private void ApplyOfficerDeaths(IEnumerable<GameResult> results)
         {
-            foreach (
-                Officer officer in results
-                    .OfType<OfficerKilledResult>()
-                    .Select(result => result.TargetOfficer)
-                    .Where(officer => officer?.IsKilled == false)
-                    .Distinct()
-            )
-                _personnelCommands.KillOfficer(officer);
+            HashSet<Officer> handledOfficers = new HashSet<Officer>();
+            foreach (OfficerKilledResult result in results.OfType<OfficerKilledResult>())
+            {
+                Officer officer = result.TargetOfficer;
+                if (officer == null)
+                    continue;
+
+                result.ParentAtDeath ??= officer.GetParent();
+                if (!officer.IsKilled && handledOfficers.Add(officer))
+                    _personnelCommands.KillOfficer(officer);
+            }
         }
 
         /// <summary>
@@ -405,15 +437,17 @@ namespace Rebellion.Simulation
                 .Except(localParticipants)
                 .ToList();
 
-            MoveNonReturningParticipantsToPlanet(mission, missionPlanet);
+            MoveNonReturningParticipantsToPlanet(mission, missionPlanet, results);
             List<IMovable> strandedUnits = _movementManager.CompleteMissionAtLocation(
                 localParticipants,
-                missionPlanet
+                missionPlanet,
+                results
             );
             List<IMovable> failedReturns = _movementManager.ReturnFromMission(
                 returnParticipants,
                 additionalPassengers,
-                out Planet returnLocation
+                out Planet returnLocation,
+                results
             );
             strandedUnits.AddRange(failedReturns);
             if (completedResult != null)
@@ -488,7 +522,12 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        private void MoveNonReturningParticipantsToPlanet(Mission mission, Planet missionPlanet)
+        /// <param name="results">The mission results receiving placement changes.</param>
+        private void MoveNonReturningParticipantsToPlanet(
+            Mission mission,
+            Planet missionPlanet,
+            List<GameResult> results
+        )
         {
             if (missionPlanet == null)
                 return;
@@ -501,7 +540,7 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
-            _movementManager.CompleteMissionAtLocation(participants, missionPlanet);
+            _movementManager.CompleteMissionAtLocation(participants, missionPlanet, results);
         }
 
         /// <summary>
@@ -809,7 +848,8 @@ namespace Rebellion.Simulation
             List<IMovable> stranded = _movementManager.ReturnFromMission(
                 new[] { decoy },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                results
             );
             ResolveStrandedMissionUnits(stranded, planet, results);
         }
@@ -907,8 +947,8 @@ namespace Rebellion.Simulation
             if (increasePercent <= 0 || rolledTicks <= 0)
                 return rolledTicks;
 
-            return (int)
-                Math.Ceiling(rolledTicks * _percentScale / (_percentScale + increasePercent));
+            long denominator = (long)_percentScale + increasePercent;
+            return (int)Math.Ceiling(rolledTicks * (double)_percentScale / denominator);
         }
     }
 }

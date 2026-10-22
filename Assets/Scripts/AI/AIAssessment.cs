@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
 {
@@ -502,9 +503,14 @@ namespace Rebellion.AI
             );
             MaintenanceCapacityPerResourcePair =
                 ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
-            MaintenanceCapacity = AvailableMaterialCapacity * MaintenanceCapacityPerResourcePair;
-            ProjectedMaintenanceHeadroom =
-                MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
+            MaintenanceCapacity = IntegerMath.SaturatingMultiply(
+                AvailableMaterialCapacity,
+                MaintenanceCapacityPerResourcePair
+            );
+            ProjectedMaintenanceHeadroom = IntegerMath.SaturateToInt(
+                (long)AvailableMaterialCapacity * MaintenanceCapacityPerResourcePair
+                    - (faction?.GetTotalProjectedMaintenanceCost() ?? 0)
+            );
             ProjectedResourceNodeCapacity = faction?.GetTotalRawResourceNodes() ?? 0;
             ProjectedMinedResourceCapacity = faction?.GetTotalRawMinedResources() ?? 0;
             ProjectedRefinementCapacity = faction?.GetTotalRawRefinementCapacity() ?? 0;
@@ -512,11 +518,14 @@ namespace Rebellion.AI
                 ProjectedResourceNodeCapacity,
                 Math.Min(ProjectedMinedResourceCapacity, ProjectedRefinementCapacity)
             );
-            ProjectedEconomyMaintenanceHeadroom =
-                ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
-                - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
-            RefinedMaterialSupply =
-                AvailableMaterialCapacity * (faction?.Settings?.RefinementMultiplier ?? 0);
+            ProjectedEconomyMaintenanceHeadroom = IntegerMath.SaturateToInt(
+                (long)ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
+                    - (faction?.GetTotalProjectedMaintenanceCost() ?? 0)
+            );
+            RefinedMaterialSupply = IntegerMath.SaturatingMultiply(
+                AvailableMaterialCapacity,
+                faction?.Settings?.RefinementMultiplier ?? 0
+            );
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
             PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
             PendingRefinedMaterialRequestCount =

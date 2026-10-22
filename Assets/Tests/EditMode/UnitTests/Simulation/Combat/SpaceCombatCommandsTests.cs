@@ -1506,6 +1506,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_StalledEnemyWithdrawal_KeepsEntireVictoriousFleetAtCombatPlanet()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 1;
             game.Random = new SequenceRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
             game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
@@ -1841,7 +1842,7 @@ namespace Rebellion.Tests.Simulation
                 pending,
                 "Player-involved encounter should emit a PendingCombatResult"
             );
-            Assert.AreSame(planet, pending.Planet);
+            Assert.AreEqual(planet.InstanceID, pending.PlanetInstanceID);
             Assert.IsTrue(manager.HasPendingDecision);
             Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
 
@@ -1904,11 +1905,9 @@ namespace Rebellion.Tests.Simulation
                 .OfType<PendingCombatResult>()
                 .Single();
 
-            Assert.AreSame(fleet, pending.AttackerFleet);
-            Assert.IsNull(pending.DefenderFleet);
             Assert.AreEqual("empire", pending.AttackerOwnerInstanceID);
             Assert.AreEqual("alliance", pending.DefenderOwnerInstanceID);
-            Assert.AreSame(planet, pending.Planet);
+            Assert.AreEqual(planet.InstanceID, pending.PlanetInstanceID);
             Assert.IsTrue(pending.AttackerCanRetreat);
             Assert.IsFalse(pending.DefenderCanRetreat);
         }
@@ -1968,12 +1967,14 @@ namespace Rebellion.Tests.Simulation
                 .OfType<PendingCombatResult>()
                 .Single();
 
-            bool empireCanRetreat = ReferenceEquals(pending.AttackerFleet, empireFleet)
-                ? pending.AttackerCanRetreat
-                : pending.DefenderCanRetreat;
-            bool allianceCanRetreat = ReferenceEquals(pending.AttackerFleet, allianceFleet)
-                ? pending.AttackerCanRetreat
-                : pending.DefenderCanRetreat;
+            bool empireCanRetreat =
+                pending.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
+                    ? pending.AttackerCanRetreat
+                    : pending.DefenderCanRetreat;
+            bool allianceCanRetreat =
+                pending.AttackerOwnerInstanceID == allianceFleet.OwnerInstanceID
+                    ? pending.AttackerCanRetreat
+                    : pending.DefenderCanRetreat;
 
             Assert.IsFalse(empireCanRetreat);
             Assert.IsTrue(allianceCanRetreat);
@@ -2026,7 +2027,7 @@ namespace Rebellion.Tests.Simulation
                 .Select(ship => ship.InstanceID)
                 .ToHashSet();
             CollectionAssert.AreEquivalent(expectedShipIds, actualShipIds);
-            Assert.AreSame(planet, pending.Planet);
+            Assert.AreEqual(planet.InstanceID, pending.PlanetInstanceID);
             Assert.IsFalse(HasHostileFleets(planet));
         }
 
@@ -2925,6 +2926,7 @@ namespace Rebellion.Tests.Simulation
         public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 1;
             game.Random = new SequenceRNG();
             game.SetFactionController("alliance", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "empire");
@@ -3241,9 +3243,10 @@ namespace Rebellion.Tests.Simulation
                 .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
-            bool empireCanRetreat = ReferenceEquals(pending.AttackerFleet, empireFleet)
-                ? pending.AttackerCanRetreat
-                : pending.DefenderCanRetreat;
+            bool empireCanRetreat =
+                pending.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
+                    ? pending.AttackerCanRetreat
+                    : pending.DefenderCanRetreat;
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
             Assert.IsFalse(empireCanRetreat);
@@ -3864,7 +3867,7 @@ namespace Rebellion.Tests.Simulation
                 CreatePendingEncounter(failResolution: true);
             Assert.IsTrue(commands.TryGetPendingCombat(out PendingCombatResult before));
             bool couldRetreat =
-                before.AttackerFleet == empireFleet
+                before.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
                     ? before.AttackerCanRetreat
                     : before.DefenderCanRetreat;
             Assert.IsTrue(couldRetreat);
@@ -3875,7 +3878,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreNotSame(before, after);
             Assert.IsFalse(
-                after.AttackerFleet == empireFleet
+                after.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
                     ? after.AttackerCanRetreat
                     : after.DefenderCanRetreat
             );

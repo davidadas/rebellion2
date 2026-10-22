@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -57,15 +58,19 @@ namespace Rebellion.Simulation
             Planet targetPlanet
         )
         {
-            if (targetPlanet == null)
-                return null;
-
-            List<Fleet> fleets =
+            List<Fleet> requestedFleets =
                 attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-            if (!_queries.CanExecute(fleets, targetPlanet))
+            if (
+                !_queries.TryResolveCommand(
+                    requestedFleets,
+                    targetPlanet,
+                    out List<Fleet> fleets,
+                    out Planet liveTarget
+                ) || !_queries.CanExecute(fleets, liveTarget)
+            )
                 return null;
 
-            PlanetaryAssaultResult result = Execute(fleets, targetPlanet);
+            PlanetaryAssaultResult result = Execute(fleets, liveTarget);
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);
             if (result.OwnershipChange != null)
@@ -73,6 +78,28 @@ namespace Rebellion.Simulation
 
             ResultsProduced?.Invoke(results);
             return result;
+        }
+
+        /// <summary>
+        /// Executes an assault and returns a detached report limited to supplied visible state.
+        /// </summary>
+        /// <param name="attackingFleets">The attacking fleet snapshots.</param>
+        /// <param name="targetPlanet">The visible target planet snapshot.</param>
+        /// <param name="perspectiveOwnerInstanceId">The faction receiving the report.</param>
+        /// <returns>The faction-visible report, or null when the assault cannot execute.</returns>
+        public CombatReport TryExecuteReport(
+            IReadOnlyList<Fleet> attackingFleets,
+            Planet targetPlanet,
+            string perspectiveOwnerInstanceId
+        )
+        {
+            HashSet<string> visibleUnitIds = CombatReport.CaptureVisibleUnitInstanceIDs(
+                (attackingFleets ?? Array.Empty<Fleet>()).Cast<ISceneNode>().Append(targetPlanet)
+            );
+            PlanetaryAssaultResult result = TryExecute(attackingFleets, targetPlanet);
+            return result?.AttackerOwnerInstanceID == perspectiveOwnerInstanceId
+                ? CombatReport.CaptureVisible(result, perspectiveOwnerInstanceId, visibleUnitIds)
+                : null;
         }
 
         /// <summary>

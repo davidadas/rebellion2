@@ -123,6 +123,24 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsLaunchOverride()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 25,
+            };
+            _summary.AIDifficultyModifiers = expected;
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
@@ -137,6 +155,20 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.MaintenanceCapacityPercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsLaunchOverride()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                ManufacturingSpeedPercent = 125,
+            };
+            _summary.PlayerDifficultyModifiers = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(expected, actual);
         }
 
         [Test]
@@ -1006,6 +1038,46 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Fleet>(),
                 restoredFleet
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedDestroyedPlanet_ClearsControlAndPreservesOrbitingFleet()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _planet.SetFullPopularSupport(_faction1.InstanceID);
+            _planet.IsHeadquarters = true;
+            _faction1.HQInstanceID = _planet.InstanceID;
+            _planet.BeginUprising();
+            _planet.NextUprisingIncidentTick = 100;
+            _planet.NextBlockadeSupportShiftTick = 100;
+            _planet.IsDestroyed = true;
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            restored.SetConfig(TestConfig.Create());
+            restored.RebuildSceneState();
+
+            Planet planet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
+            Fleet fleet = restored.GetSceneNodeByInstanceID<Fleet>(_fleet.InstanceID);
+            Assert.IsNull(planet.OwnerInstanceID);
+            Assert.IsFalse(planet.IsColonized);
+            Assert.IsFalse(planet.IsPopulated());
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.IsFalse(planet.IsHeadquarters);
+            Assert.IsNull(restored.GetFactionByOwnerInstanceID(_faction1.InstanceID).HQInstanceID);
+            Assert.Zero(planet.NextUprisingIncidentTick);
+            Assert.Zero(planet.NextBlockadeSupportShiftTick);
+            Assert.AreEqual(100, planet.GetPopularSupport(_faction1.InstanceID));
+            Assert.AreSame(planet, fleet.GetParent());
+            Assert.AreEqual(_faction1.InstanceID, fleet.OwnerInstanceID);
+            Assert.IsEmpty(
+                restored
+                    .GetFactionByOwnerInstanceID(_faction1.InstanceID)
+                    .GetOwnedUnitsByType<Planet>()
             );
         }
 

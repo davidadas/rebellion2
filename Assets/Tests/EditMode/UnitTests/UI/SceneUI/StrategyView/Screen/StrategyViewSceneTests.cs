@@ -14,6 +14,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
     public class StrategyViewSceneTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+        private const string _galacticInformationDisplayPrefabPath =
+            "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
         private const string _scenePath = "Assets/Scenes/StrategyView.unity";
 
         [Test]
@@ -73,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void SaveLoadStarting_AuthoredPrefab_ConcealsCompleteStrategyPresentation()
+        public void LoadStarting_AuthoredPrefab_ConcealsCompleteStrategyPresentation()
         {
             GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
 
@@ -83,7 +85,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     prefabRoot.GetComponentInChildren<StrategyController>(true);
                 CanvasGroup contentGroup = controller.GetComponent<CanvasGroup>();
                 MethodInfo handler = typeof(StrategyController).GetMethod(
-                    "HandleSaveLoadStarting",
+                    "HandleLoadStarting",
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
 
@@ -113,6 +115,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 Assert.IsNotNull(fitter);
                 Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, fitter.aspectMode);
                 Assert.AreEqual(16f / 9f, fitter.aspectRatio, 0.0001f);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
+        [Test]
+        public void AuthoredPrefab_GalacticInformationDisplay_IsStoredOutsideSceneHierarchy()
+        {
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
+
+            try
+            {
+                Assert.IsNotNull(
+                    AssetDatabase.LoadAssetAtPath<GalacticInformationDisplayView>(
+                        _galacticInformationDisplayPrefabPath
+                    )
+                );
+                Assert.IsNull(
+                    prefabRoot.GetComponentInChildren<GalacticInformationDisplayView>(true)
+                );
             }
             finally
             {

@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -766,44 +767,30 @@ namespace Rebellion.Simulation
             int rollA = _provider.NextInt(0, config.DiceRange + 1) + config.DiceAddend;
             int rollB = _provider.NextInt(0, config.DiceRange + 1) + config.DiceAddend;
 
-            int troopMultiplier = GetUprisingTroopMultiplier(planet, faction);
-            int threshold = CalculateUprisingThreshold(supportForController);
             int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
 
-            int combinedScore =
-                rollA
-                + rollB
-                + (threshold - troopMultiplier * controllerTroopCount)
-                + missionAdjustment;
+            int combinedScore = IntegerMath.SaturateToInt(
+                (long)rollA
+                    + rollB
+                    + planet.GetUprisingIncidentBaseScore(
+                        faction,
+                        _game.Config.AI.Garrison,
+                        supportForController,
+                        controllerTroopCount,
+                        missionAdjustment
+                    )
+            );
 
-            uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
+            uprisingEffect = GameConfig.UprisingConfig.GetConsequence(
+                config.PrimaryConsequenceTable,
+                combinedScore
+            );
 
             if (uprisingEffect > 0)
-                uprisingSeverity = GetThresholdTableValue(
+                uprisingSeverity = GameConfig.UprisingConfig.GetConsequence(
                     config.SecondaryConsequenceTable,
                     combinedScore
                 );
-        }
-
-        /// <summary>
-        /// Gets the troop multiplier applied to the controller's garrison strength.
-        /// </summary>
-        /// <param name="planet">The planet in uprising.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The troop multiplier for this planet and faction.</returns>
-        private static int GetUprisingTroopMultiplier(Planet planet, Faction faction)
-        {
-            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
-            if (
-                parentSector != null
-                && parentSector.SectorType == PlanetSectorType.Core
-                && faction.Settings.UprisingResistance > 1
-            )
-            {
-                return faction.Settings.UprisingResistance;
-            }
-
-            return 1;
         }
 
         /// <summary>
@@ -1146,45 +1133,6 @@ namespace Rebellion.Simulation
                 return;
 
             _planetaryControl.ChangePopularSupport(planet, faction, shift);
-        }
-
-        /// <summary>
-        /// Calculates the garrison threshold for an uprising check.
-        /// </summary>
-        /// <param name="supportForController">Popular support for the controlling faction.</param>
-        /// <returns>The garrison threshold.</returns>
-        private int CalculateUprisingThreshold(int supportForController)
-        {
-            GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
-
-            if (supportForController >= config.SupportThreshold)
-                return 0;
-
-            return (int)
-                Math.Ceiling(
-                    (config.SupportThreshold - supportForController)
-                        / (double)config.GarrisonDivisor
-                );
-        }
-
-        /// <summary>
-        /// Looks up a value from an uprising table. Finds the highest threshold
-        /// that the score meets or exceeds, and returns the associated value.
-        /// </summary>
-        /// <param name="table">The threshold-to-value lookup table.</param>
-        /// <param name="score">The score to look up against the table thresholds.</param>
-        /// <returns>The value associated with the highest matching threshold.</returns>
-        private static int GetThresholdTableValue(Dictionary<int, int> table, int score)
-        {
-            int result = 0;
-            foreach (KeyValuePair<int, int> entry in table.OrderBy(e => e.Key))
-            {
-                if (score >= entry.Key)
-                    result = entry.Value;
-                else
-                    break;
-            }
-            return result;
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -121,6 +122,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 
             Assert.IsFalse(matched);
             Assert.AreEqual(-1, sourceSpeed);
+        }
+
+        [Test]
+        public void CanAbortMissions_AllOwnedWorkingMissions_ReturnsTrue()
+        {
+            DiplomacyMission firstMission = CreateMission("first", "player");
+            DiplomacyMission secondMission = CreateMission("second", "player");
+
+            bool canAbort = StrategyContextMenuAvailability.CanAbortMissions(
+                new ISceneNode[] { firstMission, secondMission },
+                "player"
+            );
+
+            Assert.IsTrue(canAbort);
+        }
+
+        [Test]
+        public void CanAbortMissions_SelectionContainsWaitingMission_ReturnsFalse()
+        {
+            DiplomacyMission workingMission = CreateMission("working", "player");
+            DiplomacyMission waitingMission = CreateMission("waiting", "player");
+            waitingMission.AddChild(
+                new Officer
+                {
+                    OwnerInstanceID = "player",
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+
+            bool canAbort = StrategyContextMenuAvailability.CanAbortMissions(
+                new ISceneNode[] { workingMission, waitingMission },
+                "player"
+            );
+
+            Assert.IsFalse(canAbort);
+        }
+
+        [Test]
+        public void CanAbortMissions_SelectionContainsUnownedMission_ReturnsFalse()
+        {
+            DiplomacyMission ownedMission = CreateMission("owned", "player");
+            DiplomacyMission enemyMission = CreateMission("enemy", "enemy");
+
+            bool canAbort = StrategyContextMenuAvailability.CanAbortMissions(
+                new ISceneNode[] { ownedMission, enemyMission },
+                "player"
+            );
+
+            Assert.IsFalse(canAbort);
         }
 
         [Test]
@@ -379,6 +429,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                     true
                 )
             );
+        }
+
+        /// <summary>
+        /// Creates one working mission for context-menu availability tests.
+        /// </summary>
+        /// <param name="instanceId">The mission instance identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The working mission.</returns>
+        private static DiplomacyMission CreateMission(string instanceId, string ownerInstanceId)
+        {
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerInstanceId,
+            };
+            mission.Initiate(1);
+            return mission;
         }
 
         /// <summary>

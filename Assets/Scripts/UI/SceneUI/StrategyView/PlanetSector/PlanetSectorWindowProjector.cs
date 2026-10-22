@@ -41,6 +41,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
     /// <param name="filterMode">The galactic-information filter applied to visible planets.</param>
+    /// <param name="visibleSectors">All faction-filtered strategy sectors.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
@@ -51,7 +52,8 @@ internal sealed class PlanetSectorWindowProjector
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
         bool showAllWaypointRoutes = false,
-        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff
+        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff,
+        IReadOnlyList<GalaxyMapSector> visibleSectors = null
     )
     {
         UIContext uiContext = GetUIContext();
@@ -90,7 +92,8 @@ internal sealed class PlanetSectorWindowProjector
             out List<PlanetSectorWaypointSegmentRenderData> waypointSegments,
             out List<PlanetSectorWaypointRenderData> waypoints,
             selectedFleetInstanceIds,
-            showAllWaypointRoutes
+            showAllWaypointRoutes,
+            visibleSectors
         );
         return new PlanetSectorWindowRenderData(
             sector?.GetDisplayName(),
@@ -109,18 +112,21 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="waypoints">Receives numbered route stops visible in the sector.</param>
     /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
     /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
+    /// <param name="visibleSectors">All faction-filtered strategy sectors.</param>
     internal void ProjectWaypointRoutes(
         GalaxyMapSector mapSector,
         StrategyWindowTargetingSource waypointPlan,
         out List<PlanetSectorWaypointSegmentRenderData> segments,
         out List<PlanetSectorWaypointRenderData> waypoints,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
-        bool showAllRoutes = false
+        bool showAllRoutes = false,
+        IReadOnlyList<GalaxyMapSector> visibleSectors = null
     )
     {
         UIContext uiContext = GetUIContext();
         List<FleetWaypointRoute> resolvedRoutes = FleetWaypointRouteResolver.Resolve(
-            uiContext.Game,
+            visibleSectors
+                ?? (mapSector == null ? Array.Empty<GalaxyMapSector>() : new[] { mapSector }),
             uiContext.GetPlayerFactionInstanceID(),
             waypointPlan,
             selectedFleetInstanceIds,
@@ -230,9 +236,10 @@ internal sealed class PlanetSectorWindowProjector
     {
         Planet planet = strategyPlanet?.Planet;
         string planetInstanceId = planet?.InstanceID;
-        string ownerFactionId = planet?.OwnerInstanceID;
+        string ownerFactionId = planet?.IsDestroyed == true ? null : planet?.OwnerInstanceID;
         string headquartersFactionId = ResolveHeadquartersFactionId(uiContext, planet);
         bool unexplored = planet?.IsUnexploredView == true;
+        bool showPlanetDetails = !unexplored && planet?.IsDestroyed != true;
         string fleetFactionId = SelectPresentFactionID(
             GetFleetOwnerFactionIDs(planet),
             ownerFactionId
@@ -241,7 +248,7 @@ internal sealed class PlanetSectorWindowProjector
             GetMissionOwnerFactionIDs(planet),
             ownerFactionId
         );
-        bool showUprising = !unexplored && planet?.IsInUprising == true;
+        bool showUprising = showPlanetDetails && planet?.IsInUprising == true;
         int popularSupport = GetPlayerSupport(uiContext, planet);
         Texture2D fleetTexture = string.IsNullOrEmpty(fleetFactionId)
             ? null
@@ -280,23 +287,23 @@ internal sealed class PlanetSectorWindowProjector
                         ?.PlanetOverlayTheme?.PlanetSectorUprisingImagePath
                 )
                 : null,
-            unexplored || !HasFacilities(planet)
+            !showPlanetDetails || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, false),
-            unexplored || !HasFacilities(planet)
+            !showPlanetDetails || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, true),
-            unexplored || !HasDefenses(planet)
+            !showPlanetDetails || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, false),
-            unexplored || !HasDefenses(planet)
+            !showPlanetDetails || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, true),
             fleetTexture,
             fleetPressedTexture,
             missionTexture,
             missionPressedTexture,
-            !string.IsNullOrEmpty(headquartersFactionId)
+            showPlanetDetails && !string.IsNullOrEmpty(headquartersFactionId)
                 ? uiContext.GetTexture(
                     uiContext
                         .GetTheme(headquartersFactionId)
@@ -311,9 +318,11 @@ internal sealed class PlanetSectorWindowProjector
             string.Equals(hoveredPlanetInstanceId, planetInstanceId, StringComparison.Ordinal)
                 ? hoveredIcon
                 : PlanetIcon.None,
-            unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
-            unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
-            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
+            showPlanetDetails ? CreateEnergyBar(planet) : CreateHiddenBar(),
+            showPlanetDetails ? CreateRawResourceBar(planet) : CreateHiddenBar(),
+            showPlanetDetails
+                ? CreateSupportBar(uiContext, planet, popularSupport)
+                : CreateHiddenBar(),
             galacticInformationTexture,
             uiContext.GetTextureContentBounds
         );
@@ -328,16 +337,15 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
     private static string ResolveHeadquartersFactionId(UIContext uiContext, Planet planet)
     {
-        if (uiContext?.Game == null || planet?.IsUnexploredView != false)
+        if (uiContext == null || planet?.IsUnexploredView != false)
             return null;
         if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
             return planet.OwnerInstanceID;
 
         string playerFactionId = uiContext.GetPlayerFactionInstanceID();
-        Planet livePlanet = uiContext.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
         bool receivesMovingHeadquarters =
-            livePlanet
-                ?.GetChildren<Building>()
+            planet
+                .GetChildren<Building>()
                 .Any(building =>
                     building.BuildingType == BuildingType.Headquarters
                     && building.Movement != null

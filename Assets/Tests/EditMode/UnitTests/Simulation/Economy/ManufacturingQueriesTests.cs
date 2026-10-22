@@ -101,6 +101,53 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void CanStartManufacturing_DestroyedProducerOrDestination_RejectsStaleSnapshots(
+            bool destroyProducer
+        )
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Planet producerSnapshot = (Planet)producer.CreateCopy();
+            Planet destinationSnapshot = (Planet)destination.CreateCopy();
+            if (destroyProducer)
+                producer.IsDestroyed = true;
+            else
+                destination.IsDestroyed = true;
+            ManufacturingQueries queries = new ManufacturingQueries(game);
+
+            Assert.IsFalse(
+                queries.CanStartManufacturing(
+                    producerSnapshot,
+                    template,
+                    destinationSnapshot,
+                    1,
+                    "empire"
+                )
+            );
+            Assert.IsFalse(
+                queries.CanSetManufacturingOrder(
+                    producerSnapshot,
+                    template,
+                    destinationSnapshot,
+                    1,
+                    "empire"
+                )
+            );
+            Assert.IsFalse(
+                ManufacturingQueries.CanAcceptManufacturingOrder(
+                    producer,
+                    template,
+                    destination,
+                    1,
+                    "empire"
+                )
+            );
+        }
+
         [Test]
         public void GetManufacturingOrder_PopulatedLane_ReturnsProductAndQuantity()
         {

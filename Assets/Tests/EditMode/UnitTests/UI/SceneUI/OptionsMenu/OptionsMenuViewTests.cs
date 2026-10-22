@@ -115,6 +115,51 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Keeps the Graphics form and themed scrollbar inside the panel in either menu host.
+        /// </summary>
+        /// <param name="showModsTab">Whether the host exposes content management.</param>
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Render_GraphicsPage_InsetsScrollbarAndFitsSelectors(bool showModsTab)
+        {
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics, showModsTab: showModsTab));
+            ScrollAreaView area = GetField<ScrollAreaView>("_graphicsScrollArea");
+            Scrollbar scrollbar = area.GetComponentInChildren<Scrollbar>();
+            RectTransform page = area.transform.parent as RectTransform;
+            RectInt barBounds = UILayout.GetSourceRect(scrollbar.transform as RectTransform);
+
+            Assert.AreEqual(16, barBounds.y);
+            Assert.AreEqual(20, page.rect.width - barBounds.xMax);
+            Assert.LessOrEqual(barBounds.yMax, area.ViewportHeight);
+            Assert.IsEmpty(scrollbar.GetComponentsInChildren<RawImage>(true));
+            foreach (
+                RectTransform badge in area
+                    .ContentRoot.Cast<RectTransform>()
+                    .Where(child => child.name.EndsWith("Badge", StringComparison.Ordinal))
+            )
+                Assert.LessOrEqual(UILayout.GetSourceRect(badge).xMax, area.ViewportWidth);
+        }
+
+        /// <summary>
+        /// Preserves Graphics scrolling through value refreshes and resets it when returning.
+        /// </summary>
+        [Test]
+        public void Render_GraphicsPage_ResetsScrollOnlyWhenEntering()
+        {
+            OptionsMenuRenderData graphics = CreateRenderDataForTab(OptionsMenuTab.Graphics);
+            _view.Render(graphics);
+            ScrollAreaView area = GetField<ScrollAreaView>("_graphicsScrollArea");
+            area.VerticalNormalizedPosition = 0.5f;
+
+            _view.Render(graphics);
+            Assert.AreEqual(0.5f, area.VerticalNormalizedPosition, 0.001f);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Audio));
+            _view.Render(graphics);
+            Assert.AreEqual(1f, area.VerticalNormalizedPosition, 0.001f);
+        }
+
         [Test]
         public void SaveLoadPage_Default_UsesAuthoredSaveListSubview()
         {
@@ -326,11 +371,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(badge.anchoredPosition.y, inputRect.anchoredPosition.y);
             Assert.AreEqual(18f, inputRect.sizeDelta.y);
             Assert.AreNotSame(inputRect, intervalField.textViewport);
-            Assert.AreEqual(-1f, intervalField.textViewport.anchoredPosition.y);
-            Assert.AreEqual(16f, intervalField.textViewport.sizeDelta.y);
+            Assert.AreEqual(Vector2.zero, intervalField.textViewport.anchorMin);
+            Assert.AreEqual(Vector2.one, intervalField.textViewport.anchorMax);
+            Assert.AreEqual(new Vector2(0f, 1f), intervalField.textViewport.offsetMin);
+            Assert.AreEqual(new Vector2(0f, -1f), intervalField.textViewport.offsetMax);
+            Assert.AreEqual(16f, intervalField.textViewport.rect.height);
             Assert.AreEqual(TextAlignmentOptions.Center, intervalField.textComponent.alignment);
-            Assert.AreEqual(0f, intervalField.textComponent.rectTransform.anchoredPosition.y);
-            Assert.AreEqual(16f, intervalField.textComponent.rectTransform.sizeDelta.y);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, intervalField.textComponent.rectTransform.anchorMax);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.offsetMin);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.offsetMax);
             Assert.IsTrue(intervalField.interactable);
             Assert.IsTrue(retainedField.interactable);
         }
@@ -416,13 +466,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
+        public void GameplayPage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
         {
             GameLaunchSpeed? requested = null;
             _view.GameLaunchSpeedRequested += speed => requested = speed;
             _view.Render(
                 CreateRenderDataForTab(
-                    OptionsMenuTab.UserInterface,
+                    OptionsMenuTab.Gameplay,
                     gameLaunchSpeed: GameLaunchSpeed.VerySlow
                 )
             );
@@ -438,7 +488,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownItem_SelectedStateUsesActiveRowArtwork()
+        public void GameplayPage_DropdownItem_SelectedStateUsesActiveRowArtwork()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
             Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
@@ -451,7 +501,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownControl_HighlightIsBrighterThanNormal()
+        public void GameplayPage_DropdownControl_HighlightIsBrighterThanNormal()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
 
@@ -463,7 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
+        public void GameplayPage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
             ScrollRect scrollRect = dropdown.template.GetComponent<ScrollRect>();
@@ -689,20 +739,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "2 MODS LOADED",
                 GetField<TextMeshProUGUI>("_modsStatusTextField").text
             );
-            TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
-            Assert.IsTrue(restart.gameObject.activeSelf);
-            Assert.AreEqual("A RESTART MAY BE REQUIRED", restart.text);
-            Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
-            Assert.AreEqual(TextAlignmentOptions.Center, restart.alignment);
             RectInt statusRect = UILayout.GetSourceRect(
                 GetField<TextMeshProUGUI>("_modsStatusTextField").rectTransform
             );
-            RectInt restartRect = UILayout.GetSourceRect(restart.rectTransform);
             RectInt scrollRect = UILayout.GetSourceRect(
                 GetField<ScrollAreaView>("_modsScrollArea").transform as RectTransform
             );
             Assert.GreaterOrEqual(scrollRect.y, statusRect.yMax);
-            Assert.GreaterOrEqual(restartRect.y, scrollRect.yMax);
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
@@ -741,12 +784,57 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(GetField<GameObject>("_settingsActions").activeSelf);
             Assert.IsTrue(GetField<Button>("_applyButton").gameObject.activeSelf);
             Assert.IsTrue(GetField<Button>("_defaultsButton").gameObject.activeSelf);
-            Assert.AreEqual(
-                313,
-                UILayout
-                    .GetSourceRect(GetField<TextMeshProUGUI>("_modsRestartTextField").rectTransform)
-                    .y
+        }
+
+        [Test]
+        public void HandleApplyClicked_ListenerDestroysView_DoesNotAccessDestroyedControls()
+        {
+            Button applyButton = GetField<Button>("_applyButton");
+            _view.ApplyRequested += () => UnityEngine.Object.DestroyImmediate(_root);
+
+            Assert.DoesNotThrow(() => applyButton.onClick.Invoke());
+
+            Assert.IsFalse(_root);
+        }
+
+        /// <summary>
+        /// Keeps the pack label between the resolved arrow bounds, including edge anchors.
+        /// </summary>
+        [Test]
+        public void Render_LongContentPackName_KeepsTextWithinWideSelector()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "25th Anniversary (by Metasharp) with an unusually long name"
+                )
             );
+            TextMeshProUGUI value = GetField<TextMeshProUGUI>("_contentPackValueField");
+            RectInt valueRect = UILayout.GetSourceRect(value.rectTransform);
+            TextMeshProUGUI previousGlyph = GetField<Button>("_contentPackPrevButton")
+                .GetComponentInChildren<TextMeshProUGUI>();
+            TextMeshProUGUI nextGlyph = GetField<Button>("_contentPackNextButton")
+                .GetComponentInChildren<TextMeshProUGUI>();
+            Transform parent = value.transform.parent;
+            Bounds valueBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                value.rectTransform
+            );
+            Bounds previousBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                previousGlyph.rectTransform
+            );
+            Bounds nextBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                nextGlyph.rectTransform
+            );
+
+            Assert.GreaterOrEqual(valueRect.width, 270);
+            Assert.GreaterOrEqual(valueBounds.min.x, previousBounds.max.x);
+            Assert.LessOrEqual(valueBounds.max.x, nextBounds.min.x);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, value.overflowMode);
+            Assert.AreEqual(TextWrappingModes.NoWrap, value.textWrappingMode);
+            Assert.IsFalse(value.raycastTarget);
         }
 
         [Test]
@@ -794,24 +882,33 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, fullScreenDelta);
         }
 
-        [Test]
-        public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge()
+        /// <summary>
+        /// Covers the whole selector badge with adjacent previous and next hit areas.
+        /// </summary>
+        /// <param name="previousField">The serialized previous button reference.</param>
+        /// <param name="nextField">The serialized next button reference.</param>
+        /// <param name="badgeName">The selector's badge object name.</param>
+        [TestCase("_resolutionPrevButton", "_resolutionNextButton", "ResolutionBadge")]
+        [TestCase("_fullScreenPrevButton", "_fullScreenNextButton", "DisplayBadge")]
+        public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge(
+            string previousField,
+            string nextField,
+            string badgeName
+        )
         {
-            RectTransform resolutionPrevious = (RectTransform)
-                GetField<Button>("_resolutionPrevButton").transform;
-            RectTransform resolutionNext = (RectTransform)
-                GetField<Button>("_resolutionNextButton").transform;
-            RectTransform fullScreenPrevious = (RectTransform)
-                GetField<Button>("_fullScreenPrevButton").transform;
-            RectTransform fullScreenNext = (RectTransform)
-                GetField<Button>("_fullScreenNextButton").transform;
+            RectTransform previous = GetField<Button>(previousField).transform as RectTransform;
+            RectTransform next = GetField<Button>(nextField).transform as RectTransform;
+            RectInt previousBounds = UILayout.GetSourceRect(previous);
+            RectInt nextBounds = UILayout.GetSourceRect(next);
+            RectInt badgeBounds = UILayout.GetSourceRect(
+                previous.parent.Find(badgeName) as RectTransform
+            );
 
-            Assert.AreEqual(78f, resolutionPrevious.sizeDelta.x);
-            Assert.AreEqual(77f, resolutionNext.sizeDelta.x);
-            Assert.AreEqual(78f, fullScreenPrevious.sizeDelta.x);
-            Assert.AreEqual(77f, fullScreenNext.sizeDelta.x);
-            Assert.AreEqual(272f, resolutionNext.anchoredPosition.x);
-            Assert.AreEqual(272f, fullScreenNext.anchoredPosition.x);
+            Assert.AreEqual(badgeBounds.x, previousBounds.x);
+            Assert.AreEqual(previousBounds.xMax, nextBounds.x);
+            Assert.AreEqual(badgeBounds.xMax, nextBounds.xMax);
+            Assert.AreEqual(badgeBounds.height, previousBounds.height);
+            Assert.AreEqual(badgeBounds.height, nextBounds.height);
         }
 
         [Test]

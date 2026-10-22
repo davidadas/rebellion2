@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -41,10 +42,65 @@ namespace Rebellion.Game.Galaxy
         [PersistableMember(Name = "Planets")]
         private List<Planet> _planets = new List<Planet>();
 
+        private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
+        private int? _projectedSectorSuppression;
+
+        /// <summary>
+        /// Returns the strongest operational, stationary ship's sector garrison divisor.
+        /// </summary>
+        [PersistableIgnore]
+        internal int SectorSuppressionDivisor
+        {
+            get
+            {
+                if (_projectedSectorSuppression.HasValue)
+                    return _projectedSectorSuppression.Value;
+                int divisor = 1;
+                foreach (CapitalShip ship in _suppressionSources)
+                {
+                    if (
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && ship.GetParentOfType<Fleet>()?.Movement == null
+                        && ship.IsActive()
+                    )
+                        divisor = System.Math.Max(divisor, ship.SectorSuppression);
+                }
+                return divisor;
+            }
+        }
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public PlanetSector() { }
+
+        /// <summary>
+        /// Captures sector suppression state for a faction view with partial descendants.
+        /// </summary>
+        /// <param name="divisor">The observed sector garrison divisor.</param>
+        internal void SetProjectedSectorSuppression(int divisor)
+        {
+            _projectedSectorSuppression = divisor;
+        }
+
+        /// <summary>
+        /// Registers a suppression source whose ancestor chain includes this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void RegisterSuppressionSource(CapitalShip ship)
+        {
+            _suppressionSources.Add(ship);
+        }
+
+        /// <summary>
+        /// Removes a ship that no longer supplies suppression-source presence in this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void UnregisterSuppressionSource(CapitalShip ship)
+        {
+            _suppressionSources.Remove(ship);
+        }
 
         /// <summary>
         /// Creates an empty planet-sector copy.

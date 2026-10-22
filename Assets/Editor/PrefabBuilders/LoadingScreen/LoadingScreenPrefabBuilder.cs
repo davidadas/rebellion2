@@ -12,6 +12,9 @@ public static class LoadingScreenPrefabBuilder
 {
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
     private const int _presentationLayer = 31;
+    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
+    private const float _builtInPunctualLightIntensityToHdrp = 600f / (4f * Mathf.PI);
+    private static readonly Color _shuttleAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
 
     /// <summary>
     /// Rebuilds the loading-screen prefab.
@@ -26,6 +29,8 @@ public static class LoadingScreenPrefabBuilder
             typeof(GraphicRaycaster),
             typeof(LoadingScreenView)
         );
+        HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
+        HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _shuttleAmbientColor);
         FillParent(root.GetComponent<RectTransform>());
 
         Canvas canvas = root.GetComponent<Canvas>();
@@ -123,8 +128,11 @@ public static class LoadingScreenPrefabBuilder
         keyLightObject.transform.localRotation = Quaternion.Euler(28f, -32f, 0f);
         Light keyLight = keyLightObject.GetComponent<Light>();
         keyLight.type = LightType.Directional;
-        keyLight.color = new Color(0.7f, 0.84f, 1f, 1f);
-        keyLight.intensity = 0.48f;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            keyLight,
+            0.58f * _builtInDirectionalLightIntensityToHdrp
+        );
+        keyLight.color = Color.white;
         keyLight.cullingMask = 1 << _presentationLayer;
         keyLight.shadows = LightShadows.None;
 
@@ -133,8 +141,11 @@ public static class LoadingScreenPrefabBuilder
         fillLightObject.transform.localPosition = new Vector3(-2.5f, -1f, -2.5f);
         Light fillLight = fillLightObject.GetComponent<Light>();
         fillLight.type = LightType.Point;
-        fillLight.color = new Color(0.12f, 0.46f, 1f, 1f);
-        fillLight.intensity = 0.22f;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            fillLight,
+            0.3f * _builtInPunctualLightIntensityToHdrp
+        );
+        fillLight.color = new Color(0.82f, 0.87f, 0.95f, 1f);
         fillLight.range = 12f;
         fillLight.cullingMask = 1 << _presentationLayer;
         fillLight.shadows = LightShadows.None;
@@ -144,8 +155,11 @@ public static class LoadingScreenPrefabBuilder
         rimLightObject.transform.localRotation = Quaternion.Euler(-18f, 154f, 0f);
         Light rimLight = rimLightObject.GetComponent<Light>();
         rimLight.type = LightType.Directional;
-        rimLight.color = new Color(0.18f, 0.52f, 1f, 1f);
-        rimLight.intensity = 0.38f;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            rimLight,
+            0.25f * _builtInDirectionalLightIntensityToHdrp
+        );
+        rimLight.color = new Color(0.45f, 0.62f, 0.85f, 1f);
         rimLight.cullingMask = 1 << _presentationLayer;
         rimLight.shadows = LightShadows.None;
 
@@ -154,7 +168,7 @@ public static class LoadingScreenPrefabBuilder
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(cameraOrbitObject.transform, false);
-        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -6f);
+        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -8f);
         Camera shuttleCamera = cameraObject.GetComponent<Camera>();
         shuttleCamera.clearFlags = CameraClearFlags.SolidColor;
         shuttleCamera.backgroundColor = Color.clear;
@@ -163,7 +177,8 @@ public static class LoadingScreenPrefabBuilder
         shuttleCamera.farClipPlane = 50f;
         shuttleCamera.cullingMask = 1 << _presentationLayer;
         shuttleCamera.allowHDR = false;
-        shuttleCamera.allowMSAA = true;
+        shuttleCamera.allowMSAA = false;
+        HdrpRenderTargetBuilder.ConfigureCamera(shuttleCamera, includeFlatAmbientLighting: true);
 
         GameObject fadeOverlayObject = CreateRectObject("FadeOverlay", root.transform);
         Image fadeOverlay = fadeOverlayObject.AddComponent<Image>();

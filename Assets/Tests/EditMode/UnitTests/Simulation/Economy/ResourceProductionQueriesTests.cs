@@ -221,6 +221,31 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_MaximumMaintenanceModifiers_SaturatesEffectiveCapacity()
+        {
+            _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            _game.SetFactionController(_faction.InstanceID, "FACTION1-AI", PlayerControllerType.AI);
+            _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = int.MaxValue,
+            };
+            _faction.Settings.ResourceProcessingPointsPerFacility = int.MaxValue;
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 2);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(int.MaxValue, summary.MaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, summary.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, summary.ProjectedMaintenanceHeadroom);
+        }
+
+        [Test]
         public void GetSummary_CommittedResourceFacilities_ProjectsSteadyOutputAndCapacity()
         {
             Planet planet = AddPlanet("PLANET1", rawResourceNodes: 3);

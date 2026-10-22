@@ -11,6 +11,7 @@ public sealed class UserSettingsManager
 
     private readonly AudioManager _audioManager;
     private readonly DisplayManager _displayManager;
+    private readonly GraphicsManager _graphicsManager;
     private readonly InputManager _inputManager;
     private readonly string _settingsFilePathOverride;
 
@@ -30,7 +31,22 @@ public sealed class UserSettingsManager
         DisplayManager displayManager,
         InputManager inputManager
     )
-        : this(audioManager, displayManager, inputManager, null) { }
+        : this(audioManager, displayManager, null, inputManager, null) { }
+
+    /// <summary>
+    /// Creates a user settings manager for the supplied runtime systems.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    public UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager
+    )
+        : this(audioManager, displayManager, graphicsManager, inputManager, null) { }
 
     /// <summary>
     /// Creates a user settings manager that uses the given file path.
@@ -45,9 +61,27 @@ public sealed class UserSettingsManager
         InputManager inputManager,
         string settingsFilePath
     )
+        : this(audioManager, displayManager, null, inputManager, settingsFilePath) { }
+
+    /// <summary>
+    /// Creates a user settings manager that uses the given file path and graphics owner.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="settingsFilePath">The exact settings file path.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager,
+        string settingsFilePath
+    )
     {
         _audioManager = audioManager;
         _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
+        _graphicsManager = graphicsManager;
         _inputManager = inputManager;
         _settingsFilePathOverride = settingsFilePath;
     }
@@ -121,7 +155,9 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
+        _graphicsManager?.PrepareForDisplayChange();
         _displayManager.Apply(Settings.Video);
+        _graphicsManager?.Apply(Settings.Video);
     }
 
     /// <summary>
@@ -146,7 +182,7 @@ public sealed class UserSettingsManager
 
         try
         {
-            UserSettings settings = JsonUtility.FromJson<UserSettings>(File.ReadAllText(path));
+            UserSettings settings = DeserializeSettings(File.ReadAllText(path));
             if (settings == null)
                 return CreateDefaults();
 
@@ -158,6 +194,33 @@ public sealed class UserSettingsManager
             Debug.LogWarning($"Failed to load user settings: {ex.Message}");
             return CreateDefaults();
         }
+    }
+
+    /// <summary>
+    /// Deserializes current settings and migrates the former interface-owned launch speed.
+    /// </summary>
+    /// <param name="json">The persisted settings document.</param>
+    /// <returns>The deserialized settings, or null when the document has no settings object.</returns>
+    private static UserSettings DeserializeSettings(string json)
+    {
+        UserSettings settings = JsonUtility.FromJson<UserSettings>(json);
+        if (settings == null)
+            return null;
+
+        settings.Gameplay ??= new UserGameplaySettings();
+        LegacyUserSettings legacy = JsonUtility.FromJson<LegacyUserSettings>(json);
+        GameLaunchSpeed legacySpeed =
+            legacy?.UserInterface?.GameLaunchSpeed ?? GameLaunchSpeed.Unchanged;
+        if (
+            settings.Gameplay.GameLaunchSpeed == GameLaunchSpeed.Unchanged
+            && legacySpeed != GameLaunchSpeed.Unchanged
+            && Enum.IsDefined(typeof(GameLaunchSpeed), legacySpeed)
+        )
+        {
+            settings.Gameplay.GameLaunchSpeed = legacySpeed;
+        }
+
+        return settings;
     }
 
     /// <summary>
@@ -202,5 +265,23 @@ public sealed class UserSettingsManager
         UserSettings settings = new UserSettings();
         settings.Normalize();
         return settings;
+    }
+
+    /// <summary>
+    /// Describes the portion of the former settings shape needed during migration.
+    /// </summary>
+    [Serializable]
+    private sealed class LegacyUserSettings
+    {
+        public LegacyUserInterfaceSettings UserInterface;
+    }
+
+    /// <summary>
+    /// Describes the former interface-owned launch-speed setting.
+    /// </summary>
+    [Serializable]
+    private sealed class LegacyUserInterfaceSettings
+    {
+        public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 }

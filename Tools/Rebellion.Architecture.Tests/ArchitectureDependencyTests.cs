@@ -48,6 +48,29 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
+        /// <summary>
+        /// Keeps content loading policy independent of scene presentation and bootstrap handoffs.
+        /// </summary>
+        [Test]
+        public void ContentLoadOperation_Dependencies_DoNotReferenceSceneOrBootstrapOwners()
+        {
+            IArchRule rule = Types()
+                .That()
+                .HaveFullName("ContentLoadOperation")
+                .Should()
+                .NotDependOnAny(
+                    Types()
+                        .That()
+                        .HaveFullName("AppBootstrap")
+                        .Or()
+                        .HaveFullName("GameLaunchContext")
+                        .Or()
+                        .HaveFullName("LoadingScreenController")
+                );
+
+            rule.Check(_architecture);
+        }
+
         [Test]
         public void SceneGraph_Dependencies_ReferenceOnlySceneGraph()
         {

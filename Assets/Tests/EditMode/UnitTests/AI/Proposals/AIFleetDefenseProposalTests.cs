@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -16,6 +17,64 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetDefenseProposalTests
     {
+        [Test]
+        public void Execute_DepartureStartsBlockade_RefreshesManufacturingBudget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet resourcePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "resource-planet",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID,
+                positionX: 10
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                resourcePlanet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                resourcePlanet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            Fleet defendingFleet = AddBattleFleet(
+                game,
+                resourcePlanet,
+                empire.InstanceID,
+                "defender"
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+            AddBattleFleet(game, resourcePlanet, rebels.InstanceID, "attacker");
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+            AIFleetDefenseProposal proposal = new AIFleetDefenseProposal(
+                defendingFleet,
+                headquarters
+            );
+
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
+
+            Assert.IsNotNull(defendingFleet.Movement);
+            Assert.IsTrue(resourcePlanet.IsBlockadedFor(empire.InstanceID));
+            Assert.AreEqual(0, context.AvailableProjectedMaintenanceHeadroom);
+        }
+
         [Test]
         public void Execute_WithReadyDefenseFleet_MovesFleetToHeadquarters()
         {

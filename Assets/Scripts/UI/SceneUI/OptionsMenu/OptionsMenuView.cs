@@ -128,16 +128,34 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _fullScreenNextButton;
 
+    [SerializeField]
+    private TextMeshProUGUI[] _graphicsValueFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private Button[] _graphicsPrevButtons = Array.Empty<Button>();
+
+    [SerializeField]
+    private Button[] _graphicsNextButtons = Array.Empty<Button>();
+
+    [SerializeField]
+    private ScrollAreaView _graphicsScrollArea;
+
+    [SerializeField]
+    private int _graphicsContentHeight;
+
+    [SerializeField]
+    private int _graphicsScrollStep;
+
     [Header("Gameplay page")]
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
+    [SerializeField]
+    private TMP_Dropdown _gameLaunchSpeedDropdown;
+
     [Header("User Interface page")]
     [SerializeField]
     private TMP_Dropdown _idleBarLocationDropdown;
-
-    [SerializeField]
-    private TMP_Dropdown _gameLaunchSpeedDropdown;
 
     [SerializeField]
     private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
@@ -198,9 +216,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private TextMeshProUGUI _modsStatusTextField;
 
     [SerializeField]
-    private TextMeshProUGUI _modsRestartTextField;
-
-    [SerializeField]
     private TextMeshProUGUI _contentPackValueField;
 
     [SerializeField]
@@ -209,6 +224,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _contentPackNextButton;
 
+    private OptionsChoiceFieldView _resolutionChoice;
+    private OptionsChoiceFieldView _fullScreenChoice;
+    private OptionsChoiceFieldView _contentPackChoice;
     private bool _bound;
     private IContentAssetSource _contentAssets;
     private OptionsMenuTab? _previousTab;
@@ -241,6 +259,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<string> AutosavesToKeepChanged;
     public event Action<int> ResolutionStepRequested;
     public event Action<int> FullScreenStepRequested;
+    public event Action<UserGraphicsSetting, int> GraphicsStepRequested;
     public event Action<int, float> VolumeChanged;
     public event Action<OptionsMenuView> Destroyed;
 
@@ -271,6 +290,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void Awake()
     {
         VerifyReferences();
+        EnsureChoiceFields();
         CaptureTabSourceRects();
         BindControls();
     }
@@ -295,6 +315,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
         bool resetSaveLoadScroll =
             data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
+        bool resetGraphicsScroll =
+            data.ActiveTab == OptionsMenuTab.Graphics && _previousTab != OptionsMenuTab.Graphics;
         bool resetControlsScroll =
             data.ActiveTab == OptionsMenuTab.Controls && _previousTab != OptionsMenuTab.Controls;
         bool resetModsScroll =
@@ -317,7 +339,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 RenderUserInterfacePage(data);
                 break;
             case OptionsMenuTab.Graphics:
-                RenderGraphicsPage(data);
+                RenderGraphicsPage(data, resetGraphicsScroll);
                 break;
             case OptionsMenuTab.Audio:
                 RenderAudioPage(data);
@@ -407,6 +429,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="data">The data.</param>
     private void RenderGameplayPage(OptionsMenuRenderData data)
     {
+        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
+        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _gameplayRows)
         {
             if (row == null)
@@ -447,8 +471,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         _idleBarLocationDropdown.SetValueWithoutNotify((int)data.IdleBarLocation);
         _idleBarLocationDropdown.RefreshShownValue();
-        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
-        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row == null)
@@ -489,8 +511,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Applies detail-toggle and display values to the Graphics page.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
-    private void RenderGraphicsPage(OptionsMenuRenderData data)
+    /// <param name="resetScroll">Whether the page was just entered.</param>
+    private void RenderGraphicsPage(OptionsMenuRenderData data, bool resetScroll)
     {
+        _graphicsScrollArea.SetContentHeight(
+            _graphicsContentHeight,
+            _graphicsScrollStep,
+            resetScroll
+        );
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
             if (row == null)
@@ -501,8 +529,23 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             row.Render(enabled);
         }
 
-        UILayout.SetTextContent(_resolutionValueField, data.ResolutionLabel);
-        UILayout.SetTextContent(_fullScreenValueField, data.FullScreenLabel);
+        _resolutionChoice.Render(data.ResolutionLabel);
+        _fullScreenChoice.Render(data.FullScreenLabel);
+        for (int index = 0; index < _graphicsValueFields.Length; index++)
+        {
+            UserGraphicsSetting setting = (UserGraphicsSetting)index;
+            OptionsGraphicsValue value = data.GraphicsValues.TryGetValue(
+                setting,
+                out OptionsGraphicsValue configuredValue
+            )
+                ? configuredValue
+                : new OptionsGraphicsValue(string.Empty, false);
+            UILayout.SetTextContent(_graphicsValueFields[index], value.Label);
+            if (index < _graphicsPrevButtons.Length && _graphicsPrevButtons[index] != null)
+                _graphicsPrevButtons[index].interactable = value.Available;
+            if (index < _graphicsNextButtons.Length && _graphicsNextButtons[index] != null)
+                _graphicsNextButtons[index].interactable = value.Available;
+        }
     }
 
     /// <summary>
@@ -540,16 +583,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="resetScroll">Whether the page was just entered.</param>
     private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
     {
-        bool restartRequired =
-            data.ContentRestartRequired || data.Mods.Any(mod => mod.Enabled != mod.Loaded);
-        UILayout.SetTextContent(_contentPackValueField, data.ContentPackLabel);
+        _contentPackChoice.Render(data.ContentPackLabel);
         int loadedCount = data.Mods.Count(mod => mod.Loaded);
         string status =
             data.Mods.Count == 0
                 ? "NO COMPATIBLE MODS FOUND"
                 : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
         UILayout.SetTextContent(_modsStatusTextField, status);
-        _modsRestartTextField.gameObject.SetActive(restartRequired);
 
         for (int index = 0; index < data.Mods.Count; index++)
         {
@@ -987,12 +1027,23 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _autosavesToKeepInputField.onSelect.AddListener(_ => TextEditingChanged?.Invoke(true));
         _autosavesToKeepInputField.onDeselect.AddListener(_ => TextEditingChanged?.Invoke(false));
 
-        _resolutionPrevButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(-1));
-        _resolutionNextButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(1));
-        _fullScreenPrevButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(-1));
-        _fullScreenNextButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(1));
-        _contentPackPrevButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(-1));
-        _contentPackNextButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(1));
+        _resolutionChoice.StepRequested += HandleResolutionStepRequested;
+        _fullScreenChoice.StepRequested += HandleFullScreenStepRequested;
+        _contentPackChoice.StepRequested += HandleContentPackStepRequested;
+        for (int index = 0; index < _graphicsValueFields.Length; index++)
+        {
+            UserGraphicsSetting setting = (UserGraphicsSetting)index;
+            if (index < _graphicsPrevButtons.Length && _graphicsPrevButtons[index] != null)
+            {
+                _graphicsPrevButtons[index]
+                    .onClick.AddListener(() => GraphicsStepRequested?.Invoke(setting, -1));
+            }
+            if (index < _graphicsNextButtons.Length && _graphicsNextButtons[index] != null)
+            {
+                _graphicsNextButtons[index]
+                    .onClick.AddListener(() => GraphicsStepRequested?.Invoke(setting, 1));
+            }
+        }
 
         for (int i = 0; i < _volumeSliders.Length; i++)
         {
@@ -1013,14 +1064,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Applies the settings and releases pointer focus so hover feedback resumes immediately.
+    /// Releases pointer focus before notifying an owner that may close the Options window.
     /// </summary>
     private void HandleApplyClicked()
     {
-        ApplyRequested?.Invoke();
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem?.currentSelectedGameObject == _applyButton.gameObject)
             eventSystem.SetSelectedGameObject(null);
+        ApplyRequested?.Invoke();
     }
 
     /// <summary>
@@ -1034,6 +1085,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _saveListView.SlotRenamed -= HandleSlotRenamed;
         _saveListView.SlotDeleteRequested -= HandleSlotDeleteRequested;
         _saveListView.RenameEditingChanged -= HandleTextEditingChanged;
+        if (_resolutionChoice != null)
+            _resolutionChoice.StepRequested -= HandleResolutionStepRequested;
+        if (_fullScreenChoice != null)
+            _fullScreenChoice.StepRequested -= HandleFullScreenStepRequested;
+        if (_contentPackChoice != null)
+            _contentPackChoice.StepRequested -= HandleContentPackStepRequested;
 
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
@@ -1058,6 +1115,128 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 row.ToggleRequested -= HandleModToggle;
         }
     }
+
+    /// <summary>
+    /// Clones the established content-pack selector into another Options-style page.
+    /// </summary>
+    /// <param name="parent">The destination settings row.</param>
+    /// <param name="name">The cloned selector name.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The space available for the destination selector.</param>
+    /// <returns>The reusable cloned choice field.</returns>
+    internal OptionsChoiceFieldView CloneContentPackChoice(
+        Transform parent,
+        string name,
+        int x,
+        int y,
+        int width
+    )
+    {
+        Transform sourceParent = _contentPackValueField.transform.parent;
+        Image badge = sourceParent.Find("ContentPackBadge")?.GetComponent<Image>();
+        if (badge == null)
+            throw new MissingReferenceException("ContentPackBadge is missing.");
+
+        return OptionsChoiceFieldView.Clone(
+            parent,
+            name,
+            badge,
+            _contentPackValueField,
+            _contentPackPrevButton,
+            _contentPackNextButton,
+            x,
+            y,
+            width
+        );
+    }
+
+    /// <summary>
+    /// Clones the established Boolean toggle into another Options-style page.
+    /// </summary>
+    /// <param name="parent">The destination settings row.</param>
+    /// <param name="name">The cloned toggle name.</param>
+    /// <param name="optionIndex">The semantic option index emitted when toggled.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The destination toggle width.</param>
+    /// <returns>The reusable cloned toggle row.</returns>
+    internal OptionsToggleRowView CloneToggleRow(
+        Transform parent,
+        string name,
+        int optionIndex,
+        int x,
+        int y,
+        int width
+    )
+    {
+        OptionsToggleRowView source = _gameplayRows.FirstOrDefault(row => row != null);
+        if (source == null)
+            throw new MissingReferenceException("A gameplay toggle row is required.");
+
+        return OptionsToggleRowView.Clone(source, parent, name, optionIndex, x, y, width);
+    }
+
+    /// <summary>
+    /// Composes reusable choice fields over the authored Options controls.
+    /// </summary>
+    private void EnsureChoiceFields()
+    {
+        _resolutionChoice = GetOrCreateChoiceField(
+            _resolutionValueField,
+            _resolutionPrevButton,
+            _resolutionNextButton
+        );
+        _fullScreenChoice = GetOrCreateChoiceField(
+            _fullScreenValueField,
+            _fullScreenPrevButton,
+            _fullScreenNextButton
+        );
+        _contentPackChoice = GetOrCreateChoiceField(
+            _contentPackValueField,
+            _contentPackPrevButton,
+            _contentPackNextButton
+        );
+    }
+
+    /// <summary>
+    /// Returns a reusable choice field for one set of authored controls.
+    /// </summary>
+    /// <param name="value">The selected-value label.</param>
+    /// <param name="previous">The previous-value button.</param>
+    /// <param name="next">The next-value button.</param>
+    /// <returns>The configured choice field.</returns>
+    private static OptionsChoiceFieldView GetOrCreateChoiceField(
+        TextMeshProUGUI value,
+        Button previous,
+        Button next
+    )
+    {
+        OptionsChoiceFieldView choice =
+            value.GetComponent<OptionsChoiceFieldView>()
+            ?? value.gameObject.AddComponent<OptionsChoiceFieldView>();
+        choice.Configure(value, previous, next);
+        return choice;
+    }
+
+    /// <summary>
+    /// Forwards a resolution step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleResolutionStepRequested(int delta) => ResolutionStepRequested?.Invoke(delta);
+
+    /// <summary>
+    /// Forwards a display-mode step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleFullScreenStepRequested(int delta) => FullScreenStepRequested?.Invoke(delta);
+
+    /// <summary>
+    /// Forwards a content-pack step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleContentPackStepRequested(int delta) =>
+        ContentPackStepRequested?.Invoke(delta);
 
     /// <summary>
     /// Forwards a Save command from the save-list subview.
@@ -1239,6 +1418,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (
             _gameplayRows.Length != gameplayOptionCount
             || Array.Exists(_gameplayRows, row => row == null)
+            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {gameplayOptionCount} gameplay rows."
@@ -1248,14 +1428,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _userInterfaceRows.Length != userInterfaceOptionCount
             || Array.Exists(_userInterfaceRows, row => row == null)
             || _idleBarLocationDropdown == null
-            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {userInterfaceOptionCount} user-interface rows."
             );
         if (
             _modsStatusTextField == null
-            || _modsRestartTextField == null
             || _contentPackValueField == null
             || _contentPackPrevButton == null
             || _contentPackNextButton == null
@@ -1278,6 +1456,22 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name} is missing the confirm dialog.");
         if (_resolutionValueField == null || _fullScreenValueField == null)
             throw new MissingReferenceException($"{name} is missing a Graphics value field.");
+        if (_graphicsScrollArea == null)
+            throw new MissingReferenceException($"{name} is missing its Graphics scroll area.");
+        if (_graphicsContentHeight <= 0 || _graphicsScrollStep <= 0)
+            throw new MissingReferenceException($"{name} has invalid Graphics layout metrics.");
+        int graphicsSettingCount = Enum.GetValues(typeof(UserGraphicsSetting)).Length;
+        if (
+            _graphicsValueFields.Length != graphicsSettingCount
+            || _graphicsPrevButtons.Length != graphicsSettingCount
+            || _graphicsNextButtons.Length != graphicsSettingCount
+            || Array.Exists(_graphicsValueFields, field => field == null)
+            || Array.Exists(_graphicsPrevButtons, button => button == null)
+            || Array.Exists(_graphicsNextButtons, button => button == null)
+        )
+            throw new MissingReferenceException(
+                $"{name} expects {graphicsSettingCount} Graphics controls."
+            );
         if (
             _resolutionPrevButton == null
             || _resolutionNextButton == null

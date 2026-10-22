@@ -108,7 +108,7 @@ namespace Rebellion.AI.Scorers
                 AIUtility.Fulfillment(demandPressure, config.DemandUtility),
                 config.DemandUtility
             );
-            double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
+            double colonyFoundationInput = GetColonyFoundationInput(proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
             score.Add(
@@ -832,13 +832,9 @@ namespace Rebellion.AI.Scorers
         /// <summary>
         /// Returns the normalized value of using a proposal to found Outer Rim construction.
         /// </summary>
-        /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The production proposal to inspect.</param>
         /// <returns>One before the first construction yard reaches an Outer Rim planet; otherwise zero.</returns>
-        private static double GetColonyFoundationInput(
-            AITurnContext context,
-            AIManufactureProposal proposal
-        )
+        private static double GetColonyFoundationInput(AIManufactureProposal proposal)
         {
             Planet destination = proposal?.Demand?.DestinationPlanet;
             if (

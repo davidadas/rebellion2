@@ -96,7 +96,6 @@ namespace Rebellion.AI.Planners
                     context.Faction.InstanceID
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     combatTarget,
@@ -119,7 +118,6 @@ namespace Rebellion.AI.Planners
                     capitalIncludesFighters: attack != null
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     attack?.CapitalShipFirepower ?? 0,
@@ -136,7 +134,6 @@ namespace Rebellion.AI.Planners
                         : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     attack?.StarfighterFirepower ?? 0,
@@ -165,7 +162,6 @@ namespace Rebellion.AI.Planners
                                 .MinimumPlanetaryAssaultRegimentCount
                         );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     troops,
@@ -173,7 +169,6 @@ namespace Rebellion.AI.Planners
                     unit => unit is Regiment ? 1 : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     troops,
@@ -187,7 +182,6 @@ namespace Rebellion.AI.Planners
                     context.Game.Config.Combat.PlanetaryAssault
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     attack?.RegimentStrength ?? 0,
@@ -202,7 +196,6 @@ namespace Rebellion.AI.Planners
                     )
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     fighters,
@@ -210,7 +203,6 @@ namespace Rebellion.AI.Planners
                     unit => unit is Starfighter ? 1 : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     Math.Max(fighters, attack?.StarfighterCount ?? 0),
@@ -218,7 +210,6 @@ namespace Rebellion.AI.Planners
                     unit => unit is CapitalShip ship ? ship.StarfighterCapacity : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     attack?.BombardmentStrength ?? 0,
@@ -232,7 +223,6 @@ namespace Rebellion.AI.Planners
                             : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     members,
                     attack != null ? 1 : 0,
@@ -255,7 +245,6 @@ namespace Rebellion.AI.Planners
                     .ToList();
                 double minimum = context.StrategicPlan.GetDefenseStrength(headquarters);
                 AddRequirement(
-                    context,
                     contributions,
                     guards,
                     minimum,
@@ -290,7 +279,6 @@ namespace Rebellion.AI.Planners
                     )
                     .ToList();
                 AddRequirement(
-                    context,
                     contributions,
                     local,
                     context.StrategicPlan.GetPlanetaryGarrisonTarget(planet),
@@ -302,7 +290,6 @@ namespace Rebellion.AI.Planners
                         : 1
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     local,
                     context.StrategicPlan.GetPlanetaryStarfighterTarget(planet),
@@ -313,7 +300,6 @@ namespace Rebellion.AI.Planners
                         : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     local,
                     context.StrategicPlan.GetPlanetaryShieldTarget(planet),
@@ -325,7 +311,6 @@ namespace Rebellion.AI.Planners
                         : 0
                 );
                 AddRequirement(
-                    context,
                     contributions,
                     local,
                     context.StrategicPlan.GetPlanetaryWeaponTarget(planet),
@@ -372,7 +357,6 @@ namespace Rebellion.AI.Planners
                     .Cast<IManufacturable>()
                     .ToList();
                 AddRequirement(
-                    context,
                     contributions,
                     facilities,
                     context.StrategicPlan.GetInfrastructureTarget(type),
@@ -392,7 +376,6 @@ namespace Rebellion.AI.Planners
                     if (!busy)
                         continue;
                     AddRequirement(
-                        context,
                         contributions,
                         group.ToList(),
                         group.Sum(unit => ((Building)unit).GetProcessRate()),
@@ -428,7 +411,6 @@ namespace Rebellion.AI.Planners
                     )
             )
                 AddRequirement(
-                    context,
                     contributions,
                     role.Cast<IManufacturable>().ToList(),
                     context.Assessment.GetSpecialForcesReserveTarget(role.First()),
@@ -438,7 +420,6 @@ namespace Rebellion.AI.Planners
             Planet headquarters = context.Assessment.FactionHeadquarters;
             if (headquarters != null && context.Faction.Settings.Headquarters.IsMobile)
                 AddRequirement(
-                    context,
                     contributions,
                     units
                         .OfType<SpecialForces>()
@@ -459,7 +440,6 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Adds one shared requirement and caches each candidate's independent contribution.
         /// </summary>
-        /// <param name="context">The current faction turn.</param>
         /// <param name="contributions">The candidate contribution map.</param>
         /// <param name="supply">All units providing this capability, including ineligible retirements.</param>
         /// <param name="target">The capability required.</param>
@@ -468,7 +448,6 @@ namespace Rebellion.AI.Planners
         /// <param name="protectedMinimum">The hard safety floor.</param>
         /// <param name="capitalIncludesFighters">Whether the capital-ship measure includes its fighter children.</param>
         private static void AddRequirement(
-            AITurnContext context,
             Dictionary<IManufacturable, List<KeyValuePair<Requirement, double>>> contributions,
             List<IManufacturable> supply,
             double target,

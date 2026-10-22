@@ -112,6 +112,90 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DestroyedPlanetWithRetainedSupport_DoesNotJoinFaction()
+        {
+            _targetPlanet.SetFullPopularSupport(_rebels.InstanceID);
+            _targetPlanet.IsDestroyed = true;
+
+            IReadOnlyList<GameResult> results = new PlanetaryControlTickProcessor(
+                _commands
+            ).ProcessTick(_game);
+
+            Assert.IsEmpty(results);
+            Assert.IsNull(_targetPlanet.OwnerInstanceID);
+            Assert.IsNull(new PlanetaryControlQueries(_game).GetPlanetController(_targetPlanet));
+            Assert.IsNull(_commands.TransferPlanet(_targetPlanet, _rebels));
+        }
+
+        [TestCase(SupportChange.Decrease, -10, 45)]
+        [TestCase(SupportChange.Increase, 10, 55)]
+        [TestCase(SupportChange.Decrease, 10, 60)]
+        [TestCase(SupportChange.Increase, -10, 40)]
+        [TestCase(SupportChange.Decrease, -1, 50)]
+        public void ChangePopularSupport_SectorSuppression_ReducesOnlyConfiguredDirection(
+            SupportChange resistance,
+            int shift,
+            int expectedSupport
+        )
+        {
+            _empire.Settings.SupportResistance = resistance;
+            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 50);
+            Fleet fleet = new Fleet { OwnerInstanceID = _empire.InstanceID };
+            _game.AttachNode(fleet, _empirePlanet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _empire.InstanceID,
+                    SectorSuppression = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
+                fleet
+            );
+
+            _commands.ChangePopularSupport(_targetPlanet, _empire, shift);
+
+            Assert.AreEqual(expectedSupport, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
+        public void ChangePopularSupport_SuppressionInAnotherSector_AppliesFullShift()
+        {
+            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            _empire.Settings.SupportResistance = SupportChange.Decrease;
+            PlanetSector remoteSector = new PlanetSector();
+            _game.AttachNode(remoteSector, _game.Galaxy);
+            Planet remotePlanet = new Planet
+            {
+                IsColonized = true,
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(remotePlanet, remoteSector);
+            Fleet fleet = new Fleet { OwnerInstanceID = _empire.InstanceID };
+            _game.AttachNode(fleet, remotePlanet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _empire.InstanceID,
+                    SectorSuppression = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
+                fleet
+            );
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 50);
+
+            _commands.ChangePopularSupport(_targetPlanet, _empire, -10);
+
+            Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
         public void TransferPlanet_OwnershipTransition_ReportsBeforeAndAfterOwnerMutation()
         {
             string ownerWhileChanging = "not-called";
@@ -854,6 +938,27 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(15, planet.GetPopularSupport("empire"));
         }
 
+        [TestCase(50, 50, "rebels")]
+        [TestCase(40, 60, "empire")]
+        [TestCase(49, 49, null)]
+        public void ProcessTick_NoGarrison_SelectsHighestQualifyingSupport(
+            int rebelSupport,
+            int empireSupport,
+            string expectedOwner
+        )
+        {
+            _game.Config.SupportShift.OwnershipTransferThreshold = 50;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, rebelSupport },
+                { _empire.InstanceID, empireSupport },
+            };
+
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
+
+            Assert.AreEqual(expectedOwner, _targetPlanet.OwnerInstanceID);
+        }
+
         [Test]
         public void ProcessTick_BlockadeFleetOpposesFavoredSide_ShiftsTowardFavoredSide()
         {
@@ -1030,6 +1135,16 @@ namespace Rebellion.Tests.Simulation
             new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void ChangePopularSupport_MaximumPositiveShift_SaturatesAtFullSupport()
+        {
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
+
+            _commands.ChangePopularSupport(_targetPlanet, _empire, int.MaxValue);
+
+            Assert.AreEqual(100, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
         [Test]

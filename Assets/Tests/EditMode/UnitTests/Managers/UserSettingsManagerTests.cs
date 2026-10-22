@@ -10,6 +10,36 @@ namespace Rebellion.Tests.Managers
     public sealed class UserSettingsManagerTests
     {
         [Test]
+        public void Load_LegacyInterfaceLaunchSpeed_MigratesToGameplaySettings()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-settings-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                Directory.CreateDirectory(directory);
+                File.WriteAllText(path, "{\"UserInterface\":{\"GameLaunchSpeed\":5}}\n");
+                UserSettingsManager settings = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+
+                settings.Load();
+
+                Assert.AreEqual(GameLaunchSpeed.Fast, settings.Settings.Gameplay.GameLaunchSpeed);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void SaveThenLoad_Default_RestoresRuntimeBindingOverridesFromDisk()
         {
             string directory = Path.Combine(

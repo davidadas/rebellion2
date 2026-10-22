@@ -1363,12 +1363,12 @@ namespace Rebellion.Simulation
                     ) == affectedPlanet
                 )
                 {
-                    BlockadeTransitions.AddChangedResult(
-                        game,
+                    BlockadeChangedResult blockade = context.BlockadeTransitionResolver.Resolve(
                         affectedPlanet,
-                        blockadeState.Value,
-                        results
+                        blockadeState.Value
                     );
+                    if (blockade != null)
+                        results.Add(blockade);
                 }
             }
 

@@ -13,6 +13,93 @@ public static class UILayout
     public const float HdPixelsPerSourceUnit = 4.5f;
 
     /// <summary>
+    /// Applies the shared centered presentation used by editable menu numbers.
+    /// </summary>
+    /// <param name="input">The input field to configure.</param>
+    /// <param name="color">The normal text color.</param>
+    /// <param name="fontSize">The source-space font size.</param>
+    /// <param name="horizontalInset">The horizontal viewport inset.</param>
+    /// <param name="verticalInset">The vertical viewport inset.</param>
+    public static void ConfigureCenteredNumericInput(
+        TMP_InputField input,
+        Color color,
+        float fontSize,
+        int horizontalInset,
+        int verticalInset
+    )
+    {
+        if (input == null)
+            throw new ArgumentNullException(nameof(input));
+        if (input.textViewport == null)
+            throw new MissingReferenceException($"{input.name} is missing its text viewport.");
+
+        RectTransform inputRect = (RectTransform)input.transform;
+        if (
+            inputRect.rect.width - horizontalInset * 2 <= 0f
+            || inputRect.rect.height - verticalInset * 2 <= 0f
+        )
+            throw new ArgumentOutOfRangeException(
+                nameof(horizontalInset),
+                "Numeric-input insets must leave a positive viewport."
+            );
+
+        SetStretchRect(input.textViewport, horizontalInset, verticalInset);
+        ConfigureCenteredInputText(input.textComponent, color, fontSize);
+        if (input.placeholder is TMP_Text placeholder)
+            ConfigureCenteredInputText(placeholder, color, fontSize);
+    }
+
+    /// <summary>
+    /// Applies stable local geometry and typography to one input text component.
+    /// </summary>
+    /// <param name="text">The input text or placeholder.</param>
+    /// <param name="color">The normal text color.</param>
+    /// <param name="fontSize">The source-space font size.</param>
+    private static void ConfigureCenteredInputText(TMP_Text text, Color color, float fontSize)
+    {
+        if (text == null)
+            return;
+
+        text.color = color;
+        text.fontSize = fontSize;
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        SetStretchRect(text.rectTransform, 0, 0);
+    }
+
+    /// <summary>
+    /// Stretches a child rectangle inside its parent with symmetric source-space insets.
+    /// </summary>
+    /// <param name="rect">The child rectangle to configure.</param>
+    /// <param name="horizontalInset">The left and right inset.</param>
+    /// <param name="verticalInset">The top and bottom inset.</param>
+    private static void SetStretchRect(RectTransform rect, int horizontalInset, int verticalInset)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(horizontalInset, verticalInset);
+        rect.offsetMax = new Vector2(-horizontalInset, -verticalInset);
+    }
+
+    /// <summary>
+    /// Applies the shared menu-section heading presentation to a text field.
+    /// </summary>
+    /// <param name="heading">The heading to style.</param>
+    /// <param name="caption">The heading caption.</param>
+    /// <param name="accent">The menu accent color.</param>
+    public static void ConfigureMenuSectionHeading(TMP_Text heading, string caption, Color accent)
+    {
+        heading.text = caption;
+        heading.color = accent;
+        heading.fontSize = 13f;
+        heading.fontStyle = FontStyles.Normal;
+        heading.enableAutoSizing = false;
+        heading.alignment = TextAlignmentOptions.MidlineLeft;
+        heading.textWrappingMode = TextWrappingModes.NoWrap;
+        heading.overflowMode = TextOverflowModes.Overflow;
+    }
+
+    /// <summary>
     /// Assigns an image texture and sizes it from the texture's source dimensions.
     /// </summary>
     /// <param name="image">The image to update.</param>

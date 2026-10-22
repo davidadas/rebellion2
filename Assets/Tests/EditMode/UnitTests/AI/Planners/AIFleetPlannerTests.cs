@@ -3452,6 +3452,64 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreSame(fleet, proposal.Destination);
         }
 
+        /// <summary>
+        /// Verifies that a suppressed low-support source keeps one regiment to retain control.
+        /// </summary>
+        [Test]
+        public void Plan_WithSuppressedLowSupportRegimentSource_RetainsOneRegimentForControl()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Planet source = AITestSceneBuilder.AddPlanet(game, system, "source", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            source.SetPopularSupport(empire.InstanceID, 55);
+            target.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("first-regiment", empire.InstanceID),
+                source
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("second-regiment", empire.InstanceID),
+                source
+            );
+            Fleet fleet = AddBattleFleet(
+                game,
+                staging,
+                empire.InstanceID,
+                "attack-fleet",
+                combatStrength: 2000
+            );
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.RegimentCapacity = 2;
+            ship.SectorSuppression = 2;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AITransferUnitProposal> proposals = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Where(proposal => proposal.Unit is Regiment && proposal.SourceContainer == source)
+                .ToList();
+
+            Assert.AreEqual(1, proposals.Count);
+        }
+
         [Test]
         public void Plan_WithEquallySecureRegimentSources_PrefersNearestPlanet()
         {

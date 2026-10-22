@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
+using Rebellion.Util.Random;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -18,6 +20,7 @@ public sealed class StrategyWindowCommandController
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly IServiceLocator services;
+    private readonly Func<string> getPlayerFactionId;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -32,6 +35,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="services">Resolves commands and queries for the active game.</param>
+    /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
@@ -43,6 +47,7 @@ public sealed class StrategyWindowCommandController
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
         IServiceLocator services,
+        Func<string> getPlayerFactionId,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
@@ -59,6 +64,8 @@ public sealed class StrategyWindowCommandController
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.getPlayerFactionId =
+            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -315,6 +322,42 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
+    /// Opens abort confirmation for a complete active mission selection.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected missions.</param>
+    public void OpenMissionAbortConfirmWindow(
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> items
+    )
+    {
+        List<string> missionInstanceIds = GetMissionInstanceIds(items);
+        if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
+            return;
+
+        confirmDialogWindowController.OpenMissionAbort(
+            missions,
+            () =>
+            {
+                if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> liveMissions))
+                    return;
+
+                GameRoot game = services.GetService<GameRoot>();
+                string voicePath = GetMissionAbortVoicePath(liveMissions, game);
+                if (
+                    services.GetService<MissionCommands>()?.AbortMissions(missionInstanceIds)
+                    != true
+                )
+                    return;
+
+                if (!string.IsNullOrEmpty(voicePath))
+                    playSfx(voicePath);
+                RefreshAfterMutation(sourceWindow);
+            }
+        );
+    }
+
+    /// <summary>
     /// Opens scrap confirmation for selected units.
     /// </summary>
     /// <param name="sourceWindow">The strategy window that owns the selection.</param>
@@ -452,7 +495,7 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
-    /// Returns whether the requested destination is a live capital ship still being built.
+    /// Returns whether the requested destination is a visible capital ship still being built.
     /// </summary>
     /// <param name="target">The target.</param>
     /// <returns>True when the destination is an unfinished capital ship; otherwise false.</returns>
@@ -461,14 +504,11 @@ public sealed class StrategyWindowCommandController
         if (target?.GetMoveDestination() is not CapitalShip destination)
             return false;
 
-        CapitalShip liveDestination = services
-            .GetService<GameRoot>()
-            ?.GetSceneNodeByInstanceID<CapitalShip>(destination.InstanceID);
-        return (liveDestination ?? destination).ManufacturingStatus != ManufacturingStatus.Complete;
+        return destination.ManufacturingStatus != ManufacturingStatus.Complete;
     }
 
     /// <summary>
-    /// Returns whether at least one selected live unit would change its immediate container.
+    /// Returns whether at least one selected unit would change its immediate container.
     /// </summary>
     /// <param name="items">The items.</param>
     /// <param name="destination">The destination.</param>
@@ -478,26 +518,18 @@ public sealed class StrategyWindowCommandController
         if (items == null || items.Count == 0 || destination == null)
             return true;
 
-        GameRoot game = services.GetService<GameRoot>();
-        return items.Any(item =>
-        {
-            ISceneNode liveItem = game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID);
-            return liveItem?.GetParent()?.InstanceID != destination.InstanceID;
-        });
+        return items.Any(item => item?.GetParent()?.InstanceID != destination.InstanceID);
     }
 
     /// <summary>
-    /// Returns whether the selected live units include one already traveling through hyperspace.
+    /// Returns whether the selected units include one already traveling through hyperspace.
     /// </summary>
     /// <param name="items">The items.</param>
     /// <returns>True when at least one selected unit is in hyperspace; otherwise false.</returns>
     private bool ContainsInTransitUnit(IReadOnlyList<ISceneNode> items)
     {
-        GameRoot game = services.GetService<GameRoot>();
-        return items?.Any(item =>
-                game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID) is IMovable movable
-                && movable.GetTransitMovement() != null
-            ) == true;
+        return items?.Any(item => item is IMovable movable && movable.GetTransitMovement() != null)
+            == true;
     }
 
     /// <summary>
@@ -509,11 +541,81 @@ public sealed class StrategyWindowCommandController
         if (items == null || items.Count != 1 || items[0] is not Officer selectedOfficer)
             return;
 
-        GameRoot game = services.GetService<GameRoot>();
-        Officer officer = game?.GetSceneNodeByInstanceID<Officer>(selectedOfficer.InstanceID);
-        string voicePath = officer?.GetVoicePath(OfficerVoiceLineType.Order, game.Random);
+        string voicePath = selectedOfficer.GetVoicePath(
+            OfficerVoiceLineType.Order,
+            services.GetService<IRandomNumberProvider>()
+        );
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
+    }
+
+    /// <summary>
+    /// Captures unique mission identities from one context-menu selection.
+    /// </summary>
+    /// <param name="items">The selected scene nodes.</param>
+    /// <returns>The mission instance identifiers in selection order.</returns>
+    private static List<string> GetMissionInstanceIds(IReadOnlyList<ISceneNode> items)
+    {
+        if (
+            items == null
+            || items.Count == 0
+            || items.Any(item =>
+                item is not Mission mission || string.IsNullOrEmpty(mission.InstanceID)
+            )
+        )
+            return new List<string>();
+
+        return items
+            .Cast<Mission>()
+            .Select(mission => mission.InstanceID)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Resolves and validates a complete mission selection against the current game.
+    /// </summary>
+    /// <param name="missionInstanceIds">The persistent mission identifiers.</param>
+    /// <param name="missions">Receives the resolved active missions.</param>
+    /// <returns>True when every mission remains available for abort.</returns>
+    private bool TryResolveAbortMissions(
+        IReadOnlyList<string> missionInstanceIds,
+        out List<Mission> missions
+    )
+    {
+        GameRoot game = services.GetService<GameRoot>();
+        missions =
+            missionInstanceIds
+                ?.Select(instanceId => game?.GetSceneNodeByInstanceID<Mission>(instanceId))
+                .Where(mission => mission != null)
+                .ToList()
+            ?? new List<Mission>();
+        return missionInstanceIds != null
+            && missions.Count == missionInstanceIds.Count
+            && StrategyContextMenuAvailability.CanAbortMissions(
+                missions.Cast<ISceneNode>().ToList(),
+                GetPlayerFactionID()
+            );
+    }
+
+    /// <summary>
+    /// Selects one mission-abort response from the validated mission selection.
+    /// </summary>
+    /// <param name="missions">The missions being aborted.</param>
+    /// <param name="game">The current game state.</param>
+    /// <returns>The selected voice path, or null.</returns>
+    private static string GetMissionAbortVoicePath(IReadOnlyList<Mission> missions, GameRoot game)
+    {
+        if (game == null)
+            return null;
+
+        Officer speaker = missions
+            ?.SelectMany(mission =>
+                mission.GetMainParticipants().Concat(mission.GetDecoyParticipants())
+            )
+            .OfType<Officer>()
+            .FirstOrDefault(officer => officer.HasVoicePath(OfficerVoiceLineType.MissionAbort));
+        return speaker?.GetVoicePath(OfficerVoiceLineType.MissionAbort, game.Random);
     }
 
     /// <summary>
@@ -542,7 +644,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID ?? string.Empty;
+        return getPlayerFactionId() ?? string.Empty;
     }
 
     /// <summary>

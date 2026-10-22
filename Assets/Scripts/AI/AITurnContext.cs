@@ -44,10 +44,8 @@ namespace Rebellion.AI
         {
             get
             {
-                long available =
-                    (long)(Assessment?.ProjectedMaintenanceHeadroom ?? 0)
-                    - _committedMaintenanceCost;
-                return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
+                EnsureManufacturingBudget();
+                return _availableManufacturingHeadroom;
             }
         }
 
@@ -75,9 +73,16 @@ namespace Rebellion.AI
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private readonly Dictionary<
+            string,
+            Mission.MissionEvaluationState
+        > _missionEvaluationStates = new Dictionary<string, Mission.MissionEvaluationState>(
+            StringComparer.Ordinal
+        );
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private long _committedMaintenanceCost;
+        private bool _hasManufacturingBudget;
+        private int _availableManufacturingHeadroom;
 
         /// <summary>
         /// Creates a turn context.
@@ -189,6 +194,40 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the observed mission odds for a proposal during this AI turn.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to evaluate.</param>
+        /// <param name="includePersonnelLoss">Whether to calculate personnel-loss risk.</param>
+        /// <returns>The mission odds, or null when the proposal cannot create a mission.</returns>
+        internal MissionOdds GetMissionOdds(
+            AIMissionProposal proposal,
+            bool includePersonnelLoss = true
+        )
+        {
+            if (proposal?.TargetPlanet == null || MissionQueries == null || Assessment == null)
+                return null;
+
+            string planetId = proposal.TargetPlanet.InstanceID;
+            if (
+                !_missionEvaluationStates.TryGetValue(
+                    planetId,
+                    out Mission.MissionEvaluationState evaluationState
+                )
+            )
+            {
+                evaluationState = new Mission.MissionEvaluationState(Game, proposal.TargetPlanet);
+                _missionEvaluationStates.Add(planetId, evaluationState);
+            }
+
+            return MissionQueries.GetMissionOdds(
+                proposal.CreateContext(),
+                Assessment.GetMissionDetectors,
+                includePersonnelLoss,
+                evaluationState
+            );
+        }
+
+        /// <summary>
         /// Returns the generated attack demand for a known planet.
         /// </summary>
         /// <param name="planet">The known target planet.</param>
@@ -291,12 +330,59 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Records maintenance headroom consumed by an action that executed this turn.
+        /// Records the maintenance change produced by one manufacturing command.
         /// </summary>
-        /// <param name="maintenanceCost">The non-negative maintenance cost committed.</param>
-        public void CommitMaintenanceCost(int maintenanceCost)
+        /// <param name="addedMaintenance">Maintenance committed by queued items.</param>
+        /// <param name="releasedMaintenance">Maintenance released by removed items.</param>
+        internal void RecordManufacturingMutation(int addedMaintenance, int releasedMaintenance)
         {
-            _committedMaintenanceCost += Math.Max(0, maintenanceCost);
+            if (!_hasManufacturingBudget)
+            {
+                EnsureManufacturingBudget();
+                return;
+            }
+
+            long available =
+                (long)_availableManufacturingHeadroom
+                + Math.Max(0, releasedMaintenance)
+                - Math.Max(0, addedMaintenance);
+            _availableManufacturingHeadroom = (int)
+                Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
+        }
+
+        /// <summary>
+        /// Invalidates manufacturing headroom after another proposal may have changed economy state.
+        /// </summary>
+        internal void InvalidateManufacturingBudget()
+        {
+            _hasManufacturingBudget = false;
+        }
+
+        /// <summary>
+        /// Initializes the turn-scoped manufacturing budget from live economy state.
+        /// </summary>
+        private void EnsureManufacturingBudget()
+        {
+            if (_hasManufacturingBudget)
+                return;
+
+            _availableManufacturingHeadroom = CalculateAvailableManufacturingHeadroom();
+            _hasManufacturingBudget = true;
+        }
+
+        /// <summary>
+        /// Calculates current maintenance capacity minus projected maintenance cost.
+        /// </summary>
+        /// <returns>The faction's current manufacturing headroom.</returns>
+        private int CalculateAvailableManufacturingHeadroom()
+        {
+            if (Game == null || Faction == null)
+                return Assessment?.ProjectedMaintenanceHeadroom ?? 0;
+
+            long available =
+                (long)ResourceProductionQueries.CalculateMaintenanceCapacity(Game, Faction)
+                - Faction.GetTotalProjectedMaintenanceCost();
+            return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
         }
 
         /// <summary>

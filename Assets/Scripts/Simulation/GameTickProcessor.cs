@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
@@ -60,9 +61,9 @@ namespace Rebellion.Simulation
         public event Action TickCompleted;
 
         /// <summary>
-        /// Raised when an incremental tick step changes state that presentation may render.
+        /// Raised when an incremental manufacturing step changes the producing planet's queue.
         /// </summary>
-        public event Action TickProgressed;
+        public event Action<Planet> TickProgressed;
 
         public event Action CombatDecisionRequired;
         internal event Action CombatResumed;
@@ -118,10 +119,7 @@ namespace Rebellion.Simulation
             _captive = new CaptiveTickProcessor(services.GetService<CaptiveCommands>());
             _movement = new MovementTickProcessor(_movementCommands);
             _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
-            _missions = new MissionTickProcessor(
-                services.GetService<MissionCommands>(),
-                services.GetService<MissionResolver>()
-            );
+            _missions = new MissionTickProcessor(services.GetService<MissionResolver>());
             _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();
@@ -210,10 +208,13 @@ namespace Rebellion.Simulation
             )
             {
                 manufacturingResults.AddRange(manufacturingStep);
-                if (!manufacturingStep.OfType<ManufacturingPointsCompletedResult>().Any())
+                ManufacturingPointsCompletedResult progress = manufacturingStep
+                    .OfType<ManufacturingPointsCompletedResult>()
+                    .FirstOrDefault();
+                if (progress == null)
                     continue;
 
-                TickProgressed?.Invoke();
+                TickProgressed?.Invoke(progress.Context as Planet);
                 yield return null;
             }
             ProcessResults(manufacturingResults);

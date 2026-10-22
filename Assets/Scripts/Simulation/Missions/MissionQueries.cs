@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -132,10 +133,12 @@ namespace Rebellion.Simulation
         /// <param name="observedDetectors">
         /// Optional detector snapshot already filtered for the mission owner.
         /// </param>
+        /// <param name="includePersonnelLoss">Whether to calculate personnel-loss risk.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         public MissionOdds GetMissionOdds(
             MissionContext context,
-            IReadOnlyList<ISceneNode> observedDetectors = null
+            IReadOnlyList<ISceneNode> observedDetectors = null,
+            bool includePersonnelLoss = true
         )
         {
             Planet target = context?.Location as Planet;
@@ -153,7 +156,7 @@ namespace Rebellion.Simulation
                                 observedDetectors
                             )
                             : Array.Empty<ISceneNode>(),
-                true
+                includePersonnelLoss
             );
         }
 
@@ -177,6 +180,8 @@ namespace Rebellion.Simulation
         /// <param name="observedDetectorSource">
         /// Supplies detector candidates from the caller's observed state for a planet.
         /// </param>
+        /// <param name="includePersonnelLoss">Whether to calculate personnel-loss risk.</param>
+        /// <param name="evaluationState">Optional turn-scoped objective assessment.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         internal MissionOdds GetMissionOdds(
             MissionContext context,
@@ -186,13 +191,20 @@ namespace Rebellion.Simulation
                 MissionEncounterPhase,
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
-            > observedDetectorSource
+            > observedDetectorSource,
+            bool includePersonnelLoss = true,
+            Mission.MissionEvaluationState evaluationState = null
         )
         {
             if (observedDetectorSource == null)
                 throw new ArgumentNullException(nameof(observedDetectorSource));
 
-            return GetMissionOddsCore(context, observedDetectorSource, true);
+            return GetMissionOddsCore(
+                context,
+                observedDetectorSource,
+                includePersonnelLoss,
+                evaluationState: evaluationState
+            );
         }
 
         /// <summary>
@@ -289,6 +301,7 @@ namespace Rebellion.Simulation
         /// </param>
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded query.</param>
         /// <param name="reusableDecoys">Whether to calculate an optimistic bound rather than actual odds.</param>
+        /// <param name="evaluationState">Optional turn-scoped objective assessment.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionContext context,
@@ -301,7 +314,8 @@ namespace Rebellion.Simulation
             > observedDetectorSource,
             bool includePersonnelLoss,
             double minimumOverallProbability = 0,
-            bool reusableDecoys = false
+            bool reusableDecoys = false,
+            Mission.MissionEvaluationState evaluationState = null
         )
         {
             var previousLookups = _probabilityLookups;
@@ -317,7 +331,8 @@ namespace Rebellion.Simulation
                     mission.GetMainParticipants(),
                     _game,
                     context.Location as Planet,
-                    context.SelectedTarget
+                    context.SelectedTarget,
+                    evaluationState
                 );
                 if (objectiveSuccessProbability < minimumOverallProbability)
                     return null;
@@ -1430,8 +1445,8 @@ namespace Rebellion.Simulation
                 detector,
                 encounterPlanet ?? mission.GetParent() as Planet
             );
-            int score =
-                decoy.GetEffectiveRating(SkillRating.Espionage)
+            long score =
+                (long)decoy.GetEffectiveRating(SkillRating.Espionage)
                 - defender.Detection
                 - GetScaledCommanderEspionage(
                     defender.Commander,
@@ -1440,7 +1455,7 @@ namespace Rebellion.Simulation
             Dictionary<int, int> table = defender.Orbital
                 ? missionTables.FleetDecoy
                 : missionTables.PlanetaryDecoy;
-            return LookupProbability(table, score);
+            return LookupProbability(table, IntegerMath.SaturateToInt(score));
         }
 
         /// <summary>
@@ -1498,7 +1513,9 @@ namespace Rebellion.Simulation
             Planet encounterPlanet
         )
         {
-            int score = participantScore - GetMissionDetectorStrength(detector, encounterPlanet);
+            int score = IntegerMath.SaturateToInt(
+                (long)participantScore - GetMissionDetectorStrength(detector, encounterPlanet)
+            );
             int probability = LookupProbability(GetMissionTables().Foil, score);
             return Math.Clamp(probability + foilChanceModifier, 0, 100);
         }
@@ -1525,11 +1542,13 @@ namespace Rebellion.Simulation
         internal int GetMissionDetectorStrength(ISceneNode detector, Planet planet = null)
         {
             var defender = GetEncounterDefender(detector, planet);
-            return defender.Detection
-                + GetScaledCommanderEspionage(
-                    defender.Commander,
-                    GetMissionTables().FoilDefenderScalingPercent
-                );
+            return IntegerMath.SaturateToInt(
+                (long)defender.Detection
+                    + GetScaledCommanderEspionage(
+                        defender.Commander,
+                        GetMissionTables().FoilDefenderScalingPercent
+                    )
+            );
         }
 
         /// <summary>
@@ -1573,7 +1592,15 @@ namespace Rebellion.Simulation
             double multiplier = _game
                 .GetDifficultyModifier(detector?.GetOwnerInstanceID())
                 .DetectionRatingMultiplier;
-            return (int)Math.Round(authoredRating * multiplier, MidpointRounding.AwayFromZero);
+            double scaledRating = Math.Round(
+                authoredRating * multiplier,
+                MidpointRounding.AwayFromZero
+            );
+            if (scaledRating >= int.MaxValue)
+                return int.MaxValue;
+            if (scaledRating <= int.MinValue)
+                return int.MinValue;
+            return (int)scaledRating;
         }
 
         /// <summary>
@@ -1596,9 +1623,9 @@ namespace Rebellion.Simulation
         /// <param name="commander">The detector commander, if one is assigned.</param>
         /// <param name="scalingPercent">The percentage of the rating applied to detection.</param>
         /// <returns>The scaled commander contribution.</returns>
-        private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
+        private static long GetScaledCommanderEspionage(Officer commander, int scalingPercent)
         {
-            return (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
+            return (long)(commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * scalingPercent
                 / 100;
         }

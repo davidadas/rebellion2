@@ -224,6 +224,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void RenderWindow_InciteWithStrongGarrison_ShowsZeroSuccessInGameView()
+        {
+            Planet planet = _target.Planet.Planet;
+            planet.PopularSupport = new Dictionary<string, int>
+            {
+                { _opponentFactionId, 50 },
+                { _playerFactionId, 50 },
+            };
+            planet.AddVisitor(_playerFactionId);
+            _specialForces.AllowedMissionTypeIDs = new List<string>
+            {
+                InciteUprisingMission.MissionTypeID,
+            };
+            _game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            for (int index = 0; index < 20; index++)
+                _game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = $"guard-{index}",
+                        OwnerInstanceID = _opponentFactionId,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+
+            TMPro.TextMeshProUGUI label = view.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                .Single(text =>
+                    text.name == "OverallSuccessOddsTextField" && text.gameObject.activeInHierarchy
+                );
+            Assert.AreEqual("SUCCESS\n~0%", label.text);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_RejectsFurtherRendering()
         {
             MissionCreateWindowView view = OpenWindow(out UIWindow window);

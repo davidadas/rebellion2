@@ -760,6 +760,52 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        public void Constructor_MaximumEconomyModifiers_SaturatesCachedValues()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = int.MaxValue,
+            };
+            empire.Settings.ResourceProcessingPointsPerFacility = int.MaxValue;
+            empire.Settings.RefinementMultiplier = int.MaxValue;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "owned",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.Building
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.Building
+                );
+            }
+
+            AIAssessment assessment = new AIAssessment(game, empire, game.Galaxy);
+
+            Assert.AreEqual(int.MaxValue, assessment.MaintenanceCapacity);
+            Assert.AreEqual(int.MaxValue, assessment.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, assessment.ProjectedEconomyMaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, assessment.RefinedMaterialSupply);
+        }
+
+        [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

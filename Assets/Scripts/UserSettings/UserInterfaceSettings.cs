@@ -8,6 +8,7 @@ public enum UserInterfaceOption
     ShowIdleBar,
     KeepIdleBarOpen,
     ShowUnitCardStats,
+    ShowFrameRate,
 }
 
 /// <summary>
@@ -22,19 +23,6 @@ public enum IdleBarLocation
 }
 
 /// <summary>
-/// Identifies the game speed applied when entering the galaxy view.
-/// </summary>
-public enum GameLaunchSpeed
-{
-    Unchanged,
-    Paused,
-    VerySlow,
-    Slow,
-    Medium,
-    Fast,
-}
-
-/// <summary>
 /// Stores user-configurable interface presentation settings.
 /// </summary>
 [Serializable]
@@ -43,8 +31,8 @@ public sealed class UserInterfaceSettings
     public bool ShowIdleBar = true;
     public bool KeepIdleBarOpen;
     public bool ShowUnitCardStats;
+    public bool ShowFrameRate;
     public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
-    public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
 
     /// <summary>
     /// Replaces unsupported persisted values with interface defaults.
@@ -53,8 +41,6 @@ public sealed class UserInterfaceSettings
     {
         if (!Enum.IsDefined(typeof(IdleBarLocation), IdleBarLocation))
             IdleBarLocation = global::IdleBarLocation.TopRight;
-        if (!Enum.IsDefined(typeof(GameLaunchSpeed), GameLaunchSpeed))
-            GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 
     /// <summary>
@@ -69,6 +55,7 @@ public sealed class UserInterfaceSettings
             UserInterfaceOption.ShowIdleBar => ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
+            UserInterfaceOption.ShowFrameRate => ShowFrameRate,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -91,6 +78,9 @@ public sealed class UserInterfaceSettings
             case UserInterfaceOption.ShowUnitCardStats:
                 ShowUnitCardStats = enabled;
                 break;
+            case UserInterfaceOption.ShowFrameRate:
+                ShowFrameRate = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
@@ -104,7 +94,7 @@ public sealed class UserInterfaceSettings
         ShowIdleBar = true;
         KeepIdleBarOpen = false;
         ShowUnitCardStats = false;
+        ShowFrameRate = false;
         IdleBarLocation = global::IdleBarLocation.TopRight;
-        GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 }

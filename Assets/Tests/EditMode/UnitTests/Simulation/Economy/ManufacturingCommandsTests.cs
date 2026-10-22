@@ -109,6 +109,174 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Enqueue_DestroyedProducerOrDestination_DoesNotAttachOrQueue(
+            bool destroyProducer
+        )
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            Building item = CreateOrderTestBuildingTemplate("mine");
+            item.OwnerInstanceID = "EMPIRE";
+            if (destroyProducer)
+                _coruscant.IsDestroyed = true;
+            else
+                destination.IsDestroyed = true;
+
+            Assert.IsFalse(_manager.Enqueue(_coruscant, item, destination));
+            Assert.IsNull(item.GetParent());
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+        }
+
+        [Test]
+        public void StartManufacturing_DestroyedDestinationSnapshot_DoesNotDeploy()
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            Planet snapshot = (Planet)destination.CreateCopy();
+            destination.IsDestroyed = true;
+            Building template = CreateOrderTestBuildingTemplate("mine");
+
+            Assert.IsFalse(
+                _manager.StartManufacturing(_coruscant, template, snapshot, 1, "EMPIRE")
+            );
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+            Assert.IsEmpty(destination.GetChildren<Building>());
+        }
+
+        [TestCase(2)]
+        [TestCase(3)]
+        public void SetManufacturingOrder_DestroyedExistingDestination_RejectsUnchangedOrReducedQuantity(
+            int count
+        )
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(
+                _manager.StartManufacturing(_coruscant, template, destination, 3, "EMPIRE")
+            );
+            destination.IsDestroyed = true;
+
+            Assert.IsFalse(
+                _manager.SetManufacturingOrder(_coruscant, template, destination, count, "EMPIRE")
+            );
+            Assert.AreEqual(
+                3,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void StartBuildingUpgrade_DestroyedProducerOrDestination_PreservesExistingFacility(
+            bool destroyProducer
+        )
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            Building replacement = new Building
+            {
+                InstanceID = "existing",
+                TypeID = "old-mine",
+                OwnerInstanceID = "EMPIRE",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building template = CreateOrderTestBuildingTemplate("new-mine");
+            replacement.Upgrades.Add(template.TypeID);
+            _game.AttachNode(replacement, destination);
+            if (destroyProducer)
+                _coruscant.IsDestroyed = true;
+            else
+                destination.IsDestroyed = true;
+
+            Assert.IsFalse(
+                _manager.StartBuildingUpgrade(
+                    _coruscant,
+                    template,
+                    destination,
+                    replacement,
+                    "EMPIRE",
+                    100,
+                    0,
+                    out _,
+                    out _
+                )
+            );
+            Assert.AreSame(destination, replacement.GetParent());
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void RetargetManufacturingDestination_DestroyedPlanet_RejectsEvenEmptyOrders(
+            bool destroyProducer
+        )
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            if (destroyProducer)
+                _coruscant.IsDestroyed = true;
+            else
+                destination.IsDestroyed = true;
+
+            Assert.IsFalse(
+                _manager.RetargetManufacturingDestination(
+                    _coruscant,
+                    ManufacturingType.Building,
+                    destination,
+                    "EMPIRE"
+                )
+            );
+        }
+
+        [Test]
+        public void ToggleManufacturingReservation_DestroyedPlanet_RejectsReservation()
+        {
+            _coruscant.IsDestroyed = true;
+
+            Assert.IsFalse(
+                _manager.ToggleManufacturingReservation(
+                    _coruscant,
+                    ManufacturingType.Building,
+                    "EMPIRE"
+                )
+            );
+            Assert.IsFalse(_coruscant.IsManufacturingReserved(ManufacturingType.Building));
+        }
+
+        [Test]
+        public void ProcessTick_DestroyedProducerWithRetainedOrders_CancelsWithoutProgress()
+        {
+            Building item = CreateOrderTestBuildingTemplate("mine");
+            item.OwnerInstanceID = "EMPIRE";
+            Assert.IsTrue(_manager.Enqueue(_coruscant, item, _coruscant));
+            _coruscant.IsDestroyed = true;
+
+            IReadOnlyList<GameResult> results = CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.Zero(item.ManufacturingProgress);
+            Assert.IsNull(item.GetParent());
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+            Assert.IsEmpty(results.OfType<ManufacturingPointsCompletedResult>());
+        }
+
+        [TestCase(typeof(Building))]
+        [TestCase(typeof(Starfighter))]
+        public void ProcessTick_DestroyedRemoteDestination_CancelsSurfaceOrder(Type unitType)
+        {
+            Planet destination = CreateOrderTestPlanet(_game, "destination", "EMPIRE");
+            IManufacturable item = (IManufacturable)Activator.CreateInstance(unitType);
+            item.SetOwnerInstanceID("EMPIRE");
+            item.ConstructionCost = 10;
+            AddProductionFacility("extra-shipyard", ManufacturingType.Ship);
+            Assert.IsTrue(_manager.Enqueue(_coruscant, item, destination));
+            destination.IsDestroyed = true;
+
+            CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.Zero(item.ManufacturingProgress);
+            Assert.IsNull(item.GetParent());
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+        }
+
         [Test]
         public void ProcessTick_QueuedThenCancelled_ReturnsDeferredCreationResultsOnce()
         {
@@ -727,6 +895,19 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(3, mine.ManufacturingProgress);
             Assert.AreEqual(0, _shipyard.ProductionCycleProgress, 0.0001);
+        }
+
+        [Test]
+        public void ProcessTick_MaximumManufacturingSpeed_StopsAfterQueuedWorkCompletes()
+        {
+            ConfigureManufacturingSpeed(int.MaxValue);
+            Building mine = CreateManufacturingSpeedTestItem();
+            _manager.Enqueue(_coruscant, mine, _coruscant);
+
+            CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(mine.ConstructionCost, mine.ManufacturingProgress);
         }
 
         [Test]
@@ -4696,6 +4877,111 @@ namespace Rebellion.Tests.Simulation
                 fleets[0].GetChildren<CapitalShip>()[1],
                 planet.GetManufacturingQueue()[ManufacturingType.Ship][1]
             );
+        }
+
+        [Test]
+        public void StartManufacturing_OverflowingBatchMaintenance_RejectsEntireOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1_073_741_824
+            );
+
+            bool started = manager.StartManufacturing(planet, template, planet, 4, "empire");
+
+            Assert.IsFalse(started);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+            Assert.IsEmpty(planet.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void SetManufacturingOrder_OverflowingBatchMaintenance_RejectsEntireOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1_073_741_824
+            );
+
+            bool set = manager.SetManufacturingOrder(planet, template, planet, 4, "empire");
+
+            Assert.IsFalse(set);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+            Assert.IsEmpty(planet.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void StartManufacturing_VisiblePlanetSnapshots_UpdatesRegisteredPlanets()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                0
+            );
+            Planet producerView = new Planet { InstanceID = producer.InstanceID };
+            Planet destinationView = new Planet { InstanceID = destination.InstanceID };
+
+            bool started = manager.StartManufacturing(
+                producerView,
+                template,
+                destinationView,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.IsFalse(
+                producerView.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship)
+            );
+            Assert.IsEmpty(destinationView.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void ToggleManufacturingReservation_VisiblePlanetSnapshot_UpdatesRegisteredPlanet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Planet producerView = new Planet { InstanceID = producer.InstanceID };
+
+            bool toggled = manager.ToggleManufacturingReservation(
+                producerView,
+                ManufacturingType.Ship,
+                "empire"
+            );
+
+            Assert.IsTrue(toggled);
+            Assert.IsTrue(producer.IsManufacturingReserved(ManufacturingType.Ship));
+            Assert.IsFalse(producerView.IsManufacturingReserved(ManufacturingType.Ship));
         }
 
         [Test]

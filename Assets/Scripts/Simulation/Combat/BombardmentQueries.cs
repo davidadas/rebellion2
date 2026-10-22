@@ -37,12 +37,57 @@ namespace Rebellion.Simulation
             BombardmentType type
         )
         {
-            if (!CanBombard(fleets, targetPlanet))
+            if (
+                !TryResolveCommand(
+                    fleets,
+                    targetPlanet,
+                    out List<Fleet> liveFleets,
+                    out Planet liveTarget
+                )
+            )
                 return false;
 
             return type == BombardmentType.DestroyPlanet
-                ? HasPlanetDestroyingShip(fleets)
-                : CalculateBombardmentStrength(fleets) > 0;
+                ? HasPlanetDestroyingShip(liveFleets)
+                : CalculateBombardmentStrength(liveFleets) > 0;
+        }
+
+        /// <summary>
+        /// Resolves visible fleet and planet snapshots to the authoritative game graph.
+        /// </summary>
+        /// <param name="fleets">The requested attacking fleets.</param>
+        /// <param name="targetPlanet">The requested target planet.</param>
+        /// <param name="liveFleets">Receives the registered attacking fleets.</param>
+        /// <param name="liveTarget">Receives the registered target planet.</param>
+        /// <returns>True when every input resolves and the resulting command is eligible.</returns>
+        internal bool TryResolveCommand(
+            IReadOnlyList<Fleet> fleets,
+            Planet targetPlanet,
+            out List<Fleet> liveFleets,
+            out Planet liveTarget
+        )
+        {
+            liveFleets = new List<Fleet>();
+            liveTarget = string.IsNullOrEmpty(targetPlanet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(targetPlanet.InstanceID);
+            if (liveTarget == null || fleets == null || fleets.Count < 1)
+                return false;
+
+            HashSet<string> fleetIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (Fleet fleet in fleets)
+            {
+                if (string.IsNullOrEmpty(fleet?.InstanceID) || !fleetIds.Add(fleet.InstanceID))
+                    return false;
+
+                Fleet liveFleet = _game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
+                if (liveFleet == null)
+                    return false;
+
+                liveFleets.Add(liveFleet);
+            }
+
+            return CanBombard(liveFleets, liveTarget);
         }
 
         /// <summary>

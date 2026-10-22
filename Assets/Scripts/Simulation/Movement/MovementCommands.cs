@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace Rebellion.Simulation
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes around movement mutations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -51,7 +53,8 @@ namespace Rebellion.Simulation
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
             IRandomNumberProvider random = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -64,6 +67,8 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -381,17 +386,21 @@ namespace Rebellion.Simulation
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
         /// <param name="returnLocation">Receives the planet paired with the first accepted return destination.</param>
+        /// <param name="results">The owning operation's movement and encounter results.</param>
         /// <returns>Units that could not be assigned to a return destination.</returns>
         internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
             IReadOnlyList<IMovable> additionalPassengers,
-            out Planet returnLocation
+            out Planet returnLocation,
+            ICollection<GameResult> results
         )
         {
             if (participants == null)
                 throw new ArgumentNullException(nameof(participants));
             if (additionalPassengers == null)
                 throw new ArgumentNullException(nameof(additionalPassengers));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             returnLocation = null;
 
@@ -476,7 +485,7 @@ namespace Rebellion.Simulation
                     bool accepted = ExecuteReturnMove(
                         unit,
                         returnGroup.Key,
-                        _pendingResults,
+                        results,
                         movementGroupID,
                         groupTransitTicks
                     );
@@ -494,7 +503,7 @@ namespace Rebellion.Simulation
                     ResolvePersonnelEncounters(
                         immediatePersonnel,
                         MovementQueries.RequireDestinationPlanet(returnGroup.Key),
-                        _pendingResults
+                        results
                     );
             }
 
@@ -506,14 +515,18 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="participants">The participants remaining at the mission location.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <param name="results">The owning operation's movement results.</param>
         /// <returns>Participants that could not be placed at the mission planet.</returns>
         internal List<IMovable> CompleteMissionAtLocation(
             IReadOnlyList<IMissionParticipant> participants,
-            Planet missionPlanet
+            Planet missionPlanet,
+            ICollection<GameResult> results
         )
         {
             if (participants == null)
                 throw new ArgumentNullException(nameof(participants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             List<IMovable> strandedUnits = new List<IMovable>();
             foreach (IMissionParticipant participant in participants)
@@ -529,7 +542,7 @@ namespace Rebellion.Simulation
                     continue;
                 }
 
-                MoveNode(participant, missionPlanet, _pendingResults);
+                MoveNode(participant, missionPlanet, results);
                 participant.Movement = null;
             }
 
@@ -1305,6 +1318,12 @@ namespace Rebellion.Simulation
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
             bool completesManufacturingDelivery =
                 movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
+
+            if (destination is Planet { IsDestroyed: true } && movable is IManufacturable)
+            {
+                HandleArrivalRejection(movable, destinationPlanet);
+                return;
+            }
 
             if (destination is Mission)
             {
@@ -2142,8 +2161,15 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
-            if (wasBlockaded.HasValue)
-                BlockadeTransitions.AddChangedResult(_game, planet, wasBlockaded.Value, results);
+            if (!wasBlockaded.HasValue)
+                return;
+
+            BlockadeChangedResult result = _blockadeTransitionResolver.Resolve(
+                planet,
+                wasBlockaded.Value
+            );
+            if (result != null)
+                results.Add(result);
         }
 
         /// <summary>

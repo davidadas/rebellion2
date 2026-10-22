@@ -70,6 +70,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination);
             if (
                 !_queries.CanStartManufacturing(
                     producer,
@@ -81,7 +83,194 @@ namespace Rebellion.Simulation
             )
                 return false;
 
-            CancelConflictingProject(producer, template);
+            return StartValidatedManufacturing(producer, template, destination, count, out _) > 0;
+        }
+
+        /// <summary>
+        /// Creates and queues copies within a caller-supplied maintenance budget.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="availableMaintenanceHeadroom">Maintenance headroom available before this order.</param>
+        /// <param name="minimumHeadroom">The headroom that must remain after the order.</param>
+        /// <param name="addedMaintenance">Receives maintenance committed by queued items.</param>
+        /// <param name="releasedMaintenance">Receives maintenance released by removed items.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        internal bool StartManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId,
+            int availableMaintenanceHeadroom,
+            int minimumHeadroom,
+            out int addedMaintenance,
+            out int releasedMaintenance
+        )
+        {
+            addedMaintenance = 0;
+            releasedMaintenance = 0;
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination);
+            if (
+                !ManufacturingQueries.CanAcceptManufacturingOrder(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
+                )
+            )
+                return false;
+
+            int expectedReleasedMaintenance = GetConflictingProjectMaintenance(producer, template);
+            if (
+                !FitsMaintenanceBudget(
+                    template,
+                    count,
+                    availableMaintenanceHeadroom,
+                    minimumHeadroom,
+                    expectedReleasedMaintenance
+                )
+            )
+                return false;
+
+            int queued = StartValidatedManufacturing(
+                producer,
+                template,
+                destination,
+                count,
+                out releasedMaintenance
+            );
+            addedMaintenance = MultiplyMaintenance(template.GetMaintenanceCost(), queued);
+            return queued > 0;
+        }
+
+        /// <summary>
+        /// Replaces a completed building with its queued upgrade after validating both operations.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The upgraded building template.</param>
+        /// <param name="destination">The planet receiving the upgrade.</param>
+        /// <param name="replacement">The completed building removed by the upgrade.</param>
+        /// <param name="ownerInstanceId">The faction requesting the upgrade.</param>
+        /// <param name="availableMaintenanceHeadroom">Maintenance headroom available before this order.</param>
+        /// <param name="minimumHeadroom">The headroom that must remain when maintenance increases.</param>
+        /// <param name="addedMaintenance">Receives maintenance committed by the upgrade.</param>
+        /// <param name="releasedMaintenance">Receives maintenance released by replaced work.</param>
+        /// <returns>True when the replacement was removed and its upgrade was queued.</returns>
+        internal bool StartBuildingUpgrade(
+            Planet producer,
+            Building template,
+            Planet destination,
+            Building replacement,
+            string ownerInstanceId,
+            int availableMaintenanceHeadroom,
+            int minimumHeadroom,
+            out int addedMaintenance,
+            out int releasedMaintenance
+        )
+        {
+            addedMaintenance = 0;
+            releasedMaintenance = 0;
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredPlanet(destination);
+            Building registeredReplacement = string.IsNullOrEmpty(replacement?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Building>(replacement.InstanceID);
+            if (
+                producer?.IsDestroyed != false
+                || destination?.IsDestroyed != false
+                || template == null
+                || registeredReplacement == null
+                || !ReferenceEquals(registeredReplacement, replacement)
+                || replacement.GetParent() != destination
+                || replacement.GetOwnerInstanceID() != ownerInstanceId
+                || replacement.GetManufacturingStatus() != ManufacturingStatus.Complete
+                || replacement.Movement != null
+                || !replacement.CanUpgradeTo(template)
+            )
+                return false;
+
+            int queuedProjectMaintenance = GetConflictingProjectMaintenance(producer, template);
+            int replacementMaintenance = Math.Max(0, replacement.MaintenanceCost);
+            int expectedReleasedMaintenance = SaturatingAdd(
+                queuedProjectMaintenance,
+                replacementMaintenance
+            );
+            if (
+                !FitsMaintenanceBudget(
+                    template,
+                    1,
+                    availableMaintenanceHeadroom,
+                    minimumHeadroom,
+                    expectedReleasedMaintenance
+                )
+            )
+                return false;
+
+            _game.DetachNode(replacement);
+            int queued = 0;
+            int actualQueuedProjectMaintenance = 0;
+            try
+            {
+                if (
+                    ManufacturingQueries.CanAcceptManufacturingOrder(
+                        producer,
+                        template,
+                        destination,
+                        1,
+                        ownerInstanceId
+                    )
+                )
+                {
+                    queued = StartValidatedManufacturing(
+                        producer,
+                        template,
+                        destination,
+                        1,
+                        out actualQueuedProjectMaintenance
+                    );
+                }
+            }
+            finally
+            {
+                if (queued == 0 && replacement.GetParent() == null)
+                    _game.AttachNode(replacement, destination);
+            }
+
+            if (queued == 0)
+                return false;
+
+            addedMaintenance = Math.Max(0, template.MaintenanceCost);
+            releasedMaintenance = SaturatingAdd(
+                actualQueuedProjectMaintenance,
+                replacementMaintenance
+            );
+            return true;
+        }
+
+        /// <summary>
+        /// Queues a structurally and financially validated manufacturing order.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="releasedMaintenance">Receives maintenance released by a conflicting project.</param>
+        /// <returns>The number of copies queued.</returns>
+        private int StartValidatedManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            out int releasedMaintenance
+        )
+        {
+            releasedMaintenance = CancelConflictingProject(producer, template);
             return QueueManufacturingItems(producer, template, destination, count);
         }
 
@@ -102,6 +291,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination);
             if (
                 !_queries.CanSetManufacturingOrder(
                     producer,
@@ -133,11 +324,11 @@ namespace Rebellion.Simulation
                     return true;
 
                 return QueueManufacturingItems(
-                    producer,
-                    template,
-                    destination,
-                    count - activeOrder.Quantity
-                );
+                        producer,
+                        template,
+                        destination,
+                        count - activeOrder.Quantity
+                    ) > 0;
             }
 
             HashSet<Fleet> productionFleets = new HashSet<Fleet>();
@@ -147,7 +338,7 @@ namespace Rebellion.Simulation
                 producer.GetManufacturingQueue().Remove(type);
             }
 
-            bool started = QueueManufacturingItems(producer, template, destination, count);
+            bool started = QueueManufacturingItems(producer, template, destination, count) > 0;
             RemoveEmptyFleets(productionFleets);
 
             return started;
@@ -160,15 +351,15 @@ namespace Rebellion.Simulation
         /// <param name="template">The unit or facility template to manufacture.</param>
         /// <param name="destination">The node that receives completed items.</param>
         /// <param name="count">The number of copies to queue.</param>
-        /// <returns>True when at least one copy was queued.</returns>
-        private bool QueueManufacturingItems(
+        /// <returns>The number of copies queued.</returns>
+        private int QueueManufacturingItems(
             Planet producer,
             IManufacturable template,
             ISceneNode destination,
             int count
         )
         {
-            bool started = false;
+            int queued = 0;
             Fleet capitalShipDestination = null;
             Planet destinationPlanet = destination as Planet;
             Fleet destinationFleet = destination as Fleet;
@@ -177,7 +368,7 @@ namespace Rebellion.Simulation
             for (int index = 0; index < count; index++)
             {
                 if (template is not ISceneNode templateNode)
-                    return started;
+                    return queued;
 
                 ISceneNode sceneNode = templateNode.CreateCopy();
                 sceneNode.InstanceID = null;
@@ -192,11 +383,11 @@ namespace Rebellion.Simulation
                 bool enqueued;
                 if (destinationFleet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationFleet);
+                    enqueued = EnqueueValidated(producer, item, destinationFleet);
                 }
                 else if (destinationShip != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationShip);
+                    enqueued = EnqueueValidated(producer, item, destinationShip);
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
@@ -205,29 +396,29 @@ namespace Rebellion.Simulation
                         producer.GetOwnerInstanceID()
                     );
                     if (capitalShipDestination == null)
-                        return started;
+                        return queued;
 
-                    enqueued = Enqueue(producer, item, capitalShipDestination);
+                    enqueued = EnqueueValidated(producer, item, capitalShipDestination);
                 }
                 else if (destinationPlanet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationPlanet);
+                    enqueued = EnqueueValidated(producer, item, destinationPlanet);
                 }
                 else
                 {
-                    return started;
+                    return queued;
                 }
 
                 if (!enqueued)
                 {
                     FleetLifecycle.RemoveEmptyFleet(_game, capitalShipDestination);
-                    return started;
+                    return queued;
                 }
 
-                started = true;
+                queued++;
             }
 
-            return started;
+            return queued;
         }
 
         /// <summary>
@@ -288,10 +479,13 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination) as ContainerNode;
             if (
-                producer == null
+                producer?.IsDestroyed != false
                 || type == ManufacturingType.None
                 || destination == null
+                || destination is Planet { IsDestroyed: true }
                 || string.IsNullOrEmpty(ownerInstanceId)
                 || !string.Equals(
                     producer.GetOwnerInstanceID(),
@@ -320,11 +514,44 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Toggles whether one manufacturing lane is reserved for manual production.
+        /// </summary>
+        /// <param name="producer">The producing planet or visible snapshot.</param>
+        /// <param name="type">The manufacturing lane.</param>
+        /// <param name="ownerInstanceId">The faction requesting the change.</param>
+        /// <returns>True when the reservation was changed.</returns>
+        public bool ToggleManufacturingReservation(
+            Planet producer,
+            ManufacturingType type,
+            string ownerInstanceId
+        )
+        {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            if (
+                producer?.IsDestroyed != false
+                || type == ManufacturingType.None
+                || string.IsNullOrEmpty(ownerInstanceId)
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                return false;
+            }
+
+            producer.SetManufacturingReserved(type, !producer.IsManufacturingReserved(type));
+            return true;
+        }
+
+        /// <summary>
         /// Cancels the active project in a production lane when a different unit type is ordered.
         /// </summary>
         /// <param name="producer">The producer.</param>
         /// <param name="template">The template.</param>
-        private void CancelConflictingProject(Planet producer, IManufacturable template)
+        /// <returns>The maintenance released by the canceled project.</returns>
+        private int CancelConflictingProject(Planet producer, IManufacturable template)
         {
             ManufacturingType type = template.GetManufacturingType();
             if (
@@ -336,11 +563,75 @@ namespace Rebellion.Simulation
                 || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
             )
             {
-                return;
+                return 0;
             }
 
+            int releasedMaintenance = GetMaintenanceTotal(activeProject);
             ClearQueueItems(producer, activeProject);
             producer.GetManufacturingQueue().Remove(type);
+            return releasedMaintenance;
+        }
+
+        /// <summary>
+        /// Returns maintenance released when a new order replaces the active project.
+        /// </summary>
+        /// <param name="producer">The producer whose active lane is inspected.</param>
+        /// <param name="template">The requested replacement product.</param>
+        /// <returns>The non-negative maintenance released by the replacement.</returns>
+        private static int GetConflictingProjectMaintenance(
+            Planet producer,
+            IManufacturable template
+        )
+        {
+            if (
+                producer
+                    ?.GetManufacturingQueue()
+                    .TryGetValue(
+                        template.GetManufacturingType(),
+                        out List<IManufacturable> activeProject
+                    ) != true
+                || activeProject == null
+                || activeProject.Count == 0
+                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+            )
+                return 0;
+
+            return GetMaintenanceTotal(activeProject);
+        }
+
+        /// <summary>
+        /// Totals non-negative maintenance costs without overflowing.
+        /// </summary>
+        /// <param name="items">The queued items to total.</param>
+        /// <returns>The saturated maintenance total.</returns>
+        private static int GetMaintenanceTotal(IEnumerable<IManufacturable> items)
+        {
+            long total = items.Sum(item => (long)Math.Max(0, item.GetMaintenanceCost()));
+            return total > int.MaxValue ? int.MaxValue : (int)total;
+        }
+
+        /// <summary>
+        /// Multiplies an item's maintenance cost by a queued count without overflowing.
+        /// </summary>
+        /// <param name="maintenanceCost">The maintenance cost of one item.</param>
+        /// <param name="count">The number of queued items.</param>
+        /// <returns>The saturated non-negative maintenance total.</returns>
+        private static int MultiplyMaintenance(int maintenanceCost, int count)
+        {
+            long total = (long)Math.Max(0, maintenanceCost) * Math.Max(0, count);
+            return total > int.MaxValue ? int.MaxValue : (int)total;
+        }
+
+        /// <summary>
+        /// Adds two non-negative maintenance values without overflowing.
+        /// </summary>
+        /// <param name="left">The first maintenance value.</param>
+        /// <param name="right">The second maintenance value.</param>
+        /// <returns>The saturated non-negative sum.</returns>
+        private static int SaturatingAdd(int left, int right)
+        {
+            long total = (long)Math.Max(0, left) + Math.Max(0, right);
+            return total > int.MaxValue ? int.MaxValue : (int)total;
         }
 
         /// <summary>
@@ -352,6 +643,21 @@ namespace Rebellion.Simulation
         /// <param name="destination">The planet receiving the completed item.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Planet destination)
+        {
+            Faction faction = GetValidatedFaction(planet, item);
+            return faction != null
+                && HasMaintenanceHeadroom(faction, item)
+                && EnqueueValidated(planet, item, destination);
+        }
+
+        /// <summary>
+        /// Queues an item for delivery to a planet.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The planet receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool EnqueueValidated(Planet planet, IManufacturable item, Planet destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -370,9 +676,6 @@ namespace Rebellion.Simulation
                 return false;
 
             if (!destination.CanAcceptChild(item))
-                return false;
-
-            if (!HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
@@ -401,6 +704,21 @@ namespace Rebellion.Simulation
         /// <param name="destination">The fleet receiving the completed item.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Fleet destination)
+        {
+            Faction faction = GetValidatedFaction(planet, item);
+            return faction != null
+                && HasMaintenanceHeadroom(faction, item)
+                && EnqueueValidated(planet, item, destination);
+        }
+
+        /// <summary>
+        /// Queues an item for delivery to a fleet.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The fleet receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool EnqueueValidated(Planet planet, IManufacturable item, Fleet destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -445,9 +763,6 @@ namespace Rebellion.Simulation
             if (!parent.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
-                return false;
-
             _game.AttachNode(item, parent);
 
             _pendingResults.Add(
@@ -474,6 +789,21 @@ namespace Rebellion.Simulation
         public bool Enqueue(Planet planet, IManufacturable item, CapitalShip destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
+            return faction != null
+                && HasMaintenanceHeadroom(faction, item)
+                && EnqueueValidated(planet, item, destination);
+        }
+
+        /// <summary>
+        /// Queues an item for delivery to a capital ship.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The capital ship receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool EnqueueValidated(Planet planet, IManufacturable item, CapitalShip destination)
+        {
+            Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
                 return false;
 
@@ -495,9 +825,6 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
-                return false;
-
             _game.AttachNode(item, destination);
 
             _pendingResults.Add(
@@ -512,6 +839,49 @@ namespace Rebellion.Simulation
 
             CommitToQueue(planet, item);
             return true;
+        }
+
+        /// <summary>
+        /// Queues an item within a caller-supplied maintenance budget.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The node receiving the completed item.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="availableMaintenanceHeadroom">Maintenance headroom available before this order.</param>
+        /// <param name="minimumHeadroom">The headroom that must remain after the order.</param>
+        /// <param name="addedMaintenance">Receives maintenance committed by the queued item.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        internal bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            ISceneNode destination,
+            string ownerInstanceId,
+            int availableMaintenanceHeadroom,
+            int minimumHeadroom,
+            out int addedMaintenance
+        )
+        {
+            addedMaintenance = 0;
+            if (
+                !string.Equals(
+                    planet?.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                ) || !FitsMaintenanceBudget(item, 1, availableMaintenanceHeadroom, minimumHeadroom)
+            )
+                return false;
+
+            bool enqueued = destination switch
+            {
+                Planet destinationPlanet => EnqueueValidated(planet, item, destinationPlanet),
+                Fleet destinationFleet => EnqueueValidated(planet, item, destinationFleet),
+                CapitalShip destinationShip => EnqueueValidated(planet, item, destinationShip),
+                _ => false,
+            };
+            if (enqueued)
+                addedMaintenance = Math.Max(0, item.GetMaintenanceCost());
+            return enqueued;
         }
 
         /// <summary>
@@ -530,7 +900,9 @@ namespace Rebellion.Simulation
             if (!ReferenceEquals(liveDestination, destination))
                 return false;
 
-            return destination is Planet || destination.GetParentOfType<Planet>() != null;
+            return destination is Planet planet
+                ? !planet.IsDestroyed
+                : destination.GetParentOfType<Planet>() != null;
         }
 
         /// <summary>
@@ -541,7 +913,11 @@ namespace Rebellion.Simulation
         /// <returns>The owning faction, or null if validation fails.</returns>
         private Faction GetValidatedFaction(Planet planet, IManufacturable item)
         {
-            if (planet == null || item == null)
+            if (
+                planet?.IsDestroyed != false
+                || item == null
+                || !ReferenceEquals(_queries.ResolveRegisteredPlanet(planet), planet)
+            )
                 return null;
 
             string ownerInstanceId = planet.GetOwnerInstanceID();
@@ -571,6 +947,37 @@ namespace Rebellion.Simulation
                 - faction.GetTotalProjectedMaintenanceCost(item);
 
             return projectedHeadroom >= 0;
+        }
+
+        /// <summary>
+        /// Returns whether one order fits within a supplied maintenance budget.
+        /// </summary>
+        /// <param name="item">The item being manufactured.</param>
+        /// <param name="count">The number of copies being committed.</param>
+        /// <param name="availableMaintenanceHeadroom">Headroom available before the order.</param>
+        /// <param name="minimumHeadroom">Headroom that must remain after the order.</param>
+        /// <param name="releasedMaintenance">Maintenance released by the same order.</param>
+        /// <returns>True when the order may be committed.</returns>
+        private static bool FitsMaintenanceBudget(
+            IManufacturable item,
+            int count,
+            int availableMaintenanceHeadroom,
+            int minimumHeadroom,
+            int releasedMaintenance = 0
+        )
+        {
+            if (item == null || count <= 0)
+                return false;
+            if (item.GetMaintenanceCost() <= 0 || ManufacturingRules.IsResourceFacility(item))
+                return true;
+
+            long addedMaintenance = (long)Math.Max(0, item.GetMaintenanceCost()) * count;
+            long released = Math.Max(0, releasedMaintenance);
+            if (addedMaintenance <= released)
+                return true;
+
+            long remaining = (long)availableMaintenanceHeadroom + released - addedMaintenance;
+            return remaining >= minimumHeadroom;
         }
 
         /// <summary>

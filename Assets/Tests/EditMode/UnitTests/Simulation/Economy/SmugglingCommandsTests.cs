@@ -82,6 +82,23 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolveProductionBatch_MixedRolls_ReturnsDivertedQuantity()
+        {
+            Building facility = AddFacility();
+            SetSupport(15, 85);
+            new SmugglingTickProcessor(_system).ProcessTick(_game);
+            _game.Random = new QueueRNG(0.5, 0.8, 0.1);
+
+            (Faction beneficiary, int divertedQuantity) = _system.ResolveProductionBatch(
+                facility,
+                3
+            );
+
+            Assert.AreEqual("FACTION2", beneficiary.InstanceID);
+            Assert.AreEqual(2, divertedQuantity);
+        }
+
+        [Test]
         public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
             SetSupport(15, 85);

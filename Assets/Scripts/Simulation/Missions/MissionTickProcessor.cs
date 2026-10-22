@@ -15,17 +15,14 @@ namespace Rebellion.Simulation
     /// </summary>
     internal sealed class MissionTickProcessor : ITickProcessor
     {
-        private readonly MissionCommands _commands;
         private readonly MissionResolver _resolver;
 
         /// <summary>
         /// Creates mission tick processing.
         /// </summary>
-        /// <param name="commands">The mission commands containing queued immediate results.</param>
         /// <param name="resolver">The mission lifecycle resolver.</param>
-        public MissionTickProcessor(MissionCommands commands, MissionResolver resolver)
+        public MissionTickProcessor(MissionResolver resolver)
         {
-            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
@@ -59,12 +56,9 @@ namespace Rebellion.Simulation
             bool RequiresImmediateSettlement
         )> ProcessTickIncrementally(GameRoot game)
         {
-            List<GameResult> results = _commands.TakePendingResults();
+            List<GameResult> results = new List<GameResult>();
             Dictionary<string, bool> recruitmentAvailabilityBefore =
                 GetRecruitmentAvailabilityByFaction(game);
-            if (results.Count > 0)
-                yield return (results.ToList(), false);
-
             foreach (Mission mission in game.GetSceneNodesByType<Mission>())
             {
                 if (mission.GetParent() == null)
@@ -103,10 +97,28 @@ namespace Rebellion.Simulation
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
 
-            if (mission.IsWaitingForParticipants())
-                return new List<GameResult>();
-
             List<GameResult> results = new List<GameResult>();
+            List<Officer> killedParticipants = null;
+            foreach (IMissionParticipant participant in mission.GetMainParticipants(true))
+            {
+                if (participant is Officer { IsKilled: true } officer)
+                    (killedParticipants ??= new List<Officer>()).Add(officer);
+            }
+            foreach (IMissionParticipant participant in mission.GetDecoyParticipants(true))
+            {
+                if (participant is Officer { IsKilled: true } officer)
+                    (killedParticipants ??= new List<Officer>()).Add(officer);
+            }
+            if (killedParticipants != null)
+            {
+                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
+            }
+
+            if (mission.IsWaitingForParticipants())
+                return results;
+
             MissionCompletionReason? abortReason = mission.GetAbortReason(game);
             if (abortReason.HasValue)
             {

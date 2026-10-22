@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -17,6 +18,7 @@ namespace Rebellion.Tests.UI.Components
         private Scrollbar _scrollbar;
         private Button _scrollDownButton;
         private Button _scrollUpButton;
+        private RectTransform _scrollRoot;
         private RectTransform _slidingAreaRoot;
         private RectTransform _trackBackgroundRoot;
         private RectTransform _viewportRoot;
@@ -30,13 +32,13 @@ namespace Rebellion.Tests.UI.Components
             _rootObject = new GameObject(
                 "ScrollArea",
                 typeof(RectTransform),
-                typeof(ScrollRect),
                 typeof(ScrollAreaView)
             );
             _rootObject.SetActive(false);
             _scrollArea = _rootObject.GetComponent<ScrollAreaView>();
-            ScrollRect scrollRect = _rootObject.GetComponent<ScrollRect>();
-            _viewportRoot = CreateRect("Viewport", _rootObject.transform, 100, 50);
+            _scrollRoot = CreateRect("ScrollRect", _rootObject.transform, 100, 50);
+            ScrollRect scrollRect = _scrollRoot.gameObject.AddComponent<ScrollRect>();
+            _viewportRoot = CreateRect("Viewport", _scrollRoot, 100, 50);
             _contentRoot = CreateRect("Content", _viewportRoot, 100, 50);
             scrollRect.viewport = _viewportRoot;
             scrollRect.content = _contentRoot;
@@ -51,7 +53,7 @@ namespace Rebellion.Tests.UI.Components
             _slidingAreaRoot = CreateRect("SlidingArea", scrollbarObject.transform, 10, 30);
             _scrollUpButton = CreateButton("ScrollUpButton", scrollbarObject.transform, 10, 8);
             _scrollDownButton = CreateButton("ScrollDownButton", scrollbarObject.transform, 10, 12);
-            _dragRelay = _viewportRoot.gameObject.AddComponent<ScrollAreaDragRelay>();
+            _dragRelay = _scrollRoot.gameObject.AddComponent<ScrollAreaDragRelay>();
             SetField("scrollRect", scrollRect);
             SetField("contentRoot", _contentRoot);
             SetField("scrollbar", _scrollbar);
@@ -72,12 +74,59 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Keeps the themed thumb proportional and contained after feature-specific layout.
+        /// </summary>
+        /// <param name="position">The requested normalized scroll position.</param>
+        [TestCase(0f)]
+        [TestCase(0.5f)]
+        [TestCase(1f)]
+        public void SetLayout_MenuPrefab_KeepsSlicedThumbInsideTrack(float position)
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(
+                "Assets/Prefabs/UI/Common/MenuScrollArea.prefab"
+            );
+            try
+            {
+                ScrollAreaView area = root.GetComponent<ScrollAreaView>();
+                area.SetLayout(
+                    Vector2.zero,
+                    new Vector2(344, 328),
+                    new Vector2(350, 16),
+                    new Vector2(12, 312)
+                );
+                area.SetContentHeight(446, 26, true);
+                area.VerticalNormalizedPosition = position;
+                Scrollbar scrollbar = root.GetComponentInChildren<Scrollbar>();
+                RectTransform handle = scrollbar.handleRect;
+                RectTransform track = handle.parent as RectTransform;
+                Bounds thumbBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                    track,
+                    handle
+                );
+                Image frame = handle
+                    .GetComponentsInChildren<Image>()
+                    .First(image => image.type == Image.Type.Sliced);
+
+                Assert.AreEqual(track.rect.height * scrollbar.size, handle.rect.height, 0.001f);
+                Assert.GreaterOrEqual(thumbBounds.min.y, track.rect.yMin - 0.001f);
+                Assert.LessOrEqual(thumbBounds.max.y, track.rect.yMax + 0.001f);
+                Assert.AreEqual(Vector2.zero, handle.sizeDelta);
+                Assert.AreNotEqual(Vector4.zero, frame.sprite.border);
+                Assert.IsNotNull(frame.GetComponent<ContentSpriteBinding>());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void Properties_ConfiguredHierarchy_ReturnAuthoredGeometry()
         {
             Assert.AreSame(_contentRoot, _scrollArea.ContentRoot);
             Assert.AreSame(_viewportRoot, _scrollArea.ViewportRoot);
-            Assert.AreSame(_rootObject.transform, _scrollArea.ScrollRoot);
+            Assert.AreSame(_scrollRoot, _scrollArea.ScrollRoot);
             Assert.AreEqual(100f, _scrollArea.ViewportWidth);
             Assert.AreEqual(50f, _scrollArea.ViewportHeight);
         }
@@ -100,11 +149,9 @@ namespace Rebellion.Tests.UI.Components
                 new Vector2(14, 100)
             );
 
-            Assert.AreEqual(
-                new RectInt(1, 2, 120, 60),
-                UILayout.GetSourceRect(_rootObject.transform as RectTransform)
-            );
+            Assert.AreEqual(new RectInt(1, 2, 120, 60), UILayout.GetSourceRect(_scrollRoot));
             Assert.AreEqual(new RectInt(0, 0, 120, 60), UILayout.GetSourceRect(_viewportRoot));
+            Assert.AreEqual(new RectInt(0, 0, 120, 60), UILayout.GetSourceRect(_contentRoot));
             Assert.AreEqual(
                 new RectInt(130, 4, 14, 100),
                 UILayout.GetSourceRect(_scrollbar.transform as RectTransform)
@@ -122,6 +169,32 @@ namespace Rebellion.Tests.UI.Components
                 UILayout.GetSourceRect(_trackBackgroundRoot)
             );
             Assert.AreEqual(new RectInt(0, 8, 14, 80), UILayout.GetSourceRect(_slidingAreaRoot));
+        }
+
+        /// <summary>
+        /// Verifies that refreshing shared layout geometry does not discard established scrolling.
+        /// </summary>
+        [Test]
+        public void SetLayout_AfterContentLayout_PreservesContentHeightAndScrollPosition()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
+            float scrollOffset = _contentRoot.anchoredPosition.y;
+
+            _scrollArea.SetLayout(
+                new Vector2(1, 2),
+                new Vector2(120, 50),
+                new Vector2(130, 4),
+                new Vector2(14, 100)
+            );
+
+            Assert.AreEqual(120f, _contentRoot.rect.width);
+            Assert.AreEqual(200f, _contentRoot.rect.height);
+            Assert.AreEqual(scrollOffset, _contentRoot.anchoredPosition.y);
+
+            _scrollArea.SetContentHeight(200, 10, false);
+
+            Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);
         }
 
         [Test]
@@ -156,20 +229,20 @@ namespace Rebellion.Tests.UI.Components
         public void SetContentHeight_FirstLayout_StartsAtTopThenPreservesPosition()
         {
             _contentRoot.sizeDelta = new Vector2(100, 200);
-            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;
 
             _scrollArea.SetContentHeight(200, 10, false);
 
             Assert.AreEqual(1f, _scrollbar.value, 0.01f);
 
-            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
             _scrollArea.SetContentHeight(200, 10, false);
 
             Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);
         }
 
         [Test]
-        public void RelayScroll_ContentOverflows_MovesByConfiguredStep()
+        public void RelayScroll_ContentOverflows_EasesTowardHalfConfiguredStep()
         {
             _scrollArea.SetContentHeight(200, 10, true);
             PointerEventData eventData = new PointerEventData(null)
@@ -179,8 +252,49 @@ namespace Rebellion.Tests.UI.Components
 
             _scrollArea.RelayScroll(eventData);
 
+            Assert.AreEqual(0f, _contentRoot.anchoredPosition.y, 0.01f);
+            _scrollArea.AdvanceScroll(0.04f);
+            Assert.Greater(_contentRoot.anchoredPosition.y, 0f);
+            Assert.Less(_contentRoot.anchoredPosition.y, 5f);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(1f - 5f / 150f, _scrollbar.value, 0.01f);
+        }
+
+        [Test]
+        public void RelayScroll_RapidWheelInput_AccumulatesConfiguredSteps()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0, -1),
+            };
+
+            _scrollArea.RelayScroll(eventData);
+            _scrollArea.RelayScroll(eventData);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
             Assert.AreEqual(10f, _contentRoot.anchoredPosition.y, 0.01f);
-            Assert.AreEqual(1f - 10f / 150f, _scrollbar.value, 0.01f);
+        }
+
+        [Test]
+        public void SetContentHeight_PendingWheelMovement_PreservesQueuedTarget()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0, -1),
+            };
+            _scrollArea.RelayScroll(eventData);
+
+            _scrollArea.SetContentHeight(200, 10, false);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
         [Test]
@@ -266,11 +380,13 @@ namespace Rebellion.Tests.UI.Components
             _dragRelay.OnEndDrag(eventData);
             _dragRelay.OnDrop(eventData);
             _dragRelay.OnScroll(eventData);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
 
             Assert.AreEqual(2, dragCount);
             Assert.AreEqual(1, endCount);
             Assert.AreEqual(1, dropCount);
-            Assert.AreEqual(10f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
         [Test]

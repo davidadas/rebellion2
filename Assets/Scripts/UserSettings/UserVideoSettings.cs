@@ -18,19 +18,87 @@ public enum UserTacticalOption
 }
 
 /// <summary>
+/// Identifies a persisted graphics setting presented by the Graphics options page.
+/// </summary>
+public enum UserGraphicsSetting
+{
+    QualityPreset,
+
+    AntiAliasing,
+
+    FrameGeneration,
+
+    VerticalSync,
+
+    FrameRateLimit,
+
+    RayTracing,
+
+    AmbientOcclusion,
+
+    Bloom,
+
+    MotionBlur,
+
+    HdrOutput,
+}
+
+/// <summary>
+/// Identifies the anti-aliasing algorithm applied to primary scene cameras.
+/// </summary>
+public enum UserAntiAliasingMode
+{
+    Off,
+
+    Fxaa,
+
+    Smaa,
+
+    Taa,
+}
+
+/// <summary>
+/// Identifies whether NVIDIA DLSS Frame Generation is enabled for the primary display.
+/// </summary>
+public enum UserFrameGenerationMode
+{
+    Off,
+
+    On,
+}
+
+/// <summary>
 /// Stores user-configurable video settings.
 /// </summary>
 [Serializable]
 public sealed class UserVideoSettings
 {
+    public const int DefaultQualityLevel = 5;
     public int ResolutionWidth;
     public int ResolutionHeight;
     public int FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
+    public int QualityLevel = DefaultQualityLevel;
+    public bool GraphicsPresetCustomized;
+    public int AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
+    public int FrameGenerationMode = (int)UserFrameGenerationMode.Off;
+    public int FrameRateLimit;
+    public bool VerticalSync = true;
+    public bool RayTracing;
+    public bool AmbientOcclusion = true;
+    public bool Bloom = true;
+    public bool MotionBlur = true;
+    public bool HdrOutput;
     public bool ShowStarfield = true;
     public bool ShowPlanet = true;
     public bool ShowPyro = true;
     public bool HighDetail = true;
     public bool ShowHolocube = true;
+
+    /// <summary>
+    /// Gets whether the selected display mode supports Frame Generation.
+    /// </summary>
+    public bool SupportsFrameGeneration =>
+        FullScreenMode != (int)UnityFullScreenMode.ExclusiveFullScreen;
 
     /// <summary>
     /// Normalizes persisted display values without replacing the native-resolution sentinel.
@@ -47,6 +115,14 @@ public sealed class UserVideoSettings
         }
         if (!Enum.IsDefined(typeof(UnityFullScreenMode), FullScreenMode))
             FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
+        QualityLevel = Math.Clamp(QualityLevel, 0, DefaultQualityLevel);
+        if (!Enum.IsDefined(typeof(UserAntiAliasingMode), AntiAliasingMode))
+            AntiAliasingMode = (int)UserAntiAliasingMode.Off;
+        if (!Enum.IsDefined(typeof(UserFrameGenerationMode), FrameGenerationMode))
+            FrameGenerationMode = (int)UserFrameGenerationMode.Off;
+        FrameRateLimit = NormalizeFrameRateLimit(FrameRateLimit);
+        if (!AmbientOcclusion)
+            RayTracing = false;
     }
 
     /// <summary>
@@ -106,5 +182,92 @@ public sealed class UserVideoSettings
         ShowPyro = true;
         HighDetail = true;
         ShowHolocube = true;
+    }
+
+    /// <summary>
+    /// Restores graphics-quality settings without changing the selected display mode.
+    /// </summary>
+    public void RestoreGraphicsDefaults()
+    {
+        ApplyGraphicsPreset(DefaultQualityLevel);
+        FrameGenerationMode = (int)UserFrameGenerationMode.Off;
+        FrameRateLimit = 0;
+        VerticalSync = true;
+        RayTracing = false;
+        AmbientOcclusion = true;
+        Bloom = true;
+        MotionBlur = true;
+        HdrOutput = false;
+    }
+
+    /// <summary>
+    /// Applies the subordinate rendering values owned by one quality preset.
+    /// </summary>
+    /// <param name="qualityLevel">The zero-based project quality tier.</param>
+    public void ApplyGraphicsPreset(int qualityLevel)
+    {
+        QualityLevel = Math.Clamp(qualityLevel, 0, DefaultQualityLevel);
+        switch (QualityLevel)
+        {
+            case 0:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Off;
+                AmbientOcclusion = false;
+                Bloom = false;
+                MotionBlur = false;
+                break;
+            case 1:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Fxaa;
+                AmbientOcclusion = false;
+                Bloom = true;
+                MotionBlur = false;
+                break;
+            case 2:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Fxaa;
+                AmbientOcclusion = true;
+                Bloom = true;
+                MotionBlur = false;
+                break;
+            case 3:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Smaa;
+                AmbientOcclusion = true;
+                Bloom = true;
+                MotionBlur = false;
+                break;
+            case 4:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
+                AmbientOcclusion = true;
+                Bloom = true;
+                MotionBlur = false;
+                break;
+            default:
+                AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
+                AmbientOcclusion = true;
+                Bloom = true;
+                MotionBlur = true;
+                break;
+        }
+
+        if (!AmbientOcclusion)
+            RayTracing = false;
+        GraphicsPresetCustomized = false;
+    }
+
+    /// <summary>
+    /// Normalizes a persisted frame-rate limit to a supported value.
+    /// </summary>
+    /// <param name="frameRateLimit">The persisted frame-rate limit.</param>
+    /// <returns>The supported frame-rate limit, or zero for unlimited.</returns>
+    private static int NormalizeFrameRateLimit(int frameRateLimit)
+    {
+        return frameRateLimit switch
+        {
+            30 => 30,
+            60 => 60,
+            120 => 120,
+            144 => 144,
+            165 => 165,
+            240 => 240,
+            _ => 0,
+        };
     }
 }

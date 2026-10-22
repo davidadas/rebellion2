@@ -4,6 +4,16 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
+    /// Classifies an authored event without changing its execution behavior.
+    /// </summary>
+    public enum GameEventCategory
+    {
+        None,
+        Story,
+        Disaster,
+    }
+
+    /// <summary>
     /// Persists the activation history for one authored event definition.
     /// </summary>
     [PersistableObject]
@@ -23,6 +33,12 @@ namespace Rebellion.Game.Events
     public sealed class GameEvent
     {
         public string InstanceID { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional classification; omitted categories default to None.
+        /// </summary>
+        [PersistableAttribute]
+        public GameEventCategory Category { get; set; }
 
         [PersistableAttribute]
         public int? MaximumActivations { get; set; }

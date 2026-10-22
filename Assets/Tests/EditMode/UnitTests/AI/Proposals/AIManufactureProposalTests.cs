@@ -110,6 +110,7 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreEqual(-10, context.AvailableProjectedMaintenanceHeadroom);
         }
 
         [TestCase(AIProductionDemandKind.Shipyard, 100, true)]
@@ -273,6 +274,173 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(3, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
         }
 
+        /// <summary>
+        /// Verifies that sequential orders share one turn maintenance budget.
+        /// </summary>
+        [Test]
+        public void Execute_SequentialOrders_ConsumeTurnMaintenanceHeadroom()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                maintenanceCost: 30
+            );
+            AIProductionDemand demand = new AIProductionDemand(
+                "fighter-demand",
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                planet,
+                1,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal first = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(fighter),
+                distributesDemand: true
+            );
+            AIManufactureProposal second = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(fighter),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+
+            first.Execute(context);
+            second.Execute(context);
+
+            Assert.AreEqual(20, context.AvailableProjectedMaintenanceHeadroom);
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+        }
+
+        /// <summary>
+        /// Verifies that a recovery order still debits maintenance before an ordinary order.
+        /// </summary>
+        [Test]
+        public void Execute_RecoveryOrderBeforeOrdinaryOrder_DebitsSharedMaintenanceBudget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "production-world",
+                empire.InstanceID,
+                energyCapacity: 5,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
+                "mine-template",
+                BuildingType.Mine
+            );
+            mine.MaintenanceCost = 10;
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                maintenanceCost: 45
+            );
+            AIManufactureProposal recovery = new AIManufactureProposal(
+                CreateBuildingDemand(planet),
+                planet,
+                new Technology(mine),
+                false
+            );
+            AIProductionDemand fighterDemand = new AIProductionDemand(
+                "fighter-demand",
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                planet,
+                1,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal ordinary = new AIManufactureProposal(
+                fighterDemand,
+                planet,
+                new Technology(fighter),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+            Assert.AreEqual(10, recovery.GetMaintenanceCost());
+
+            recovery.Execute(context);
+            Assert.AreEqual(
+                10,
+                planet.GetManufacturingQueue()[ManufacturingType.Building][0].GetMaintenanceCost()
+            );
+            Assert.AreEqual(40, context.AvailableProjectedMaintenanceHeadroom);
+            ordinary.Execute(context);
+
+            Assert.AreEqual(40, context.AvailableProjectedMaintenanceHeadroom);
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+        }
+
         [Test]
         public void Execute_WithFacilityUpgrade_ReplacesExactlyOneFacility()
         {
@@ -298,6 +466,32 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual("advanced-shipyard", queued[0].GetDisplayName());
             Assert.AreEqual(ManufacturingStatus.Building, queued[0].ManufacturingStatus);
             Assert.AreEqual(2, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
+        }
+
+        /// <summary>
+        /// Verifies that a maintenance-neutral upgrade remains valid below the configured reserve.
+        /// </summary>
+        [Test]
+        public void Execute_WithMaintenanceNeutralUpgrade_BelowReserve_QueuesUpgrade()
+        {
+            (
+                GameRoot _,
+                Faction _,
+                Planet planet,
+                Building replacement,
+                Building _,
+                AIManufactureProposal proposal,
+                AITurnContext context
+            ) = CreateFacilityUpgradeProposalScene(2, 10, 10);
+            Assert.Less(
+                context.AvailableProjectedMaintenanceHeadroom,
+                proposal.GetMinimumMaintenanceHeadroom(context)
+            );
+
+            proposal.Execute(context);
+
+            Assert.IsNull(replacement.GetParent());
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
         }
 
         [Test]

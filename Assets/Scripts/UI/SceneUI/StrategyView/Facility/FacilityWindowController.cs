@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -45,6 +44,8 @@ public sealed class FacilityWindowController
     private readonly ConstructionWindowController constructionWindowController;
     private readonly IServiceLocator services;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
+    private readonly Func<UIContext> getUIContext;
+    private readonly Func<string, ISceneNode> findVisibleNode;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly FacilityWindowProjector projector;
@@ -69,6 +70,7 @@ public sealed class FacilityWindowController
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
     /// <param name="getWindowPosition">Clamps a requested facility-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="findVisibleNode">Finds a node in the faction-filtered galaxy view.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
         IServiceLocator services,
@@ -79,10 +81,14 @@ public sealed class FacilityWindowController
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getWindowPosition,
         Action markDirty,
+        Func<string, ISceneNode> findVisibleNode,
         Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.findVisibleNode =
+            findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
         this.constructionWindowController =
             constructionWindowController
             ?? throw new ArgumentNullException(nameof(constructionWindowController));
@@ -222,6 +228,37 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Refreshes open manufacturing cards only for the player's producing planet.
+    /// </summary>
+    /// <param name="producer">The planet whose manufacturing queue advanced.</param>
+    public void RenderManufacturingProgress(Planet producer)
+    {
+        string playerFactionId = GetPlayerFactionID();
+        if (
+            producer == null
+            || string.IsNullOrEmpty(playerFactionId)
+            || producer.OwnerInstanceID != playerFactionId
+        )
+            return;
+
+        windowManager.ForEachWindow<FacilityWindowView>(
+            (window, view) =>
+            {
+                if (
+                    TryGetSession(view, out FacilityWindowSession session)
+                    && session.ActiveTab == FacilityWindowTab.Manufacturing
+                    && session.Planet?.Planet?.InstanceID == producer.InstanceID
+                    && session.Planet.OwnerFactionId == playerFactionId
+                )
+                {
+                    session.RefreshManufacturingQueue(producer);
+                    RenderWindow(view, window);
+                }
+            }
+        );
+    }
+
+    /// <summary>
     /// Gets the planet represented by one facility view.
     /// </summary>
     /// <param name="view">The facility view.</param>
@@ -289,7 +326,7 @@ public sealed class FacilityWindowController
         List<StrategyMenuCommand> commands = CreateContextCommands(
             session.Planet?.Planet,
             session,
-            services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID
+            GetPlayerFactionID()
         );
         if (commands.Count == 0)
             return false;
@@ -384,19 +421,16 @@ public sealed class FacilityWindowController
         if (!manufacturingType.HasValue)
             return;
 
-        Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
+        Planet planet = session.Planet?.Planet;
+        string playerFactionId = GetPlayerFactionID();
         if (
-            planet == null
-            || string.IsNullOrEmpty(playerFactionId)
-            || !string.Equals(planet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
+            services
+                .GetService<ManufacturingCommands>()
+                ?.ToggleManufacturingReservation(planet, manufacturingType.Value, playerFactionId)
+            != true
         )
             return;
 
-        planet.SetManufacturingReserved(
-            manufacturingType.Value,
-            !planet.IsManufacturingReserved(manufacturingType.Value)
-        );
         actions.RefreshFacilityState();
     }
 
@@ -412,7 +446,7 @@ public sealed class FacilityWindowController
         )
             return;
 
-        Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
+        Planet planet = session.Planet?.Planet;
         if (planet == null)
             return;
 
@@ -764,13 +798,14 @@ public sealed class FacilityWindowController
             return;
 
         string destinationItemId = target.Item?.GetInstanceID();
-        ContainerNode destinationItem = GetAuthoritativeNode(destinationItemId) as ContainerNode;
-        ContainerNode destination = destinationItem ?? GetAuthoritativePlanet(destinationPlanetId);
+        ContainerNode destinationItem = findVisibleNode(destinationItemId) as ContainerNode;
+        ContainerNode destination =
+            destinationItem ?? findVisibleNode(destinationPlanetId) as Planet;
         if (destinationItem == null)
             destinationItemId = null;
 
-        Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
+        Planet producer = session.Planet?.Planet;
+        string playerFactionId = GetPlayerFactionID();
         ManufacturingCommands manufacturingSystem = services.GetService<ManufacturingCommands>();
         if (
             destination == null
@@ -843,13 +878,13 @@ public sealed class FacilityWindowController
         )
         {
             session.GetDestination(type, out string planetId, out string itemId);
-            if (!string.IsNullOrEmpty(itemId) && GetAuthoritativeNode(itemId) is ISceneNode item)
+            if (!string.IsNullOrEmpty(itemId) && findVisibleNode(itemId) is ISceneNode item)
             {
                 names[type] = item.GetDisplayName();
                 continue;
             }
 
-            Planet planet = GetAuthoritativePlanet(planetId);
+            Planet planet = findVisibleNode(planetId) as Planet;
             if (planet != null)
                 names[type] = planet.GetDisplayName();
         }
@@ -874,7 +909,7 @@ public sealed class FacilityWindowController
     {
         destinationPlanetId = null;
         destinationItemId = null;
-        Planet producer = GetAuthoritativePlanet(session?.Planet?.Planet?.InstanceID);
+        Planet producer = session?.Planet?.Planet;
         if (
             producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
                 != true
@@ -1137,27 +1172,12 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
-    /// Resolves an instance identifier to its authoritative game node.
+    /// Gets the current player faction identifier.
     /// </summary>
-    /// <param name="instanceId">The scene-node instance identifier.</param>
-    /// <returns>The authoritative scene node, or null.</returns>
-    private ISceneNode GetAuthoritativeNode(string instanceId)
+    /// <returns>The player faction identifier, or null.</returns>
+    private string GetPlayerFactionID()
     {
-        return string.IsNullOrEmpty(instanceId)
-            ? null
-            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
-    }
-
-    /// <summary>
-    /// Resolves a planet identifier to its authoritative game node.
-    /// </summary>
-    /// <param name="planetId">The planet instance identifier.</param>
-    /// <returns>The authoritative planet, or null.</returns>
-    private Planet GetAuthoritativePlanet(string planetId)
-    {
-        return string.IsNullOrEmpty(planetId)
-            ? null
-            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planetId);
+        return getUIContext()?.GetPlayerFactionInstanceID();
     }
 
     /// <summary>

@@ -70,8 +70,8 @@ namespace Rebellion.Analyzers
 
         private static readonly DiagnosticDescriptor _testCommentRule = new DiagnosticDescriptor(
             TestCommentDiagnosticId,
-            "Test methods must not have leading comments",
-            "Test method '{0}' must not have a leading comment",
+            "Test methods must not have leading non-documentation comments",
+            "Test method '{0}' must not have a leading non-documentation comment",
             "Documentation",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
@@ -231,10 +231,10 @@ namespace Rebellion.Analyzers
         }
 
         /// <summary>
-        /// Checks whether a test declaration has a comment before its method name.
+        /// Checks whether a test declaration has a non-documentation comment before its method name.
         /// </summary>
         /// <param name="method">The test method declaration to inspect.</param>
-        /// <returns>True when the declaration has a leading comment.</returns>
+        /// <returns>True when the declaration has a leading non-documentation comment.</returns>
         private static bool HasLeadingComment(MethodDeclarationSyntax method)
         {
             return method.GetLeadingTrivia().Any(IsAttachedLeadingComment)
@@ -259,21 +259,18 @@ namespace Rebellion.Analyzers
 
             FileLinePositionSpan commentLines = trivia.GetLocation().GetLineSpan();
             FileLinePositionSpan tokenLines = trivia.Token.GetLocation().GetLineSpan();
-            return tokenLines.StartLinePosition.Line
-                <= commentLines.EndLinePosition.Line + 1;
+            return tokenLines.StartLinePosition.Line <= commentLines.EndLinePosition.Line + 1;
         }
 
         /// <summary>
-        /// Checks whether trivia is a regular or documentation comment.
+        /// Checks whether trivia is a regular comment.
         /// </summary>
         /// <param name="trivia">The syntax trivia to inspect.</param>
         /// <returns>True when the trivia is a comment.</returns>
         private static bool IsComment(SyntaxTrivia trivia)
         {
             return trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
-                || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
-                || trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
-                || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
+                || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia);
         }
 
         /// <summary>

@@ -80,6 +80,7 @@ public sealed class GalaxyMapProjector
             ),
             clusters,
             ProjectWaypointRoutes(
+                sectors,
                 playerFactionId,
                 waypointPlan,
                 selectedFleetInstanceIds,
@@ -91,12 +92,14 @@ public sealed class GalaxyMapProjector
     /// <summary>
     /// Projects the waypoint routes visible for the current player selection and display mode.
     /// </summary>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
     /// <returns>The visible waypoint routes in their display order.</returns>
     internal List<GalaxyMapWaypointRouteRenderData> ProjectWaypointRoutes(
+        IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
@@ -104,7 +107,7 @@ public sealed class GalaxyMapProjector
     )
     {
         List<FleetWaypointRoute> resolvedRoutes = FleetWaypointRouteResolver.Resolve(
-            GetRequiredContext().Game,
+            sectors,
             playerFactionId,
             waypointPlan,
             selectedFleetInstanceIds,
@@ -427,8 +430,9 @@ public sealed class GalaxyMapProjector
                 ? briefing.OpponentFactionInstanceID
                 : briefing.PlayerFactionInstanceID;
             bool highlighted =
-                planet.GetPopularSupport(highlightedFaction)
-                > planet.GetPopularSupport(otherFaction);
+                !planet.IsDestroyed
+                && planet.GetPopularSupport(highlightedFaction)
+                    > planet.GetPopularSupport(otherFaction);
             return new GalacticInformationMarker(
                 highlighted ? 3 : 0,
                 highlighted ? highlightedFaction : planet.OwnerInstanceID,
@@ -564,16 +568,15 @@ public sealed class GalaxyMapProjector
     /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
     private static string ResolveHeadquartersFactionId(UIContext context, Planet planet)
     {
-        if (context?.Game == null || planet?.IsUnexploredView != false)
+        if (context == null || planet?.IsUnexploredView != false)
             return null;
         if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
             return planet.OwnerInstanceID;
 
         string playerFactionId = context.GetPlayerFactionInstanceID();
-        Planet livePlanet = context.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
         bool receivesMovingHeadquarters =
-            livePlanet
-                ?.GetChildren<Building>()
+            planet
+                .GetChildren<Building>()
                 .Any(building =>
                     building.BuildingType == BuildingType.Headquarters
                     && building.Movement != null
