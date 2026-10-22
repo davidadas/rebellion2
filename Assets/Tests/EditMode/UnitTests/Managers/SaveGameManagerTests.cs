@@ -417,6 +417,29 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_CustomGame_WritesCustomGameMetadata()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    GalaxySize = GameSize.Small,
+                    GenerationConfigOverride = new GameGenerationConfig(),
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.IsTrue(metadata.IsCustomGame);
+            Assert.AreEqual(GameDifficulty.Hard, metadata.Difficulty);
+            Assert.AreEqual(GameSize.Small, restored.Summary.GalaxySize);
+        }
+
+        [Test]
         public void GetSaveMetadata_SavedContentIdentity_ReturnsContentIdentity()
         {
             GameRoot game = new GameRoot

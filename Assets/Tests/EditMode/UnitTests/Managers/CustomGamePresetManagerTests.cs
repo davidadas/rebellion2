@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Managers
@@ -50,6 +51,10 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(summary.VictoryCondition, loaded.VictoryCondition);
             Assert.AreEqual(summary.ResourceAvailability, loaded.ResourceAvailability);
             Assert.AreEqual(summary.Seed, loaded.Seed);
+            CollectionAssert.AreEqual(
+                summary.DisabledEventCategories,
+                loaded.DisabledEventCategories
+            );
             Assert.AreEqual(
                 summary.AIDifficultyModifiers.MineOutputPercent,
                 loaded.AIDifficultyModifiers.MineOutputPercent
@@ -103,6 +108,7 @@ namespace Rebellion.Tests.Managers
                 ScenarioID = "scenario",
                 ModIDs = new[] { "mod" },
                 ModVersions = new[] { "2.0" },
+                DisabledEventCategories = new[] { GameEventCategory.Disaster },
                 PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
                 AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
                 GenerationConfigOverride = CreateGenerationConfig(),

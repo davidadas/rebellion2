@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -129,6 +130,7 @@ namespace Rebellion.Tests.App
                 GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
                 summary.GalaxySize = GameSize.Small;
                 summary.Difficulty = GameDifficulty.Hard;
+                summary.DisabledEventCategories = new[] { GameEventCategory.Story };
 
                 LoadingScreenController.StartCustomGame(previous, selected, summary);
 
@@ -151,12 +153,15 @@ namespace Rebellion.Tests.App
                 );
                 Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
                 Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
-                Assert.AreEqual(
-                    GameDifficulty.Hard,
-                    AppBootstrap
-                        .Instance.GetRuntime()
-                        .GetActiveGameSession()
-                        .Game.Summary.Difficulty
+                GameRoot game = AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game;
+                Assert.AreEqual(GameDifficulty.Hard, game.Summary.Difficulty);
+                Assert.IsFalse(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.Category == GameEventCategory.Story)
+                );
+                Assert.IsTrue(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.Category == GameEventCategory.Disaster)
                 );
                 Assert.IsNull(
                     Object.FindAnyObjectByType<CutscenePlayer>(),
