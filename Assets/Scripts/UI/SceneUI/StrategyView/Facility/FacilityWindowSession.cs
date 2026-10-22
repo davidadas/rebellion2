@@ -67,6 +67,26 @@ internal sealed class FacilityWindowSession
         Reconcile();
     }
 
+    /// <summary>Refreshes queue membership while retaining the current planet projection and selections.</summary>
+    /// <param name="producer">The matching producer already authorized by the facility controller.</param>
+    public void RefreshManufacturingQueue(Planet producer)
+    {
+        Planet projected = Planet?.Planet;
+        if (
+            producer == null
+            || projected == null
+            || projected.InstanceID != producer.InstanceID
+            || projected.OwnerInstanceID != producer.OwnerInstanceID
+            || ReferenceEquals(projected, producer)
+        )
+            return;
+
+        projected.ManufacturingQueue = producer.ManufacturingQueue.ToDictionary(
+            entry => entry.Key,
+            entry => new List<IManufacturable>(entry.Value)
+        );
+    }
+
     /// <summary>
     /// Rebuilds the ordered tab snapshot and reconciles interaction state by building identity.
     /// </summary>

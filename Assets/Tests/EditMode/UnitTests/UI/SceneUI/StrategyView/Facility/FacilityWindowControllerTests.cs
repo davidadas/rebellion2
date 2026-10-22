@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -80,6 +81,88 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
+        }
+
+        [Test]
+        public void RenderManufacturingProgress_CompletedQueueHead_RefreshesOnlyManufacturingView()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            CapitalShip first = new()
+            {
+                InstanceID = "first",
+                ConstructionCost = 100,
+                ManufacturingProgress = 10,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            CapitalShip next = new()
+            {
+                InstanceID = "next",
+                ConstructionCost = 100,
+                ManufacturingProgress = 40,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.Planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
+            {
+                first,
+                next,
+            };
+            Planet projected = (Planet)_planet.Planet.CreateCopy();
+            projected.ManufacturingQueue = _planet.Planet.ManufacturingQueue.ToDictionary(
+                entry => entry.Key,
+                entry => new List<IManufacturable>(entry.Value)
+            );
+            GalaxyMapPlanet projection = new(_planet.PlanetSector, projected, string.Empty);
+            _controller.ReconcileWindow(view, projection);
+            _controller.RenderWindow(view, window);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(item => item.name == "ShipyardsManufacturingLaneCard");
+            RectTransform fill = card.GetComponentsInChildren<RectTransform>(true)
+                .Single(item => item.name == "ProgressFillImage");
+            int originalWidth = UILayout.GetSourceRect(fill).width;
+            int originalInvalidations = _dirtyCount;
+            _planet.Planet.ManufacturingQueue[ManufacturingType.Ship].RemoveAt(0);
+
+            _controller.RenderManufacturingProgress(_planet.Planet);
+
+            Assert.Greater(UILayout.GetSourceRect(fill).width, originalWidth);
+            Assert.AreEqual(originalInvalidations, _dirtyCount);
+            Assert.AreSame(projection, _controller.GetPlanet(view));
+        }
+
+        [TestCase("other", _playerFactionId)]
+        [TestCase("planet", "enemy")]
+        public void RenderManufacturingProgress_UnrelatedProducer_DoesNotRefreshWindow(
+            string producerId,
+            string ownerId
+        )
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            CapitalShip order = new()
+            {
+                InstanceID = "order",
+                ConstructionCost = 100,
+                ManufacturingProgress = 10,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.Planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
+            {
+                order,
+            };
+            _controller.RenderWindow(view, window);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(item => item.name == "ShipyardsManufacturingLaneCard");
+            RectTransform fill = card.GetComponentsInChildren<RectTransform>(true)
+                .Single(item => item.name == "ProgressFillImage");
+            int originalWidth = UILayout.GetSourceRect(fill).width;
+            order.ManufacturingProgress = 50;
+
+            _controller.RenderManufacturingProgress(
+                new Planet { InstanceID = producerId, OwnerInstanceID = ownerId }
+            );
+
+            Assert.AreEqual(originalWidth, UILayout.GetSourceRect(fill).width);
         }
 
         [Test]
