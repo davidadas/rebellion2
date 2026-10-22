@@ -14,6 +14,8 @@ public static class StrategyViewPrefabBuilder
 {
     private const string _fallbackPreviewThemeId = "DEFAULT";
     private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+    private const string _galacticInformationDisplayPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
     private const string _planetSectorWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSectorWindow.prefab";
     private const string _planetSectorPlanetPrefabPath =
@@ -648,6 +650,10 @@ public static class StrategyViewPrefabBuilder
         );
         PlanetSectorClusterView planetSectorClusterPrefab =
             LoadPrefabComponent<PlanetSectorClusterView>(_planetSectorClusterPrefabPath);
+        GalacticInformationDisplayView galacticInformationDisplayPrefab =
+            LoadPrefabComponent<GalacticInformationDisplayView>(
+                _galacticInformationDisplayPrefabPath
+            );
 
         GameObject sceneRoot = new GameObject(_sceneInstanceName);
         BuildSceneInfrastructure(sceneRoot);
@@ -925,9 +931,6 @@ public static class StrategyViewPrefabBuilder
         StrategyOverlayView overlayView = CreateStrategyOverlayView(root.transform);
         GalacticInformationLegendView galacticInformationLegend =
             CreateGalacticInformationLegendView(root.transform);
-        GalacticInformationDisplayView galacticInformationDisplay =
-            CreateGalacticInformationDisplayView(root.transform);
-
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
         ConfirmationDialogView briefingSkipConfirmation =
             CommonUIPrefabBuilder.InstantiateConfirmationDialog(root.transform);
@@ -946,7 +949,11 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "strategyWindowLayerView", windowsView);
         AssignReference(controller, "idleBar", idleBar);
         AssignReference(controller, "strategyWindowManager", windowManager);
-        AssignReference(controller, "galacticInformationDisplay", galacticInformationDisplay);
+        AssignReference(
+            controller,
+            "galacticInformationDisplayPrefab",
+            galacticInformationDisplayPrefab
+        );
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
         AssignReference(windowsView, "modelessWindowLayer", modelessWindowLayer);
         AssignReference(windowsView, "modalWindowLayer", modalWindowLayer);
@@ -1399,6 +1406,7 @@ public static class StrategyViewPrefabBuilder
         PlanetSectorPlanetView planetPrefab = BuildPlanetSectorPlanetPrefab();
         BuildPlanetSectorWindowPrefab(planetPrefab);
         BuildPlanetSectorClusterPrefab();
+        BuildGalacticInformationDisplayPrefab();
         BuildConfirmDialogWindowPrefab();
         BuildBattleAlertWindowPrefab();
         BuildFacilityWindowPrefab();
@@ -7287,6 +7295,22 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "displayOffHitArea", displayOffHitArea);
         root.SetActive(false);
         return view;
+    }
+
+    /// <summary>
+    /// Builds the selector as an independent prefab so the strategy scene can create it on demand.
+    /// </summary>
+    /// <returns>The saved selector prefab component.</returns>
+    private static GalacticInformationDisplayView BuildGalacticInformationDisplayPrefab()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_galacticInformationDisplayPrefabPath));
+        GalacticInformationDisplayView view = CreateGalacticInformationDisplayView(null);
+        GameObject saved = SaveGeneratedPrefabAsset(
+            view.gameObject,
+            _galacticInformationDisplayPrefabPath
+        );
+        Object.DestroyImmediate(view.gameObject);
+        return saved.GetComponent<GalacticInformationDisplayView>();
     }
 
     /// <summary>

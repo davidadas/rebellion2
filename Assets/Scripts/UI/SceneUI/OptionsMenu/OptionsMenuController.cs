@@ -236,7 +236,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.Gameplay.AutosavesToKeep,
                 _settingsSession.GetUserInterfaceStates(),
                 _settingsSession.UserInterface.IdleBarLocation,
-                _settingsSession.UserInterface.GameLaunchSpeed,
+                _settingsSession.Gameplay.GameLaunchSpeed,
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 _showModsTab,

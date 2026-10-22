@@ -142,7 +142,7 @@ internal sealed class OptionsSettingsSession
         foreach (KeyValuePair<UserInterfaceOption, bool> entry in _snapshotUserInterface)
             UserInterface.SetEnabled(entry.Key, entry.Value);
         UserInterface.IdleBarLocation = _snapshotIdleBarLocation;
-        UserInterface.GameLaunchSpeed = _snapshotGameLaunchSpeed;
+        Gameplay.GameLaunchSpeed = _snapshotGameLaunchSpeed;
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
@@ -304,7 +304,7 @@ internal sealed class OptionsSettingsSession
     /// <param name="speed">The requested launch-speed behavior.</param>
     internal void SetGameLaunchSpeed(GameLaunchSpeed speed)
     {
-        UserInterface.GameLaunchSpeed = speed;
+        Gameplay.GameLaunchSpeed = speed;
         RefreshDirtyState();
     }
 
@@ -480,7 +480,7 @@ internal sealed class OptionsSettingsSession
         _snapshotAutosaveIntervalTicks = Gameplay.AutosaveIntervalTicks;
         _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
         _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
-        _snapshotGameLaunchSpeed = UserInterface.GameLaunchSpeed;
+        _snapshotGameLaunchSpeed = Gameplay.GameLaunchSpeed;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
@@ -508,7 +508,7 @@ internal sealed class OptionsSettingsSession
 
         if (
             UserInterface.IdleBarLocation != _snapshotIdleBarLocation
-            || UserInterface.GameLaunchSpeed != _snapshotGameLaunchSpeed
+            || Gameplay.GameLaunchSpeed != _snapshotGameLaunchSpeed
         )
         {
             IsDirty = true;

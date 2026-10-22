@@ -62,7 +62,13 @@ public sealed class GameFlowController : MonoBehaviour
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             await bootstrap.InitializeMainMenuContentAsync();
+            if (!CanContinueStartup(bootstrap))
+                return;
+
             await bootstrap.InitializeStrategyContentAsync();
+            if (!CanContinueStartup(bootstrap))
+                return;
+
             ContentPack contentPack = bootstrap.GetContentPack();
             themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
             GameRuntime runtime = bootstrap.GetRuntime();
@@ -71,6 +77,9 @@ public sealed class GameFlowController : MonoBehaviour
                 GameSession session = runtime.GetActiveGameSession();
                 InitializeStrategy(session);
                 await strategyController.PrepareInitialContentAsync();
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 await ActivateGameplayAsync(session, false);
                 return;
             }
@@ -78,9 +87,15 @@ public sealed class GameFlowController : MonoBehaviour
             if (GameLaunchContext.IsLoadGame)
             {
                 await LoadGameAsync(runtime);
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
                 await strategyController.PrepareInitialContentAsync();
+                if (!CanContinueStartup(bootstrap))
+                    return;
+
                 await ActivateGameplayAsync(session, false);
             }
             else
@@ -88,9 +103,26 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
+            if (!Application.isPlaying || this == null)
+                return;
+
             if (!LoadingScreenController.RecoverFromLoadFailure(exception))
                 Debug.LogException(exception);
         }
+    }
+
+    /// <summary>
+    /// Determines whether an asynchronous startup continuation still belongs to the active scene
+    /// and application services.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap captured before the asynchronous operation.</param>
+    /// <returns>True when startup may safely continue.</returns>
+    private bool CanContinueStartup(AppBootstrap bootstrap)
+    {
+        return Application.isPlaying
+            && this != null
+            && bootstrap != null
+            && AppBootstrap.Instance == bootstrap;
     }
 
     /// <summary>
@@ -188,7 +220,11 @@ public sealed class GameFlowController : MonoBehaviour
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
         Task initialContentReady = strategyController.PrepareInitialContentAsync();
+        AppBootstrap bootstrap = AppBootstrap.Instance;
         await Task.WhenAll(intro, briefingReady, initialContentReady);
+        if (!CanContinueStartup(bootstrap))
+            return;
+
         await ActivateGameplayAsync(session, playBriefing, deferIntro);
     }
 
@@ -259,7 +295,7 @@ public sealed class GameFlowController : MonoBehaviour
         GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
         ApplyGameLaunchSpeed(
             runtime.GetActiveGameManager(),
-            bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+            bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
         );
         return session;
     }
@@ -375,12 +411,16 @@ public sealed class GameFlowController : MonoBehaviour
     )
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
+        AppBootstrap bootstrap = AppBootstrap.Instance;
         await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
-        GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
+        if (!CanContinueStartup(bootstrap))
+            return;
+
+        GameManager clock = bootstrap.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
-        bool briefingsDisabled = AppBootstrap
-            .Instance.GetUserSettingsManager()
+        bool briefingsDisabled = bootstrap
+            .GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = ShouldPlayOpeningBriefing(
             requestBriefing,
@@ -392,7 +432,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (loadingTransitionActive)
         {
             LoadingScreenController.CompletePendingLoad(
-                AppBootstrap.Instance,
+                bootstrap,
                 () =>
                 {
                     Action activate = () =>
