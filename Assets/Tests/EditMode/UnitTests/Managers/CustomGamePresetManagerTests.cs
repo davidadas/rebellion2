@@ -41,27 +41,27 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SavePreset_CompleteSetup_RoundTripsLaunchConfiguration()
         {
-            GameSetup setup = CreateSetup();
+            GameSummary summary = CreateSummary();
 
-            manager.SavePreset("fleet-war", "Fleet War", setup);
-            GameSetup loaded = manager.LoadPreset("fleet-war");
+            manager.SavePreset("fleet-war", "Fleet War", summary);
+            GameSummary loaded = manager.LoadPreset("fleet-war");
 
-            Assert.AreEqual(setup.PlayerFactionID, loaded.PlayerFactionID);
-            Assert.AreEqual(setup.Difficulty, loaded.Difficulty);
-            Assert.AreEqual(setup.GalaxySize, loaded.GalaxySize);
-            Assert.AreEqual(setup.VictoryCondition, loaded.VictoryCondition);
-            Assert.AreEqual(setup.ResourceAvailability, loaded.ResourceAvailability);
-            Assert.AreEqual(setup.Seed, loaded.Seed);
+            Assert.AreEqual(summary.PlayerFactionID, loaded.PlayerFactionID);
+            Assert.AreEqual(summary.Difficulty, loaded.Difficulty);
+            Assert.AreEqual(summary.GalaxySize, loaded.GalaxySize);
+            Assert.AreEqual(summary.VictoryCondition, loaded.VictoryCondition);
+            Assert.AreEqual(summary.ResourceAvailability, loaded.ResourceAvailability);
+            Assert.AreEqual(summary.Seed, loaded.Seed);
             CollectionAssert.AreEqual(
-                setup.CustomSettings.GenerationConfig.DisabledEventCategories,
+                summary.CustomSettings.GenerationConfig.DisabledEventCategories,
                 loaded.CustomSettings.GenerationConfig.DisabledEventCategories
             );
             Assert.AreEqual(
-                setup.CustomSettings.AIDifficultyModifiers.MineOutputPercent,
+                summary.CustomSettings.AIDifficultyModifiers.MineOutputPercent,
                 loaded.CustomSettings.AIDifficultyModifiers.MineOutputPercent
             );
             Assert.AreEqual(
-                setup.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
+                summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
                 loaded.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier
             );
         }
@@ -69,20 +69,20 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void RenamePreset_ExistingPreset_UpdatesDisplayNameAndPreservesSetup()
         {
-            manager.SavePreset("fleet-war", "Fleet War", CreateSetup());
+            manager.SavePreset("fleet-war", "Fleet War", CreateSummary());
 
             manager.RenamePreset("fleet-war", "Long Campaign");
 
             CustomGamePresetEntry entry = manager.GetPresets()[0];
             Assert.AreEqual("Long Campaign", entry.DisplayName);
-            Assert.AreEqual("FNEMP1", entry.Setup.PlayerFactionID);
-            Assert.AreEqual(1729, entry.Setup.Seed);
+            Assert.AreEqual("FNEMP1", entry.Summary.PlayerFactionID);
+            Assert.AreEqual(1729, entry.Summary.Seed);
         }
 
         [Test]
         public void DeletePreset_ExistingPreset_RemovesPreset()
         {
-            manager.SavePreset("fleet-war", "Fleet War", CreateSetup());
+            manager.SavePreset("fleet-war", "Fleet War", CreateSummary());
 
             manager.DeletePreset("fleet-war");
 
@@ -90,12 +90,12 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Creates a launch setup containing every configurable value family.
+        /// Creates a launch summary containing every configurable value family.
         /// </summary>
-        /// <returns>The populated launch setup.</returns>
-        private static GameSetup CreateSetup()
+        /// <returns>The populated launch summary.</returns>
+        private static GameSummary CreateSummary()
         {
-            return new GameSetup
+            return new GameSummary
             {
                 PlayerFactionID = "FNEMP1",
                 StartingFactionIDs = new[] { "FNALL1", "FNEMP1" },

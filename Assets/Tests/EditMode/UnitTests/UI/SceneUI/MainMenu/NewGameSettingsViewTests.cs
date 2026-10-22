@@ -22,7 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private static readonly Color ModifiedTextColor = new Color(0.373f, 0.659f, 0.925f);
         private GameObject instance;
         private NewGameSettingsView view;
-        private GameSetup summary;
+        private GameSummary summary;
         private OptionsMenuView optionsPrefab;
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             instance.SetActive(true);
             view = instance.GetComponent<NewGameSettingsView>();
-            summary = new GameSetup { Difficulty = GameDifficulty.Easy };
+            summary = new GameSummary { Difficulty = GameDifficulty.Easy };
             optionsPrefab = AssetDatabase.LoadAssetAtPath<OptionsMenuView>(
                 "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab"
             );
@@ -91,7 +91,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Initialize_NullSetup_ThrowsArgumentNullException()
+        public void Initialize_NullSummary_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => view.Initialize(TestContent.Pack, null));
         }
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_EditedColumns_PublishesPlayerAndAIModifiers()
         {
-            GameSetup applied = null;
+            GameSummary applied = null;
             view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
             Input("manufacturing-speed", "Player").onEndEdit.Invoke("125");
@@ -414,7 +414,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void EditSeed_ValidInteger_PublishesEnteredSeed()
         {
-            GameSetup launched = null;
+            GameSummary launched = null;
             view.StartRequested += (_, configured) => launched = configured;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
@@ -447,9 +447,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void ChangeGameSetup_WhenValuesDifferFromInitialState_RemainsNeutral()
+        public void ChangeGameSummary_WhenValuesDifferFromInitialState_RemainsNeutral()
         {
-            summary = GameLaunchContext.CreateDefaultSetup(TestContent.Pack);
+            summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
 
@@ -594,7 +594,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             GameEventCategory category
         )
         {
-            GameSetup launched = null;
+            GameSummary launched = null;
             view.StartRequested += (_, configured) => launched = configured;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
@@ -612,9 +612,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void RestoreDefaults_GameSetup_ReenablesEveryEventCategory()
+        public void RestoreDefaults_GameSummary_ReenablesEveryEventCategory()
         {
-            GameSetup launched = null;
+            GameSummary launched = null;
             summary.CustomSettings = new CustomGameSettings
             {
                 GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
@@ -705,7 +705,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_CycledGameSetup_PublishesCompleteLaunchSummary()
         {
-            GameSetup launched = null;
+            GameSummary launched = null;
             view.StartRequested += (_, configured) => launched = configured;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
@@ -837,7 +837,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             try
             {
                 CustomGamePresetManager manager = new CustomGamePresetManager(directory);
-                GameSetup preset = GameLaunchContext.CreateDefaultSetup(TestContent.Pack);
+                GameSummary preset = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
                 manager.CreatePreset("Preset", preset);
                 ContentPackDefinition[] installed =
                 {
@@ -912,7 +912,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_EditedFactionModifier_PublishesOverrideWithoutMutatingContent()
         {
-            GameSetup applied = null;
+            GameSummary applied = null;
             int authored = TestContent.Pack.GameData.Factions[0].Settings.UprisingResistance;
             view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
@@ -992,7 +992,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_PerFactionStartingForceBudgets_PublishesSelectedGalaxySizeValues()
         {
-            GameSetup applied = null;
+            GameSummary applied = null;
             summary.GalaxySize = GameSize.Small;
             view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
@@ -1022,7 +1022,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_PerFactionResearchLevels_PublishesIndependentValues()
         {
-            GameSetup applied = null;
+            GameSummary applied = null;
             view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
             view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
@@ -1260,7 +1260,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [Test]
         public void Apply_EditedGenerationValue_PublishesDetachedScenarioOverride()
         {
-            GameSetup applied = null;
+            GameSummary applied = null;
             int authored = TestContent
                 .Pack
                 .GameData

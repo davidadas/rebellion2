@@ -30,7 +30,7 @@ namespace Rebellion.Simulation
         /// <returns>True when conquest objectives are active.</returns>
         public bool IsConquestGame()
         {
-            return _game.Setup?.VictoryCondition == GameVictoryCondition.Conquest;
+            return _game.Summary?.VictoryCondition == GameVictoryCondition.Conquest;
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Rebellion.Simulation
         {
             if (defender == null)
                 return false;
-            if (_game.Setup.VictoryCondition != GameVictoryCondition.Conquest)
+            if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
                 return true;
 
             foreach (Officer officer in officers ?? Array.Empty<Officer>())

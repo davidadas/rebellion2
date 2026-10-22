@@ -102,11 +102,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
     /// <param name="contentPack">The selected custom-game content.</param>
-    /// <param name="setup">The complete custom-game configuration.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
     internal static void StartCustomGame(
         AppBootstrap bootstrap,
         ContentPack contentPack,
-        Rebellion.Game.GameSetup setup
+        Rebellion.Game.GameSummary summary
     )
     {
         if (bootstrap == null)
@@ -114,7 +114,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (IsLoadInProgress)
             return;
         ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
-        operation.PrepareCustomGame(contentPack, setup);
+        operation.PrepareCustomGame(contentPack, summary);
         BeginLoad(bootstrap, operation, Task.CompletedTask);
     }
 
@@ -489,9 +489,9 @@ internal sealed class LoadingScreenController : MonoBehaviour
         GameLaunchContext.Reset(_operation.Pack);
         if (_operation.SaveFileName != null)
             GameLaunchContext.PrepareSaveLoad(_operation.SaveFileName);
-        else if (_operation.CustomGameSetup is Rebellion.Game.GameSetup setup)
+        else if (_operation.CustomGameSummary is Rebellion.Game.GameSummary summary)
         {
-            GameLaunchContext.ApplyCustomGameSetup(setup);
+            GameLaunchContext.ApplyCustomGameSummary(summary);
             GameLaunchContext.PlayIntroCutscene = true;
         }
     }

@@ -78,7 +78,7 @@ namespace Rebellion.Tests.AI
         public void Constructor_HardAiMaintenanceBonus_CachesEffectiveCapacity()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Setup = new GameSetup { Difficulty = GameDifficulty.Hard };
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.AI
         public void Constructor_MaximumEconomyModifiers_SaturatesCachedValues()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Setup = new GameSetup { Difficulty = GameDifficulty.Hard };
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {

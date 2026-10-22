@@ -872,7 +872,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
-            game.Setup.PlayerFactionID = _playerFactionId;
+            game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }

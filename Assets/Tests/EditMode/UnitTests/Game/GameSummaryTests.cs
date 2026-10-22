@@ -5,44 +5,48 @@ using Rebellion.Util.Reflection;
 namespace Rebellion.Tests.Game
 {
     [TestFixture]
-    public class GameSetupTests
+    public class GameSummaryTests
     {
         [Test]
         public void Constructor_DefaultConstruction_InitializesWithDefaults()
         {
-            GameSetup setup = new GameSetup();
+            GameSummary summary = new GameSummary();
 
-            Assert.AreEqual(GameSize.Large, setup.GalaxySize, "GalaxySize should default to Large");
+            Assert.AreEqual(
+                GameSize.Large,
+                summary.GalaxySize,
+                "GalaxySize should default to Large"
+            );
             Assert.AreEqual(
                 GameDifficulty.Easy,
-                setup.Difficulty,
+                summary.Difficulty,
                 "Difficulty should default to Easy"
             );
             Assert.AreEqual(
                 GameVictoryCondition.Conquest,
-                setup.VictoryCondition,
+                summary.VictoryCondition,
                 "VictoryCondition should default to Conquest"
             );
             Assert.AreEqual(
                 GameResourceAvailability.Normal,
-                setup.ResourceAvailability,
+                summary.ResourceAvailability,
                 "ResourceAvailability should default to Normal"
             );
             Assert.IsEmpty(
-                setup.StartingFactionIDs,
+                summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
-            Assert.IsNull(setup.CustomSettings);
-            Assert.IsFalse(setup.IsCustomGame);
+            Assert.IsNull(summary.CustomSettings);
+            Assert.IsFalse(summary.IsCustomGame);
         }
 
         [Test]
         public void SerializeAndDeserialize_ExplicitSeed_RoundTripsExactly()
         {
-            GameSetup setup = new GameSetup { Seed = 12345 };
+            GameSummary summary = new GameSummary { Seed = 12345 };
 
-            string serialized = SerializationHelper.Serialize(setup);
-            GameSetup deserialized = SerializationHelper.Deserialize<GameSetup>(serialized);
+            string serialized = SerializationHelper.Serialize(summary);
+            GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
 
             Assert.AreEqual(12345, deserialized.Seed);
         }
@@ -50,10 +54,10 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_StandardSetup_RemainsStandard()
         {
-            GameSetup setup = new GameSetup { Seed = 12345 };
+            GameSummary summary = new GameSummary { Seed = 12345 };
 
-            string serialized = SerializationHelper.Serialize(setup);
-            GameSetup deserialized = SerializationHelper.Deserialize<GameSetup>(serialized);
+            string serialized = SerializationHelper.Serialize(summary);
+            GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
 
             Assert.IsNull(deserialized.CustomSettings);
             Assert.IsFalse(deserialized.IsCustomGame);
@@ -62,7 +66,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_DifficultyOnlyCustomSettings_RemainsCustom()
         {
-            GameSetup setup = new GameSetup
+            GameSummary summary = new GameSummary
             {
                 CustomSettings = new CustomGameSettings
                 {
@@ -70,8 +74,8 @@ namespace Rebellion.Tests.Game
                 },
             };
 
-            GameSetup restored = SerializationHelper.Deserialize<GameSetup>(
-                SerializationHelper.Serialize(setup)
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(summary)
             );
 
             Assert.IsTrue(restored.IsCustomGame);
@@ -87,7 +91,7 @@ namespace Rebellion.Tests.Game
         {
             GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.GetDeepCopy();
             generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
-            GameSetup setup = new GameSetup
+            GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
                 Difficulty = GameDifficulty.Hard,
@@ -113,36 +117,36 @@ namespace Rebellion.Tests.Game
                 },
             };
 
-            string serialized = SerializationHelper.Serialize(setup);
-            GameSetup deserialized = SerializationHelper.Deserialize<GameSetup>(serialized);
+            string serialized = SerializationHelper.Serialize(summary);
+            GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
 
             Assert.AreEqual(
-                setup.GalaxySize,
+                summary.GalaxySize,
                 deserialized.GalaxySize,
                 "GalaxySize should be correctly deserialized."
             );
             Assert.AreEqual(
-                setup.Difficulty,
+                summary.Difficulty,
                 deserialized.Difficulty,
                 "Difficulty should be correctly deserialized."
             );
             Assert.AreEqual(
-                setup.VictoryCondition,
+                summary.VictoryCondition,
                 deserialized.VictoryCondition,
                 "VictoryCondition should be correctly deserialized."
             );
             Assert.AreEqual(
-                setup.ResourceAvailability,
+                summary.ResourceAvailability,
                 deserialized.ResourceAvailability,
                 "ResourceAvailability should be correctly deserialized."
             );
             Assert.AreEqual(
-                setup.StartingFactionIDs.Length,
+                summary.StartingFactionIDs.Length,
                 deserialized.StartingFactionIDs.Length,
                 "StartingFactionIDs length should be correctly deserialized."
             );
             Assert.AreEqual(
-                setup.PlayerFactionID,
+                summary.PlayerFactionID,
                 deserialized.PlayerFactionID,
                 "PlayerFactionID should be correctly deserialized."
             );

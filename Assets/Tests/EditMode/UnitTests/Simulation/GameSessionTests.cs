@@ -1566,7 +1566,7 @@ namespace Rebellion.Tests.Simulation
         public void Tick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Setup = new GameSetup { VictoryCondition = GameVictoryCondition.Headquarters };
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction empire = new Faction
             {
                 InstanceID = "empire",
@@ -1749,7 +1749,7 @@ namespace Rebellion.Tests.Simulation
         public void Tick_VictoryResult_RaisesResolvedEvent()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Setup = new GameSetup { VictoryCondition = GameVictoryCondition.Headquarters };
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction defeated = new Faction
             {
                 InstanceID = "DEFEATED",
@@ -2808,7 +2808,7 @@ namespace Rebellion.Tests.Simulation
         ) CreateHeadquartersAssaultGame()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Setup = new GameSetup { VictoryCondition = GameVictoryCondition.Headquarters };
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction attacker = new() { InstanceID = "ATTACKER", DisplayName = "Attacker" };
             Faction defender = new()
             {

@@ -95,8 +95,8 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
-            game.Setup.Difficulty = GameDifficulty.Hard;
-            game.Setup.PlayerFactionID = "rebels";
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "rebels";
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 MissionFoilChancePoints = -15,
@@ -123,7 +123,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 0;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = 0;
             SetFoilTable(game, new Dictionary<int, int> { { 40, 100 }, { 41, 0 } });
-            game.Setup.Difficulty = GameDifficulty.Hard;
+            game.Summary.Difficulty = GameDifficulty.Hard;
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 DetectionRatingMultiplier = 1.5,
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Simulation
             planet.AddVisitor("empire");
             game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 0;
             SetDecoyTable(game, new Dictionary<int, int> { { 40, 0 }, { 41, 100 } });
-            game.Setup.Difficulty = GameDifficulty.Hard;
+            game.Summary.Difficulty = GameDifficulty.Hard;
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 DetectionRatingMultiplier = 1.5,

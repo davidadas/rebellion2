@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             _controller.SelectFaction("faction-2");
 
-            Assert.AreEqual("faction-2", GameLaunchContext.Setup.PlayerFactionID);
+            Assert.AreEqual("faction-2", GameLaunchContext.Summary.PlayerFactionID);
         }
 
         [Test]
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             _controller.SelectGalaxySize(GameSize.Medium);
 
-            Assert.AreEqual(GameSize.Medium, GameLaunchContext.Setup.GalaxySize);
+            Assert.AreEqual(GameSize.Medium, GameLaunchContext.Summary.GalaxySize);
         }
 
         [Test]
@@ -53,7 +53,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             _controller.SelectGameDifficulty(GameDifficulty.Hard);
 
-            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Setup.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
         }
 
         [Test]
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual(
                 GameVictoryCondition.Headquarters,
-                GameLaunchContext.Setup.VictoryCondition
+                GameLaunchContext.Summary.VictoryCondition
             );
         }
 

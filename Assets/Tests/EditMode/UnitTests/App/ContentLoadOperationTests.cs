@@ -336,7 +336,7 @@ namespace Rebellion.Tests.App
         public void PrepareCustomGame_ValidSelection_PreservesDetachedConfigurationWithoutSaving()
         {
             ContentPack selected = TestContent.Pack;
-            GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
             summary.Difficulty = GameDifficulty.Hard;
             summary.CustomSettings = new CustomGameSettings
             {
@@ -353,26 +353,26 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(operation.RequiresContentRestart);
             Assert.AreEqual("StrategyView", operation.DestinationScene);
             Assert.IsNull(operation.SaveFileName);
-            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSetup.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
             Assert.AreNotEqual(
                 999,
                 operation
-                    .CustomGameSetup
+                    .CustomGameSummary
                     .CustomSettings
                     .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );
-            GameSetup exposed = operation.CustomGameSetup;
+            GameSummary exposed = operation.CustomGameSummary;
             exposed.Difficulty = GameDifficulty.Easy;
-            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSetup.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
         [Test]
         public void PrepareCustomGame_MismatchedIdentity_RejectsLaunchWithoutSaving()
         {
-            GameSetup summary = GameLaunchContext.CreateDefaultSetup(TestContent.Pack);
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
             summary.PackID = "missing";
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();
@@ -382,7 +382,7 @@ namespace Rebellion.Tests.App
             );
 
             Assert.AreSame(_previous, operation.Pack);
-            Assert.IsNull(operation.CustomGameSetup);
+            Assert.IsNull(operation.CustomGameSummary);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.App
             ContentLoadOperation operation = CreateOperation();
             operation.PrepareCustomGame(
                 TestContent.Pack,
-                GameLaunchContext.CreateDefaultSetup(TestContent.Pack)
+                GameLaunchContext.CreateDefaultSummary(TestContent.Pack)
             );
             byte[] before = File.ReadAllBytes(_settingsPath);
 
@@ -401,7 +401,7 @@ namespace Rebellion.Tests.App
 
             Assert.AreSame(_previous, operation.Pack);
             Assert.AreEqual("MainMenu", operation.DestinationScene);
-            Assert.IsNull(operation.CustomGameSetup);
+            Assert.IsNull(operation.CustomGameSummary);
             CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
         }
 
@@ -416,7 +416,7 @@ namespace Rebellion.Tests.App
                 new[] { modID }
             );
             ContentLoadOperation operation = CreateOperation();
-            operation.PrepareCustomGame(selected, GameLaunchContext.CreateDefaultSetup(selected));
+            operation.PrepareCustomGame(selected, GameLaunchContext.CreateDefaultSummary(selected));
 
             operation.Complete(operation.Pack, _settings);
 
@@ -468,7 +468,7 @@ namespace Rebellion.Tests.App
             _saves.SaveGameData(
                 new GameRoot
                 {
-                    Setup = new GameSetup
+                    Summary = new GameSummary
                     {
                         PackID = pack.Definition.ID,
                         PackVersion = pack.Definition.Version,

@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_RimPlanetWithoutOverride_NoSnapshotForOtherFactions()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup() };
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
             game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_VisibilityOverride_CapturesSnapshotForListedFaction()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup() };
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
             game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Generation
             Faction alliance
         ) BuildScene()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup() };
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
             game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };

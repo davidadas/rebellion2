@@ -918,7 +918,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" });
-            game.Setup.PlayerFactionID = _playerFactionId;
+            game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());

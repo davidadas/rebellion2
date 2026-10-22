@@ -85,7 +85,7 @@ namespace Rebellion.Tests.UI.Runtime
         [Test]
         public void GetPlayerFactionInstanceID_SummaryDisagreesWithHumanController_ReturnsHumanFaction()
         {
-            _game.Setup.PlayerFactionID = "FNEMP1";
+            _game.Summary.PlayerFactionID = "FNEMP1";
 
             UIContext context = new UIContext(
                 _game,
@@ -261,7 +261,7 @@ namespace Rebellion.Tests.UI.Runtime
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = playerFactionId });
-            game.Setup.PlayerFactionID = playerFactionId;
+            game.Summary.PlayerFactionID = playerFactionId;
             game.SetFactionController(playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }

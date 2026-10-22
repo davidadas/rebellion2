@@ -21,47 +21,47 @@ namespace Rebellion.Generation
         private const string _localPlayerID = "PLAYER1";
         private const string _aiPlayerIDPrefix = "AI_";
 
-        private readonly GameSetup _setup;
+        private readonly GameSummary _summary;
         private readonly GameDataCatalog _gameData;
         private readonly IRandomNumberProvider _randomProvider;
 
         /// <summary>
-        /// Creates a builder that will generate a game matching the given setup.
-        /// The RNG seed is read from <see cref="GameSetup.Seed"/>, so the same
-        /// setup always produces the same world.
+        /// Creates a builder that will generate a game matching the given summary.
+        /// The RNG seed is read from <see cref="GameSummary.Seed"/>, so the same
+        /// summary always produces the same world.
         /// </summary>
-        /// <param name="setup">The setup describing galaxy size, difficulty, factions, and starting research.</param>
+        /// <param name="summary">The summary describing galaxy size, difficulty, factions, and starting research.</param>
         /// <param name="gameData">The active pack's composed game data.</param>
-        public GameBuilder(GameSetup setup, GameDataCatalog gameData)
-            : this(setup, gameData, CreateRandomProvider(setup)) { }
+        public GameBuilder(GameSummary summary, GameDataCatalog gameData)
+            : this(summary, gameData, CreateRandomProvider(summary)) { }
 
         /// <summary>
         /// Creates a builder that will generate a game with the given RNG provider.
         /// </summary>
-        /// <param name="setup">The setup describing the game to generate.</param>
+        /// <param name="summary">The summary describing the game to generate.</param>
         /// <param name="gameData">The active pack's composed game data.</param>
         /// <param name="randomProvider">Random number provider used by the generation pipeline.</param>
         public GameBuilder(
-            GameSetup setup,
+            GameSummary summary,
             GameDataCatalog gameData,
             IRandomNumberProvider randomProvider
         )
         {
-            _setup = (setup ?? throw new ArgumentNullException(nameof(setup))).GetDeepCopy();
+            _summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _randomProvider =
                 randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
         }
 
         /// <summary>
-        /// Creates the deterministic RNG provider for a setup.
+        /// Creates the deterministic RNG provider for a summary.
         /// </summary>
-        /// <param name="setup">The setup whose seed is used.</param>
+        /// <param name="summary">The summary whose seed is used.</param>
         /// <returns>The random number provider for generation.</returns>
-        private static IRandomNumberProvider CreateRandomProvider(GameSetup setup)
+        private static IRandomNumberProvider CreateRandomProvider(GameSummary summary)
         {
             return new SystemRandomProvider(
-                (setup ?? throw new ArgumentNullException(nameof(setup))).Seed
+                (summary ?? throw new ArgumentNullException(nameof(summary))).Seed
             );
         }
 
@@ -97,7 +97,7 @@ namespace Rebellion.Generation
         /// <returns>A context populated with config, templates, and world entities.</returns>
         private GenerationContext LoadContext()
         {
-            int galaxySize = (int)_setup.GalaxySize;
+            int galaxySize = (int)_summary.GalaxySize;
             PlanetSector[] sectors = CopyTemplates(
                     _gameData.PlanetSectors,
                     recursive: true,
@@ -106,14 +106,14 @@ namespace Rebellion.Generation
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
             GameGenerationConfig generationConfig =
-                _setup.CustomSettings?.GenerationConfig?.GetDeepCopy()
+                _summary.CustomSettings?.GenerationConfig?.GetDeepCopy()
                 ?? _gameData.GenerationConfig.GetDeepCopy();
             Faction[] factions = _gameData.Factions.GetDeepCopy();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
             {
-                Setup = _setup,
+                Summary = _summary,
                 Config = generationConfig,
                 GameConfig = _gameData.GameConfig.GetDeepCopy(),
                 Rng = _randomProvider,
@@ -263,18 +263,18 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Populates <see cref="GameSetup.StartingFactionIDs"/> when the setup did
+        /// Populates <see cref="GameSummary.StartingFactionIDs"/> when the summary did
         /// not specify a subset, treating every faction as a starting faction.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         private static void SetStartingFactionIDs(GenerationContext ctx)
         {
-            if (ctx.Setup.StartingFactionIDs?.Length > 0)
+            if (ctx.Summary.StartingFactionIDs?.Length > 0)
             {
                 return;
             }
 
-            ctx.Setup.StartingFactionIDs = ctx.Factions.Select(f => f.InstanceID).ToArray();
+            ctx.Summary.StartingFactionIDs = ctx.Factions.Select(f => f.InstanceID).ToArray();
         }
 
         /// <summary>
@@ -302,7 +302,7 @@ namespace Rebellion.Generation
             GalaxyMap galaxy = new GalaxyMap();
             foreach (PlanetSector sector in ctx.Sectors)
                 galaxy.AddChild(sector);
-            GameRoot game = new GameRoot { Setup = ctx.Setup, Random = ctx.Rng };
+            GameRoot game = new GameRoot { Summary = ctx.Summary, Random = ctx.Rng };
             game.GetEventPool().AddRange(ctx.Events);
             game.GetFactions().AddRange(ctx.Factions);
             AddPlayers(game);
@@ -320,7 +320,7 @@ namespace Rebellion.Generation
         {
             foreach (Faction faction in game.GetFactions())
             {
-                bool isHuman = faction.InstanceID == game.Setup.PlayerFactionID;
+                bool isHuman = faction.InstanceID == game.Summary.PlayerFactionID;
                 game.SetFactionController(
                     faction.InstanceID,
                     isHuman ? _localPlayerID : $"{_aiPlayerIDPrefix}{faction.InstanceID}",

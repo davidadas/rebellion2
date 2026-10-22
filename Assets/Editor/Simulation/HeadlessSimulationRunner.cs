@@ -101,7 +101,7 @@ public static partial class HeadlessSimulationRunner
         try
         {
             ContentPack contentPack = ContentPackLoader.OpenActive();
-            GameSetup setup = new GameSetup
+            GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Large,
                 Difficulty = options.Difficulty,
@@ -114,17 +114,17 @@ public static partial class HeadlessSimulationRunner
                 ScenarioID = contentPack.Scenario.ID,
             };
             if (options.Seed.HasValue)
-                setup.Seed = options.Seed.Value;
+                summary.Seed = options.Seed.Value;
 
             string startMessage =
-                $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={setup.GalaxySize}";
+                $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
             UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
             GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
-                ? CreateGameBuilder(setup, contentPack.GameData, options.Seed).BuildGame()
+                ? CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame()
                 : SaveGameManager.Instance.LoadGameData(options.InputSaveFileName);
-            setup = game.Setup;
+            summary = game.Summary;
             foreach (Faction faction in game.GetFactions())
             {
                 Player player = game.GetFactionPlayer(faction.InstanceID);
@@ -322,7 +322,7 @@ public static partial class HeadlessSimulationRunner
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
                 game,
-                setup,
+                summary,
                 options,
                 idleTracker,
                 manufacturedUnitTracker,
@@ -372,7 +372,7 @@ public static partial class HeadlessSimulationRunner
             ? $"Simulation {options.Seed?.ToString() ?? "random"} - Tick {game.CurrentTick}"
             : options.SaveDisplayName;
         string playerFactionId = string.IsNullOrWhiteSpace(options.PlayerFactionId)
-            ? game.Setup.PlayerFactionID
+            ? game.Summary.PlayerFactionID
             : options.PlayerFactionId;
 
         Faction playerFaction = game.GetFactions()
@@ -384,7 +384,7 @@ public static partial class HeadlessSimulationRunner
             );
         }
 
-        game.Setup.PlayerFactionID = playerFaction.InstanceID;
+        game.Summary.PlayerFactionID = playerFaction.InstanceID;
         foreach (Faction faction in game.GetFactions())
         {
             Player player = game.GetFactionPlayer(faction.InstanceID);
@@ -404,7 +404,7 @@ public static partial class HeadlessSimulationRunner
         GameRoot loadedGame = saveManager.LoadGameData(saveFileName);
         if (
             loadedGame.CurrentTick != game.CurrentTick
-            || loadedGame.Setup?.PlayerFactionID != playerFaction.InstanceID
+            || loadedGame.Summary?.PlayerFactionID != playerFaction.InstanceID
         )
         {
             throw new InvalidOperationException(
@@ -430,19 +430,19 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Creates a game builder for the requested scenario.
     /// </summary>
-    /// <param name="setup">The game setup used for generation.</param>
+    /// <param name="summary">The game summary used for generation.</param>
     /// <param name="gameData">The active pack's composed game data.</param>
     /// <param name="seed">The optional generation seed.</param>
     /// <returns>The configured game builder.</returns>
     private static GameBuilder CreateGameBuilder(
-        GameSetup setup,
+        GameSummary summary,
         GameDataCatalog gameData,
         int? seed
     )
     {
         return seed.HasValue
-            ? new GameBuilder(setup, gameData, new SystemRandomProvider(seed.Value))
-            : new GameBuilder(setup, gameData);
+            ? new GameBuilder(summary, gameData, new SystemRandomProvider(seed.Value))
+            : new GameBuilder(summary, gameData);
     }
 
     /// <summary>

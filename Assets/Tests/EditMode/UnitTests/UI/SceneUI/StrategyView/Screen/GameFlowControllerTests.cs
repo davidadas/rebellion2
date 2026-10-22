@@ -171,7 +171,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Faction opponent = new Faction { InstanceID = "opponent" };
             game.GetFactions().Add(player);
             game.GetFactions().Add(opponent);
-            game.Setup.PlayerFactionID = player.InstanceID;
+            game.Summary.PlayerFactionID = player.InstanceID;
             game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
             GameSession session = new GameSession(game, TestGameData.Create(config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);

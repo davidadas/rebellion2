@@ -31,10 +31,10 @@ namespace Rebellion.Tests.App
             _settingsBytes = File.Exists(_settingsPath) ? File.ReadAllBytes(_settingsPath) : null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
-            GameLaunchContext.Setup.PlayerFactionID = null;
-            GameLaunchContext.Setup.PackID = null;
-            GameLaunchContext.Setup.PackVersion = null;
-            GameLaunchContext.Setup.ScenarioID = null;
+            GameLaunchContext.Summary.PlayerFactionID = null;
+            GameLaunchContext.Summary.PackID = null;
+            GameLaunchContext.Summary.PackVersion = null;
+            GameLaunchContext.Summary.ScenarioID = null;
 
             _gameObject = new GameObject("AppBootstrapUnderTest");
             _gameObject.SetActive(false);
@@ -251,11 +251,14 @@ namespace Rebellion.Tests.App
 
             Assert.AreEqual(
                 activeContent.Scenario.DefaultPlayerFactionID,
-                GameLaunchContext.Setup.PlayerFactionID
+                GameLaunchContext.Summary.PlayerFactionID
             );
-            Assert.AreEqual(activeContent.Definition.ID, GameLaunchContext.Setup.PackID);
-            Assert.AreEqual(activeContent.Definition.Version, GameLaunchContext.Setup.PackVersion);
-            Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Setup.ScenarioID);
+            Assert.AreEqual(activeContent.Definition.ID, GameLaunchContext.Summary.PackID);
+            Assert.AreEqual(
+                activeContent.Definition.Version,
+                GameLaunchContext.Summary.PackVersion
+            );
+            Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
         }
 
         [Test]
@@ -263,7 +266,7 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack selected = _bootstrap.GetContentPack();
-            GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
             summary.Difficulty = GameDifficulty.Hard;
             summary.CustomSettings = new CustomGameSettings
             {
@@ -280,11 +283,11 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsTrue(GameLaunchContext.PlayIntroCutscene);
-            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Setup.Difficulty);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
             Assert.AreEqual(
                 17,
                 GameLaunchContext
-                    .Setup
+                    .Summary
                     .CustomSettings
                     .GenerationConfig
                     .FacilityGeneration
@@ -482,7 +485,7 @@ namespace Rebellion.Tests.App
             return new GameRoot
             {
                 CurrentTick = tick,
-                Setup = new GameSetup
+                Summary = new GameSummary
                 {
                     PackID = contentPack.Definition.ID,
                     PackVersion = contentPack.Definition.Version,

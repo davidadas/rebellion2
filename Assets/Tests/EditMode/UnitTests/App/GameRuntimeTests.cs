@@ -56,7 +56,7 @@ namespace Rebellion.Tests.App
         {
             _runtime.StartGame(CreateGame());
             GameRoot replacement = CreateGame();
-            replacement.Setup.PackID = "different-pack";
+            replacement.Summary.PackID = "different-pack";
 
             Assert.Throws<InvalidOperationException>(() => _runtime.StartGame(replacement));
 
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.App
             GameSession session = _runtime.StartGame(CreateGame());
             GameManager manager = _runtime.GetActiveGameManager();
             GameRoot replacement = CreateGame();
-            replacement.Setup.PackID = "different-pack";
+            replacement.Summary.PackID = "different-pack";
             _saveGameManager.SaveGameData(replacement, "invalid-content", "Invalid Content");
 
             Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("invalid-content"));
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.App
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
             );
-            game.Setup.CustomSettings = new CustomGameSettings { GenerationConfig = config };
+            game.Summary.CustomSettings = new CustomGameSettings { GenerationConfig = config };
 
             GameSession session = _runtime.StartGame(game);
 
@@ -377,7 +377,7 @@ namespace Rebellion.Tests.App
         [Test]
         public void ValidateGameContent_MissingIdentity_ThrowsInvalidOperationException()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup() };
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
 
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
@@ -386,7 +386,7 @@ namespace Rebellion.Tests.App
         public void ValidateGameContent_DifferentPack_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
-            game.Setup.PackID = "different-pack";
+            game.Summary.PackID = "different-pack";
 
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
@@ -395,7 +395,7 @@ namespace Rebellion.Tests.App
         public void ValidateGameContent_DifferentVersion_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
-            game.Setup.PackVersion = "different-version";
+            game.Summary.PackVersion = "different-version";
 
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
@@ -404,7 +404,7 @@ namespace Rebellion.Tests.App
         public void ValidateGameContent_DifferentScenario_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
-            game.Setup.ScenarioID = "different-scenario";
+            game.Summary.ScenarioID = "different-scenario";
 
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
@@ -413,8 +413,8 @@ namespace Rebellion.Tests.App
         public void ValidateGameContent_SaveHasDifferentMods_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
-            game.Setup.ModIDs = new[] { "missing-mod" };
-            game.Setup.ModVersions = new[] { "1.0.0" };
+            game.Summary.ModIDs = new[] { "missing-mod" };
+            game.Summary.ModVersions = new[] { "1.0.0" };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
                 _runtime.ValidateGameContent(game)
@@ -491,7 +491,7 @@ namespace Rebellion.Tests.App
         {
             return new GameRoot
             {
-                Setup = new GameSetup
+                Summary = new GameSummary
                 {
                     PackID = _contentPack.Definition.ID,
                     PackVersion = _contentPack.Definition.Version,

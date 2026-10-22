@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _game.CurrentTick = 100;
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
-            _game.Setup.PlayerFactionID = _ownerId;
+            _game.Summary.PlayerFactionID = _ownerId;
             _game.SetFactionController(_ownerId, "PLAYER1", PlayerControllerType.Human);
 
             _planetSector = new GalaxyPlanetSector

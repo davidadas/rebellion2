@@ -249,20 +249,20 @@ public sealed class GameRuntime
     /// <param name="game">The game whose content identity is being validated.</param>
     internal void ValidateGameContent(GameRoot game)
     {
-        if (game?.Setup == null)
+        if (game?.Summary == null)
             throw new InvalidOperationException("Game content identity is missing.");
 
-        GameSetup setup = game.Setup;
-        if (!_contentPack.MatchesContentIdentity(setup))
+        GameSummary summary = game.Summary;
+        if (!_contentPack.MatchesContentIdentity(summary))
         {
-            string requiredMods = FormatModIdentity(setup.ModIDs, setup.ModVersions);
+            string requiredMods = FormatModIdentity(summary.ModIDs, summary.ModVersions);
             string activeMods = FormatModIdentity(
                 _contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
                 _contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray()
             );
             throw new InvalidOperationException(
-                $"Save requires content pack '{setup.PackID}' version '{setup.PackVersion}' "
-                    + $"scenario '{setup.ScenarioID}' with mods [{requiredMods}], but "
+                $"Save requires content pack '{summary.PackID}' version '{summary.PackVersion}' "
+                    + $"scenario '{summary.ScenarioID}' with mods [{requiredMods}], but "
                     + $"'{_contentPack.Definition.ID}' version '{_contentPack.Definition.Version}' "
                     + $"scenario '{_contentPack.Scenario.ID}' with mods [{activeMods}] is active."
             );
@@ -321,7 +321,7 @@ public sealed class GameRuntime
         Dictionary<string, FactionSettings> overrides = new Dictionary<string, FactionSettings>(
             StringComparer.Ordinal
         );
-        GameGenerationConfig config = game.Setup.CustomSettings?.GenerationConfig;
+        GameGenerationConfig config = game.Summary.CustomSettings?.GenerationConfig;
         if (config == null)
             return overrides;
 

@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Game
     public class GameRootTests
     {
         private GameRoot _game;
-        private GameSetup _setup;
+        private GameSummary _summary;
         private Faction _faction1;
         private Faction _faction2;
         private GalaxyMap _galaxyMap;
@@ -33,8 +33,8 @@ namespace Rebellion.Tests.Game
         [SetUp]
         public void SetUp()
         {
-            // Initialize the game setup.
-            _setup = new GameSetup
+            // Initialize the game summary.
+            _summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
                 Difficulty = GameDifficulty.Medium,
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game
 
             // Initialize the _game.
             GameConfig config = new GameConfig();
-            _game = TestGame.Create(_setup, config);
+            _game = TestGame.Create(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Game
             {
                 MissionSuccessChancePoints = 25,
             };
-            _setup.CustomSettings = new CustomGameSettings { AIDifficultyModifiers = expected };
+            _summary.CustomSettings = new CustomGameSettings { AIDifficultyModifiers = expected };
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
@@ -164,7 +164,10 @@ namespace Rebellion.Tests.Game
             {
                 ManufacturingSpeedPercent = 125,
             };
-            _setup.CustomSettings = new CustomGameSettings { PlayerDifficultyModifiers = expected };
+            _summary.CustomSettings = new CustomGameSettings
+            {
+                PlayerDifficultyModifiers = expected,
+            };
 
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 
@@ -215,7 +218,11 @@ namespace Rebellion.Tests.Game
         public void Constructor_WithSummary_InitializesCorrectly()
         {
             // Verify game initialization.
-            Assert.AreEqual(_setup, _game.Setup, "Game summary should match the provided summary");
+            Assert.AreEqual(
+                _summary,
+                _game.Summary,
+                "Game summary should match the provided summary"
+            );
             Assert.IsNotNull(_game.Galaxy, "Galaxy should be initialized");
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
@@ -696,7 +703,7 @@ namespace Rebellion.Tests.Game
         public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
             GameRoot game = TestGame.Create(
-                new GameSetup { PlayerFactionID = _faction1.InstanceID },
+                new GameSummary { PlayerFactionID = _faction1.InstanceID },
                 TestContent.Data.GameConfig
             );
             game.GetFactions().Add(_faction1);
@@ -852,7 +859,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void Random_NotPreviouslySet_LazyConstructsFromSummarySeed()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup { Seed = 12345 } };
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
 
             int firstRoll = game.Random.NextInt(0, int.MaxValue);
             int expected = new Random(12345).Next(0, int.MaxValue);
@@ -863,7 +870,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RandomIndex_AfterRandomCalls_ReadsLiveCallCount()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup { Seed = 12345 } };
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
 
             game.Random.NextInt(0, 10);
             game.Random.NextInt(0, 10);
@@ -875,7 +882,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RandomIndex_SetAfterRandomConstructed_RebuildsToMatchPosition()
         {
-            GameRoot game = new GameRoot { Setup = new GameSetup { Seed = 12345 } };
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
             // Force lazy construction at position 0.
             _ = game.Random;
 

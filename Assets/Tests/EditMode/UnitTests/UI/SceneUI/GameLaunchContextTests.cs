@@ -29,26 +29,26 @@ namespace Rebellion.Tests.UI.SceneUI
         [Test]
         public void Reset_ModifiedContext_RestoresNewGameDefaults()
         {
-            GameLaunchContext.Setup.Difficulty = GameDifficulty.Hard;
-            GameLaunchContext.Setup.GalaxySize = GameSize.Small;
-            GameLaunchContext.Setup.VictoryCondition = GameVictoryCondition.Headquarters;
+            GameLaunchContext.Summary.Difficulty = GameDifficulty.Hard;
+            GameLaunchContext.Summary.GalaxySize = GameSize.Small;
+            GameLaunchContext.Summary.VictoryCondition = GameVictoryCondition.Headquarters;
             GameLaunchContext.SaveFileName = "Campaign";
             GameLaunchContext.IsLoadGame = true;
             GameLaunchContext.PlayIntroCutscene = true;
 
             GameLaunchContext.Reset(TestContent.Pack);
 
-            Assert.AreEqual(GameDifficulty.Easy, GameLaunchContext.Setup.Difficulty);
-            Assert.AreEqual(GameSize.Large, GameLaunchContext.Setup.GalaxySize);
+            Assert.AreEqual(GameDifficulty.Easy, GameLaunchContext.Summary.Difficulty);
+            Assert.AreEqual(GameSize.Large, GameLaunchContext.Summary.GalaxySize);
             Assert.AreEqual(
                 GameVictoryCondition.Conquest,
-                GameLaunchContext.Setup.VictoryCondition
+                GameLaunchContext.Summary.VictoryCondition
             );
             Assert.AreEqual(
                 GameResourceAvailability.Normal,
-                GameLaunchContext.Setup.ResourceAvailability
+                GameLaunchContext.Summary.ResourceAvailability
             );
-            Assert.AreEqual("FNALL1", GameLaunchContext.Setup.PlayerFactionID);
+            Assert.AreEqual("FNALL1", GameLaunchContext.Summary.PlayerFactionID);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
@@ -57,11 +57,11 @@ namespace Rebellion.Tests.UI.SceneUI
         [Test]
         public void Reset_ExistingSetup_ReplacesSetupInstance()
         {
-            GameSetup original = GameLaunchContext.Setup;
+            GameSummary original = GameLaunchContext.Summary;
 
             GameLaunchContext.Reset(TestContent.Pack);
 
-            Assert.AreNotSame(original, GameLaunchContext.Setup);
+            Assert.AreNotSame(original, GameLaunchContext.Summary);
         }
 
         [Test]
@@ -89,9 +89,9 @@ namespace Rebellion.Tests.UI.SceneUI
         }
 
         [Test]
-        public void ApplyCustomGameSetup_ConfiguredSetup_ReplacesContextWithDetachedCopy()
+        public void ApplyCustomGameSummary_ConfiguredSetup_ReplacesContextWithDetachedCopy()
         {
-            GameSetup configured = new GameSetup
+            GameSummary configured = new GameSummary
             {
                 PlayerFactionID = "FNEMP1",
                 Difficulty = GameDifficulty.Hard,
@@ -106,38 +106,38 @@ namespace Rebellion.Tests.UI.SceneUI
             };
             GameLaunchContext.PrepareSaveLoad("campaign");
 
-            GameLaunchContext.ApplyCustomGameSetup(configured);
+            GameLaunchContext.ApplyCustomGameSummary(configured);
             configured.StartingFactionIDs[0] = "changed";
             configured.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 999;
 
-            Assert.AreEqual("FNEMP1", GameLaunchContext.Setup.PlayerFactionID);
-            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Setup.Difficulty);
-            Assert.AreEqual("FNEMP1", GameLaunchContext.Setup.StartingFactionIDs[0]);
+            Assert.AreEqual("FNEMP1", GameLaunchContext.Summary.PlayerFactionID);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
+            Assert.AreEqual("FNEMP1", GameLaunchContext.Summary.StartingFactionIDs[0]);
             Assert.AreNotEqual(
                 999,
                 GameLaunchContext
-                    .Setup
+                    .Summary
                     .CustomSettings
                     .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );
-            Assert.AreNotSame(configured, GameLaunchContext.Setup);
+            Assert.AreNotSame(configured, GameLaunchContext.Summary);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
         }
 
         [Test]
-        public void ApplyCustomGameSetup_NullSetup_PreservesPendingLaunch()
+        public void ApplyCustomGameSummary_NullSetup_PreservesPendingLaunch()
         {
-            GameSetup original = GameLaunchContext.Setup;
+            GameSummary original = GameLaunchContext.Summary;
             GameLaunchContext.PrepareSaveLoad("pending-campaign");
 
             Assert.Throws<ArgumentNullException>(() =>
-                GameLaunchContext.ApplyCustomGameSetup(null)
+                GameLaunchContext.ApplyCustomGameSummary(null)
             );
 
-            Assert.AreSame(original, GameLaunchContext.Setup);
+            Assert.AreSame(original, GameLaunchContext.Summary);
             Assert.AreEqual("pending-campaign", GameLaunchContext.SaveFileName);
             Assert.IsTrue(GameLaunchContext.IsLoadGame);
         }

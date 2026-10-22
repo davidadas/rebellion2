@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetSummary_HardAiMaintenanceBonus_IncreasesEffectiveCapacity()
         {
-            _game.Setup = new GameSetup { Difficulty = GameDifficulty.Hard };
+            _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             _game.SetFactionController(_faction.InstanceID, "FACTION1-AI", PlayerControllerType.AI);
             _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetSummary_MaximumMaintenanceModifiers_SaturatesEffectiveCapacity()
         {
-            _game.Setup = new GameSetup { Difficulty = GameDifficulty.Hard };
+            _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             _game.SetFactionController(_faction.InstanceID, "FACTION1-AI", PlayerControllerType.AI);
             _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {

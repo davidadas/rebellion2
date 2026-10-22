@@ -25,7 +25,7 @@ namespace Rebellion.Tests.App
         /// <summary>
         /// Enters play mode in an empty scene so only this test creates application services.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
+        /// <returns>The play-mode summary sequence.</returns>
         [UnitySetUp]
         public IEnumerator SetUp()
         {
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.App
             AppBootstrap replacement = AppBootstrap.EnsureExists(candidate);
 
             Assert.AreSame(candidate, replacement.GetContentPack());
-            Assert.AreEqual(candidate.Definition.ID, GameLaunchContext.Setup.PackID);
+            Assert.AreEqual(candidate.Definition.ID, GameLaunchContext.Summary.PackID);
             Assert.IsTrue(operation.BeginRecovery());
 
             DestroyApplication();
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.App
                     active.Scenario.ID,
                     previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
                 );
-                GameSetup summary = GameLaunchContext.CreateDefaultSetup(selected);
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
                 summary.GalaxySize = GameSize.Small;
                 summary.Difficulty = GameDifficulty.Hard;
                 summary.CustomSettings = new CustomGameSettings
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.App
                 Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
                 Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
                 GameRoot game = AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game;
-                Assert.AreEqual(GameDifficulty.Hard, game.Setup.Difficulty);
+                Assert.AreEqual(GameDifficulty.Hard, game.Summary.Difficulty);
                 Assert.IsFalse(
                     game.GetEventPool()
                         .Any(gameEvent => gameEvent.Category == GameEventCategory.Story)

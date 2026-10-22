@@ -14,7 +14,7 @@ public sealed class CustomGamePresetEntry
     public string FileName { get; }
     public string DisplayName { get; }
     public DateTime LastSavedUtc { get; }
-    public GameSetup Setup { get; }
+    public GameSummary Summary { get; }
 
     /// <summary>
     /// Creates a discovered custom-game preset entry.
@@ -22,18 +22,18 @@ public sealed class CustomGamePresetEntry
     /// <param name="fileName">The stable preset file identity.</param>
     /// <param name="displayName">The player-facing preset name.</param>
     /// <param name="lastSavedUtc">The last saved timestamp.</param>
-    /// <param name="setup">The saved launch configuration.</param>
+    /// <param name="summary">The saved launch configuration.</param>
     public CustomGamePresetEntry(
         string fileName,
         string displayName,
         DateTime lastSavedUtc,
-        GameSetup setup
+        GameSummary summary
     )
     {
         FileName = fileName;
         DisplayName = displayName;
         LastSavedUtc = lastSavedUtc;
-        Setup = setup;
+        Summary = summary;
     }
 }
 
@@ -78,7 +78,7 @@ public sealed class CustomGamePresetManager
             try
             {
                 CustomGamePresetData data = Read(path);
-                if (data?.Setup == null || string.IsNullOrWhiteSpace(data.DisplayName))
+                if (data?.Summary == null || string.IsNullOrWhiteSpace(data.DisplayName))
                     continue;
 
                 entries.Add(
@@ -86,7 +86,7 @@ public sealed class CustomGamePresetManager
                         Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(path)),
                         data.DisplayName,
                         data.LastSavedUtc,
-                        data.Setup
+                        data.Summary
                     )
                 );
             }
@@ -108,12 +108,12 @@ public sealed class CustomGamePresetManager
     /// Creates a named preset with a generated file identity.
     /// </summary>
     /// <param name="displayName">The player-facing preset name.</param>
-    /// <param name="setup">The launch configuration to save.</param>
+    /// <param name="summary">The launch configuration to save.</param>
     /// <returns>The generated preset file identity.</returns>
-    public string CreatePreset(string displayName, GameSetup setup)
+    public string CreatePreset(string displayName, GameSummary summary)
     {
         string fileName = "preset_" + Guid.NewGuid().ToString("N");
-        SavePreset(fileName, displayName, setup);
+        SavePreset(fileName, displayName, summary);
         return fileName;
     }
 
@@ -122,12 +122,12 @@ public sealed class CustomGamePresetManager
     /// </summary>
     /// <param name="fileName">The stable preset file identity.</param>
     /// <param name="displayName">The player-facing preset name.</param>
-    /// <param name="setup">The launch configuration to save.</param>
-    public void SavePreset(string fileName, string displayName, GameSetup setup)
+    /// <param name="summary">The launch configuration to save.</param>
+    public void SavePreset(string fileName, string displayName, GameSummary summary)
     {
         ValidateFileName(fileName);
-        if (setup == null)
-            throw new ArgumentNullException(nameof(setup));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
 
         string normalizedName = NormalizeDisplayName(displayName);
         if (normalizedName.Length == 0)
@@ -140,7 +140,7 @@ public sealed class CustomGamePresetManager
         {
             DisplayName = normalizedName,
             LastSavedUtc = DateTime.UtcNow,
-            Setup = setup,
+            Summary = summary,
         };
         GameSerializer serializer = new GameSerializer(typeof(CustomGamePresetData));
         try
@@ -175,12 +175,12 @@ public sealed class CustomGamePresetManager
     /// </summary>
     /// <param name="fileName">The stable preset file identity.</param>
     /// <returns>The saved launch configuration.</returns>
-    public GameSetup LoadPreset(string fileName)
+    public GameSummary LoadPreset(string fileName)
     {
         ValidateFileName(fileName);
         CustomGamePresetData data = Read(GetPresetPath(fileName));
-        return data?.Setup
-            ?? throw new InvalidDataException($"Custom-game preset '{fileName}' has no setup.");
+        return data?.Summary
+            ?? throw new InvalidDataException($"Custom-game preset '{fileName}' has no summary.");
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public sealed class CustomGamePresetManager
     {
         ValidateFileName(fileName);
         CustomGamePresetData data = Read(GetPresetPath(fileName));
-        SavePreset(fileName, displayName, data.Setup);
+        SavePreset(fileName, displayName, data.Summary);
     }
 
     /// <summary>
@@ -273,16 +273,7 @@ public sealed class CustomGamePresetManager
 [PersistableObject]
 public sealed class CustomGamePresetData
 {
-    [PersistableMember(Name = "Summary")]
-    private GameSetup _setup;
-
     public string DisplayName { get; set; }
     public DateTime LastSavedUtc { get; set; }
-
-    [PersistableIgnore]
-    public GameSetup Setup
-    {
-        get => _setup;
-        set => _setup = value;
-    }
+    public GameSummary Summary { get; set; }
 }

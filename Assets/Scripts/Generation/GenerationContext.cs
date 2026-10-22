@@ -17,7 +17,7 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class GenerationContext
     {
-        public GameSetup Setup { get; set; }
+        public GameSummary Summary { get; set; }
         public GameGenerationConfig Config { get; set; }
         public GameConfig GameConfig { get; set; }
         public IRandomNumberProvider Rng { get; set; }

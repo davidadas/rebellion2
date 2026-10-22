@@ -34,7 +34,7 @@ namespace Rebellion.Game
     /// Contains the persisted selections and content identity used to create a game.
     /// </summary>
     [PersistableObject]
-    public sealed class GameSetup
+    public sealed class GameSummary
     {
         // Game Options.
         [PersistableMember(Name = nameof(GalaxySize))]
@@ -174,8 +174,8 @@ namespace Rebellion.Game
         public bool IsCustomGame => _customSettings != null;
 
         /// <summary>
-        /// Creates a game setup with the standard launch selections.
+        /// Creates a game summary with the standard launch selections.
         /// </summary>
-        public GameSetup() { }
+        public GameSummary() { }
     }
 }

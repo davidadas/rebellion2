@@ -114,7 +114,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private NewGameSettingsCategory selectedCategory;
     private bool controlsBound;
 
-    public event Action<ContentPack, GameSetup> StartRequested;
+    public event Action<ContentPack, GameSummary> StartRequested;
     public event Action<string> ContentPackRequested;
     public event Action CloseRequested;
 
@@ -263,40 +263,40 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// Initializes editable modifiers from authored defaults and existing launch overrides.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
-    /// <param name="setup">The new-game setup receiving applied custom settings.</param>
-    public void Initialize(ContentPack pack, GameSetup setup)
+    /// <param name="summary">The new-game launch state receiving applied overrides.</param>
+    public void Initialize(ContentPack pack, GameSummary summary)
     {
-        Initialize(pack, setup, null, null);
+        Initialize(pack, summary, null, null);
     }
 
     /// <summary>
     /// Initializes complete custom-game setup, preset persistence, and reusable Save/Load UI.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
-    /// <param name="setup">The current game setup.</param>
+    /// <param name="summary">The current launch configuration.</param>
     /// <param name="optionsPrefab">The Options prefab supplying the shared Save/Load page.</param>
     /// <param name="presetManager">The custom-game preset persistence service.</param>
     public void Initialize(
         ContentPack pack,
-        GameSetup setup,
+        GameSummary summary,
         OptionsMenuView optionsPrefab,
         CustomGamePresetManager presetManager
     )
     {
-        Initialize(pack, setup, optionsPrefab, presetManager, null);
+        Initialize(pack, summary, optionsPrefab, presetManager, null);
     }
 
     /// <summary>
     /// Initializes complete custom-game setup with the installed content-pack choices.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
-    /// <param name="setup">The current game setup.</param>
+    /// <param name="summary">The current launch configuration.</param>
     /// <param name="optionsPrefab">The Options prefab supplying the shared Save/Load page.</param>
     /// <param name="presetManager">The custom-game preset persistence service.</param>
     /// <param name="installedPacks">The content packs available for custom games.</param>
     public void Initialize(
         ContentPack pack,
-        GameSetup setup,
+        GameSummary summary,
         OptionsMenuView optionsPrefab,
         CustomGamePresetManager presetManager,
         IReadOnlyList<ContentPackDefinition> installedPacks
@@ -304,12 +304,12 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     {
         if (pack == null)
             throw new ArgumentNullException(nameof(pack));
-        if (setup == null)
-            throw new ArgumentNullException(nameof(setup));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
 
         BindControls();
 
-        settingsSession = new CustomGameSettingsSession(pack, setup);
+        settingsSession = new CustomGameSettingsSession(pack, summary);
         pendingPresetDeleteFileName = null;
         presetConfirmDialog?.Hide();
         availablePacks =
@@ -1045,7 +1045,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         presetEntries.AddRange(
             presetManager
                 .GetPresets()
-                .Where(entry => settingsSession.Pack.MatchesContentIdentity(entry.Setup))
+                .Where(entry => settingsSession.Pack.MatchesContentIdentity(entry.Summary))
         );
         presetSlots.Clear();
         presetSlots.Add(new OptionsSaveSlot("CREATE NEW PRESET", string.Empty, null, true, null));
@@ -1055,10 +1055,10 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 new OptionsSaveSlot(
                     entry.DisplayName,
                     entry.LastSavedUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
-                    ResolveFactionIcon(entry.Setup.PlayerFactionID),
+                    ResolveFactionIcon(entry.Summary.PlayerFactionID),
                     false,
                     entry.FileName,
-                    entry.Setup.Difficulty.ToString()
+                    entry.Summary.Difficulty.ToString()
                 )
             );
         }
@@ -1107,7 +1107,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         if (slot == 0)
         {
-            presetManager.CreatePreset(newName, settingsSession.CreateSetupSnapshot());
+            presetManager.CreatePreset(newName, settingsSession.CreateSummarySnapshot());
             selectedPresetSlot = -1;
         }
         else if (slot > 0 && slot <= presetEntries.Count)
@@ -1117,7 +1117,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 presetManager.SavePreset(
                     entry.FileName,
                     newName,
-                    settingsSession.CreateSetupSnapshot()
+                    settingsSession.CreateSummarySnapshot()
                 );
             else
                 presetManager.RenamePreset(entry.FileName, newName);
@@ -1142,7 +1142,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         presetManager.SavePreset(
             entry.FileName,
             entry.DisplayName,
-            settingsSession.CreateSetupSnapshot()
+            settingsSession.CreateSummarySnapshot()
         );
         RefreshPresetSlots(false);
     }
@@ -1159,7 +1159,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         )
             return;
 
-        GameSetup loaded = presetManager.LoadPreset(presetEntries[selectedPresetSlot - 1].FileName);
+        GameSummary loaded = presetManager.LoadPreset(
+            presetEntries[selectedPresetSlot - 1].FileName
+        );
         if (!settingsSession.Pack.MatchesContentIdentity(loaded))
             throw new InvalidOperationException(
                 "The selected custom-game preset requires different active content."
@@ -1764,7 +1766,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void Apply()
     {
-        StartRequested?.Invoke(settingsSession.Pack, settingsSession.CreateSetupSnapshot());
+        StartRequested?.Invoke(settingsSession.Pack, settingsSession.CreateSummarySnapshot());
 
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem?.currentSelectedGameObject == applyButton.gameObject)

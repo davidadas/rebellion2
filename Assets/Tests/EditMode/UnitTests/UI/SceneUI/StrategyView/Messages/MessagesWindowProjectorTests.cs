@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
-            game.Setup.PlayerFactionID = _playerFactionId;
+            game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,

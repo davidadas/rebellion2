@@ -19,7 +19,7 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Configure(ctx.Sectors, ctx.Classification, ctx.Config, ctx.Setup, ctx.Rng);
+            Configure(ctx.Sectors, ctx.Classification, ctx.Config, ctx.Summary, ctx.Rng);
         }
 
         /// <summary>
@@ -29,22 +29,22 @@ namespace Rebellion.Generation
         /// <param name="sectors">All generated planet sectors to configure.</param>
         /// <param name="classification">Bucket and HQ assignments produced by <see cref="GalaxySeeder"/>.</param>
         /// <param name="rules">Generation rules for resources and support.</param>
-        /// <param name="setup">Game setup; resource availability selects the resource profile, faction IDs drive support distribution.</param>
+        /// <param name="summary">Game summary; resource availability selects the resource profile, faction IDs drive support distribution.</param>
         /// <param name="rng">Random number provider for dice rolls and colonization chances.</param>
         private void Configure(
             PlanetSector[] sectors,
             GalaxyClassificationResult classification,
             GameGenerationConfig rules,
-            GameSetup setup,
+            GameSummary summary,
             IRandomNumberProvider rng
         )
         {
             PlanetResourceProfile res = ResolveResourceProfile(
                 rules.PlanetResources,
-                setup.ResourceAvailability
+                summary.ResourceAvailability
             );
             PlanetSupportSection sup = rules.PlanetSupport;
-            string[] factionIds = setup.StartingFactionIDs;
+            string[] factionIds = summary.StartingFactionIDs;
 
             foreach (PlanetSector sector in sectors)
             {

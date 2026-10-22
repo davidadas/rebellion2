@@ -29,7 +29,7 @@ internal sealed class ContentLoadOperation
     private ContentPack _candidate;
     private string[] _disabledModIDs;
     private string _saveFileName;
-    private GameSetup _customGameSetup;
+    private GameSummary _customGameSummary;
     private bool _isContentReload;
     private LoadState _state;
 
@@ -63,7 +63,8 @@ internal sealed class ContentLoadOperation
     /// <summary>
     /// Gets an independent custom-game configuration, or null during other loads and recovery.
     /// </summary>
-    internal GameSetup CustomGameSetup => IsRecovering ? null : _customGameSetup?.GetDeepCopy();
+    internal GameSummary CustomGameSummary =>
+        IsRecovering ? null : _customGameSummary?.GetDeepCopy();
 
     /// <summary>
     /// Captures the active content and committed preferences before any preparation starts.
@@ -162,21 +163,21 @@ internal sealed class ContentLoadOperation
     /// Validates a custom-game launch and stages its content without committing preferences.
     /// </summary>
     /// <param name="contentPack">The selected content already opened by the custom-game menu.</param>
-    /// <param name="setup">The complete custom-game configuration.</param>
-    internal void PrepareCustomGame(ContentPack contentPack, GameSetup setup)
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal void PrepareCustomGame(ContentPack contentPack, GameSummary summary)
     {
         if (contentPack == null)
             throw new ArgumentNullException(nameof(contentPack));
-        if (setup == null)
-            throw new ArgumentNullException(nameof(setup));
-        if (!contentPack.MatchesContentIdentity(setup))
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (!contentPack.MatchesContentIdentity(summary))
             throw new InvalidOperationException(
                 "The custom-game configuration does not match its selected content pack."
             );
 
         BeginPreparation();
         ValidateApplicationPreloads(contentPack);
-        _customGameSetup = setup.GetDeepCopy();
+        _customGameSummary = summary.GetDeepCopy();
         UserContentSettings requested = CopySettings(_previousSettings);
         requested.SetDisabledModsForPack(
             contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),

@@ -454,10 +454,10 @@ public static class TestGame
     /// <param name="summary">The game summary.</param>
     /// <param name="config">The runtime configuration.</param>
     /// <returns>The configured game root.</returns>
-    public static GameRoot Create(GameSetup summary, GameConfig config)
+    public static GameRoot Create(GameSummary summary, GameConfig config)
     {
         GameRoot game = Create(config);
-        game.Setup = summary;
+        game.Summary = summary;
         return game;
     }
 }
@@ -981,7 +981,7 @@ public static class GenerationContextFactory
             Officers = Array.Empty<Officer>(),
             Events = Array.Empty<GameEvent>(),
             Classification = new GalaxyClassificationResult(),
-            Setup = new GameSetup(),
+            Summary = new GameSummary(),
             Config = new GameGenerationConfig
             {
                 GalaxyClassification = new GalaxyClassificationSection

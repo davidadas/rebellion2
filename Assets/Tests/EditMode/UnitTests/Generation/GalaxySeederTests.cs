@@ -13,7 +13,7 @@ namespace Rebellion.Tests.Generation
     public class GalaxySeederTests
     {
         private Faction[] _factions;
-        private GameSetup _summary;
+        private GameSummary _summary;
 
         /// <summary>
         /// Sets up.
@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Generation
                 new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" },
             };
 
-            _summary = new GameSetup
+            _summary = new GameSummary
             {
                 PlayerFactionID = "FNALL1",
                 Difficulty = GameDifficulty.Medium,
@@ -420,7 +420,7 @@ namespace Rebellion.Tests.Generation
         private static GalaxyClassificationResult Classify(
             PlanetSector[] sectors,
             Faction[] factions,
-            GameSetup summary,
+            GameSummary summary,
             GameGenerationConfig config,
             IRandomNumberProvider rng
         )
@@ -429,7 +429,7 @@ namespace Rebellion.Tests.Generation
             {
                 Sectors = sectors,
                 Factions = factions,
-                Setup = summary,
+                Summary = summary,
                 Config = config,
                 Rng = rng,
             };

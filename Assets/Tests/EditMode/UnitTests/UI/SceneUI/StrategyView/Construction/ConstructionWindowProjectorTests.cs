@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId });
-            game.Setup.PlayerFactionID = _ownerId;
+            game.Summary.PlayerFactionID = _ownerId;
             _textures = new Dictionary<string, Texture2D>
             {
                 { "active-title", new Texture2D(1, 1) },

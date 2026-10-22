@@ -41,7 +41,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
-            game.Setup.PlayerFactionID = _playerFactionId;
+            game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,

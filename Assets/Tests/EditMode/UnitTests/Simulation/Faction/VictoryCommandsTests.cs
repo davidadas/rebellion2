@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
-            game.Setup = new GameSetup { VictoryCondition = victoryCondition };
+            game.Summary = new GameSummary { VictoryCondition = victoryCondition };
             game.CurrentTick = 200;
 
             Faction empire = new Faction { InstanceID = "empire" };

@@ -558,7 +558,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void RefreshSaveSlots_SavedDetails_RendersDifficultyAndTurn()
         {
             GameRoot game = CreateGame();
-            game.Setup.Difficulty = GameDifficulty.Hard;
+            game.Summary.Difficulty = GameDifficulty.Hard;
             game.CurrentTick = 42;
             _saveGameManager.SaveGameData(game, "hard_save", "Hard Save");
 
@@ -573,9 +573,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void RefreshSaveSlots_CustomGame_RendersCustomAndTurn()
         {
             GameRoot game = CreateGame();
-            game.Setup.Difficulty = GameDifficulty.Hard;
-            game.Setup.GalaxySize = GameSize.Small;
-            game.Setup.CustomSettings = new CustomGameSettings
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.GalaxySize = GameSize.Small;
+            game.Summary.CustomSettings = new CustomGameSettings
             {
                 GenerationConfig = new GameGenerationConfig(),
             };
@@ -815,7 +815,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             ContentPack contentPack = _bootstrap.GetContentPack();
             return new GameRoot
             {
-                Setup = new GameSetup
+                Summary = new GameSummary
                 {
                     PackID = contentPack.Definition.ID,
                     PackVersion = contentPack.Definition.Version,
