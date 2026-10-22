@@ -126,7 +126,29 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_GenerationConfigOverride_UsesOverrideForPlanetResources()
+        public void Build_InputSetupMutatedAfterConstruction_UsesDetachedSnapshot()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Small,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+            };
+            GameBuilder builder = new GameBuilder(summary, TestContent.Data);
+
+            summary.GalaxySize = GameSize.Large;
+            summary.PlayerFactionID = "FNEMP1";
+            GameRoot game = builder.Build();
+
+            Assert.AreNotSame(summary, game.Summary);
+            Assert.AreEqual(GameSize.Small, game.Summary.GalaxySize);
+            Assert.AreEqual("FNALL1", game.Summary.PlayerFactionID);
+            Assert.IsEmpty(summary.StartingFactionIDs);
+            Assert.IsNotEmpty(game.Summary.StartingFactionIDs);
+        }
+
+        [Test]
+        public void Build_CustomGenerationConfig_UsesSettingsForPlanetResources()
         {
             GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
             PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
@@ -141,7 +163,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -173,7 +195,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -201,7 +223,7 @@ namespace Rebellion.Tests.Generation
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -533,8 +555,13 @@ namespace Rebellion.Tests.Generation
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                DisabledEventCategories = new[] { disabledCategory },
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                },
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { disabledCategory };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
 
@@ -562,12 +589,13 @@ namespace Rebellion.Tests.Generation
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                DisabledEventCategories = new[]
+                CustomSettings = new CustomGameSettings
                 {
-                    GameEventCategory.Story,
-                    GameEventCategory.Disaster,
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
                 },
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
 
@@ -653,8 +681,13 @@ namespace Rebellion.Tests.Generation
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                DisabledEventCategories = new[] { GameEventCategory.Story },
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = gameData.GenerationConfig.GetDeepCopy(),
+                },
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story };
 
             GameRoot game = new GameBuilder(summary, gameData).Build();
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -101,7 +101,7 @@ internal sealed class CustomGameSettingsSession
             summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
         generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
         generationDraft =
-            summaryDraft.GenerationConfigOverride?.GetDeepCopy()
+            summaryDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
             ?? pack.GameData.GenerationConfig.GetDeepCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
@@ -116,10 +116,12 @@ internal sealed class CustomGameSettingsSession
 
         DifficultyModifiers playerDefaults = new DifficultyModifiers();
         DifficultyModifiers aiDefaults = ResolveAIDefaults(pack, summaryDraft.Difficulty);
-        DifficultyModifiers playerValues = summaryDraft.PlayerDifficultyModifiers ?? playerDefaults;
-        DifficultyModifiers aiValues = summaryDraft.AIDifficultyModifiers ?? aiDefaults;
+        DifficultyModifiers playerValues =
+            summaryDraft.CustomSettings?.PlayerDifficultyModifiers ?? playerDefaults;
+        DifficultyModifiers aiValues =
+            summaryDraft.CustomSettings?.AIDifficultyModifiers ?? aiDefaults;
         AddDifficultyEntries(playerDefaults, aiDefaults, playerValues, aiValues);
-        if (summaryDraft.AIDifficultyModifiers != null)
+        if (summaryDraft.CustomSettings?.AIDifficultyModifiers != null)
         {
             foreach (var entry in difficultyEntries)
             {
@@ -313,7 +315,7 @@ internal sealed class CustomGameSettingsSession
     /// <param name="category">The category to inspect.</param>
     /// <returns>True when the category is enabled.</returns>
     internal bool IsEventCategoryEnabled(GameEventCategory category) =>
-        summaryDraft.IsEventCategoryEnabled(category);
+        generationDraft.IsEventCategoryEnabled(category);
 
     /// <summary>
     /// Enables or disables one classified event category in the draft campaign.
@@ -326,8 +328,8 @@ internal sealed class CustomGameSettingsSession
             return;
 
         HashSet<GameEventCategory> disabled = new HashSet<GameEventCategory>(
-            summaryDraft.DisabledEventCategories.Where(candidate =>
-                candidate != GameEventCategory.None
+            (generationDraft.DisabledEventCategories ?? new List<GameEventCategory>()).Where(
+                candidate => candidate != GameEventCategory.None
             )
         );
         if (enabled)
@@ -335,7 +337,7 @@ internal sealed class CustomGameSettingsSession
         else
             disabled.Add(category);
 
-        summaryDraft.DisabledEventCategories = disabled.OrderBy(candidate => candidate).ToArray();
+        generationDraft.DisabledEventCategories = disabled.OrderBy(candidate => candidate).ToList();
     }
 
     /// <summary>
@@ -351,8 +353,9 @@ internal sealed class CustomGameSettingsSession
             summaryDraft.GalaxySize = summaryDefaults.GalaxySize;
             summaryDraft.VictoryCondition = summaryDefaults.VictoryCondition;
             summaryDraft.ResourceAvailability = summaryDefaults.ResourceAvailability;
-            summaryDraft.DisabledEventCategories =
-                summaryDefaults.DisabledEventCategories.ToArray();
+            generationDraft.DisabledEventCategories =
+                generationDefaults.DisabledEventCategories?.ToList()
+                ?? new List<GameEventCategory>();
             summaryDraft.Seed = summaryDefaults.Seed;
             UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
             BuildGenerationEntries(activePack, summaryDraft);
@@ -383,9 +386,12 @@ internal sealed class CustomGameSettingsSession
     internal GameSummary CreateSummarySnapshot()
     {
         GameSummary snapshot = summaryDraft.GetDeepCopy();
-        snapshot.PlayerDifficultyModifiers = CreateModifiers(playerDraft);
-        snapshot.AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft);
-        snapshot.GenerationConfigOverride = generationDraft.GetDeepCopy();
+        snapshot.CustomSettings = new CustomGameSettings
+        {
+            PlayerDifficultyModifiers = CreateModifiers(playerDraft),
+            AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
+            GenerationConfig = generationDraft.GetDeepCopy(),
+        };
         return snapshot;
     }
 

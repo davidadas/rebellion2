@@ -321,7 +321,7 @@ public sealed class GameRuntime
         Dictionary<string, FactionSettings> overrides = new Dictionary<string, FactionSettings>(
             StringComparer.Ordinal
         );
-        GameGenerationConfig config = game.Summary.GenerationConfigOverride;
+        GameGenerationConfig config = game.Summary.CustomSettings?.GenerationConfig;
         if (config == null)
             return overrides;
 

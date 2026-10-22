@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -38,7 +39,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SavePreset_CompleteSummary_RoundTripsLaunchConfiguration()
+        public void SavePreset_CompleteSetup_RoundTripsLaunchConfiguration()
         {
             GameSummary summary = CreateSummary();
 
@@ -52,21 +53,21 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(summary.ResourceAvailability, loaded.ResourceAvailability);
             Assert.AreEqual(summary.Seed, loaded.Seed);
             CollectionAssert.AreEqual(
-                summary.DisabledEventCategories,
-                loaded.DisabledEventCategories
+                summary.CustomSettings.GenerationConfig.DisabledEventCategories,
+                loaded.CustomSettings.GenerationConfig.DisabledEventCategories
             );
             Assert.AreEqual(
-                summary.AIDifficultyModifiers.MineOutputPercent,
-                loaded.AIDifficultyModifiers.MineOutputPercent
+                summary.CustomSettings.AIDifficultyModifiers.MineOutputPercent,
+                loaded.CustomSettings.AIDifficultyModifiers.MineOutputPercent
             );
             Assert.AreEqual(
-                summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
-                loaded.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier
+                summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
+                loaded.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier
             );
         }
 
         [Test]
-        public void RenamePreset_ExistingPreset_UpdatesDisplayNameAndPreservesSummary()
+        public void RenamePreset_ExistingPreset_UpdatesDisplayNameAndPreservesSetup()
         {
             manager.SavePreset("fleet-war", "Fleet War", CreateSummary());
 
@@ -108,10 +109,12 @@ namespace Rebellion.Tests.Managers
                 ScenarioID = "scenario",
                 ModIDs = new[] { "mod" },
                 ModVersions = new[] { "2.0" },
-                DisabledEventCategories = new[] { GameEventCategory.Disaster },
-                PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
-                AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
-                GenerationConfigOverride = CreateGenerationConfig(),
+                CustomSettings = new CustomGameSettings
+                {
+                    PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
+                    AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
+                    GenerationConfig = CreateGenerationConfig(),
+                },
             };
         }
 
@@ -123,6 +126,10 @@ namespace Rebellion.Tests.Managers
         {
             GameGenerationConfig config = TestContent.Data.GenerationConfig.GetDeepCopy();
             config.FacilityGeneration.CoreMineMultiplier = 17;
+            config.DisabledEventCategories = new List<GameEventCategory>
+            {
+                GameEventCategory.Disaster,
+            };
             return config;
         }
     }

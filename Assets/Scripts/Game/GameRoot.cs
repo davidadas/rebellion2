@@ -213,8 +213,8 @@ namespace Rebellion.Game
 
             if (IsFactionAIControlled(faction))
             {
-                if (Summary?.AIDifficultyModifiers != null)
-                    return Summary.AIDifficultyModifiers;
+                if (Summary?.CustomSettings?.AIDifficultyModifiers != null)
+                    return Summary.CustomSettings.AIDifficultyModifiers;
 
                 if (
                     Summary != null
@@ -232,10 +232,10 @@ namespace Rebellion.Game
             }
 
             if (
-                Summary?.PlayerDifficultyModifiers != null
+                Summary?.CustomSettings?.PlayerDifficultyModifiers != null
                 && faction.InstanceID == Summary.PlayerFactionID
             )
-                return Summary.PlayerDifficultyModifiers;
+                return Summary.CustomSettings.PlayerDifficultyModifiers;
 
             return new DifficultyModifiers();
         }

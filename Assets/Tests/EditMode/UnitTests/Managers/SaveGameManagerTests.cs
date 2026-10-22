@@ -74,6 +74,80 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_GameSummary_WritesStableSummaryElementAndLoads()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    PlayerFactionID = "FNALL1",
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string serialized = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+            StringAssert.Contains("<Summary>", serialized);
+            StringAssert.DoesNotContain("<Setup>", serialized);
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(GameDifficulty.Hard, restored.Summary.Difficulty);
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+        }
+
+        [Test]
+        public void LoadGameData_StandardSummaryXml_RestoresSetupWithoutCustomSettings()
+        {
+            const string xml =
+                @"<GameRoot>
+                    <Summary>
+                        <GalaxySize>Small</GalaxySize>
+                        <Difficulty>Hard</Difficulty>
+                        <VictoryCondition>Headquarters</VictoryCondition>
+                        <ResourceAvailability>Abundant</ResourceAvailability>
+                        <StartingFactionIDs><String>FNALL1</String><String>FNEMP1</String></StartingFactionIDs>
+                        <PlayerFactionID>FNALL1</PlayerFactionID>
+                        <PackID>pack</PackID>
+                        <PackVersion>1.0</PackVersion>
+                        <ScenarioID>scenario</ScenarioID>
+                        <ModIDs><String>mod</String></ModIDs>
+                        <ModVersions><String>2.0</String></ModVersions>
+                        <Seed>1729</Seed>
+                    </Summary>
+                    <CurrentTick>42</CurrentTick>
+                </GameRoot>";
+            Directory.CreateDirectory(_saveDirectoryPath);
+            File.WriteAllText(_saveGameManager.GetSaveFilePath(_saveFileName), xml);
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameSize.Small, restored.Summary.GalaxySize);
+            Assert.AreEqual(GameDifficulty.Hard, restored.Summary.Difficulty);
+            Assert.AreEqual(GameVictoryCondition.Headquarters, restored.Summary.VictoryCondition);
+            Assert.AreEqual(
+                GameResourceAvailability.Abundant,
+                restored.Summary.ResourceAvailability
+            );
+            CollectionAssert.AreEqual(
+                new[] { "FNALL1", "FNEMP1" },
+                restored.Summary.StartingFactionIDs
+            );
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+            Assert.AreEqual("pack", restored.Summary.PackID);
+            Assert.AreEqual("1.0", restored.Summary.PackVersion);
+            Assert.AreEqual("scenario", restored.Summary.ScenarioID);
+            CollectionAssert.AreEqual(new[] { "mod" }, restored.Summary.ModIDs);
+            CollectionAssert.AreEqual(new[] { "2.0" }, restored.Summary.ModVersions);
+            Assert.AreEqual(1729, restored.Summary.Seed);
+            Assert.AreEqual(42, restored.CurrentTick);
+            Assert.IsNull(restored.Summary.CustomSettings);
+            Assert.IsFalse(restored.Summary.IsCustomGame);
+            Assert.IsFalse(restored.Metadata.IsCustomGame);
+        }
+
+        [Test]
         public void SaveGameData_SavingListenerMutatesGame_SerializesUpdatedState()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
@@ -425,7 +499,10 @@ namespace Rebellion.Tests.Managers
                 {
                     Difficulty = GameDifficulty.Hard,
                     GalaxySize = GameSize.Small,
-                    GenerationConfigOverride = new GameGenerationConfig(),
+                    CustomSettings = new CustomGameSettings
+                    {
+                        GenerationConfig = new GameGenerationConfig(),
+                    },
                 },
                 Galaxy = new GalaxyMap(),
             };

@@ -268,13 +268,16 @@ namespace Rebellion.Tests.App
             ContentPack selected = _bootstrap.GetContentPack();
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
             summary.Difficulty = GameDifficulty.Hard;
-            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 17;
+            summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+            };
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             int transitionCount = 0;
             _bootstrap.LoadStarting += () => transitionCount++;
 
             LoadingScreenController.StartCustomGame(_bootstrap, selected, summary);
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 999;
 
             Assert.AreEqual(1, transitionCount);
             Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
@@ -285,7 +288,8 @@ namespace Rebellion.Tests.App
                 17,
                 GameLaunchContext
                     .Summary
-                    .GenerationConfigOverride
+                    .CustomSettings
+                    .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );

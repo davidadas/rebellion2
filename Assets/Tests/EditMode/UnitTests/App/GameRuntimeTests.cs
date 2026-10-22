@@ -156,7 +156,7 @@ namespace Rebellion.Tests.App
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
             );
-            game.Summary.GenerationConfigOverride = config;
+            game.Summary.CustomSettings = new CustomGameSettings { GenerationConfig = config };
 
             GameSession session = _runtime.StartGame(game);
 

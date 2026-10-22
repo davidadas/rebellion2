@@ -575,7 +575,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GameRoot game = CreateGame();
             game.Summary.Difficulty = GameDifficulty.Hard;
             game.Summary.GalaxySize = GameSize.Small;
-            game.Summary.GenerationConfigOverride = new GameGenerationConfig();
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = new GameGenerationConfig(),
+            };
             game.CurrentTick = 42;
             _saveGameManager.SaveGameData(game, "custom_save", "Custom Save");
 

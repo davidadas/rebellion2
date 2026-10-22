@@ -66,15 +66,16 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Initialize_ExistingOverrides_ShowsOverrideValues()
+        public void Initialize_ExistingCustomSettings_ShowsConfiguredValues()
         {
-            summary.PlayerDifficultyModifiers = new DifficultyModifiers
+            summary.CustomSettings = new CustomGameSettings
             {
-                ManufacturingSpeedPercent = 135,
-            };
-            summary.AIDifficultyModifiers = new DifficultyModifiers
-            {
-                ManufacturingSpeedPercent = 165,
+                PlayerDifficultyModifiers = new DifficultyModifiers
+                {
+                    ManufacturingSpeedPercent = 135,
+                },
+                AIDifficultyModifiers = new DifficultyModifiers { ManufacturingSpeedPercent = 165 },
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
             };
 
             view.Initialize(TestContent.Pack, summary);
@@ -324,8 +325,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             ApplyButton().onClick.Invoke();
 
-            Assert.AreEqual(125, applied.PlayerDifficultyModifiers.ManufacturingSpeedPercent);
-            Assert.AreEqual(20, applied.AIDifficultyModifiers.MissionFoilChancePoints);
+            Assert.AreEqual(
+                125,
+                applied.CustomSettings.PlayerDifficultyModifiers.ManufacturingSpeedPercent
+            );
+            Assert.AreEqual(
+                20,
+                applied.CustomSettings.AIDifficultyModifiers.MissionFoilChancePoints
+            );
             Assert.IsTrue(ApplyButton().interactable);
         }
 
@@ -440,7 +447,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void ChangeGameSetup_WhenValuesDifferFromInitialState_RemainsNeutral()
+        public void ChangeGameSummary_WhenValuesDifferFromInitialState_RemainsNeutral()
         {
             summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
@@ -595,21 +602,25 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             EventToggle(category).GetComponentInChildren<Button>().onClick.Invoke();
             ApplyButton().onClick.Invoke();
 
-            CollectionAssert.AreEqual(new[] { category }, launched.DisabledEventCategories);
-            Assert.IsEmpty(summary.DisabledEventCategories);
+            CollectionAssert.AreEqual(
+                new[] { category },
+                launched.CustomSettings.GenerationConfig.DisabledEventCategories
+            );
+            Assert.IsNull(summary.CustomSettings);
             Assert.AreEqual("OFF", ToggleState(EventToggle(category)));
             Assert.AreNotEqual(ModifiedTextColor, ToggleStateText(EventToggle(category)).color);
         }
 
         [Test]
-        public void RestoreDefaults_GameSetup_ReenablesEveryEventCategory()
+        public void RestoreDefaults_GameSummary_ReenablesEveryEventCategory()
         {
             GameSummary launched = null;
-            summary.DisabledEventCategories = new[]
+            summary.CustomSettings = new CustomGameSettings
             {
-                GameEventCategory.Story,
-                GameEventCategory.Disaster,
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
             view.StartRequested += (_, configured) => launched = configured;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
@@ -617,7 +628,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.RestoreDefaults();
             ApplyButton().onClick.Invoke();
 
-            Assert.IsEmpty(launched.DisabledEventCategories);
+            Assert.IsEmpty(launched.CustomSettings.GenerationConfig.DisabledEventCategories);
             Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Story)));
             Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Disaster)));
             Assert.AreEqual(
@@ -711,9 +722,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameSize.Small, launched.GalaxySize);
             Assert.AreEqual(GameVictoryCondition.Headquarters, launched.VictoryCondition);
             Assert.AreEqual(GameResourceAvailability.Normal, launched.ResourceAvailability);
-            Assert.IsNotNull(launched.PlayerDifficultyModifiers);
-            Assert.IsNull(launched.AIDifficultyModifiers);
-            Assert.IsNotNull(launched.GenerationConfigOverride);
+            Assert.IsNotNull(launched.CustomSettings);
+            Assert.IsNotNull(launched.CustomSettings.PlayerDifficultyModifiers);
+            Assert.IsNull(launched.CustomSettings.AIDifficultyModifiers);
+            Assert.IsNotNull(launched.CustomSettings.GenerationConfig);
         }
 
         [Test]
@@ -778,8 +790,12 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             DifficultyModifiers medium = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
                 GameDifficulty.Medium
             ];
-            summary.AIDifficultyModifiers = easy.CreateCopy();
-            summary.AIDifficultyModifiers.MineOutputPercent = 777;
+            summary.CustomSettings = new CustomGameSettings
+            {
+                AIDifficultyModifiers = easy.CreateCopy(),
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+            };
+            summary.CustomSettings.AIDifficultyModifiers.MineOutputPercent = 777;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
 
@@ -909,7 +925,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(3, config.FactionModifiers[0].Settings.UprisingResistance);
             Assert.AreEqual(
                 authored,
@@ -986,7 +1002,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-forces", "AI").onEndEdit.Invoke("50");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(
                 40,
                 config
@@ -1015,7 +1031,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-research", "AI").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(3, config.GalaxyClassification.FactionSetups[0].StartingResearchLevel);
             Assert.AreEqual(7, config.GalaxyClassification.FactionSetups[1].StartingResearchLevel);
         }
@@ -1258,7 +1274,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("mine-chance-per-resource", "Player").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(7, config.FacilityGeneration.CoreMineMultiplier);
             Assert.AreEqual(
                 authored,
