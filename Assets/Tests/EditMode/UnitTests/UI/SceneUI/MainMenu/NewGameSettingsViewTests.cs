@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Util.Reflection;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -952,6 +954,26 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Initialize_MissingFactionStartingForceBudget_HidesAbsentTableCell()
+        {
+            ContentPack source = TestContent.Pack;
+            GameGenerationConfig generationConfig = source.GameData.GenerationConfig.GetDeepCopy();
+            generationConfig.UnitDeployment.FactionBudgets.RemoveAt(1);
+            ContentPack pack = CopyPackWithGenerationConfig(source, generationConfig);
+
+            Assert.DoesNotThrow(() =>
+            {
+                view.Initialize(pack, summary);
+                view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            });
+
+            Transform row = TableRow("starting-forces");
+            Assert.AreEqual(1, row.GetComponentsInChildren<TMP_InputField>().Length);
+            Assert.IsTrue(row.Find("PlayerValue").gameObject.activeSelf);
+            Assert.IsFalse(row.Find("AIValue").gameObject.activeSelf);
+        }
+
+        [Test]
         public void Apply_PerFactionStartingForceBudgets_PublishesSelectedGalaxySizeValues()
         {
             GameSummary applied = null;
@@ -1481,6 +1503,47 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             instance
                 .GetComponentsInChildren<Transform>()
                 .Single(transform => transform.name == "Setting-" + rowKey);
+
+        /// <summary>
+        /// Copies a content pack with replacement game-generation settings.
+        /// </summary>
+        /// <param name="source">The source content pack.</param>
+        /// <param name="generationConfig">The replacement generation settings.</param>
+        /// <returns>A content pack containing the replacement settings.</returns>
+        private static ContentPack CopyPackWithGenerationConfig(
+            ContentPack source,
+            GameGenerationConfig generationConfig
+        )
+        {
+            GameDataCatalog sourceData = source.GameData;
+            GameDataCatalog gameData = new GameDataCatalog(
+                sourceData.GameConfig,
+                generationConfig,
+                sourceData.Factions,
+                sourceData.PlanetSectors,
+                sourceData.Buildings,
+                sourceData.CapitalShips,
+                sourceData.Starfighters,
+                sourceData.Regiments,
+                sourceData.SpecialForces,
+                sourceData.Officers,
+                sourceData.GameEvents,
+                sourceData.MessageDefinitions,
+                sourceData.EncyclopediaEntries,
+                sourceData.FactionThemes,
+                sourceData.OfficerTraits
+            );
+            return new ContentPack(
+                source.ContentRootPath,
+                source.PackRootPath,
+                source.FileResolver,
+                source.Definition,
+                source.Scenario,
+                source.Factions,
+                gameData,
+                new Dictionary<string, ContentPreloadManifest>()
+            );
+        }
 
         /// <summary>
         /// Finds the editable seed field on the setup page.

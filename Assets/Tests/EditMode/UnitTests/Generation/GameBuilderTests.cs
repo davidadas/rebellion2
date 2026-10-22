@@ -578,6 +578,97 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_EnabledEventsDependOnDisabledEvent_ExcludesDependentChains()
+        {
+            GameEvent story = new GameEvent
+            {
+                InstanceID = "STORY_EVENT",
+                Category = GameEventCategory.Story,
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 10 } },
+            };
+            GameEvent dependent = new GameEvent
+            {
+                InstanceID = "DEPENDENT_EVENT",
+                Category = GameEventCategory.Disaster,
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent { EventInstanceID = story.InstanceID, DelayTicks = 5 },
+                },
+            };
+            GameEvent transitiveDependent = new GameEvent
+            {
+                InstanceID = "TRANSITIVE_DEPENDENT_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent
+                    {
+                        EventInstanceID = dependent.InstanceID,
+                        DelayTicks = 5,
+                    },
+                },
+            };
+            GameEvent dependentAfterAll = new GameEvent
+            {
+                InstanceID = "DEPENDENT_AFTER_ALL_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    AfterAll = new AfterEvents
+                    {
+                        Events = new List<EventDependency>
+                        {
+                            new EventDependency { EventInstanceID = story.InstanceID },
+                        },
+                    },
+                },
+            };
+            GameEvent dependentAfterAny = new GameEvent
+            {
+                InstanceID = "DEPENDENT_AFTER_ANY_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    AfterAny = new AfterEvents
+                    {
+                        Events = new List<EventDependency>
+                        {
+                            new EventDependency { EventInstanceID = story.InstanceID },
+                        },
+                    },
+                },
+            };
+            GameEvent independent = new GameEvent
+            {
+                InstanceID = "INDEPENDENT_EVENT",
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 20 } },
+            };
+            GameDataCatalog gameData = CopyGameDataWithEvents(
+                story,
+                dependent,
+                transitiveDependent,
+                dependentAfterAll,
+                dependentAfterAny,
+                independent
+            );
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                DisabledEventCategories = new[] { GameEventCategory.Story },
+            };
+
+            GameRoot game = new GameBuilder(summary, gameData).Build();
+
+            CollectionAssert.AreEqual(
+                new[] { independent.InstanceID },
+                game.GetEventPool().Select(gameEvent => gameEvent.InstanceID).ToArray()
+            );
+            Assert.DoesNotThrow(() =>
+            {
+                using GameSession session = new GameSession(game, gameData);
+            });
+        }
+
+        [Test]
         public void Build_FogOfWar_CoresHaveInitialResourceSnapshotsForNonOwners()
         {
             foreach (
@@ -743,6 +834,33 @@ namespace Rebellion.Tests.Generation
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Copies the shared game-data catalog with a replacement event collection.
+        /// </summary>
+        /// <param name="events">The replacement event definitions.</param>
+        /// <returns>A game-data catalog containing the replacement events.</returns>
+        private static GameDataCatalog CopyGameDataWithEvents(params GameEvent[] events)
+        {
+            GameDataCatalog source = TestContent.Data;
+            return new GameDataCatalog(
+                source.GameConfig,
+                source.GenerationConfig,
+                source.Factions,
+                source.PlanetSectors,
+                source.Buildings,
+                source.CapitalShips,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                source.Officers,
+                events,
+                source.MessageDefinitions,
+                source.EncyclopediaEntries,
+                source.FactionThemes,
+                source.OfficerTraits
+            );
         }
     }
 }
