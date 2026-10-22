@@ -1350,6 +1350,12 @@ namespace Rebellion.Simulation
             bool completesManufacturingDelivery =
                 movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
 
+            if (destination is Planet { IsDestroyed: true } && movable is IManufacturable)
+            {
+                HandleArrivalRejection(movable, destinationPlanet);
+                return;
+            }
+
             if (destination is Mission)
             {
                 CompleteMissionParticipantArrival(movable);

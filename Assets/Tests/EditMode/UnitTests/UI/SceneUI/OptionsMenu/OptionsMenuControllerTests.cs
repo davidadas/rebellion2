@@ -376,14 +376,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleGameLaunchSpeedChanged_DropdownSelection_StagesSpeed()
         {
-            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_gameLaunchSpeedDropdown");
 
             dropdown.value = (int)GameLaunchSpeed.Fast;
 
             Assert.AreEqual(
                 GameLaunchSpeed.Fast,
-                _bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
             );
         }
 

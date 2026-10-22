@@ -796,9 +796,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void CreateRenderData_DestroyedPlanet_ReturnsDestroyedPlanetTexture()
+        public void CreateRenderData_DestroyedPlanet_HidesSurfaceDetailsAndUsesDestroyedTexture()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            planet.IsColonized = true;
+            planet.EnergyCapacity = 8;
+            planet.NumRawResourceNodes = 5;
+            planet.PopularSupport[_playerFactionId] = 100;
+            planet.IsHeadquarters = true;
+            planet.IsInUprising = true;
+            foreach (BuildingType type in new[] { BuildingType.Mine, BuildingType.Defense })
+            {
+                Building building = CreateBuilding(type);
+                building.OwnerInstanceID = _playerFactionId;
+                planet.AddChild(building);
+            }
             planet.IsDestroyed = true;
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(
@@ -821,6 +833,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     _uiContext.GetPlayerFactionTheme().GalaxyBackground.DestroyedPlanetIconPath
                 ),
                 data.Planets[0].PlanetTexture
+            );
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
+            Assert.IsFalse(presentation.EnergyBar.Visible);
+            Assert.IsFalse(presentation.RawResourceBar.Visible);
+            Assert.IsFalse(presentation.SupportBar.Visible);
+            Assert.IsEmpty(presentation.EnergyBar.TooltipText);
+            Assert.IsEmpty(presentation.RawResourceBar.TooltipText);
+            Assert.IsEmpty(presentation.SupportBar.TooltipText);
+            Assert.IsNull(presentation.FacilityTexture);
+            Assert.IsNull(presentation.DefenseTexture);
+            Assert.IsNull(presentation.HeadquartersTexture);
+            Assert.IsNull(presentation.UprisingTexture);
+            Assert.AreEqual(
+                (Color32)_uiContext.GetTheme(null).GetPrimaryColor(),
+                presentation.NameColor
             );
         }
 

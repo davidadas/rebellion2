@@ -30,7 +30,7 @@ internal static class FacilityWindowContextMenuBuilder
     )
     {
         bool playerControlsPlanet =
-            planet != null
+            planet?.IsDestroyed == false
             && !string.IsNullOrEmpty(playerFactionId)
             && string.Equals(planet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal);
         if (activeTab == FacilityWindowTab.Manufacturing && contextManufacturingTab.HasValue)

@@ -16,6 +16,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private const string _playerFactionId = "FNALL1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+        private const string _displayPrefabPath =
+            "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
 
         private TestActions _actions;
         private GalacticInformationDisplayController _controller;
@@ -41,7 +43,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
-            _displayView = _rootObject.GetComponentInChildren<GalacticInformationDisplayView>(true);
+            _displayView = UIComponentTestHelper
+                .InstantiatePrefab(_displayPrefabPath)
+                .GetComponent<GalacticInformationDisplayView>();
+            _displayView.transform.SetParent(_rootObject.transform, false);
             _legendView = _rootObject.GetComponentInChildren<GalacticInformationLegendView>(true);
             foreach (
                 GalacticInformationFrameView frame in _displayView.GetComponentsInChildren<GalacticInformationFrameView>(
@@ -72,7 +77,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 path => _playedSounds.Add(path)
             );
             _controller.Initialize(_actions);
-            _controller.BindViews(_displayView, _legendView);
+            _controller.BindLegendView(_legendView);
+            _controller.BindDisplayView(_displayView);
         }
 
         /// <summary>

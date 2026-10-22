@@ -117,6 +117,9 @@ public static class GalacticInformationFilterEvaluator
         GalacticInformationFilterMode mode
     )
     {
+        if (planet.IsDestroyed)
+            return 0;
+
         return mode switch
         {
             GalacticInformationFilterMode.PopularSupport => planet.GetPopularSupport(

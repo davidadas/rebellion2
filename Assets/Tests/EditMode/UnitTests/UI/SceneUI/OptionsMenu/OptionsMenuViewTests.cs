@@ -466,13 +466,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
+        public void GameplayPage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
         {
             GameLaunchSpeed? requested = null;
             _view.GameLaunchSpeedRequested += speed => requested = speed;
             _view.Render(
                 CreateRenderDataForTab(
-                    OptionsMenuTab.UserInterface,
+                    OptionsMenuTab.Gameplay,
                     gameLaunchSpeed: GameLaunchSpeed.VerySlow
                 )
             );
@@ -488,7 +488,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownItem_SelectedStateUsesActiveRowArtwork()
+        public void GameplayPage_DropdownItem_SelectedStateUsesActiveRowArtwork()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
             Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
@@ -501,7 +501,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownControl_HighlightIsBrighterThanNormal()
+        public void GameplayPage_DropdownControl_HighlightIsBrighterThanNormal()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
 
@@ -513,7 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfacePage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
+        public void GameplayPage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
             ScrollRect scrollRect = dropdown.template.GetComponent<ScrollRect>();

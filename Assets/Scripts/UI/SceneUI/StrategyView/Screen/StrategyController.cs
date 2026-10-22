@@ -82,7 +82,7 @@ public sealed class StrategyController
     private GalaxyMapView galaxyMap;
 
     [SerializeField]
-    private GalacticInformationDisplayView galacticInformationDisplay;
+    private GalacticInformationDisplayView galacticInformationDisplayPrefab;
 
     [SerializeField]
     private GalacticInformationLegendView galacticInformationLegend;
@@ -106,6 +106,7 @@ public sealed class StrategyController
         InputAction action,
         Action<InputAction.CallbackContext> callback
     )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
+    private InputActionMap _strategyInputActionMap;
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
@@ -149,6 +150,7 @@ public sealed class StrategyController
     private OptionsMenuController _optionsMenuController;
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
+    private GalacticInformationDisplayView galacticInformationDisplay;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -369,10 +371,7 @@ public sealed class StrategyController
         galacticInformationDisplayController.RestoreFilter(GetSavedGalacticInformationFilter());
         galacticInformationDisplayController.FilterChanged += SaveGalacticInformationFilter;
         galacticInformationDisplayController.Initialize(this);
-        galacticInformationDisplayController.BindViews(
-            galacticInformationDisplay,
-            galacticInformationLegend
-        );
+        galacticInformationDisplayController.BindLegendView(galacticInformationLegend);
     }
 
     /// <summary>
@@ -1034,11 +1033,11 @@ public sealed class StrategyController
         if (saveGameManager != null)
             saveGameManager.Saving -= CaptureChangedWindows;
         SetBriefingInteractionEnabled(true);
+        _optionsMenuController?.Dispose();
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
         idleBarController?.Dispose();
-        _optionsMenuController?.Dispose();
         if (_appInputController != null)
         {
             _appInputController.OptionsMenuRequested -= HandleToggleOptions;
@@ -1375,16 +1374,16 @@ public sealed class StrategyController
     /// </summary>
     private void ValidateGalacticInformationLayer()
     {
-        if (galacticInformationDisplay == null)
+        if (galacticInformationDisplayPrefab == null)
             throw new MissingReferenceException(
-                "GalacticInformationDisplay is missing GalacticInformationDisplayView."
+                "GalacticInformationDisplay prefab is missing GalacticInformationDisplayView."
             );
         if (galacticInformationLegend == null)
             throw new MissingReferenceException(
                 "GalacticInformationLegend is missing GalacticInformationLegendView."
             );
 
-        RequireRectTransform(galacticInformationDisplay, "GalacticInformationDisplay");
+        RequireRectTransform(galacticInformationDisplayPrefab, "GalacticInformationDisplay prefab");
         RequireRectTransform(galacticInformationLegend, "GalacticInformationLegend");
     }
 
@@ -3208,7 +3207,29 @@ public sealed class StrategyController
         targetingController?.Cancel();
         contextMenuController?.Cancel();
         strategyContextMenu?.Reset();
+        EnsureGalacticInformationDisplay();
         galacticInformationDisplayController?.Show();
+    }
+
+    /// <summary>
+    /// Creates and binds the selector hierarchy when the player first opens it.
+    /// </summary>
+    private void EnsureGalacticInformationDisplay()
+    {
+        if (galacticInformationDisplay != null)
+            return;
+
+        galacticInformationDisplay = Instantiate(
+            galacticInformationDisplayPrefab,
+            transform,
+            false
+        );
+        galacticInformationDisplay.name = galacticInformationDisplayPrefab.name;
+        ContentBindings.Apply(
+            galacticInformationDisplay.gameObject,
+            _appBootstrap.GetContentAssets()
+        );
+        galacticInformationDisplayController.BindDisplayView(galacticInformationDisplay);
     }
 
     /// <summary>
@@ -3549,7 +3570,8 @@ public sealed class StrategyController
         if (asset == null)
             return;
 
-        asset.FindActionMap("Strategy")?.Enable();
+        _strategyInputActionMap = asset.FindActionMap("Strategy");
+        _strategyInputActionMap?.Enable();
 
         for (int slot = 0; slot < 12; slot++)
         {
@@ -3809,6 +3831,8 @@ public sealed class StrategyController
         )
             action.performed -= callback;
         _boundInputActions.Clear();
+        _strategyInputActionMap?.Disable();
+        _strategyInputActionMap = null;
     }
 
     /// <summary>

@@ -1353,9 +1353,12 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         for (int columnIndex = 0; columnIndex < columns.Count; columnIndex++)
         {
-            GenerationEntry entry = entries.First(candidate =>
+            GenerationEntry entry = entries.FirstOrDefault(candidate =>
                 string.Equals(candidate.Column, columns[columnIndex], StringComparison.Ordinal)
             );
+            if (entry == null)
+                continue;
+
             string prefix = _tableCellPrefixes[columnIndex];
             ConfigureGenerationTableCellGeometry(row.transform, prefix, columns.Count, columnIndex);
             row.transform.Find(prefix + "ValueBadge").gameObject.SetActive(true);

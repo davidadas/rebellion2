@@ -136,6 +136,12 @@ namespace Rebellion.Simulation
                 .ToList();
             foreach (BombardmentResult bombardment in results.OfType<BombardmentResult>())
             {
+                if (bombardment.PlanetDestroyed)
+                {
+                    bombardment.OwnershipChange = null;
+                    continue;
+                }
+
                 List<PlanetOwnershipChangedResult> matchingChanges = ownershipChanges
                     .Where(change => change.Planet == bombardment.Planet)
                     .ToList();
@@ -238,6 +244,9 @@ namespace Rebellion.Simulation
         private List<GameResult> ReconcileGarrisonChange(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
+            if (planet.IsDestroyed)
+                return results;
+
             if (!planet.IsColonized)
             {
                 string ownerInstanceId = planet.GetOwnerInstanceID();
@@ -386,8 +395,15 @@ namespace Rebellion.Simulation
 
             foreach (Planet planet in planets)
             {
+                if (planet.IsDestroyed)
+                    continue;
+
+                int previousSupport = planet.GetPopularSupport(faction.InstanceID);
                 Faction previousOwner = _queries.GetPlanetOwner(planet);
                 _commands.ChangePopularSupport(planet, faction, shift);
+                if (previousSupport == planet.GetPopularSupport(faction.InstanceID))
+                    continue;
+
                 Faction controller = _queries.GetPlanetController(planet);
                 if (previousOwner?.InstanceID == controller?.InstanceID)
                     continue;
@@ -457,7 +473,7 @@ namespace Rebellion.Simulation
         private List<GameResult> ApplyOwnershipReaction(PlanetOwnershipChangedResult change)
         {
             List<GameResult> results = new List<GameResult>();
-            if (change?.Planet == null)
+            if (change?.Planet == null || change.Planet.IsDestroyed)
                 return results;
 
             if (_transitionResults.TryGetValue(change, out List<GameResult> transitionResults))

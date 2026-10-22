@@ -75,6 +75,18 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void EnsureExists_EditMode_RejectsRuntimeBootstrapCreation()
+        {
+            Assert.Throws<System.InvalidOperationException>(() => AppBootstrap.EnsureExists());
+
+            Assert.IsFalse(
+                Object
+                    .FindObjectsByType<AppBootstrap>(FindObjectsInactive.Include)
+                    .Any(bootstrap => bootstrap.gameObject.name == "AppBootstrap (Auto)")
+            );
+        }
+
+        [Test]
         public void CreateContentLoadOperation_DerivedPack_PreparesSelectionWithoutReplacingActiveContent()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");

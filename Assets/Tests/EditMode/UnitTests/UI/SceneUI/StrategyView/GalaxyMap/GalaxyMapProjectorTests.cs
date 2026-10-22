@@ -558,6 +558,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        [TestCase(StrategyBriefingMapMode.PlayerLoyalty)]
+        [TestCase(StrategyBriefingMapMode.OpponentLoyalty)]
+        public void Project_DestroyedPlanet_DoesNotReceiveLoyaltyBriefingHighlight(
+            StrategyBriefingMapMode mode
+        )
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
+            string ownerId =
+                mode == StrategyBriefingMapMode.PlayerLoyalty
+                    ? _playerFactionId
+                    : _opposingFactionId;
+            Planet planet = CreatePlanet("destroyed", ownerId, 1, 2);
+            planet.SetFullPopularSupport(ownerId);
+            planet.IsDestroyed = true;
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                mode,
+                "Loyalty",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { CreateSector(planetSector, planet) },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(ownerId).GalaxyBackground.PlanetIcons.Small
+                ),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+        }
+
         [Test]
         public void Project_UnexploredSystemsBriefing_UsesBlueHighlightForUnexploredPlanets()
         {

@@ -150,12 +150,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
+    [SerializeField]
+    private TMP_Dropdown _gameLaunchSpeedDropdown;
+
     [Header("User Interface page")]
     [SerializeField]
     private TMP_Dropdown _idleBarLocationDropdown;
-
-    [SerializeField]
-    private TMP_Dropdown _gameLaunchSpeedDropdown;
 
     [SerializeField]
     private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
@@ -429,6 +429,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="data">The data.</param>
     private void RenderGameplayPage(OptionsMenuRenderData data)
     {
+        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
+        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _gameplayRows)
         {
             if (row == null)
@@ -469,8 +471,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         _idleBarLocationDropdown.SetValueWithoutNotify((int)data.IdleBarLocation);
         _idleBarLocationDropdown.RefreshShownValue();
-        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
-        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row == null)
@@ -1418,6 +1418,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (
             _gameplayRows.Length != gameplayOptionCount
             || Array.Exists(_gameplayRows, row => row == null)
+            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {gameplayOptionCount} gameplay rows."
@@ -1427,7 +1428,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _userInterfaceRows.Length != userInterfaceOptionCount
             || Array.Exists(_userInterfaceRows, row => row == null)
             || _idleBarLocationDropdown == null
-            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {userInterfaceOptionCount} user-interface rows."

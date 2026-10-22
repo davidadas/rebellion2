@@ -231,7 +231,7 @@ namespace Rebellion.Simulation
         internal List<GameResult> ReconcilePlanet(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
-            if (planet == null || !_controlChangesInProgress.Add(planet.InstanceID))
+            if (planet?.IsDestroyed != false || !_controlChangesInProgress.Add(planet.InstanceID))
                 return results;
 
             try
@@ -280,7 +280,7 @@ namespace Rebellion.Simulation
         /// <param name="results">Collection to append any ownership-change results to.</param>
         private void UpdateUncolonizedPlanet(Planet planet, List<GameResult> results)
         {
-            if (planet == null)
+            if (planet?.IsDestroyed != false)
                 return;
 
             string currentOwner = planet.GetOwnerInstanceID();
@@ -362,6 +362,9 @@ namespace Rebellion.Simulation
             Faction newOwner
         )
         {
+            if (planet.IsDestroyed)
+                return null;
+
             bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
             try
             {
@@ -453,7 +456,8 @@ namespace Rebellion.Simulation
         /// <returns>True when the planet can transfer by popular support.</returns>
         private static bool CanTransferByPopularSupport(Planet planet)
         {
-            return planet.IsColonized
+            return !planet.IsDestroyed
+                && planet.IsColonized
                 && string.IsNullOrEmpty(planet.GetOwnerInstanceID())
                 && planet.GetAllRegiments().Count == 0;
         }
