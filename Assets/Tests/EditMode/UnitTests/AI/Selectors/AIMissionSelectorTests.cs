@@ -997,6 +997,12 @@ namespace Rebellion.Tests.AI.Selectors
             );
         }
 
+        /// <summary>
+        /// Adds a production facility supporting the requested research discipline.
+        /// </summary>
+        /// <param name="game">The game receiving the facility.</param>
+        /// <param name="planet">The facility's planet.</param>
+        /// <param name="discipline">The supported research discipline.</param>
         private static void AddResearchFacility(
             GameRoot game,
             Planet planet,
@@ -1018,6 +1024,14 @@ namespace Rebellion.Tests.AI.Selectors
             );
         }
 
+        /// <summary>
+        /// Creates diplomats with safe and blockaded departures toward one destination.
+        /// </summary>
+        /// <param name="ownedDestination">Whether the destination belongs to the acting faction.</param>
+        /// <param name="blockedOfficer">Receives the officer at the blockaded origin.</param>
+        /// <param name="safeOfficer">Receives the officer at the safe origin.</param>
+        /// <param name="destination">Receives the shared diplomacy destination.</param>
+        /// <returns>The assessed faction turn containing both diplomats.</returns>
         private static AITurnContext CreateDiplomacyBlockadeContext(
             bool ownedDestination,
             out Officer blockedOfficer,

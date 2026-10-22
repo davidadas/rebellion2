@@ -74,7 +74,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Gets a single unfinished filler order that may be interrupted by AI-demanded work.</summary>
+        /// <summary>
+        /// Gets a single unfinished filler order that may be interrupted by AI-demanded work.
+        /// </summary>
         /// <param name="producer">The production planet.</param>
         /// <param name="type">The production lane.</param>
         /// <returns>The interruptible order, or null when the lane contains protected work.</returns>
@@ -102,7 +104,9 @@ namespace Rebellion.Simulation
                 : null;
         }
 
-        /// <summary>Returns building space, optionally including confirmed interruptible projects.</summary>
+        /// <summary>
+        /// Returns building space, optionally including confirmed interruptible projects.
+        /// </summary>
         /// <param name="game">The game containing the destination and production queues.</param>
         /// <param name="destination">The planet receiving construction.</param>
         /// <param name="includeInterruptibleOrders">Whether replaceable unfinished projects count as available space.</param>

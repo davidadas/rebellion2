@@ -79,7 +79,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(_context);
 
-            Assert.AreEqual(3, _planet.GetChildren<Regiment>().Count());
+            Assert.AreEqual(3, _planet.GetChildren<Regiment>().Count);
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(_context);
 
-            Assert.AreEqual(2, _planet.GetChildren<Regiment>().Count());
+            Assert.AreEqual(2, _planet.GetChildren<Regiment>().Count);
         }
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(_context);
 
-            Assert.AreEqual(4, _planet.GetChildren<Regiment>().Count());
+            Assert.AreEqual(4, _planet.GetChildren<Regiment>().Count);
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(_context);
 
-            Assert.AreEqual(3, _planet.GetChildren<Regiment>().Count());
+            Assert.AreEqual(3, _planet.GetChildren<Regiment>().Count);
         }
 
         /// <summary>

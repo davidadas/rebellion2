@@ -1677,6 +1677,37 @@ namespace Rebellion.Tests.Simulation
             Assert.That(large, Is.EqualTo(small));
         }
 
+        [TestCase(OfficerRank.None, 0)]
+        [TestCase(OfficerRank.General, 1)]
+        public void GetMissionOdds_CommanderBecomesIneligible_RefreshesNextEvaluation(
+            OfficerRank rank,
+            int injury
+        )
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer general) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            spy.SetBaseRating(SkillRating.Espionage, 100);
+            general.SetBaseRating(SkillRating.Espionage, 80);
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            detector.DetectionRating = 20;
+            game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = 0;
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 100;
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 90 }, { 25, 10 } });
+            MissionQueries queries = new MissionQueries(game);
+            MissionContext context = CreateContext(EspionageMission.MissionTypeID, spy, planet);
+            ISceneNode[] detectors = { detector };
+            MissionOdds before = queries.GetMissionOdds(context, detectors);
+
+            general.CurrentRank = rank;
+            general.InjuryPoints = injury;
+            MissionOdds after = queries.GetMissionOdds(context, detectors);
+            MissionOdds fresh = new MissionQueries(game).GetMissionOdds(context, detectors);
+
+            Assert.Greater(before.FoilProbability, after.FoilProbability);
+            Assert.AreEqual(fresh.FoilProbability, after.FoilProbability);
+            Assert.AreEqual(fresh.PersonnelLossProbability, after.PersonnelLossProbability);
+        }
+
         /// <summary>
         /// Checks indexed fleet and planetary commanders against direct commander resolution.
         /// </summary>

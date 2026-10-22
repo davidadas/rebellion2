@@ -18,6 +18,14 @@ namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        /// <summary>
+        /// Creates a bombardment fleet with a donor hull available for reinforcement.
+        /// </summary>
+        /// <param name="assaultBlocked">Whether an additional shield blocks the assault.</param>
+        /// <param name="donorBombardment">The donor hull's bombardment rating.</param>
+        /// <param name="receiver">Receives the fleet awaiting reinforcement.</param>
+        /// <param name="donor">Receives the available donor hull.</param>
+        /// <returns>The faction turn containing the fleets and their known targets.</returns>
         public static AITurnContext CreateBombardmentDonorContext(
             bool assaultBlocked,
             int donorBombardment,
@@ -55,6 +63,13 @@ namespace Rebellion.Tests.AI.Helpers
             return CreateContext(context.Game, context.Faction);
         }
 
+        /// <summary>
+        /// Adds an independently stationed hull to an existing reinforcement scenario.
+        /// </summary>
+        /// <param name="context">The faction turn whose demands are preserved.</param>
+        /// <param name="carriesRegiment">Whether the donor carries a completed regiment.</param>
+        /// <param name="ship">Receives the donor hull.</param>
+        /// <returns>A refreshed turn context retaining the existing attack demands.</returns>
         public static AITurnContext AddReinforcementDonor(
             AITurnContext context,
             bool carriesRegiment,
@@ -81,6 +96,15 @@ namespace Rebellion.Tests.AI.Helpers
             return updated;
         }
 
+        /// <summary>
+        /// Creates competing fleet requirements around a shared regiment source.
+        /// </summary>
+        /// <param name="shielded">Whether the bombardment target has a planetary shield.</param>
+        /// <param name="occupied">Whether the bombardment target has a defending regiment.</param>
+        /// <param name="bombardFleet">Receives the fleet assigned to the bombardment target.</param>
+        /// <param name="otherFleet">Receives the fleet assigned to the competing target.</param>
+        /// <param name="source">Receives the planet supplying spare regiments.</param>
+        /// <returns>The assessed faction turn for both targets.</returns>
         public static AITurnContext CreateBombardmentReinforcementContext(
             bool shielded,
             bool occupied,

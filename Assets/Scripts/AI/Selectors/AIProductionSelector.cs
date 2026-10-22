@@ -433,7 +433,9 @@ namespace Rebellion.AI.Selectors
             }
         }
 
-        /// <summary>Identifies manufacturing actions competing to assemble an attack fleet.</summary>
+        /// <summary>
+        /// Identifies manufacturing actions competing to assemble an attack fleet.
+        /// </summary>
         /// <param name="proposal">The globally ranked action.</param>
         /// <returns>True for battle fleet reinforcement and new battle fleet seeds.</returns>
         private static bool IsAttackFleetProduction(AIProposal proposal)
@@ -521,7 +523,9 @@ namespace Rebellion.AI.Selectors
                 && ContinuesProductionStream(proposal);
         }
 
-        /// <summary>Rejects hulls whose useful contribution is already covered by this turn's accepted orders.</summary>
+        /// <summary>
+        /// Rejects hulls whose useful contribution is already covered by this turn's accepted orders.
+        /// </summary>
         /// <param name="context">The faction turn supplying consistent combat valuations.</param>
         /// <param name="proposal">The exact hull and producer under consideration.</param>
         /// <returns>True when the hull satisfies at least one outstanding capability.</returns>

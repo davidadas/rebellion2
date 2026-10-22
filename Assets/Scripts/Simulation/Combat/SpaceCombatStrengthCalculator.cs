@@ -44,7 +44,9 @@ namespace Rebellion.Simulation
                 .Sum(ship => GetCapitalShipCombatValueAgainstCapitalShips(ship, config, modifiers));
         }
 
-        /// <summary>Returns completed ships' strength once their observed travel has finished.</summary>
+        /// <summary>
+        /// Returns completed ships' strength once their observed travel has finished.
+        /// </summary>
         /// <param name="fleet">The observed fleet.</param>
         /// <param name="config">The space-combat rules.</param>
         /// <param name="arrivalTicks">Ticks available for observed movement to finish.</param>
@@ -74,7 +76,9 @@ namespace Rebellion.Simulation
                 );
         }
 
-        /// <summary>Checks current readiness or completion of an observed movement.</summary>
+        /// <summary>
+        /// Checks current readiness or completion of an observed movement.
+        /// </summary>
         /// <param name="movement">The observed movement, if any.</param>
         /// <param name="arrivalTicks">The available travel window, or null for current readiness only.</param>
         /// <returns>True when movement does not prevent participation.</returns>
@@ -84,7 +88,9 @@ namespace Rebellion.Simulation
                 || arrivalTicks.HasValue && movement.TicksRemaining() <= arrivalTicks.Value;
         }
 
-        /// <summary>Checks whether manufacture is complete, including finished units being delivered.</summary>
+        /// <summary>
+        /// Checks whether manufacture is complete, including finished units being delivered.
+        /// </summary>
         /// <param name="unit">The manufactured unit.</param>
         /// <param name="arrivalTicks">The travel window, or null for present readiness.</param>
         /// <returns>True when manufacturing does not require a future completion assumption.</returns>
@@ -526,7 +532,9 @@ namespace Rebellion.Simulation
             return GetCommandedStarfighterCombatValue(fighter, squadronSize, config, command);
         }
 
-        /// <summary>Estimates a squadron's strength with the additive bonus on each usable weapon lane.</summary>
+        /// <summary>
+        /// Estimates a squadron's strength with the additive bonus on each usable weapon lane.
+        /// </summary>
         /// <param name="fighter">The squadron to inspect.</param>
         /// <param name="squadronSize">The surviving or projected squadron size.</param>
         /// <param name="config">The space-combat rules.</param>

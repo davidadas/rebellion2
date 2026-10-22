@@ -44,7 +44,9 @@ namespace Rebellion.Game.Units
         public int ManufacturingProgress { get; set; }
         public ManufacturingStatus ManufacturingStatus { get; set; }
 
-        /// <summary>Gets or sets whether this unfinished order was started using spare AI capacity.</summary>
+        /// <summary>
+        /// Gets or sets whether this unfinished order was started using spare AI capacity.
+        /// </summary>
         public bool IsAIProductionFiller { get; set; }
 
         /// <summary>

@@ -251,7 +251,9 @@ namespace Rebellion.AI
                 : null;
         }
 
-        /// <summary>Stores an arrival-specific demand during attack assessment.</summary>
+        /// <summary>
+        /// Stores an arrival-specific demand during attack assessment.
+        /// </summary>
         /// <param name="fleet">The fleet whose travel time was assessed.</param>
         /// <param name="demand">The measured requirements at that fleet's arrival.</param>
         internal void SetFleetAttackDemand(Fleet fleet, AIAttackDemand demand)

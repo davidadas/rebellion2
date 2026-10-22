@@ -862,7 +862,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Plan_WithNoFriendlyPresence_PrioritizesEnemyHeadquartersSystem()
+        public void Plan_WithInsufficientHeadquartersForce_PrefersOrdinaryEnemySystem()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector stagingSystem = AITestSceneBuilder.AddSector(game, "staging-system");
@@ -909,7 +909,7 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.IsNotEmpty(proposals);
             Assert.IsTrue(
                 proposals.All(proposal =>
-                    proposal.TargetPlanet.InstanceID == headquarters.InstanceID
+                    proposal.TargetPlanet.InstanceID == ordinaryEnemy.InstanceID
                 ),
                 string.Join(
                     ", ",

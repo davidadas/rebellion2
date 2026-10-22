@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Systems
 
             int completedSteps = system.ProcessTickIncrementally(results).Count();
 
-            Assert.AreEqual(18, completedSteps);
+            Assert.AreEqual(19, completedSteps);
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }

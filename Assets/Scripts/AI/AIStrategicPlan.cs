@@ -44,6 +44,25 @@ namespace Rebellion.AI
         > _resourceEconomyCache = new(StringComparer.Ordinal);
 
         /// <summary>
+        /// Returns the number of independently deployable battle fleets allocated for this turn.
+        /// Fleet count is a deployment constraint; it does not define total desired combat power.
+        /// </summary>
+        public int TargetBattleFleetCount => _targetBattleFleetCount;
+
+        /// <summary>
+        /// Returns total desired mobile combat power, independently of deployment fleet count.
+        /// </summary>
+        public int TargetMobileCombatStrength => _targetMobileCombatStrength;
+
+        /// <summary>
+        /// Returns the combat allocation for one fleet assembling without a campaign target.
+        /// </summary>
+        public int AssemblyFleetCombatStrength =>
+            _targetBattleFleetCount > 0
+                ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
+                : 0;
+
+        /// <summary>
         /// Finds the smallest complete resource retirement that makes a requested hub fit.
         /// </summary>
         /// <param name="planet">The prospective industrial destination.</param>
@@ -202,25 +221,6 @@ namespace Rebellion.AI
             return GetAvailableConstructionSpace(planet, buildingType)
                 + GetResourceFacilitiesToReclaim(planet, buildingType, targetCount).Count;
         }
-
-        /// <summary>
-        /// Returns the number of independently deployable battle fleets allocated for this turn.
-        /// Fleet count is a deployment constraint; it does not define total desired combat power.
-        /// </summary>
-        public int TargetBattleFleetCount => _targetBattleFleetCount;
-
-        /// <summary>
-        /// Returns total desired mobile combat power, independently of deployment fleet count.
-        /// </summary>
-        public int TargetMobileCombatStrength => _targetMobileCombatStrength;
-
-        /// <summary>
-        /// Returns the combat allocation for one fleet assembling without a campaign target.
-        /// </summary>
-        public int AssemblyFleetCombatStrength =>
-            _targetBattleFleetCount > 0
-                ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
-                : 0;
 
         /// <summary>
         /// Returns the projected owned count for one production-infrastructure category.
@@ -878,7 +878,9 @@ namespace Rebellion.AI
                 && _assessment.GetReadyFleetCombatValue(fleet) >= required;
         }
 
-        /// <summary>Returns whether an assigned attack can occupy its now-neutral destination.</summary>
+        /// <summary>
+        /// Returns whether an assigned attack can occupy its now-neutral destination.
+        /// </summary>
         /// <param name="fleet">The stationary fleet carrying occupation troops.</param>
         /// <param name="planet">The existing attack destination.</param>
         /// <returns>True only for an existing local attack with ready troops at a neutral colony.</returns>

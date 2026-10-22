@@ -362,7 +362,7 @@ namespace Rebellion.Tests.AI.Proposals
                 system,
                 "production-world",
                 empire.InstanceID,
-                energyCapacity: 5,
+                energyCapacity: 20,
                 rawResourceNodes: 2
             );
             AITestSceneBuilder.AddProductionFacility(
@@ -1364,6 +1364,11 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(shield, destination.GetChildren<Building>().Single());
         }
 
+        /// <summary>
+        /// Creates a producer occupied by an unfinished planetary defense order.
+        /// </summary>
+        /// <param name="marked">Whether the unfinished order is interruptible AI filler.</param>
+        /// <returns>The game, faction, producer, destination, and unfinished defense.</returns>
         private static (GameRoot, Faction, Planet, Planet, Building) CreateDefenseFillerScene(
             bool marked
         )
@@ -1405,7 +1410,9 @@ namespace Rebellion.Tests.AI.Proposals
             return (game, faction, producer, destination, shield);
         }
 
-        /// <summary>Creates an owned training lane and a manufactureable saboteur template.</summary>
+        /// <summary>
+        /// Creates an owned training lane and a manufactureable saboteur template.
+        /// </summary>
         /// <returns>The game, owning faction, production planet, and saboteur template.</returns>
         private static (GameRoot, Faction, Planet, SpecialForces) CreateSaboteurTrainingScene()
         {

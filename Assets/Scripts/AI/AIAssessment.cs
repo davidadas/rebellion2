@@ -23,167 +23,10 @@ namespace Rebellion.AI
             (int Combat, int CapitalFirepower, int FighterFirepower, int Fighters)
         > _arrivalOrbitalCapabilities = new();
 
-        /// <summary>Measures known orbital defenders expected to finish travelling by arrival.</summary>
-        /// <param name="planet">The faction-visible destination.</param>
-        /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
-        /// <returns>Required orbital capability inputs, without score or safety multipliers.</returns>
-        public (
-            int Combat,
-            int CapitalFirepower,
-            int FighterFirepower,
-            int Fighters
-        ) GetHostileOrbitalCapabilitiesAtArrival(Planet planet, int arrivalTicks)
-        {
-            if (planet == null)
-                return default;
-            int age = GetPlanetIntelAge(planet);
-            int horizon = (int)
-                Math.Min(
-                    int.MaxValue,
-                    (long)Math.Max(0, arrivalTicks) + (age == int.MaxValue ? 0 : age)
-                );
-            var key = (planet.InstanceID, horizon);
-            if (_arrivalOrbitalCapabilities.TryGetValue(key, out var cached))
-                return cached;
-            int combat = 0,
-                capitalFirepower = 0,
-                fighterFirepower = 0,
-                fighters = 0;
-            foreach (
-                Fleet fleet in GetHostileFleets(planet)
-                    .Where(fleet =>
-                        fleet.Movement == null || fleet.Movement.TicksRemaining() <= horizon
-                    )
-            )
-            {
-                List<CapitalShip> ships = fleet
-                    .GetChildren<CapitalShip>()
-                    .Where(ship =>
-                        ship.ManufacturingStatus != ManufacturingStatus.Building
-                        && (ship.Movement == null || ship.Movement.TicksRemaining() <= horizon)
-                        && (ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0)
-                    )
-                    .ToList();
-                List<Starfighter> carried = ships
-                    .SelectMany(ship => ship.GetChildren<Starfighter>())
-                    .Where(fighter =>
-                        fighter.ManufacturingStatus != ManufacturingStatus.Building
-                        && fighter.CurrentSquadronSize > 0
-                        && (
-                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
-                        )
-                    )
-                    .ToList();
-                combat = Math.Max(
-                    combat,
-                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShipsAtArrival(
-                        fleet,
-                        _game.Config.Combat.SpaceCombat,
-                        horizon
-                    )
-                );
-                capitalFirepower = Math.Max(
-                    capitalFirepower,
-                    ships.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
-                    )
-                        + carried.Sum(fighter =>
-                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
-                                fighter,
-                                horizon
-                            )
-                        )
-                );
-                fighterFirepower = Math.Max(
-                    fighterFirepower,
-                    ships.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
-                    )
-                        + carried.Sum(fighter =>
-                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
-                                fighter,
-                                horizon
-                            )
-                        )
-                );
-                fighters = Math.Max(fighters, carried.Count);
-            }
-            foreach (
-                Starfighter fighter in planet
-                    .GetAllStarfighters()
-                    .Where(fighter =>
-                        !string.IsNullOrEmpty(fighter.GetOwnerInstanceID())
-                        && fighter.GetOwnerInstanceID() != _faction.InstanceID
-                        && fighter.ManufacturingStatus != ManufacturingStatus.Building
-                        && fighter.CurrentSquadronSize > 0
-                        && (
-                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
-                        )
-                    )
-            )
-            {
-                combat += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
-                fighterFirepower +=
-                    SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
-                        fighter,
-                        horizon
-                    );
-                fighters++;
-            }
-            var result = (combat, capitalFirepower, fighterFirepower, fighters);
-            _arrivalOrbitalCapabilities.Add(key, result);
-            return result;
-        }
-
         private readonly GameRoot _game;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
         private readonly Dictionary<string, int> _specialForcesReserveTargets = new();
-
-        /// <summary>
-        /// Returns the reserve required by a special-forces mission role.
-        /// </summary>
-        /// <param name="template">The role's unit template.</param>
-        /// <returns>The desired role supply, excluding a dedicated headquarters agent.</returns>
-        public int GetSpecialForcesReserveTarget(SpecialForces template)
-        {
-            string role = string.Join(
-                "|",
-                template.AllowedMissionTypeIDs.OrderBy(id => id, StringComparer.Ordinal)
-            );
-            if (_specialForcesReserveTargets.TryGetValue(role, out int target))
-                return target;
-            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
-            bool sabotage = template.CanPerformMission(MissionTypeIDs.Sabotage);
-            bool espionage = template.CanPerformMission(MissionTypeIDs.Espionage);
-            if (sabotage || espionage)
-                target =
-                    (
-                        sabotage
-                            ? EnemyPlanets.Sum(planet =>
-                                planet
-                                    .GetAllBuildings()
-                                    .Count(building =>
-                                        building.IsDefenseFacility()
-                                        && building.ManufacturingStatus
-                                            == ManufacturingStatus.Complete
-                                    )
-                            ) * config.SaboteursPerEnemyDefense
-                            : 0
-                    ) + (espionage ? EnemyPlanets.Count * config.SpiesPerEnemyPlanet : 0);
-            else
-            {
-                int missions = ActiveMissions.Count(mission =>
-                    IsEnemyPlanet(mission.GetParentOfType<Planet>())
-                    && mission.GetMainParticipants().OfType<Officer>().Any()
-                    && template.AllowedMissionTypeIDs.Contains(mission.ConfigKey)
-                );
-                int coverage = Math.Clamp(config.SpecialForcesMissionCoveragePercent, 0, 100);
-                target = (missions * coverage + 99) / 100;
-            }
-            _specialForcesReserveTargets.Add(role, target);
-            return target;
-        }
 
         // Cached Assessments.
         private readonly Dictionary<
@@ -435,10 +278,14 @@ namespace Rebellion.AI
 
         public int ProjectedEconomyMaintenanceHeadroom { get; }
 
-        /// <summary>Gets discounted maintenance growth from known neutral worlds under active diplomacy.</summary>
+        /// <summary>
+        /// Gets discounted maintenance growth from known neutral worlds under active diplomacy.
+        /// </summary>
         public int ExpectedDiplomacyMaintenanceGain { get; }
 
-        /// <summary>Gets economy-planning headroom without authorizing spending against unowned capacity.</summary>
+        /// <summary>
+        /// Gets economy-planning headroom without authorizing spending against unowned capacity.
+        /// </summary>
         public int EconomyPlanningMaintenanceHeadroom =>
             ProjectedEconomyMaintenanceHeadroom + ExpectedDiplomacyMaintenanceGain;
 
@@ -476,6 +323,165 @@ namespace Rebellion.AI
         public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
 
         public int UnfinishedPlanetStarfighterCount { get; }
+
+        /// <summary>
+        /// Measures known orbital defenders expected to finish travelling by arrival.
+        /// </summary>
+        /// <param name="planet">The faction-visible destination.</param>
+        /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
+        /// <returns>Required orbital capability inputs, without score or safety multipliers.</returns>
+        public (
+            int Combat,
+            int CapitalFirepower,
+            int FighterFirepower,
+            int Fighters
+        ) GetHostileOrbitalCapabilitiesAtArrival(Planet planet, int arrivalTicks)
+        {
+            if (planet == null)
+                return default;
+            int age = GetPlanetIntelAge(planet);
+            int horizon = (int)
+                Math.Min(
+                    int.MaxValue,
+                    (long)Math.Max(0, arrivalTicks) + (age == int.MaxValue ? 0 : age)
+                );
+            var key = (planet.InstanceID, horizon);
+            if (_arrivalOrbitalCapabilities.TryGetValue(key, out var cached))
+                return cached;
+            int combat = 0,
+                capitalFirepower = 0,
+                fighterFirepower = 0,
+                fighters = 0;
+            foreach (
+                Fleet fleet in GetHostileFleets(planet)
+                    .Where(fleet =>
+                        fleet.Movement == null || fleet.Movement.TicksRemaining() <= horizon
+                    )
+            )
+            {
+                List<CapitalShip> ships = fleet
+                    .GetChildren<CapitalShip>()
+                    .Where(ship =>
+                        ship.ManufacturingStatus != ManufacturingStatus.Building
+                        && (ship.Movement == null || ship.Movement.TicksRemaining() <= horizon)
+                        && (ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0)
+                    )
+                    .ToList();
+                List<Starfighter> carried = ships
+                    .SelectMany(ship => ship.GetChildren<Starfighter>())
+                    .Where(fighter =>
+                        fighter.ManufacturingStatus != ManufacturingStatus.Building
+                        && fighter.CurrentSquadronSize > 0
+                        && (
+                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
+                        )
+                    )
+                    .ToList();
+                combat = Math.Max(
+                    combat,
+                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShipsAtArrival(
+                        fleet,
+                        _game.Config.Combat.SpaceCombat,
+                        horizon
+                    )
+                );
+                capitalFirepower = Math.Max(
+                    capitalFirepower,
+                    ships.Sum(
+                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
+                    )
+                        + carried.Sum(fighter =>
+                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
+                                fighter,
+                                horizon
+                            )
+                        )
+                );
+                fighterFirepower = Math.Max(
+                    fighterFirepower,
+                    ships.Sum(
+                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
+                    )
+                        + carried.Sum(fighter =>
+                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                                fighter,
+                                horizon
+                            )
+                        )
+                );
+                fighters = Math.Max(fighters, carried.Count);
+            }
+            foreach (
+                Starfighter fighter in planet
+                    .GetAllStarfighters()
+                    .Where(fighter =>
+                        !string.IsNullOrEmpty(fighter.GetOwnerInstanceID())
+                        && fighter.GetOwnerInstanceID() != _faction.InstanceID
+                        && fighter.ManufacturingStatus != ManufacturingStatus.Building
+                        && fighter.CurrentSquadronSize > 0
+                        && (
+                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
+                        )
+                    )
+            )
+            {
+                combat += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
+                fighterFirepower +=
+                    SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                        fighter,
+                        horizon
+                    );
+                fighters++;
+            }
+            var result = (combat, capitalFirepower, fighterFirepower, fighters);
+            _arrivalOrbitalCapabilities.Add(key, result);
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the reserve required by a special-forces mission role.
+        /// </summary>
+        /// <param name="template">The role's unit template.</param>
+        /// <returns>The desired role supply, excluding a dedicated headquarters agent.</returns>
+        public int GetSpecialForcesReserveTarget(SpecialForces template)
+        {
+            string role = string.Join(
+                "|",
+                template.AllowedMissionTypeIDs.OrderBy(id => id, StringComparer.Ordinal)
+            );
+            if (_specialForcesReserveTargets.TryGetValue(role, out int target))
+                return target;
+            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
+            bool sabotage = template.CanPerformMission(MissionTypeIDs.Sabotage);
+            bool espionage = template.CanPerformMission(MissionTypeIDs.Espionage);
+            if (sabotage || espionage)
+                target =
+                    (
+                        sabotage
+                            ? EnemyPlanets.Sum(planet =>
+                                planet
+                                    .GetAllBuildings()
+                                    .Count(building =>
+                                        building.IsDefenseFacility()
+                                        && building.ManufacturingStatus
+                                            == ManufacturingStatus.Complete
+                                    )
+                            ) * config.SaboteursPerEnemyDefense
+                            : 0
+                    ) + (espionage ? EnemyPlanets.Count * config.SpiesPerEnemyPlanet : 0);
+            else
+            {
+                int missions = ActiveMissions.Count(mission =>
+                    IsEnemyPlanet(mission.GetParentOfType<Planet>())
+                    && mission.GetMainParticipants().OfType<Officer>().Any()
+                    && template.AllowedMissionTypeIDs.Contains(mission.ConfigKey)
+                );
+                int coverage = Math.Clamp(config.SpecialForcesMissionCoveragePercent, 0, 100);
+                target = (missions * coverage + 99) / 100;
+            }
+            _specialForcesReserveTargets.Add(role, target);
+            return target;
+        }
 
         /// <summary>
         /// Creates an AI assessment from the faction-visible turn state.
@@ -614,7 +620,9 @@ namespace Rebellion.AI
             ExpectedDiplomacyMaintenanceGain = CalculateExpectedDiplomacyMaintenanceGain();
         }
 
-        /// <summary>Estimates discounted resource-pair growth from active diplomacy against visible neutral worlds.</summary>
+        /// <summary>
+        /// Estimates discounted resource-pair growth from active diplomacy against visible neutral worlds.
+        /// </summary>
         /// <returns>The expected net maintenance gain used only when prioritizing economic construction.</returns>
         private int CalculateExpectedDiplomacyMaintenanceGain()
         {
@@ -3528,7 +3536,9 @@ namespace Rebellion.AI
             );
         }
 
-        /// <summary>Returns whether the fleet can remove known ground defenders by bombardment.</summary>
+        /// <summary>
+        /// Returns whether the fleet can remove known ground defenders by bombardment.
+        /// </summary>
         /// <param name="fleet">The fleet being assessed.</param>
         /// <param name="targetPlanet">The known target planet.</param>
         /// <param name="projected">Whether to include units already committed to the fleet.</param>

@@ -29,6 +29,7 @@ namespace Rebellion.Simulation
             (ISceneNode Detector, Planet Planet),
             (Officer Commander, int Detection, bool Orbital)
         > _encounterDefenders;
+        private Dictionary<(ISceneNode Scope, Type Type, string Owner), Officer> _commanders;
 
         /// <summary>
         /// Creates mission queries for the supplied game state.
@@ -320,8 +321,10 @@ namespace Rebellion.Simulation
         {
             var previousLookups = _probabilityLookups;
             var previousDefenders = _encounterDefenders;
+            var previousCommanders = _commanders;
             _probabilityLookups = new();
             _encounterDefenders = new();
+            _commanders = new();
             try
             {
                 if (!TryCreateMission(context, out Mission mission))
@@ -373,6 +376,7 @@ namespace Rebellion.Simulation
             {
                 _probabilityLookups = previousLookups;
                 _encounterDefenders = previousDefenders;
+                _commanders = previousCommanders;
             }
         }
 
@@ -1567,12 +1571,35 @@ namespace Rebellion.Simulation
                 return cached;
 
             var defender = (
-                _detectorCommander(detector, planet ?? detector?.GetParentOfType<Planet>()),
+                GetEncounterCommander(detector, planet),
                 GetEffectiveDetectionRating(detector),
                 detector?.GetParentOfType<Fleet>() != null
             );
             _encounterDefenders?.Add(key, defender);
             return defender;
+        }
+
+        /// <summary>
+        /// Reuses commander resolution for defenders sharing a container, category, and owner.
+        /// </summary>
+        /// <param name="detector">The observed defending unit.</param>
+        /// <param name="planet">The explicit encounter planet, or null to use its container.</param>
+        /// <returns>The eligible defending commander, or null.</returns>
+        private Officer GetEncounterCommander(ISceneNode detector, Planet planet)
+        {
+            Planet resolvedPlanet = planet ?? detector?.GetParentOfType<Planet>();
+            ISceneNode scope = detector?.GetParentOfType<Fleet>();
+            scope ??= resolvedPlanet;
+            if (_commanders == null || scope == null || detector == null)
+                return _detectorCommander(detector, resolvedPlanet);
+
+            var key = (scope, detector.GetType(), detector.GetOwnerInstanceID());
+            if (!_commanders.TryGetValue(key, out Officer commander))
+            {
+                commander = _detectorCommander(detector, resolvedPlanet);
+                _commanders.Add(key, commander);
+            }
+            return commander;
         }
 
         /// <summary>

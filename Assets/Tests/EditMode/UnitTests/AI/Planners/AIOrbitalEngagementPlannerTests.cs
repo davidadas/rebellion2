@@ -231,6 +231,7 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 friendlyStrength
             );
+            friendlyFleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
             AddBattleFleet(game, target, "hostile", rebels.InstanceID, hostileStrength);
             if (revealTarget)
                 AITestSceneBuilder.RevealPlanet(game, empire, target);

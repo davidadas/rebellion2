@@ -37,12 +37,16 @@ namespace Rebellion.AI.Proposals
             Rank = rank;
         }
 
-        /// <summary>Returns the stable identity of this assignment.</summary>
+        /// <summary>
+        /// Returns the stable identity of this assignment.
+        /// </summary>
         /// <returns>The officer, fleet, and command post key.</returns>
         public override string GetSortKey() =>
             $"officer-command:{Officer?.InstanceID}:{Fleet?.InstanceID}:{Rank}";
 
-        /// <summary>Checks ownership, availability, the command vacancy, and deployment legality.</summary>
+        /// <summary>
+        /// Checks ownership, availability, the command vacancy, and deployment legality.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <returns>Whether the assignment remains feasible.</returns>
         public override bool CanSelect(AITurnContext context)
@@ -89,12 +93,16 @@ namespace Rebellion.AI.Proposals
                 && context.MovementQueries.CanMoveGroup(new List<IMovable> { Officer }, Fleet);
         }
 
-        /// <summary>Revalidates the assignment immediately before execution.</summary>
+        /// <summary>
+        /// Revalidates the assignment immediately before execution.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <returns>Whether the appointment or deployment can execute.</returns>
         public override bool CanExecute(AITurnContext context) => CanSelect(context);
 
-        /// <summary>Uses normal movement, appointing only after physical arrival.</summary>
+        /// <summary>
+        /// Uses normal movement, appointing only after physical arrival.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         public override void Execute(AITurnContext context)
         {

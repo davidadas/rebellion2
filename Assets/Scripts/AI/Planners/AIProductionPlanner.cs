@@ -112,7 +112,9 @@ namespace Rebellion.AI.Planners
             return proposals;
         }
 
-        /// <summary>Protects unfinished spare-capacity defenses when a known hostile fleet threatens their destination.</summary>
+        /// <summary>
+        /// Protects unfinished spare-capacity defenses when a known hostile fleet threatens their destination.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposals">The production actions to extend.</param>
         private static void AddEmergencyDefenseProposals(
@@ -1018,7 +1020,9 @@ namespace Rebellion.AI.Planners
             proposals.Add(new AIManufactureProposal(ranked));
         }
 
-        /// <summary>Checks a hull's construction duration against the assigned producer's configured limit.</summary>
+        /// <summary>
+        /// Checks a hull's construction duration against the assigned producer's configured limit.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="producer">The planet supplying its current manufacturing facilities.</param>
         /// <param name="product">The candidate capital ship.</param>
@@ -1941,7 +1945,9 @@ namespace Rebellion.AI.Planners
                 yield return ship => ship.HasGravityWell;
         }
 
-        /// <summary>Uses the same combat valuation that measured the fleet's missing strength.</summary>
+        /// <summary>
+        /// Uses the same combat valuation that measured the fleet's missing strength.
+        /// </summary>
         /// <param name="context">The current combat assessment.</param>
         /// <param name="demand">The fleet's combat need and associated target.</param>
         /// <param name="ship">The unmanufactured hull template.</param>

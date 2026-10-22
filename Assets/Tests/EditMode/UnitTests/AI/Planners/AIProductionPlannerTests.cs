@@ -394,6 +394,7 @@ namespace Rebellion.Tests.AI.Planners
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 0;
             game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
@@ -3620,6 +3621,9 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithTwoShipyardHubPlanets_ExpandsDistinctHubDemands()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 0;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -3677,6 +3681,13 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Creates a resource demand competing with reserved industrial expansion space.
+        /// </summary>
+        /// <param name="kind">The resource production demand to create.</param>
+        /// <param name="hasEconomySpace">Whether the separate economy planet has free slots.</param>
+        /// <param name="economy">Receives the separate economy planet.</param>
+        /// <returns>The faction turn containing the resource production demand.</returns>
         private static AITurnContext CreateEconomyPlacementContext(
             AIProductionDemandKind kind,
             bool hasEconomySpace,
@@ -3684,6 +3695,7 @@ namespace Rebellion.Tests.AI.Planners
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Selection.MaintenanceHeadroomTarget = 1000;
             game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;

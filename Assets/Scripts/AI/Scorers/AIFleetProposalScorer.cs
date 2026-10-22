@@ -88,7 +88,9 @@ namespace Rebellion.AI.Scorers
             };
         }
 
-        /// <summary>Scores an officer's effective force improvement and attack readiness using ready fleet units.</summary>
+        /// <summary>
+        /// Scores an officer's effective force improvement and attack readiness using ready fleet units.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The command assignment being considered.</param>
         /// <returns>The command utility on the shared proposal ranking scale.</returns>
@@ -241,7 +243,9 @@ namespace Rebellion.AI.Scorers
             return score.RankValue;
         }
 
-        /// <summary>Returns the weakest ready-unit attack requirement after a command alternative.</summary>
+        /// <summary>
+        /// Returns the weakest ready-unit attack requirement after a command alternative.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="fleet">The attack fleet.</param>
         /// <param name="demand">The target's required capabilities.</param>

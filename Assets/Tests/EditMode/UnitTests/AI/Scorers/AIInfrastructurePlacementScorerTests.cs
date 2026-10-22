@@ -200,7 +200,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.AreSame(unassignedPlanet, selected);
         }
 
-        /// <summary>Reuses a same-type facility when both sites can reach the hub target.</summary>
+        /// <summary>
+        /// Reuses a same-type facility when both sites can reach the hub target.
+        /// </summary>
         [Test]
         public void RankHubDestinations_WithMixedTargetFacility_PrefersExistingHub()
         {
@@ -250,7 +252,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.AreSame(existingHub, selected);
         }
 
-        /// <summary>Prefers a larger achievable hub over an undersized site without other facility types.</summary>
+        /// <summary>
+        /// Prefers a larger achievable hub over an undersized site without other facility types.
+        /// </summary>
         /// <param name="buildingType">The facility category being expanded.</param>
         /// <param name="manufacturingType">The production category supported by the facility.</param>
         /// <param name="targetCount">The preferred hub size.</param>

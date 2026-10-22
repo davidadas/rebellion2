@@ -83,7 +83,9 @@ namespace Rebellion.AI.Planners
             return proposals;
         }
 
-        /// <summary>Offers available officers for attack-fleet command without reserving them during planning.</summary>
+        /// <summary>
+        /// Offers available officers for attack-fleet command without reserving them during planning.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposals">The proposals receiving legal command alternatives.</param>
         private static void AddOfficerCommandProposals(
@@ -1308,7 +1310,11 @@ namespace Rebellion.AI.Planners
                 context.Faction,
                 context.Game.Config.AI.Garrison
             );
-            if (!planet.IsColonized)
+            if (
+                !planet.IsColonized
+                || planet.GetPopularSupport(context.Faction.InstanceID)
+                    < context.Game.Config.SupportShift.OwnershipTransferThreshold
+            )
                 requiredGarrison = Math.Max(1, requiredGarrison);
             return Math.Max(0, readyRegimentCount - requiredGarrison);
         }

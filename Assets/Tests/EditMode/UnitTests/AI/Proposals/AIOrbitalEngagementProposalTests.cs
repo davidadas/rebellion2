@@ -260,6 +260,7 @@ namespace Rebellion.Tests.AI.Fleets
                 AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID, 1000),
                 fleet
             );
+            fleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
             if (includeHostileFleet)
             {
                 Fleet hostileFleet = EntityFactory.CreateFleet("hostile", rebels.InstanceID);

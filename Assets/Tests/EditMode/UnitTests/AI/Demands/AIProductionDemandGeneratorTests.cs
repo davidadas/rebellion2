@@ -1230,6 +1230,7 @@ namespace Rebellion.Tests.AI.Demands
         public void BuildDemands_LegacyPolicyWithInboundThreat_RaisesThreatenedPlanetDefensePressure()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.AI.Infrastructure.RequireEstablishedIndustryForStaticDefense = false;
             game.Config.AI.Infrastructure.DemandUtility.DefenseValue.Weight = 0;
             game.Config.AI.Infrastructure.DemandUtility.FacilityPortfolio.Weight = 0;
@@ -3879,13 +3880,11 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         /// <summary>
-        /// Adds shield.
+        /// Creates a headquarters with completed facilities in each production category.
         /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="planet">The planet.</param>
-        /// <param name="instanceId">The instance id.</param>
-        /// <param name="ownerInstanceId">The owner instance id.</param>
-        /// <param name="strength">The strength.</param>
+        /// <param name="faction">Receives the industrial planet's faction.</param>
+        /// <param name="planet">Receives the industrial headquarters planet.</param>
+        /// <returns>The game containing the configured industrial headquarters.</returns>
         private static GameRoot CreateDefenseIndustryGame(out Faction faction, out Planet planet)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out faction, out _);
@@ -3923,6 +3922,14 @@ namespace Rebellion.Tests.AI.Demands
             return game;
         }
 
+        /// <summary>
+        /// Adds a completed planetary shield with the requested strength.
+        /// </summary>
+        /// <param name="game">The game receiving the shield.</param>
+        /// <param name="planet">The shield's destination planet.</param>
+        /// <param name="instanceId">The shield identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <param name="strength">The shield strength.</param>
         private static void AddShield(
             GameRoot game,
             Planet planet,

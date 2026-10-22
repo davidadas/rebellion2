@@ -36,7 +36,9 @@ namespace Rebellion.AI.Proposals
 
         public ContainerNode Destination => Demand?.Destination;
 
-        /// <summary>Gets the unfinished filler order that this demanded action may replace.</summary>
+        /// <summary>
+        /// Gets the unfinished filler order that this demanded action may replace.
+        /// </summary>
         private IManufacturable InterruptibleOrder =>
             _orderToAdopt != null
                 ? ProducerPlanet
@@ -54,27 +56,37 @@ namespace Rebellion.AI.Proposals
                     )
                     : null;
 
-        /// <summary>Gets maintenance released by replacing an unfinished filler order.</summary>
+        /// <summary>
+        /// Gets maintenance released by replacing an unfinished filler order.
+        /// </summary>
         internal int ReplacedMaintenanceCost =>
             ReusesFillerProduction ? 0 : InterruptibleOrder?.MaintenanceCost ?? 0;
 
-        /// <summary>Gets whether the unfinished filler matches this requested product and destination.</summary>
+        /// <summary>
+        /// Gets whether the unfinished filler matches this requested product and destination.
+        /// </summary>
         internal bool ReusesFillerProduction =>
             InterruptibleOrder is ISceneNode node
             && InterruptibleOrder.GetTypeID() == Product?.GetReference()?.GetTypeID()
             && ReferenceEquals(node.GetParent(), Destination);
 
-        /// <summary>Gets destination space released by the producer's replaceable unfinished building.</summary>
+        /// <summary>
+        /// Gets destination space released by the producer's replaceable unfinished building.
+        /// </summary>
         internal int ReleasedDestinationSpace =>
             InterruptibleOrder is Building building
             && ReferenceEquals(building.GetParent(), Destination)
                 ? 1
                 : 0;
 
-        /// <summary>Gets whether this demanded action can replace the producer's filler order.</summary>
+        /// <summary>
+        /// Gets whether this demanded action can replace the producer's filler order.
+        /// </summary>
         internal bool InterruptsFillerProduction => InterruptibleOrder != null;
 
-        /// <summary>Gets usable producer capacity, including a lane occupied only by interruptible filler.</summary>
+        /// <summary>
+        /// Gets usable producer capacity, including a lane occupied only by interruptible filler.
+        /// </summary>
         internal int AvailableProducerCapacity =>
             InterruptibleOrder != null
                 ? ProducerPlanet.GetProductionFacilityCount(Demand.ManufacturingType)
@@ -378,7 +390,9 @@ namespace Rebellion.AI.Proposals
             return resolved;
         }
 
-        /// <summary>Fixes an adoption decision so later execution cannot turn it into new construction.</summary>
+        /// <summary>
+        /// Fixes an adoption decision so later execution cannot turn it into new construction.
+        /// </summary>
         /// <returns>This proposal or an action tied to the existing matching project.</returns>
         internal AIManufactureProposal WithAdoptedFiller()
         {
@@ -771,7 +785,9 @@ namespace Rebellion.AI.Proposals
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
         }
 
-        /// <summary>Creates a queue template carrying the selection's spare-capacity designation.</summary>
+        /// <summary>
+        /// Creates a queue template carrying the selection's spare-capacity designation.
+        /// </summary>
         /// <returns>A copy of the selected product with the appropriate filler state.</returns>
         private IManufacturable GetProductionTemplate()
         {

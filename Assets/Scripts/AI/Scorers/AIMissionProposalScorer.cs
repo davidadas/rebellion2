@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
@@ -38,7 +37,9 @@ namespace Rebellion.AI.Scorers
             return Score(context, proposal, null);
         }
 
-        /// <summary>Scores a mission against diplomacy commitments already selected this turn.</summary>
+        /// <summary>
+        /// Scores a mission against diplomacy commitments already selected this turn.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The mission proposal to score.</param>
         /// <param name="commitments">Diplomats and their selected destinations.</param>

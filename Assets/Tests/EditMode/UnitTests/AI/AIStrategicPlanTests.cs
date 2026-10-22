@@ -12,7 +12,9 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
-        /// <summary>Applies the headquarters multiplier without exceeding its affordable fleet share.</summary>
+        /// <summary>
+        /// Applies the headquarters multiplier without exceeding its affordable fleet share.
+        /// </summary>
         /// <param name="headquartersPercent">The headquarters multiplier, or zero to use the attack setting.</param>
         /// <param name="friendlyStrength">The faction's available fleet strength.</param>
         /// <param name="expectedStrength">The resulting headquarters defense requirement.</param>
@@ -71,7 +73,9 @@ namespace Rebellion.Tests.AI
             );
         }
 
-        /// <summary>Requires room for the completed industrial layout and its shield.</summary>
+        /// <summary>
+        /// Requires room for the completed industrial layout and its shield.
+        /// </summary>
         /// <param name="availableSpace">The neutral planet's building capacity.</param>
         /// <param name="expectedOpportunity">Whether the layout fits.</param>
         [TestCase(3, false)]
@@ -92,7 +96,9 @@ namespace Rebellion.Tests.AI
             Assert.AreEqual(expectedOpportunity, value > 0);
         }
 
-        /// <summary>Avoids rewarding redundant industrial sites.</summary>
+        /// <summary>
+        /// Avoids rewarding redundant industrial sites.
+        /// </summary>
         [Test]
         public void GetInfrastructureAcquisitionValue_OwnedHubSiteAvailable_DoesNotRewardAnotherEmptySite()
         {
@@ -101,7 +107,9 @@ namespace Rebellion.Tests.AI
             Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
         }
 
-        /// <summary>Counts committed capacity when assessing acquisition needs.</summary>
+        /// <summary>
+        /// Counts committed capacity when assessing acquisition needs.
+        /// </summary>
         /// <param name="status">The committed facilities' manufacturing state.</param>
         [TestCase(ManufacturingStatus.Building)]
         [TestCase(ManufacturingStatus.Delivering)]
@@ -128,7 +136,9 @@ namespace Rebellion.Tests.AI
             Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
         }
 
-        /// <summary>Does not encourage expansion into sectors without an existing presence.</summary>
+        /// <summary>
+        /// Does not encourage expansion into sectors without an existing presence.
+        /// </summary>
         [Test]
         public void GetInfrastructureAcquisitionValue_SectorWithoutOwnedPlanets_DoesNotCreateExpansionBonus()
         {
@@ -147,7 +157,9 @@ namespace Rebellion.Tests.AI
             Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
         }
 
-        /// <summary>Values immediately usable construction capacity despite an existing empty hub site.</summary>
+        /// <summary>
+        /// Values immediately usable construction capacity despite an existing empty hub site.
+        /// </summary>
         [Test]
         public void GetInfrastructureAcquisitionValue_NeutralPlanetSuppliesNeededCapacity_ValuesExistingYards()
         {
@@ -886,7 +898,9 @@ namespace Rebellion.Tests.AI
             Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
         }
 
-        /// <summary>Creates a low-support planet whose loss exposes neighboring neutral worlds.</summary>
+        /// <summary>
+        /// Creates a low-support planet whose loss exposes neighboring neutral worlds.
+        /// </summary>
         /// <param name="fleet">Receives the stationary operational battle fleet.</param>
         /// <returns>The faction turn containing the political defense commitment.</returns>
         private static AITurnContext CreatePoliticalFleetHoldContext(out Fleet fleet)
@@ -921,7 +935,9 @@ namespace Rebellion.Tests.AI
             return AITestSceneBuilder.CreateContext(game, faction);
         }
 
-        /// <summary>Creates a sector with a construction-hub shortage and a known neutral candidate.</summary>
+        /// <summary>
+        /// Creates a sector with a construction-hub shortage and a known neutral candidate.
+        /// </summary>
         /// <param name="ownedSpace">The owned planet's building capacity.</param>
         /// <param name="candidateSpace">The neutral planet's building capacity.</param>
         /// <param name="candidate">The neutral acquisition candidate.</param>
@@ -934,6 +950,7 @@ namespace Rebellion.Tests.AI
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 3;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 0;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;

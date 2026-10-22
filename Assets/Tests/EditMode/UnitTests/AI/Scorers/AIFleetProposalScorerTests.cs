@@ -1599,6 +1599,7 @@ namespace Rebellion.Tests.AI.Fleets
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
             Planet fresh = AITestSceneBuilder.AddPlanet(game, sector, "fresh", rebels.InstanceID);
             Fleet fleet = AddBattleFleet(game, origin, "fleet", empire.InstanceID, 10000);
+            fleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
             AddBattleFleet(game, target, "hostile", rebels.InstanceID, 100);
             AddBattleFleet(game, fresh, "fresh-hostile", rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, target);

@@ -45,7 +45,9 @@ namespace Rebellion.Game.Units
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
-        /// <summary>Gets or sets whether AI-demanded work may interrupt this unfinished filler order.</summary>
+        /// <summary>
+        /// Gets or sets whether AI-demanded work may interrupt this unfinished filler order.
+        /// </summary>
         public bool IsAIProductionFiller { get; set; }
 
         // Movement Info.

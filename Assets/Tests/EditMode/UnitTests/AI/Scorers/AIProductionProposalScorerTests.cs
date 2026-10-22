@@ -17,7 +17,9 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
-        /// <summary>Removes the initial-foundation bonus once a construction yard is committed.</summary>
+        /// <summary>
+        /// Removes the initial-foundation bonus once a construction yard is committed.
+        /// </summary>
         /// <param name="status">The committed yard's manufacturing state.</param>
         [TestCase(ManufacturingStatus.Building)]
         [TestCase(ManufacturingStatus.Delivering)]
@@ -362,7 +364,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.AreEqual(50, primaryPressure - secondaryPressure);
         }
 
-        /// <summary>Raises priority for combat reinforcements when headquarters defense is short.</summary>
+        /// <summary>
+        /// Raises priority for combat reinforcements when headquarters defense is short.
+        /// </summary>
         /// <param name="kind">The combat reinforcement being manufactured.</param>
         [TestCase(AIProductionDemandKind.FleetCapitalShip)]
         [TestCase(AIProductionDemandKind.FleetStarfighter)]
@@ -379,7 +383,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Greater(scorer.Score(context, proposal), withoutPriority);
         }
 
-        /// <summary>Does not reward additional combat strength already covered by committed ships.</summary>
+        /// <summary>
+        /// Does not reward additional combat strength already covered by committed ships.
+        /// </summary>
         /// <param name="status">The reinforcement's current production state.</param>
         [TestCase(ManufacturingStatus.Complete)]
         [TestCase(ManufacturingStatus.Building)]
@@ -406,7 +412,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Zero(new AIProductionProposalScorer().Score(context, proposal));
         }
 
-        /// <summary>Does not apply headquarters defense priority to other fleet assignments.</summary>
+        /// <summary>
+        /// Does not apply headquarters defense priority to other fleet assignments.
+        /// </summary>
         /// <param name="orderType">The fleet's assigned action.</param>
         /// <param name="isHeadquarters">Whether the defended planet is the faction headquarters.</param>
         [TestCase(FleetOrderType.Attack, true)]
@@ -428,7 +436,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Zero(new AIProductionProposalScorer().Score(context, proposal));
         }
 
-        /// <summary>Reduces the reinforcement bonus as the remaining defense gap closes.</summary>
+        /// <summary>
+        /// Reduces the reinforcement bonus as the remaining defense gap closes.
+        /// </summary>
         [Test]
         public void Score_HeadquartersDefenseGapShrinks_ReducesPriority()
         {
@@ -451,7 +461,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Less(scorer.Score(context, proposal), before);
         }
 
-        /// <summary>Creates an understrength headquarters fleet with other scoring considerations disabled.</summary>
+        /// <summary>
+        /// Creates an understrength headquarters fleet with other scoring considerations disabled.
+        /// </summary>
         /// <param name="kind">The reinforcement demand category.</param>
         /// <param name="proposal">The proposal to reinforce the headquarters fleet.</param>
         /// <returns>The faction turn used to evaluate reinforcement priority.</returns>

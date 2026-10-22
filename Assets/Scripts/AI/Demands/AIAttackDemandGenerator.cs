@@ -54,7 +54,9 @@ namespace Rebellion.AI.Demands
             }
         }
 
-        /// <summary>Measures known defenders expected to be available when one fleet reaches its target.</summary>
+        /// <summary>
+        /// Measures known defenders expected to be available when one fleet reaches its target.
+        /// </summary>
         /// <param name="context">The current faction assessment.</param>
         /// <param name="fleet">The prospective attacking fleet.</param>
         /// <param name="demand">The target's current ground and orbital requirements.</param>

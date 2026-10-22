@@ -397,7 +397,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithSharedTravelOfficerGroup_UsesGroupRetargetDuration()
+        public void Execute_WithSharedTravelOfficerGroup_PreservesIndependentArrivalTimes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -482,8 +482,9 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
-            Assert.AreEqual(fleet.Movement.TransitTicks, smuggler.Movement.TransitTicks);
-            Assert.AreEqual(fleet.Movement.TransitTicks, companion.Movement.TransitTicks);
+            Assert.AreEqual(fleetTransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, companion.Movement.TransitTicks);
         }
 
         [Test]
@@ -607,7 +608,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_CaptureAndFollowOnAttack_LeavesOldFleetPositionInEnemyIntelligence()
+        public void Execute_CaptureAndFollowOnAttack_DoesNotRevealFleetToFormerOwner()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -676,9 +677,10 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(nextTarget.InstanceID, fleet.Order.TargetPlanetId);
-            Assert.IsTrue(
+            Assert.IsFalse(
                 remembered.GetChildren<Fleet>().Any(item => item.InstanceID == fleet.InstanceID)
             );
+            Assert.AreEqual(empire.InstanceID, remembered.GetOwnerInstanceID());
         }
 
         [Test]

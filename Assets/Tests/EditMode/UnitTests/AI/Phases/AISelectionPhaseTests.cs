@@ -1767,7 +1767,9 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
-        /// <summary>Creates two producers and a single ranked capital-ship request.</summary>
+        /// <summary>
+        /// Creates two producers and a single ranked capital-ship request.
+        /// </summary>
         /// <param name="weak">The single-shipyard producer.</param>
         /// <param name="strong">The five-shipyard producer.</param>
         /// <param name="request">The scored fleet production request.</param>
@@ -1824,7 +1826,9 @@ namespace Rebellion.Tests.AI.Phases
             return AITestSceneBuilder.CreateContext(game, empire);
         }
 
-        /// <summary>Commits a capital ship to a producer's current manufacturing queue.</summary>
+        /// <summary>
+        /// Commits a capital ship to a producer's current manufacturing queue.
+        /// </summary>
         /// <param name="context">The faction's turn context.</param>
         /// <param name="producer">The planet manufacturing the ship.</param>
         /// <param name="cost">The ship's construction cost.</param>

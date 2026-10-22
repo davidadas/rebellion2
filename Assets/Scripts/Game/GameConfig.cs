@@ -354,7 +354,9 @@ namespace Rebellion.Game
 
             public int HeadquartersDefenseCombatPercent { get; set; }
 
-            /// <summary>Sets the headquarters reserve against the strongest known hostile fleet; zero uses the attack multiplier.</summary>
+            /// <summary>
+            /// Sets the headquarters reserve against the strongest known hostile fleet; zero uses the attack multiplier.
+            /// </summary>
             public int HeadquartersDefensePercentOfStrongestHostileFleet { get; set; }
 
             public int MinimumPlanetaryAssaultRegimentCount { get; set; }
@@ -373,8 +375,10 @@ namespace Rebellion.Game
 
             public int AttackIntelAgeGraceTicks { get; set; }
 
-            /// <summary>Maximum intelligence age in ticks for starting an attack on a headquarters.</summary>
-            public int HeadquartersAttackMaximumIntelAgeTicks { get; set; } = 50;
+            /// <summary>
+            /// Maximum intelligence age in ticks for starting an attack on a headquarters.
+            /// </summary>
+            public int HeadquartersAttackMaximumIntelAgeTicks { get; set; }
 
             public double AttackReadinessFloorWeight { get; set; }
 
@@ -558,7 +562,9 @@ namespace Rebellion.Game
             public AIMaintenanceRecoveryConfig MaintenanceRecovery { get; set; } =
                 new AIMaintenanceRecoveryConfig();
 
-            /// <summary>Discounts anticipated economic capacity from active diplomacy for planning urgency only.</summary>
+            /// <summary>
+            /// Discounts anticipated economic capacity from active diplomacy for planning urgency only.
+            /// </summary>
             public int DiplomacyEconomyConfidencePercent { get; set; }
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
@@ -679,7 +685,9 @@ namespace Rebellion.Game
             public int ShipyardTargetClearTicks { get; set; }
             public int FleetProductionMinimumShipyardCount { get; set; }
 
-            /// <summary>Limits a new capital ship's production duration at its assigned yard; zero disables the limit.</summary>
+            /// <summary>
+            /// Limits a new capital ship's production duration at its assigned yard; zero disables the limit.
+            /// </summary>
             public int CapitalShipMaximumBuildTicks { get; set; }
             public int TrainingFacilityTargetClearTicks { get; set; }
             public int ConstructionFacilityPortfolioPercent { get; set; }
@@ -729,13 +737,17 @@ namespace Rebellion.Game
             public int IdleShipyardFighterDemandPercent { get; set; }
             public int PlanetaryWeaponTargetCount { get; set; }
 
-            /// <summary>Preserves the stored defense preference when loading existing configurations.</summary>
+            /// <summary>
+            /// Preserves the stored defense preference when loading existing configurations.
+            /// </summary>
             public bool RequireEstablishedIndustryForStaticDefense { get; set; }
             public int PlanetaryDefenseSurplusBatchSize { get; set; }
             public int PlanetaryShieldDemandPercent { get; set; }
 
-            /// <summary>Sets the shield count reserved for industrial worlds without an immediate defense need.</summary>
-            public int IndustrialShieldTargetCount { get; set; } = 1;
+            /// <summary>
+            /// Sets the shield count reserved for industrial worlds without an immediate defense need.
+            /// </summary>
+            public int IndustrialShieldTargetCount { get; set; }
             public int PlanetaryWeaponDemandPercent { get; set; }
             public int PlanetaryGarrisonDemandPercent { get; set; }
             public int PlanetaryDefenseMaintenanceReservePercent { get; set; }

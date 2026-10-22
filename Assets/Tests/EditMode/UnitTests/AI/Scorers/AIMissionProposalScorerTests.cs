@@ -22,7 +22,9 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
-        /// <summary>Values a selected diplomat in the candidate sector more than the same diplomat assigned elsewhere.</summary>
+        /// <summary>
+        /// Values a selected diplomat in the candidate sector more than the same diplomat assigned elsewhere.
+        /// </summary>
         [Test]
         public void Score_SelectedDiplomatInCandidateSector_PrefersCommittedGroup()
         {
@@ -56,7 +58,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Greater(local, elsewhere);
         }
 
-        /// <summary>Stops counting a diplomat as available to every sector after assigning that officer elsewhere.</summary>
+        /// <summary>
+        /// Stops counting a diplomat as available to every sector after assigning that officer elsewhere.
+        /// </summary>
         [Test]
         public void Score_SelectedDiplomatInOtherSector_ReducesUncommittedOpportunity()
         {
@@ -83,7 +87,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Less(committed, available);
         }
 
-        /// <summary>Raises diplomacy value only when acquiring the planet supplies an industrial opportunity.</summary>
+        /// <summary>
+        /// Raises diplomacy value only when acquiring the planet supplies an industrial opportunity.
+        /// </summary>
         /// <param name="ownedSpace">The owned planet's building capacity.</param>
         /// <param name="expectedBonus">Whether acquisition should increase the target's value.</param>
         [TestCase(0, true)]
@@ -292,7 +298,7 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
-        public void Score_DiplomacyOnOwnedPlanet_DoesNotApplyExpansionCosts()
+        public void Score_DiplomacyOnOwnedPlanet_DoesNotApplyCompetitionCost()
         {
             (AITurnContext context, Officer officer, Planet[] targets) =
                 CreateDiplomacyCompetitionContext(3, 0);
@@ -306,20 +312,19 @@ namespace Rebellion.Tests.AI.Scorers
             );
             double withCosts = scorer.Score(context, proposal);
             context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Competition.Weight = 0;
-            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.TravelTime.Weight = 0;
 
             Assert.AreEqual(withCosts, scorer.Score(context, proposal));
         }
 
         [TestCase(3, 3, 90, 0, true, 40, true)]
-        [TestCase(2, 3, 90, 0, true, 40, false)]
-        [TestCase(3, 2, 90, 0, true, 40, false)]
-        [TestCase(3, 3, 74, 0, true, 40, false)]
-        [TestCase(3, 3, 90, 1000, true, 40, false)]
+        [TestCase(2, 3, 90, 0, true, 40, true)]
+        [TestCase(3, 2, 90, 0, true, 40, true)]
+        [TestCase(3, 3, 74, 0, true, 40, true)]
+        [TestCase(3, 3, 90, 1000, true, 40, true)]
         [TestCase(3, 3, 90, 0, false, 40, false)]
         [TestCase(3, 3, 90, 0, true, 0, false)]
         [TestCase(4, 3, 90, 0, true, 40, true)]
-        public void Score_DiplomacyGroup_AppliesConcentrationOnlyForNearbyKnownOpportunities(
+        public void Score_DiplomacyGroup_AppliesConcentrationForKnownSupportedOpportunities(
             int diplomatCount,
             int targetCount,
             int rating,
@@ -386,9 +391,10 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
-        public void Score_DistantDiplomat_DoesNotReceiveNearbyGroupBonus()
+        public void Score_DistantDiplomat_ReceivesLessConcentrationBonusThanNearbyDiplomat()
         {
-            (AITurnContext context, _, Planet target) = CreateDiplomacyConcentrationContext();
+            (AITurnContext context, Officer nearby, Planet target) =
+                CreateDiplomacyConcentrationContext();
             Planet remote = AITestSceneBuilder.AddPlanet(
                 context.Game,
                 context.Game.GetSceneNodeByInstanceID<PlanetSector>("origin-sector"),
@@ -405,23 +411,41 @@ namespace Rebellion.Tests.AI.Scorers
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
             AIMissionProposal proposal = new(new[] { officer }, MissionTypeIDs.Diplomacy, target);
             AIMissionProposalScorer scorer = new();
+            AIMissionProposal nearbyProposal = new(
+                new[] { nearby },
+                MissionTypeIDs.Diplomacy,
+                target
+            );
             context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0;
             double withoutBonus = scorer.Score(context, proposal);
+            double nearbyWithoutBonus = scorer.Score(context, nearbyProposal);
             context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0.6;
 
-            Assert.AreEqual(withoutBonus, scorer.Score(context, proposal));
+            double distantBonus = scorer.Score(context, proposal) - withoutBonus;
+            double nearbyBonus = scorer.Score(context, nearbyProposal) - nearbyWithoutBonus;
+            Assert.Greater(distantBonus, 0);
+            Assert.Less(distantBonus, nearbyBonus);
         }
 
         [Test]
         public void Score_NearbyDiplomacyGroup_SelectsDifferentNeutralWorldsInSameSector()
         {
             (AITurnContext context, _, Planet target) = CreateDiplomacyConcentrationContext();
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy =
+                new GameConfig.AIDiplomacyUtilityConfig
+                {
+                    Concentration = new GameConfig.AIConsiderationConfig
+                    {
+                        Weight = 0.6,
+                        SaturationValue = 35,
+                    },
+                    TravelTime = new GameConfig.AIConsiderationConfig { SaturationValue = 100 },
+                };
             PlanetSector competitor = AITestSceneBuilder.AddSector(
                 context.Game,
                 "competitor-sector"
             );
             competitor.SectorType = PlanetSectorType.Core;
-            Planet alternative = null;
             for (int index = 0; index < 10; index++)
             {
                 string owner =
@@ -442,20 +466,8 @@ namespace Rebellion.Tests.AI.Scorers
                 candidate.SetPopularSupport("rebels", owner == context.Faction.InstanceID ? 0 : 60);
                 candidate.AddVisitor(context.Faction.InstanceID);
                 AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, candidate);
-                if (index == 2)
-                    alternative = candidate;
             }
-            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0;
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
-            foreach (AIProposal proposal in new AIMissionPlanner().Plan(context))
-                context.AddProposal(proposal);
-            AIMissionProposal[] withoutBonus = new AISelectionPhase()
-                .Select(context)
-                .OfType<AIMissionProposal>()
-                .ToArray();
-
-            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
-            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0.6;
             foreach (AIProposal proposal in new AIMissionPlanner().Plan(context))
                 context.AddProposal(proposal);
 
@@ -466,11 +478,6 @@ namespace Rebellion.Tests.AI.Scorers
                 .ToArray();
 
             Assert.AreEqual(3, selected.Length);
-            Assert.IsTrue(
-                withoutBonus.Any(proposal =>
-                    proposal.TargetPlanet.InstanceID == alternative.InstanceID
-                )
-            );
             Assert.AreEqual(
                 3,
                 selected.Select(proposal => proposal.Participant.InstanceID).Distinct().Count()

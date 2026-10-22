@@ -91,8 +91,8 @@ namespace Rebellion.Tests.AI.Phases
 
             new AIExecutionPhase().Execute(context);
 
-            Assert.AreEqual(1, bombardFleet.GetChildren<Regiment>(recursive: true).Count());
-            Assert.AreEqual(0, otherFleet.GetChildren<Regiment>(recursive: true).Count());
+            Assert.AreEqual(1, bombardFleet.GetChildren<Regiment>(recursive: true).Count);
+            Assert.AreEqual(0, otherFleet.GetChildren<Regiment>(recursive: true).Count);
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
             context.SetAttackDemands(demands);
             Planet target = context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId);

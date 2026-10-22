@@ -36,7 +36,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             new AIFacilityRemovalProposal(hub, BuildingType.Shipyard, 6).Execute(context);
 
-            Assert.AreEqual(2, hub.GetChildren<Building>().Count());
+            Assert.AreEqual(2, hub.GetChildren<Building>().Count);
             Assert.AreEqual(
                 6,
                 context.StrategicPlan.GetAvailableConstructionSpace(hub, BuildingType.Shipyard)
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.AreEqual(4, hub.GetChildren<Building>().Count());
+            Assert.AreEqual(4, hub.GetChildren<Building>().Count);
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.AreEqual(4, hub.GetChildren<Building>().Count());
+            Assert.AreEqual(4, hub.GetChildren<Building>().Count);
         }
 
         [Test]
@@ -274,6 +274,7 @@ namespace Rebellion.Tests.AI.Proposals
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceRecovery.Enabled = false;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 1;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");

@@ -311,7 +311,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, selected.Length);
             Assert.AreEqual(3, selected[0].MainParticipants.Count);
             Assert.AreEqual(
-                selected.SelectMany(proposal => proposal.Participants).Count(),
+                selected.Sum(proposal => proposal.Participants.Count),
                 selected.SelectMany(proposal => proposal.Participants).Distinct().Count()
             );
         }
@@ -2210,6 +2210,13 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEqual(new[] { DiplomacyMission.MissionTypeID }, missionTypeIds);
         }
 
+        /// <summary>
+        /// Creates a revealed hostile production target with explicit sabotage encounter odds.
+        /// </summary>
+        /// <param name="empire">Receives the acting faction.</param>
+        /// <param name="origin">Receives the friendly team assembly planet.</param>
+        /// <param name="target">Receives the hostile sabotage destination.</param>
+        /// <returns>The game used to compare sabotage team alternatives.</returns>
         private static GameRoot CreateSabotageTeamScene(
             out Faction empire,
             out Planet origin,

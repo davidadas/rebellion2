@@ -527,7 +527,9 @@ namespace Rebellion.Simulation
                     FoiledNoLoss * probability
                 );
 
-            /// <summary>Restricts the no-loss channels after a decoy confrontation.</summary>
+            /// <summary>
+            /// Restricts the no-loss channels after a decoy confrontation.
+            /// </summary>
             /// <param name="probability">The chance that the confronted decoy survives free.</param>
             /// <returns>The same outcome weights with updated no-loss subsets.</returns>
             internal Mass SurviveDecoy(double probability) =>

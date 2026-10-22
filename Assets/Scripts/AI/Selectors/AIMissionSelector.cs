@@ -81,7 +81,9 @@ namespace Rebellion.AI.Selectors
             return true;
         }
 
-        /// <summary>Refreshes remaining diplomacy choices against the current mission reservations.</summary>
+        /// <summary>
+        /// Refreshes remaining diplomacy choices against the current mission reservations.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="pending">The unprocessed proposal queue.</param>
         internal void RefreshDiplomacyScores(AITurnContext context, LinkedList<AIProposal> pending)

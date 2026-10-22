@@ -174,7 +174,9 @@ namespace Rebellion.AI.Proposals
             FoilProbability = probability;
         }
 
-        /// <summary>Records evaluated odds for this immutable team during the current planning turn.</summary>
+        /// <summary>
+        /// Records evaluated odds for this immutable team during the current planning turn.
+        /// </summary>
         /// <param name="odds">The operational odds for the proposal's exact participant roles.</param>
         internal void SetOperationalOdds(MissionOdds odds)
         {

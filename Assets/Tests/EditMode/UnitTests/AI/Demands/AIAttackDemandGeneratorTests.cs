@@ -294,7 +294,9 @@ namespace Rebellion.Tests.AI.Demands
             Assert.AreEqual(1, context.GetAttackDemand(target).StarfighterCount);
         }
 
-        /// <summary>Creates a known defender with one ready ship and one incoming reinforcement.</summary>
+        /// <summary>
+        /// Creates a known defender with one ready ship and one incoming reinforcement.
+        /// </summary>
         /// <param name="inboundTicks">The observed reinforcement travel time.</param>
         /// <param name="intelAge">Ticks elapsed since observation.</param>
         /// <param name="observeInbound">Whether the reinforcement is included in intelligence.</param>

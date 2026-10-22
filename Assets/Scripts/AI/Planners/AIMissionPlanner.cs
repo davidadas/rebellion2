@@ -603,7 +603,9 @@ namespace Rebellion.AI.Planners
                 );
         }
 
-        /// <summary>Builds bounded complete sabotage teams before mission scoring and selection.</summary>
+        /// <summary>
+        /// Builds bounded complete sabotage teams before mission scoring and selection.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposals">The proposal collection to extend.</param>
         /// <returns>Checkpoints after evaluating each target and leader pair.</returns>
@@ -841,7 +843,9 @@ namespace Rebellion.AI.Planners
             return false;
         }
 
-        /// <summary>Evaluates and caches odds for one exact sabotage team without changing gameplay.</summary>
+        /// <summary>
+        /// Evaluates and caches odds for one exact sabotage team without changing gameplay.
+        /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The immutable participant roles being considered.</param>
         /// <returns>The operational mission odds, or null when the team is invalid.</returns>
