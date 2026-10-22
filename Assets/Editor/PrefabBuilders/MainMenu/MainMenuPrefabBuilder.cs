@@ -2511,7 +2511,6 @@ public static class MainMenuPrefabBuilder
 
             RenderTexture renderTexture = LoadOrCreateRenderTexture(
                 face.RenderTexturePath,
-                face.FactionId,
                 face.RtWidth,
                 face.RtHeight
             );
@@ -2563,7 +2562,6 @@ public static class MainMenuPrefabBuilder
 
         RenderTexture renderTexture = LoadOrCreateRenderTexture(
             _citadelRenderTexturePath,
-            "HqCitadel",
             256,
             256
         );
@@ -2703,29 +2701,26 @@ public static class MainMenuPrefabBuilder
     /// Loads an icon slot's RenderTexture asset, creating it if it does not yet exist.
     /// </summary>
     /// <param name="path">The RenderTexture asset path.</param>
-    /// <param name="factionId">The slot identifier, used to name the asset.</param>
     /// <param name="width">The RenderTexture width.</param>
     /// <param name="height">The RenderTexture height.</param>
     /// <returns>The icon RenderTexture asset.</returns>
-    private static RenderTexture LoadOrCreateRenderTexture(
-        string path,
-        string factionId,
-        int width,
-        int height
-    )
+    private static RenderTexture LoadOrCreateRenderTexture(string path, int width, int height)
     {
+        string assetName = Path.GetFileNameWithoutExtension(path);
         RenderTexture existing = AssetDatabase.LoadAssetAtPath<RenderTexture>(path);
         if (existing != null)
         {
-            // Re-assert the intended dimensions in case an older square asset is on disk.
+            // Keep the serialized asset aligned with the builder's authored properties.
             if (
-                existing.width != width
+                existing.name != assetName
+                || existing.width != width
                 || existing.height != height
                 || existing.antiAliasing != 1
                 || existing.useDynamicScale
             )
             {
                 existing.Release();
+                existing.name = assetName;
                 existing.width = width;
                 existing.height = height;
                 existing.antiAliasing = 1;
@@ -2737,7 +2732,7 @@ public static class MainMenuPrefabBuilder
 
         RenderTexture created = new RenderTexture(width, height, 16, RenderTextureFormat.ARGB32)
         {
-            name = $"Icon_{factionId}",
+            name = assetName,
             antiAliasing = 1,
             useDynamicScale = false,
         };
