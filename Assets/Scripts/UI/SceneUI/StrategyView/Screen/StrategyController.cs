@@ -199,7 +199,7 @@ public sealed class StrategyController
         runtime.GameReplaced += HandleGameReplaced;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
-        session.Tick.TickProgressed += RefreshStrategyState;
+        session.Tick.TickProgressed += HandleManufacturingProgress;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
         session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
         session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
@@ -1049,7 +1049,7 @@ public sealed class StrategyController
             runtime.GameReplaced -= HandleGameReplaced;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
-            session.Tick.TickProgressed -= RefreshStrategyState;
+            session.Tick.TickProgressed -= HandleManufacturingProgress;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
             session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
             session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
@@ -3107,6 +3107,15 @@ public sealed class StrategyController
             return missionsWindowController.GetPlanet(missionsView);
 
         return null;
+    }
+
+    /// <summary>
+    /// Refreshes only the producing planet's open manufacturing presentation.
+    /// </summary>
+    /// <param name="producer">The planet whose manufacturing queue advanced.</param>
+    private void HandleManufacturingProgress(Planet producer)
+    {
+        facilityWindowController.RenderManufacturingProgress(producer);
     }
 
     /// <summary>
