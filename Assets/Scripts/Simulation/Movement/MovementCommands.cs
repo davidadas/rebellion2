@@ -2116,7 +2116,7 @@ namespace Rebellion.Simulation
             if (destinationPlanet == originPlanet)
             {
                 MoveNode(unit, destination, results);
-                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
+                ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
                 unit.Movement = null;
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
@@ -2132,7 +2132,7 @@ namespace Rebellion.Simulation
             }
 
             MoveNode(unit, destination, results);
-            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
+            ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
 
             unit.Movement = new MovementState
             {
@@ -2396,15 +2396,15 @@ namespace Rebellion.Simulation
         /// Claims an uncolonized destination when a regiment becomes its only owner presence.
         /// </summary>
         /// <param name="unit">The moving unit.</param>
-        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="destination">The unit's direct destination.</param>
         /// <param name="results">The collection receiving ownership results.</param>
         private void ClaimUncolonizedDestinationFromRegiment(
             IMovable unit,
-            Planet destinationPlanet,
+            ContainerNode destination,
             ICollection<GameResult> results
         )
         {
-            if (unit is not Regiment regiment)
+            if (unit is not Regiment regiment || destination is not Planet destinationPlanet)
                 return;
 
             if (destinationPlanet.IsColonized)
