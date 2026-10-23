@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
             typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
+            typeof(FactionAutomationObserver),
         };
 
         /// <summary>
