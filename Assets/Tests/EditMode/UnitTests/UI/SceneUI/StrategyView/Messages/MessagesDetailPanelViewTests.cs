@@ -157,6 +157,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Render_ContinuingMissionChoice_ShowsControlsAndReservesBodySpace()
+        {
+            ScrollAreaView scrollArea = FindComponent<ScrollAreaView>("DetailLinesScrollArea");
+            int authoredHeight = UILayout
+                .GetSourceRect(scrollArea.transform as RectTransform)
+                .height;
+
+            _view.Render(CreateDetail("Message", false, false, true));
+
+            Assert.IsTrue(FindObject("MissionContinueButton").activeSelf);
+            Assert.IsTrue(FindObject("MissionAbortButton").activeSelf);
+            Assert.Less(
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height,
+                authoredHeight
+            );
+
+            _view.Render(CreateDetail("Message", false, false));
+
+            Assert.IsFalse(FindObject("MissionContinueButton").activeSelf);
+            Assert.IsFalse(FindObject("MissionAbortButton").activeSelf);
+            Assert.AreEqual(
+                authoredHeight,
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height
+            );
+        }
+
+        [Test]
+        public void MissionChoiceButtons_Click_RaiseControlAndSemanticRequests()
+        {
+            int controlCount = 0;
+            int continueCount = 0;
+            int abortCount = 0;
+            _view.MissionChoiceControlPressed += () => controlCount++;
+            _view.MissionContinueRequested += () => continueCount++;
+            _view.MissionAbortRequested += () => abortCount++;
+
+            FindComponent<Button>("MissionContinueButton").onClick.Invoke();
+            FindComponent<Button>("MissionAbortButton").onClick.Invoke();
+
+            Assert.AreEqual(2, controlCount);
+            Assert.AreEqual(1, continueCount);
+            Assert.AreEqual(1, abortCount);
+        }
+
+        [Test]
         public void Hide_VisiblePanel_DeactivatesPanel()
         {
             _view.Render(CreateDetail("Message", false, false));
@@ -188,11 +233,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// <param name="text">The text.</param>
         /// <param name="previousDisabled">Whether previous disabled.</param>
         /// <param name="nextDisabled">Whether next disabled.</param>
+        /// <param name="missionContinuationChoiceVisible">Whether mission continuation controls are visible.</param>
         /// <returns>The created detail.</returns>
         private MessagesDetailPanelRenderData CreateDetail(
             string text,
             bool previousDisabled,
-            bool nextDisabled
+            bool nextDisabled,
+            bool missionContinuationChoiceVisible = false
         )
         {
             return new MessagesDetailPanelRenderData(
@@ -203,7 +250,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 _overlayTexture,
                 _iconTexture,
                 previousDisabled,
-                nextDisabled
+                nextDisabled,
+                missionContinuationChoiceVisible
             );
         }
 

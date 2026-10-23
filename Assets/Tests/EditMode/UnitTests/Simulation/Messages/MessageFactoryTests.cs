@@ -37,6 +37,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "target",
                 NavigationSecondaryTargetInstanceID = "secondary",
                 MissionInstanceID = "mission",
+                MissionContinuationPending = true,
             };
             MessageDelivery delivery = new()
             {
@@ -64,6 +65,7 @@ namespace Rebellion.Tests.Simulation
                 message.NavigationSecondaryTargetInstanceID
             );
             Assert.AreEqual(content.MissionInstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
         }
 
         [Test]
@@ -149,6 +151,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "old-target",
                 NavigationSecondaryTargetInstanceID = "old-secondary",
                 MissionInstanceID = "old-mission",
+                MissionContinuationPending = true,
             };
 
             new MessageFactory(null).CreateMessage(
@@ -167,6 +170,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(report.NavigationTargetInstanceID);
             Assert.IsNull(report.NavigationSecondaryTargetInstanceID);
             Assert.IsNull(report.MissionInstanceID);
+            Assert.IsFalse(report.MissionContinuationPending);
         }
 
         [Test]
@@ -2145,6 +2149,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
             Assert.AreEqual("body", message.Body);
         }
 

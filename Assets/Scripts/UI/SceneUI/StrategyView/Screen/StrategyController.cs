@@ -2494,6 +2494,16 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Aborts the active mission represented by a continuing mission report.
+    /// </summary>
+    /// <param name="missionInstanceId">The active mission identifier.</param>
+    /// <returns>True when the mission was aborted.</returns>
+    bool IMessagesWindowActions.TryAbortMission(string missionInstanceId)
+    {
+        return windowCommandController.TryAbortMission(missionInstanceId);
+    }
+
+    /// <summary>
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable combat report.</param>

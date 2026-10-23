@@ -31,6 +31,8 @@ namespace Rebellion.Tests.Game.Messages
                 "Advice body"
             )
             {
+                MissionInstanceID = "mission-1",
+                MissionContinuationPending = true,
                 NotificationAcknowledged = true,
             };
 
@@ -41,6 +43,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(message.Type, deserialized.Type);
             Assert.AreEqual(message.Title, deserialized.Title);
             Assert.AreEqual(message.Body, deserialized.Body);
+            Assert.AreEqual(message.MissionInstanceID, deserialized.MissionInstanceID);
+            Assert.IsTrue(deserialized.MissionContinuationPending);
             Assert.IsTrue(deserialized.NotificationAcknowledged);
         }
 

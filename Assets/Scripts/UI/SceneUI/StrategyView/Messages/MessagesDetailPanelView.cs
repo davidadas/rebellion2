@@ -81,8 +81,17 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     [SerializeField]
     private int linesContentPadding;
 
+    [SerializeField]
+    private Button missionContinueButton;
+
+    [SerializeField]
+    private Button missionAbortButton;
+
     private RectInt cardTemplateRect;
     private bool initialized;
+    private RectInt linesScrollAreaTemplateRect;
+    private RectInt linesViewportTemplateRect;
+    private RectInt linesScrollbarTemplateRect;
     private bool renderedAnyDetailLines;
     private string renderedMessageId = string.Empty;
     private RectInt overlayTemplateRect;
@@ -96,6 +105,21 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     /// Raised when the previous message is requested.
     /// </summary>
     public event Action PreviousRequested;
+
+    /// <summary>
+    /// Raised when the continuing mission should remain active.
+    /// </summary>
+    public event Action MissionContinueRequested;
+
+    /// <summary>
+    /// Raised when the continuing mission should be aborted.
+    /// </summary>
+    public event Action MissionAbortRequested;
+
+    /// <summary>
+    /// Raised when a mission-choice control is pressed.
+    /// </summary>
+    public event Action MissionChoiceControlPressed;
 
     /// <summary>
     /// Restores every content-sourced state texture from installation content.
@@ -173,6 +197,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             previousButtonDownTexture,
             previousButtonDisabledTexture
         );
+        RenderMissionContinuationChoice(data.MissionContinuationChoiceVisible);
         RenderLines(data.MessageId, UILayout.WrapText(lineTextTemplate, data.Text, GetWrapWidth()));
         gameObject.SetActive(true);
     }
@@ -249,6 +274,10 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             nextButton.onClick.RemoveListener(RequestNext);
         if (previousButton != null)
             previousButton.onClick.RemoveListener(RequestPrevious);
+        if (missionContinueButton != null)
+            missionContinueButton.onClick.RemoveListener(RequestMissionContinue);
+        if (missionAbortButton != null)
+            missionAbortButton.onClick.RemoveListener(RequestMissionAbort);
     }
 
     /// <summary>
@@ -262,8 +291,17 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         VerifyReferences(false);
         cardTemplateRect = UILayout.GetSourceRect(cardImage.rectTransform);
         overlayTemplateRect = UILayout.GetSourceRect(overlayImage.rectTransform);
+        linesScrollAreaTemplateRect = UILayout.GetSourceRect(
+            linesScrollArea.transform as RectTransform
+        );
+        linesViewportTemplateRect = UILayout.GetSourceRect(linesScrollArea.ViewportRoot);
+        linesScrollbarTemplateRect = UILayout.GetSourceRect(
+            linesScrollArea.GetComponentInChildren<Scrollbar>(true).transform as RectTransform
+        );
         nextButton.onClick.AddListener(RequestNext);
         previousButton.onClick.AddListener(RequestPrevious);
+        missionContinueButton.onClick.AddListener(RequestMissionContinue);
+        missionAbortButton.onClick.AddListener(RequestMissionAbort);
         lineTextTemplate.gameObject.SetActive(false);
         initialized = true;
     }
@@ -282,6 +320,58 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     private void RequestPrevious()
     {
         PreviousRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Raises the semantic continue-mission choice.
+    /// </summary>
+    private void RequestMissionContinue()
+    {
+        MissionChoiceControlPressed?.Invoke();
+        MissionContinueRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Raises the semantic abort-mission choice.
+    /// </summary>
+    private void RequestMissionAbort()
+    {
+        MissionChoiceControlPressed?.Invoke();
+        MissionAbortRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Applies the continuing-mission choice visibility and reserves its detail-body space.
+    /// </summary>
+    /// <param name="visible">Whether the choice controls are available.</param>
+    private void RenderMissionContinuationChoice(bool visible)
+    {
+        missionContinueButton.gameObject.SetActive(visible);
+        missionAbortButton.gameObject.SetActive(visible);
+
+        int viewportHeight = linesScrollAreaTemplateRect.height;
+        if (visible)
+        {
+            int choiceTop = Mathf.Min(
+                UILayout.GetSourceRect(missionContinueButton.transform as RectTransform).y,
+                UILayout.GetSourceRect(missionAbortButton.transform as RectTransform).y
+            );
+            viewportHeight = Mathf.Max(1, choiceTop - linesScrollAreaTemplateRect.y - 4);
+        }
+
+        UILayout.SetSourceRect(
+            linesScrollArea.transform as RectTransform,
+            linesScrollAreaTemplateRect.x,
+            linesScrollAreaTemplateRect.y,
+            linesScrollAreaTemplateRect.width,
+            viewportHeight
+        );
+        linesScrollArea.SetLayout(
+            new Vector2(linesViewportTemplateRect.x, linesViewportTemplateRect.y),
+            new Vector2(linesViewportTemplateRect.width, viewportHeight),
+            new Vector2(linesScrollbarTemplateRect.x, linesScrollbarTemplateRect.y),
+            new Vector2(linesScrollbarTemplateRect.width, viewportHeight)
+        );
     }
 
     /// <summary>
@@ -447,5 +537,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             throw new MissingReferenceException($"{name}/PreviousButton is missing.");
         if (linesScrollArea == null || lineTextTemplate == null)
             throw new MissingReferenceException($"{name}/DetailLines are missing.");
+        if (missionContinueButton == null || missionAbortButton == null)
+            throw new MissingReferenceException($"{name}/MissionContinuationChoice is missing.");
     }
 }

@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -317,6 +318,146 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             MessagesWindowController.MarkMessageRead(null);
 
             Assert.IsTrue(message.Read);
+        }
+
+        [Test]
+        public void CanChooseMissionContinuation_PendingOwnedWorkingMission_ReturnsTrue()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = "player",
+            };
+            mission.Initiate(1);
+            game.AddSceneNodeByInstanceID(mission);
+            Message message = new StatusMessage
+            {
+                MissionInstanceID = mission.InstanceID,
+                MissionContinuationPending = true,
+            };
+
+            bool available = MessagesWindowController.CanChooseMissionContinuation(
+                game,
+                "player",
+                message
+            );
+
+            Assert.IsTrue(available);
+        }
+
+        [Test]
+        public void CanChooseMissionContinuation_NonPendingMissionMessage_ReturnsFalse()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = "player",
+            };
+            mission.Initiate(1);
+            game.AddSceneNodeByInstanceID(mission);
+            Message message = new StatusMessage { MissionInstanceID = mission.InstanceID };
+
+            bool available = MessagesWindowController.CanChooseMissionContinuation(
+                game,
+                "player",
+                message
+            );
+
+            Assert.IsFalse(available);
+        }
+
+        [Test]
+        public void ConsumeMissionContinuationChoice_PendingReport_ClearsChoiceButRetainsMission()
+        {
+            Message message = new StatusMessage
+            {
+                MissionInstanceID = "mission",
+                MissionContinuationPending = true,
+            };
+
+            bool firstConsumption = MessagesWindowController.ConsumeMissionContinuationChoice(
+                message
+            );
+            bool secondConsumption = MessagesWindowController.ConsumeMissionContinuationChoice(
+                message
+            );
+
+            Assert.IsTrue(firstConsumption);
+            Assert.IsFalse(secondConsumption);
+            Assert.IsFalse(message.MissionContinuationPending);
+            Assert.AreEqual("mission", message.MissionInstanceID);
+        }
+
+        [Test]
+        public void MissionContinueRequested_PendingReport_ConsumesChoiceWithoutAbortingMission()
+        {
+            Message message = CreateMessage("report");
+            message.MissionInstanceID = "mission";
+            message.MissionContinuationPending = true;
+            TestActions actions = new TestActions();
+            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
+                OpenMessagesWindow(
+                    new[] { message },
+                    () => default,
+                    game =>
+                        game.AddSceneNodeByInstanceID(CreateWorkingMission("mission", "FNALL1")),
+                    actions
+                );
+
+            try
+            {
+                controller.OpenDetail(message, MessagesTab.Fleet);
+                controller.RenderWindows();
+
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "MissionContinueButton")
+                    .onClick.Invoke();
+
+                Assert.IsFalse(message.MissionContinuationPending);
+                Assert.IsNull(actions.AbortedMissionInstanceId);
+                Assert.IsFalse(controller.IsDetailVisible(view));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void MissionAbortRequested_PendingReport_AbortsMissionAndConsumesChoice()
+        {
+            Message message = CreateMessage("report");
+            message.MissionInstanceID = "mission";
+            message.MissionContinuationPending = true;
+            TestActions actions = new TestActions();
+            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
+                OpenMessagesWindow(
+                    new[] { message },
+                    () => default,
+                    game =>
+                        game.AddSceneNodeByInstanceID(CreateWorkingMission("mission", "FNALL1")),
+                    actions
+                );
+
+            try
+            {
+                controller.OpenDetail(message, MessagesTab.Fleet);
+                controller.RenderWindows();
+
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "MissionAbortButton")
+                    .onClick.Invoke();
+
+                Assert.AreEqual("mission", actions.AbortedMissionInstanceId);
+                Assert.IsFalse(message.MissionContinuationPending);
+                Assert.IsFalse(controller.IsDetailVisible(view));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
@@ -670,10 +811,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         /// <summary>
+        /// Creates one working mission for continuation tests.
+        /// </summary>
+        /// <param name="instanceId">The mission instance identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The working mission.</returns>
+        private static DiplomacyMission CreateWorkingMission(
+            string instanceId,
+            string ownerInstanceId
+        )
+        {
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerInstanceId,
+            };
+            mission.Initiate(1);
+            return mission;
+        }
+
+        /// <summary>
         /// Opens a rendered Messages window around a player faction and modifier source.
         /// </summary>
         /// <param name="messages">The messages to display in source order.</param>
         /// <param name="getSelectionModifiers">Returns the active selection modifiers.</param>
+        /// <param name="configureGame">Optionally configures the game before UI creation.</param>
+        /// <param name="actions">Optional test actions used by the controller.</param>
         /// <returns>The created view fixture.</returns>
         private static (
             GameObject root,
@@ -682,7 +845,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             MessagesWindowView view
         ) OpenMessagesWindow(
             IReadOnlyList<Message> messages,
-            Func<SelectionModifierState> getSelectionModifiers
+            Func<SelectionModifierState> getSelectionModifiers,
+            Action<GameRoot> configureGame = null,
+            TestActions actions = null
         )
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
@@ -691,6 +856,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
             game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            configureGame?.Invoke(game);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -711,7 +877,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 () => { },
                 getSelectionModifiers
             );
-            controller.Initialize(new TestActions());
+            controller.Initialize(actions ?? new TestActions());
             controller.Open(MessagesTab.Fleet);
             controller.RenderWindows();
             UIWindow window = windowManager.Windows.Single();
@@ -751,6 +917,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         private sealed class TestActions : IMessagesWindowActions
         {
+            public string AbortedMissionInstanceId { get; private set; }
+
             public CombatReport OpenedCombatReport { get; private set; }
 
             public MessagesTab CombatReportReturnTab { get; private set; }
@@ -780,6 +948,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             )
             {
                 return true;
+            }
+
+            /// <summary>
+            /// Aborts mission.
+            /// </summary>
+            /// <param name="missionInstanceId">The mission instance id.</param>
+            /// <returns>True when the mission id is present.</returns>
+            public bool TryAbortMission(string missionInstanceId)
+            {
+                AbortedMissionInstanceId = missionInstanceId;
+                return !string.IsNullOrEmpty(missionInstanceId);
             }
         }
     }

@@ -286,7 +286,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 true,
                 true,
                 1,
-                2
+                2,
+                true
             );
 
             Assert.IsTrue(data.DetailVisible);
@@ -311,6 +312,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
             Assert.IsFalse(data.DetailPanel.PreviousDisabled);
             Assert.IsFalse(data.DetailPanel.NextDisabled);
+            Assert.IsTrue(data.DetailPanel.MissionContinuationChoiceVisible);
         }
 
         [Test]
