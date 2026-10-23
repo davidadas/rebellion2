@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
@@ -157,20 +158,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void Render_ContinuingMissionChoice_ShowsControlsAndReservesBodySpace()
+        public void Render_ContinuingMissionChoice_ShowsControlsAndReservesBodyWidth()
         {
             ScrollAreaView scrollArea = FindComponent<ScrollAreaView>("DetailLinesScrollArea");
-            int authoredHeight = UILayout
-                .GetSourceRect(scrollArea.transform as RectTransform)
-                .height;
+            RectInt authoredRect = UILayout.GetSourceRect(scrollArea.transform as RectTransform);
 
             _view.Render(CreateDetail("Message", false, false, true));
 
             Assert.IsTrue(FindObject("MissionContinueButton").activeSelf);
             Assert.IsTrue(FindObject("MissionAbortButton").activeSelf);
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_continue_button_up",
+                FindComponent<RawImage>("MissionContinueButton").texture.name
+            );
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_abort_button_up",
+                FindComponent<RawImage>("MissionAbortButton").texture.name
+            );
             Assert.Less(
-                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height,
-                authoredHeight
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform).width,
+                authoredRect.width
+            );
+            Assert.AreEqual(
+                authoredRect.height,
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height
             );
 
             _view.Render(CreateDetail("Message", false, false));
@@ -178,8 +189,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindObject("MissionContinueButton").activeSelf);
             Assert.IsFalse(FindObject("MissionAbortButton").activeSelf);
             Assert.AreEqual(
-                authoredHeight,
-                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height
+                authoredRect,
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
+            );
+        }
+
+        [Test]
+        public void Render_ContinuingMissionChoice_BindsPressedArtwork()
+        {
+            _view.Render(CreateDetail("Message", false, false, true));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            FindComponent<RawImagePressVisual>("MissionContinueButton").OnPointerDown(eventData);
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_continue_button_pressed",
+                FindComponent<RawImage>("MissionContinueButton").texture.name
+            );
+
+            FindComponent<RawImagePressVisual>("MissionAbortButton").OnPointerDown(eventData);
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_abort_button_pressed",
+                FindComponent<RawImage>("MissionAbortButton").texture.name
             );
         }
 
