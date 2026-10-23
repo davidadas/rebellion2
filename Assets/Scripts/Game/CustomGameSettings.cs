@@ -22,6 +22,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(GarrisonRules))]
         private GarrisonRuleSettings _garrisonRules;
 
+        [PersistableMember(Name = nameof(MovementRules))]
+        private MovementRuleSettings _movementRules;
+
         [PersistableIgnore]
         public DifficultyModifiers PlayerDifficultyModifiers
         {
@@ -50,6 +53,13 @@ namespace Rebellion.Game
             set => _garrisonRules = value;
         }
 
+        [PersistableIgnore]
+        public MovementRuleSettings MovementRules
+        {
+            get => _movementRules;
+            set => _movementRules = value;
+        }
+
         /// <summary>
         /// Creates an empty custom-game settings payload for population or deserialization.
         /// </summary>
@@ -63,23 +73,45 @@ namespace Rebellion.Game
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
-            if (GarrisonRules == null)
-                return;
-            if (GarrisonRules.SupportThreshold is < 0 or > 100)
-                throw new InvalidDataException("Garrison support threshold must be from 0 to 100.");
-            if (GarrisonRules.SupportDeficitPerRegiment < 1)
-                throw new InvalidDataException(
-                    "Garrison support deficit per regiment must be positive."
-                );
-            if (GarrisonRules.UprisingMultiplier < 1)
-                throw new InvalidDataException("Garrison uprising multiplier must be positive.");
 
-            GameConfig.GarrisonConfig garrison =
-                config.AI?.Garrison
-                ?? throw new InvalidDataException("Runtime garrison configuration is missing.");
-            garrison.SupportThreshold = GarrisonRules.SupportThreshold;
-            garrison.GarrisonDivisor = GarrisonRules.SupportDeficitPerRegiment;
-            garrison.UprisingMultiplier = GarrisonRules.UprisingMultiplier;
+            if (GarrisonRules != null)
+            {
+                if (GarrisonRules.SupportThreshold is < 0 or > 100)
+                    throw new InvalidDataException(
+                        "Garrison support threshold must be from 0 to 100."
+                    );
+                if (GarrisonRules.SupportDeficitPerRegiment < 1)
+                    throw new InvalidDataException(
+                        "Garrison support deficit per regiment must be positive."
+                    );
+                if (GarrisonRules.UprisingMultiplier < 1)
+                    throw new InvalidDataException(
+                        "Garrison uprising multiplier must be positive."
+                    );
+
+                GameConfig.GarrisonConfig garrison =
+                    config.AI?.Garrison
+                    ?? throw new InvalidDataException("Runtime garrison configuration is missing.");
+                garrison.SupportThreshold = GarrisonRules.SupportThreshold;
+                garrison.GarrisonDivisor = GarrisonRules.SupportDeficitPerRegiment;
+                garrison.UprisingMultiplier = GarrisonRules.UprisingMultiplier;
+            }
+
+            if (MovementRules != null)
+            {
+                if (MovementRules.TravelSpeedPercent < 1)
+                    throw new InvalidDataException("Travel speed percent must be positive.");
+
+                GameConfig.MovementConfig movement =
+                    config.Movement
+                    ?? throw new InvalidDataException("Runtime movement configuration is missing.");
+                if (movement.DistanceDivisor <= 0)
+                    throw new InvalidDataException(
+                        "Movement distance divisor must be greater than zero."
+                    );
+
+                movement.DistanceDivisor *= MovementRules.TravelSpeedPercent / 100d;
+            }
         }
     }
 
@@ -94,5 +126,14 @@ namespace Rebellion.Game
         public int SupportDeficitPerRegiment { get; set; }
 
         public int UprisingMultiplier { get; set; }
+    }
+
+    /// <summary>
+    /// Defines campaign-specific strategic movement rules.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MovementRuleSettings
+    {
+        public int TravelSpeedPercent { get; set; }
     }
 }

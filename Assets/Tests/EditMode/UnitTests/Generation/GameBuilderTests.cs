@@ -220,6 +220,29 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_CustomMovementRules_AppliesTravelSpeedWithoutMutatingContent()
+        {
+            double authoredDivisor = TestContent.Data.GameConfig.Movement.DistanceDivisor;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
+                },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.AreEqual(authoredDivisor * 1.5d, game.Config.Movement.DistanceDivisor, 0.0001d);
+            Assert.AreEqual(authoredDivisor, TestContent.Data.GameConfig.Movement.DistanceDivisor);
+        }
+
+        [Test]
         public void Build_FactionModifierOverride_AppliesToGeneratedFactionOnly()
         {
             Faction template = TestContent.Data.Factions[0];

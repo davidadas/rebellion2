@@ -194,6 +194,29 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartLoadedGame_CustomMovementRules_RestoresRuntimeConfiguration()
+        {
+            double authoredDivisor = _contentPack.GameData.GameConfig.Movement.DistanceDivisor;
+            GameRoot game = CreateGame();
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
+            };
+
+            GameSession session = _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(
+                authoredDivisor * 1.5d,
+                session.Game.Config.Movement.DistanceDivisor,
+                0.0001d
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                _contentPack.GameData.GameConfig.Movement.DistanceDivisor
+            );
+        }
+
+        [Test]
         public void StartLoadedGame_SerializedGalaxyLayout_RestoresActiveContentCoordinates()
         {
             GameRoot game = CreateGameWithStaleGalaxyLayout();
