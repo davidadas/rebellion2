@@ -6,6 +6,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 using TMPro;
 using UnityEditor;
@@ -1030,6 +1031,97 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Initialize_HardDifficulty_ShowsConfiguredAIStartingUnitBonuses()
+        {
+            summary.Difficulty = GameDifficulty.Hard;
+            summary.GalaxySize = GameSize.Medium;
+            summary.PlayerFactionID = TestContent.Pack.GameData.Factions[0].InstanceID;
+            string aiFactionID = TestContent.Pack.GameData.Factions[1].InstanceID;
+            FactionBudget aiBudget =
+                TestContent.Pack.GameData.GenerationConfig.UnitDeployment.FactionBudgets.Single(
+                    budget => budget.FactionID == aiFactionID
+                );
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            int starfighterBonus = aiBudget
+                .Bonuses.Single(bonus =>
+                    bonus.AIOnly
+                    && bonus.Difficulty == GameDifficulty.Hard
+                    && bonus.Category == StartingUnitBudgetCategory.Starfighter
+                )
+                .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Medium)
+                .Percentage;
+            int regimentBonus = aiBudget
+                .Bonuses.Single(bonus =>
+                    bonus.AIOnly
+                    && bonus.Difficulty == GameDifficulty.Hard
+                    && bonus.Category == StartingUnitBudgetCategory.Regiment
+                )
+                .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Medium)
+                .Percentage;
+
+            Assert.AreEqual(
+                starfighterBonus.ToString(CultureInfo.InvariantCulture),
+                TableInput("starting-starfighter-bonus", "AI").text
+            );
+            Assert.AreEqual(
+                regimentBonus.ToString(CultureInfo.InvariantCulture),
+                TableInput("starting-regiment-bonus", "AI").text
+            );
+            Assert.AreEqual(
+                1,
+                TableRow("starting-starfighter-bonus")
+                    .GetComponentsInChildren<TMP_InputField>()
+                    .Length
+            );
+        }
+
+        [Test]
+        public void Apply_MissingAIStartingUnitBonuses_CreatesSelectedDifficultyValues()
+        {
+            GameSummary applied = null;
+            summary.Difficulty = GameDifficulty.Easy;
+            summary.GalaxySize = GameSize.Small;
+            summary.PlayerFactionID = TestContent.Pack.GameData.Factions[0].InstanceID;
+            string aiFactionID = TestContent.Pack.GameData.Factions[1].InstanceID;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-starfighter-bonus", "AI").onEndEdit.Invoke("12");
+            TableInput("starting-regiment-bonus", "AI").onEndEdit.Invoke("8");
+            ApplyButton().onClick.Invoke();
+
+            FactionBudget aiBudget =
+                applied.CustomSettings.GenerationConfig.UnitDeployment.FactionBudgets.Single(
+                    budget => budget.FactionID == aiFactionID
+                );
+            Assert.AreEqual(
+                12,
+                aiBudget
+                    .Bonuses.Single(bonus =>
+                        bonus.AIOnly
+                        && bonus.Difficulty == GameDifficulty.Easy
+                        && bonus.Category == StartingUnitBudgetCategory.Starfighter
+                    )
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
+            );
+            Assert.AreEqual(
+                8,
+                aiBudget
+                    .Bonuses.Single(bonus =>
+                        bonus.AIOnly
+                        && bonus.Difficulty == GameDifficulty.Easy
+                        && bonus.Category == StartingUnitBudgetCategory.Regiment
+                    )
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
+            );
+        }
+
+        [Test]
         public void Apply_PerFactionResearchLevels_PublishesIndependentValues()
         {
             GameSummary applied = null;
@@ -1082,7 +1174,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "PLANET RESOURCE LIMITS",
                     "RIM COLONIZATION",
                     "STARTING PLANET SUPPORT",
-                    "MINE GENERATION",
+                    "STARTING FACILITIES",
                     "STARTING GARRISONS AND SUPPORT",
                     "LIVE GARRISON REQUIREMENTS",
                 },
@@ -1229,6 +1321,62 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual("Mine Chance per Resource %", label.text);
             Assert.LessOrEqual(label.preferredWidth, label.rectTransform.rect.width);
+        }
+
+        [Test]
+        public void Initialize_StartingFacilityControls_ShowCoreAndRimChances()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual("43", TableInput("starting-refinery-chance", "Player").text);
+            Assert.AreEqual("5", TableInput("starting-refinery-chance", "AI").text);
+            Assert.AreEqual("3", TableInput("starting-shipyard-chance", "Player").text);
+            Assert.AreEqual("1", TableInput("starting-shipyard-chance", "AI").text);
+            Assert.AreEqual("3", TableInput("starting-construction-yard-chance", "Player").text);
+            Assert.AreEqual("1", TableInput("starting-construction-yard-chance", "AI").text);
+        }
+
+        [Test]
+        public void Apply_StartingFacilityChances_ReassignsOnlyEmptyOutcomes()
+        {
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-refinery-chance", "Player").onEndEdit.Invoke("30");
+            TableInput("starting-shipyard-chance", "Player").onEndEdit.Invoke("10");
+            ApplyButton().onClick.Invoke();
+
+            FacilityGenerationChanceEditor editor = new FacilityGenerationChanceEditor(
+                TestContent.Pack.GameData.Buildings
+            );
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
+            Assert.AreEqual(30, editor.GetChance(config, true, BuildingType.Refinery));
+            Assert.AreEqual(10, editor.GetChance(config, true, BuildingType.Shipyard));
+            Assert.AreEqual(3, editor.GetChance(config, true, BuildingType.TrainingFacility));
+            Assert.AreEqual(3, editor.GetChance(config, true, BuildingType.ConstructionFacility));
+            Assert.AreEqual(
+                43,
+                editor.GetChance(
+                    TestContent.Pack.GameData.GenerationConfig,
+                    true,
+                    BuildingType.Refinery
+                )
+            );
+        }
+
+        [Test]
+        public void EditValue_StartingFacilityChanceExceedsEmptyCapacity_RetainsPreviousValue()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TMP_InputField input = TableInput("starting-shipyard-chance", "Player");
+
+            input.onEndEdit.Invoke("40");
+
+            Assert.AreEqual("3", TableInput("starting-shipyard-chance", "Player").text);
         }
 
         [Test]

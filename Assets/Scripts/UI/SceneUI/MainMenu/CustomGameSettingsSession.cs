@@ -5,6 +5,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 
 /// <summary>
@@ -54,6 +55,7 @@ internal sealed class CustomGameSettingsSession
     private readonly ContentPack activePack;
     private readonly GameGenerationConfig generationDefaults;
     private readonly GameGenerationConfig generationDraft;
+    private readonly FacilityGenerationChanceEditor facilityChanceEditor;
     private readonly GarrisonRuleSettings garrisonDefaults;
     private readonly GarrisonRuleSettings garrisonDraft;
     private string currentDifficultySection;
@@ -106,6 +108,7 @@ internal sealed class CustomGameSettingsSession
         generationDraft =
             summaryDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
             ?? pack.GameData.GenerationConfig.GetDeepCopy();
+        facilityChanceEditor = new FacilityGenerationChanceEditor(pack.GameData.Buildings);
         garrisonDefaults = CreateGarrisonRules(pack.GameData.GameConfig.AI.Garrison);
         garrisonDraft =
             summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
@@ -637,11 +640,12 @@ internal sealed class CustomGameSettingsSession
         AddStartingResearchEntries(pack.GameData.Factions);
         AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
         AddStartingForceEntries(pack.GameData.Factions, summary.GalaxySize);
+        AddStartingUnitBonusEntries(pack.GameData.Factions, summary);
         AddGalaxyClassificationEntries(pack, summary);
         AddResourceEntries(summary.ResourceAvailability);
         currentGenerationSection = "STARTING PLANET SUPPORT";
         AddPlanetSupportEntries();
-        currentGenerationSection = "MINE GENERATION";
+        currentGenerationSection = "STARTING FACILITIES";
         AddFacilityEntries();
         currentGenerationSection = "STARTING GARRISONS AND SUPPORT";
         AddUnitAndBalanceEntries();
@@ -905,6 +909,92 @@ internal sealed class CustomGameSettingsSession
                         .FactionBudgets[budgetIndex]
                         .BudgetLevels[levelIndex]
                         .Percentage = value
+            );
+        }
+    }
+
+    /// <summary>
+    /// Adds the AI-only category budgets already consumed by starting-unit generation.
+    /// </summary>
+    /// <param name="factions">The active faction templates in display order.</param>
+    /// <param name="summary">The selected difficulty, galaxy size, and player faction.</param>
+    private void AddStartingUnitBonusEntries(IReadOnlyList<Faction> factions, GameSummary summary)
+    {
+        AddStartingUnitBonusRow(
+            factions,
+            summary,
+            StartingUnitBudgetCategory.Starfighter,
+            "starting-starfighter-bonus",
+            "AI Starfighter Bonus %",
+            "Additional share of spare maintenance capacity used only for AI starfighters. This stacks with Extra Starting Forces. Range: 0% to 100%."
+        );
+        AddStartingUnitBonusRow(
+            factions,
+            summary,
+            StartingUnitBudgetCategory.Regiment,
+            "starting-regiment-bonus",
+            "AI Regiment Bonus %",
+            "Additional share of spare maintenance capacity used only for AI regiments. This stacks with Extra Starting Forces. Range: 0% to 100%."
+        );
+    }
+
+    /// <summary>
+    /// Adds one category-specific starting-unit budget for every AI-controlled faction.
+    /// </summary>
+    /// <param name="factions">The active faction templates in display order.</param>
+    /// <param name="summary">The selected difficulty, galaxy size, and player faction.</param>
+    /// <param name="category">Unit category eligible for the additional budget.</param>
+    /// <param name="rowKey">Stable identity shared by the row's faction cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddStartingUnitBonusRow(
+        IReadOnlyList<Faction> factions,
+        GameSummary summary,
+        StartingUnitBudgetCategory category,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        foreach (
+            Faction faction in factions.Where(faction =>
+                faction.InstanceID != summary.PlayerFactionID
+            )
+        )
+        {
+            string factionID = faction.InstanceID;
+            if (
+                generationDefaults.UnitDeployment.FactionBudgets.All(budget =>
+                    budget.FactionID != factionID
+                )
+            )
+                continue;
+
+            AddGenerationTableCell(
+                rowKey,
+                factionID.ToLowerInvariant() + "-" + rowKey,
+                label,
+                description,
+                faction.GetDisplayName(),
+                0,
+                100,
+                config =>
+                    StartingUnitBudgetEditor.ReadAIOnlyBonus(
+                        config,
+                        factionID,
+                        summary.Difficulty,
+                        category,
+                        summary.GalaxySize
+                    ),
+                (config, value) =>
+                    StartingUnitBudgetEditor.WriteAIOnlyBonus(
+                        config,
+                        factionID,
+                        summary.Difficulty,
+                        category,
+                        summary.GalaxySize,
+                        value
+                    )
             );
         }
     }
@@ -1251,6 +1341,86 @@ internal sealed class CustomGameSettingsSession
             int.MaxValue,
             config => config.FacilityGeneration.RimMineMultiplier,
             (config, value) => config.FacilityGeneration.RimMineMultiplier = value
+        );
+
+        AddFacilityChanceEntries(
+            BuildingType.Refinery,
+            "starting-refinery-chance",
+            "Refinery Chance %",
+            "Chance that a non-mine starting facility roll places a refinery. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.Shipyard,
+            "starting-shipyard-chance",
+            "Shipyard Chance %",
+            "Chance that a non-mine starting facility roll places a shipyard. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.TrainingFacility,
+            "starting-training-facility-chance",
+            "Training Facility Chance %",
+            "Chance that a non-mine starting facility roll places a training facility. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.ConstructionFacility,
+            "starting-construction-yard-chance",
+            "Construction Yard Chance %",
+            "Chance that a non-mine starting facility roll places a construction yard. Increasing it uses otherwise empty outcomes."
+        );
+    }
+
+    /// <summary>
+    /// Adds core and rim chance controls for one starting-facility category.
+    /// </summary>
+    /// <param name="buildingType">Facility category to expose.</param>
+    /// <param name="rowKey">Stable identity shared by the regional cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddFacilityChanceEntries(
+        BuildingType buildingType,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        AddFacilityChanceEntry(true, "core", "Core", buildingType, rowKey, label, description);
+        AddFacilityChanceEntry(false, "rim", "Rim", buildingType, rowKey, label, description);
+    }
+
+    /// <summary>
+    /// Adds one regional chance control when the active facility table supports that category.
+    /// </summary>
+    /// <param name="core">Whether the control edits the core-region table.</param>
+    /// <param name="regionKey">Stable key for the selected region.</param>
+    /// <param name="regionLabel">Visible label for the selected region.</param>
+    /// <param name="buildingType">Facility category to expose.</param>
+    /// <param name="rowKey">Stable identity shared by the regional cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddFacilityChanceEntry(
+        bool core,
+        string regionKey,
+        string regionLabel,
+        BuildingType buildingType,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        if (!facilityChanceEditor.CanEdit(generationDefaults, core, buildingType))
+            return;
+
+        AddGenerationTableCell(
+            rowKey,
+            regionKey + "-" + rowKey,
+            label,
+            description,
+            regionLabel,
+            0,
+            100,
+            config => facilityChanceEditor.GetChance(config, core, buildingType),
+            (config, value) => facilityChanceEditor.TrySetChance(config, core, buildingType, value),
+            (config, value) => facilityChanceEditor.CanSetChance(config, core, buildingType, value)
         );
     }
 
