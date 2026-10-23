@@ -1023,8 +1023,7 @@ internal sealed class CustomGameSettingsSession
 
         PlanetResourceProfile profile = generationDefaults.PlanetResources.Profiles[index];
         string key = profile.Availability.ToString().ToLowerInvariant();
-        string availabilityLabel = profile.Availability.ToString().ToUpperInvariant();
-        currentGenerationSection = "PLANET ENERGY (" + availabilityLabel + ")";
+        currentGenerationSection = "PLANET ENERGY";
         AddResourceDiceColumn(
             index,
             key,
@@ -1043,7 +1042,7 @@ internal sealed class CustomGameSettingsSession
             "Rim",
             candidate => candidate.RimEnergy
         );
-        currentGenerationSection = "RAW MATERIALS (" + availabilityLabel + ")";
+        currentGenerationSection = "RAW MATERIALS";
         AddResourceDiceColumn(
             index,
             key,
@@ -1062,7 +1061,7 @@ internal sealed class CustomGameSettingsSession
             "Rim",
             candidate => candidate.RimRawMaterials
         );
-        currentGenerationSection = "PLANET RESOURCE LIMITS (" + availabilityLabel + ")";
+        currentGenerationSection = "PLANET RESOURCE LIMITS";
         AddGenerationTableCell(
             key + "-resource-minimum",
             key + "-energy-min",

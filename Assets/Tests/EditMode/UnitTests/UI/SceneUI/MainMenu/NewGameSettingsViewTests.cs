@@ -1077,9 +1077,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 new[]
                 {
                     "FACTION STARTING CONDITIONS",
-                    "PLANET ENERGY (NORMAL)",
-                    "RAW MATERIALS (NORMAL)",
-                    "PLANET RESOURCE LIMITS (NORMAL)",
+                    "PLANET ENERGY",
+                    "RAW MATERIALS",
+                    "PLANET RESOURCE LIMITS",
                     "RIM COLONIZATION",
                     "STARTING PLANET SUPPORT",
                     "MINE GENERATION",
@@ -1150,7 +1150,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform previousRow = (RectTransform)
                 transforms.Single(candidate => candidate.name == "Setting-weak-core-worlds");
             RectTransform section = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY-(NORMAL)");
+                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY");
 
             Assert.AreEqual(
                 -previousRow.anchoredPosition.y + previousRow.sizeDelta.y + 8f,
