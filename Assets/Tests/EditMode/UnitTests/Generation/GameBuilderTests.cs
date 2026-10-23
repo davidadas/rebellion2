@@ -177,6 +177,49 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_CustomGarrisonRules_AppliesRuntimeConfiguration()
+        {
+            int authoredThreshold = TestContent.Data.GameConfig.AI.Garrison.SupportThreshold;
+            int authoredDivisor = TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor;
+            int authoredMultiplier = TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 70,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 3,
+                    },
+                },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.AreEqual(70, game.Config.AI.Garrison.SupportThreshold);
+            Assert.AreEqual(5, game.Config.AI.Garrison.GarrisonDivisor);
+            Assert.AreEqual(3, game.Config.AI.Garrison.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                TestContent.Data.GameConfig.AI.Garrison.SupportThreshold
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor
+            );
+            Assert.AreEqual(
+                authoredMultiplier,
+                TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier
+            );
+        }
+
+        [Test]
         public void Build_FactionModifierOverride_AppliesToGeneratedFactionOnly()
         {
             Faction template = TestContent.Data.Factions[0];

@@ -108,6 +108,8 @@ namespace Rebellion.Generation
             GameGenerationConfig generationConfig =
                 _summary.CustomSettings?.GenerationConfig?.GetDeepCopy()
                 ?? _gameData.GenerationConfig.GetDeepCopy();
+            GameConfig gameConfig = _gameData.GameConfig.GetDeepCopy();
+            _summary.CustomSettings?.ApplyRuntimeRules(gameConfig);
             Faction[] factions = _gameData.Factions.GetDeepCopy();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
@@ -115,7 +117,7 @@ namespace Rebellion.Generation
             {
                 Summary = _summary,
                 Config = generationConfig,
-                GameConfig = _gameData.GameConfig.GetDeepCopy(),
+                GameConfig = gameConfig,
                 Rng = _randomProvider,
 
                 Sectors = sectors,

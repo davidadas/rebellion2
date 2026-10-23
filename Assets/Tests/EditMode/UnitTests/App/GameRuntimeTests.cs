@@ -168,6 +168,32 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartLoadedGame_CustomGarrisonRules_RestoresRuntimeConfiguration()
+        {
+            int authoredThreshold = _contentPack.GameData.GameConfig.AI.Garrison.SupportThreshold;
+            GameRoot game = CreateGame();
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                GarrisonRules = new GarrisonRuleSettings
+                {
+                    SupportThreshold = 70,
+                    SupportDeficitPerRegiment = 5,
+                    UprisingMultiplier = 3,
+                },
+            };
+
+            GameSession session = _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(70, session.Game.Config.AI.Garrison.SupportThreshold);
+            Assert.AreEqual(5, session.Game.Config.AI.Garrison.GarrisonDivisor);
+            Assert.AreEqual(3, session.Game.Config.AI.Garrison.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                _contentPack.GameData.GameConfig.AI.Garrison.SupportThreshold
+            );
+        }
+
+        [Test]
         public void StartLoadedGame_SerializedGalaxyLayout_RestoresActiveContentCoordinates()
         {
             GameRoot game = CreateGameWithStaleGalaxyLayout();
