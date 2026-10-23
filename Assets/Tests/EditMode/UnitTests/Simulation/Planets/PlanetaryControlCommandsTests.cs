@@ -196,6 +196,32 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ChangePopularSupport_EnemySectorSuppression_AppliesFullShift()
+        {
+            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            _empire.Settings.SupportResistance = SupportChange.Decrease;
+            Fleet fleet = new Fleet { OwnerInstanceID = _rebels.InstanceID };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _rebels.InstanceID,
+                    SectorSuppression = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
+                fleet
+            );
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 50);
+
+            _commands.ChangePopularSupport(_targetPlanet, _empire, -10);
+
+            Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
         public void TransferPlanet_OwnershipTransition_ReportsBeforeAndAfterOwnerMutation()
         {
             string ownerWhileChanging = "not-called";
