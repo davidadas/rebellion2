@@ -50,9 +50,11 @@ public sealed class GraphicsManager : IDisposable
         >();
     private readonly Func<bool> _frameGenerationAvailability;
     private readonly Action<UserFrameGenerationMode> _setFrameGenerationMode;
+    private readonly Action<bool> _setFrameGenerationPaused;
 
     private UserAntiAliasingMode _antiAliasingMode;
     private bool _frameGenerationEnabled;
+    private bool _frameGenerationPresentationPaused;
     private bool _ambientOcclusionEnabled = true;
     private bool _bloomEnabled = true;
     private bool _motionBlurEnabled = true;
@@ -90,10 +92,12 @@ public sealed class GraphicsManager : IDisposable
     /// <param name="owner">The application lifetime transform.</param>
     /// <param name="frameGenerationAvailability">The runtime Frame Generation capability source.</param>
     /// <param name="setFrameGenerationMode">The native Frame Generation setting sink.</param>
+    /// <param name="setFrameGenerationPaused">The native Frame Generation presentation pause sink.</param>
     public GraphicsManager(
         Transform owner,
         Func<bool> frameGenerationAvailability = null,
-        Action<UserFrameGenerationMode> setFrameGenerationMode = null
+        Action<UserFrameGenerationMode> setFrameGenerationMode = null,
+        Action<bool> setFrameGenerationPaused = null
     )
     {
         _runtimeVolumeObject = new GameObject(_runtimeVolumeName, typeof(Volume));
@@ -125,6 +129,7 @@ public sealed class GraphicsManager : IDisposable
         _frameGenerationAvailability =
             frameGenerationAvailability ?? GetFrameGenerationAvailability;
         _setFrameGenerationMode = setFrameGenerationMode ?? SetFrameGenerationMode;
+        _setFrameGenerationPaused = setFrameGenerationPaused ?? SetFrameGenerationPaused;
 
         SceneManager.sceneLoaded += HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
@@ -162,6 +167,7 @@ public sealed class GraphicsManager : IDisposable
         _setFrameGenerationMode(
             _frameGenerationEnabled ? frameGenerationMode : UserFrameGenerationMode.Off
         );
+        _setFrameGenerationPaused(!_frameGenerationEnabled || _frameGenerationPresentationPaused);
         _ambientOcclusionEnabled = settings.AmbientOcclusion;
         _bloomEnabled = settings.Bloom;
         _motionBlurEnabled = settings.MotionBlur;
@@ -189,6 +195,7 @@ public sealed class GraphicsManager : IDisposable
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
         _setFrameGenerationMode(UserFrameGenerationMode.Off);
+        _setFrameGenerationPaused(true);
         RestoreFrameGenerationFrameSettings();
         DestroyObject(_runtimeVolumeProfile);
         DestroyObject(_runtimeVolumeObject);
@@ -220,6 +227,28 @@ public sealed class GraphicsManager : IDisposable
         if (_frameGenerationEnabled && _frameGeneration)
             _frameGeneration.PauseFrameGeneration();
 #endif
+    }
+
+    /// <summary>
+    /// Suspends interpolated presentation while full-screen video or equivalent UI owns the
+    /// backbuffer.
+    /// </summary>
+    internal void PauseFrameGenerationPresentation()
+    {
+        _frameGenerationPresentationPaused = true;
+        if (_frameGenerationEnabled)
+            _setFrameGenerationPaused(true);
+    }
+
+    /// <summary>
+    /// Restores interpolated presentation after full-screen video or equivalent UI releases the
+    /// backbuffer.
+    /// </summary>
+    internal void ResumeFrameGenerationPresentation()
+    {
+        _frameGenerationPresentationPaused = false;
+        if (_frameGenerationEnabled)
+            _setFrameGenerationPaused(false);
     }
 
     /// <summary>
@@ -487,15 +516,21 @@ public sealed class GraphicsManager : IDisposable
         if (!_frameGeneration)
             return;
 
-        if (mode == UserFrameGenerationMode.On)
-        {
-            _frameGeneration.SetFrameGeneration(FrameGenName.DLSS);
-            _frameGeneration.UnpauseFrameGeneration();
-        }
-        else
-        {
-            _frameGeneration.DisableFrameGeneration();
-        }
+        _frameGeneration.ApplyMode(mode);
+#endif
+    }
+
+    /// <summary>
+    /// Applies the application presentation pause state to the native Frame Generation controller.
+    /// </summary>
+    /// <param name="paused">Whether interpolation must stop without switching providers.</param>
+    private void SetFrameGenerationPaused(bool paused)
+    {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        if (!_frameGeneration)
+            return;
+
+        _frameGeneration.ApplyPresentationPause(paused);
 #endif
     }
 
@@ -548,12 +583,63 @@ public sealed class GraphicsManager : IDisposable
 /// </summary>
 internal sealed class FrameGenerationController : TNDFrameGeneration
 {
+    private UserFrameGenerationMode _applicationMode = UserFrameGenerationMode.Off;
+    private bool _applicationPaused = true;
+    private bool _started;
+
     /// <summary>
-    /// Enables frame presentation without issuing a second provider switch after settings load.
+    /// Stores and applies the Frame Generation mode selected by application settings.
+    /// </summary>
+    /// <param name="mode">The selected application mode.</param>
+    internal void ApplyMode(UserFrameGenerationMode mode)
+    {
+        _applicationMode = mode;
+        if (_started)
+            ApplyApplicationMode();
+    }
+
+    /// <summary>
+    /// Stores and applies whether application presentation currently permits generated frames.
+    /// </summary>
+    /// <param name="paused">Whether generated-frame presentation must remain paused.</param>
+    internal void ApplyPresentationPause(bool paused)
+    {
+        _applicationPaused = paused;
+        if (_started)
+            ApplyApplicationPause();
+    }
+
+    /// <summary>
+    /// Initializes the package controller before restoring application-owned settings.
     /// </summary>
     protected override void Start()
     {
-        UnpauseFrameGeneration();
+        base.Start();
+        _started = true;
+        ApplyApplicationMode();
+        ApplyApplicationPause();
+    }
+
+    /// <summary>
+    /// Applies the stored application mode to the initialized package controller.
+    /// </summary>
+    private void ApplyApplicationMode()
+    {
+        if (_applicationMode == UserFrameGenerationMode.On)
+            SetFrameGeneration(FrameGenName.DLSS);
+        else
+            DisableFrameGeneration();
+    }
+
+    /// <summary>
+    /// Applies the stored application presentation state to the initialized package controller.
+    /// </summary>
+    private void ApplyApplicationPause()
+    {
+        if (_applicationPaused)
+            PauseFrameGeneration();
+        else
+            UnpauseFrameGeneration();
     }
 }
 #endif
