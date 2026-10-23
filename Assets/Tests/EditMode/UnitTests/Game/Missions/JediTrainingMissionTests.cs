@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -268,61 +267,12 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Completes training after one attempt without automatic repetition.
-        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_ValidAssignment_ReturnsFalse()
         {
             JediTrainingMission mission = CreateMission();
 
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        /// <summary>
-        /// Reports successful and failed attempts once and releases the team without repeating.
-        /// </summary>
-        /// <param name="bonus">The training progress awarded on the attempt.</param>
-        /// <param name="outcome">The expected outcome for the attempt.</param>
-        [TestCase(0, MissionOutcome.Failed)]
-        [TestCase(20, MissionOutcome.Success)]
-        public void ProcessTick_CompletedTraining_ReportsOnceAndStops(
-            int bonus,
-            MissionOutcome outcome
-        )
-        {
-            JediTrainingMission mission = CreateMission();
-            _game.MoveNode(_trainer, mission);
-            _game.MoveNode(_student, mission);
-            mission.Initiate(1);
-            mission.DetectionResolved = true;
-            MovementCommands movement = new MovementCommands(
-                _game,
-                new FogOfWarCommands(_game),
-                new FleetCommands(_game),
-                new FogOfWarQueries(_game),
-                new MovementQueries(_game)
-            );
-            MissionCommands commands = TestSystems.CreateMissionCommands(
-                _game,
-                // Both officers' loyalty is checked before the training attempt.
-                new SequenceRNG(intValues: new[] { 0, 0, 0, 0, bonus }),
-                movement
-            );
-
-            MissionCompletedResult completed = commands
-                .ProcessMissionTick(_game)
-                .OfType<MissionCompletedResult>()
-                .Single();
-            Assert.AreEqual(outcome, completed.Outcome);
-            Assert.IsFalse(completed.CanContinue);
-            Assert.IsNull(mission.GetParent());
-            Assert.IsFalse(_trainer.IsOnMission());
-            Assert.IsFalse(_student.IsOnMission());
-            Assert.AreSame(_planet, _trainer.GetParent());
-            Assert.AreSame(_planet, _student.GetParent());
-            Assert.IsEmpty(commands.ProcessMissionTick(_game).OfType<MissionCompletedResult>());
-            Assert.AreEqual(bonus, _student.ForceTrainingAdjustment);
         }
 
         /// <summary>

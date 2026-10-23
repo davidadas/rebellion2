@@ -677,6 +677,25 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ShouldRepeatAfterCompletion_RepeatSelection_ReturnsSelection(bool repeatEnabled)
+        {
+            EspionageMission mission = new EspionageMission { IsRepeating = repeatEnabled };
+
+            Assert.AreEqual(repeatEnabled, mission.ShouldRepeatAfterCompletion(null));
+        }
+
+        [Test]
+        public void CreateCopy_RepeatingMission_PreservesRepeatSelection()
+        {
+            EspionageMission mission = new EspionageMission { IsRepeating = true };
+
+            EspionageMission copy = (EspionageMission)mission.CreateCopy();
+
+            Assert.IsTrue(copy.IsRepeating);
+        }
+
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
@@ -693,6 +712,7 @@ namespace Rebellion.Tests.Game.Missions
                 CurrentProgress = 5,
                 DetectionResolved = true,
                 PreObjectiveEncounterResolved = true,
+                IsRepeating = true,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -707,6 +727,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(5, deserialized.CurrentProgress);
             Assert.IsTrue(deserialized.DetectionResolved);
             Assert.IsTrue(deserialized.PreObjectiveEncounterResolved);
+            Assert.IsTrue(((EspionageMission)deserialized).IsRepeating);
         }
 
         /// <summary>

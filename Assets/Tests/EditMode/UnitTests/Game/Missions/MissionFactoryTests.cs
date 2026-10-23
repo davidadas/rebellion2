@@ -88,6 +88,47 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_RepeatingEspionage_ReturnsRepeatingMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(
+                game,
+                EspionageMission.MissionTypeID,
+                "empire",
+                officer,
+                planet
+            );
+            context.IsRepeating = true;
+
+            bool created = factory.TryCreateMission(context, out Mission mission);
+
+            Assert.IsTrue(created);
+            Assert.IsTrue(((EspionageMission)mission).IsRepeating);
+        }
+
+        [Test]
+        public void TryCreateMission_RepeatingSabotage_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            MissionContext context = CreateContext(
+                game,
+                SabotageMission.MissionTypeID,
+                "empire",
+                officer,
+                planet,
+                selectedTarget: target
+            );
+            context.IsRepeating = true;
+
+            bool created = factory.TryCreateMission(context, out Mission mission);
+
+            Assert.IsFalse(created);
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void TryCreateMission_SabotageTargetUnderConstruction_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

@@ -115,24 +115,21 @@ namespace Rebellion.Game.Missions
                 "Rescue",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 SabotageMission.MissionTypeID,
                 "Sabotage",
                 SkillRating.Combat,
                 MissionTargetKind.Manufacturable,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 AbductionMission.MissionTypeID,
                 "Abduction",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 SubdueUprisingMission.MissionTypeID,
@@ -145,8 +142,7 @@ namespace Rebellion.Game.Missions
                 "Assassination",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 InciteUprisingMission.MissionTypeID,
@@ -235,7 +231,11 @@ namespace Rebellion.Game.Missions
                 candidate.MissionTypeID == context.MissionTypeID
                 && candidate.Discipline == context.Discipline
             );
-            if (option == null || !AcceptsTarget(context, option.TargetKind))
+            if (
+                option == null
+                || !AcceptsTarget(context, option.TargetKind)
+                || (context.IsRepeating && !option.CanRepeat)
+            )
                 return false;
 
             MissionContext resolvedContext = new MissionContext

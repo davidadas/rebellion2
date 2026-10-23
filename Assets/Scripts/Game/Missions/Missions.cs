@@ -899,10 +899,25 @@ namespace Rebellion.Game.Missions
         public const string MissionTypeID = "Espionage";
 
         /// <summary>
+        /// Gets or sets whether the mission starts another objective attempt after completion.
+        /// </summary>
+        public bool IsRepeating { get; set; }
+
+        /// <summary>
         /// Creates an empty espionage mission copy.
         /// </summary>
         /// <returns>An empty espionage mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();
+
+        /// <summary>
+        /// Copies espionage mission state into an empty mission destination.
+        /// </summary>
+        /// <param name="destination">The destination mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((EspionageMission)destination).IsRepeating = IsRepeating;
+        }
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -922,11 +937,13 @@ namespace Rebellion.Game.Missions
         /// <param name="target">Planet where the mission occurs.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="isRepeating">Whether the mission repeats its objective in place.</param>
         private EspionageMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
+            List<IMissionParticipant> decoyParticipants,
+            bool isRepeating
         )
             : base(
                 MissionTypeID,
@@ -935,7 +952,10 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 SkillRating.Espionage
-            ) { }
+            )
+        {
+            IsRepeating = isRepeating;
+        }
 
         /// <summary>
         /// Returns a new EspionageMission if the target is a visited planet, or null.
@@ -954,8 +974,19 @@ namespace Rebellion.Game.Missions
                 ctx.OwnerInstanceId,
                 ctx.Location,
                 ctx.MainParticipants,
-                ctx.DecoyParticipants
+                ctx.DecoyParticipants,
+                ctx.IsRepeating
             );
+        }
+
+        /// <summary>
+        /// Starts another objective attempt while retaining the completed encounter state.
+        /// </summary>
+        /// <param name="maxProgress">The rolled duration of the next attempt.</param>
+        internal override void Repeat(int maxProgress)
+        {
+            CurrentProgress = 0;
+            MaxProgress = maxProgress;
         }
 
         /// <summary>
@@ -1117,13 +1148,13 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Espionage missions do not repeat after one attempt.
+        /// Returns whether the selected espionage mission repeats after an attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>Always false.</returns>
+        /// <returns>True when repeated attempts were selected.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
-            return false;
+            return IsRepeating;
         }
     }
 
