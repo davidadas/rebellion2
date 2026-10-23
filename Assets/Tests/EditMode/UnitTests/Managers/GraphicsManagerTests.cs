@@ -156,6 +156,60 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual((int)UserFrameGenerationMode.On, settings.FrameGenerationMode);
         }
 
+        [Test]
+        public void PauseFrameGenerationPresentation_ActiveMode_PausesAndResumesNativePresentation()
+        {
+            bool? presentationPaused = null;
+            _manager.Dispose();
+            _manager = new GraphicsManager(
+                _owner.transform,
+                () => true,
+                _ => { },
+                paused => presentationPaused = paused
+            );
+            _manager.Apply(
+                new UserVideoSettings
+                {
+                    QualityLevel = _originalQualityLevel,
+                    FullScreenMode = (int)FullScreenMode.FullScreenWindow,
+                    FrameGenerationMode = (int)UserFrameGenerationMode.On,
+                }
+            );
+
+            _manager.PauseFrameGenerationPresentation();
+
+            Assert.IsTrue(presentationPaused);
+
+            _manager.ResumeFrameGenerationPresentation();
+
+            Assert.IsFalse(presentationPaused);
+        }
+
+        [Test]
+        public void Apply_FrameGenerationSelectedWhilePresentationPaused_KeepsNativePresentationPaused()
+        {
+            bool? presentationPaused = null;
+            _manager.Dispose();
+            _manager = new GraphicsManager(
+                _owner.transform,
+                () => true,
+                _ => { },
+                paused => presentationPaused = paused
+            );
+            _manager.PauseFrameGenerationPresentation();
+
+            _manager.Apply(
+                new UserVideoSettings
+                {
+                    QualityLevel = _originalQualityLevel,
+                    FullScreenMode = (int)FullScreenMode.FullScreenWindow,
+                    FrameGenerationMode = (int)UserFrameGenerationMode.On,
+                }
+            );
+
+            Assert.IsTrue(presentationPaused);
+        }
+
         /// <summary>
         /// Verifies that vertical synchronization owns frame pacing when both persisted controls
         /// have values.

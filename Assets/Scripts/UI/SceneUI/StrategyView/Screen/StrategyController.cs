@@ -2205,7 +2205,7 @@ public sealed class StrategyController
     {
         session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
         session?.GetService<NamingCommands>()?.ProcessFaction(faction);
-        dirty = true;
+        RefreshStrategyState();
     }
 
     /// <summary>
