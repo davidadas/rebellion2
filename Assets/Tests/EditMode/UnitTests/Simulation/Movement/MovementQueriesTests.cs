@@ -317,6 +317,33 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CalculateTransitTicks_TinyDistanceDivisor_SaturatesDuration()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 0.00000001,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
+                config
+            );
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            ship.Hyperdrive = 100;
+
+            int transitTicks = movement.CalculateTransitTicks(ship, origin, destination);
+
+            Assert.AreEqual(int.MaxValue, transitTicks);
+        }
+
+        [Test]
         public void CalculateTransitTicks_Officer_UsesConfiguredOfficerHyperdrive()
         {
             GameConfig config = new GameConfig

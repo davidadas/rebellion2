@@ -77,8 +77,8 @@ namespace Rebellion.Tests.Managers
                 loaded.CustomSettings.GarrisonRules.UprisingMultiplier
             );
             Assert.AreEqual(
-                summary.CustomSettings.MovementRules.TravelSpeedPercent,
-                loaded.CustomSettings.MovementRules.TravelSpeedPercent
+                summary.CustomSettings.DistanceDivisor,
+                loaded.CustomSettings.DistanceDivisor
             );
         }
 
@@ -130,13 +130,13 @@ namespace Rebellion.Tests.Managers
                     PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
                     AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
                     GenerationConfig = CreateGenerationConfig(),
+                    DistanceDivisor = 6.5,
                     GarrisonRules = new GarrisonRuleSettings
                     {
                         SupportThreshold = 70,
                         SupportDeficitPerRegiment = 5,
                         UprisingMultiplier = 3,
                     },
-                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
                 },
             };
         }

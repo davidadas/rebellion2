@@ -83,7 +83,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     SupportDeficitPerRegiment = 5,
                     UprisingMultiplier = 3,
                 },
-                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
             };
 
             view.Initialize(TestContent.Pack, summary);
@@ -94,7 +93,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("70", Input("garrison-support-threshold", "World").text);
             Assert.AreEqual("5", Input("garrison-support-deficit-per-regiment", "World").text);
             Assert.AreEqual("3", Input("garrison-uprising-multiplier", "World").text);
-            Assert.AreEqual("150", Input("travel-speed", "World").text);
         }
 
         [Test]
@@ -415,13 +413,91 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 ((RectTransform)SeedResetButton().transform).anchoredPosition.y
             );
             CollectionAssert.AreEqual(
-                new[] { "CAMPAIGN", "EVENTS" },
+                new[] { "CAMPAIGN", "GAME RULES", "EVENTS" },
                 instance
                     .GetComponentsInChildren<TMP_Text>()
                     .Where(text => text.name.StartsWith("Section-", StringComparison.Ordinal))
                     .Select(text => text.text)
                     .ToArray()
             );
+        }
+
+        [Test]
+        public void SelectCategory_GameSetup_ShowsTravelTimeDivisor()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            TMP_InputField input = TravelTimeInput();
+            Assert.AreEqual("2.5", input.text);
+            Assert.AreEqual(
+                "Travel Time Divisor",
+                input.transform.parent.Find("Label").GetComponent<TMP_Text>().text
+            );
+            Assert.AreEqual(
+                "Divides map distance when calculating travel time. Higher is faster. Must be greater than 0.",
+                input.transform.parent.Find("Description").GetComponent<TMP_Text>().text
+            );
+        }
+
+        [Test]
+        public void EditTravelTimeDivisor_ValidValue_PublishesOverride()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            TravelTimeInput().onEndEdit.Invoke("7.5");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(7.5, launched.CustomSettings.DistanceDivisor);
+            Assert.AreEqual(ModifiedTextColor, TravelTimeInput().textComponent.color);
+        }
+
+        [Test]
+        public void ApplyTravelTimeDivisor_UntouchedValue_PreservesContentInheritance()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            ApplyButton().onClick.Invoke();
+
+            Assert.IsNull(launched.CustomSettings.DistanceDivisor);
+        }
+
+        [TestCase("0")]
+        [TestCase("NaN")]
+        [TestCase("Infinity")]
+        [TestCase("bad")]
+        public void EditTravelTimeDivisor_InvalidValue_RetainsPreviousValue(string invalid)
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            TravelTimeInput().onEndEdit.Invoke(invalid);
+
+            Assert.AreEqual("2.5", TravelTimeInput().text);
+        }
+
+        [Test]
+        public void ResetTravelTimeDivisor_ModifiedValue_RestoresContentDefault()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            TravelTimeInput().onEndEdit.Invoke("7.5");
+
+            TravelTimeResetButton().onClick.Invoke();
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual("2.5", TravelTimeInput().text);
+            Assert.AreEqual(DefaultTextColor, TravelTimeInput().textComponent.color);
+            Assert.IsNull(launched.CustomSettings.DistanceDivisor);
         }
 
         [Test]
@@ -1179,7 +1255,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "STARTING FACILITIES",
                     "STARTING GARRISONS AND SUPPORT",
                     "LIVE GARRISON REQUIREMENTS",
-                    "MOVEMENT",
                 },
                 labels
             );
@@ -1505,25 +1580,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Apply_EditedMovementRule_PublishesRuntimeOverrideWithoutMutatingContent()
-        {
-            GameSummary applied = null;
-            double authoredDivisor = TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor;
-            view.StartRequested += (_, launchSummary) => applied = launchSummary;
-            view.Initialize(TestContent.Pack, summary);
-            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
-
-            Input("travel-speed", "World").onEndEdit.Invoke("150");
-            ApplyButton().onClick.Invoke();
-
-            Assert.AreEqual(150, applied.CustomSettings.MovementRules.TravelSpeedPercent);
-            Assert.AreEqual(
-                authoredDivisor,
-                TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor
-            );
-        }
-
-        [Test]
         public void EditGenerationValue_InvalidResourceRange_RetainsPreviousValue()
         {
             view.Initialize(TestContent.Pack, summary);
@@ -1817,6 +1873,22 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// <returns>The active new-seed button.</returns>
         private Button SeedResetButton() =>
             SeedInput().transform.parent.Find("WorldReset").GetComponent<Button>();
+
+        /// <summary>
+        /// Finds the editable strategic travel-time divisor on the setup page.
+        /// </summary>
+        /// <returns>The active travel-time divisor input.</returns>
+        private TMP_InputField TravelTimeInput() =>
+            instance
+                .GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.transform.parent.name == "Setup-travel-time");
+
+        /// <summary>
+        /// Finds the button that restores the strategic travel-time divisor.
+        /// </summary>
+        /// <returns>The active travel-time reset button.</returns>
+        private Button TravelTimeResetButton() =>
+            TravelTimeInput().transform.parent.Find("WorldReset").GetComponent<Button>();
 
         /// <summary>
         /// Finds the displayed value for one Game Setup selector.

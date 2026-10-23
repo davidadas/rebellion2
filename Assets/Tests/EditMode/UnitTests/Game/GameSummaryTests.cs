@@ -114,13 +114,13 @@ namespace Rebellion.Tests.Game
                         DetectionRatingMultiplier = 1.25,
                     },
                     GenerationConfig = generationConfig,
+                    DistanceDivisor = 6.5,
                     GarrisonRules = new GarrisonRuleSettings
                     {
                         SupportThreshold = 70,
                         SupportDeficitPerRegiment = 5,
                         UprisingMultiplier = 3,
                     },
-                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
                 },
             };
 
@@ -192,10 +192,10 @@ namespace Rebellion.Tests.Game
                 deserialized.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
                 "Generation overrides should be correctly deserialized."
             );
+            Assert.AreEqual(6.5, deserialized.CustomSettings.DistanceDivisor);
             Assert.AreEqual(70, deserialized.CustomSettings.GarrisonRules.SupportThreshold);
             Assert.AreEqual(5, deserialized.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
             Assert.AreEqual(3, deserialized.CustomSettings.GarrisonRules.UprisingMultiplier);
-            Assert.AreEqual(150, deserialized.CustomSettings.MovementRules.TravelSpeedPercent);
             Assert.IsTrue(deserialized.IsCustomGame);
         }
     }

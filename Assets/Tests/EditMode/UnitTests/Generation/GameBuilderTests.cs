@@ -220,9 +220,9 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_CustomMovementRules_AppliesTravelSpeedWithoutMutatingContent()
+        public void Build_CustomDistanceDivisor_AppliesRuntimeConfiguration()
         {
-            double authoredDivisor = TestContent.Data.GameConfig.Movement.DistanceDivisor;
+            double authored = TestContent.Data.GameConfig.Movement.DistanceDivisor;
             GameSummary summary = new GameSummary
             {
                 GalaxySize = _size,
@@ -230,16 +230,13 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                CustomSettings = new CustomGameSettings
-                {
-                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
-                },
+                CustomSettings = new CustomGameSettings { DistanceDivisor = 7.5 },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
 
-            Assert.AreEqual(authoredDivisor * 1.5d, game.Config.Movement.DistanceDivisor, 0.0001d);
-            Assert.AreEqual(authoredDivisor, TestContent.Data.GameConfig.Movement.DistanceDivisor);
+            Assert.AreEqual(7.5, game.Config.Movement.DistanceDivisor);
+            Assert.AreEqual(authored, TestContent.Data.GameConfig.Movement.DistanceDivisor);
         }
 
         [Test]

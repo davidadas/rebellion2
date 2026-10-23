@@ -194,26 +194,16 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void StartLoadedGame_CustomMovementRules_RestoresRuntimeConfiguration()
+        public void StartLoadedGame_CustomDistanceDivisor_RestoresRuntimeConfiguration()
         {
-            double authoredDivisor = _contentPack.GameData.GameConfig.Movement.DistanceDivisor;
+            double authored = _contentPack.GameData.GameConfig.Movement.DistanceDivisor;
             GameRoot game = CreateGame();
-            game.Summary.CustomSettings = new CustomGameSettings
-            {
-                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
-            };
+            game.Summary.CustomSettings = new CustomGameSettings { DistanceDivisor = 7.5 };
 
             GameSession session = _runtime.StartLoadedGame(game);
 
-            Assert.AreEqual(
-                authoredDivisor * 1.5d,
-                session.Game.Config.Movement.DistanceDivisor,
-                0.0001d
-            );
-            Assert.AreEqual(
-                authoredDivisor,
-                _contentPack.GameData.GameConfig.Movement.DistanceDivisor
-            );
+            Assert.AreEqual(7.5, session.Game.Config.Movement.DistanceDivisor);
+            Assert.AreEqual(authored, _contentPack.GameData.GameConfig.Movement.DistanceDivisor);
         }
 
         [Test]

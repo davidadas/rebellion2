@@ -616,6 +616,12 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         );
         contentOffset += ConfigureSeedRow(rowIndex++, contentOffset);
 
+        contentOffset += _sectionSpacing - _rowSpacing;
+        GameObject rulesSection = GetGenerationSectionRow(sectionIndex++);
+        ConfigureGenerationSectionRow(rulesSection, "GAME RULES", contentOffset);
+        contentOffset += _sectionStride;
+        contentOffset += ConfigureDistanceDivisorRow(rowIndex++, contentOffset);
+
         if (settingsSession.EventCategories.Count > 0)
         {
             contentOffset += _sectionSpacing - _rowSpacing;
@@ -707,6 +713,43 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Button randomize = row.transform.Find("WorldReset").GetComponent<Button>();
         randomize.onClick.RemoveAllListeners();
         randomize.onClick.AddListener(RandomizeSeed);
+        return rowAdvance;
+    }
+
+    /// <summary>
+    /// Configures the campaign-wide movement distance divisor and its reset button.
+    /// </summary>
+    /// <param name="index">The row index.</param>
+    /// <param name="contentOffset">The vertical position within the scroll content.</param>
+    /// <returns>The vertical advance through the row and following gap.</returns>
+    private float ConfigureDistanceDivisorRow(int index, float contentOffset)
+    {
+        GameObject row = GetRow(index);
+        row.name = "Setup-travel-time";
+        row.SetActive(true);
+        float rowAdvance = ConfigureTextRow(
+            row,
+            contentOffset,
+            "Travel Time Divisor",
+            "Divides map distance when calculating travel time. Higher is faster. Must be greater than 0.",
+            _defaultLabelWidth
+        );
+        SetDifficultyControlsVisible(row.transform, false);
+
+        TMP_InputField input = row.transform.Find("WorldValue").GetComponent<TMP_InputField>();
+        input.contentType = TMP_InputField.ContentType.DecimalNumber;
+        input.onEndEdit.RemoveAllListeners();
+        input.SetTextWithoutNotify(
+            settingsSession.GetDistanceDivisor().ToString(CultureInfo.InvariantCulture)
+        );
+        input.textComponent.color = settingsSession.IsDistanceDivisorDefault()
+            ? _textColor
+            : _modifiedTextColor;
+        input.onEndEdit.AddListener(EditDistanceDivisor);
+
+        Button reset = row.transform.Find("WorldReset").GetComponent<Button>();
+        reset.onClick.RemoveAllListeners();
+        reset.onClick.AddListener(ResetDistanceDivisor);
         return rowAdvance;
     }
 
@@ -1725,11 +1768,30 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Updates the campaign-wide movement distance divisor when the entered value is valid.
+    /// </summary>
+    /// <param name="text">The entered divisor.</param>
+    private void EditDistanceDivisor(string text)
+    {
+        settingsSession.TrySetDistanceDivisor(text);
+        SelectCategory(NewGameSettingsCategory.GameSetup);
+    }
+
+    /// <summary>
     /// Selects a newly generated game seed and refreshes the setup page.
     /// </summary>
     private void RandomizeSeed()
     {
         settingsSession.RandomizeSeed();
+        SelectCategory(NewGameSettingsCategory.GameSetup);
+    }
+
+    /// <summary>
+    /// Restores the movement distance divisor to the active content default.
+    /// </summary>
+    private void ResetDistanceDivisor()
+    {
+        settingsSession.ResetDistanceDivisor();
         SelectCategory(NewGameSettingsCategory.GameSetup);
     }
 

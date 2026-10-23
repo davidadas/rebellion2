@@ -58,8 +58,8 @@ internal sealed class CustomGameSettingsSession
     private readonly FacilityGenerationChanceEditor facilityChanceEditor;
     private readonly GarrisonRuleSettings garrisonDefaults;
     private readonly GarrisonRuleSettings garrisonDraft;
-    private readonly MovementRuleSettings movementDefaults;
-    private readonly MovementRuleSettings movementDraft;
+    private readonly double distanceDivisorDefault;
+    private double? distanceDivisorOverrideDraft;
     private string currentDifficultySection;
     private string currentGenerationSection;
 
@@ -115,10 +115,10 @@ internal sealed class CustomGameSettingsSession
         garrisonDraft =
             summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
             ?? garrisonDefaults.GetDeepCopy();
-        movementDefaults = new MovementRuleSettings { TravelSpeedPercent = 100 };
-        movementDraft =
-            summaryDraft.CustomSettings?.MovementRules?.GetDeepCopy()
-            ?? movementDefaults.GetDeepCopy();
+        distanceDivisorDefault = pack.GameData.GameConfig.Movement.DistanceDivisor;
+        distanceDivisorOverrideDraft = summaryDraft.CustomSettings?.DistanceDivisor;
+        if (distanceDivisorOverrideDraft == distanceDivisorDefault)
+            distanceDivisorOverrideDraft = null;
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
         eventCategories = pack
@@ -261,6 +261,46 @@ internal sealed class CustomGameSettingsSession
     internal void ResetGenerationValue(GenerationEntry entry) => entry.Write(entry.ReadDefault());
 
     /// <summary>
+    /// Returns the campaign-wide movement distance divisor.
+    /// </summary>
+    /// <returns>The current movement distance divisor.</returns>
+    internal double GetDistanceDivisor() => distanceDivisorOverrideDraft ?? distanceDivisorDefault;
+
+    /// <summary>
+    /// Returns whether the movement distance divisor matches the active content default.
+    /// </summary>
+    /// <returns>True when the current distance divisor is unchanged.</returns>
+    internal bool IsDistanceDivisorDefault() => !distanceDivisorOverrideDraft.HasValue;
+
+    /// <summary>
+    /// Applies a validated campaign-wide movement distance divisor.
+    /// </summary>
+    /// <param name="text">The entered divisor.</param>
+    /// <returns>True when the divisor was accepted.</returns>
+    internal bool TrySetDistanceDivisor(string text)
+    {
+        if (
+            !double.TryParse(
+                text,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out double value
+            )
+            || !double.IsFinite(value)
+            || value <= 0
+        )
+            return false;
+
+        distanceDivisorOverrideDraft = value == distanceDivisorDefault ? null : value;
+        return true;
+    }
+
+    /// <summary>
+    /// Restores the movement distance divisor to the active content default.
+    /// </summary>
+    internal void ResetDistanceDivisor() => distanceDivisorOverrideDraft = null;
+
+    /// <summary>
     /// Applies a manually entered deterministic game seed.
     /// </summary>
     /// <param name="text">The entered signed integer.</param>
@@ -371,6 +411,7 @@ internal sealed class CustomGameSettingsSession
             generationDraft.DisabledEventCategories =
                 generationDefaults.DisabledEventCategories?.ToList()
                 ?? new List<GameEventCategory>();
+            distanceDivisorOverrideDraft = null;
             summaryDraft.Seed = summaryDefaults.Seed;
             UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
             BuildGenerationEntries(activePack, summaryDraft);
@@ -407,7 +448,7 @@ internal sealed class CustomGameSettingsSession
             AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
             GenerationConfig = generationDraft.GetDeepCopy(),
             GarrisonRules = garrisonDraft.GetDeepCopy(),
-            MovementRules = movementDraft.GetDeepCopy(),
+            DistanceDivisor = distanceDivisorOverrideDraft,
         };
         return snapshot;
     }
@@ -658,8 +699,6 @@ internal sealed class CustomGameSettingsSession
         AddUnitAndBalanceEntries();
         currentGenerationSection = "LIVE GARRISON REQUIREMENTS";
         AddGarrisonRuleEntries();
-        currentGenerationSection = "MOVEMENT";
-        AddMovementRuleEntries();
         AddFactionModifierEntries(pack.GameData.Factions);
     }
 
@@ -1511,30 +1550,6 @@ internal sealed class CustomGameSettingsSession
             int.MaxValue,
             rules => rules.UprisingMultiplier,
             (rules, value) => rules.UprisingMultiplier = value
-        );
-    }
-
-    /// <summary>
-    /// Adds the campaign-wide strategic travel-speed control.
-    /// </summary>
-    private void AddMovementRuleEntries()
-    {
-        generationEntries.Add(
-            new GenerationEntry
-            {
-                Category = NewGameSettingsCategory.WorldGeneration,
-                Section = currentGenerationSection,
-                RowKey = "travel-speed",
-                Key = "travel-speed",
-                Label = "Travel Speed %",
-                Description =
-                    "Speed of travel between planets. Higher values shorten travel time. Range: 1% or higher.",
-                Minimum = 1,
-                Maximum = int.MaxValue,
-                Read = () => movementDraft.TravelSpeedPercent,
-                ReadDefault = () => movementDefaults.TravelSpeedPercent,
-                Write = value => movementDraft.TravelSpeedPercent = value,
-            }
         );
     }
 

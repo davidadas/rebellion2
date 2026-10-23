@@ -22,8 +22,8 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(GarrisonRules))]
         private GarrisonRuleSettings _garrisonRules;
 
-        [PersistableMember(Name = nameof(MovementRules))]
-        private MovementRuleSettings _movementRules;
+        [PersistableMember(Name = nameof(DistanceDivisor))]
+        private double? _distanceDivisor;
 
         [PersistableIgnore]
         public DifficultyModifiers PlayerDifficultyModifiers
@@ -54,10 +54,10 @@ namespace Rebellion.Game
         }
 
         [PersistableIgnore]
-        public MovementRuleSettings MovementRules
+        public double? DistanceDivisor
         {
-            get => _movementRules;
-            set => _movementRules = value;
+            get => _distanceDivisor;
+            set => _distanceDivisor = value;
         }
 
         /// <summary>
@@ -97,20 +97,16 @@ namespace Rebellion.Game
                 garrison.UprisingMultiplier = GarrisonRules.UprisingMultiplier;
             }
 
-            if (MovementRules != null)
+            if (DistanceDivisor.HasValue)
             {
-                if (MovementRules.TravelSpeedPercent < 1)
-                    throw new InvalidDataException("Travel speed percent must be positive.");
+                double distanceDivisor = DistanceDivisor.Value;
+                if (!double.IsFinite(distanceDivisor) || distanceDivisor <= 0)
+                    throw new InvalidDataException("Movement distance divisor must be positive.");
 
                 GameConfig.MovementConfig movement =
                     config.Movement
                     ?? throw new InvalidDataException("Runtime movement configuration is missing.");
-                if (movement.DistanceDivisor <= 0)
-                    throw new InvalidDataException(
-                        "Movement distance divisor must be greater than zero."
-                    );
-
-                movement.DistanceDivisor *= MovementRules.TravelSpeedPercent / 100d;
+                movement.DistanceDivisor = distanceDivisor;
             }
         }
     }
@@ -126,14 +122,5 @@ namespace Rebellion.Game
         public int SupportDeficitPerRegiment { get; set; }
 
         public int UprisingMultiplier { get; set; }
-    }
-
-    /// <summary>
-    /// Defines campaign-specific strategic movement rules.
-    /// </summary>
-    [PersistableObject]
-    public sealed class MovementRuleSettings
-    {
-        public int TravelSpeedPercent { get; set; }
     }
 }

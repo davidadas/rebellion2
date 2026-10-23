@@ -1570,8 +1570,9 @@ namespace Rebellion.Simulation
             }
 
             int slowestHyperdriveRating = Math.Max(GetMovementHyperdrive(unit), 1);
+            double distanceTicks = distance / distanceDivisor;
             int baseTicks = IntegerMath.ScaleByPercent(
-                (int)(distance / distanceDivisor),
+                distanceTicks >= int.MaxValue ? int.MaxValue : (int)distanceTicks,
                 slowestHyperdriveRating
             );
             if (unit is Officer)
