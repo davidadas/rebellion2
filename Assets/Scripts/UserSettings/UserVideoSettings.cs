@@ -26,6 +26,8 @@ public enum UserGraphicsSetting
 
     AntiAliasing,
 
+    FrameGeneration,
+
     VerticalSync,
 
     FrameRateLimit,
@@ -56,6 +58,16 @@ public enum UserAntiAliasingMode
 }
 
 /// <summary>
+/// Identifies whether NVIDIA DLSS Frame Generation is enabled for the primary display.
+/// </summary>
+public enum UserFrameGenerationMode
+{
+    Off,
+
+    On,
+}
+
+/// <summary>
 /// Stores user-configurable video settings.
 /// </summary>
 [Serializable]
@@ -68,6 +80,7 @@ public sealed class UserVideoSettings
     public int QualityLevel = DefaultQualityLevel;
     public bool GraphicsPresetCustomized;
     public int AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
+    public int FrameGenerationMode = (int)UserFrameGenerationMode.Off;
     public int FrameRateLimit;
     public bool VerticalSync = true;
     public bool RayTracing;
@@ -80,6 +93,12 @@ public sealed class UserVideoSettings
     public bool ShowPyro = true;
     public bool HighDetail = true;
     public bool ShowHolocube = true;
+
+    /// <summary>
+    /// Gets whether the selected display mode supports Frame Generation.
+    /// </summary>
+    public bool SupportsFrameGeneration =>
+        FullScreenMode != (int)UnityFullScreenMode.ExclusiveFullScreen;
 
     /// <summary>
     /// Normalizes persisted display values without replacing the native-resolution sentinel.
@@ -99,6 +118,8 @@ public sealed class UserVideoSettings
         QualityLevel = Math.Clamp(QualityLevel, 0, DefaultQualityLevel);
         if (!Enum.IsDefined(typeof(UserAntiAliasingMode), AntiAliasingMode))
             AntiAliasingMode = (int)UserAntiAliasingMode.Off;
+        if (!Enum.IsDefined(typeof(UserFrameGenerationMode), FrameGenerationMode))
+            FrameGenerationMode = (int)UserFrameGenerationMode.Off;
         FrameRateLimit = NormalizeFrameRateLimit(FrameRateLimit);
         if (!AmbientOcclusion)
             RayTracing = false;
@@ -169,6 +190,7 @@ public sealed class UserVideoSettings
     public void RestoreGraphicsDefaults()
     {
         ApplyGraphicsPreset(DefaultQualityLevel);
+        FrameGenerationMode = (int)UserFrameGenerationMode.Off;
         FrameRateLimit = 0;
         VerticalSync = true;
         RayTracing = false;

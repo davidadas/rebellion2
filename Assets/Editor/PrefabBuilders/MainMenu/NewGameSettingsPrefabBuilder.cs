@@ -40,9 +40,9 @@ public static class NewGameSettingsPrefabBuilder
             out TextMeshProUGUI header,
             out TextMeshProUGUI title
         );
-        header.enableAutoSizing = true;
-        header.fontSizeMin = 14f;
-        header.fontSizeMax = 19f;
+        header.enableAutoSizing = false;
+        header.fontSize = 22f;
+        SetSourceRect(header.rectTransform, 41, 32, 174, 26);
         title.text = "GAME SETUP";
         RectTransform difficultyPage = CreateLayer("DifficultyPage", contentRoot)
             .GetComponent<RectTransform>();
@@ -161,7 +161,7 @@ public static class NewGameSettingsPrefabBuilder
         RectTransform row = CreateLayer("RowTemplate", parent).GetComponent<RectTransform>();
         SetSourceRect(row, 0, 0, 326, 44);
         TextMeshProUGUI label = CreateTextLabel("Label", row);
-        label.fontSize = 9;
+        label.fontSize = 11;
         label.color = _textColor;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(label.rectTransform, 0, _controlTop, 150, 16);

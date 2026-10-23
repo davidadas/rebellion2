@@ -167,6 +167,86 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DiplomacyParticipantAlreadyKilled_RemovesParticipantAndMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            planet.AddVisitor("empire");
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            system.ProcessMissionTick(game);
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsEmpty(system.ProcessMissionTick(game));
+        }
+
+        [Test]
+        public void ProcessTick_DiplomacyParticipantAlreadyKilledWithSurvivor_ContinuesMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer survivor = new Officer
+            {
+                InstanceID = "survivor",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(survivor, planet);
+            planet.AddVisitor("empire");
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer, survivor },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            game.MoveNode(survivor, mission);
+            mission.Initiate(2);
+            mission.DetectionResolved = true;
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = system.ProcessMissionTick(game);
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(mission, survivor.GetParent());
+            CollectionAssert.AreEqual(
+                new IMissionParticipant[] { survivor },
+                mission.GetMainParticipants(includeDisabled: true)
+            );
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
         public void ProcessTick_ResearchBetrayal_TerminatesRepeatingMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
@@ -2937,7 +3017,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(spy.IsCaptured);
             Assert.Greater(spy.InjuryPoints, 0);
             Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
-            Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
+            Assert.AreSame(mission, results.OfType<OfficerKilledResult>().Single().ParentAtDeath);
         }
 
         [Test]
@@ -3411,10 +3491,11 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.ProcessMissionTick(game);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(target.IsKilled);
             Assert.IsFalse(target.IsActive());
+            Assert.AreSame(planet, results.OfType<OfficerKilledResult>().Single().ParentAtDeath);
             Assert.AreSame(
                 target,
                 game.GetSceneNodeByInstanceID<Officer>(target.InstanceID, includeDisabled: true)
@@ -4184,6 +4265,59 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(aborted);
             Assert.AreEqual(planet, officer.GetParent());
             Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
+        public void AbortMissions_ActiveMissionSelection_AbortsEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer secondOfficer = new Officer { InstanceID = "o2", OwnerInstanceID = "empire" };
+            game.AttachNode(secondOfficer, planet);
+            StubMission firstMission = CreateMission(game, planet, officer);
+            StubMission secondMission = CreateMission(game, planet, secondOfficer);
+            game.MoveNode(officer, firstMission);
+            game.MoveNode(secondOfficer, secondMission);
+            firstMission.Initiate(1);
+            secondMission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(
+                new[] { firstMission.InstanceID, secondMission.InstanceID }
+            );
+
+            Assert.IsTrue(aborted);
+            Assert.AreEqual(planet, officer.GetParent());
+            Assert.AreEqual(planet, secondOfficer.GetParent());
+            Assert.IsNull(firstMission.GetParent());
+            Assert.IsNull(secondMission.GetParent());
+        }
+
+        [Test]
+        public void AbortMissions_SelectionContainsMissingMission_PreservesEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(new[] { mission.InstanceID, "missing" });
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(planet, mission.GetParent());
+            Assert.AreEqual(mission, officer.GetParent());
         }
 
         [Test]

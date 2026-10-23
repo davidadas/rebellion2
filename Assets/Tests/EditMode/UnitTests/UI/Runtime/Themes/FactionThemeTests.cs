@@ -1,4 +1,6 @@
+using System.IO;
 using NUnit.Framework;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.Runtime.Themes
@@ -6,6 +8,47 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     [TestFixture]
     public class FactionThemeTests
     {
+        [Test]
+        public void Deserialize_ShipSpecificCutscenes_ReadsAttributeMappings()
+        {
+            const string xml =
+                @"
+                <FactionTheme>
+                  <PlanetDestructionCutscenes>
+                    <Cutscene ShipTypeID=""destroyer-a"" Path=""Pack/Shared/Cutscenes/movie-a"" />
+                    <Cutscene ShipTypeID=""destroyer-b"" Path=""Pack/Shared/Cutscenes/movie-b"" />
+                  </PlanetDestructionCutscenes>
+                </FactionTheme>
+                ";
+            using StringReader reader = new StringReader(xml);
+
+            FactionTheme theme = (FactionTheme)
+                new GameSerializer(typeof(FactionTheme)).Deserialize(reader);
+
+            Assert.AreEqual(2, theme.PlanetDestructionCutscenes.Count);
+            Assert.AreEqual("destroyer-a", theme.PlanetDestructionCutscenes[0].ShipTypeID);
+            Assert.AreEqual(
+                "Pack/Shared/Cutscenes/movie-a",
+                theme.PlanetDestructionCutscenes[0].Path
+            );
+            Assert.AreEqual("destroyer-b", theme.PlanetDestructionCutscenes[1].ShipTypeID);
+            Assert.AreEqual(
+                "Pack/Shared/Cutscenes/movie-b",
+                theme.PlanetDestructionCutscenes[1].Path
+            );
+        }
+
+        [Test]
+        public void Deserialize_ThemeWithoutCutsceneMappings_LeavesEmptyCollection()
+        {
+            using StringReader reader = new StringReader("<FactionTheme />");
+
+            FactionTheme theme = (FactionTheme)
+                new GameSerializer(typeof(FactionTheme)).Deserialize(reader);
+
+            Assert.IsEmpty(theme.PlanetDestructionCutscenes);
+        }
+
         [Test]
         public void GetPrimaryColor_ValidHex_ReturnsParsedColor()
         {

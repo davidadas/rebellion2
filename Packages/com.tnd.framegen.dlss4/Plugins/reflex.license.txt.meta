@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f911e612715ed934e844d8a9d5c5f1d3
+TextScriptImporter:
+  externalObjects: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+AssetOrigin:
+  serializedVersion: 1
+  productId: 385490
+  packageName: DLSS 4.5 - Frame Generation for Unity
+  packageVersion: 1.0.4
+  assetPath: Packages/com.tnd.framegen.dlss4/Plugins/reflex.license.txt
+  uploadId: 1024848

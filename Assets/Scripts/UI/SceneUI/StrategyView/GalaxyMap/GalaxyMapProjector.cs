@@ -430,8 +430,9 @@ public sealed class GalaxyMapProjector
                 ? briefing.OpponentFactionInstanceID
                 : briefing.PlayerFactionInstanceID;
             bool highlighted =
-                planet.GetPopularSupport(highlightedFaction)
-                > planet.GetPopularSupport(otherFaction);
+                !planet.IsDestroyed
+                && planet.GetPopularSupport(highlightedFaction)
+                    > planet.GetPopularSupport(otherFaction);
             return new GalacticInformationMarker(
                 highlighted ? 3 : 0,
                 highlighted ? highlightedFaction : planet.OwnerInstanceID,

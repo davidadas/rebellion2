@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -12,6 +13,8 @@ internal sealed class IdleBarEntry
 
     internal string Name { get; }
 
+    internal string HoverText { get; }
+
     internal Texture2D Texture { get; }
 
     /// <summary>
@@ -23,6 +26,12 @@ internal sealed class IdleBarEntry
     {
         Entity = entity;
         Name = entity?.GetDisplayName() ?? string.Empty;
+        Planet planet = entity is Planet ? null : entity?.GetParentOfType<Planet>();
+        string planetName = planet?.GetDisplayName();
+        HoverText =
+            string.IsNullOrEmpty(Name) || string.IsNullOrEmpty(planetName)
+                ? Name
+                : $"{Name} ({planetName})";
         Texture = texture;
     }
 }

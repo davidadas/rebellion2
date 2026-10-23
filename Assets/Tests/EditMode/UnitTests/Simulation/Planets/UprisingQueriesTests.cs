@@ -344,6 +344,26 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Verifies that an enemy suppression source does not reduce the owner's requirement.
+        /// </summary>
+        [Test]
+        public void CalculateGarrisonRequirement_EnemySuppressionSource_DoesNotReduceRequirement()
+        {
+            var (game, faction, planet, sector) = CreateSuppressionScene();
+            Faction enemy = new Faction { InstanceID = "enemy" };
+            Planet enemyPlanet = new Planet
+            {
+                InstanceID = "enemy-planet",
+                OwnerInstanceID = enemy.InstanceID,
+            };
+            game.GetFactions().Add(enemy);
+            game.AttachNode(enemyPlanet, sector);
+            AddSuppressionSource(game, enemyPlanet);
+
+            Assert.AreEqual(6, Requirement(game, faction, planet));
+        }
+
+        /// <summary>
         /// Verifies that copies rebuild presence from their own ship instances.
         /// </summary>
         [Test]
@@ -376,10 +396,26 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that faction views retain sector presence when ships elsewhere are hidden.
+        /// Verifies that faction views retain owner-scoped suppression from their own ships.
         /// </summary>
         [Test]
-        public void CalculateGarrisonRequirement_FactionView_PreservesSectorSuppression()
+        public void CalculateGarrisonRequirement_FactionViewOwnSuppression_PreservesRequirement()
+        {
+            var (game, faction, planet, _) = CreateSuppressionScene();
+            AddSuppressionSource(game, planet);
+            GalaxyMap view = new FogOfWarQueries(game).BuildFactionView(faction);
+            Planet observed = view.GetChildren<PlanetSector>()
+                .Single()
+                .GetChildren<Planet>()
+                .Single(p => p.InstanceID == planet.InstanceID);
+            Assert.AreEqual(3, Requirement(game, faction, observed));
+        }
+
+        /// <summary>
+        /// Verifies that a projected enemy suppression source does not reduce the requirement.
+        /// </summary>
+        [Test]
+        public void CalculateGarrisonRequirement_FactionViewEnemySuppression_DoesNotReduceRequirement()
         {
             var (game, faction, planet, sector) = CreateSuppressionScene();
             Planet other = new Planet { InstanceID = "other", OwnerInstanceID = "other-faction" };
@@ -391,7 +427,7 @@ namespace Rebellion.Tests.Simulation
                 .Single()
                 .GetChildren<Planet>()
                 .Single(p => p.InstanceID == planet.InstanceID);
-            Assert.AreEqual(3, Requirement(game, faction, observed));
+            Assert.AreEqual(6, Requirement(game, faction, observed));
         }
 
         /// <summary>

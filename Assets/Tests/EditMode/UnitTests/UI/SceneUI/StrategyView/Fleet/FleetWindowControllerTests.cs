@@ -14,6 +14,7 @@ using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -431,6 +432,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void RenderWindow_EighteenFleets_ShowsUsableFleetListScrollbar()
+        {
+            _windowManager.SetContentSource(TestContent.Assets);
+            for (int index = 2; index <= 18; index++)
+            {
+                GameFleet fleet = CreateFleet($"fleet-{index}", $"Fleet {index}", out _);
+                _planet.Planet.AddChild(fleet);
+                AttachFleetGraph(_planet.Planet, fleet);
+            }
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            _controller.RenderWindow(view, window, true);
+
+            FleetListRowView[] rows = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Where(row => row.gameObject.activeInHierarchy)
+                .ToArray();
+            ScrollAreaView scrollArea = rows[0].GetComponentInParent<ScrollAreaView>();
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData scroll = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0f, -1f),
+            };
+
+            scrollArea.RelayScroll(scroll);
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(18, rows.Length);
+            Assert.IsTrue(scrollbar.gameObject.activeInHierarchy);
+            Assert.IsNotNull(scrollbar.handleRect.GetComponent<RawImage>().texture);
+            Assert.Greater(scrollArea.ContentRoot.anchoredPosition.y, 0f);
+        }
+
+        [Test]
         public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
@@ -753,6 +789,105 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(
                 request.Commands.Cast<StrategyMenuCommand>().All(command => !command.Enabled)
             );
+        }
+
+        [Test]
+        public void TryCreateContextMenu_OwnedFleet_AddsIdleBarTrackingCommand()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                CreateFleetPointerEvent(view),
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out _
+            );
+
+            Assert.IsTrue(created);
+            StrategyMenuCommand trackingCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking);
+            Assert.IsTrue(trackingCommand.Enabled);
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, trackingCommand.IconKey);
+        }
+
+        [Test]
+        public void CreateContextMenuForFleet_OwnedFleet_UsesNormalFleetCommands()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.WaypointMove,
+                    StrategyMenuAction.PlanetaryBombardment,
+                    StrategyMenuAction.PlanetaryAssault,
+                    StrategyMenuAction.Rename,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Scrap,
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                },
+                request
+                    .Commands.Cast<StrategyMenuCommand>()
+                    .Select(command => command.Action)
+                    .ToArray()
+            );
+            Assert.AreSame(_controller, request.Receiver);
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_DirectFleetStatus_RoutesExactTarget()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Status);
+
+            _controller.OnContextMenuCommandSelected(request, command);
+
+            Assert.AreSame(_planet, _actions.LastStatusTarget.Planet);
+            Assert.AreSame(_fleet, _actions.LastStatusTarget.Item);
+        }
+
+        [Test]
+        public void OnContextMenuCommandSelected_DirectFleetRename_OpensFleetWindowForRename()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Rename);
+
+            _controller.OnContextMenuCommandSelected(request, command);
+
+            FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
+            UIWindow window = view.GetComponent<UIWindow>();
+            _controller.RenderWindow(view, window, true);
+            Assert.IsTrue(view.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf);
         }
 
         [Test]
@@ -1109,6 +1244,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             public CombatReport LastBattleResult { get; private set; }
 
+            public StrategyStatusTarget LastStatusTarget { get; private set; }
+
             public OfficerRank LastOfficerRank { get; private set; }
 
             public int OfficerCommandCount { get; private set; }
@@ -1179,9 +1316,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <summary>
             /// Opens fleet status window.
             /// </summary>
+            /// <param name="target">The selected status target.</param>
+            public void OpenFleetStatusWindow(StrategyStatusTarget target)
+            {
+                LastStatusTarget = target;
+            }
+
+            /// <summary>
+            /// Opens mission abort confirmation.
+            /// </summary>
             /// <param name="sourceWindow">The source window.</param>
-            /// <param name="items">The items.</param>
-            public void OpenFleetStatusWindow(
+            /// <param name="items">The selected missions.</param>
+            public void OpenMissionAbortConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

@@ -56,9 +56,9 @@ public sealed class AppBootstrap : MonoBehaviour
     internal bool IsSceneTransitionInProgress => _sceneLoader?.IsLoading == true;
 
     /// <summary>
-    /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
+    /// Ensures AppBootstrap exists. Creates a minimal bootstrap when a runtime scene has none.
     /// Only creates the root GameObject - normal Awake() handles initialization.
-    /// IMPORTANT: Only call this at scene entry points (GameFlowController, etc), not from random systems.
+    /// IMPORTANT: Only call this at runtime scene entry points, not from random systems.
     /// </summary>
     /// <returns>The existing or newly created AppBootstrap instance.</returns>
     public static AppBootstrap EnsureExists()
@@ -81,6 +81,11 @@ public sealed class AppBootstrap : MonoBehaviour
                 );
             return Instance;
         }
+
+        if (!Application.isPlaying)
+            throw new InvalidOperationException(
+                "AppBootstrap can only be created while the application is playing."
+            );
 
         GameObject obj = new GameObject("AppBootstrap (Auto)");
         obj.SetActive(false);
@@ -186,6 +191,8 @@ public sealed class AppBootstrap : MonoBehaviour
 
         _displayManager = new DisplayManager();
         _graphicsManager = new GraphicsManager(transform);
+        _cutsceneManager.PlaybackStarting += _graphicsManager.PauseFrameGenerationPresentation;
+        _cutsceneManager.PlaybackFinished += _graphicsManager.ResumeFrameGenerationPresentation;
         _userSettingsManager = new UserSettingsManager(
             audioManager,
             _displayManager,
@@ -195,7 +202,8 @@ public sealed class AppBootstrap : MonoBehaviour
         _userSettingsManager.Load();
         FrameRateMonitor.EnsureExists(
             transform,
-            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
+            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true,
+            () => _graphicsManager?.PresentationFrameMultiplier ?? 1u
         );
         _runtime = new GameRuntime(
             _contentPack,
@@ -400,6 +408,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void ReleaseRuntimeServices()
     {
+        if (_cutsceneManager != null && _graphicsManager != null)
+        {
+            _cutsceneManager.PlaybackStarting -= _graphicsManager.PauseFrameGenerationPresentation;
+            _cutsceneManager.PlaybackFinished -= _graphicsManager.ResumeFrameGenerationPresentation;
+        }
         _graphicsManager?.Dispose();
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();

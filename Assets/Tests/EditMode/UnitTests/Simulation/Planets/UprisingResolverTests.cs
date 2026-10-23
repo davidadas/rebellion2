@@ -22,6 +22,26 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DestroyedPlanetWithSavedUprising_EndsUprisingWithoutResolvingIncidents()
+        {
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
+                ownerSupport: 0,
+                troopCount: 0,
+                rng: new ThrowingRNG()
+            );
+            planet.BeginUprising();
+            planet.NextUprisingIncidentTick = 1;
+            planet.IsDestroyed = true;
+            game.CurrentTick = 10;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.Zero(planet.NextUprisingIncidentTick);
+        }
+
+        [Test]
         public void ProcessTick_UnscheduledActiveUprising_PreservesTimerInitializationOrder()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(

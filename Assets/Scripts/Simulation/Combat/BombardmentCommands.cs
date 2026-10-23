@@ -21,6 +21,7 @@ namespace Rebellion.Simulation
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
         private readonly PersonnelCommands _personnelCommands;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
 
         /// <summary>
         /// Raised after an immediate bombardment command produces results.
@@ -34,11 +35,13 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after bombardment.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             BombardmentQueries queries,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game;
@@ -46,6 +49,8 @@ namespace Rebellion.Simulation
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -95,11 +100,18 @@ namespace Rebellion.Simulation
             SetBombardmentCombatState(fleets, targetPlanet, true);
             try
             {
-                bool destroysPlanet =
+                CapitalShip planetDestroyer =
                     type == BombardmentType.DestroyPlanet
-                    && BombardmentQueries.HasPlanetDestroyingShip(fleets);
+                        ? BombardmentQueries
+                            .GetActiveCapitalShips(fleets)
+                            .FirstOrDefault(ship => ship.CanDestroyPlanets)
+                        : null;
+                bool destroysPlanet = planetDestroyer != null;
                 if (destroysPlanet)
+                {
+                    result.PlanetDestroyerTypeID = planetDestroyer.TypeID;
                     DestroyPlanet(targetPlanet, result);
+                }
 
                 ResolveBombardmentDefenseFire(fleets, targetPlanet, result);
                 if (!destroysPlanet && BombardmentQueries.GetActiveCapitalShips(fleets).Any())
@@ -117,17 +129,17 @@ namespace Rebellion.Simulation
                     );
 
                     ResolveStrikes(targetPlanet, defenderId, type, result);
+                }
 
-                    if (result.DestroyedRegiments.Count > 0)
-                    {
-                        result.Events.Add(
-                            new PlanetGarrisonChangedResult
-                            {
-                                Planet = targetPlanet,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
+                if (result.DestroyedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = targetPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                 }
             }
             finally
@@ -136,7 +148,12 @@ namespace Rebellion.Simulation
                 SetBombardmentCombatState(fleets, targetPlanet, false);
             }
 
-            BlockadeTransitions.AddChangedResult(_game, targetPlanet, wasBlockaded, result.Events);
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                targetPlanet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                result.Events.Add(blockade);
 
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);
@@ -185,11 +202,17 @@ namespace Rebellion.Simulation
                 null,
                 result
                     .DestroyedBuildings.Cast<ISceneNode>()
-                    .Concat(result.DestroyedRegiments)
+                    .Concat(result.DestroyedRegiments.Cast<ISceneNode>())
+                    .Concat(
+                        result
+                            .Events.OfType<GameObjectDestroyedResult>()
+                            .Select(destruction => destruction.DestroyedObject)
+                            .OfType<ISceneNode>()
+                    )
                     .Concat(
                         result
                             .Events.OfType<OfficerKilledResult>()
-                            .Select(killed => killed.TargetOfficer)
+                            .Select(killed => (ISceneNode)killed.TargetOfficer)
                     )
             );
         }
@@ -615,7 +638,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Marks a planet destroyed and resolves effects on eligible personnel.
+        /// Destroys stationed planetary assets and resolves effects on eligible personnel.
         /// </summary>
         /// <param name="planet">Planet being destroyed.</param>
         /// <param name="result">Bombardment result receiving personnel consequences.</param>
@@ -623,11 +646,67 @@ namespace Rebellion.Simulation
         {
             planet.IsDestroyed = true;
             result.PlanetDestroyed = true;
+            HashSet<string> capturedUnitIds = result
+                .DefendingUnits.Select(snapshot => snapshot.Unit.GetInstanceID())
+                .ToHashSet();
+
+            foreach (
+                IManufacturable unit in planet
+                    .GetChildren<IManufacturable>()
+                    .Where(BombardmentQueries.IsActiveBombardmentUnit)
+                    .ToList()
+            )
+            {
+                if (capturedUnitIds.Add(unit.GetInstanceID()))
+                    result.DefendingUnits.Add(new CombatUnitSnapshot(unit));
+
+                if (unit is Building building)
+                    result.DestroyedBuildings.Add(building);
+                else if (unit is Regiment regiment)
+                    result.DestroyedRegiments.Add(regiment);
+
+                result.Events.Add(
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = unit,
+                        Context = planet,
+                        Reason = UnitDestructionReason.Combat,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+                if (string.IsNullOrEmpty(unit.GetOwnerInstanceID()))
+                    _game.DetachNode(unit);
+                else
+                    _game.DeleteNode(unit);
+            }
+
+            if (planet.IsHeadquarters)
+            {
+                DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result);
+                result.Events.Add(
+                    new HeadquartersDestroyedResult
+                    {
+                        Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
+                            building.BuildingType == BuildingType.Headquarters
+                        ),
+                        Planet = planet,
+                        Defender = _game.GetFactionByOwnerInstanceID(
+                            result.DefenderOwnerInstanceID
+                        ),
+                        Attacker = result.AttackingFaction,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+
+            _game.NeutralizeDestroyedPlanet(planet);
 
             foreach (
                 Officer officer in planet
                     .GetAllOfficers()
-                    .Where(officer => !officer.IsMain && !officer.IsKilled)
+                    .Where(officer =>
+                        !officer.IsMain && !officer.IsKilled && officer.Movement == null
+                    )
                     .ToList()
             )
             {
@@ -655,11 +734,13 @@ namespace Rebellion.Simulation
                 )
                     continue;
 
+                ISceneNode parentAtDeath = officer.GetParent();
                 _personnelCommands.KillOfficer(officer);
                 result.Events.Add(
                     new OfficerKilledResult
                     {
                         TargetOfficer = officer,
+                        ParentAtDeath = parentAtDeath,
                         Context = planet,
                         Tick = _game.CurrentTick,
                     }

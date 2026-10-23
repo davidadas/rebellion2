@@ -8,6 +8,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -355,6 +356,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             Assert.AreSame(_planet, target.Planet);
             Assert.AreSame(_fleet, target.Item);
+        }
+
+        [Test]
+        public void TryCreateContextMenu_WorkingMissionOverlay_RoutesOwnedMissionsToAbort()
+        {
+            DiplomacyMission firstMission = CreateWorkingMission("first-mission", _playerFactionId);
+            DiplomacyMission secondMission = CreateWorkingMission(
+                "second-mission",
+                _playerFactionId
+            );
+            CreateWorkingMission("enemy-mission", _opposingFactionId);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 177, 4, 6, 7),
+                CreateOverlayPointerEvent(view, "missionImage"),
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out int _
+            );
+            StrategyMenuCommand abortCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.Abort);
+            _controller.OnContextMenuCommandSelected(request, abortCommand);
+
+            Assert.IsTrue(created);
+            Assert.IsTrue(abortCommand.Enabled);
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { firstMission, secondMission },
+                _controller.GetContextItems(view)
+            );
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { firstMission, secondMission },
+                _actions.LastItems
+            );
         }
 
         [Test]
@@ -893,6 +935,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         /// <summary>
+        /// Creates one working mission at the test planet.
+        /// </summary>
+        /// <param name="instanceId">The mission instance identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The attached working mission.</returns>
+        private DiplomacyMission CreateWorkingMission(string instanceId, string ownerInstanceId)
+        {
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerInstanceId,
+            };
+            Officer participant = new Officer
+            {
+                InstanceID = $"{instanceId}-participant",
+                OwnerInstanceID = ownerInstanceId,
+            };
+            _game.AttachNode(mission, _planet.Planet);
+            _game.AttachNode(participant, mission);
+            mission.Initiate(1);
+            return mission;
+        }
+
+        /// <summary>
         /// Creates an empty galaxy-map sector with the requested identity and label.
         /// </summary>
         /// <param name="instanceId">The sector instance identifier.</param>
@@ -1236,6 +1302,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// </summary>
             /// <param name="target">The target.</param>
             public void OpenPlanetSectorStatus(StrategyStatusTarget target) { }
+
+            /// <summary>
+            /// Opens mission abort confirmation.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The selected missions.</param>
+            public void OpenMissionAbortConfirmWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            )
+            {
+                LastItems = items;
+            }
 
             /// <summary>
             /// Opens scrap confirm window.

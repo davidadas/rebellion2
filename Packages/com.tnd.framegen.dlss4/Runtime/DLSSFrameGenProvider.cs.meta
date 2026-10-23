@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 0ec626eae3e1b9042abc12e183f8ba2c
+AssetOrigin:
+  serializedVersion: 1
+  productId: 385490
+  packageName: DLSS 4.5 - Frame Generation for Unity
+  packageVersion: 1.0.4
+  assetPath: Packages/com.tnd.framegen.dlss4/Runtime/DLSSFrameGenProvider.cs
+  uploadId: 1024848

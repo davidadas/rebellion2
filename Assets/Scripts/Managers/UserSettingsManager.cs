@@ -155,6 +155,7 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
+        _graphicsManager?.PrepareForDisplayChange();
         _displayManager.Apply(Settings.Video);
         _graphicsManager?.Apply(Settings.Video);
     }
@@ -181,7 +182,7 @@ public sealed class UserSettingsManager
 
         try
         {
-            UserSettings settings = JsonUtility.FromJson<UserSettings>(File.ReadAllText(path));
+            UserSettings settings = DeserializeSettings(File.ReadAllText(path));
             if (settings == null)
                 return CreateDefaults();
 
@@ -193,6 +194,33 @@ public sealed class UserSettingsManager
             Debug.LogWarning($"Failed to load user settings: {ex.Message}");
             return CreateDefaults();
         }
+    }
+
+    /// <summary>
+    /// Deserializes current settings and migrates the former interface-owned launch speed.
+    /// </summary>
+    /// <param name="json">The persisted settings document.</param>
+    /// <returns>The deserialized settings, or null when the document has no settings object.</returns>
+    private static UserSettings DeserializeSettings(string json)
+    {
+        UserSettings settings = JsonUtility.FromJson<UserSettings>(json);
+        if (settings == null)
+            return null;
+
+        settings.Gameplay ??= new UserGameplaySettings();
+        LegacyUserSettings legacy = JsonUtility.FromJson<LegacyUserSettings>(json);
+        GameLaunchSpeed legacySpeed =
+            legacy?.UserInterface?.GameLaunchSpeed ?? GameLaunchSpeed.Unchanged;
+        if (
+            settings.Gameplay.GameLaunchSpeed == GameLaunchSpeed.Unchanged
+            && legacySpeed != GameLaunchSpeed.Unchanged
+            && Enum.IsDefined(typeof(GameLaunchSpeed), legacySpeed)
+        )
+        {
+            settings.Gameplay.GameLaunchSpeed = legacySpeed;
+        }
+
+        return settings;
     }
 
     /// <summary>
@@ -237,5 +265,23 @@ public sealed class UserSettingsManager
         UserSettings settings = new UserSettings();
         settings.Normalize();
         return settings;
+    }
+
+    /// <summary>
+    /// Describes the portion of the former settings shape needed during migration.
+    /// </summary>
+    [Serializable]
+    private sealed class LegacyUserSettings
+    {
+        public LegacyUserInterfaceSettings UserInterface;
+    }
+
+    /// <summary>
+    /// Describes the former interface-owned launch-speed setting.
+    /// </summary>
+    [Serializable]
+    private sealed class LegacyUserInterfaceSettings
+    {
+        public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 }

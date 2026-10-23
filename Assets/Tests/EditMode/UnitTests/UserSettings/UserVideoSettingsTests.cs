@@ -79,6 +79,7 @@ namespace Rebellion.Tests.UserSettings
             {
                 QualityLevel = -3,
                 AntiAliasingMode = 99,
+                FrameGenerationMode = 99,
                 FrameRateLimit = 75,
             };
 
@@ -86,6 +87,7 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(0, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Off, settings.AntiAliasingMode);
+            Assert.AreEqual((int)UserFrameGenerationMode.Off, settings.FrameGenerationMode);
             Assert.AreEqual(0, settings.FrameRateLimit);
         }
 
@@ -117,6 +119,7 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
+            Assert.AreEqual((int)UserFrameGenerationMode.Off, settings.FrameGenerationMode);
             Assert.IsTrue(settings.VerticalSync);
             Assert.IsTrue(settings.AmbientOcclusion);
             Assert.IsTrue(settings.Bloom);
@@ -151,6 +154,7 @@ namespace Rebellion.Tests.UserSettings
             {
                 QualityLevel = 1,
                 AntiAliasingMode = (int)UserAntiAliasingMode.Taa,
+                FrameGenerationMode = (int)UserFrameGenerationMode.On,
                 FrameRateLimit = 60,
                 VerticalSync = false,
                 RayTracing = true,
@@ -164,6 +168,7 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
+            Assert.AreEqual((int)UserFrameGenerationMode.Off, settings.FrameGenerationMode);
             Assert.AreEqual(0, settings.FrameRateLimit);
             Assert.IsTrue(settings.VerticalSync);
             Assert.IsFalse(settings.RayTracing);

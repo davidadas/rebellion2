@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 71d2f116a4b40034894af56acf84e38e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+AssetOrigin:
+  serializedVersion: 1
+  productId: 385490
+  packageName: DLSS 4.5 - Frame Generation for Unity
+  packageVersion: 1.0.4
+  assetPath: Packages/com.tnd.common/Runtime/Native/NativeStructs.cs
+  uploadId: 1024848

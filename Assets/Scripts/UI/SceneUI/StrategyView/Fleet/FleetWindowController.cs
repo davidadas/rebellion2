@@ -22,9 +22,8 @@ public interface IFleetWindowActions : IOfficerCommandActions
     /// <summary>
     /// Opens status information for one selected fleet item.
     /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The selected items.</param>
-    void OpenFleetStatusWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
+    /// <param name="target">The selected status target.</param>
+    void OpenFleetStatusWindow(StrategyStatusTarget target);
 
     /// <summary>
     /// Opens the completed planetary combat result.
@@ -461,11 +460,67 @@ public sealed class FleetWindowController
 
         CaptureContextTarget(view, session, context.EventData);
         List<ISceneNode> items = session.GetContextItems();
-        string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
-        Planet targetPlanet = GetFleetCommandTargetPlanet(
+        StrategyStatusTarget statusTarget =
+            items.Count == 1 ? new StrategyStatusTarget(session.Planet, items[0]) : null;
+        request = CreateContextMenuRequest(
             context.Window,
-            items.OfType<Fleet>().ToList()
+            context.X,
+            context.Y,
+            items,
+            statusTarget
         );
+        width = GetContextMenuWidth(request.Commands, context.Layout);
+        return true;
+    }
+
+    /// <summary>
+    /// Builds the normal fleet context menu for a directly supplied fleet.
+    /// </summary>
+    /// <param name="planet">The strategy planet containing the fleet.</param>
+    /// <param name="fleet">The fleet represented by the menu.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <returns>The normal fleet context-menu request.</returns>
+    internal ContextMenuRequest CreateContextMenuForFleet(
+        GalaxyMapPlanet planet,
+        Fleet fleet,
+        int hotspotX,
+        int hotspotY
+    )
+    {
+        if (planet?.Planet == null)
+            throw new ArgumentNullException(nameof(planet));
+        if (fleet == null)
+            throw new ArgumentNullException(nameof(fleet));
+
+        return CreateContextMenuRequest(
+            null,
+            hotspotX,
+            hotspotY,
+            new[] { fleet },
+            new StrategyStatusTarget(planet, fleet)
+        );
+    }
+
+    /// <summary>
+    /// Builds the shared fleet command set and captures its immutable selection.
+    /// </summary>
+    /// <param name="window">The originating fleet window, when one exists.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <param name="items">The selected fleet-window entities.</param>
+    /// <param name="statusTarget">The singular status target represented by the request.</param>
+    /// <returns>The normal fleet context-menu request.</returns>
+    private ContextMenuRequest CreateContextMenuRequest(
+        UIWindow window,
+        int hotspotX,
+        int hotspotY,
+        IReadOnlyList<ISceneNode> items,
+        StrategyStatusTarget statusTarget
+    )
+    {
+        string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
+        Planet targetPlanet = GetFleetCommandTargetPlanet(window, items.OfType<Fleet>().ToList());
         List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
             items,
             StrategyContextMenuAvailability.PlayerControlsItems(items, playerFactionId),
@@ -509,23 +564,31 @@ public sealed class FleetWindowController
             );
         }
         FleetContextMenuSource source = new FleetContextMenuSource(
-            context.Window,
-            context.X,
-            context.Y,
-            items
+            window,
+            hotspotX,
+            hotspotY,
+            items,
+            statusTarget
         );
-        request = new ContextMenuRequest(
-            source,
-            commands.Cast<IContextMenuCommand>().ToList(),
-            this
-        );
-        bool hasBombardment = commands.Any(command =>
-            command.Action == StrategyMenuAction.PlanetaryBombardment
-        );
-        width = hasBombardment
-            ? context.Layout.FleetBombardmentMenuWidth
-            : context.Layout.FleetMenuWidth;
-        return true;
+        return new ContextMenuRequest(source, commands.Cast<IContextMenuCommand>().ToList(), this);
+    }
+
+    /// <summary>
+    /// Selects the authored fleet menu width for one command set.
+    /// </summary>
+    /// <param name="commands">The projected menu commands.</param>
+    /// <param name="layout">The authored strategy context-menu layout.</param>
+    /// <returns>The source-space menu width.</returns>
+    internal static int GetContextMenuWidth(
+        IReadOnlyList<IContextMenuCommand> commands,
+        StrategyContextMenuLayout layout
+    )
+    {
+        bool hasBombardment =
+            commands
+                ?.OfType<StrategyMenuCommand>()
+                .Any(command => command.Action == StrategyMenuAction.PlanetaryBombardment) == true;
+        return hasBombardment ? layout.FleetBombardmentMenuWidth : layout.FleetMenuWidth;
     }
 
     /// <summary>
@@ -571,10 +634,10 @@ public sealed class FleetWindowController
                 actions.OpenFleetEncyclopediaWindow(source.Items);
                 break;
             case StrategyMenuAction.Status:
-                actions.OpenFleetStatusWindow(source.Window, source.Items);
+                actions.OpenFleetStatusWindow(source.StatusTarget);
                 break;
             case StrategyMenuAction.Rename:
-                BeginRename(source.Window, source.Items);
+                BeginRename(source);
                 break;
             case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
@@ -789,6 +852,29 @@ public sealed class FleetWindowController
 
         if (session.BeginRename(items[0]))
             markDirty();
+    }
+
+    /// <summary>
+    /// Begins rename presentation from either a fleet window or a direct entity request.
+    /// </summary>
+    /// <param name="source">The immutable fleet context-menu source.</param>
+    private void BeginRename(FleetContextMenuSource source)
+    {
+        if (source == null)
+            return;
+
+        UIWindow window = source.Window;
+        if (window == null && source.StatusTarget?.Planet?.Planet != null)
+        {
+            window = Open(source.StatusTarget.Planet, source.HotspotX, source.HotspotY, out _);
+            if (
+                windowManager.TryGetWindowView(window, out FleetWindowView view)
+                && source.StatusTarget.Item != null
+            )
+                SelectTarget(view, source.StatusTarget.Item);
+        }
+
+        BeginRename(window, source.Items);
     }
 
     /// <summary>
@@ -1327,7 +1413,10 @@ public sealed class FleetWindowController
         )
             return;
 
-        actions.OpenFleetStatusWindow(session.Window, session.GetContextItems());
+        List<ISceneNode> items = session.GetContextItems();
+        StrategyStatusTarget target =
+            items.Count == 1 ? new StrategyStatusTarget(session.Planet, items[0]) : null;
+        actions.OpenFleetStatusWindow(target);
     }
 
     /// <summary>
@@ -1480,6 +1569,8 @@ public sealed class FleetWindowController
 
         public IReadOnlyList<ISceneNode> Items { get; }
 
+        public StrategyStatusTarget StatusTarget { get; }
+
         public UIWindow Window { get; }
 
         /// <summary>
@@ -1489,17 +1580,20 @@ public sealed class FleetWindowController
         /// <param name="hotspotX">The menu hotspot horizontal coordinate.</param>
         /// <param name="hotspotY">The menu hotspot vertical coordinate.</param>
         /// <param name="items">The selected scene nodes.</param>
+        /// <param name="statusTarget">The singular status target represented by the request.</param>
         public FleetContextMenuSource(
             UIWindow window,
             int hotspotX,
             int hotspotY,
-            IReadOnlyList<ISceneNode> items
+            IReadOnlyList<ISceneNode> items,
+            StrategyStatusTarget statusTarget
         )
         {
             Window = window;
             HotspotX = hotspotX;
             HotspotY = hotspotY;
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
+            StatusTarget = statusTarget;
         }
     }
 }

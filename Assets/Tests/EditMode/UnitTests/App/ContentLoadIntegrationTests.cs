@@ -1,9 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -22,7 +25,7 @@ namespace Rebellion.Tests.App
         /// <summary>
         /// Enters play mode in an empty scene so only this test creates application services.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
+        /// <returns>The play-mode summary sequence.</returns>
         [UnitySetUp]
         public IEnumerator SetUp()
         {
@@ -129,6 +132,12 @@ namespace Rebellion.Tests.App
                 GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
                 summary.GalaxySize = GameSize.Small;
                 summary.Difficulty = GameDifficulty.Hard;
+                summary.CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+                };
+                summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                    new List<GameEventCategory> { GameEventCategory.Story };
 
                 LoadingScreenController.StartCustomGame(previous, selected, summary);
 
@@ -151,12 +160,15 @@ namespace Rebellion.Tests.App
                 );
                 Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
                 Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
-                Assert.AreEqual(
-                    GameDifficulty.Hard,
-                    AppBootstrap
-                        .Instance.GetRuntime()
-                        .GetActiveGameSession()
-                        .Game.Summary.Difficulty
+                GameRoot game = AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game;
+                Assert.AreEqual(GameDifficulty.Hard, game.Summary.Difficulty);
+                Assert.IsFalse(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.Category == GameEventCategory.Story)
+                );
+                Assert.IsTrue(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.Category == GameEventCategory.Disaster)
                 );
                 Assert.IsNull(
                     Object.FindAnyObjectByType<CutscenePlayer>(),

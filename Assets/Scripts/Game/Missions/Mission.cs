@@ -558,6 +558,12 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Accepts the current primary team after terminal participants are removed by the
+        /// mission lifecycle.
+        /// </summary>
+        internal void AcceptCurrentParticipantRoster() => CaptureMainParticipantIDs();
+
+        /// <summary>
         /// Returns whether the required main-participant list differs from mission start.
         /// </summary>
         /// <returns>True if a main participant was added or removed.</returns>

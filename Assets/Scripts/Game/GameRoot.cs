@@ -213,8 +213,8 @@ namespace Rebellion.Game
 
             if (IsFactionAIControlled(faction))
             {
-                if (Summary?.AIDifficultyModifiers != null)
-                    return Summary.AIDifficultyModifiers;
+                if (Summary?.CustomSettings?.AIDifficultyModifiers != null)
+                    return Summary.CustomSettings.AIDifficultyModifiers;
 
                 if (
                     Summary != null
@@ -232,10 +232,10 @@ namespace Rebellion.Game
             }
 
             if (
-                Summary?.PlayerDifficultyModifiers != null
+                Summary?.CustomSettings?.PlayerDifficultyModifiers != null
                 && faction.InstanceID == Summary.PlayerFactionID
             )
-                return Summary.PlayerDifficultyModifiers;
+                return Summary.CustomSettings.PlayerDifficultyModifiers;
 
             return new DifficultyModifiers();
         }
@@ -432,6 +432,26 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);
+        }
+
+        /// <summary>
+        /// Releases a destroyed planet's control and clears its population-dependent activity.
+        /// Surviving units keep their owners and locations.
+        /// </summary>
+        /// <param name="planet">The destroyed planet whose active control state is cleared.</param>
+        internal void NeutralizeDestroyedPlanet(Planet planet)
+        {
+            if (planet?.IsDestroyed != true)
+                return;
+
+            Faction previousOwner = string.IsNullOrEmpty(planet.OwnerInstanceID)
+                ? null
+                : GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+            if (previousOwner?.HQInstanceID == planet.InstanceID)
+                previousOwner.HQInstanceID = null;
+
+            DeregsiterOwnedUnit(planet);
+            planet.ClearDestroyedControl();
         }
 
         /// <summary>
@@ -775,6 +795,9 @@ namespace Rebellion.Game
             ((BaseSceneNode)root).TraverseIncludingDisabled(
                 (ISceneNode node) =>
                 {
+                    if (node is Planet { IsDestroyed: true } planet)
+                        NeutralizeDestroyedPlanet(planet);
+
                     if (!NodesByInstanceID.ContainsKey(node.InstanceID))
                         AddSceneNodeByInstanceID(node);
 

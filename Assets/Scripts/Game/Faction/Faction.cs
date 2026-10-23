@@ -33,6 +33,8 @@ namespace Rebellion.Game.Factions
     public class Faction : BaseGameEntity
     {
         private FactionSettings _settings = new FactionSettings();
+
+        [PersistableMember(Name = "NextFleetNumber")]
         private int _nextFleetNumber = 1;
 
         [PersistableMember(Name = "NextGenericShipNameNumbers")]

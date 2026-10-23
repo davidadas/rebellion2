@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 9c7a29092a8364241bd421ed772cbe0a
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+AssetOrigin:
+  serializedVersion: 1
+  productId: 385490
+  packageName: DLSS 4.5 - Frame Generation for Unity
+  packageVersion: 1.0.4
+  assetPath: Packages/com.tnd.common/Editor/TND.Common.Editor.asmdef
+  uploadId: 1024848

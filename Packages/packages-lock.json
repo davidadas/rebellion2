@@ -1,5 +1,28 @@
 {
   "dependencies": {
+    "com.tnd.common": {
+      "version": "file:com.tnd.common",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.tnd.framegen.dlss4": {
+      "version": "file:com.tnd.framegen.dlss4",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.tnd.framegeneration": "1.0.10",
+        "com.tnd.common": "1.0.5"
+      }
+    },
+    "com.tnd.framegeneration": {
+      "version": "file:com.tnd.framegeneration",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.tnd.common": "1.0.5"
+      }
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.11",
       "depth": 0,

@@ -309,13 +309,21 @@ public static class OptionsMenuPrefabBuilder
         );
 
         CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 134, accent);
+        TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
+            gameplayPage,
+            "GameLaunchSpeed",
+            "Galaxy speed override",
+            new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
+            162,
+            accent
+        );
         OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
             gameplayPage,
             "GameplayDisableBriefings",
             (int)UserGameplayOption.DisableBriefings,
             "Disable Briefings",
             20,
-            162
+            188
         );
         UserGameplayOption[] options =
         {
@@ -334,11 +342,12 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                188 + i * 26
+                214 + i * 26
             );
         }
 
         AssignReferenceArray(view, "_gameplayRows", rows);
+        AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);
         AssignReference(view, "_autosaveIntervalBadgeImage", autosaveIntervalBadge);
         AssignReference(view, "_autosavesToKeepInputField", autosavesToKeepInput);
@@ -459,6 +468,15 @@ public static class OptionsMenuPrefabBuilder
             previousButtons,
             nextButtons
         );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.FrameGeneration,
+            "DLSS Frame Generation",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
         AppendOptionsSectionHeader(
             graphicsContent,
             "RayTracingHeader",
@@ -557,14 +575,6 @@ public static class OptionsMenuPrefabBuilder
             44,
             accent
         );
-        TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
-            userInterfacePage,
-            "GameLaunchSpeed",
-            "Galaxy speed override",
-            new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
-            70,
-            accent
-        );
         UserInterfaceOption[] options =
         {
             UserInterfaceOption.ShowIdleBar,
@@ -579,8 +589,8 @@ public static class OptionsMenuPrefabBuilder
             "Show Unit Card Stats",
             "Show FPS Counter",
         };
-        int[] yPositions = { 96, 122, 148, 206 };
-        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
+        int[] yPositions = { 70, 96, 122, 180 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 158, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
@@ -595,7 +605,6 @@ public static class OptionsMenuPrefabBuilder
         }
 
         AssignReference(view, "_idleBarLocationDropdown", idleBarLocationDropdown);
-        AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReferenceArray(view, "_userInterfaceRows", rows);
     }
 

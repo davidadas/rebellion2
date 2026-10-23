@@ -146,6 +146,16 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void CreateFleet_RepeatedCalls_ReturnsSequentialNames()
+        {
+            Fleet first = _faction.CreateFleet();
+            Fleet second = _faction.CreateFleet();
+
+            Assert.AreEqual("Fleet 1", first.GetDisplayName());
+            Assert.AreEqual("Fleet 2", second.GetDisplayName());
+        }
+
+        [Test]
         public void AddOwnedUnit_ValidPlanet_AddsPlanetToOwnedNodes()
         {
             _faction.AddOwnedUnit(_planet1);

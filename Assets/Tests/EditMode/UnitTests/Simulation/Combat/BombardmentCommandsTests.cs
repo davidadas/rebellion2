@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -803,6 +804,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsTrue(result.PlanetDestroyed);
+            Assert.AreEqual("CSEM015", result.PlanetDestroyerTypeID);
             Assert.IsTrue(planet.IsDestroyed);
             Assert.IsTrue(minor.IsKilled);
             Assert.AreSame(planet, minor.GetParent());
@@ -814,10 +816,14 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(main.IsKilled);
             Assert.AreEqual(2, killedMinor.InjuryPoints);
             Assert.AreEqual(planet, killedMinor.GetParent());
-            Assert.AreEqual(10, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(30, planet.GetPopularSupport("alliance"));
             Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
             Assert.AreEqual(1, result.Events.OfType<OfficerKilledResult>().Count());
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<OfficerKilledResult>().Single().ParentAtDeath
+            );
             Assert.IsEmpty(result.Events.OfType<OfficerAssassinatedResult>());
         }
 
@@ -850,7 +856,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryExecute_DestroyPlanet_DefenseFireCannotPreventDestruction()
+        public void TryExecute_DestroyPlanet_DestroyedWeaponsCannotReturnFire()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
@@ -874,8 +880,170 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(result.PlanetDestroyed);
             Assert.IsTrue(planet.IsDestroyed);
-            CollectionAssert.Contains(result.DestroyedCapitalShips, deathStar);
+            CollectionAssert.Contains(result.DestroyedBuildings, lnr);
+            Assert.IsEmpty(result.DestroyedCapitalShips);
+            Assert.AreEqual(100, deathStar.CurrentHullStrength);
+            Assert.AreEqual(deathStar.TypeID, result.PlanetDestroyerTypeID);
             Assert.Zero(result.StrikeAttempts);
+        }
+
+        [TestCase(BuildingType.Mine)]
+        [TestCase(BuildingType.Refinery)]
+        [TestCase(BuildingType.Shipyard)]
+        [TestCase(BuildingType.ConstructionFacility)]
+        [TestCase(BuildingType.TrainingFacility)]
+        [TestCase(BuildingType.Defense)]
+        [TestCase(BuildingType.Weapon)]
+        public void TryExecute_DestroyPlanet_RemovesAndReportsEveryFacilityType(BuildingType type)
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Building building = AddBuilding(game, planet, "facility", "empire", type);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsNull(building.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            CollectionAssert.Contains(result.DestroyedBuildings, building);
+            CombatReport report = CombatReport.Capture(result, "alliance", null, null);
+            Assert.IsTrue(
+                report
+                    .DefendingUnits.Single(unit => unit.InstanceID == building.InstanceID)
+                    .Destroyed
+            );
+        }
+
+        [Test]
+        public void TryExecute_DestroyPlanet_RemovesStationedUnitsAndPreservesOrbitingFleet()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Regiment regiment = AddRegiment(game, planet, "garrison", "empire");
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "grounded-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "grounded-personnel",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fighter, planet);
+            game.AttachNode(specialForces, planet);
+            Fleet defender = AddBombardmentFleet(game, planet, "empire", 0);
+            CapitalShip defenderShip = defender.GetChildren<CapitalShip>()[0];
+            Starfighter embarkedFighter = new Starfighter
+            {
+                InstanceID = "embarked-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            defenderShip.StarfighterCapacity = 1;
+            game.AttachNode(embarkedFighter, defenderShip);
+            Fleet attacker = AddBombardmentFleet(game, planet, "alliance", 0);
+            attacker.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { attacker }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsNull(specialForces.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID));
+            Assert.AreSame(planet, defender.GetParent());
+            Assert.AreSame(defender, defenderShip.GetParent());
+            Assert.AreSame(defenderShip, embarkedFighter.GetParent());
+            Assert.IsTrue(result.DefendingUnits.All(unit => unit.Destroyed));
+            Assert.AreEqual(3, result.Events.OfType<GameObjectDestroyedResult>().Count());
+            Assert.AreEqual(1, result.Events.OfType<PlanetGarrisonChangedResult>().Count());
+        }
+
+        [Test]
+        public void TryExecute_DestroyPlanet_PreservesUnitsAlreadyInTransit()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Regiment regiment = AddRegiment(game, planet, "departed", "empire");
+            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.AreSame(planet, regiment.GetParent());
+            Assert.IsNotNull(regiment.Movement);
+            Assert.IsEmpty(result.DestroyedRegiments);
+        }
+
+        [Test]
+        public void TryExecute_DestroyPlanet_RemovesHeadquartersDespiteBombardmentImmunity()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            planet.IsHeadquarters = true;
+            game.GetFactionByOwnerInstanceID("empire").HQInstanceID = planet.InstanceID;
+            Building headquarters = AddBuilding(
+                game,
+                planet,
+                "hq",
+                "empire",
+                BuildingType.Headquarters
+            );
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsTrue(result.HeadquartersDestroyed);
+            Assert.IsFalse(planet.IsHeadquarters);
+            Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
+            Assert.IsNull(headquarters.GetParent());
+        }
+
+        [Test]
+        public void TryExecute_MixedDestroyerFleet_RecordsFirstOperationalDestroyerType()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0, typeId: "ordinary");
+            foreach (
+                (string typeId, ManufacturingStatus status, int hull) in new[]
+                {
+                    ("building", ManufacturingStatus.Building, 100),
+                    ("destroyed", ManufacturingStatus.Complete, 0),
+                    ("first-destroyer", ManufacturingStatus.Complete, 100),
+                    ("second-destroyer", ManufacturingStatus.Complete, 100),
+                }
+            )
+            {
+                game.AttachNode(
+                    new CapitalShip
+                    {
+                        TypeID = typeId,
+                        OwnerInstanceID = "alliance",
+                        CanDestroyPlanets = true,
+                        ManufacturingStatus = status,
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = hull,
+                    },
+                    fleet
+                );
+            }
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsTrue(result.PlanetDestroyed);
+            Assert.AreEqual("first-destroyer", result.PlanetDestroyerTypeID);
         }
 
         [Test]
@@ -921,6 +1089,95 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(87, lowSupportPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(90, thresholdPlanet.GetPopularSupport("alliance"));
+        }
+
+        [TestCase(null)]
+        [TestCase("empire")]
+        public void TryExecute_DestroyPlanet_ReleasesControlWithoutProducingPoliticalCapture(
+            string ownerId
+        )
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, PlanetSector sector) = CreatePlanet(
+                game,
+                "target",
+                ownerId,
+                energy: 10
+            );
+            sector.SectorType = PlanetSectorType.OuterRim;
+            planet.PopularSupport["alliance"] = 40;
+            planet.PopularSupport["empire"] = 60;
+            planet.BeginUprising();
+            planet.NextUprisingIncidentTick = 100;
+            Planet neighbor = AddPlanet(game, sector, "neighbor", null);
+            neighbor.SetPopularSupport("alliance", 50);
+            neighbor.SetPopularSupport("empire", 50);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+            BombardmentCommands commands = MakeBombardment(game, new SequenceRNG());
+            GameResultBus bus = new GameResultBus();
+            ConnectPlanetaryControl(game, bus);
+            IReadOnlyList<GameResult> resolved = null;
+            commands.ResultsProduced += produced => resolved = bus.Publish(produced);
+
+            BombardmentResult result = commands.TryExecute(
+                new[] { fleet },
+                planet,
+                BombardmentType.DestroyPlanet
+            );
+
+            Assert.IsTrue(result.PlanetDestroyed);
+            Assert.IsNull(planet.OwnerInstanceID);
+            Assert.IsFalse(planet.IsColonized);
+            Assert.IsFalse(planet.IsPopulated());
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.Zero(planet.NextUprisingIncidentTick);
+            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsNull(result.OwnershipChange);
+            Assert.IsEmpty(resolved.OfType<PlanetOwnershipChangedResult>());
+            Assert.IsNull(neighbor.OwnerInstanceID);
+            Assert.AreEqual(48, neighbor.GetPopularSupport("alliance"));
+            Assert.AreEqual("alliance", fleet.OwnerInstanceID);
+            Assert.AreSame(planet, fleet.GetParent());
+            Assert.IsFalse(
+                game.GetFactions().Any(f => f.GetOwnedUnitsByType<Planet>().Contains(planet))
+            );
+        }
+
+        [Test]
+        public void TryExecute_DestroyPlanet_AppliesConfiguredSupportLossAcrossSectorsWithoutForcingFactionChanges()
+        {
+            GameRoot game = CreateGame();
+            (Planet target, PlanetSector origin) = CreatePlanet(game, "target", "empire");
+            origin.SectorType = PlanetSectorType.Core;
+            (Planet remoteCore, PlanetSector core) = CreatePlanet(game, "core", "alliance");
+            core.SectorType = PlanetSectorType.Core;
+            remoteCore.SetPopularSupport("alliance", 80);
+            remoteCore.SetPopularSupport("empire", 20);
+            (Planet remoteRim, PlanetSector rim) = CreatePlanet(game, "rim", null);
+            rim.SectorType = PlanetSectorType.OuterRim;
+            remoteRim.SetPopularSupport("alliance", 50);
+            remoteRim.SetPopularSupport("empire", 50);
+            Planet loyalRim = AddPlanet(game, rim, "loyal-rim", "alliance");
+            loyalRim.SetPopularSupport("alliance", 90);
+            loyalRim.SetPopularSupport("empire", 10);
+            Fleet fleet = AddBombardmentFleet(game, target, "alliance", 0);
+            fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
+
+            TryExecuteBombardment(
+                game,
+                new SequenceRNG(),
+                new[] { fleet },
+                target,
+                BombardmentType.DestroyPlanet
+            );
+
+            Assert.AreEqual(70, remoteCore.GetPopularSupport("alliance"));
+            Assert.AreEqual("alliance", remoteCore.OwnerInstanceID);
+            Assert.AreEqual(48, remoteRim.GetPopularSupport("alliance"));
+            Assert.IsNull(remoteRim.OwnerInstanceID);
+            Assert.AreEqual(90, loyalRim.GetPopularSupport("alliance"));
+            Assert.AreEqual("alliance", loyalRim.OwnerInstanceID);
         }
 
         [Test]
