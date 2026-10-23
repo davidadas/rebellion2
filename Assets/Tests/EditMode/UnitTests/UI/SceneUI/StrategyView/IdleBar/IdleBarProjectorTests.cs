@@ -134,6 +134,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void Project_StationedEntities_IncludePlanetNameOnlyInHoverText()
+        {
+            _unitPlanet.DisplayName = "Coruscant";
+            Officer officer = CreateOfficer("Officer");
+            SpecialForces specialForces = CreateSpecialForces("Special Forces");
+            GameFleet fleet = CreateFleet("Fleet 1");
+            Planet manufacturingPlanet = CreateManufacturingPlanet("Kuat");
+
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
+                _factionView,
+                _playerFactionId,
+                new RectInt()
+            );
+
+            Assert.AreEqual(
+                "Officer (Coruscant)",
+                result.Entries.Single(entry => entry.Entity == officer).HoverText
+            );
+            Assert.AreEqual(
+                "Special Forces (Coruscant)",
+                result.Entries.Single(entry => entry.Entity == specialForces).HoverText
+            );
+            Assert.AreEqual(
+                "Fleet 1 (Coruscant)",
+                result.Entries.Single(entry => entry.Entity == fleet).HoverText
+            );
+            Assert.AreEqual(
+                "Kuat",
+                result.Entries.Single(entry => entry.Entity == manufacturingPlanet).HoverText
+            );
+        }
+
+        [Test]
         public void Project_ParticipantsWithUnavailableStatus_AreExcluded()
         {
             Officer injuredOfficer = CreateOfficer("Injured");
