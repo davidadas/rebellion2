@@ -1234,7 +1234,7 @@ internal sealed class CustomGameSettingsSession
         AddGenerationTableCell(
             "mine-chance-per-resource",
             "core-mine-multiplier",
-            "Mine Chance per Unused Resource %",
+            "Mine Chance per Resource %",
             "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Core",
             0,
@@ -1245,7 +1245,7 @@ internal sealed class CustomGameSettingsSession
         AddGenerationTableCell(
             "mine-chance-per-resource",
             "rim-mine-multiplier",
-            "Mine Chance per Unused Resource %",
+            "Mine Chance per Resource %",
             "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Rim",
             0,

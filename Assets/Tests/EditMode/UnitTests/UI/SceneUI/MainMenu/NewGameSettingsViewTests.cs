@@ -1217,6 +1217,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Initialize_MineChanceControl_UsesCompactLabel()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setting-mine-chance-per-resource");
+            TMP_Text label = row.Find("Label").GetComponent<TMP_Text>();
+
+            Assert.AreEqual("Mine Chance per Resource %", label.text);
+            Assert.LessOrEqual(label.preferredWidth, label.rectTransform.rect.width);
+        }
+
+        [Test]
         public void Initialize_WorldGenerationTables_CenterEveryHeadingOverItsInput()
         {
             view.Initialize(TestContent.Pack, summary);
