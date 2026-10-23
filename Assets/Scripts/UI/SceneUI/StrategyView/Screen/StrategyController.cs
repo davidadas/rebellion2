@@ -242,12 +242,19 @@ public sealed class StrategyController
         ContentPreloadManifest strategyPreload = _appBootstrap
             .GetContentPack()
             .GetPreloadManifest("strategy");
+        FactionTheme playerFactionTheme = uiContext.GetPlayerFactionTheme();
         ContentPreloadManifest initialContent = new ContentPreloadManifest
         {
             TexturesPerFrame = strategyPreload.TexturesPerFrame,
             Textures = StrategyHudController
-                .GetTexturePaths(uiContext.GetPlayerFactionTheme())
-                .Concat(IdleBarProjector.GetTexturePaths(factionView, playerFaction.InstanceID))
+                .GetTexturePaths(playerFactionTheme)
+                .Concat(
+                    IdleBarProjector.GetTexturePaths(
+                        factionView,
+                        playerFaction.InstanceID,
+                        playerFactionTheme
+                    )
+                )
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };

@@ -403,6 +403,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                     true
                 )
             );
+            Assert.IsTrue(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    new GameFleet { OwnerInstanceID = "player" },
+                    "player",
+                    true
+                )
+            );
         }
 
         [Test]

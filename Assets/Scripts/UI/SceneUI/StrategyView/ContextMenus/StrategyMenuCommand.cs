@@ -314,7 +314,7 @@ public static class StrategyContextMenuAvailability
     )
     {
         return idleBarEnabled
-            && item is Officer or SpecialForces or Planet
+            && item is Officer or SpecialForces or Fleet or Planet
             && string.Equals(
                 item.GetOwnerInstanceID(),
                 playerFactionId,

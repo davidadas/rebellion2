@@ -6,6 +6,7 @@ using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
@@ -44,6 +45,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             buildingSpecialForces.ManufacturingStatus = ManufacturingStatus.Building;
             SpecialForces secondSpecialForces = CreateSpecialForces("B Unit");
             SpecialForces firstSpecialForces = CreateSpecialForces("A Unit");
+            GameFleet movingFleet = CreateFleet("A Moving Fleet");
+            movingFleet.Movement = new MovementState();
+            CreateFleet("A Building Fleet", ManufacturingStatus.Building);
+            GameFleet secondFleet = CreateFleet("B Fleet");
+            GameFleet firstFleet = CreateFleet("A Fleet");
             Planet busyPlanet = CreateManufacturingPlanet("A Busy Planet");
             busyPlanet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
             {
@@ -58,7 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 new RectInt(10, 20, 300, 200)
             );
 
-            Assert.AreEqual(6, result.Entries.Count);
+            Assert.AreEqual(8, result.Entries.Count);
             CollectionAssert.AreEqual(
                 new object[]
                 {
@@ -66,12 +72,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                     secondOfficer,
                     firstSpecialForces,
                     secondSpecialForces,
+                    firstFleet,
+                    secondFleet,
                     firstPlanet,
                     secondPlanet,
                 },
                 result.Entries.Select(entry => entry.Entity)
             );
             Assert.AreEqual(new RectInt(10, 20, 300, 200), result.DesktopBounds);
+        }
+
+        [Test]
+        public void GetTexturePaths_AvailableFleet_ReturnsFactionFleetArtwork()
+        {
+            const string fleetTexturePath = "fleet-list-icon";
+            CreateFleet("Fleet");
+            FactionTheme theme = new FactionTheme
+            {
+                PlanetOverlayTheme = new PlanetOverlayTheme
+                {
+                    UnitTileIcons = new UnitTileIcons { FleetListIconImagePath = fleetTexturePath },
+                },
+            };
+
+            string[] paths = IdleBarProjector
+                .GetTexturePaths(_factionView, _playerFactionId, theme)
+                .ToArray();
+
+            CollectionAssert.Contains(paths, fleetTexturePath);
         }
 
         [Test]
@@ -183,6 +211,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _unitPlanet.AddChild(specialForces);
             specialForces.SetParent(_unitPlanet);
             return specialForces;
+        }
+
+        /// <summary>
+        /// Creates a fleet containing one capital ship.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="status">The fleet's capital-ship manufacturing status.</param>
+        /// <returns>The created fleet.</returns>
+        private GameFleet CreateFleet(
+            string displayName,
+            ManufacturingStatus status = ManufacturingStatus.Complete
+        )
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = displayName,
+                DisplayName = displayName,
+                OwnerInstanceID = _playerFactionId,
+            };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = displayName + " Ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = status,
+            };
+            fleet.AddChild(capitalShip);
+            capitalShip.SetParent(fleet);
+            _unitPlanet.AddTestChild(fleet);
+            fleet.SetParent(_unitPlanet);
+            return fleet;
         }
 
         /// <summary>

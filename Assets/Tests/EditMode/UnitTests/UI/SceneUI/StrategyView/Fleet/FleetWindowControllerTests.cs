@@ -792,6 +792,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void TryCreateContextMenu_OwnedFleet_AddsIdleBarTrackingCommand()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                CreateFleetPointerEvent(view),
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out _
+            );
+
+            Assert.IsTrue(created);
+            StrategyMenuCommand trackingCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking);
+            Assert.IsTrue(trackingCommand.Enabled);
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, trackingCommand.IconKey);
+        }
+
+        [Test]
         public void OnContextMenuCommandSelected_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
             _planet.Planet.OwnerInstanceID = _opposingFactionId;

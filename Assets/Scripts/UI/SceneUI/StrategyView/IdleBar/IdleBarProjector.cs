@@ -7,7 +7,7 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
-/// Selects idle personnel and manufacturing capacity for the strategy desktop.
+/// Selects idle personnel, fleets, and manufacturing capacity for the strategy desktop.
 /// </summary>
 internal sealed class IdleBarProjector
 {
@@ -30,8 +30,8 @@ internal sealed class IdleBarProjector
     }
 
     /// <summary>
-    /// Projects available officers, special-forces units, and manufacturing planets in order,
-    /// with main characters ahead of other officers.
+    /// Projects available officers, special-forces units, fleets, and manufacturing planets in
+    /// order, with main characters ahead of other officers.
     /// </summary>
     /// <param name="factionView">The faction-filtered galaxy view.</param>
     /// <param name="playerFactionId">The represented faction identifier.</param>
@@ -53,6 +53,10 @@ internal sealed class IdleBarProjector
             .Concat(
                 FindAvailableParticipants<SpecialForces>(factionView, playerFactionId)
                     .Select(specialForces => CreateEntry(specialForces, uiContext))
+            )
+            .Concat(
+                FindIdleFleets(factionView, playerFactionId)
+                    .Select(fleet => CreateEntry(fleet, uiContext))
             )
             .Concat(
                 factionView
@@ -77,10 +81,12 @@ internal sealed class IdleBarProjector
     /// </summary>
     /// <param name="factionView">The faction-filtered galaxy view.</param>
     /// <param name="playerFactionId">The represented faction identifier.</param>
+    /// <param name="playerFactionTheme">The represented faction's presentation theme.</param>
     /// <returns>The configured texture paths.</returns>
     internal static IEnumerable<string> GetTexturePaths(
         GalaxyMap factionView,
-        string playerFactionId
+        string playerFactionId,
+        FactionTheme playerFactionTheme
     )
     {
         IEnumerable<ISceneNode> entities = FindAvailableParticipants<Officer>(
@@ -89,6 +95,7 @@ internal sealed class IdleBarProjector
             )
             .Cast<ISceneNode>()
             .Concat(FindAvailableParticipants<SpecialForces>(factionView, playerFactionId))
+            .Concat(FindIdleFleets(factionView, playerFactionId))
             .Concat(
                 factionView
                     ?.GetChildren<Planet>(recursive: true)
@@ -99,12 +106,25 @@ internal sealed class IdleBarProjector
             );
 
         return entities
-            .Select(entity =>
-                entity is Planet planet ? planet.GetPlanetIconPath()
-                : string.IsNullOrEmpty(entity.SmallDisplayImagePath) ? entity.GetDisplayImagePath()
-                : entity.SmallDisplayImagePath
-            )
+            .Select(entity => GetTexturePath(entity, playerFactionTheme))
             .Where(path => !string.IsNullOrEmpty(path));
+    }
+
+    /// <summary>
+    /// Enumerates stationary, operational fleets owned by the represented faction.
+    /// </summary>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The represented faction identifier.</param>
+    /// <returns>The idle fleets in display order.</returns>
+    private static IEnumerable<Fleet> FindIdleFleets(GalaxyMap factionView, string playerFactionId)
+    {
+        return factionView
+                ?.GetChildren<Fleet>(recursive: true)
+                .Where(fleet => fleet.OwnerInstanceID == playerFactionId)
+                .Where(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+                .OrderBy(candidate => candidate.GetDisplayName(), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
+            ?? Enumerable.Empty<Fleet>();
     }
 
     /// <summary>
@@ -192,9 +212,42 @@ internal sealed class IdleBarProjector
         if (entity == null)
             return null;
 
-        Texture2D texture = entity is Planet planet
-            ? uiContext?.GetPlanetTexture(planet)
-            : uiContext?.GetEntityTexture(entity, true);
+        Texture2D texture = entity switch
+        {
+            Planet planet => uiContext?.GetPlanetTexture(planet),
+            Fleet fleet => uiContext?.GetTexture(
+                GetFleetTexturePath(uiContext.GetTheme(fleet.OwnerInstanceID))
+            ),
+            _ => uiContext?.GetEntityTexture(entity, true),
+        };
         return new IdleBarEntry(entity, texture);
+    }
+
+    /// <summary>
+    /// Resolves the configured compact artwork path for one projected entity.
+    /// </summary>
+    /// <param name="entity">The projected strategy entity.</param>
+    /// <param name="playerFactionTheme">The represented faction's presentation theme.</param>
+    /// <returns>The configured texture path, or null when no artwork is configured.</returns>
+    private static string GetTexturePath(ISceneNode entity, FactionTheme playerFactionTheme)
+    {
+        return entity switch
+        {
+            Planet planet => planet.GetPlanetIconPath(),
+            Fleet => GetFleetTexturePath(playerFactionTheme),
+            _ when !string.IsNullOrEmpty(entity.SmallDisplayImagePath) =>
+                entity.SmallDisplayImagePath,
+            _ => entity.GetDisplayImagePath(),
+        };
+    }
+
+    /// <summary>
+    /// Resolves the normal fleet-list artwork shared by compact fleet presentations.
+    /// </summary>
+    /// <param name="theme">The represented fleet owner's presentation theme.</param>
+    /// <returns>The configured fleet-list texture path, or null.</returns>
+    private static string GetFleetTexturePath(FactionTheme theme)
+    {
+        return theme?.PlanetOverlayTheme?.UnitTileIcons?.FleetListIconImagePath;
     }
 }
