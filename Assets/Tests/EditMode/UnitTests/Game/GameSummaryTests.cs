@@ -114,6 +114,12 @@ namespace Rebellion.Tests.Game
                         DetectionRatingMultiplier = 1.25,
                     },
                     GenerationConfig = generationConfig,
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 70,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 3,
+                    },
                 },
             };
 
@@ -185,6 +191,9 @@ namespace Rebellion.Tests.Game
                 deserialized.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
                 "Generation overrides should be correctly deserialized."
             );
+            Assert.AreEqual(70, deserialized.CustomSettings.GarrisonRules.SupportThreshold);
+            Assert.AreEqual(5, deserialized.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
+            Assert.AreEqual(3, deserialized.CustomSettings.GarrisonRules.UprisingMultiplier);
             Assert.IsTrue(deserialized.IsCustomGame);
         }
     }

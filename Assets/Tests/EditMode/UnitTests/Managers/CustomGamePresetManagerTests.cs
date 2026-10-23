@@ -64,6 +64,18 @@ namespace Rebellion.Tests.Managers
                 summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
                 loaded.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier
             );
+            Assert.AreEqual(
+                summary.CustomSettings.GarrisonRules.SupportThreshold,
+                loaded.CustomSettings.GarrisonRules.SupportThreshold
+            );
+            Assert.AreEqual(
+                summary.CustomSettings.GarrisonRules.SupportDeficitPerRegiment,
+                loaded.CustomSettings.GarrisonRules.SupportDeficitPerRegiment
+            );
+            Assert.AreEqual(
+                summary.CustomSettings.GarrisonRules.UprisingMultiplier,
+                loaded.CustomSettings.GarrisonRules.UprisingMultiplier
+            );
         }
 
         [Test]
@@ -114,6 +126,12 @@ namespace Rebellion.Tests.Managers
                     PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
                     AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
                     GenerationConfig = CreateGenerationConfig(),
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 70,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 3,
+                    },
                 },
             };
         }

@@ -76,12 +76,22 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 },
                 AIDifficultyModifiers = new DifficultyModifiers { ManufacturingSpeedPercent = 165 },
                 GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                GarrisonRules = new GarrisonRuleSettings
+                {
+                    SupportThreshold = 70,
+                    SupportDeficitPerRegiment = 5,
+                    UprisingMultiplier = 3,
+                },
             };
 
             view.Initialize(TestContent.Pack, summary);
 
             Assert.AreEqual("135", Input("manufacturing-speed", "Player").text);
             Assert.AreEqual("165", Input("manufacturing-speed", "AI").text);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Assert.AreEqual("70", Input("garrison-support-threshold", "World").text);
+            Assert.AreEqual("5", Input("garrison-support-deficit-per-regiment", "World").text);
+            Assert.AreEqual("3", Input("garrison-uprising-multiplier", "World").text);
         }
 
         [Test]
@@ -1067,13 +1077,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 new[]
                 {
                     "FACTION STARTING CONDITIONS",
-                    "PLANET ENERGY (NORMAL)",
-                    "RAW MATERIALS (NORMAL)",
-                    "PLANET RESOURCE LIMITS (NORMAL)",
+                    "PLANET ENERGY",
+                    "RAW MATERIALS",
+                    "PLANET RESOURCE LIMITS",
                     "RIM COLONIZATION",
                     "STARTING PLANET SUPPORT",
                     "MINE GENERATION",
-                    "GARRISONS AND SUPPORT",
+                    "STARTING GARRISONS AND SUPPORT",
+                    "LIVE GARRISON REQUIREMENTS",
                 },
                 labels
             );
@@ -1139,7 +1150,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform previousRow = (RectTransform)
                 transforms.Single(candidate => candidate.name == "Setting-weak-core-worlds");
             RectTransform section = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY-(NORMAL)");
+                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY");
 
             Assert.AreEqual(
                 -previousRow.anchoredPosition.y + previousRow.sizeDelta.y + 8f,
@@ -1203,6 +1214,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual("Base Support", row.Find("Label").GetComponent<TMP_Text>().text);
             Assert.AreEqual(3, row.GetComponentsInChildren<TMP_InputField>().Length);
+        }
+
+        [Test]
+        public void Initialize_MineChanceControl_UsesCompactLabel()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setting-mine-chance-per-resource");
+            TMP_Text label = row.Find("Label").GetComponent<TMP_Text>();
+
+            Assert.AreEqual("Mine Chance per Resource %", label.text);
+            Assert.LessOrEqual(label.preferredWidth, label.rectTransform.rect.width);
         }
 
         [Test]
@@ -1279,6 +1305,51 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 authored,
                 TestContent.Pack.GameData.GenerationConfig.FacilityGeneration.CoreMineMultiplier
+            );
+        }
+
+        [Test]
+        public void Apply_EditedGarrisonRules_PublishesRuntimeOverridesWithoutMutatingContent()
+        {
+            GameSummary applied = null;
+            int authoredThreshold = TestContent
+                .Pack
+                .GameData
+                .GameConfig
+                .AI
+                .Garrison
+                .SupportThreshold;
+            int authoredDivisor = TestContent.Pack.GameData.GameConfig.AI.Garrison.GarrisonDivisor;
+            int authoredMultiplier = TestContent
+                .Pack
+                .GameData
+                .GameConfig
+                .AI
+                .Garrison
+                .UprisingMultiplier;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Input("garrison-support-threshold", "World").onEndEdit.Invoke("70");
+            Input("garrison-support-deficit-per-regiment", "World").onEndEdit.Invoke("5");
+            Input("garrison-uprising-multiplier", "World").onEndEdit.Invoke("3");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(70, applied.CustomSettings.GarrisonRules.SupportThreshold);
+            Assert.AreEqual(5, applied.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
+            Assert.AreEqual(3, applied.CustomSettings.GarrisonRules.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.SupportThreshold
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.GarrisonDivisor
+            );
+            Assert.AreEqual(
+                authoredMultiplier,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.UprisingMultiplier
             );
         }
 

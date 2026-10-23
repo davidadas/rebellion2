@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -16,6 +18,9 @@ namespace Rebellion.Game
 
         [PersistableMember(Name = nameof(GenerationConfig))]
         private GameGenerationConfig _generationConfig;
+
+        [PersistableMember(Name = nameof(GarrisonRules))]
+        private GarrisonRuleSettings _garrisonRules;
 
         [PersistableIgnore]
         public DifficultyModifiers PlayerDifficultyModifiers
@@ -38,9 +43,56 @@ namespace Rebellion.Game
             set => _generationConfig = value;
         }
 
+        [PersistableIgnore]
+        public GarrisonRuleSettings GarrisonRules
+        {
+            get => _garrisonRules;
+            set => _garrisonRules = value;
+        }
+
         /// <summary>
         /// Creates an empty custom-game settings payload for population or deserialization.
         /// </summary>
         public CustomGameSettings() { }
+
+        /// <summary>
+        /// Applies persisted campaign-specific runtime rules to a detached game configuration.
+        /// </summary>
+        /// <param name="config">The runtime configuration receiving the overrides.</param>
+        public void ApplyRuntimeRules(GameConfig config)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+            if (GarrisonRules == null)
+                return;
+            if (GarrisonRules.SupportThreshold is < 0 or > 100)
+                throw new InvalidDataException("Garrison support threshold must be from 0 to 100.");
+            if (GarrisonRules.SupportDeficitPerRegiment < 1)
+                throw new InvalidDataException(
+                    "Garrison support deficit per regiment must be positive."
+                );
+            if (GarrisonRules.UprisingMultiplier < 1)
+                throw new InvalidDataException("Garrison uprising multiplier must be positive.");
+
+            GameConfig.GarrisonConfig garrison =
+                config.AI?.Garrison
+                ?? throw new InvalidDataException("Runtime garrison configuration is missing.");
+            garrison.SupportThreshold = GarrisonRules.SupportThreshold;
+            garrison.GarrisonDivisor = GarrisonRules.SupportDeficitPerRegiment;
+            garrison.UprisingMultiplier = GarrisonRules.UprisingMultiplier;
+        }
+    }
+
+    /// <summary>
+    /// Defines campaign-specific rules for support-based garrison requirements.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GarrisonRuleSettings
+    {
+        public int SupportThreshold { get; set; }
+
+        public int SupportDeficitPerRegiment { get; set; }
+
+        public int UprisingMultiplier { get; set; }
     }
 }
