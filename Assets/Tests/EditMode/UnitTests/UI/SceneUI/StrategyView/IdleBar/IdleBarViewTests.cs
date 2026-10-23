@@ -228,6 +228,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void PointerHover_StationedEntity_ShowsEntityAndPlanetNames()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            Officer officer = CreateOfficer("Officer");
+            planet.AddChild(officer);
+            officer.SetParent(planet);
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(officer, null) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            GetVisibleSlots().Single().OnPointerEnter(null);
+
+            Assert.AreEqual(
+                "Officer (Coruscant)",
+                GetField<TextMeshProUGUI>("hoverLabelText").text
+            );
+        }
+
+        [Test]
         public void Render_HoveredSlotChangesEntity_RebindsHoverIdentity()
         {
             List<string> hoverEvents = new List<string>();

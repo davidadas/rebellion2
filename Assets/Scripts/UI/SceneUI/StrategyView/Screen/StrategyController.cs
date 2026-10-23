@@ -242,12 +242,19 @@ public sealed class StrategyController
         ContentPreloadManifest strategyPreload = _appBootstrap
             .GetContentPack()
             .GetPreloadManifest("strategy");
+        FactionTheme playerFactionTheme = uiContext.GetPlayerFactionTheme();
         ContentPreloadManifest initialContent = new ContentPreloadManifest
         {
             TexturesPerFrame = strategyPreload.TexturesPerFrame,
             Textures = StrategyHudController
-                .GetTexturePaths(uiContext.GetPlayerFactionTheme())
-                .Concat(IdleBarProjector.GetTexturePaths(factionView, playerFaction.InstanceID))
+                .GetTexturePaths(playerFactionTheme)
+                .Concat(
+                    IdleBarProjector.GetTexturePaths(
+                        factionView,
+                        playerFaction.InstanceID,
+                        playerFactionTheme
+                    )
+                )
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };
@@ -2298,17 +2305,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens status information for one selected fleet item.
     /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The selected items.</param>
-    void IFleetWindowActions.OpenFleetStatusWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
+    /// <param name="target">The selected status target.</param>
+    void IFleetWindowActions.OpenFleetStatusWindow(StrategyStatusTarget target)
     {
-        List<ISceneNode> sourceItems = CopySceneNodes(items);
-        GalaxyMapPlanet planet = GetWindowPlanet(sourceWindow);
-        if (planet != null && sourceItems.Count == 1)
-            TryOpenStatusWindow(new StrategyStatusTarget(planet, sourceItems[0]));
+        TryOpenStatusWindow(target);
     }
 
     /// <summary>
@@ -3449,6 +3449,19 @@ public sealed class StrategyController
                 sourceY
             );
             width = strategyContextMenu.Layout.DefenseMenuWidth;
+        }
+        else if (target is Fleet fleet)
+        {
+            request = fleetWindowController.CreateContextMenuForFleet(
+                strategyPlanet,
+                fleet,
+                sourceX,
+                sourceY
+            );
+            width = FleetWindowController.GetContextMenuWidth(
+                request.Commands,
+                strategyContextMenu.Layout
+            );
         }
         else if (target is Planet)
         {
