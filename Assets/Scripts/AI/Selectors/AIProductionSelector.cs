@@ -434,6 +434,69 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
+        /// Prioritizes completing a sector's primary industrial pair within existing expansion slots.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">Ranked proposals whose unrelated domain positions are preserved.</param>
+        /// <returns>The proposals with viable industrial steps ordered ahead of further expansion.</returns>
+        internal List<AIProposal> OrderInfrastructureProduction(
+            AITurnContext context,
+            IEnumerable<AIProposal> proposals
+        )
+        {
+            List<AIProposal> ordered = proposals.ToList();
+            Dictionary<string, (BuildingType NextType, double Completion)> development = new(
+                StringComparer.Ordinal
+            );
+            Dictionary<AIProposal, (bool NextStep, double Completion)> priorities = new();
+            foreach (AIManufactureProposal proposal in ordered.OfType<AIManufactureProposal>())
+            {
+                if (
+                    proposal.Demand?.Kind
+                        is not (
+                            AIProductionDemandKind.ConstructionFacility
+                            or AIProductionDemandKind.Shipyard
+                        )
+                    || proposal.Demand.DestinationPlanet is not Planet destination
+                )
+                    continue;
+
+                string sectorId = context.Assessment.GetPlanetSystemId(destination);
+                if (!development.TryGetValue(sectorId, out var step))
+                {
+                    step = context.StrategicPlan.GetInfrastructureDevelopmentStep(
+                        destination,
+                        _reservedDestinationBuildings
+                    );
+                    development.Add(sectorId, step);
+                }
+                bool nextStep =
+                    proposal.Demand.InfrastructureHubIndex == 0
+                    && proposal.Demand.BuildingType == step.NextType;
+                priorities.Add(proposal, (nextStep, nextStep ? step.Completion : 0));
+            }
+
+            foreach (
+                IGrouping<AIProposalPriority, int> group in Enumerable
+                    .Range(0, ordered.Count)
+                    .Where(index => priorities.ContainsKey(ordered[index]))
+                    .GroupBy(index => ordered[index].Priority)
+            )
+            {
+                int[] slots = group.ToArray();
+                AIProposal[] ranked = slots
+                    .Select(index => ordered[index])
+                    .OrderByDescending(proposal => priorities[proposal].NextStep)
+                    .ThenByDescending(proposal => priorities[proposal].Completion)
+                    .ThenByDescending(proposal => proposal.Score)
+                    .ToArray();
+                for (int index = 0; index < slots.Length; index++)
+                    ordered[slots[index]] = ranked[index];
+            }
+            return ordered;
+        }
+
+        /// <summary>
         /// Identifies manufacturing actions competing to assemble an attack fleet.
         /// </summary>
         /// <param name="proposal">The globally ranked action.</param>

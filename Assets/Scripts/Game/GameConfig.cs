@@ -428,6 +428,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIAttackUtilityConfig
         {
+            public AIConsiderationConfig TravelTime { get; set; } = new AIConsiderationConfig();
+
             public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig SectorSupport { get; set; } = new AIConsiderationConfig();

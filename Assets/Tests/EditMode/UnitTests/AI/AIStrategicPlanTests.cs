@@ -12,6 +12,87 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        [TestCase(ManufacturingStatus.Complete)]
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        public void GetInfrastructureDevelopmentStep_ConstructionHubCommitted_PrioritizesShipyards(
+            ManufacturingStatus status
+        )
+        {
+            AITurnContext context = CreateIndustrialDevelopmentContext(5, 0, out Planet hub);
+            foreach (Building building in hub.GetChildren<Building>())
+                building.ManufacturingStatus = status;
+
+            var step = context.StrategicPlan.GetInfrastructureDevelopmentStep(hub, null);
+
+            Assert.AreEqual(BuildingType.Shipyard, step.NextType);
+        }
+
+        [Test]
+        public void GetInfrastructureDevelopmentStep_ConstructionHubIncomplete_PrioritizesConstruction()
+        {
+            AITurnContext context = CreateIndustrialDevelopmentContext(4, 0, out Planet hub);
+
+            var step = context.StrategicPlan.GetInfrastructureDevelopmentStep(hub, null);
+
+            Assert.AreEqual(BuildingType.ConstructionFacility, step.NextType);
+        }
+
+        [Test]
+        public void GetInfrastructureDevelopmentStep_LastConstructionYardSelected_PrioritizesShipyards()
+        {
+            AITurnContext context = CreateIndustrialDevelopmentContext(4, 0, out Planet hub);
+            Dictionary<string, Dictionary<BuildingType, int>> selected = new()
+            {
+                [hub.InstanceID] = new() { [BuildingType.ConstructionFacility] = 1 },
+            };
+
+            var step = context.StrategicPlan.GetInfrastructureDevelopmentStep(hub, selected);
+
+            Assert.AreEqual(BuildingType.Shipyard, step.NextType);
+        }
+
+        [Test]
+        public void GetInfrastructureDevelopmentStep_BothPrimaryHubsCovered_ReturnsNoPreferredStep()
+        {
+            AITurnContext context = CreateIndustrialDevelopmentContext(5, 6, out Planet hub);
+
+            var step = context.StrategicPlan.GetInfrastructureDevelopmentStep(hub, null);
+
+            Assert.AreEqual(BuildingType.None, step.NextType);
+        }
+
+        [Test]
+        public void GetInfrastructureDevelopmentStep_SmallerHubAllocated_DoesNotSwitchToUnassignedLargerSite()
+        {
+            AITurnContext initial = CreateIndustrialDevelopmentContext(3, 0, out Planet hub);
+            hub.EnergyCapacity = 3;
+            AITestSceneBuilder
+                .AddPlanet(
+                    initial.Game,
+                    hub.GetParentOfType<PlanetSector>(),
+                    "unassigned",
+                    initial.Faction.InstanceID,
+                    energyCapacity: 8
+                )
+                .SetPopularSupport(initial.Faction.InstanceID, 100);
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+            context.StrategicPlan.TryAllocateInfrastructureHub(
+                hub,
+                BuildingType.ConstructionFacility,
+                3
+            );
+            context.StrategicPlan.TryAllocateInfrastructureHub(
+                initial.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub"),
+                BuildingType.Shipyard,
+                6
+            );
+
+            var step = context.StrategicPlan.GetInfrastructureDevelopmentStep(hub, null);
+
+            Assert.AreEqual(BuildingType.Shipyard, step.NextType);
+        }
+
         /// <summary>
         /// Applies the headquarters multiplier without exceeding its affordable fleet share.
         /// </summary>
@@ -896,6 +977,71 @@ namespace Rebellion.Tests.AI
             AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
 
             Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+        }
+
+        /// <summary>
+        /// Creates separately allocated construction and shipyard hubs with configured primary targets.
+        /// </summary>
+        /// <param name="constructionCount">The committed construction-yard count.</param>
+        /// <param name="shipyardCount">The committed shipyard count.</param>
+        /// <param name="constructionHub">Receives the construction-hub planet.</param>
+        /// <returns>The faction turn containing both industrial sites.</returns>
+        private static AITurnContext CreateIndustrialDevelopmentContext(
+            int constructionCount,
+            int shipyardCount,
+            out Planet constructionHub
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
+            game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "industrial-sector");
+            constructionHub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "construction-hub",
+                faction.InstanceID,
+                energyCapacity: 5
+            );
+            Planet shipyardHub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "shipyard-hub",
+                faction.InstanceID,
+                energyCapacity: 6
+            );
+            constructionHub.SetPopularSupport(faction.InstanceID, 100);
+            shipyardHub.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < constructionCount; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    constructionHub,
+                    "construction-" + index,
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+            for (int index = 0; index < shipyardCount; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    shipyardHub,
+                    "shipyard-" + index,
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.StrategicPlan.TryAllocateInfrastructureHub(
+                constructionHub,
+                BuildingType.ConstructionFacility,
+                5
+            );
+            context.StrategicPlan.TryAllocateInfrastructureHub(
+                shipyardHub,
+                BuildingType.Shipyard,
+                6
+            );
+            return context;
         }
 
         /// <summary>

@@ -588,10 +588,7 @@ namespace Rebellion.AI.Scorers
                 ScoreStrategicTargetValue(context.Assessment, target),
                 utility.StrategicValue
             );
-            score.Add(
-                ScoreTravelEfficiency(context.Assessment, fleet, target),
-                utility.TravelEfficiency
-            );
+            score.Add(ScoreAttackTravelEfficiency(context, fleet, target), utility.TravelTime);
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
             return ApplyIntelAgeRisk(context, target, GetSelectionValue(score));
         }
@@ -643,8 +640,8 @@ namespace Rebellion.AI.Scorers
                 utility.CaptureViability
             );
             score.Add(
-                ScoreTravelEfficiency(assessment, fleet, targetPlanet),
-                utility.TravelEfficiency
+                ScoreAttackTravelEfficiency(context, fleet, targetPlanet),
+                utility.TravelTime
             );
             score.AddCost(
                 ScoreExpectedLossRisk(context, fleet, targetPlanet),
@@ -1170,23 +1167,42 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns travel efficiency for a fleet targeting a planet.
+        /// Returns a gradually decreasing preference based on a fleet's actual journey time.
         /// </summary>
-        /// <param name="assessment">The current AI assessment.</param>
+        /// <param name="context">The current faction turn.</param>
         /// <param name="fleet">The fleet to score.</param>
         /// <param name="targetPlanet">The attack target.</param>
         /// <returns>The travel efficiency score.</returns>
-        private double ScoreTravelEfficiency(
-            AIAssessment assessment,
+        private double ScoreAttackTravelEfficiency(
+            AITurnContext context,
             Fleet fleet,
             Planet targetPlanet
         )
         {
-            Planet currentPlanet = assessment.GetFleetPlanet(fleet);
-            if (currentPlanet == null)
+            Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
+            if (currentPlanet == null || targetPlanet == null)
                 return 0;
 
-            return ScoreTravelEfficiency(assessment, currentPlanet, targetPlanet);
+            GameConfig.AIConsiderationConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .AttackUtility
+                .TravelTime;
+            if (utility.Weight <= 0)
+                return 0;
+
+            int transitTicks =
+                currentPlanet.InstanceID == targetPlanet.InstanceID
+                    ? 0
+                    : context.MovementQueries.CalculateTransitTicks(
+                        fleet,
+                        currentPlanet,
+                        targetPlanet
+                    );
+            double scale = Math.Max(1, utility.SaturationValue);
+            return scale / (scale + Math.Max(0, transitTicks));
         }
 
         /// <summary>

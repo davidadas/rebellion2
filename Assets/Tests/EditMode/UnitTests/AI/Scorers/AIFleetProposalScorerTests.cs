@@ -312,8 +312,14 @@ namespace Rebellion.Tests.AI.Fleets
             game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
             {
                 SystemPresence = new GameConfig.AIConsiderationConfig { Weight = weight },
-                TravelEfficiency = new GameConfig.AIConsiderationConfig { Weight = 0.1 },
+                TravelTime = new GameConfig.AIConsiderationConfig
+                {
+                    Weight = 0.2,
+                    SaturationValue = 1000,
+                },
             };
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.MinTransitTicks = 1;
             PlanetSector originSector = AITestSceneBuilder.AddSector(game, "origin-sector");
             Planet origin = AITestSceneBuilder.AddPlanet(
                 game,
@@ -353,6 +359,7 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 1000
             );
+            fleet.GetChildren<CapitalShip>().Single().Hyperdrive = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIFleetProposalScorer scorer = new AIFleetProposalScorer();
 
@@ -376,6 +383,78 @@ namespace Rebellion.Tests.AI.Fleets
             );
 
             Assert.AreEqual(prefersConsolidation, consolidationScore > nearbyScore);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Score_OffensiveFleetWithSlowerHyperdrive_DecreasesPriority(bool engagement)
+        {
+            AITurnContext context = CreateAttackTravelContext(out Fleet fleet, out Planet target);
+            var scorer = new AIFleetProposalScorer();
+            double faster = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+            fleet.GetChildren<CapitalShip>().Single().Hyperdrive = 200;
+
+            double slower = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+
+            Assert.Less(slower, faster);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Score_OffensiveFleetWithUnrelatedDistantEnemy_PreservesPriority(bool engagement)
+        {
+            AITurnContext context = CreateAttackTravelContext(out Fleet fleet, out Planet target);
+            var scorer = new AIFleetProposalScorer();
+            double before = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+            PlanetSector sector = AITestSceneBuilder.AddSector(context.Game, "remote-sector");
+            Planet remote = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                sector,
+                "remote-enemy",
+                target.GetOwnerInstanceID(),
+                positionX: 10000
+            );
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, remote);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            double after = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+
+            Assert.AreEqual(before, after, 0.000001);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Score_OffensiveJourneysBeyondTravelScale_PrefersShorterJourney(bool engagement)
+        {
+            AITurnContext context = CreateAttackTravelContext(out Fleet fleet, out Planet target);
+            var scorer = new AIFleetProposalScorer();
+            double shorter = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+            target.PositionX *= 2;
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            double longer = scorer.Score(
+                context,
+                CreateOffensiveProposal(context, fleet, target, engagement)
+            );
+
+            Assert.Greater(shorter, longer);
+            Assert.Greater(longer, 0);
         }
 
         [Test]
@@ -1567,6 +1646,46 @@ namespace Rebellion.Tests.AI.Fleets
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
             Assert.Zero(score);
+        }
+
+        /// <summary>
+        /// Creates a fleet and known enemy orbit for measuring actual attack journey times.
+        /// </summary>
+        /// <param name="fleet">Receives the available battle fleet.</param>
+        /// <param name="target">Receives the known enemy planet.</param>
+        /// <returns>A faction turn with only attack travel utility enabled.</returns>
+        private static AITurnContext CreateAttackTravelContext(out Fleet fleet, out Planet target)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
+            game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                TravelTime = new GameConfig.AIConsiderationConfig
+                {
+                    Weight = 1,
+                    SaturationValue = 40,
+                },
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID
+            );
+            target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                enemy.InstanceID,
+                positionX: 80
+            );
+            fleet = AddBattleFleet(game, origin, "fleet", faction.InstanceID, 10000);
+            fleet.GetChildren<CapitalShip>().Single().Hyperdrive = 100;
+            AddBattleFleet(game, target, "hostile", enemy.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
 
         /// <summary>

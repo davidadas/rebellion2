@@ -43,7 +43,10 @@ namespace Rebellion.AI.Phases
             AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             LinkedList<AIProposal> pending = new(
-                GetSortedProposals(context, context.Proposals, true)
+                productionSelector.OrderInfrastructureProduction(
+                    context,
+                    GetSortedProposals(context, context.Proposals, true)
+                )
             );
             while (pending.First != null)
             {
@@ -114,9 +117,22 @@ namespace Rebellion.AI.Phases
                 {
                     missionSelector.RefreshDiplomacyScores(context, pending);
                     pending = new LinkedList<AIProposal>(
-                        GetSortedProposals(context, pending, false)
+                        productionSelector.OrderInfrastructureProduction(
+                            context,
+                            GetSortedProposals(context, pending, false)
+                        )
                     );
                 }
+                else if (
+                    selectedProposal is AIManufactureProposal
+                    {
+                        Demand.Kind: AIProductionDemandKind.ConstructionFacility
+                            or AIProductionDemandKind.Shipyard
+                    }
+                )
+                    pending = new LinkedList<AIProposal>(
+                        productionSelector.OrderInfrastructureProduction(context, pending)
+                    );
                 if (
                     selectedProposal is AIManufactureProposal
                     {

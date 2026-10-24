@@ -401,6 +401,92 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Identifies the next sector investment from built, queued, and selected primary hub capacity.
+        /// </summary>
+        /// <param name="destination">A planet identifying the sector to develop.</param>
+        /// <param name="selectedBuildings">Additional facilities reserved during this selection pass.</param>
+        /// <returns>The next facility category and the fraction of the paired hubs already covered.</returns>
+        internal (BuildingType NextType, double Completion) GetInfrastructureDevelopmentStep(
+            Planet destination,
+            IReadOnlyDictionary<string, Dictionary<BuildingType, int>> selectedBuildings
+        )
+        {
+            if (destination == null)
+                return default;
+
+            string sectorId = _assessment.GetPlanetSystemId(destination);
+            List<Planet> planets = _assessment
+                .OwnedPlanets.Where(planet => _assessment.GetPlanetSystemId(planet) == sectorId)
+                .ToList();
+            var construction = GetPrimaryInfrastructureProgress(
+                planets,
+                BuildingType.ConstructionFacility,
+                selectedBuildings
+            );
+            var shipyards = GetPrimaryInfrastructureProgress(
+                planets,
+                BuildingType.Shipyard,
+                selectedBuildings
+            );
+            if (construction.Target <= 0 || shipyards.Target <= 0)
+                return default;
+
+            BuildingType next =
+                construction.Committed < construction.Target ? BuildingType.ConstructionFacility
+                : shipyards.Committed < shipyards.Target ? BuildingType.Shipyard
+                : BuildingType.None;
+            double completion =
+                (
+                    Math.Min(1, construction.Committed / (double)construction.Target)
+                    + Math.Min(1, shipyards.Committed / (double)shipyards.Target)
+                ) / 2;
+            return (next, completion);
+        }
+
+        /// <summary>
+        /// Measures the strongest feasible primary hub, including queued and selected facilities.
+        /// </summary>
+        /// <param name="planets">Owned planets in one sector.</param>
+        /// <param name="buildingType">The industrial category to measure.</param>
+        /// <param name="selectedBuildings">Additional facilities reserved during this selection pass.</param>
+        /// <returns>The committed count and achievable primary target.</returns>
+        private (int Committed, int Target) GetPrimaryInfrastructureProgress(
+            IEnumerable<Planet> planets,
+            BuildingType buildingType,
+            IReadOnlyDictionary<string, Dictionary<BuildingType, int>> selectedBuildings
+        )
+        {
+            int preferred = GetInfrastructureHubTargets(buildingType).FirstOrDefault();
+            List<Planet> candidates = planets
+                .Where(planet => !planet.IsDestroyed && planet.IsColonized)
+                .ToList();
+            bool hasAllocation = candidates.Any(planet =>
+                GetAllocatedInfrastructureTarget(planet, buildingType) > 0
+            );
+            (int Committed, int Target) best = default;
+            foreach (Planet planet in candidates)
+            {
+                int target = GetAllocatedInfrastructureTarget(planet, buildingType);
+                int committed = planet.GetTotalBuildingTypeCount(buildingType);
+                if (
+                    selectedBuildings != null
+                    && selectedBuildings.TryGetValue(planet.InstanceID, out var selected)
+                    && selected.TryGetValue(buildingType, out int count)
+                )
+                    committed += count;
+                if (preferred > 0 && committed >= preferred)
+                    return (committed, preferred);
+                if (hasAllocation && target <= 0)
+                    continue;
+                if (target <= 0)
+                    target = GetAchievableInfrastructureHubTarget(planet, buildingType, preferred);
+                if (target > best.Target || target == best.Target && committed > best.Committed)
+                    best = (committed, target);
+            }
+            return best;
+        }
+
+        /// <summary>
         /// Returns the preferred facility count capped by the space available for its layout.
         /// </summary>
         /// <param name="planet">The proposed hub destination.</param>
