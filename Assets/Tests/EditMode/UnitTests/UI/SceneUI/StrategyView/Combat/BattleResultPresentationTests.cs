@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
@@ -68,6 +69,64 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             CombatSide? opposingSide = BattleResultPresentation.GetOpposingSide(CombatSide.Draw);
 
             Assert.IsNull(opposingSide);
+        }
+
+        [Test]
+        public void GetFleetPlanetInstanceID_WithdrawnLiveFleet_ReturnsRetreatPlanet()
+        {
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = new Rebellion.Game.Galaxy.Planet { InstanceID = "battle-planet" },
+                AttackerOwnerInstanceID = _attackerId,
+                DefenderOwnerInstanceID = _defenderId,
+                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                AttackerRetreatPlanetInstanceID = "retreat-planet",
+            };
+
+            string planetInstanceId = BattleResultPresentation
+                .Create(result)
+                .GetFleetPlanetInstanceID(_attackerId);
+
+            Assert.AreEqual("retreat-planet", planetInstanceId);
+        }
+
+        [Test]
+        public void GetFleetPlanetInstanceID_WithdrawnSavedFleet_ReturnsRetreatPlanet()
+        {
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _defenderId,
+                PlanetInstanceID = "battle-planet",
+                AttackerOwnerInstanceID = _attackerId,
+                DefenderOwnerInstanceID = _defenderId,
+                DefenderOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefenderRetreatPlanetInstanceID = "retreat-planet",
+            };
+
+            string planetInstanceId = BattleResultPresentation
+                .Create(report)
+                .GetFleetPlanetInstanceID(_defenderId);
+
+            Assert.AreEqual("retreat-planet", planetInstanceId);
+        }
+
+        [Test]
+        public void GetFleetPlanetInstanceID_DestroyedFleet_ReturnsNull()
+        {
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = new Rebellion.Game.Galaxy.Planet { InstanceID = "battle-planet" },
+                AttackerOwnerInstanceID = _attackerId,
+                DefenderOwnerInstanceID = _defenderId,
+                AttackerOutcome = SpaceCombatSideOutcome.Destroyed,
+            };
+
+            string planetInstanceId = BattleResultPresentation
+                .Create(result)
+                .GetFleetPlanetInstanceID(_attackerId);
+
+            Assert.IsNull(planetInstanceId);
         }
 
         [Test]

@@ -37,6 +37,16 @@ internal abstract class BattleResultPresentation
     internal abstract string PlanetInstanceID { get; }
 
     /// <summary>
+    /// Returns the planet whose fleet pane represents the requested player's surviving fleet.
+    /// </summary>
+    /// <param name="playerFactionId">The current player's faction identifier.</param>
+    /// <returns>The fleet destination planet identifier, or null when no player fleet survived.</returns>
+    internal virtual string GetFleetPlanetInstanceID(string playerFactionId)
+    {
+        return PlanetInstanceID;
+    }
+
+    /// <summary>
     /// Creates a presentation adapter for a supported combat result.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
@@ -141,6 +151,43 @@ internal abstract class BattleResultPresentation
             CombatSide.Defender => result.DefenderOutcome,
             _ => SpaceCombatSideOutcome.Unknown,
         };
+    }
+
+    /// <summary>
+    /// Resolves the fleet-pane planet for one side of a completed space battle.
+    /// </summary>
+    /// <param name="ownerInstanceId">The owner whose fleet should be opened.</param>
+    /// <param name="battlePlanetInstanceId">The planet where combat occurred.</param>
+    /// <param name="attackerOwnerInstanceId">The attacking owner.</param>
+    /// <param name="defenderOwnerInstanceId">The defending owner.</param>
+    /// <param name="attackerOutcome">The attacking fleet's outcome.</param>
+    /// <param name="defenderOutcome">The defending fleet's outcome.</param>
+    /// <param name="attackerRetreatPlanetInstanceId">The attacking fleet's retreat destination.</param>
+    /// <param name="defenderRetreatPlanetInstanceId">The defending fleet's retreat destination.</param>
+    /// <returns>The planet whose fleet pane represents the surviving fleet, or null.</returns>
+    private static string ResolveFleetPlanetInstanceID(
+        string ownerInstanceId,
+        string battlePlanetInstanceId,
+        string attackerOwnerInstanceId,
+        string defenderOwnerInstanceId,
+        SpaceCombatSideOutcome attackerOutcome,
+        SpaceCombatSideOutcome defenderOutcome,
+        string attackerRetreatPlanetInstanceId,
+        string defenderRetreatPlanetInstanceId
+    )
+    {
+        bool attacker = ownerInstanceId == attackerOwnerInstanceId;
+        bool defender = ownerInstanceId == defenderOwnerInstanceId;
+        if (!attacker && !defender)
+            return null;
+
+        SpaceCombatSideOutcome outcome = attacker ? attackerOutcome : defenderOutcome;
+        if (outcome == SpaceCombatSideOutcome.Destroyed)
+            return null;
+        if (outcome != SpaceCombatSideOutcome.Withdrawn)
+            return battlePlanetInstanceId;
+
+        return attacker ? attackerRetreatPlanetInstanceId : defenderRetreatPlanetInstanceId;
     }
 
     /// <summary>
@@ -282,6 +329,25 @@ internal abstract class BattleResultPresentation
         internal override bool UsesPlanetaryLayout => false;
 
         internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
+        /// <summary>
+        /// Returns the live battle's fleet-pane planet for the requested player.
+        /// </summary>
+        /// <param name="playerFactionId">The current player's faction identifier.</param>
+        /// <returns>The fleet destination planet identifier, or null when no fleet survived.</returns>
+        internal override string GetFleetPlanetInstanceID(string playerFactionId)
+        {
+            return ResolveFleetPlanetInstanceID(
+                playerFactionId,
+                PlanetInstanceID,
+                result.AttackerOwnerInstanceID,
+                result.DefenderOwnerInstanceID,
+                result.AttackerOutcome,
+                result.DefenderOutcome,
+                result.AttackerRetreatPlanetInstanceID,
+                result.DefenderRetreatPlanetInstanceID
+            );
+        }
 
         /// <summary>
         /// Creates a space-combat presentation adapter.
@@ -550,6 +616,31 @@ internal abstract class BattleResultPresentation
             report.CombatType != CombatReportType.SpaceBattle;
 
         internal override string PlanetInstanceID => report.PlanetInstanceID;
+
+        /// <summary>
+        /// Returns the saved report's fleet-pane planet for the requested player.
+        /// </summary>
+        /// <param name="playerFactionId">The current player's faction identifier.</param>
+        /// <returns>The fleet destination planet identifier, or null when no fleet survived.</returns>
+        internal override string GetFleetPlanetInstanceID(string playerFactionId)
+        {
+            if (report.CombatType != CombatReportType.SpaceBattle)
+                return PlanetInstanceID;
+
+            string ownerInstanceId = string.IsNullOrEmpty(playerFactionId)
+                ? report.PerspectiveOwnerInstanceID
+                : playerFactionId;
+            return ResolveFleetPlanetInstanceID(
+                ownerInstanceId,
+                PlanetInstanceID,
+                report.AttackerOwnerInstanceID,
+                report.DefenderOwnerInstanceID,
+                report.AttackerOutcome,
+                report.DefenderOutcome,
+                report.AttackerRetreatPlanetInstanceID,
+                report.DefenderRetreatPlanetInstanceID
+            );
+        }
 
         /// <summary>
         /// Creates presentation for one durable combat report.
