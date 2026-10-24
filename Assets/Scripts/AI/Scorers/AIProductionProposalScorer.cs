@@ -121,17 +121,20 @@ namespace Rebellion.AI.Scorers
                 utility.TravelCost
             );
 
-            score.AddCost(
-                AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
-                utility.CompletionTime
-            );
-            score.AddCost(
-                AIUtility.Fulfillment(
-                    GetInterruptionCost(context, proposal),
+            if (proposal.CurrentOrder != null)
+            {
+                score.AddCost(
+                    AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
+                    utility.CompletionTime
+                );
+                score.AddCost(
+                    AIUtility.Fulfillment(
+                        GetInterruptionCost(context, proposal),
+                        utility.InterruptionCost
+                    ),
                     utility.InterruptionCost
-                ),
-                utility.InterruptionCost
-            );
+                );
+            }
 
             int projectedHeadroom =
                 context.Assessment.ProjectedMaintenanceHeadroom

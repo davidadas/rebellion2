@@ -17,8 +17,13 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
-        [Test]
-        public void Score_IdleProducer_HasNoContinuationOrSwitchingPenalty()
+        [TestCase(1, 1, 1)]
+        [TestCase(0.4, 0.04, 0.1)]
+        public void Score_IdleProducer_HasNoContinuationOrSwitchingPenalty(
+            double completionWeight,
+            double interruptionWeight,
+            double demandWeight
+        )
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
                 out Building order
@@ -32,11 +37,14 @@ namespace Rebellion.Tests.AI.Scorers
             );
             context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 0;
             context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 0;
+            context.Game.Config.AI.Selection.DemandUtility.Weight = demandWeight;
             AIProductionProposalScorer scorer = new AIProductionProposalScorer();
             double initial = scorer.Score(context, replacement);
 
-            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 1;
-            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 1;
+            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight =
+                completionWeight;
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight =
+                interruptionWeight;
 
             Assert.AreEqual(initial, scorer.Score(context, replacement));
         }
