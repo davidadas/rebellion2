@@ -155,6 +155,17 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
+        ApplyVideo();
+    }
+
+    /// <summary>
+    /// Applies the active video settings to the display and graphics runtime systems.
+    /// </summary>
+    internal void ApplyVideo()
+    {
+        Settings ??= CreateDefaults();
+        Settings.Normalize();
+
         _graphicsManager?.PrepareForDisplayChange();
         _displayManager.Apply(Settings.Video);
         _graphicsManager?.Apply(Settings.Video);

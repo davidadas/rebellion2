@@ -106,8 +106,10 @@ internal sealed class OptionsSettingsSession
     /// </summary>
     internal void Commit()
     {
+        bool graphicsRuntimeChanged = HasGraphicsRuntimeChanges();
         _userSettings.Save();
-        _userSettings.Apply();
+        if (graphicsRuntimeChanged)
+            _userSettings.ApplyVideo();
         RebuildResolutions();
         CaptureSnapshot();
         IsDirty = false;
@@ -524,22 +526,7 @@ internal sealed class OptionsSettingsSession
             }
         }
 
-        if (
-            Video.ResolutionWidth != _snapshotResolutionWidth
-            || Video.ResolutionHeight != _snapshotResolutionHeight
-            || Video.FullScreenMode != _snapshotFullScreenMode
-            || Video.QualityLevel != _snapshotQualityLevel
-            || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
-            || Video.AntiAliasingMode != _snapshotAntiAliasingMode
-            || Video.FrameGenerationMode != _snapshotFrameGenerationMode
-            || Video.FrameRateLimit != _snapshotFrameRateLimit
-            || Video.VerticalSync != _snapshotVerticalSync
-            || Video.RayTracing != _snapshotRayTracing
-            || Video.AmbientOcclusion != _snapshotAmbientOcclusion
-            || Video.Bloom != _snapshotBloom
-            || Video.MotionBlur != _snapshotMotionBlur
-            || Video.HdrOutput != _snapshotHdrOutput
-        )
+        if (HasGraphicsRuntimeChanges())
         {
             IsDirty = true;
             return;
@@ -591,6 +578,34 @@ internal sealed class OptionsSettingsSession
         }
 
         IsDirty = _inputDiffersFromSnapshot;
+    }
+
+    /// <summary>
+    /// Checks whether staged settings owned by the display or graphics runtime differ from the
+    /// current session snapshot.
+    /// </summary>
+    /// <returns>True when applying the session must update the display or graphics runtime.</returns>
+    private bool HasGraphicsRuntimeChanges()
+    {
+        if (
+            Video.ResolutionWidth != _snapshotResolutionWidth
+            || Video.ResolutionHeight != _snapshotResolutionHeight
+            || Video.FullScreenMode != _snapshotFullScreenMode
+            || Video.QualityLevel != _snapshotQualityLevel
+            || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
+            || Video.AntiAliasingMode != _snapshotAntiAliasingMode
+            || Video.FrameGenerationMode != _snapshotFrameGenerationMode
+            || Video.FrameRateLimit != _snapshotFrameRateLimit
+            || Video.VerticalSync != _snapshotVerticalSync
+            || Video.RayTracing != _snapshotRayTracing
+            || Video.AmbientOcclusion != _snapshotAmbientOcclusion
+            || Video.Bloom != _snapshotBloom
+            || Video.MotionBlur != _snapshotMotionBlur
+            || Video.HdrOutput != _snapshotHdrOutput
+        )
+            return true;
+
+        return false;
     }
 
     /// <summary>

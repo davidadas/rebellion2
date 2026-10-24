@@ -305,6 +305,66 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Commit_NonGraphicsRuntimeChanges_DoesNotReapplyDisplayOrFrameGeneration()
+        {
+            GameObject graphicsOwner = new GameObject("Options Graphics Commit Test Owner");
+            int frameGenerationApplicationCount = 0;
+            GraphicsManager graphicsManager = new GraphicsManager(
+                graphicsOwner.transform,
+                () => true,
+                _ => frameGenerationApplicationCount++,
+                _ => { }
+            );
+            string settingsPath = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-options-commit-{Guid.NewGuid():N}.json"
+            );
+            UserSettingsManager userSettings = new UserSettingsManager(
+                _audioManager,
+                _displayManager,
+                graphicsManager,
+                _inputManager,
+                settingsPath
+            );
+
+            try
+            {
+                userSettings.Load();
+                OptionsSettingsSession session = new OptionsSettingsSession(
+                    userSettings,
+                    _displayManager,
+                    _audioManager,
+                    _inputManager,
+                    graphicsManager
+                );
+                session.Begin();
+                _displayApplicationCount = 0;
+                frameGenerationApplicationCount = 0;
+                InputAction action = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+                int bindingIndex = FindBinding(action, "Primary");
+                action.ApplyBindingOverride(bindingIndex, "<Keyboard>/n");
+                session.MarkInputChanged();
+                session.ToggleTactical(UserTacticalOption.Starfield);
+                session.ToggleGameplay(UserGameplayOption.PauseAfterEnemyBombardment);
+                session.ToggleUserInterface(UserInterfaceOption.ShowFrameRate);
+                session.SetVolume(2, 0.5f);
+
+                session.Commit();
+
+                Assert.AreEqual(0, _displayApplicationCount);
+                Assert.AreEqual(0, frameGenerationApplicationCount);
+                StringAssert.Contains("<Keyboard>/n", File.ReadAllText(settingsPath));
+            }
+            finally
+            {
+                graphicsManager.Dispose();
+                UnityEngine.Object.DestroyImmediate(graphicsOwner);
+                DeleteIfPresent(settingsPath);
+                DeleteIfPresent(settingsPath + ".tmp");
+            }
+        }
+
+        [Test]
         public void GameplayChanges_ReturnedToSnapshot_ClearDirtyState()
         {
             _session.ToggleGameplay(UserGameplayOption.PauseAfterEnemyBombardment);
