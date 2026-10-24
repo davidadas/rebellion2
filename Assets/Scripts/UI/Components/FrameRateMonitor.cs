@@ -11,7 +11,6 @@ public sealed class FrameRateMonitor : MonoBehaviour
 {
     private const float _sampleIntervalSeconds = 0.5f;
     private Func<bool> _isVisible;
-    private Func<uint> _getPresentationFrameMultiplier;
     private TMP_Text _label;
     private float _elapsedSeconds;
     private int _sampledFrames;
@@ -21,15 +20,8 @@ public sealed class FrameRateMonitor : MonoBehaviour
     /// </summary>
     /// <param name="parent">The persistent application root.</param>
     /// <param name="isVisible">Returns whether the counter should currently be visible.</param>
-    /// <param name="getPresentationFrameMultiplier">
-    /// Returns the number of presented frames requested for each rendered frame.
-    /// </param>
     /// <returns>The initialized frame-rate monitor.</returns>
-    public static FrameRateMonitor EnsureExists(
-        Transform parent,
-        Func<bool> isVisible,
-        Func<uint> getPresentationFrameMultiplier = null
-    )
+    public static FrameRateMonitor EnsureExists(Transform parent, Func<bool> isVisible)
     {
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
@@ -48,7 +40,7 @@ public sealed class FrameRateMonitor : MonoBehaviour
             monitor = root.GetComponent<FrameRateMonitor>();
         }
 
-        monitor.Initialize(isVisible, getPresentationFrameMultiplier);
+        monitor.Initialize(isVisible);
         return monitor;
     }
 
@@ -81,8 +73,7 @@ public sealed class FrameRateMonitor : MonoBehaviour
             return;
 
         float frameRate = _sampledFrames / _elapsedSeconds;
-        uint presentationMultiplier = Math.Max(1u, _getPresentationFrameMultiplier?.Invoke() ?? 1u);
-        _label.SetText("{0:0} FPS", frameRate * presentationMultiplier);
+        _label.SetText("{0:0} FPS", frameRate);
         _elapsedSeconds = 0f;
         _sampledFrames = 0;
     }
@@ -91,13 +82,9 @@ public sealed class FrameRateMonitor : MonoBehaviour
     /// Supplies the persisted visibility preference used by the monitor.
     /// </summary>
     /// <param name="isVisible">Returns whether the counter should currently be visible.</param>
-    /// <param name="getPresentationFrameMultiplier">
-    /// Returns the number of presented frames requested for each rendered frame.
-    /// </param>
-    private void Initialize(Func<bool> isVisible, Func<uint> getPresentationFrameMultiplier)
+    private void Initialize(Func<bool> isVisible)
     {
         _isVisible = isVisible ?? throw new ArgumentNullException(nameof(isVisible));
-        _getPresentationFrameMultiplier = getPresentationFrameMultiplier;
         EnsurePresentation();
         _label.gameObject.SetActive(_isVisible());
         ResetSample();

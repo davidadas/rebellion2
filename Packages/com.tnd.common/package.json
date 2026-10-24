@@ -1,8 +1,0 @@
-{
-  "name": "com.tnd.common",
-  "version": "1.0.5",
-  "displayName": "TND Common Library",
-  "description": "Shared utilities for TND assets",
-  "unity": "2021.3",
-  "author": "The Naked Dev <https://www.thenakeddev.com> (https://www.thenakeddev.com)"
-}

@@ -155,7 +155,6 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
-        _graphicsManager?.PrepareForDisplayChange();
         _displayManager.Apply(Settings.Video);
         _graphicsManager?.Apply(Settings.Video);
     }
