@@ -280,6 +280,50 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Counts the current attack capabilities satisfied by a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>The number of satisfied attack capabilities.</returns>
+        internal int CountCurrentAttackCapabilities(Fleet fleet, Planet targetPlanet)
+        {
+            AIAttackDemand demand = GetAttackDemand(targetPlanet, fleet);
+            if (demand == null)
+                return 0;
+
+            var required = GetAttackRegimentRequirements(targetPlanet, fleet);
+            int count = 0;
+            if (fleet?.HasOperationalCapitalShips() == true)
+                count++;
+            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            if (combat > 0 && combat >= demand.CombatStrength)
+                count++;
+            if (Assessment.GetReadyFleetRegimentCount(fleet) >= required.Count)
+                count++;
+            if (Assessment.GetReadyFleetRegimentCapacity(fleet) >= required.Count)
+                count++;
+            if (Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= required.Strength)
+                count++;
+            if (Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
+                count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can defeat known orbital defenders.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when ready combat strength satisfies the orbital demand.</returns>
+        internal bool CanWinOrbitalCombat(Fleet fleet, Planet targetPlanet)
+        {
+            int required = GetAttackDemand(targetPlanet, fleet)?.OrbitalStrength ?? 0;
+            return required > 0
+                && fleet?.HasOperationalCapitalShips() == true
+                && Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet) >= required;
+        }
+
+        /// <summary>
         /// Stores an arrival-specific demand during attack assessment.
         /// </summary>
         /// <param name="fleet">The fleet whose travel time was assessed.</param>

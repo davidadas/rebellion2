@@ -553,7 +553,7 @@ namespace Rebellion.AI.Scorers
                 .AI
                 .Infrastructure
                 .DemandUtility;
-            int headroom = context.Assessment.EconomyPlanningMaintenanceHeadroom;
+            int headroom = context.StrategicPlan.EconomyPlanningMaintenanceHeadroom;
             int floor = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             int target = Math.Max(
                 floor,

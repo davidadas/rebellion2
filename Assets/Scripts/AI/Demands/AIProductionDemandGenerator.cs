@@ -772,7 +772,7 @@ namespace Rebellion.AI.Demands
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
-                || context.Assessment.EconomyPlanningMaintenanceHeadroom
+                || context.StrategicPlan.EconomyPlanningMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
         }
 
@@ -1789,7 +1789,7 @@ namespace Rebellion.AI.Demands
                 else if (order is SpecialForces specialForces)
                 {
                     kind = AIProductionDemandKind.SpecialForces;
-                    target = context.Assessment.GetSpecialForcesReserveTarget(specialForces);
+                    target = context.StrategicPlan.GetSpecialForcesReserveTarget(specialForces);
                     otherSupply = context.Assessment.GetSpecialForcesSupply(specialForces) - 1;
                     pressure = context.Game.Config.AI.Infrastructure.SpecialForcesDemandPercent;
                     if (
@@ -1898,7 +1898,7 @@ namespace Rebellion.AI.Demands
                     buildEfficiency
                 );
                 int existingSupply = context.Assessment.GetSpecialForcesSupply(template);
-                int desiredSupply = context.Assessment.GetSpecialForcesReserveTarget(template);
+                int desiredSupply = context.StrategicPlan.GetSpecialForcesReserveTarget(template);
                 int coverageDeficit = desiredSupply - existingSupply;
                 bool suppliesHeadquartersEspionage =
                     role.Key == headquartersEspionageRole && headquartersEspionageTemplate != null;

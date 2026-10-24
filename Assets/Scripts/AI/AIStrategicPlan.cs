@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
@@ -18,6 +19,15 @@ namespace Rebellion.AI
         private readonly AIAssessment _assessment;
         private readonly int _targetBattleFleetCount;
         private readonly int _targetMobileCombatStrength;
+        private readonly Dictionary<
+            (
+                string SystemId,
+                IReadOnlyDictionary<Officer, Planet> Commitments,
+                int CommitmentCount
+            ),
+            double
+        > _diplomacyConcentrationValues = new();
+        private readonly Dictionary<string, int> _specialForcesReserveTargets = new();
         private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
         private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
         private readonly Dictionary<BuildingType, int> _infrastructureDeficits = new();
@@ -44,6 +54,17 @@ namespace Rebellion.AI
         > _resourceEconomyCache = new(StringComparer.Ordinal);
 
         /// <summary>
+        /// Gets discounted maintenance growth from known neutral worlds under active diplomacy.
+        /// </summary>
+        public int ExpectedDiplomacyMaintenanceGain { get; }
+
+        /// <summary>
+        /// Gets economy-planning headroom without authorizing spending against unowned capacity.
+        /// </summary>
+        public int EconomyPlanningMaintenanceHeadroom =>
+            _assessment.ProjectedEconomyMaintenanceHeadroom + ExpectedDiplomacyMaintenanceGain;
+
+        /// <summary>
         /// Returns the number of independently deployable battle fleets allocated for this turn.
         /// Fleet count is a deployment constraint; it does not define total desired combat power.
         /// </summary>
@@ -61,6 +82,361 @@ namespace Rebellion.AI
             _targetBattleFleetCount > 0
                 ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
                 : 0;
+
+        /// <summary>
+        /// Returns the reserve required by a special-forces mission role.
+        /// </summary>
+        /// <param name="template">The role's unit template.</param>
+        /// <returns>The desired role supply, excluding a dedicated headquarters agent.</returns>
+        public int GetSpecialForcesReserveTarget(SpecialForces template)
+        {
+            string role = string.Join(
+                "|",
+                template.AllowedMissionTypeIDs.OrderBy(id => id, StringComparer.Ordinal)
+            );
+            if (_specialForcesReserveTargets.TryGetValue(role, out int target))
+                return target;
+            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
+            bool sabotage = template.CanPerformMission(MissionTypeIDs.Sabotage);
+            bool espionage = template.CanPerformMission(MissionTypeIDs.Espionage);
+            if (sabotage || espionage)
+                target =
+                    (
+                        sabotage
+                            ? _assessment.EnemyPlanets.Sum(planet =>
+                                planet
+                                    .GetAllBuildings()
+                                    .Count(building =>
+                                        building.IsDefenseFacility()
+                                        && building.ManufacturingStatus
+                                            == ManufacturingStatus.Complete
+                                    )
+                            ) * config.SaboteursPerEnemyDefense
+                            : 0
+                    )
+                    + (espionage ? _assessment.EnemyPlanets.Count * config.SpiesPerEnemyPlanet : 0);
+            else
+            {
+                int missions = _assessment.ActiveMissions.Count(mission =>
+                    _assessment.IsEnemyPlanet(mission.GetParentOfType<Planet>())
+                    && mission.GetMainParticipants().OfType<Officer>().Any()
+                    && template.AllowedMissionTypeIDs.Contains(mission.ConfigKey)
+                );
+                int coverage = Math.Clamp(config.SpecialForcesMissionCoveragePercent, 0, 100);
+                target = (missions * coverage + 99) / 100;
+            }
+            _specialForcesReserveTargets.Add(role, target);
+            return target;
+        }
+
+        /// <summary>
+        /// Estimates discounted resource-pair growth from active diplomacy against visible neutral worlds.
+        /// </summary>
+        /// <returns>The expected net maintenance gain used only when prioritizing economic construction.</returns>
+        private int CalculateExpectedDiplomacyMaintenanceGain()
+        {
+            double confidence =
+                Math.Clamp(_game.Config.AI.Selection.DiplomacyEconomyConfidencePercent, 0, 100)
+                / 100d;
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            if (confidence <= 0 || threshold <= 0)
+                return 0;
+
+            double nodes = _assessment.ProjectedResourceNodeCapacity;
+            double mines = _assessment.ProjectedMinedResourceCapacity;
+            double refineries = _assessment.ProjectedRefinementCapacity;
+            double maintenance = 0;
+            foreach (
+                IGrouping<string, Mission> group in _assessment
+                    .ActiveMissions.Where(mission => mission.ConfigKey == MissionTypeIDs.Diplomacy)
+                    .GroupBy(mission => mission.LocationInstanceID, StringComparer.Ordinal)
+            )
+            {
+                Planet planet = _assessment.GetKnownPlanet(group.Key);
+                if (
+                    planet == null
+                    || !_assessment.IsNeutralPlanet(planet)
+                    || !planet.IsColonized
+                    || planet.IsDestroyed
+                    || planet.IsInUprising
+                    || _assessment.HasKnownHostileFleet(planet)
+                )
+                    continue;
+                double readiness = Math.Clamp(
+                    (double)_assessment.GetFactionPopularSupport(planet) / threshold,
+                    0,
+                    1
+                );
+                if (readiness <= 0)
+                    continue;
+                double likelihood =
+                    group
+                        .Select(mission =>
+                        {
+                            IReadOnlyList<IMissionParticipant> participants =
+                                mission.GetMainParticipants();
+                            int transit = participants
+                                .Select(participant => participant.Movement?.TicksRemaining() ?? 0)
+                                .DefaultIfEmpty()
+                                .Max();
+                            int remaining = Math.Max(
+                                0,
+                                mission.MaxProgress - mission.CurrentProgress
+                            );
+                            return mission.GetObjectiveSuccessProbability(
+                                    participants,
+                                    _game,
+                                    planet
+                                )
+                                / 100d
+                                * GetDiplomacyTravelWeight(transit + remaining);
+                        })
+                        .DefaultIfEmpty()
+                        .Max()
+                    * readiness
+                    * confidence;
+                List<Building> buildings = _assessment
+                    .GetPlanetBuildings(planet)
+                    .Where(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    )
+                    .ToList();
+                int resourceNodes = Math.Max(0, planet.GetRawResourceNodes());
+                nodes += resourceNodes * likelihood;
+                mines +=
+                    Math.Min(
+                        resourceNodes,
+                        buildings.Count(building => building.BuildingType == BuildingType.Mine)
+                    ) * likelihood;
+                refineries +=
+                    buildings.Count(building => building.BuildingType == BuildingType.Refinery)
+                    * likelihood;
+                maintenance +=
+                    buildings.Sum(building => Math.Max(0, building.MaintenanceCost)) * likelihood;
+            }
+            double addedCapacity = Math.Max(
+                0,
+                Math.Min(nodes, Math.Min(mines, refineries)) - _assessment.ProjectedMaterialCapacity
+            );
+            return (int)
+                Math.Min(
+                    int.MaxValue,
+                    Math.Max(
+                        0,
+                        addedCapacity * _assessment.MaintenanceCapacityPerResourcePair - maintenance
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Returns the opportunity for nearby diplomats to work separate neutral worlds in a sector.
+        /// </summary>
+        /// <param name="planet">The proposed diplomacy target.</param>
+        /// <param name="movementQueries">The travel-duration queries.</param>
+        /// <param name="participant">The proposed diplomat, or null when ordering sector opportunities.</param>
+        /// <param name="commitments">Diplomats and destinations already selected during this turn.</param>
+        /// <returns>A normalized value based on known targets and their existing popular support.</returns>
+        public double GetDiplomacyConcentrationValue(
+            Planet planet,
+            MovementQueries movementQueries,
+            IMissionParticipant participant = null,
+            IReadOnlyDictionary<Officer, Planet> commitments = null
+        )
+        {
+            Planet knownPlanet =
+                planet == null ? null : _assessment.GetKnownPlanet(planet.InstanceID);
+            if (
+                knownPlanet == null
+                || movementQueries == null
+                || !_assessment.IsNeutralPlanet(knownPlanet)
+                || !knownPlanet.IsColonized
+                || knownPlanet.IsDestroyed
+                || knownPlanet.IsInUprising
+                || _assessment.HasKnownHostileFleet(knownPlanet)
+                || _assessment.GetFactionPopularSupport(knownPlanet) <= 0
+            )
+                return 0;
+
+            string systemId = _assessment.GetPlanetSystemId(knownPlanet);
+            if (string.IsNullOrEmpty(systemId))
+                return 0;
+
+            var key = (systemId, commitments, commitments?.Count ?? 0);
+            if (!_diplomacyConcentrationValues.TryGetValue(key, out double value))
+            {
+                value = CalculateDiplomacyConcentrationValue(
+                    knownPlanet,
+                    movementQueries,
+                    commitments
+                );
+                _diplomacyConcentrationValues.Add(key, value);
+            }
+            if (participant == null)
+                return value;
+            if (participant.GetParentOfType<Planet>() is not Planet origin)
+                return 0;
+
+            int transitTicks =
+                origin.InstanceID == knownPlanet.InstanceID
+                    ? 0
+                    : movementQueries.CalculateTransitTicks(participant, origin, knownPlanet);
+            return value * GetDiplomacyTravelWeight(transitTicks);
+        }
+
+        /// <summary>
+        /// Measures a known neutral-sector opportunity without projecting hidden defenses or ownership.
+        /// </summary>
+        /// <param name="planet">The sector's candidate target.</param>
+        /// <param name="movementQueries">The travel-duration queries.</param>
+        /// <param name="commitments">Diplomats and destinations already selected during this turn.</param>
+        /// <returns>A bounded opportunity weighted by diplomatic strength, travel, and remaining work.</returns>
+        private double CalculateDiplomacyConcentrationValue(
+            Planet planet,
+            MovementQueries movementQueries,
+            IReadOnlyDictionary<Officer, Planet> commitments
+        )
+        {
+            GameConfig.AIDiplomacyUtilityConfig utility = _game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            IReadOnlyList<Planet> known = _assessment.GetKnownSystemPlanets(
+                _assessment.GetPlanetSystemId(planet)
+            );
+            if (known.Count == 0)
+                return 0;
+
+            List<Mission> diplomacyMissions = _assessment
+                .ActiveMissions.Where(mission => mission.ConfigKey == MissionTypeIDs.Diplomacy)
+                .ToList();
+            HashSet<string> assignedTargets = diplomacyMissions
+                .Select(mission => mission.LocationInstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+            if (commitments != null)
+                assignedTargets.UnionWith(commitments.Values.Select(target => target.InstanceID));
+            List<Planet> targets = known
+                .Where(candidate =>
+                    candidate.IsColonized
+                    && !candidate.IsInUprising
+                    && !candidate.IsDestroyed
+                    && _assessment.IsNeutralPlanet(candidate)
+                    && _assessment.GetFactionPopularSupport(candidate) > 0
+                    && _assessment.GetFactionPopularSupport(candidate) < 100
+                    && !_assessment.HasKnownHostileFleet(candidate)
+                )
+                .ToList();
+            int openTargetCount = targets.Count(target =>
+                !assignedTargets.Contains(target.InstanceID)
+            );
+            if (openTargetCount == 0)
+                return 0;
+
+            IEnumerable<double> availableStrength = _assessment
+                .AvailableMissionParticipants.OfType<Officer>()
+                .Where(officer =>
+                    commitments?.ContainsKey(officer) != true
+                    && officer.CanPerformMission(MissionTypeIDs.Diplomacy)
+                    && officer.GetEffectiveRating(SkillRating.Diplomacy)
+                        >= _game.Config.AI.DiplomacyMinimumSkill
+                    && officer.GetParentOfType<Planet>() != null
+                )
+                .Select(officer =>
+                    Math.Max(0, officer.GetEffectiveRating(SkillRating.Diplomacy))
+                    * GetDiplomacyTravelWeight(
+                        targets.Min(target =>
+                            officer.GetParentOfType<Planet>().InstanceID == target.InstanceID
+                                ? 0
+                                : movementQueries.CalculateTransitTicks(
+                                    officer,
+                                    officer.GetParentOfType<Planet>(),
+                                    target
+                                )
+                        )
+                    )
+                )
+                .OrderByDescending(strength => strength)
+                .Take(openTargetCount);
+            double committedStrength = diplomacyMissions
+                .Where(mission =>
+                    _assessment
+                        .GetKnownPlanet(mission.LocationInstanceID)
+                        ?.GetParentOfType<PlanetSector>()
+                        ?.InstanceID == _assessment.GetPlanetSystemId(planet)
+                )
+                .SelectMany(mission => mission.GetMainParticipants())
+                .OfType<Officer>()
+                .GroupBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .Sum(officer =>
+                    Math.Max(0, officer.GetEffectiveRating(SkillRating.Diplomacy))
+                    * GetDiplomacyTravelWeight(
+                        officer.Movement == null
+                            ? 0
+                            : Math.Max(
+                                0,
+                                officer.Movement.TransitTicks - officer.Movement.TicksElapsed
+                            )
+                    )
+                );
+            if (commitments != null)
+                committedStrength += commitments
+                    .Where(pair =>
+                        _assessment.GetPlanetSystemId(pair.Value)
+                        == _assessment.GetPlanetSystemId(planet)
+                    )
+                    .Sum(pair =>
+                        Math.Max(0, pair.Key.GetEffectiveRating(SkillRating.Diplomacy))
+                        * GetDiplomacyTravelWeight(
+                            pair.Key.GetParentOfType<Planet>()?.InstanceID == pair.Value.InstanceID
+                                ? 0
+                                : movementQueries.CalculateTransitTicks(
+                                    pair.Key,
+                                    pair.Key.GetParentOfType<Planet>(),
+                                    pair.Value
+                                )
+                        )
+                    );
+            double strength = availableStrength.Sum() + committedStrength;
+            double concentration =
+                strength / (strength + Math.Max(1, utility.Concentration.SaturationValue));
+
+            int planetCount =
+                planet.GetParentOfType<PlanetSector>()?.GetChildren<Planet>().Count ?? 0;
+            int ownershipThreshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            if (planetCount == 0 || ownershipThreshold <= 0)
+                return 0;
+
+            double supportReadiness = targets.Average(target =>
+                Math.Min(
+                    1,
+                    (double)_assessment.GetFactionPopularSupport(target) / ownershipThreshold
+                )
+            );
+            double uncontestedShare =
+                1 - (double)known.Count(_assessment.IsEnemyPlanet) / planetCount;
+            return (double)targets.Count
+                / planetCount
+                * supportReadiness
+                * concentration
+                * uncontestedShare;
+        }
+
+        /// <summary>
+        /// Reduces diplomatic influence gradually as its travel time increases.
+        /// </summary>
+        /// <param name="transitTicks">The remaining or proposed travel duration.</param>
+        /// <returns>A travel weight from zero through one, without a maximum journey cutoff.</returns>
+        private double GetDiplomacyTravelWeight(int transitTicks)
+        {
+            double scale = Math.Max(
+                1,
+                _game.Config.AI.MissionPlanning.Utility.Diplomacy.TravelTime.SaturationValue
+            );
+            return scale / (scale + Math.Max(0, transitTicks));
+        }
 
         /// <summary>
         /// Finds the smallest complete resource retirement that makes a requested hub fit.
@@ -1103,6 +1479,7 @@ namespace Rebellion.AI
             if (_game?.Config == null)
                 return;
 
+            ExpectedDiplomacyMaintenanceGain = CalculateExpectedDiplomacyMaintenanceGain();
             var config = _game.Config.AI.FleetDeployment;
             int operationalPlanetCount = _assessment.OwnedPlanets.Count(planet =>
                 planet.IsColonized && !planet.IsDestroyed

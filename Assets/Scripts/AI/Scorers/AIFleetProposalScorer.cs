@@ -650,7 +650,7 @@ namespace Rebellion.AI.Scorers
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
             score.Add(targetPlanet.IsHeadquarters ? 1 : 0, utility.Headquarters);
             score.Add(
-                CanWinOrbitalCombat(context, fleet, targetPlanet) ? 1 : 0,
+                context.CanWinOrbitalCombat(fleet, targetPlanet) ? 1 : 0,
                 utility.OrbitalAdvantage
             );
             score.Add(
@@ -1394,7 +1394,7 @@ namespace Rebellion.AI.Scorers
                 return false;
 
             return context.Assessment.GetStrongestHostileFleetStrength(targetPlanet) > 0
-                && CanWinOrbitalCombat(context, fleet, targetPlanet);
+                && context.CanWinOrbitalCombat(fleet, targetPlanet);
         }
 
         /// <summary>
@@ -1469,66 +1469,6 @@ namespace Rebellion.AI.Scorers
             return order.OrderType == FleetOrderType.Attack
                 && !string.IsNullOrEmpty(targetOwnerId)
                 && targetOwnerId != context.Faction.InstanceID;
-        }
-
-        /// <summary>
-        /// Counts the current attack capabilities satisfied by a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The number of satisfied attack capabilities.</returns>
-        internal static int CountCurrentAttackCapabilities(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
-            if (demand == null)
-                return 0;
-
-            int requiredRegiments = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
-                .Count;
-            int count = 0;
-            if (fleet?.HasOperationalCapitalShips() == true)
-                count++;
-            int combat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
-            if (combat > 0 && combat >= demand.CombatStrength)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCapacity(fleet) >= requiredRegiments)
-                count++;
-            if (
-                context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                >= context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
-            )
-                count++;
-            if (context.Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
-                count++;
-            return count;
-        }
-
-        /// <summary>
-        /// Returns whether a fleet can defeat known orbital defenders.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when ready combat strength satisfies the orbital demand.</returns>
-        internal static bool CanWinOrbitalCombat(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            int required = context?.GetAttackDemand(targetPlanet, fleet)?.OrbitalStrength ?? 0;
-            return required > 0
-                && fleet?.HasOperationalCapitalShips() == true
-                && context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
-                    >= required;
         }
 
         /// <summary>

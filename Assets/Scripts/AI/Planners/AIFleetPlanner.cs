@@ -1217,8 +1217,7 @@ namespace Rebellion.AI.Planners
                     CanReceivePlanetRegimentTransfer(context, fleet)
                 )
                 .OrderByDescending(fleet =>
-                    AIFleetProposalScorer.CountCurrentAttackCapabilities(
-                        context,
+                    context.CountCurrentAttackCapabilities(
                         fleet,
                         GetReinforcementTargetPlanet(context, fleet)
                     )
@@ -1541,11 +1540,7 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    AIFleetProposalScorer.CountCurrentAttackCapabilities(
-                        context,
-                        candidate.Fleet,
-                        candidate.TargetPlanet
-                    )
+                    context.CountCurrentAttackCapabilities(candidate.Fleet, candidate.TargetPlanet)
                 )
                 .ThenByDescending(candidate =>
                     context.Assessment.GetPlanetValue(candidate.TargetPlanet)

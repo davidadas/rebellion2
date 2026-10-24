@@ -413,7 +413,7 @@ namespace Rebellion.AI.Planners
                 AddRequirement(
                     contributions,
                     role.Cast<IManufacturable>().ToList(),
-                    context.Assessment.GetSpecialForcesReserveTarget(role.First()),
+                    context.StrategicPlan.GetSpecialForcesReserveTarget(role.First()),
                     weight,
                     _ => 1
                 );

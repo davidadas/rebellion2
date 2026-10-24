@@ -582,7 +582,7 @@ namespace Rebellion.AI.Scorers
 
             if (utility.Concentration.Weight > 0)
             {
-                double concentration = context.Assessment.GetDiplomacyConcentrationValue(
+                double concentration = context.StrategicPlan.GetDiplomacyConcentrationValue(
                     planet,
                     context.MovementQueries,
                     participant,

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
@@ -102,7 +101,7 @@ namespace Rebellion.AI.Planners
                 && context.Assessment.HasCurrentHeadquartersAttackIntel(target)
                 && (context.Assessment.IsAttackPreparationTarget(target) || hasGravityWell)
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
-                && AIFleetProposalScorer.CanWinOrbitalCombat(context, fleet, target)
+                && context.CanWinOrbitalCombat(fleet, target)
             );
         }
     }
