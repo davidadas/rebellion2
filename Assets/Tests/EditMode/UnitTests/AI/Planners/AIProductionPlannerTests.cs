@@ -2017,6 +2017,79 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(destination, proposal.Destination);
         }
 
+        [TestCase(false, 1, 0)]
+        [TestCase(false, 2, 1)]
+        [TestCase(true, 1, 1)]
+        public void Plan_AgentQueueBudget_ExcludesOnlyReplacedWork(
+            bool differentProduct,
+            int facilityCount,
+            int expectedQuantity
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            game.Config.AI.TickInterval = 10;
+            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 1;
+            faction.RefinedMaterialStockpile = 10000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "training",
+                faction.InstanceID
+            );
+            producer.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < facilityCount; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    $"trainer-{index}",
+                    BuildingType.TrainingFacility,
+                    ManufacturingType.Troop
+                );
+            SpecialForces product = AITestSceneBuilder.CreateSpecialForces(
+                "requested-agent",
+                faction.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            product.ConstructionCost = 10;
+            faction.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(product),
+            };
+            SpecialForces queued = AITestSceneBuilder.CreateSpecialForces(
+                differentProduct ? "other-agent" : product.TypeID,
+                faction.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            queued.ConstructionCost = 10;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            Assert.IsTrue(context.Manufacturing.Enqueue(producer, queued, producer));
+            context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "agent-demand",
+                        AIProductionDemandKind.SpecialForces,
+                        ManufacturingType.Troop,
+                        BuildingType.None,
+                        producer,
+                        10,
+                        product.TypeID,
+                        targetCount: 10,
+                        baseDemandPercent: 100
+                    ),
+                }
+            );
+
+            List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
+
+            Assert.AreEqual(
+                expectedQuantity,
+                proposals.OfType<AIManufactureProposal>().Sum(item => item.ManufacturingCount)
+            );
+        }
+
         [Test]
         public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {

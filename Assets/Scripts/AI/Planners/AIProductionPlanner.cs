@@ -1526,7 +1526,7 @@ namespace Rebellion.AI.Planners
                 producerPlanet,
                 manufacturingType
             );
-            if (filler != null)
+            if (filler != null && filler.GetTypeID() != product.GetTypeID())
                 queuedWork -= Math.Max(
                     0,
                     filler.GetConstructionCost() - filler.ManufacturingProgress
