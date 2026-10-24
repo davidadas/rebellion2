@@ -994,6 +994,70 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessResults_SuccessfulAssault_RevealsOnlyLandedRegimentsToDefender()
+        {
+            Fleet fleet = CreateFleet("ATTACKERS", _alliance);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _alliance, "TRANSPORT");
+            ship.RegimentCapacity = 3;
+            Regiment first = CreateRegiment("FIRST", _alliance);
+            Regiment retained = CreateRegiment("RETAINED", _alliance);
+            Regiment second = CreateRegiment("SECOND", _alliance);
+            _game.AttachNode(first, ship);
+            _game.AttachNode(retained, ship);
+            _game.AttachNode(second, ship);
+            _game.ChangeOwnership(_coruscant, _alliance.InstanceID);
+            PlanetOwnershipChangedResult ownershipChange = new PlanetOwnershipChangedResult
+            {
+                Planet = _coruscant,
+                PreviousOwner = _empire,
+                NewOwner = _alliance,
+                Tick = 42,
+            };
+
+            _observer.ObserveOwnershipChange(ownershipChange);
+            _game.MoveNode(first, _coruscant);
+            _game.MoveNode(second, _coruscant);
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new PlanetaryAssaultResult
+                    {
+                        Planet = _coruscant,
+                        AttackerOwnerInstanceID = _alliance.InstanceID,
+                        DefenderOwnerInstanceID = _empire.InstanceID,
+                        Success = true,
+                        LandedRegiments = new List<Regiment> { first, second },
+                        Tick = 42,
+                    },
+                    ownershipChange,
+                }
+            );
+
+            PlanetSnapshot snapshot = _empire.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                snapshot.Regiments.Select(regiment => regiment.InstanceID)
+            );
+            Assert.IsEmpty(snapshot.Fleets);
+            Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(retained.InstanceID));
+
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(_empire)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                viewPlanet.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
+            );
+            Assert.IsEmpty(viewPlanet.GetChildren<Fleet>());
+        }
+
+        [Test]
         public void ProcessResults_ShipDestroyedInCombat_RemovesShipForBothParticipants()
         {
             Fleet fleet = CreateFleet("FLEET", _empire);

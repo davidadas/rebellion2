@@ -107,6 +107,9 @@ namespace Rebellion.Simulation
                 return;
 
             HandleResults(results.OfType<IntelligenceRevealedResult>().ToList());
+            List<PlanetaryAssaultResult> planetaryAssaults = results
+                .OfType<PlanetaryAssaultResult>()
+                .ToList();
 
             foreach (
                 GameObjectDestroyedResult result in results.OfType<GameObjectDestroyedResult>()
@@ -134,7 +137,7 @@ namespace Rebellion.Simulation
                         result.Tick
                     );
             }
-            foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
+            foreach (PlanetaryAssaultResult result in planetaryAssaults)
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
@@ -157,6 +160,24 @@ namespace Rebellion.Simulation
 
                 RecordOwnershipChange(result);
             }
+            foreach (PlanetaryAssaultResult result in planetaryAssaults)
+                RecordAssaultLanding(result);
+        }
+
+        /// <summary>
+        /// Records the attacking regiments observed landing after a successful planetary assault.
+        /// </summary>
+        /// <param name="result">The completed planetary assault.</param>
+        private void RecordAssaultLanding(PlanetaryAssaultResult result)
+        {
+            if (result?.Success != true || result.LandedRegiments.Count == 0)
+                return;
+
+            _commands.ObserveEntities(
+                FindFaction(result.DefenderOwnerInstanceID),
+                result.LandedRegiments,
+                result.Tick
+            );
         }
 
         /// <summary>
