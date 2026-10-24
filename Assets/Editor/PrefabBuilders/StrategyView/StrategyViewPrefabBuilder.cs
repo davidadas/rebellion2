@@ -5256,11 +5256,11 @@ public static class StrategyViewPrefabBuilder
             "MissionContinueButton",
             detailPanelTransform
         );
-        SetSourceRect(missionContinueImage.rectTransform, 358, 246, 51, 35);
+        SetSourceRect(missionContinueImage.rectTransform, 355, 244, 51, 35);
         Button missionContinueButton = CreateButton(missionContinueImage);
 
         RawImage missionAbortImage = CreateRawButton("MissionAbortButton", detailPanelTransform);
-        SetSourceRect(missionAbortImage.rectTransform, 358, 283, 51, 35);
+        SetSourceRect(missionAbortImage.rectTransform, 355, 281, 51, 35);
         Button missionAbortButton = CreateButton(missionAbortImage);
 
         Transform[] detailLayerOrder =

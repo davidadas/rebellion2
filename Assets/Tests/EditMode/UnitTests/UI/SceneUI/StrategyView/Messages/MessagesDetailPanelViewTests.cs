@@ -162,11 +162,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             ScrollAreaView scrollArea = FindComponent<ScrollAreaView>("DetailLinesScrollArea");
             RectInt authoredRect = UILayout.GetSourceRect(scrollArea.transform as RectTransform);
+            RectInt authoredViewportRect = UILayout.GetSourceRect(scrollArea.ViewportRoot);
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            RectInt authoredScrollbarRect = UILayout.GetSourceRect(
+                scrollbar.transform as RectTransform
+            );
+            TextMeshProUGUI lineTemplate = FindText("DetailLineTextTemplate");
+            RectInt authoredLineRect = UILayout.GetSourceRect(lineTemplate.rectTransform);
 
             _view.Render(CreateDetail("Message", false, false, true));
 
             Assert.IsTrue(FindObject("MissionContinueButton").activeSelf);
             Assert.IsTrue(FindObject("MissionAbortButton").activeSelf);
+            Assert.AreEqual(
+                new RectInt(355, 244, 51, 35),
+                UILayout.GetSourceRect(
+                    FindComponent<RawImage>("MissionContinueButton").rectTransform
+                )
+            );
+            Assert.AreEqual(
+                new RectInt(355, 281, 51, 35),
+                UILayout.GetSourceRect(FindComponent<RawImage>("MissionAbortButton").rectTransform)
+            );
             Assert.AreEqual(
                 "ui_strategyview_messages_window_mission_continue_button_up",
                 FindComponent<RawImage>("MissionContinueButton").texture.name
@@ -175,13 +192,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 "ui_strategyview_messages_window_mission_abort_button_up",
                 FindComponent<RawImage>("MissionAbortButton").texture.name
             );
-            Assert.Less(
-                UILayout.GetSourceRect(scrollArea.transform as RectTransform).width,
-                authoredRect.width
+            Assert.AreEqual(
+                new RectInt(24, 242, 322, 70),
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
             );
             Assert.AreEqual(
-                authoredRect.height,
-                UILayout.GetSourceRect(scrollArea.transform as RectTransform).height
+                new RectInt(0, 0, 309, 70),
+                UILayout.GetSourceRect(scrollArea.ViewportRoot)
+            );
+            Assert.AreEqual(
+                new RectInt(309, 0, 13, 70),
+                UILayout.GetSourceRect(scrollbar.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(0, 0, 309, authoredLineRect.height),
+                UILayout.GetSourceRect(lineTemplate.rectTransform)
             );
 
             _view.Render(CreateDetail("Message", false, false));
@@ -192,6 +217,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 authoredRect,
                 UILayout.GetSourceRect(scrollArea.transform as RectTransform)
             );
+            Assert.AreEqual(authoredViewportRect, UILayout.GetSourceRect(scrollArea.ViewportRoot));
+            Assert.AreEqual(
+                authoredScrollbarRect,
+                UILayout.GetSourceRect(scrollbar.transform as RectTransform)
+            );
+            Assert.AreEqual(authoredLineRect, UILayout.GetSourceRect(lineTemplate.rectTransform));
         }
 
         [Test]

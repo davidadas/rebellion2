@@ -9,6 +9,11 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializable
 {
+    private const int _missionChoiceLinesX = 24;
+    private const int _missionChoiceLinesY = 242;
+    private const int _missionChoiceLinesWidth = 322;
+    private const int _missionChoiceLinesHeight = 70;
+
     private readonly List<TextMeshProUGUI> detailLineTextFields = new List<TextMeshProUGUI>();
     private readonly List<string> renderedDetailLines = new List<string>();
 
@@ -409,41 +414,56 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         missionContinueButton.gameObject.SetActive(visible);
         missionAbortButton.gameObject.SetActive(visible);
 
-        int scrollAreaWidth = linesScrollAreaTemplateRect.width;
-        int viewportWidth = linesViewportTemplateRect.width;
-        int scrollbarX = linesScrollbarTemplateRect.x;
-        int lineWidth = lineTextTemplateRect.width;
+        RectInt scrollAreaRect = linesScrollAreaTemplateRect;
+        RectInt viewportRect = linesViewportTemplateRect;
+        RectInt scrollbarRect = linesScrollbarTemplateRect;
+        RectInt lineRect = lineTextTemplateRect;
         if (visible)
         {
-            int choiceLeft = Mathf.Min(
-                UILayout.GetSourceRect(missionContinueButton.transform as RectTransform).x,
-                UILayout.GetSourceRect(missionAbortButton.transform as RectTransform).x
+            scrollAreaRect = new RectInt(
+                _missionChoiceLinesX,
+                _missionChoiceLinesY,
+                _missionChoiceLinesWidth,
+                _missionChoiceLinesHeight
             );
-            scrollAreaWidth = Mathf.Max(1, choiceLeft - linesScrollAreaTemplateRect.x - 4);
-            viewportWidth = Mathf.Max(1, scrollAreaWidth - linesScrollbarTemplateRect.width);
-            scrollbarX = viewportWidth;
-            lineWidth = viewportWidth;
+            int viewportWidth = Mathf.Max(
+                1,
+                scrollAreaRect.width - linesScrollbarTemplateRect.width
+            );
+            viewportRect = new RectInt(0, 0, viewportWidth, scrollAreaRect.height);
+            scrollbarRect = new RectInt(
+                viewportWidth,
+                0,
+                linesScrollbarTemplateRect.width,
+                scrollAreaRect.height
+            );
+            lineRect = new RectInt(
+                lineTextTemplateRect.x,
+                lineTextTemplateRect.y,
+                viewportWidth,
+                lineTextTemplateRect.height
+            );
         }
 
         UILayout.SetSourceRect(
             linesScrollArea.transform as RectTransform,
-            linesScrollAreaTemplateRect.x,
-            linesScrollAreaTemplateRect.y,
-            scrollAreaWidth,
-            linesScrollAreaTemplateRect.height
+            scrollAreaRect.x,
+            scrollAreaRect.y,
+            scrollAreaRect.width,
+            scrollAreaRect.height
         );
         linesScrollArea.SetLayout(
-            new Vector2(linesViewportTemplateRect.x, linesViewportTemplateRect.y),
-            new Vector2(viewportWidth, linesViewportTemplateRect.height),
-            new Vector2(scrollbarX, linesScrollbarTemplateRect.y),
-            new Vector2(linesScrollbarTemplateRect.width, linesScrollbarTemplateRect.height)
+            new Vector2(viewportRect.x, viewportRect.y),
+            new Vector2(viewportRect.width, viewportRect.height),
+            new Vector2(scrollbarRect.x, scrollbarRect.y),
+            new Vector2(scrollbarRect.width, scrollbarRect.height)
         );
         UILayout.SetSourceRect(
             lineTextTemplate.rectTransform,
-            lineTextTemplateRect.x,
-            lineTextTemplateRect.y,
-            lineWidth,
-            lineTextTemplateRect.height
+            lineRect.x,
+            lineRect.y,
+            lineRect.width,
+            lineRect.height
         );
     }
 

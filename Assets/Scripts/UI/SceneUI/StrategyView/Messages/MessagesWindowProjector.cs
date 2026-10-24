@@ -8,6 +8,8 @@ using UnityEngine;
 /// </summary>
 internal static class MessagesWindowProjector
 {
+    private const string _missionContinuationPrompt = "Do you wish the mission to continue?";
+
     /// <summary>
     /// Builds the complete presentation for controller-owned Messages state.
     /// </summary>
@@ -386,7 +388,9 @@ internal static class MessagesWindowProjector
         return new MessagesDetailPanelRenderData(
             message.InstanceID,
             GetHeader(message),
-            message.Body,
+            missionContinuationChoiceVisible
+                ? AppendMissionContinuationPrompt(message.Body)
+                : message.Body,
             GetTexture(uiContext, imagePath),
             GetTexture(uiContext, message.OverlayImagePath),
             GetTexture(uiContext, theme?.GetNormalIconImagePath(message.Type)),
@@ -394,6 +398,20 @@ internal static class MessagesWindowProjector
             selectedIndex == messages.Count - 1,
             missionContinuationChoiceVisible
         );
+    }
+
+    /// <summary>
+    /// Appends the active continuing-mission choice prompt to a report body.
+    /// </summary>
+    /// <param name="body">The resolved report body.</param>
+    /// <returns>The report body followed by the continuation prompt.</returns>
+    private static string AppendMissionContinuationPrompt(string body)
+    {
+        if (string.IsNullOrEmpty(body))
+            return _missionContinuationPrompt;
+
+        string separator = char.IsWhiteSpace(body[body.Length - 1]) ? string.Empty : "  ";
+        return body + separator + _missionContinuationPrompt;
     }
 
     /// <summary>
