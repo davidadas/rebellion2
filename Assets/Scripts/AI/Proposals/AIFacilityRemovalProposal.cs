@@ -96,7 +96,10 @@ namespace Rebellion.AI.Proposals
                 return false;
             }
 
-            _surplus = GetSurplus(context, Planet, BuildingType);
+            _surplus =
+                ResourceHubType == BuildingType.None
+                    ? GetSurplus(context, Planet, BuildingType)
+                    : GetResourceFacilities(context, refresh: true).ToList();
             return _surplus.Count > 0;
         }
 
@@ -168,9 +171,6 @@ namespace Rebellion.AI.Proposals
         {
             if (context?.Assessment == null || planet == null)
                 return new List<Building>();
-
-            if (ResourceHubType != BuildingType.None)
-                return GetResourceFacilities(context).ToList();
 
             return GetFacilities(context, planet)
                 .Where(building =>

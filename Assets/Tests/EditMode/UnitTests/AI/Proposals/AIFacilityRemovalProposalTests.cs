@@ -48,6 +48,34 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void CanExecute_QueuedMaintenanceRisesAfterSelection_RejectsRetirement()
+        {
+            AITurnContext context = CreateResourceHubContext(out Planet hub);
+            Assert.IsTrue(
+                context.StrategicPlan.TryAllocateInfrastructureHub(
+                    hub,
+                    BuildingType.Shipyard,
+                    6,
+                    reclaimResources: true
+                )
+            );
+            AIFacilityRemovalProposal proposal = new(hub, BuildingType.Shipyard, 6);
+            Assert.IsTrue(proposal.CanExecute(context));
+            context.Game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "queued-cost",
+                    OwnerInstanceID = context.Faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 1000,
+                },
+                hub
+            );
+
+            Assert.IsFalse(proposal.CanExecute(context));
+        }
+
+        [Test]
         public void Execute_QueuedMaintenanceRisesAfterSelection_PreservesResources()
         {
             AITurnContext context = CreateResourceHubContext(out Planet hub);

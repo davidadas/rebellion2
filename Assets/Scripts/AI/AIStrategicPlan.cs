@@ -27,6 +27,7 @@ namespace Rebellion.AI
             ),
             double
         > _diplomacyConcentrationValues = new();
+        private ResourceProductionQueries.OperatingEconomyProjection _resourceEconomyProjection;
         private readonly Dictionary<string, int> _specialForcesReserveTargets = new();
         private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
         private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
@@ -475,7 +476,10 @@ namespace Rebellion.AI
             if (!refresh && _resourceReclamationCache.TryGetValue(key, out var cached))
                 return cached;
             if (refresh)
+            {
                 _resourceEconomyCache.Clear();
+                _resourceEconomyProjection = null;
+            }
             if (
                 _assessment.ProjectedMaintenanceHeadroom
                 < _game.Config.AI.Selection.MaintenanceHeadroomTarget
@@ -513,7 +517,6 @@ namespace Rebellion.AI
                 .Where(entry => entry.Key != planet.InstanceID)
                 .SelectMany(entry => entry.Value)
                 .ToList();
-            ResourceProductionQueries economy = new(_game);
             var faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
             int missingFacilities = Math.Max(
                 0,
@@ -546,7 +549,10 @@ namespace Rebellion.AI
                 );
                 if (!_resourceEconomyCache.TryGetValue(economyKey, out var after))
                 {
-                    after = economy.GetOperatingEconomy(faction, excluded);
+                    _resourceEconomyProjection ??= new ResourceProductionQueries(
+                        _game
+                    ).CaptureOperatingEconomy(faction);
+                    after = _resourceEconomyProjection.GetOperatingEconomy(excluded);
                     _resourceEconomyCache[economyKey] = after;
                 }
                 int horizon = Math.Max(

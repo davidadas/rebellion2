@@ -111,7 +111,8 @@ namespace Rebellion.Simulation
                 excluded,
                 activeMines,
                 activeRefineries,
-                maintenance
+                maintenance.Committed,
+                CalculateMaintenanceCapacity(_game, faction, excluded)
             );
             int deliveredMaintenanceCapacity = CalculateProjectedMaintenanceCapacity(
                 faction,
@@ -185,8 +186,50 @@ namespace Rebellion.Simulation
                 excluded,
                 GetActiveFacilities(faction, BuildingType.Mine, excluded),
                 GetActiveFacilities(faction, BuildingType.Refinery, excluded),
-                CalculateMaintenanceCosts(faction, excluded)
+                CalculateMaintenanceCosts(faction, excluded).Committed,
+                CalculateMaintenanceCapacity(_game, faction, excluded)
             );
+        }
+
+        /// <summary>
+        /// Captures reusable resource inputs for evaluating exclusions while game state is unchanged.
+        /// </summary>
+        /// <param name="faction">The faction whose current economy is evaluated.</param>
+        /// <returns>A projection scope that must be captured again after game-state changes.</returns>
+        public OperatingEconomyProjection CaptureOperatingEconomy(Faction faction)
+        {
+            return new OperatingEconomyProjection(
+                this,
+                faction ?? throw new ArgumentNullException(nameof(faction))
+            );
+        }
+
+        /// <summary>
+        /// Captures completed stationary facilities on each currently operating owned planet.
+        /// </summary>
+        /// <param name="faction">The faction whose facilities are captured.</param>
+        /// <returns>Planet and facility inputs in stable planet and child order.</returns>
+        private static IReadOnlyList<(Planet Planet, Building[] Buildings)> CaptureResourcePlanets(
+            Faction faction
+        )
+        {
+            return faction
+                .GetOwnedUnitsByType<Planet>()
+                .Where(planet => !planet.IsResourceProductionSuspended())
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .Select(planet =>
+                    (
+                        planet,
+                        planet
+                            .GetChildren<Building>()
+                            .Where(building =>
+                                building.ManufacturingStatus == ManufacturingStatus.Complete
+                                && building.Movement == null
+                            )
+                            .ToArray()
+                    )
+                )
+                .ToArray();
         }
 
         /// <summary>
@@ -196,7 +239,8 @@ namespace Rebellion.Simulation
         /// <param name="excluded">Omitted facility identifiers.</param>
         /// <param name="mines">Remaining active mines.</param>
         /// <param name="refineries">Remaining active refineries.</param>
-        /// <param name="maintenance">Remaining committed maintenance costs.</param>
+        /// <param name="maintenanceDemand">Remaining committed maintenance costs.</param>
+        /// <param name="maintenanceCapacity">The usable capacity after the exclusions.</param>
         /// <returns>Effective headroom and current or post-retirement steady resource rates.</returns>
         private (
             int MaintenanceHeadroom,
@@ -207,18 +251,19 @@ namespace Rebellion.Simulation
             ISet<string> excluded,
             List<Building> mines,
             List<Building> refineries,
-            MaintenanceCostBreakdown maintenance
+            int maintenanceDemand,
+            int maintenanceCapacity
         )
         {
             return (
-                CalculateMaintenanceCapacity(_game, faction, excluded) - maintenance.Committed,
+                maintenanceCapacity - maintenanceDemand,
                 excluded.Count == 0
                     ? CalculateOutputPerTick(faction, mines, BuildingType.Mine)
                     : CalculateProjectedOutputPerTick(
                         faction,
                         mines,
                         BuildingType.Mine,
-                        maintenance.Committed
+                        maintenanceDemand
                     ),
                 excluded.Count == 0
                     ? CalculateOutputPerTick(faction, refineries, BuildingType.Refinery)
@@ -226,7 +271,7 @@ namespace Rebellion.Simulation
                         faction,
                         refineries,
                         BuildingType.Refinery,
-                        maintenance.Committed
+                        maintenanceDemand
                     )
             );
         }
@@ -328,22 +373,44 @@ namespace Rebellion.Simulation
                 if (planet.IsResourceProductionSuspended())
                     continue;
 
-                IEnumerable<Building> planetFacilities = planet
-                    .GetChildren<Building>()
-                    .Where(building =>
-                        building.BuildingType == buildingType
-                        && excluded?.Contains(building.InstanceID) != true
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    );
-                if (buildingType == BuildingType.Mine)
-                    planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
-
-                facilities.AddRange(planetFacilities);
+                facilities.AddRange(
+                    GetActiveFacilities(
+                        planet,
+                        planet.GetChildren<Building>(),
+                        buildingType,
+                        excluded
+                    )
+                );
             }
 
             return facilities;
+        }
+
+        /// <summary>
+        /// Selects active facilities from one planet without discarding replacement mines before exclusions.
+        /// </summary>
+        /// <param name="planet">The planet supplying the mining limit.</param>
+        /// <param name="buildings">The planet's live or captured buildings in child order.</param>
+        /// <param name="buildingType">The requested processing category.</param>
+        /// <param name="excluded">Optional omitted identifiers.</param>
+        /// <returns>The eligible facilities in their processing order.</returns>
+        private static IEnumerable<Building> GetActiveFacilities(
+            Planet planet,
+            IEnumerable<Building> buildings,
+            BuildingType buildingType,
+            ISet<string> excluded
+        )
+        {
+            IEnumerable<Building> facilities = buildings.Where(building =>
+                building.BuildingType == buildingType
+                && excluded?.Contains(building.InstanceID) != true
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+                && building.Movement == null
+                && building.ProcessRate > 0
+            );
+            return buildingType == BuildingType.Mine
+                ? facilities.Take(planet.NumRawResourceNodes)
+                : facilities;
         }
 
         /// <summary>
@@ -774,30 +841,46 @@ namespace Rebellion.Simulation
         {
             if (excluded.Count == 0)
                 return CalculateMaintenanceCapacity(game, faction);
+            return CalculateMaintenanceCapacity(
+                CaptureResourcePlanets(faction),
+                excluded,
+                faction.GetTotalAvailableResourceNodes(),
+                CalculateMaintenanceCapacityPerFacility(game, faction)
+            );
+        }
+
+        /// <summary>
+        /// Measures capacity from operating planets after omitting selected facilities.
+        /// </summary>
+        /// <param name="planets">The completed stationary facilities by planet.</param>
+        /// <param name="excluded">Omitted facility identifiers.</param>
+        /// <param name="availableNodes">The faction's available raw resource nodes.</param>
+        /// <param name="facilityCapacity">Effective capacity supplied by each resource pair.</param>
+        /// <returns>The same capacity used by live retirement projections.</returns>
+        private static int CalculateMaintenanceCapacity(
+            IReadOnlyList<(Planet Planet, Building[] Buildings)> planets,
+            ISet<string> excluded,
+            int availableNodes,
+            int facilityCapacity
+        )
+        {
             int mines = 0;
             int refineries = 0;
-            foreach (Planet planet in faction.GetOwnedUnitsByType<Planet>())
+            foreach (var entry in planets)
             {
-                if (planet.IsResourceProductionSuspended())
-                    continue;
-                List<Building> remaining = planet
-                    .GetChildren<Building>()
-                    .Where(building =>
-                        building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && !excluded.Contains(building.InstanceID)
-                    )
-                    .ToList();
-                mines += Math.Min(
-                    planet.GetRawResourceNodes(),
-                    remaining.Count(building => building.BuildingType == BuildingType.Mine)
-                );
-                refineries += remaining.Count(building =>
-                    building.BuildingType == BuildingType.Refinery
-                );
+                int planetMines = 0;
+                foreach (Building building in entry.Buildings)
+                {
+                    if (excluded.Contains(building.InstanceID))
+                        continue;
+                    if (building.BuildingType == BuildingType.Mine)
+                        planetMines++;
+                    else if (building.BuildingType == BuildingType.Refinery)
+                        refineries++;
+                }
+                mines += Math.Min(entry.Planet.GetRawResourceNodes(), planetMines);
             }
-            return Math.Min(faction.GetTotalAvailableResourceNodes(), Math.Min(mines, refineries))
-                * CalculateMaintenanceCapacityPerFacility(game, faction);
+            return Math.Min(availableNodes, Math.Min(mines, refineries)) * facilityCapacity;
         }
 
         /// <summary>
@@ -828,6 +911,114 @@ namespace Rebellion.Simulation
         private static int DivideRoundingUp(int dividend, int divisor)
         {
             return IntegerMath.DivideRoundedUp(dividend, divisor);
+        }
+
+        /// <summary>
+        /// Reuses current resource inputs across exclusion alternatives without mutating the game.
+        /// Capture a new scope after any game-state change.
+        /// </summary>
+        public sealed class OperatingEconomyProjection
+        {
+            private readonly ResourceProductionQueries _queries;
+            private readonly Faction _faction;
+            private readonly IReadOnlyList<(Planet Planet, Building[] Buildings)> _planets;
+            private readonly Dictionary<string, int> _buildingMaintenance = new(
+                StringComparer.Ordinal
+            );
+            private readonly int _committedMaintenance;
+            private readonly int _maintenanceCapacity;
+            private readonly int _availableNodes;
+            private readonly int _facilityCapacity;
+
+            /// <summary>
+            /// Captures inputs for one unchanged resource-evaluation scope.
+            /// </summary>
+            /// <param name="queries">The resource calculations shared with the live query path.</param>
+            /// <param name="faction">The faction whose economy is captured.</param>
+            internal OperatingEconomyProjection(ResourceProductionQueries queries, Faction faction)
+            {
+                _queries = queries;
+                _faction = faction;
+                _planets = CaptureResourcePlanets(faction);
+                _committedMaintenance = CalculateMaintenanceCosts(
+                    faction,
+                    new HashSet<string>()
+                ).Committed;
+                _maintenanceCapacity = CalculateMaintenanceCapacity(queries._game, faction);
+                _availableNodes = faction.GetTotalAvailableResourceNodes();
+                _facilityCapacity = CalculateMaintenanceCapacityPerFacility(queries._game, faction);
+                foreach (
+                    Building building in faction.GetAllOwnedManufacturables().OfType<Building>()
+                )
+                {
+                    _buildingMaintenance.TryGetValue(building.InstanceID, out int cost);
+                    _buildingMaintenance[building.InstanceID] =
+                        cost + ((IManufacturable)building).GetMaintenanceCost();
+                }
+            }
+
+            /// <summary>
+            /// Evaluates omitted facilities using the captured inputs and shared resource calculations.
+            /// </summary>
+            /// <param name="excludedFacilities">Owned facilities omitted from this alternative.</param>
+            /// <returns>Maintenance headroom and active processing rates after the exclusions.</returns>
+            public (
+                int MaintenanceHeadroom,
+                double RawOutputPerTick,
+                double RefinedOutputPerTick
+            ) GetOperatingEconomy(IReadOnlyCollection<Building> excludedFacilities)
+            {
+                HashSet<string> excluded = (excludedFacilities ?? Array.Empty<Building>())
+                    .Where(building =>
+                        building != null && building.GetOwnerInstanceID() == _faction.InstanceID
+                    )
+                    .Select(building => building.InstanceID)
+                    .ToHashSet(StringComparer.Ordinal);
+                int maintenance = _committedMaintenance;
+                foreach (string id in excluded)
+                    if (_buildingMaintenance.TryGetValue(id, out int cost))
+                        maintenance -= cost;
+                List<Building> mines = new();
+                List<Building> refineries = new();
+                foreach (var entry in _planets)
+                {
+                    if (!entry.Planet.IsColonized)
+                        continue;
+                    mines.AddRange(
+                        ResourceProductionQueries.GetActiveFacilities(
+                            entry.Planet,
+                            entry.Buildings,
+                            BuildingType.Mine,
+                            excluded
+                        )
+                    );
+                    refineries.AddRange(
+                        ResourceProductionQueries.GetActiveFacilities(
+                            entry.Planet,
+                            entry.Buildings,
+                            BuildingType.Refinery,
+                            excluded
+                        )
+                    );
+                }
+                int capacity =
+                    excluded.Count == 0
+                        ? _maintenanceCapacity
+                        : CalculateMaintenanceCapacity(
+                            _planets,
+                            excluded,
+                            _availableNodes,
+                            _facilityCapacity
+                        );
+                return _queries.CalculateOperatingEconomy(
+                    _faction,
+                    excluded,
+                    mines,
+                    refineries,
+                    maintenance,
+                    capacity
+                );
+            }
         }
     }
 
