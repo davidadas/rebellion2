@@ -1330,6 +1330,60 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
+        [TestCase(0, 0, true)]
+        [TestCase(-1, 0, true)]
+        [TestCase(0.5, 1, true)]
+        [TestCase(0, 0, false)]
+        public void Select_IneligibleScoreTies_PreservesRandomStream(
+            double score,
+            float minimumScore,
+            bool hasScore
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            game.Config.AI.Selection.MinimumSelectableScore = minimumScore;
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 1, 0 });
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction, random: random);
+            foreach (string id in new[] { "first", "second" })
+            {
+                TestAIProposal proposal = new TestAIProposal(id);
+                if (hasScore)
+                    proposal.SetScore(score);
+                context.AddProposal(proposal);
+            }
+
+            new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, random.NextInt(0, 2));
+        }
+
+        [Test]
+        public void Select_UnscoredMandatoryTies_ConsumesOnlyScoredTieDraws()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 0, 1 });
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction, random: random);
+            TestAIProposal first = new TestAIProposal(
+                "first",
+                priority: AIProposalPriority.Mandatory
+            );
+            first.SetScore(0);
+            TestAIProposal unscored = new TestAIProposal(
+                "unscored",
+                priority: AIProposalPriority.Mandatory
+            );
+            TestAIProposal second = new TestAIProposal(
+                "second",
+                priority: AIProposalPriority.Mandatory
+            );
+            second.SetScore(0);
+            context.AddProposals(new[] { first, unscored, second });
+
+            new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, random.NextInt(0, 2));
+        }
+
         [Test]
         public void Select_WithScoredProposals_ReturnsHighestScoreFirst()
         {

@@ -52,11 +52,7 @@ namespace Rebellion.AI.Phases
             {
                 AIProposal proposal = pending.First.Value;
                 pending.RemoveFirst();
-                if (
-                    !proposal.HasScore
-                    || proposal.Priority < AIProposalPriority.Mandatory
-                        && proposal.Score <= minimumSelectableScore
-                )
+                if (!HasSelectableScore(proposal, minimumSelectableScore))
                     continue;
 
                 AIProposal selectedProposal = proposal;
@@ -179,7 +175,22 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Returns proposals ordered by strategic value with seed-faithful random tie resolution.
+        /// Returns whether a scored proposal meets its priority category's selection threshold.
+        /// </summary>
+        /// <param name="proposal">The proposal whose score is inspected.</param>
+        /// <param name="minimumScore">The exclusive score floor for optional work.</param>
+        /// <returns>True when domain selection may consider the proposal.</returns>
+        private static bool HasSelectableScore(AIProposal proposal, float minimumScore)
+        {
+            return proposal.HasScore
+                && (
+                    proposal.Priority >= AIProposalPriority.Mandatory
+                    || proposal.Score > minimumScore
+                );
+        }
+
+        /// <summary>
+        /// Orders proposals by strategic value and randomizes eligible score ties.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="candidates">The proposals still awaiting selection.</param>
@@ -195,7 +206,9 @@ namespace Rebellion.AI.Phases
                 .Where(proposal => proposal != null)
                 .OrderByDescending(proposal => proposal.Priority)
                 .ThenByDescending(proposal => proposal.Score)
+                .ThenByDescending(proposal => proposal.HasScore)
                 .ToList();
+            float minimumScore = GetMinimumSelectableScore(context);
             int groupStart = 0;
             while (shuffleTies && groupStart < proposals.Count)
             {
@@ -204,12 +217,14 @@ namespace Rebellion.AI.Phases
                     groupEnd < proposals.Count
                     && proposals[groupEnd].Priority == proposals[groupStart].Priority
                     && proposals[groupEnd].Score == proposals[groupStart].Score
+                    && proposals[groupEnd].HasScore == proposals[groupStart].HasScore
                 )
                 {
                     groupEnd++;
                 }
 
-                ShuffleRange(proposals, groupStart, groupEnd, context.Random);
+                if (HasSelectableScore(proposals[groupStart], minimumScore))
+                    ShuffleRange(proposals, groupStart, groupEnd, context.Random);
                 groupStart = groupEnd;
             }
 
