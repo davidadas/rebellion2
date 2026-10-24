@@ -83,6 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     SupportDeficitPerRegiment = 5,
                     UprisingMultiplier = 3,
                 },
+                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
             };
 
             view.Initialize(TestContent.Pack, summary);
@@ -93,6 +94,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("70", Input("garrison-support-threshold", "World").text);
             Assert.AreEqual("5", Input("garrison-support-deficit-per-regiment", "World").text);
             Assert.AreEqual("3", Input("garrison-uprising-multiplier", "World").text);
+            Assert.AreEqual("150", Input("travel-speed", "World").text);
         }
 
         [Test]
@@ -1177,6 +1179,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "STARTING FACILITIES",
                     "STARTING GARRISONS AND SUPPORT",
                     "LIVE GARRISON REQUIREMENTS",
+                    "MOVEMENT",
                 },
                 labels
             );
@@ -1498,6 +1501,25 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 authoredMultiplier,
                 TestContent.Pack.GameData.GameConfig.AI.Garrison.UprisingMultiplier
+            );
+        }
+
+        [Test]
+        public void Apply_EditedMovementRule_PublishesRuntimeOverrideWithoutMutatingContent()
+        {
+            GameSummary applied = null;
+            double authoredDivisor = TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Input("travel-speed", "World").onEndEdit.Invoke("150");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(150, applied.CustomSettings.MovementRules.TravelSpeedPercent);
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor
             );
         }
 

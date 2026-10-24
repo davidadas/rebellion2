@@ -58,6 +58,8 @@ internal sealed class CustomGameSettingsSession
     private readonly FacilityGenerationChanceEditor facilityChanceEditor;
     private readonly GarrisonRuleSettings garrisonDefaults;
     private readonly GarrisonRuleSettings garrisonDraft;
+    private readonly MovementRuleSettings movementDefaults;
+    private readonly MovementRuleSettings movementDraft;
     private string currentDifficultySection;
     private string currentGenerationSection;
 
@@ -113,6 +115,10 @@ internal sealed class CustomGameSettingsSession
         garrisonDraft =
             summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
             ?? garrisonDefaults.GetDeepCopy();
+        movementDefaults = new MovementRuleSettings { TravelSpeedPercent = 100 };
+        movementDraft =
+            summaryDraft.CustomSettings?.MovementRules?.GetDeepCopy()
+            ?? movementDefaults.GetDeepCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
         eventCategories = pack
@@ -401,6 +407,7 @@ internal sealed class CustomGameSettingsSession
             AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
             GenerationConfig = generationDraft.GetDeepCopy(),
             GarrisonRules = garrisonDraft.GetDeepCopy(),
+            MovementRules = movementDraft.GetDeepCopy(),
         };
         return snapshot;
     }
@@ -651,6 +658,8 @@ internal sealed class CustomGameSettingsSession
         AddUnitAndBalanceEntries();
         currentGenerationSection = "LIVE GARRISON REQUIREMENTS";
         AddGarrisonRuleEntries();
+        currentGenerationSection = "MOVEMENT";
+        AddMovementRuleEntries();
         AddFactionModifierEntries(pack.GameData.Factions);
     }
 
@@ -1502,6 +1511,30 @@ internal sealed class CustomGameSettingsSession
             int.MaxValue,
             rules => rules.UprisingMultiplier,
             (rules, value) => rules.UprisingMultiplier = value
+        );
+    }
+
+    /// <summary>
+    /// Adds the campaign-wide strategic travel-speed control.
+    /// </summary>
+    private void AddMovementRuleEntries()
+    {
+        generationEntries.Add(
+            new GenerationEntry
+            {
+                Category = NewGameSettingsCategory.WorldGeneration,
+                Section = currentGenerationSection,
+                RowKey = "travel-speed",
+                Key = "travel-speed",
+                Label = "Travel Speed %",
+                Description =
+                    "Speed of travel between planets. Higher values shorten travel time. Range: 1% or higher.",
+                Minimum = 1,
+                Maximum = int.MaxValue,
+                Read = () => movementDraft.TravelSpeedPercent,
+                ReadDefault = () => movementDefaults.TravelSpeedPercent,
+                Write = value => movementDraft.TravelSpeedPercent = value,
+            }
         );
     }
 

@@ -76,6 +76,10 @@ namespace Rebellion.Tests.Managers
                 summary.CustomSettings.GarrisonRules.UprisingMultiplier,
                 loaded.CustomSettings.GarrisonRules.UprisingMultiplier
             );
+            Assert.AreEqual(
+                summary.CustomSettings.MovementRules.TravelSpeedPercent,
+                loaded.CustomSettings.MovementRules.TravelSpeedPercent
+            );
         }
 
         [Test]
@@ -132,6 +136,7 @@ namespace Rebellion.Tests.Managers
                         SupportDeficitPerRegiment = 5,
                         UprisingMultiplier = 3,
                     },
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
                 },
             };
         }

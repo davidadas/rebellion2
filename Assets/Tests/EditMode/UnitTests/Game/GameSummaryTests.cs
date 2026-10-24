@@ -120,6 +120,7 @@ namespace Rebellion.Tests.Game
                         SupportDeficitPerRegiment = 5,
                         UprisingMultiplier = 3,
                     },
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
                 },
             };
 
@@ -194,6 +195,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(70, deserialized.CustomSettings.GarrisonRules.SupportThreshold);
             Assert.AreEqual(5, deserialized.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
             Assert.AreEqual(3, deserialized.CustomSettings.GarrisonRules.UprisingMultiplier);
+            Assert.AreEqual(150, deserialized.CustomSettings.MovementRules.TravelSpeedPercent);
             Assert.IsTrue(deserialized.IsCustomGame);
         }
     }
