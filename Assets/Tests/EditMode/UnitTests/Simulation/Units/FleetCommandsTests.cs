@@ -112,6 +112,24 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateFromCapitalShips_OwnedShip_PreservesOwnershipAndMaintenance()
+        {
+            CreateFleet("source", out CapitalShip ship);
+            ship.MaintenanceCost = 17;
+            Faction faction = _game.GetFactionByOwnerInstanceID(_ownerId);
+            Assert.AreEqual(17, faction.GetTotalMaintenanceCost());
+
+            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
+                new List<CapitalShip> { ship },
+                _ownerId
+            );
+
+            Assert.IsNotNull(createdFleet);
+            CollectionAssert.Contains(faction.GetOwnedUnitsByType<CapitalShip>(), ship);
+            Assert.AreEqual(17, faction.GetTotalMaintenanceCost());
+        }
+
+        [Test]
         public void CreateFromCapitalShips_SnapshotSelection_UsesLiveShip()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
