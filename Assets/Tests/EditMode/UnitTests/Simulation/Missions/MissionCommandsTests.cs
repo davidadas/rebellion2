@@ -22,6 +22,61 @@ namespace Rebellion.Tests.Simulation
     public class MissionCommandsTests
     {
         [Test]
+        public void InitiateMission_DecoyKilledAtDeparture_RemovesDecoyFromMission()
+        {
+            var (game, planet, spy, defender, movement) = BuildDetectionScene();
+            planet.VisitingFactionIDs.Add("empire");
+            Fleet fleet = EntityFactory.CreateFleet("departure-fleet", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "departure-carrier",
+                OwnerInstanceID = "empire",
+                RegimentCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, fleet);
+            game.MoveNode(spy, carrier);
+            SpecialForces decoy = new SpecialForces
+            {
+                InstanceID = "departure-decoy",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { EspionageMission.MissionTypeID },
+            };
+            game.AttachNode(decoy, carrier);
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+            List<GameResult> results = new List<GameResult>();
+            system.ResultsProduced += results.AddRange;
+
+            Assert.IsTrue(
+                system.InitiateMission(
+                    CreateContext(
+                        EspionageMission.MissionTypeID,
+                        new List<IMissionParticipant> { spy },
+                        new List<IMissionParticipant> { decoy },
+                        planet
+                    )
+                )
+            );
+
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => result.DestroyedObject == decoy)
+            );
+            Mission mission = results.OfType<MissionStartedResult>().Single().Mission;
+            CollectionAssert.DoesNotContain(mission.GetDecoyParticipants(true), decoy);
+        }
+
+        [Test]
         public void ProcessTick_BetrayingOfficer_AbortsWithoutDetectorConfrontation()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(

@@ -1342,16 +1342,23 @@ namespace Rebellion.Game.Missions
             _decoyParticipants.Remove(participant);
 
         /// <summary>
+        /// Removes a participant from the mission roster independently of physical containment.
+        /// </summary>
+        /// <param name="participant">The participant leaving the mission.</param>
+        internal void RemoveParticipant(IMissionParticipant participant)
+        {
+            _mainParticipants.Remove(participant);
+            _decoyParticipants.Remove(participant);
+        }
+
+        /// <summary>
         /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
         /// </summary>
         /// <param name="child">The node to remove from participant lists.</param>
         public override void RemoveChild(ISceneNode child)
         {
             if (child is IMissionParticipant participant)
-            {
-                _mainParticipants.Remove(participant);
-                _decoyParticipants.Remove(participant);
-            }
+                RemoveParticipant(participant);
         }
     }
 }
