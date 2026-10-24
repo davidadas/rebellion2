@@ -105,8 +105,10 @@ namespace Rebellion.Simulation
             foreach (CapitalShip ship in ships)
                 _game.DetachNode(ship);
 
-            Fleet fleet = faction.CreateFleet(ships.ToArray());
+            Fleet fleet = faction.CreateFleet();
             _game.AttachNode(fleet, planet);
+            foreach (CapitalShip ship in ships)
+                _game.AttachNode(ship, fleet);
 
             foreach (Fleet sourceFleet in sourceFleets.Distinct())
                 FleetLifecycle.RemoveEmptyFleet(_game, sourceFleet);

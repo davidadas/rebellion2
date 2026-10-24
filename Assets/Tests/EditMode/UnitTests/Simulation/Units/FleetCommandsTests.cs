@@ -72,6 +72,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateFromCapitalShips_RegisteredShip_PreservesFactionOwnership()
+        {
+            CreateFleet("source", out CapitalShip ship);
+            Faction faction = _game.GetFactionByOwnerInstanceID(_ownerId);
+            Assert.Contains(ship, faction.GetOwnedUnitsByType<CapitalShip>());
+
+            _fleetSystem.CreateFromCapitalShips(new[] { ship }, _ownerId);
+
+            Assert.Contains(ship, faction.GetOwnedUnitsByType<CapitalShip>());
+        }
+
+        [TestCase(ManufacturingStatus.Complete)]
+        [TestCase(ManufacturingStatus.Building)]
+        public void CreateFromCapitalShips_CommittedShip_PreservesProjectedMaintenance(
+            ManufacturingStatus status
+        )
+        {
+            CreateFleet("source", out CapitalShip ship);
+            ship.ManufacturingStatus = status;
+            ship.MaintenanceCost = 12;
+            Faction faction = _game.GetFactionByOwnerInstanceID(_ownerId);
+            int before = faction.GetTotalProjectedMaintenanceCost();
+            Assert.Greater(before, 0);
+
+            _fleetSystem.CreateFromCapitalShips(new[] { ship }, _ownerId);
+
+            Assert.AreEqual(before, faction.GetTotalProjectedMaintenanceCost());
+        }
+
+        [Test]
         public void CreateFromCapitalShips_PartialSourceSelection_PreservesSourceFleet()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip selectedShip);
