@@ -7,7 +7,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -392,7 +391,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void MissionContinueRequested_PendingReport_KeepsReportOpenWithoutAbortingMission()
+        public void MissionContinueRequested_PendingReport_ReturnsToIndexWithoutAbortingMission()
         {
             Message message = CreateMessage("report");
             message.MissionInstanceID = "mission";
@@ -419,7 +418,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
                 Assert.IsFalse(message.MissionContinuationPending);
                 Assert.IsNull(actions.AbortedMissionInstanceId);
-                AssertReportDetailRemainsVisible(controller, view, "report");
+                AssertMessageIndexVisible(controller, view, message.InstanceID);
             }
             finally
             {
@@ -428,7 +427,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void MissionAbortRequested_PendingReport_AbortsMissionAndKeepsReportOpen()
+        public void MissionAbortRequested_PendingReport_AbortsMissionAndReturnsToIndex()
         {
             Message message = CreateMessage("report");
             message.MissionInstanceID = "mission";
@@ -455,7 +454,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
                 Assert.AreEqual("mission", actions.AbortedMissionInstanceId);
                 Assert.IsFalse(message.MissionContinuationPending);
-                AssertReportDetailRemainsVisible(controller, view, "report");
+                AssertMessageIndexVisible(controller, view, message.InstanceID);
             }
             finally
             {
@@ -801,20 +800,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         /// <summary>
-        /// Verifies that resolving a mission choice leaves the report content and navigation visible.
+        /// Verifies that resolving a mission choice restores the message index.
         /// </summary>
         /// <param name="controller">The Messages controller under test.</param>
         /// <param name="view">The rendered Messages view.</param>
-        /// <param name="expectedBody">The report body expected to remain visible.</param>
-        private static void AssertReportDetailRemainsVisible(
+        /// <param name="expectedMessageId">The message expected to remain in the index.</param>
+        private static void AssertMessageIndexVisible(
             MessagesWindowController controller,
             MessagesWindowView view,
-            string expectedBody
+            string expectedMessageId
         )
         {
             IReadOnlyList<Button> buttons = view.GetComponentsInChildren<Button>(true);
 
-            Assert.IsTrue(controller.IsDetailVisible(view));
+            Assert.IsFalse(controller.IsDetailVisible(view));
             Assert.IsFalse(
                 buttons
                     .Single(button => button.name == "MissionContinueButton")
@@ -825,20 +824,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     .Single(button => button.name == "MissionAbortButton")
                     .gameObject.activeInHierarchy
             );
-            Assert.IsTrue(
-                buttons
-                    .Single(button => button.name == "DetailPreviousButtonImage")
-                    .gameObject.activeInHierarchy
-            );
-            Assert.IsTrue(
-                buttons
-                    .Single(button => button.name == "DetailNextButtonImage")
-                    .gameObject.activeInHierarchy
-            );
-            Assert.IsTrue(
-                view.GetComponentsInChildren<TextMeshProUGUI>(true)
-                    .Any(text => text.gameObject.activeInHierarchy && text.text == expectedBody)
-            );
+            MessageWindowRowView row = view.GetComponentsInChildren<MessageWindowRowView>(true)
+                .Single(candidate => candidate.gameObject.activeSelf);
+            Assert.AreEqual(expectedMessageId, row.MessageId);
         }
 
         /// <summary>

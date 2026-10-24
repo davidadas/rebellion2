@@ -847,7 +847,7 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Keeps the report's mission active and consumes the report's pending choice.
+    /// Keeps the report's mission active and returns to the message index.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     private void HandleMissionContinueRequested(MessagesWindowView view)
@@ -856,12 +856,12 @@ public sealed class MessagesWindowController
             return;
 
         FocusWindow(view);
-        ConsumeMissionContinuationChoice(session.GetSelectedMessage());
+        CompleteMissionContinuationChoice(session, session.GetSelectedMessage());
         RequestRender();
     }
 
     /// <summary>
-    /// Aborts the report's continuing mission and consumes the report's pending choice.
+    /// Aborts the report's continuing mission and returns to the message index.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     private void HandleMissionAbortRequested(MessagesWindowView view)
@@ -875,8 +875,20 @@ public sealed class MessagesWindowController
         if (!string.IsNullOrEmpty(missionInstanceId))
             actions.TryAbortMission(missionInstanceId);
 
-        ConsumeMissionContinuationChoice(message);
+        CompleteMissionContinuationChoice(session, message);
         RequestRender();
+    }
+
+    /// <summary>
+    /// Consumes a mission continuation choice and restores the message index.
+    /// </summary>
+    /// <param name="session">The Messages session displaying the report.</param>
+    /// <param name="message">The report whose continuation choice was resolved.</param>
+    private void CompleteMissionContinuationChoice(MessagesWindowSession session, Message message)
+    {
+        ConsumeMissionContinuationChoice(message);
+        StopMessageDetailAudio();
+        session.HideDetail();
     }
 
     /// <summary>
