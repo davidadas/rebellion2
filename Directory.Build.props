@@ -11,7 +11,7 @@
     <FrameworkPathOverride>/Library/Frameworks/Mono.framework/Versions/Current/lib/mono/4.7.1-api</FrameworkPathOverride>
   </PropertyGroup>
   <PropertyGroup>
-    <UnityVersion>6000.4.0f1</UnityVersion>
+    <UnityVersion>6000.4.12f1</UnityVersion>
     <UnityMacAppPath Condition="'$(UnityMacAppPath)' == ''"
       >/Applications/Unity/Hub/Editor/$(UnityVersion)/Unity.app</UnityMacAppPath
     >

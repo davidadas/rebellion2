@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Unity 6000.4.0f1
+- Unity 6000.4.12f1
 - .NET SDK
 - A Bash-compatible shell
 - Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam

@@ -14,7 +14,7 @@ concurrency:
 
 env:
   LOG_LEVEL: None
-  UNITY_VERSION: 6000.4.0f1
+  UNITY_VERSION: 6000.4.12f1
   UNITY_IMAGE_VERSION: 3
 
 jobs:
