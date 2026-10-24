@@ -8,8 +8,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
@@ -21,7 +19,6 @@ namespace Rebellion.AI
     public sealed class AIDirector
     {
         private readonly GameRoot _game;
-        private readonly HashSet<string> _optionalProductionOrders = new(StringComparer.Ordinal);
         private readonly FogOfWarQueries _fogOfWar;
         private readonly IRandomNumberProvider _random;
         private readonly MissionCommands _missions;
@@ -137,43 +134,6 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether this session registered an order as optional work.
-        /// </summary>
-        /// <param name="order">The manufacturing order to inspect.</param>
-        /// <returns>True when the order may yield to demanded production.</returns>
-        public bool IsOptionalProduction(IManufacturable order)
-        {
-            return order is ISceneNode node && _optionalProductionOrders.Contains(node.InstanceID);
-        }
-
-        /// <summary>
-        /// Records production intent in memory for the current game session.
-        /// </summary>
-        /// <param name="order">The queued order whose priority changed.</param>
-        /// <param name="optional">Whether the order may yield to demanded work.</param>
-        private void RecordProductionPriority(IManufacturable order, bool optional)
-        {
-            if (order is not ISceneNode node)
-                return;
-            if (optional)
-                _optionalProductionOrders.Add(node.InstanceID);
-            else
-                _optionalProductionOrders.Remove(node.InstanceID);
-        }
-
-        /// <summary>
-        /// Releases bookkeeping for orders that have left active construction.
-        /// </summary>
-        private void PruneProductionPriorities()
-        {
-            _optionalProductionOrders.RemoveWhere(id =>
-                _game?.GetSceneNodeByInstanceID<ISceneNode>(id) is not IManufacturable order
-                || order.ManufacturingStatus != ManufacturingStatus.Building
-                || order.IsManufacturingComplete()
-            );
-        }
-
-        /// <summary>
         /// Processes AI turns for every eligible AI-controlled faction.
         /// </summary>
         /// <returns>The results produced by AI actions.</returns>
@@ -238,13 +198,7 @@ namespace Rebellion.AI
             AITurnContext context;
             try
             {
-                PruneProductionPriorities();
-                AIAssessment assessment = new AIAssessment(
-                    _game,
-                    faction,
-                    factionView,
-                    IsOptionalProduction
-                );
+                AIAssessment assessment = new AIAssessment(_game, faction, factionView);
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
                 context = new AITurnContext(
                     _game,
@@ -265,8 +219,7 @@ namespace Rebellion.AI
                         _game,
                         assessment.GetMissionDetectorCommander,
                         _missionEncounterCache
-                    ),
-                    RecordProductionPriority
+                    )
                 );
             }
             finally

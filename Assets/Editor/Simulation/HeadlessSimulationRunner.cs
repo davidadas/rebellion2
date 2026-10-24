@@ -150,9 +150,7 @@ public static partial class HeadlessSimulationRunner
                 new GarrisonRemovalBombardmentTracker(game);
             SpaceCombatCalibrationTracker spaceCombatCalibrationTracker =
                 new SpaceCombatCalibrationTracker();
-            AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker(
-                aiDirector.IsOptionalProduction
-            );
+            AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
             Dictionary<string, long> aiFactionTurnStarts = new Dictionary<string, long>(
                 StringComparer.Ordinal
             );
@@ -337,8 +335,7 @@ public static partial class HeadlessSimulationRunner
                 garrisonRemovalBombardmentTracker,
                 spaceCombatCalibrationTracker,
                 attackReadinessTracker,
-                victory,
-                aiDirector.IsOptionalProduction
+                victory
             );
             string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
             string completeMessage =

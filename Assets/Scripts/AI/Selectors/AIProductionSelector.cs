@@ -5,6 +5,7 @@ using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
@@ -39,6 +40,9 @@ namespace Rebellion.AI.Selectors
             StringComparer.Ordinal
         );
         private readonly HashSet<string> _drainingProducerStreams = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _continuedBuildingCounts = new(
+            StringComparer.Ordinal
+        );
         private int _selectedMaintenanceCost;
         private int _selectedPlanetaryStarfighterCount;
 
@@ -384,7 +388,7 @@ namespace Rebellion.AI.Selectors
         internal bool CanReserve(AITurnContext context, AIManufactureProposal proposal)
         {
             return _selectionState.CanReserve(GetReservations(proposal))
-                && !WouldExceedMaintenanceHeadroom(context, proposal)
+                && (proposal.IsContinuation || !WouldExceedMaintenanceHeadroom(context, proposal))
                 && CanReserveIdleShipyardCapacity(context, proposal)
                 && CanReserveFacilityRole(proposal);
         }
@@ -549,7 +553,6 @@ namespace Rebellion.AI.Selectors
             out AIManufactureProposal selectedProposal
         )
         {
-            proposal = proposal.WithAdoptedFiller();
             int requestedCount = proposal.GetManufacturingCount();
             if (requestedCount <= 1)
             {
@@ -577,6 +580,7 @@ namespace Rebellion.AI.Selectors
         private bool CanSelect(AITurnContext context, AIManufactureProposal proposal)
         {
             return proposal?.CanSelect(context) == true
+                && CanReplaceCurrentOrder(context, proposal)
                 && FillsUncommittedFleetNeed(context, proposal)
                 && _selectionState.CanReserve(GetReservations(proposal))
                 && HasProducerCapacity(proposal)
@@ -584,6 +588,40 @@ namespace Rebellion.AI.Selectors
                     >= proposal.GetManufacturingCount()
                 && CanReserveFacilityRole(proposal)
                 && ContinuesProductionStream(proposal);
+        }
+
+        /// <summary>
+        /// Compares an incoming request with useful work already occupying its producer.
+        /// </summary>
+        /// <param name="context">The turn containing the current production needs.</param>
+        /// <param name="proposal">The exact incoming manufacturing action.</param>
+        /// <returns>True when the incoming work outranks the current order.</returns>
+        private bool CanReplaceCurrentOrder(AITurnContext context, AIManufactureProposal proposal)
+        {
+            IManufacturable current = proposal.CurrentOrder;
+            if (current == null || proposal.IsContinuation)
+                return true;
+            double score = _scorer.Score(context, proposal);
+            if (
+                proposal.Priority < AIProposalPriority.Mandatory
+                && score <= context.Game.Config.AI.Selection.MinimumSelectableScore
+            )
+                return false;
+            AIProductionDemand demand = context.ProductionDemands.FirstOrDefault(item =>
+                ReferenceEquals(item.ExistingOrder, current)
+            );
+            if (demand == null)
+                return true;
+            AIManufactureProposal continuation = new AIManufactureProposal(
+                demand,
+                proposal.ProducerPlanet,
+                new Technology(current),
+                false,
+                current
+            );
+            return proposal.Priority > continuation.Priority
+                || proposal.Priority == continuation.Priority
+                    && score > _scorer.Score(context, continuation);
         }
 
         /// <summary>
@@ -699,6 +737,8 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the producer has unreserved capacity.</returns>
         private bool HasProducerCapacity(AIManufactureProposal proposal)
         {
+            if (proposal.IsContinuation)
+                return true;
             string capacityKey = proposal.GetProducerCapacityKey();
             if (!proposal.UsesSharedProducerCapacity)
                 return !_reservedProducerCapacity.ContainsKey(capacityKey);
@@ -732,7 +772,7 @@ namespace Rebellion.AI.Selectors
 
             if (_selectedProducerProducts.TryGetValue(capacityKey, out string selectedTypeId))
                 return selectedTypeId == proposedTypeId;
-            if (proposal.InterruptsFillerProduction)
+            if (proposal.CurrentOrder != null)
                 return true;
             if (_drainingProducerStreams.Contains(capacityKey))
                 return false;
@@ -793,6 +833,8 @@ namespace Rebellion.AI.Selectors
         {
             string capacityKey = proposal.GetProducerCapacityKey();
             _selectedProducerProducts[capacityKey] = proposal.Product.GetReference().GetTypeID();
+            if (proposal.IsContinuation)
+                return;
             if (!proposal.UsesSharedProducerCapacity)
             {
                 _reservedProducerCapacity[capacityKey] = int.MaxValue;
@@ -822,6 +864,8 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            if (proposal.IsContinuation)
+                return int.MaxValue;
             if (
                 proposal?.Product?.GetReference() is not Building building
                 || proposal.Demand?.Kind == AIProductionDemandKind.BuildingUpgrade
@@ -833,7 +877,13 @@ namespace Rebellion.AI.Selectors
                 destination.InstanceID,
                 out var selectedBuildings
             );
-            int reserved = selectedBuildings?.Values.Sum() ?? 0;
+            int reserved =
+                (selectedBuildings?.Values.Sum() ?? 0)
+                - (
+                    _continuedBuildingCounts.TryGetValue(destination.InstanceID, out int continued)
+                        ? continued
+                        : 0
+                );
             int actualAvailable =
                 destination.GetAvailableEnergy() + proposal.ReleasedDestinationSpace - reserved;
             int plannedAvailable = context.StrategicPlan.GetAvailableConstructionSpace(
@@ -863,6 +913,12 @@ namespace Rebellion.AI.Selectors
                 building.BuildingType,
                 proposal.GetManufacturingCount()
             );
+            if (proposal.IsContinuation)
+            {
+                _continuedBuildingCounts.TryGetValue(destination.InstanceID, out int count);
+                _continuedBuildingCounts[destination.InstanceID] =
+                    count + proposal.GetManufacturingCount();
+            }
         }
 
         /// <summary>

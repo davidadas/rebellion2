@@ -24,10 +24,10 @@ namespace Rebellion.AI
         > _arrivalOrbitalCapabilities = new();
 
         private readonly GameRoot _game;
-        private readonly Func<IManufacturable, bool> _isOptionalProduction;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
         private readonly Dictionary<string, int> _specialForcesReserveTargets = new();
+        private readonly Dictionary<string, int> _specialForcesSupply = new();
 
         // Cached Assessments.
         private readonly Dictionary<
@@ -440,6 +440,32 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Counts owned, non-retired units supplying the template's mission role.
+        /// </summary>
+        /// <param name="template">The role to count.</param>
+        /// <returns>The current supply, including unfinished orders.</returns>
+        public int GetSpecialForcesSupply(SpecialForces template)
+        {
+            string role = string.Join(
+                "|",
+                template.AllowedMissionTypeIDs.OrderBy(id => id, StringComparer.Ordinal)
+            );
+            if (_specialForcesSupply.Count == 0)
+                foreach (SpecialForces unit in OwnedSpecialForces.Where(unit => !unit.IsRetired))
+                {
+                    string key = string.Join(
+                        "|",
+                        unit.AllowedMissionTypeIDs.OrderBy(id => id, StringComparer.Ordinal)
+                    );
+                    _specialForcesSupply.TryGetValue(key, out int count);
+                    _specialForcesSupply[key] = count + 1;
+                }
+            if (!_specialForcesSupply.TryGetValue(role, out int supply))
+                _specialForcesSupply.Add(role, 0);
+            return supply;
+        }
+
+        /// <summary>
         /// Returns the reserve required by a special-forces mission role.
         /// </summary>
         /// <param name="template">The role's unit template.</param>
@@ -485,22 +511,12 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether an order is registered as optional in this AI session.
-        /// </summary>
-        /// <param name="order">The order to inspect.</param>
-        /// <returns>True when current session bookkeeping permits interruption.</returns>
-        public bool IsOptionalProduction(IManufacturable order)
-        {
-            return _isOptionalProduction?.Invoke(order) == true;
-        }
-
-        /// <summary>
-        /// Gets a single unfinished filler order that may be interrupted by AI-demanded work.
+        /// Gets a single unfinished defense or training order eligible for a scored replacement.
         /// </summary>
         /// <param name="producer">The production planet.</param>
         /// <param name="type">The production lane.</param>
-        /// <returns>The interruptible order, or null when the lane contains protected work.</returns>
-        public IManufacturable GetInterruptibleManufacturingOrder(
+        /// <returns>The replaceable order, or null when the lane has no eligible single unfinished order.</returns>
+        public IManufacturable GetReplaceableManufacturingOrder(
             Planet producer,
             ManufacturingType type
         )
@@ -515,7 +531,10 @@ namespace Rebellion.AI
             IManufacturable unit = queue[0];
             return
                 unit is ISceneNode node
-                && IsOptionalProduction(unit)
+                && (
+                    unit is Building building && building.IsDefenseFacility()
+                    || unit is SpecialForces
+                )
                 && unit.ManufacturingStatus == ManufacturingStatus.Building
                 && !unit.IsManufacturingComplete()
                 && node.GetOwnerInstanceID() == producer.GetOwnerInstanceID()
@@ -525,7 +544,7 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns building space including orders registered as optional during this session.
+        /// Returns building space including queued defenses that can compete with replacement work.
         /// </summary>
         /// <param name="destination">The planet receiving construction.</param>
         /// <returns>The actual or reclaimable building space.</returns>
@@ -537,14 +556,13 @@ namespace Rebellion.AI
             foreach (Building building in destination.GetAllBuildings())
             {
                 if (
-                    !IsOptionalProduction(building)
-                    || string.IsNullOrEmpty(building.ProducerPlanetID)
+                    !building.IsDefenseFacility() || string.IsNullOrEmpty(building.ProducerPlanetID)
                 )
                     continue;
                 Planet producer = _game.GetSceneNodeByInstanceID<Planet>(building.ProducerPlanetID);
                 if (
                     ReferenceEquals(
-                        GetInterruptibleManufacturingOrder(producer, ManufacturingType.Building),
+                        GetReplaceableManufacturingOrder(producer, ManufacturingType.Building),
                         building
                     )
                 )
@@ -559,16 +577,9 @@ namespace Rebellion.AI
         /// <param name="game">The game being assessed.</param>
         /// <param name="faction">The faction being assessed.</param>
         /// <param name="factionView">The faction-visible galaxy state.</param>
-        /// <param name="isOptionalProduction">Queries the session-owned production priorities.</param>
-        public AIAssessment(
-            GameRoot game,
-            Faction faction,
-            GalaxyMap factionView,
-            Func<IManufacturable, bool> isOptionalProduction = null
-        )
+        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
         {
             _game = game;
-            _isOptionalProduction = isOptionalProduction;
             _faction = faction;
             _factionView = factionView;
             _opposingFactionIds =

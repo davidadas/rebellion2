@@ -843,7 +843,7 @@ namespace Rebellion.AI
                     )
                         return false;
                     if (
-                        !_assessment.IsOptionalProduction(building)
+                        !building.IsDefenseFacility()
                         || string.IsNullOrEmpty(building.ProducerPlanetID)
                     )
                         return true;
@@ -852,7 +852,7 @@ namespace Rebellion.AI
                     );
                     return !ReferenceEquals(
                         building,
-                        _assessment.GetInterruptibleManufacturingOrder(
+                        _assessment.GetReplaceableManufacturingOrder(
                             producer,
                             ManufacturingType.Building
                         )

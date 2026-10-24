@@ -23,7 +23,6 @@ public static partial class HeadlessSimulationRunner
     /// <param name="game">The completed game state.</param>
     /// <param name="summary">The game generation summary.</param>
     /// <param name="options">The simulation options.</param>
-    /// <param name="isOptionalProduction">Queries priorities owned by the active AI session.</param>
     /// <param name="idleTracker">The manufacturing idle tracker.</param>
     /// <param name="manufacturedUnitTracker">The manufactured unit tracker.</param>
     /// <param name="fleetHistoryTracker">The fleet history tracker.</param>
@@ -52,8 +51,7 @@ public static partial class HeadlessSimulationRunner
         GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker,
         SpaceCombatCalibrationTracker spaceCombatCalibrationTracker,
         AttackReadinessTracker attackReadinessTracker,
-        VictoryResult victory,
-        Func<IManufacturable, bool> isOptionalProduction
+        VictoryResult victory
     )
     {
         return new SimulationSummary
@@ -262,9 +260,7 @@ public static partial class HeadlessSimulationRunner
                         .Select(fleet => BuildFleetSummary(game, faction, fleet))
                         .ToArray(),
                 })
-                .Select(factionSummary =>
-                    AddProductionPlanningSummary(game, factionSummary, isOptionalProduction)
-                )
+                .Select(factionSummary => AddProductionPlanningSummary(game, factionSummary))
                 .ToArray(),
         };
     }
@@ -295,12 +291,10 @@ public static partial class HeadlessSimulationRunner
     /// </summary>
     /// <param name="game">The simulated game state.</param>
     /// <param name="summary">The faction summary to enrich.</param>
-    /// <param name="isOptionalProduction">Queries priorities owned by the active AI session.</param>
     /// <returns>The enriched faction summary.</returns>
     private static FactionSimulationSummary AddProductionPlanningSummary(
         GameRoot game,
-        FactionSimulationSummary summary,
-        Func<IManufacturable, bool> isOptionalProduction
+        FactionSimulationSummary summary
     )
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
@@ -320,12 +314,7 @@ public static partial class HeadlessSimulationRunner
             new ManufacturingQueries(game)
         );
         GalaxyMap factionView = fogOfWarQueries.BuildFactionView(faction);
-        AIAssessment assessment = new AIAssessment(
-            game,
-            faction,
-            factionView,
-            isOptionalProduction
-        );
+        AIAssessment assessment = new AIAssessment(game, faction, factionView);
         AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
         AITurnContext context = new AITurnContext(
             game,

@@ -10,6 +10,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
@@ -253,6 +254,111 @@ namespace Rebellion.Tests.AI.Helpers
             AITestSceneBuilder.RevealPlanet(game, empire, reference);
             game.CurrentTick = age;
             return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        /// <summary>
+        /// Arranges a construction lane with a shield competing against industrial expansion.
+        /// </summary>
+        /// <param name="order">Receives the unfinished shield.</param>
+        /// <returns>The faction turn containing the current manufacturing order.</returns>
+        public static AITurnContext CreateProductionComparison(out Building order)
+        {
+            GameRoot game = CreateGame(out Faction faction, out _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.DemandUtility.SaturationValue = 100;
+            faction.RefinedMaterialStockpile = 10000;
+            PlanetSector sector = AddSector(game, "sector");
+            Planet producer = AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: 20
+            );
+            producer.SetPopularSupport(faction.InstanceID, 100);
+            AddProductionFacility(
+                game,
+                producer,
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            order = CreateBuildingTemplate("current-shield", BuildingType.Defense);
+            order.ConstructionCost = 100;
+            order.OwnerInstanceID = faction.InstanceID;
+            order.ShieldStrength = 80;
+            AITurnContext context = CreateContext(game, faction);
+            if (!context.Manufacturing.Enqueue(producer, order, producer))
+                throw new System.InvalidOperationException(
+                    "Could not arrange the existing shield order."
+                );
+            return CreateContext(game, faction);
+        }
+
+        /// <summary>
+        /// Creates and registers competing production needs for the arranged construction lane.
+        /// </summary>
+        /// <param name="context">The faction turn whose current state is assessed.</param>
+        /// <param name="order">The shield already in progress.</param>
+        /// <param name="competingDefenses">Whether both choices address an immediate defensive threat.</param>
+        /// <param name="continuationDemandPercent">The urgency of completing the shield.</param>
+        /// <param name="replacementDemandPercent">The urgency of the replacement.</param>
+        /// <returns>The continuation followed by the replacement action.</returns>
+        public static AIManufactureProposal[] CreateProductionChoices(
+            AITurnContext context,
+            Building order,
+            bool competingDefenses = false,
+            int continuationDemandPercent = 40,
+            int replacementDemandPercent = 100
+        )
+        {
+            Planet producer = context.Game.GetSceneNodeByInstanceID<Planet>(order.ProducerPlanetID);
+            BuildingType replacementType = competingDefenses
+                ? BuildingType.Weapon
+                : BuildingType.ConstructionFacility;
+            Building replacement = CreateBuildingTemplate("replacement", replacementType);
+            replacement.ConstructionCost = 100;
+            AIManufactureProposal continuation = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "continue",
+                    AIProductionDemandKind.PlanetaryDefense,
+                    ManufacturingType.Building,
+                    BuildingType.Defense,
+                    producer,
+                    1,
+                    targetCount: 1,
+                    baseDemandPercent: continuationDemandPercent,
+                    isEmergencyDefense: competingDefenses,
+                    existingOrder: order
+                ),
+                producer,
+                new Technology(order),
+                false,
+                order
+            );
+            AIManufactureProposal next = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "replace",
+                    competingDefenses
+                        ? AIProductionDemandKind.PlanetaryDefense
+                        : AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    replacementType,
+                    producer,
+                    1,
+                    targetCount: competingDefenses ? 1 : 5,
+                    baseDemandPercent: replacementDemandPercent,
+                    isEmergencyDefense: competingDefenses
+                ),
+                producer,
+                new Technology(replacement),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            context.SetProductionDemands(new[] { continuation.Demand, next.Demand });
+            return new[] { continuation, next };
         }
 
         /// <summary>
@@ -536,7 +642,6 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="random">The random.</param>
         /// <param name="maintenance">The maintenance.</param>
         /// <param name="headquarters">The headquarters system.</param>
-        /// <param name="optionalProductionOrders">Priority memory shared by the arranged turns.</param>
         /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
@@ -548,12 +653,9 @@ namespace Rebellion.Tests.AI.Helpers
             PlanetaryAssaultCommands planetaryAssault = null,
             IRandomNumberProvider random = null,
             MaintenanceCommands maintenance = null,
-            HeadquartersCommands headquarters = null,
-            HashSet<string> optionalProductionOrders = null
+            HeadquartersCommands headquarters = null
         )
         {
-            HashSet<string> priorities =
-                optionalProductionOrders ?? new HashSet<string>(System.StringComparer.Ordinal);
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarCommands fog = new FogOfWarCommands(game);
             FogOfWarQueries fogQueries = new FogOfWarQueries(game);
@@ -595,12 +697,7 @@ namespace Rebellion.Tests.AI.Helpers
             HeadquartersCommands headquartersSystem =
                 headquarters ?? new HeadquartersCommands(game, movementSystem, headquartersQueries);
             GalaxyMap factionView = fogQueries.BuildFactionView(faction);
-            AIAssessment assessment = new AIAssessment(
-                game,
-                faction,
-                factionView,
-                order => order is ISceneNode node && priorities.Contains(node.InstanceID)
-            );
+            AIAssessment assessment = new AIAssessment(game, faction, factionView);
             AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
 
             AITurnContext context = new AITurnContext(
@@ -616,16 +713,7 @@ namespace Rebellion.Tests.AI.Helpers
                 strategicPlan,
                 factionView,
                 maintenanceSystem,
-                headquartersSystem,
-                recordProductionPriority: (order, optional) =>
-                {
-                    if (order is not ISceneNode node)
-                        return;
-                    if (optional)
-                        priorities.Add(node.InstanceID);
-                    else
-                        priorities.Remove(node.InstanceID);
-                }
+                headquartersSystem
             );
             new AIAttackDemandGenerator().Generate(context);
             return context;

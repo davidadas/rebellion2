@@ -1179,7 +1179,9 @@ namespace Rebellion.Tests.AI.Planners
 
         [TestCase(BuildingType.Defense)]
         [TestCase(BuildingType.Weapon)]
-        public void Plan_ThreatenedExistingFiller_ProtectsOrderWithoutRestarting(BuildingType type)
+        public void Plan_ThreatenedQueuedDefense_KeepsEmergencyPriorityWithoutRestarting(
+            BuildingType type
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -1202,7 +1204,6 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext setup = AITestSceneBuilder.CreateContext(game, faction);
             Assert.IsTrue(setup.Manufacturing.Enqueue(planet, defense, planet));
             defense.ManufacturingProgress = 3;
-            HashSet<string> priorities = new() { defense.InstanceID };
             Fleet hostile = EntityFactory.CreateFleet("hostile", enemy.InstanceID);
             hostile.Movement = new MovementState { TransitTicks = 10 };
             game.AttachNode(hostile, planet);
@@ -1210,26 +1211,51 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", enemy.InstanceID),
                 hostile
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                faction,
-                optionalProductionOrders: priorities
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            context.SetProductionDemands(new AIProductionDemandGenerator().BuildDemands(context));
+            List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
+            AIProductionDemand ongoing = context.ProductionDemands.Single(item =>
+                ReferenceEquals(item.ExistingOrder, defense)
             );
+            Assert.IsTrue(ongoing.IsEmergencyDefense);
+            AIManufactureProposal expansion = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "expansion",
+                    AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    BuildingType.ConstructionFacility,
+                    planet,
+                    1,
+                    targetCount: 2,
+                    baseDemandPercent: 100
+                ),
+                planet,
+                new Technology(
+                    AITestSceneBuilder.CreateBuildingTemplate(
+                        "expansion-yard",
+                        BuildingType.ConstructionFacility,
+                        ManufacturingType.Building
+                    )
+                ),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            context.AddProposals(proposals);
+            context.AddProposal(expansion);
+            new AIScoringPhase().Execute(context);
+            Assert.Greater(expansion.Score, 0);
 
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(context)
-                .OfType<AIManufactureProposal>()
-                .Single(item => ReferenceEquals(item.Product.GetReference(), defense));
-            Assert.IsTrue(proposal.Demand.IsEmergencyDefense);
-            Assert.AreEqual(0, proposal.GetMaintenanceCost());
-            proposal.Execute(context);
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+            foreach (AIProposal proposal in selected)
+                proposal.Execute(context);
 
+            CollectionAssert.DoesNotContain(selected, expansion);
             Assert.AreSame(
                 defense,
                 planet.GetManufacturingQueue()[ManufacturingType.Building].Single()
             );
             Assert.AreEqual(3, defense.ManufacturingProgress);
-            Assert.IsFalse(context.Assessment.IsOptionalProduction(defense));
         }
 
         [TestCase(false, false)]

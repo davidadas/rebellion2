@@ -23,6 +23,450 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AISelectionPhaseTests
     {
+        [Test]
+        public void Select_ContinuationAndNewBuilding_ChargesOnlyNewBuildingForFreeSpace()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            Planet destination = order.GetParentOfType<Planet>();
+            destination.EnergyCapacity = destination.GetAllBuildings().Count + 1;
+            PlanetSector sector = destination.GetParentOfType<PlanetSector>();
+            Planet secondProducer = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                sector,
+                "second-producer",
+                context.Faction.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                context.Game,
+                secondProducer,
+                "second-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIManufactureProposal continuation = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            )[0];
+            AIManufactureProposal expansion = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "expansion",
+                    AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    BuildingType.ConstructionFacility,
+                    destination,
+                    1,
+                    targetCount: 5,
+                    baseDemandPercent: 100
+                ),
+                secondProducer,
+                new Technology(
+                    AITestSceneBuilder.CreateBuildingTemplate(
+                        "additional-yard",
+                        BuildingType.ConstructionFacility
+                    )
+                ),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            continuation.SetScore(0.9);
+            expansion.SetScore(0.8);
+            context.AddProposals(new AIProposal[] { continuation, expansion });
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEquivalent(new AIProposal[] { continuation, expansion }, selected);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Select_ContinuationCompetesWithReplacement_ReservesLaneForHigherScoredChoice(
+            bool continueCurrent
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order,
+                competingDefenses: true,
+                continuationDemandPercent: continueCurrent ? 100 : 0,
+                replacementDemandPercent: continueCurrent ? 0 : 100
+            );
+            context.AddProposals(choices);
+            new AIScoringPhase().Execute(context);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreSame(choices[continueCurrent ? 0 : 1], selected.Single());
+        }
+
+        [TestCase(1, true, false, 1)]
+        [TestCase(2, true, false, 2)]
+        [TestCase(2, false, false, 2)]
+        [TestCase(1, true, true, 1)]
+        [TestCase(2, true, true, 2)]
+        public void Select_AdditionalAgentDemandWithExistingOrder_UsesOnlySpareCapacity(
+            int facilityCount,
+            bool continuationFirst,
+            bool separateDestination,
+            int expectedOrders
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            faction.RefinedMaterialStockpile = 10000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "training",
+                faction.InstanceID
+            );
+            for (int index = 0; index < facilityCount; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"facility-{index}",
+                    BuildingType.TrainingFacility,
+                    ManufacturingType.Troop
+                );
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "saboteur",
+                faction.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            template.ConstructionCost = 10;
+            SpecialForces existing = (SpecialForces)template.CreateCopy();
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            Assert.IsTrue(context.Manufacturing.Enqueue(planet, existing, planet));
+            context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal continuation = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "continue",
+                    AIProductionDemandKind.SpecialForces,
+                    ManufacturingType.Troop,
+                    BuildingType.None,
+                    planet,
+                    1,
+                    template.TypeID,
+                    existingOrder: existing
+                ),
+                planet,
+                new Technology(template),
+                false,
+                existingOrder: existing
+            );
+            Planet additionalDestination = separateDestination
+                ? AITestSceneBuilder.AddPlanet(game, sector, "destination", faction.InstanceID)
+                : planet;
+            AIManufactureProposal additional = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "additional",
+                    AIProductionDemandKind.SpecialForces,
+                    ManufacturingType.Troop,
+                    BuildingType.None,
+                    additionalDestination,
+                    1,
+                    template.TypeID
+                ),
+                planet,
+                new Technology(template),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            continuation.SetScore(continuationFirst ? 0.9 : 0.8);
+            additional.SetScore(continuationFirst ? 0.8 : 0.9);
+            context.AddProposals(new AIProposal[] { continuation, additional });
+
+            foreach (AIProposal proposal in new AISelectionPhase().Select(context))
+                proposal.Execute(context);
+
+            Assert.AreEqual(
+                expectedOrders,
+                planet.GetManufacturingQueue()[ManufacturingType.Troop].Count
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Select_EqualProductionScores_ContinuesExistingOrder(bool continuationFirst)
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order,
+                competingDefenses: true,
+                continuationDemandPercent: 100
+            );
+            IEnumerable<AIProposal> ordered = choices;
+            if (!continuationFirst)
+                ordered = ordered.Reverse();
+            context.AddProposals(ordered);
+            new AIScoringPhase().Execute(context);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreSame(choices[0], selected.Single());
+        }
+
+        [Test]
+        public void Select_EqualProductionScores_PreservesTieBreakRandomConsumption()
+        {
+            AITurnContext original = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 0, 1 });
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                original.Game,
+                original.Faction,
+                random: random
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order,
+                competingDefenses: true,
+                continuationDemandPercent: 100
+            );
+            context.AddProposals(choices);
+            new AIScoringPhase().Execute(context);
+
+            new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, random.NextInt(0, 2));
+        }
+
+        [Test]
+        public void Select_RoutineDefenseContinuationAndExpansion_PreservesInfrastructurePriority()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            );
+            choices[0].SetScore(0.9);
+            choices[1].SetScore(0.8);
+            context.AddProposals(choices);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreSame(choices[1], selected.Single());
+        }
+
+        [Test]
+        public void Select_RejectedReplacementFallback_DoesNotOverbookSpareTrainingCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            faction.RefinedMaterialStockpile = 10000;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.DemandUtility.SaturationValue = 100;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "training",
+                faction.InstanceID
+            );
+            Planet unavailable = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "unavailable",
+                faction.InstanceID
+            );
+            for (int index = 0; index < 2; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    $"facility-{index}",
+                    BuildingType.TrainingFacility,
+                    ManufacturingType.Troop
+                );
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "saboteur",
+                faction.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            template.ConstructionCost = 10;
+            SpecialForces existing = (SpecialForces)template.CreateCopy();
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            Assert.IsTrue(context.Manufacturing.Enqueue(producer, existing, producer));
+            context = AITestSceneBuilder.CreateContext(game, faction);
+            AIProductionDemand currentNeed = new AIProductionDemand(
+                "current",
+                AIProductionDemandKind.SpecialForces,
+                ManufacturingType.Troop,
+                BuildingType.None,
+                producer,
+                1,
+                template.TypeID,
+                targetCount: 3,
+                baseDemandPercent: 100,
+                existingOrder: existing
+            );
+            AIProductionDemand troopNeed = new AIProductionDemand(
+                "troop",
+                AIProductionDemandKind.GarrisonRegimentReserve,
+                ManufacturingType.Troop,
+                BuildingType.None,
+                producer,
+                1,
+                targetCount: 1,
+                baseDemandPercent: 100
+            );
+            Regiment regimentTemplate = AITestSceneBuilder.CreateRegiment(
+                "regiment",
+                faction.InstanceID
+            );
+            regimentTemplate.ConstructionCost = template.ConstructionCost;
+            regimentTemplate.BaseBuildSpeed = template.BaseBuildSpeed;
+            Technology regiment = new Technology(regimentTemplate);
+            AIManufactureProposal replacement = new AIManufactureProposal(
+                new[]
+                {
+                    new AIManufactureProposal(
+                        troopNeed,
+                        unavailable,
+                        regiment,
+                        false,
+                        getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                    ),
+                    new AIManufactureProposal(
+                        troopNeed,
+                        producer,
+                        regiment,
+                        false,
+                        getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                    ),
+                }
+            );
+            AIManufactureProposal first = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "first",
+                    AIProductionDemandKind.SpecialForces,
+                    ManufacturingType.Troop,
+                    BuildingType.None,
+                    producer,
+                    1,
+                    template.TypeID,
+                    targetCount: 3,
+                    baseDemandPercent: 20
+                ),
+                producer,
+                new Technology(template),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            AIManufactureProposal second = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "second",
+                    AIProductionDemandKind.SpecialForces,
+                    ManufacturingType.Troop,
+                    BuildingType.None,
+                    producer,
+                    1,
+                    template.TypeID,
+                    targetCount: 3,
+                    baseDemandPercent: 10
+                ),
+                producer,
+                new Technology(template),
+                false,
+                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+            );
+            context.SetProductionDemands(
+                new[] { currentNeed, troopNeed, first.Demand, second.Demand }
+            );
+            context.AddProposals(new AIProposal[] { replacement, first, second });
+            new AIScoringPhase().Execute(context);
+            Assert.Greater(replacement.Score, first.Score);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            foreach (AIProposal proposal in selected)
+                proposal.Execute(context);
+
+            Assert.AreEqual(2, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
+        }
+
+        [TestCase(0, false)]
+        [TestCase(90, true)]
+        public void Select_SaveReloadWithExistingConstruction_PreservesContinueOrReplaceDecision(
+            int progress,
+            bool continueCurrent
+        )
+        {
+            AITurnContext uninterrupted = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            uninterrupted.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 0.4;
+            uninterrupted
+                .Game
+                .Config
+                .AI
+                .Selection
+                .ProductionUtility
+                .CompletionTime
+                .SaturationValue = 100;
+            uninterrupted.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 1;
+            uninterrupted
+                .Game
+                .Config
+                .AI
+                .Selection
+                .ProductionUtility
+                .InterruptionCost
+                .SaturationValue = 100;
+            order.ManufacturingProgress = progress;
+            string saved = SerializationHelper.Serialize(uninterrupted.Game);
+            StringAssert.DoesNotContain("IsAIProductionFiller", saved);
+            GameRoot loaded = SerializationHelper.Deserialize<GameRoot>(saved);
+            loaded.SetConfig(uninterrupted.Game.Config);
+            using GameSession session = new GameSession(loaded, TestGameData.Create(loaded.Config));
+            AITurnContext resumed = AITestSceneBuilder.CreateContext(
+                loaded,
+                loaded.GetFactionByOwnerInstanceID(uninterrupted.Faction.InstanceID)
+            );
+            Building loadedOrder = loaded.GetSceneNodeByInstanceID<Building>(order.InstanceID);
+            uninterrupted.AddProposals(
+                AITestSceneBuilder.CreateProductionChoices(
+                    uninterrupted,
+                    order,
+                    competingDefenses: true
+                )
+            );
+            resumed.AddProposals(
+                AITestSceneBuilder.CreateProductionChoices(
+                    resumed,
+                    loadedOrder,
+                    competingDefenses: true
+                )
+            );
+            new AIScoringPhase().Execute(uninterrupted);
+            new AIScoringPhase().Execute(resumed);
+
+            AIManufactureProposal first = new AISelectionPhase()
+                .Select(uninterrupted)
+                .OfType<AIManufactureProposal>()
+                .Single();
+            AIManufactureProposal second = new AISelectionPhase()
+                .Select(resumed)
+                .OfType<AIManufactureProposal>()
+                .Single();
+
+            Assert.AreEqual(continueCurrent, first.IsContinuation);
+            Assert.AreEqual(
+                first.Product.GetReference().GetTypeID(),
+                second.Product.GetReference().GetTypeID()
+            );
+        }
+
         [TestCase(false, false, 1)]
         [TestCase(true, false, 1)]
         [TestCase(false, true, 0)]
@@ -641,9 +1085,11 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(1, selected.Count);
             selected.Single().Execute(context);
 
-            Assert.IsTrue(
-                context.Assessment.IsOptionalProduction(
-                    planet.GetManufacturingQueue()[ManufacturingType.Building].Single()
+            Assert.AreSame(
+                planet.GetManufacturingQueue()[ManufacturingType.Building].Single(),
+                context.Assessment.GetReplaceableManufacturingOrder(
+                    planet,
+                    ManufacturingType.Building
                 )
             );
         }

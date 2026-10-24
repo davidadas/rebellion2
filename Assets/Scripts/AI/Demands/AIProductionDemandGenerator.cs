@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
@@ -588,6 +589,7 @@ namespace Rebellion.AI.Demands
             AddSpecialForcesDemands(context, requirements);
             AddProductionFacilityDemands(context, requirements);
             AddProductionFacilityUpgradeDemands(context, requirements);
+            AddContinuationDemands(context, requirements);
 
             return requirements;
         }
@@ -1734,6 +1736,115 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
+        /// Measures the current need served by queued defenses and special-forces orders.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="requirements">The requirements to extend with continuation choices.</param>
+        private void AddContinuationDemands(
+            AITurnContext context,
+            ICollection<AIProductionDemand> requirements
+        )
+        {
+            foreach (Planet producer in context.Assessment.OwnedPlanets)
+            foreach (ManufacturingType type in producer.GetManufacturingQueue().Keys)
+            {
+                IManufacturable order = context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    type
+                );
+                if (order?.GetParent() is not ContainerNode destination)
+                    continue;
+                AIProductionDemandKind kind;
+                int target;
+                int otherSupply;
+                int pressure;
+                bool initialShield = false;
+                bool emergency = false;
+                if (order is Building building && destination is Planet planet)
+                {
+                    bool shield = building.IsPlanetaryShieldGenerator();
+                    kind = AIProductionDemandKind.PlanetaryDefense;
+                    target = shield
+                        ? GetPlanetaryShieldCount(context, planet)
+                        : GetPlanetaryWeaponCount(context, planet);
+                    otherSupply = context
+                        .Assessment.GetPlanetBuildings(planet)
+                        .Count(other =>
+                            !ReferenceEquals(other, order)
+                            && other.GetOwnerInstanceID() == context.Faction.InstanceID
+                            && (
+                                shield
+                                    ? other.IsPlanetaryShieldGenerator()
+                                    : other.BuildingType == building.BuildingType
+                            )
+                        );
+                    pressure = shield
+                        ? context.Game.Config.AI.Infrastructure.PlanetaryShieldDemandPercent
+                        : context.Game.Config.AI.Infrastructure.PlanetaryWeaponDemandPercent;
+                    initialShield = shield && otherSupply == 0;
+                    emergency = context.Assessment.GetHostileFleets(planet).Any();
+                    if (emergency)
+                        target = Math.Max(target, otherSupply + 1);
+                }
+                else if (order is SpecialForces specialForces)
+                {
+                    kind = AIProductionDemandKind.SpecialForces;
+                    target = context.Assessment.GetSpecialForcesReserveTarget(specialForces);
+                    otherSupply = context.Assessment.GetSpecialForcesSupply(specialForces) - 1;
+                    pressure = context.Game.Config.AI.Infrastructure.SpecialForcesDemandPercent;
+                    if (
+                        GetMobileHeadquarters(context) == destination
+                        && specialForces.CanPerformMission(MissionTypeIDs.Espionage)
+                        && !context.Assessment.OwnedSpecialForces.Any(other =>
+                            !ReferenceEquals(other, order)
+                            && other.GetParentOfType<Planet>() == destination
+                            && other.CanPerformMission(MissionTypeIDs.Espionage)
+                        )
+                    )
+                    {
+                        target = Math.Max(target, otherSupply + 1);
+                        pressure = Math.Max(
+                            pressure,
+                            context
+                                .Game
+                                .Config
+                                .AI
+                                .Infrastructure
+                                .MobileHeadquartersEspionageDemandPercent
+                        );
+                    }
+                }
+                else
+                    continue;
+                int deficit = Math.Max(0, target - otherSupply);
+                if (deficit == 0)
+                    continue;
+                requirements.Add(
+                    new AIProductionDemand(
+                        AIProductionDemand.CreateId(
+                            context.Faction.InstanceID,
+                            kind,
+                            "continue",
+                            order.InstanceID
+                        ),
+                        kind,
+                        type,
+                        order is Building facility ? facility.BuildingType : BuildingType.None,
+                        destination,
+                        1,
+                        productTypeId: order.GetTypeID(),
+                        targetCount: target,
+                        baseDemandPercent: pressure,
+                        deficitCount: deficit,
+                        establishesInitialShield: initialShield,
+                        isEmergencyDefense: emergency,
+                        existingOrder: order
+                    )
+                );
+            }
+        }
+
+        /// <summary>
         /// Adds special-forces demand to the production plan.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1745,12 +1856,6 @@ namespace Rebellion.AI.Demands
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             IReadOnlyList<SpecialForces> existingUnits = context.Assessment.OwnedSpecialForces;
-            Dictionary<string, int> existingSupplyByRole = new Dictionary<string, int>(
-                StringComparer.Ordinal
-            );
-            foreach (SpecialForces unit in existingUnits.Where(unit => !unit.IsRetired))
-                IncrementCount(existingSupplyByRole, GetRoleId(unit));
-
             List<IGrouping<string, SpecialForces>> roles = context
                 .UnlockedSpecialForcesTemplates.Where(template =>
                     template.AllowedMissionTypeIDs.Count > 0
@@ -1792,7 +1897,7 @@ namespace Rebellion.AI.Demands
                     role,
                     buildEfficiency
                 );
-                existingSupplyByRole.TryGetValue(role.Key, out int existingSupply);
+                int existingSupply = context.Assessment.GetSpecialForcesSupply(template);
                 int desiredSupply = context.Assessment.GetSpecialForcesReserveTarget(template);
                 int coverageDeficit = desiredSupply - existingSupply;
                 bool suppliesHeadquartersEspionage =
@@ -1873,17 +1978,6 @@ namespace Rebellion.AI.Demands
                 .ThenBy(candidate => candidate.MaintenanceCost)
                 .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
                 .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Increments the count stored for a special-forces role.
-        /// </summary>
-        /// <param name="counts">The role counts to update.</param>
-        /// <param name="roleId">The role identifier to increment.</param>
-        private static void IncrementCount(IDictionary<string, int> counts, string roleId)
-        {
-            counts.TryGetValue(roleId, out int count);
-            counts[roleId] = count + 1;
         }
 
         /// <summary>

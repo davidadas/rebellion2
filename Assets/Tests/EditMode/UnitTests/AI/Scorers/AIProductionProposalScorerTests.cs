@@ -17,6 +17,93 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
+        [Test]
+        public void Score_IdleProducer_HasNoContinuationOrSwitchingPenalty()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal replacement = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            )[1];
+            Assert.IsTrue(
+                context.Manufacturing.CancelManufacturing(order, context.Faction.InstanceID)
+            );
+            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 0;
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 0;
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            double initial = scorer.Score(context, replacement);
+
+            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 1;
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 1;
+
+            Assert.AreEqual(initial, scorer.Score(context, replacement));
+        }
+
+        [Test]
+        public void Score_ContinuingOrderMakesProgress_IncreasesContinuationValue()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.Weight = 0.2;
+            context.Game.Config.AI.Selection.ProductionUtility.CompletionTime.SaturationValue = 100;
+            AIManufactureProposal continuation = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            )[0];
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            double initial = scorer.Score(context, continuation);
+
+            order.ManufacturingProgress = 90;
+
+            Assert.Greater(scorer.Score(context, continuation), initial);
+        }
+
+        [Test]
+        public void Score_ReplacingUnneededOrderWithProgress_DoesNotAddInterruptionPenalty()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 1;
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.SaturationValue =
+                100;
+            AIManufactureProposal replacement = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            )[1];
+            context.SetProductionDemands(new[] { replacement.Demand });
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            double initial = scorer.Score(context, replacement);
+
+            order.ManufacturingProgress = 90;
+
+            Assert.AreEqual(initial, scorer.Score(context, replacement));
+        }
+
+        [Test]
+        public void Score_ReplacingOrderWithMoreProgress_IncreasesSwitchingCost()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.Weight = 0.2;
+            context.Game.Config.AI.Selection.ProductionUtility.InterruptionCost.SaturationValue =
+                100;
+            AIManufactureProposal replacement = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            )[1];
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            double initial = scorer.Score(context, replacement);
+
+            order.ManufacturingProgress = 90;
+
+            Assert.Less(scorer.Score(context, replacement), initial);
+        }
+
         /// <summary>
         /// Removes the initial-foundation bonus once a construction yard is committed.
         /// </summary>

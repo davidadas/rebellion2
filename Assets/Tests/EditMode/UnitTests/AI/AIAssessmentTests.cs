@@ -21,17 +21,14 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
-        [TestCase(true, ManufacturingStatus.Building, true)]
-        [TestCase(false, ManufacturingStatus.Building, false)]
-        [TestCase(true, ManufacturingStatus.Complete, false)]
-        public void GetInterruptibleManufacturingOrder_SingleOrder_UsesSessionPriority(
-            bool optional,
+        [TestCase(ManufacturingStatus.Building, true)]
+        [TestCase(ManufacturingStatus.Complete, false)]
+        public void GetReplaceableManufacturingOrder_SingleOrder_UsesManufacturingStatus(
             ManufacturingStatus status,
             bool expected
         )
         {
-            AITurnContext context = CreateOptionalProductionContext(
-                optional,
+            AITurnContext context = CreateProductionQueueContext(
                 status,
                 out Building order,
                 out Planet producer,
@@ -40,7 +37,7 @@ namespace Rebellion.Tests.AI
 
             Assert.AreSame(
                 expected ? order : null,
-                context.Assessment.GetInterruptibleManufacturingOrder(
+                context.Assessment.GetReplaceableManufacturingOrder(
                     producer,
                     ManufacturingType.Building
                 )
@@ -48,10 +45,9 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
-        public void GetInterruptibleManufacturingOrder_MixedQueue_PreservesAllWork()
+        public void GetReplaceableManufacturingOrder_MixedQueue_PreservesAllWork()
         {
-            AITurnContext context = CreateOptionalProductionContext(
-                true,
+            AITurnContext context = CreateProductionQueueContext(
                 ManufacturingStatus.Building,
                 out Building order,
                 out Planet producer,
@@ -69,23 +65,22 @@ namespace Rebellion.Tests.AI
             producer.AddToManufacturingQueue(second);
 
             Assert.IsNull(
-                context.Assessment.GetInterruptibleManufacturingOrder(
+                context.Assessment.GetReplaceableManufacturingOrder(
                     producer,
                     ManufacturingType.Building
                 )
             );
         }
 
-        [TestCase(true, 1)]
-        [TestCase(false, 0)]
-        public void GetAvailableBuildingSpace_FullDestination_CountsOnlyOptionalWork(
-            bool optional,
+        [TestCase(ManufacturingStatus.Building, 1)]
+        [TestCase(ManufacturingStatus.Complete, 0)]
+        public void GetAvailableBuildingSpace_FullDestination_CountsOnlyReplaceableConstruction(
+            ManufacturingStatus status,
             int expected
         )
         {
-            AITurnContext context = CreateOptionalProductionContext(
-                optional,
-                ManufacturingStatus.Building,
+            AITurnContext context = CreateProductionQueueContext(
+                status,
                 out Building order,
                 out Planet producer,
                 out Planet destination
@@ -2507,14 +2502,12 @@ namespace Rebellion.Tests.AI
         /// <summary>
         /// Arranges an unfinished defense and its session-owned priority.
         /// </summary>
-        /// <param name="optional">Whether the AI may replace the order.</param>
         /// <param name="status">The manufacturing status to inspect.</param>
         /// <param name="order">Receives the queued defense.</param>
         /// <param name="producer">Receives the construction planet.</param>
         /// <param name="destination">Receives the full destination planet.</param>
-        /// <returns>A faction turn bound to the arranged priority memory.</returns>
-        private static AITurnContext CreateOptionalProductionContext(
-            bool optional,
+        /// <returns>A faction turn containing the arranged manufacturing queue.</returns>
+        private static AITurnContext CreateProductionQueueContext(
             ManufacturingStatus status,
             out Building order,
             out Planet producer,
@@ -2544,14 +2537,7 @@ namespace Rebellion.Tests.AI
             order.ManufacturingStatus = status;
             game.AttachNode(order, destination);
             producer.AddToManufacturingQueue(order);
-            HashSet<string> priorities = new();
-            if (optional)
-                priorities.Add(order.InstanceID);
-            return AITestSceneBuilder.CreateContext(
-                game,
-                faction,
-                optionalProductionOrders: priorities
-            );
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
     }
 }

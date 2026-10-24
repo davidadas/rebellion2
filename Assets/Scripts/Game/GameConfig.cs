@@ -664,6 +664,11 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIProductionUtilityConfig
         {
+            public AIConsiderationConfig CompletionTime { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig InterruptionCost { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig ColonyFoundation { get; set; } =

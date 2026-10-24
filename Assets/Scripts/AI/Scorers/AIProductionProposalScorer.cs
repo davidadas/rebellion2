@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Scorers
 {
@@ -118,6 +119,18 @@ namespace Rebellion.AI.Scorers
             score.AddCost(
                 AIUtility.Fulfillment(GetTravelCost(context, proposal), utility.TravelCost),
                 utility.TravelCost
+            );
+
+            score.AddCost(
+                AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
+                utility.CompletionTime
+            );
+            score.AddCost(
+                AIUtility.Fulfillment(
+                    GetInterruptionCost(context, proposal),
+                    utility.InterruptionCost
+                ),
+                utility.InterruptionCost
             );
 
             int projectedHeadroom =
@@ -880,6 +893,65 @@ namespace Rebellion.AI.Scorers
                 requiredStrength - context.Assessment.GetProjectedFleetCombatValue(fleet)
             );
             return AIUtility.Fulfillment(missingStrength, Math.Max(1, requiredStrength));
+        }
+
+        /// <summary>
+        /// Estimates the completion time of the competing continuation or replacement.
+        /// </summary>
+        /// <param name="proposal">The action involving an existing manufacturing order.</param>
+        /// <returns>The estimated production ticks, or zero when no job is being displaced.</returns>
+        private static double GetCompletionTime(AIManufactureProposal proposal)
+        {
+            if (proposal.CurrentOrder == null)
+                return 0;
+            return (
+                    proposal.ContinuesExistingOrder
+                        ? ManufacturingQueries.EstimateCompletionTicks(
+                            proposal.ProducerPlanet,
+                            proposal.CurrentOrder
+                        )
+                        : ManufacturingQueries.EstimateManufacturingTicks(
+                            proposal.ProducerPlanet,
+                            proposal.Product.GetReference(),
+                            proposal.GetManufacturingCount()
+                        )
+                ) ?? double.MaxValue;
+        }
+
+        /// <summary>
+        /// Values discarded factory time according to the current need for the unfinished item.
+        /// </summary>
+        /// <param name="context">The current turn and its assessed production needs.</param>
+        /// <param name="proposal">The action competing with an existing manufacturing order.</param>
+        /// <returns>The demand-weighted factory time lost by switching, or zero for continuation.</returns>
+        private static double GetInterruptionCost(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            if (proposal.ContinuesExistingOrder || proposal.CurrentOrder == null)
+                return 0;
+            AIProductionDemand existingDemand = context.ProductionDemands.FirstOrDefault(demand =>
+                ReferenceEquals(demand.ExistingOrder, proposal.CurrentOrder)
+            );
+            double relevance = AIUtility.Fulfillment(
+                GetDemandPressure(context, existingDemand),
+                context.Game.Config.AI.Selection.DemandUtility
+            );
+            if (relevance <= 0)
+                return 0;
+            int? total = ManufacturingQueries.EstimateManufacturingTicks(
+                proposal.ProducerPlanet,
+                proposal.CurrentOrder,
+                1
+            );
+            int? remaining = ManufacturingQueries.EstimateCompletionTicks(
+                proposal.ProducerPlanet,
+                proposal.CurrentOrder
+            );
+            return total.HasValue && remaining.HasValue
+                ? relevance * Math.Max(0, total.Value - remaining.Value)
+                : 0;
         }
 
         /// <summary>

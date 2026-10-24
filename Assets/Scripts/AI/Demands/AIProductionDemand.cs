@@ -86,6 +86,7 @@ namespace Rebellion.AI.Demands
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
         public bool IsEmergencyDefense { get; }
+        public IManufacturable ExistingOrder { get; }
         public bool IsProductionFiller =>
             Kind == AIProductionDemandKind.IdleSpecialForces
             || Kind == AIProductionDemandKind.PlanetaryDefense && !IsEmergencyDefense;
@@ -142,6 +143,7 @@ namespace Rebellion.AI.Demands
         /// <param name="infrastructureHubIndex">Zero-based infrastructure hub position, or negative one when the demand is not for a hub.</param>
         /// <param name="combatStrengthDeficit">Unmet durability-adjusted combat strength.</param>
         /// <param name="isEmergencyDefense">Whether a known hostile fleet requires immediate static defense.</param>
+        /// <param name="existingOrder">The queued order whose continuation is being evaluated.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -170,7 +172,8 @@ namespace Rebellion.AI.Demands
             int escortDeficit = 0,
             int infrastructureHubIndex = -1,
             int combatStrengthDeficit = 0,
-            bool isEmergencyDefense = false
+            bool isEmergencyDefense = false,
+            IManufacturable existingOrder = null
         )
         {
             Id = id;
@@ -185,6 +188,7 @@ namespace Rebellion.AI.Demands
             ReferencePlanet = referencePlanet;
             EstablishesInitialShield = establishesInitialShield;
             IsEmergencyDefense = isEmergencyDefense;
+            ExistingOrder = existingOrder;
             UsesIdleShipyardCapacity = usesIdleShipyardCapacity;
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
@@ -238,7 +242,8 @@ namespace Rebellion.AI.Demands
                 EscortDeficit,
                 InfrastructureHubIndex,
                 CombatStrengthDeficit,
-                IsEmergencyDefense
+                IsEmergencyDefense,
+                ExistingOrder
             );
         }
 

@@ -108,62 +108,7 @@ namespace Rebellion.AI.Planners
             );
             context.SetProductionDemands(demands);
             List<AIProposal> proposals = GenerateProposals(context, demands);
-            AddEmergencyDefenseProposals(context, proposals);
             return proposals;
-        }
-
-        /// <summary>
-        /// Protects unfinished spare-capacity defenses when a known hostile fleet threatens their destination.
-        /// </summary>
-        /// <param name="context">The current faction turn.</param>
-        /// <param name="proposals">The production actions to extend.</param>
-        private static void AddEmergencyDefenseProposals(
-            AITurnContext context,
-            List<AIProposal> proposals
-        )
-        {
-            foreach (Planet producer in context.Assessment.OwnedPlanets)
-            {
-                if (
-                    context.Assessment.GetInterruptibleManufacturingOrder(
-                        producer,
-                        ManufacturingType.Building
-                    )
-                        is not Building building
-                    || building.GetParent() is not Planet destination
-                    || !building.IsDefenseFacility()
-                    || !context.Assessment.GetHostileFleets(destination).Any()
-                )
-                    continue;
-                AIProductionDemand demand = new AIProductionDemand(
-                    AIProductionDemand.CreateId(
-                        context.Faction.InstanceID,
-                        AIProductionDemandKind.PlanetaryDefense,
-                        "protect",
-                        building.InstanceID
-                    ),
-                    AIProductionDemandKind.PlanetaryDefense,
-                    ManufacturingType.Building,
-                    building.BuildingType,
-                    destination,
-                    1,
-                    productTypeId: building.TypeID,
-                    targetCount: 1,
-                    baseDemandPercent: building.IsPlanetaryShieldGenerator()
-                        ? context.Game.Config.AI.Infrastructure.PlanetaryShieldDemandPercent
-                        : context.Game.Config.AI.Infrastructure.PlanetaryWeaponDemandPercent,
-                    isEmergencyDefense: true
-                );
-                proposals.Add(
-                    new AIManufactureProposal(
-                        demand,
-                        producer,
-                        new Technology(building),
-                        false,
-                        building
-                    )
-                );
-            }
         }
 
         /// <summary>
@@ -870,6 +815,9 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
+            if (demand.ExistingOrder != null)
+                return;
+
             Technology product = GetUnlockedTechnology(context, demand);
             if (product == null)
                 return;
@@ -940,7 +888,7 @@ namespace Rebellion.AI.Planners
                     producerPlanet,
                     product,
                     distributesDemand,
-                    getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
+                    getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
                 );
 
                 proposals.Add(proposal);
@@ -1084,7 +1032,7 @@ namespace Rebellion.AI.Planners
                     producerPlanets,
                     product,
                     distributesDemand: false,
-                    getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
+                    getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
                 )
             );
         }
@@ -1126,9 +1074,7 @@ namespace Rebellion.AI.Planners
                             producerPlanet,
                             product,
                             distributesDemand,
-                            getInterruptibleOrder: context
-                                .Assessment
-                                .GetInterruptibleManufacturingOrder
+                            getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
                         );
                 })
                 .Where(candidate => candidate != null)
@@ -1464,7 +1410,7 @@ namespace Rebellion.AI.Planners
 
             double targetWork = work.TargetWork;
             long queuedWork = work.QueuedWork;
-            IManufacturable filler = context.Assessment.GetInterruptibleManufacturingOrder(
+            IManufacturable filler = context.Assessment.GetReplaceableManufacturingOrder(
                 producerPlanet,
                 manufacturingType
             );
@@ -2573,7 +2519,7 @@ namespace Rebellion.AI.Planners
                 && !planet.IsDestroyed
                 && (
                     planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
-                    || context.Assessment.GetInterruptibleManufacturingOrder(
+                    || context.Assessment.GetReplaceableManufacturingOrder(
                         planet,
                         manufacturingType
                     ) != null
