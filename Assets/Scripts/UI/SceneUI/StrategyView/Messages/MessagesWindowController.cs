@@ -857,8 +857,6 @@ public sealed class MessagesWindowController
 
         FocusWindow(view);
         ConsumeMissionContinuationChoice(session.GetSelectedMessage());
-        StopMessageDetailAudio();
-        session.HideDetail();
         RequestRender();
     }
 
@@ -878,8 +876,6 @@ public sealed class MessagesWindowController
             actions.TryAbortMission(missionInstanceId);
 
         ConsumeMissionContinuationChoice(message);
-        StopMessageDetailAudio();
-        session.HideDetail();
         RequestRender();
     }
 

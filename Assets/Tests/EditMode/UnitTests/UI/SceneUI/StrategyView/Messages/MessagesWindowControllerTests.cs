@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -391,7 +392,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void MissionContinueRequested_PendingReport_ConsumesChoiceWithoutAbortingMission()
+        public void MissionContinueRequested_PendingReport_KeepsReportOpenWithoutAbortingMission()
         {
             Message message = CreateMessage("report");
             message.MissionInstanceID = "mission";
@@ -414,10 +415,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 view.GetComponentsInChildren<Button>(true)
                     .Single(button => button.name == "MissionContinueButton")
                     .onClick.Invoke();
+                controller.RenderWindows();
 
                 Assert.IsFalse(message.MissionContinuationPending);
                 Assert.IsNull(actions.AbortedMissionInstanceId);
-                Assert.IsFalse(controller.IsDetailVisible(view));
+                AssertReportDetailRemainsVisible(controller, view, "report");
             }
             finally
             {
@@ -426,7 +428,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void MissionAbortRequested_PendingReport_AbortsMissionAndConsumesChoice()
+        public void MissionAbortRequested_PendingReport_AbortsMissionAndKeepsReportOpen()
         {
             Message message = CreateMessage("report");
             message.MissionInstanceID = "mission";
@@ -449,10 +451,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 view.GetComponentsInChildren<Button>(true)
                     .Single(button => button.name == "MissionAbortButton")
                     .onClick.Invoke();
+                controller.RenderWindows();
 
                 Assert.AreEqual("mission", actions.AbortedMissionInstanceId);
                 Assert.IsFalse(message.MissionContinuationPending);
-                Assert.IsFalse(controller.IsDetailVisible(view));
+                AssertReportDetailRemainsVisible(controller, view, "report");
             }
             finally
             {
@@ -795,6 +798,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             {
                 UnityEngine.Object.DestroyImmediate(manager.gameObject);
             }
+        }
+
+        /// <summary>
+        /// Verifies that resolving a mission choice leaves the report content and navigation visible.
+        /// </summary>
+        /// <param name="controller">The Messages controller under test.</param>
+        /// <param name="view">The rendered Messages view.</param>
+        /// <param name="expectedBody">The report body expected to remain visible.</param>
+        private static void AssertReportDetailRemainsVisible(
+            MessagesWindowController controller,
+            MessagesWindowView view,
+            string expectedBody
+        )
+        {
+            IReadOnlyList<Button> buttons = view.GetComponentsInChildren<Button>(true);
+
+            Assert.IsTrue(controller.IsDetailVisible(view));
+            Assert.IsFalse(
+                buttons
+                    .Single(button => button.name == "MissionContinueButton")
+                    .gameObject.activeInHierarchy
+            );
+            Assert.IsFalse(
+                buttons
+                    .Single(button => button.name == "MissionAbortButton")
+                    .gameObject.activeInHierarchy
+            );
+            Assert.IsTrue(
+                buttons
+                    .Single(button => button.name == "DetailPreviousButtonImage")
+                    .gameObject.activeInHierarchy
+            );
+            Assert.IsTrue(
+                buttons
+                    .Single(button => button.name == "DetailNextButtonImage")
+                    .gameObject.activeInHierarchy
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                    .Any(text => text.gameObject.activeInHierarchy && text.text == expectedBody)
+            );
         }
 
         /// <summary>
