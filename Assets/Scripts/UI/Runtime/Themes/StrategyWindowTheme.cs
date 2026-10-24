@@ -50,6 +50,8 @@ public class StrategyBookmarkLayout
 
     public int ItemHeight { get; set; }
 
+    public int IconOffsetX { get; set; }
+
     public int IconOffsetY { get; set; }
 
     public int IconWidth { get; set; }
