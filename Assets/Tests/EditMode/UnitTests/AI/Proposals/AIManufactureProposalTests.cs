@@ -1169,12 +1169,12 @@ namespace Rebellion.Tests.AI.Proposals
                     BuildingType.None,
                     planet,
                     1,
-                    template.TypeID
+                    template.TypeID,
+                    existingOrder: existing
                 ),
                 planet,
                 new Technology(template),
-                false,
-                existingOrder: existing
+                false
             );
 
             proposal.Execute(context);
@@ -1218,7 +1218,10 @@ namespace Rebellion.Tests.AI.Proposals
                 producer,
                 new Technology(facility),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
 
             Assert.IsTrue(proposal.CanSelect(context));
@@ -1228,6 +1231,65 @@ namespace Rebellion.Tests.AI.Proposals
                 .GetManufacturingQueue()[ManufacturingType.Building]
                 .Single();
             Assert.AreEqual(facility.TypeID, queued.GetTypeID());
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void Execute_ProducerQueueChanges_PreservesUnselectedOrder(
+            bool initiallyEmpty,
+            bool matchingType
+        )
+        {
+            var (game, faction, producer, destination, original) = CreateDefenseConstructionScene();
+            destination.EnergyCapacity = 2;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            if (initiallyEmpty)
+                Assert.IsTrue(
+                    context.Manufacturing.CancelManufacturing(original, faction.InstanceID)
+                );
+            Building requested = AITestSceneBuilder.CreateBuildingTemplate(
+                "training",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "required",
+                    AIProductionDemandKind.TrainingFacility,
+                    ManufacturingType.Building,
+                    BuildingType.TrainingFacility,
+                    destination,
+                    1
+                ),
+                producer,
+                new Technology(requested),
+                false,
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+            Assert.IsTrue(proposal.CanSelect(context));
+            if (!initiallyEmpty)
+                Assert.IsTrue(
+                    context.Manufacturing.CancelManufacturing(original, faction.InstanceID)
+                );
+            Building unexpected = matchingType
+                ? (Building)original.CreateCopy()
+                : AITestSceneBuilder.CreateBuildingTemplate("battery", BuildingType.Weapon);
+            unexpected.OwnerInstanceID = faction.InstanceID;
+            unexpected.ConstructionCost = 10;
+            Assert.IsTrue(context.Manufacturing.Enqueue(producer, unexpected, destination));
+            unexpected.ManufacturingProgress = 2;
+
+            proposal.Execute(context);
+
+            Assert.AreSame(
+                unexpected,
+                producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+            );
         }
 
         [Test]
@@ -1248,7 +1310,10 @@ namespace Rebellion.Tests.AI.Proposals
                 producer,
                 new Technology(shield),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
 
             proposal.Execute(context);
@@ -1281,7 +1346,10 @@ namespace Rebellion.Tests.AI.Proposals
                 producer,
                 new Technology(shield),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
 
             proposal.Execute(context);
@@ -1318,7 +1386,10 @@ namespace Rebellion.Tests.AI.Proposals
                 producer,
                 new Technology(shield),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
 
             Assert.IsFalse(proposal.CanSelect(AITestSceneBuilder.CreateContext(game, faction)));
@@ -1353,7 +1424,10 @@ namespace Rebellion.Tests.AI.Proposals
                     )
                 ),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
 
             Assert.IsFalse(proposal.CanSelect(AITestSceneBuilder.CreateContext(game, faction)));

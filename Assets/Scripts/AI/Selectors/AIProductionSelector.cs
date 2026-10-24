@@ -607,17 +607,14 @@ namespace Rebellion.AI.Selectors
                 && score <= context.Game.Config.AI.Selection.MinimumSelectableScore
             )
                 return false;
-            AIProductionDemand demand = context.ProductionDemands.FirstOrDefault(item =>
-                ReferenceEquals(item.ExistingOrder, current)
-            );
+            AIProductionDemand demand = context.GetCurrentProductionDemand(current);
             if (demand == null)
                 return true;
             AIManufactureProposal continuation = new AIManufactureProposal(
                 demand,
                 proposal.ProducerPlanet,
                 new Technology(current),
-                false,
-                current
+                false
             );
             return proposal.Priority > continuation.Priority
                 || proposal.Priority == continuation.Priority

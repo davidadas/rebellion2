@@ -655,7 +655,7 @@ namespace Rebellion.AI.Scorers
             );
             score.Add(
                 IsExposedSectorBombardmentTarget(context, targetPlanet)
-                && CanBombardMilitaryTargets(context, fleet, targetPlanet)
+                && context.Assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
                     ? 1
                     : 0,
                 utility.ExposedBombardment
@@ -867,18 +867,12 @@ namespace Rebellion.AI.Scorers
             AIAssessment assessment = context.Assessment;
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
-            int requiredCount = GetRequiredRegimentCount(
-                context,
-                proposal.TargetFleet,
-                proposal.TargetPlanet,
-                true
-            );
-            int requiredStrength = GetRequiredRegimentStrength(
-                context,
-                proposal.TargetFleet,
-                proposal.TargetPlanet,
-                true
-            );
+            int requiredCount = context
+                .GetAttackRegimentRequirements(proposal.TargetPlanet, proposal.TargetFleet, true)
+                .Count;
+            int requiredStrength = context
+                .GetAttackRegimentRequirements(proposal.TargetPlanet, proposal.TargetFleet, true)
+                .Strength;
             double countGain =
                 GetFulfillmentRatio(
                     assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet) + 1,
@@ -956,12 +950,9 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            int requiredRegimentCount = GetRequiredRegimentCount(
-                context,
-                fleet,
-                targetPlanet,
-                false
-            );
+            int requiredRegimentCount = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
+                .Count;
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),
                 demand?.CombatStrength ?? 0
@@ -976,7 +967,7 @@ namespace Rebellion.AI.Scorers
             );
             double groundReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentAttackStrength(fleet),
-                GetRequiredRegimentStrength(context, fleet, targetPlanet, false)
+                context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
             );
             double readinessSum =
                 combatReadiness + regimentReadiness + transportReadiness + groundReadiness;
@@ -1060,20 +1051,22 @@ namespace Rebellion.AI.Scorers
                 targetFleet,
                 capitalShip
             );
-            int requiredRegimentCount = GetRequiredRegimentCount(
-                context,
-                targetFleet,
-                targetPlanet,
-                true,
-                additionalBombardment
-            );
-            int requiredRegimentStrength = GetRequiredRegimentStrength(
-                context,
-                targetFleet,
-                targetPlanet,
-                true,
-                additionalBombardment
-            );
+            int requiredRegimentCount = context
+                .GetAttackRegimentRequirements(
+                    targetPlanet,
+                    targetFleet,
+                    true,
+                    additionalBombardment
+                )
+                .Count;
+            int requiredRegimentStrength = context
+                .GetAttackRegimentRequirements(
+                    targetPlanet,
+                    targetFleet,
+                    true,
+                    additionalBombardment
+                )
+                .Strength;
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet)
                     + assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(capitalShip),
@@ -1137,15 +1130,12 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            int requiredRegimentCount = GetRequiredRegimentCount(
-                context,
-                fleet,
-                targetPlanet,
-                false
-            );
+            int requiredRegimentCount = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
+                .Count;
             double groundStrengthRatio = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentAttackStrength(fleet),
-                GetRequiredRegimentStrength(context, fleet, targetPlanet, false)
+                context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
             );
             double troopRatio = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentCount(fleet),
@@ -1498,7 +1488,9 @@ namespace Rebellion.AI.Scorers
             if (demand == null)
                 return 0;
 
-            int requiredRegiments = GetRequiredRegimentCount(context, fleet, targetPlanet, false);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
+                .Count;
             int count = 0;
             if (fleet?.HasOperationalCapitalShips() == true)
                 count++;
@@ -1511,7 +1503,7 @@ namespace Rebellion.AI.Scorers
                 count++;
             if (
                 context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                >= GetRequiredRegimentStrength(context, fleet, targetPlanet, false)
+                >= context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
             )
                 count++;
             if (context.Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
@@ -1537,84 +1529,6 @@ namespace Rebellion.AI.Scorers
                 && fleet?.HasOperationalCapitalShips() == true
                 && context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
                     >= required;
-        }
-
-        /// <summary>
-        /// Returns the regiment count required after accounting for fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <param name="projected">Whether projected bombardment strength is used.</param>
-        /// <param name="additionalBombardmentStrength">The proposed ships' additional bombardment contribution.</param>
-        /// <returns>The required regiment count.</returns>
-        private static int GetRequiredRegimentCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet,
-            bool projected,
-            int additionalBombardmentStrength = 0
-        )
-        {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
-            if (demand == null)
-                return 0;
-            return context.Assessment.CanBombardDefenders(
-                fleet,
-                targetPlanet,
-                projected,
-                additionalBombardmentStrength
-            )
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-        }
-
-        /// <summary>
-        /// Returns the regiment strength required after accounting for fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <param name="projected">Whether projected bombardment strength is used.</param>
-        /// <param name="additionalBombardmentStrength">The proposed ships' additional bombardment contribution.</param>
-        /// <returns>The required regiment attack strength.</returns>
-        private static int GetRequiredRegimentStrength(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet,
-            bool projected,
-            int additionalBombardmentStrength = 0
-        )
-        {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
-            return context.Assessment.CanBombardDefenders(
-                fleet,
-                targetPlanet,
-                projected,
-                additionalBombardmentStrength
-            )
-                ? 0
-                : demand?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether a fleet can immediately bombard military targets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when hostile targets are exposed to bombardment.</returns>
-        private static bool CanBombardMilitaryTargets(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
-                && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
 
         /// <summary>

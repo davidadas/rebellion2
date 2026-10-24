@@ -59,8 +59,8 @@ namespace Rebellion.AI
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
         public IReadOnlyList<GameResult> Results => _results;
 
-        private readonly List<AIProductionDemand> _productionDemands =
-            new List<AIProductionDemand>();
+        private IReadOnlyList<AIProductionDemand> _productionDemands =
+            Array.Empty<AIProductionDemand>();
         private readonly Dictionary<string, AIAttackDemand> _attackDemands = new(
             StringComparer.Ordinal
         );
@@ -252,6 +252,34 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Resolves ground-force requirements against the turn's measured attack demand.
+        /// </summary>
+        /// <param name="planet">The target whose current defenses are assessed.</param>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="projected">Whether to include units committed to the fleet.</param>
+        /// <param name="additionalBombardmentStrength">Additional proposed bombardment strength.</param>
+        /// <returns>The required regiment count and attack strength after available bombardment.</returns>
+        internal (int Count, int Strength) GetAttackRegimentRequirements(
+            Planet planet,
+            Fleet fleet,
+            bool projected = false,
+            int additionalBombardmentStrength = 0
+        )
+        {
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (demand == null)
+                return (0, 0);
+            return Assessment.CanBombardDefenders(
+                fleet,
+                planet,
+                projected,
+                additionalBombardmentStrength
+            )
+                ? (demand.OccupationRegimentCount, 0)
+                : (demand.RegimentCount, demand.RegimentStrength);
+        }
+
+        /// <summary>
         /// Stores an arrival-specific demand during attack assessment.
         /// </summary>
         /// <param name="fleet">The fleet whose travel time was assessed.</param>
@@ -267,17 +295,25 @@ namespace Rebellion.AI
         /// <param name="demands">The generated production demands in strategic order.</param>
         public void SetProductionDemands(IEnumerable<AIProductionDemand> demands)
         {
-            _productionDemands.Clear();
+            _productionDemands =
+                demands?.Where(demand => demand != null).ToArray()
+                ?? Array.Empty<AIProductionDemand>();
             HasGeneratedProductionDemands = true;
+        }
 
-            if (demands == null)
-                return;
-
-            foreach (AIProductionDemand demand in demands)
-            {
-                if (demand != null)
-                    _productionDemands.Add(demand);
-            }
+        /// <summary>
+        /// Finds the current requirement for an exact queued manufacturing order.
+        /// </summary>
+        /// <param name="order">The queued object evaluated by production selection.</param>
+        /// <returns>The first matching requirement, or null when the order has no current demand.</returns>
+        internal AIProductionDemand GetCurrentProductionDemand(IManufacturable order)
+        {
+            if (order == null)
+                return null;
+            foreach (AIProductionDemand demand in _productionDemands)
+                if (ReferenceEquals(demand.ExistingOrder, order))
+                    return demand;
+            return null;
         }
 
         /// <summary>

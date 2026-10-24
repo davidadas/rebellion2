@@ -335,8 +335,7 @@ namespace Rebellion.Tests.AI.Helpers
                 ),
                 producer,
                 new Technology(order),
-                false,
-                order
+                false
             );
             AIManufactureProposal next = new AIManufactureProposal(
                 new AIProductionDemand(
@@ -355,7 +354,10 @@ namespace Rebellion.Tests.AI.Helpers
                 producer,
                 new Technology(replacement),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
             );
             context.SetProductionDemands(new[] { continuation.Demand, next.Demand });
             return new[] { continuation, next };

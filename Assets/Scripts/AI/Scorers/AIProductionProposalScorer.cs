@@ -672,7 +672,9 @@ namespace Rebellion.AI.Scorers
                 .FleetReadiness;
             AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
-            int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
+                .Count;
             double combatReadiness = GetFulfillmentRatio(
                 context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
                 requiredCombat
@@ -724,7 +726,9 @@ namespace Rebellion.AI.Scorers
             bool combatReady =
                 context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                 >= (context.GetAttackDemand(targetPlanet, fleet)?.CombatStrength ?? 0);
-            int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
+                .Count;
             bool capacityReady =
                 context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredRegiments;
             bool bombardmentReady =
@@ -748,30 +752,6 @@ namespace Rebellion.AI.Scorers
         private static double GetFulfillmentRatio(double value, double target)
         {
             return target <= 0 ? 1 : Math.Max(0, Math.Min(1, value / target));
-        }
-
-        /// <summary>
-        /// Returns the regiment count required after projected bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The reinforced fleet.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The projected regiment requirement.</returns>
-        private static int GetProjectedRegimentCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            if (demand == null)
-                return 0;
-            bool canBombardDefenders =
-                fleet != null
-                && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
-                && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
-            return canBombardDefenders ? demand.OccupationRegimentCount : demand.RegimentCount;
         }
 
         /// <summary>
@@ -902,13 +882,14 @@ namespace Rebellion.AI.Scorers
         /// <returns>The estimated production ticks, or zero when no job is being displaced.</returns>
         private static double GetCompletionTime(AIManufactureProposal proposal)
         {
-            if (proposal.CurrentOrder == null)
+            IManufacturable current = proposal.CurrentOrder;
+            if (current == null)
                 return 0;
             return (
                     proposal.ContinuesExistingOrder
                         ? ManufacturingQueries.EstimateCompletionTicks(
                             proposal.ProducerPlanet,
-                            proposal.CurrentOrder
+                            current
                         )
                         : ManufacturingQueries.EstimateManufacturingTicks(
                             proposal.ProducerPlanet,
@@ -929,11 +910,10 @@ namespace Rebellion.AI.Scorers
             AIManufactureProposal proposal
         )
         {
-            if (proposal.ContinuesExistingOrder || proposal.CurrentOrder == null)
+            IManufacturable current = proposal.CurrentOrder;
+            if (proposal.ContinuesExistingOrder || current == null)
                 return 0;
-            AIProductionDemand existingDemand = context.ProductionDemands.FirstOrDefault(demand =>
-                ReferenceEquals(demand.ExistingOrder, proposal.CurrentOrder)
-            );
+            AIProductionDemand existingDemand = context.GetCurrentProductionDemand(current);
             double relevance = AIUtility.Fulfillment(
                 GetDemandPressure(context, existingDemand),
                 context.Game.Config.AI.Selection.DemandUtility
@@ -942,12 +922,12 @@ namespace Rebellion.AI.Scorers
                 return 0;
             int? total = ManufacturingQueries.EstimateManufacturingTicks(
                 proposal.ProducerPlanet,
-                proposal.CurrentOrder,
+                current,
                 1
             );
             int? remaining = ManufacturingQueries.EstimateCompletionTicks(
                 proposal.ProducerPlanet,
-                proposal.CurrentOrder
+                current
             );
             return total.HasValue && remaining.HasValue
                 ? relevance * Math.Max(0, total.Value - remaining.Value)

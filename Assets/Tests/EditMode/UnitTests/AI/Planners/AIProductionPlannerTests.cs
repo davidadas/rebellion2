@@ -1239,7 +1239,10 @@ namespace Rebellion.Tests.AI.Planners
                     )
                 ),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    planet,
+                    ManufacturingType.Building
+                )
             );
             context.AddProposals(proposals);
             context.AddProposal(expansion);

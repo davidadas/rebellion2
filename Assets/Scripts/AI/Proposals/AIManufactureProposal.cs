@@ -18,8 +18,7 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
-        private readonly IManufacturable _existingOrder;
-        private readonly Func<Planet, ManufacturingType, IManufacturable> _getReplaceableOrder;
+        private readonly IManufacturable _replacementOrder;
         public AIProductionDemand Demand { get; }
 
         public Planet ProducerPlanet { get; }
@@ -33,7 +32,7 @@ namespace Rebellion.AI.Proposals
         /// <summary>
         /// Gets whether this action keeps an existing queued order running.
         /// </summary>
-        internal bool IsContinuation => _existingOrder != null;
+        internal bool IsContinuation => Demand?.ExistingOrder != null;
 
         /// <summary>
         /// Gets the number of manufactured items represented by this proposal.
@@ -49,25 +48,8 @@ namespace Rebellion.AI.Proposals
         {
             get
             {
-                if (_existingOrder != null)
-                    return
-                        ProducerPlanet
-                            ?.GetManufacturingQueue()
-                            .TryGetValue(Demand.ManufacturingType, out var queue) == true
-                        && queue.Contains(_existingOrder)
-                        && _existingOrder.ManufacturingStatus == ManufacturingStatus.Building
-                        && !_existingOrder.IsManufacturingComplete()
-                        ? _existingOrder
-                        : null;
-                if (Demand?.IsProductionFiller != false)
-                    return null;
-                IManufacturable current = _getReplaceableOrder?.Invoke(
-                    ProducerPlanet,
-                    Demand.ManufacturingType
-                );
-                return current?.GetTypeID() != Product?.GetReference()?.GetTypeID()
-                    ? current
-                    : null;
+                IManufacturable order = Demand?.ExistingOrder ?? _replacementOrder;
+                return IsOrderStillQueued(order) ? order : null;
             }
         }
 
@@ -129,77 +111,48 @@ namespace Rebellion.AI.Proposals
         /// <param name="producerPlanet">Planet that will produce the item.</param>
         /// <param name="product">Technology to manufacture.</param>
         /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
-        /// <param name="existingOrder">An existing project to protect without restarting construction.</param>
-        /// <param name="getReplaceableOrder">Queries replaceable work from the current manufacturing queue.</param>
+        /// <param name="replacedOrder">The unfinished order evaluated for replacement, if any.</param>
         internal AIManufactureProposal(
             AIProductionDemand demand,
             Planet producerPlanet,
             Technology product,
             bool distributesDemand,
-            IManufacturable existingOrder = null,
-            Func<Planet, ManufacturingType, IManufacturable> getReplaceableOrder = null
+            IManufacturable replacedOrder = null
         )
         {
             Demand = demand;
             ProducerPlanet = producerPlanet;
             Product = product;
             DistributesDemand = distributesDemand;
-            _existingOrder = existingOrder;
-            _getReplaceableOrder = getReplaceableOrder;
+            if (
+                replacedOrder != null
+                && demand?.ExistingOrder == null
+                && demand?.IsProductionFiller == false
+                && replacedOrder.GetTypeID() != product?.GetReference()?.GetTypeID()
+            )
+                _replacementOrder = replacedOrder;
             ProducerAlternatives = Array.Empty<AIManufactureProposal>();
-        }
-
-        /// <summary>
-        /// Creates a manufacture proposal from one demand and multiple producers.
-        /// </summary>
-        /// <param name="demand">Production demand served by the proposal.</param>
-        /// <param name="producerPlanets">Planets eligible to produce the item.</param>
-        /// <param name="product">Technology to manufacture.</param>
-        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
-        /// <param name="getReplaceableOrder">Queries replaceable work from the current manufacturing queue.</param>
-        internal AIManufactureProposal(
-            AIProductionDemand demand,
-            IReadOnlyList<Planet> producerPlanets,
-            Technology product,
-            bool distributesDemand,
-            Func<Planet, ManufacturingType, IManufacturable> getReplaceableOrder = null
-        )
-        {
-            Demand = demand;
-            ProducerPlanet = producerPlanets?.FirstOrDefault();
-            Product = product;
-            DistributesDemand = distributesDemand;
-            _getReplaceableOrder = getReplaceableOrder;
-            ProducerAlternatives =
-                producerPlanets
-                    ?.Skip(1)
-                    .Select(producerPlanet => new AIManufactureProposal(
-                        demand,
-                        producerPlanet,
-                        product,
-                        distributesDemand,
-                        getReplaceableOrder: getReplaceableOrder
-                    ))
-                    .ToList()
-                ?? new List<AIManufactureProposal>();
-            CarriesReducedCountAcrossAlternatives = true;
         }
 
         /// <summary>
         /// Creates a manufacture proposal from exact ranked alternatives.
         /// </summary>
         /// <param name="candidates">Exact eligible manufacturing actions in preference order.</param>
-        internal AIManufactureProposal(IReadOnlyList<AIManufactureProposal> candidates)
+        /// <param name="carriesReducedCountAcrossAlternatives">Whether each producer retains earlier quantity reductions.</param>
+        internal AIManufactureProposal(
+            IReadOnlyList<AIManufactureProposal> candidates,
+            bool carriesReducedCountAcrossAlternatives = false
+        )
         {
             AIManufactureProposal first = candidates?.FirstOrDefault();
             Demand = first?.Demand;
             ProducerPlanet = first?.ProducerPlanet;
             Product = first?.Product;
             DistributesDemand = first?.DistributesDemand == true;
-            _existingOrder = first?._existingOrder;
-            _getReplaceableOrder = first?._getReplaceableOrder;
+            _replacementOrder = first?._replacementOrder;
             ProducerAlternatives =
-                candidates?.Skip(1).ToList() ?? new List<AIManufactureProposal>();
+                candidates?.Skip(1).ToArray() ?? Array.Empty<AIManufactureProposal>();
+            CarriesReducedCountAcrossAlternatives = carriesReducedCountAcrossAlternatives;
         }
 
         /// <summary>
@@ -279,17 +232,20 @@ namespace Rebellion.AI.Proposals
                 return;
 
             int maintenanceCredit = ReplacedMaintenanceCost;
-            IManufacturable filler = CurrentOrder;
+            IManufacturable replacedOrder = CurrentOrder;
             if (ContinuesExistingOrder)
             {
                 return;
             }
             if (
-                filler != null
-                && !context.Manufacturing.CancelManufacturing(filler, context.Faction.InstanceID)
+                replacedOrder != null
+                && !context.Manufacturing.CancelManufacturing(
+                    replacedOrder,
+                    context.Faction.InstanceID
+                )
             )
                 return;
-            if (filler != null)
+            if (replacedOrder != null)
             {
                 context.RecordManufacturingMutation(0, maintenanceCredit);
             }
@@ -338,18 +294,8 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (Destination is Planet planet)
-            {
-                if (!EnqueueAtPlanet(context, planet, manufacturable))
-                    LogEnqueueFailure();
-                return;
-            }
-
-            if (Destination is Fleet fleet)
-            {
-                if (!Enqueue(context, manufacturable, fleet))
-                    LogEnqueueFailure();
-            }
+            if (Destination is Planet or Fleet && !Enqueue(context, manufacturable, Destination))
+                LogEnqueueFailure();
         }
 
         /// <summary>
@@ -401,8 +347,7 @@ namespace Rebellion.AI.Proposals
                 ProducerPlanet,
                 Product,
                 DistributesDemand,
-                _existingOrder,
-                _getReplaceableOrder
+                _replacementOrder
             );
             if (HasScore)
                 resolved.SetScore(Score);
@@ -469,8 +414,23 @@ namespace Rebellion.AI.Proposals
             if (!ProducerPlanet.IsColonized || ProducerPlanet.IsDestroyed)
                 return false;
 
+            bool hasQueue = ProducerPlanet
+                .GetManufacturingQueue()
+                .TryGetValue(Demand.ManufacturingType, out List<IManufacturable> queue);
+            IManufacturable currentOrder = CurrentOrder;
+            if (_replacementOrder != null && currentOrder == null && hasQueue && queue.Count > 0)
+                return false;
+            if (
+                !validateOrderAcceptance
+                && !IsContinuation
+                && currentOrder == null
+                && hasQueue
+                && queue.Any(item => item.GetTypeID() != Product.GetReference().GetTypeID())
+            )
+                return false;
+
             if (IsContinuation)
-                return CurrentOrder is ISceneNode current
+                return currentOrder is ISceneNode current
                     && current.GetOwnerInstanceID() == context.Faction.InstanceID
                     && ReferenceEquals(current.GetParent(), Destination)
                     && current.GetTypeID() == Product.GetReference().GetTypeID();
@@ -552,6 +512,33 @@ namespace Rebellion.AI.Proposals
                     CanManufactureFleetSeed(context),
                 _ => false,
             };
+        }
+
+        /// <summary>
+        /// Checks the identity, ownership and active queue membership of the evaluated order.
+        /// </summary>
+        /// <param name="order">The order recorded when the proposal was formed.</param>
+        /// <returns>True while the same eligible order remains queued by its producer.</returns>
+        private bool IsOrderStillQueued(IManufacturable order)
+        {
+            if (
+                order is not ISceneNode node
+                || ProducerPlanet == null
+                || Demand == null
+                || order.ManufacturingStatus != ManufacturingStatus.Building
+                || order.IsManufacturingComplete()
+                || order.ProducerPlanetID != ProducerPlanet.InstanceID
+                || node.GetOwnerInstanceID() != ProducerPlanet.GetOwnerInstanceID()
+                || !ProducerPlanet
+                    .GetManufacturingQueue()
+                    .TryGetValue(Demand.ManufacturingType, out var queue)
+                || !IsContinuation && queue.Count != 1
+            )
+                return false;
+            foreach (IManufacturable queued in queue)
+                if (ReferenceEquals(queued, order))
+                    return true;
+            return false;
         }
 
         /// <summary>
@@ -722,22 +709,6 @@ namespace Rebellion.AI.Proposals
             if (!started)
                 LogEnqueueFailure();
             return started;
-        }
-
-        /// <summary>
-        /// Queues a manufactured item for delivery to a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">The destination planet.</param>
-        /// <param name="manufacturable">The manufacturable.</param>
-        /// <returns>True when the item was queued.</returns>
-        private bool EnqueueAtPlanet(
-            AITurnContext context,
-            Planet destinationPlanet,
-            IManufacturable manufacturable
-        )
-        {
-            return Enqueue(context, manufacturable, destinationPlanet);
         }
 
         /// <summary>

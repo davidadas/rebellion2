@@ -158,6 +158,7 @@ namespace Rebellion.AI.Phases
                     or AIFleetAttackProposal
                     or AIFleetDefenseProposal
                     or AIFleetEvacuationProposal
+                    or AIFleetReinforcementRedirectionProposal
                     or AIColonizationProposal
                     or AIColonizationCampaignProposal
                     or AIOrbitalEngagementProposal

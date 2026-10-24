@@ -24,6 +24,53 @@ namespace Rebellion.Tests.AI.Phases
     public class AISelectionPhaseTests
     {
         [Test]
+        public void Select_CompetingReinforcementRedirections_ReservesFleetOnce()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet firstDestination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first",
+                empire.InstanceID
+            );
+            Planet secondDestination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second",
+                empire.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("receiving", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(fleet, origin);
+            CapitalShip unfinished = AITestSceneBuilder.CreateCapitalShip(
+                "unfinished",
+                empire.InstanceID
+            );
+            unfinished.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(unfinished, fleet);
+            Fleet blockade = EntityFactory.CreateFleet("blockade", rebels.InstanceID);
+            game.AttachNode(blockade, origin);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("enemy", rebels.InstanceID),
+                blockade
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetReinforcementRedirectionProposal first = new(fleet, origin, firstDestination);
+            AIFleetReinforcementRedirectionProposal second = new(fleet, origin, secondDestination);
+            Assert.IsTrue(first.CanSelect(context));
+            Assert.IsTrue(second.CanSelect(context));
+            first.SetScore(0.9);
+            second.SetScore(0.8);
+            context.AddProposals(new AIProposal[] { first, second });
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new AIProposal[] { first }, selected);
+        }
+
+        [Test]
         public void Select_ContinuationAndNewBuilding_ChargesOnlyNewBuildingForFreeSpace()
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
@@ -69,7 +116,10 @@ namespace Rebellion.Tests.AI.Phases
                     )
                 ),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    secondProducer,
+                    ManufacturingType.Building
+                )
             );
             continuation.SetScore(0.9);
             expansion.SetScore(0.8);
@@ -156,8 +206,7 @@ namespace Rebellion.Tests.AI.Phases
                 ),
                 planet,
                 new Technology(template),
-                false,
-                existingOrder: existing
+                false
             );
             Planet additionalDestination = separateDestination
                 ? AITestSceneBuilder.AddPlanet(game, sector, "destination", faction.InstanceID)
@@ -175,7 +224,10 @@ namespace Rebellion.Tests.AI.Phases
                 planet,
                 new Technology(template),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    planet,
+                    ManufacturingType.Troop
+                )
             );
             continuation.SetScore(continuationFirst ? 0.9 : 0.8);
             additional.SetScore(continuationFirst ? 0.8 : 0.9);
@@ -335,14 +387,20 @@ namespace Rebellion.Tests.AI.Phases
                         unavailable,
                         regiment,
                         false,
-                        getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                        replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                            unavailable,
+                            troopNeed.ManufacturingType
+                        )
                     ),
                     new AIManufactureProposal(
                         troopNeed,
                         producer,
                         regiment,
                         false,
-                        getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                        replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                            producer,
+                            troopNeed.ManufacturingType
+                        )
                     ),
                 }
             );
@@ -361,7 +419,10 @@ namespace Rebellion.Tests.AI.Phases
                 producer,
                 new Technology(template),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Troop
+                )
             );
             AIManufactureProposal second = new AIManufactureProposal(
                 new AIProductionDemand(
@@ -378,7 +439,10 @@ namespace Rebellion.Tests.AI.Phases
                 producer,
                 new Technology(template),
                 false,
-                getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Troop
+                )
             );
             context.SetProductionDemands(
                 new[] { currentNeed, troopNeed, first.Demand, second.Demand }
@@ -2094,10 +2158,15 @@ namespace Rebellion.Tests.AI.Phases
                 false
             );
             AIManufactureProposal flexibleProposal = new AIManufactureProposal(
-                flexibleDemand,
-                new[] { preferredProducer, fallbackProducer },
-                new Technology(mine),
-                false
+                (new[] { preferredProducer, fallbackProducer })
+                    .Select(candidateProducer => new AIManufactureProposal(
+                        flexibleDemand,
+                        candidateProducer,
+                        new Technology(mine),
+                        false
+                    ))
+                    .ToArray(),
+                carriesReducedCountAcrossAlternatives: true
             );
             preferredProposal.SetScore(100);
             flexibleProposal.SetScore(90);
@@ -2262,10 +2331,15 @@ namespace Rebellion.Tests.AI.Phases
                 1
             );
             request = new AIManufactureProposal(
-                demand,
-                new[] { strong, weak },
-                new Technology(ship),
-                true
+                (new[] { strong, weak })
+                    .Select(candidateProducer => new AIManufactureProposal(
+                        demand,
+                        candidateProducer,
+                        new Technology(ship),
+                        true
+                    ))
+                    .ToArray(),
+                carriesReducedCountAcrossAlternatives: true
             );
             request.SetScore(100);
             return AITestSceneBuilder.CreateContext(game, empire);

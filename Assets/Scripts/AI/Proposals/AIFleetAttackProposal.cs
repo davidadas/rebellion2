@@ -300,10 +300,12 @@ namespace Rebellion.AI.Proposals
             if (context.GetAttackDemand(liveTarget, Fleet)?.IsAssaultBlockedByShields != false)
                 return false;
 
-            int requiredRegimentCount = GetRequiredRegimentCount(context, liveTarget);
+            int requiredRegimentCount = context
+                .GetAttackRegimentRequirements(liveTarget, Fleet)
+                .Count;
             return context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegimentCount
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= GetRequiredRegimentStrength(context, liveTarget)
+                    >= context.GetAttackRegimentRequirements(liveTarget, Fleet).Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
                 && context.PlanetaryAssaultQueries.CanExecute(new List<Fleet> { Fleet }, liveTarget)
@@ -336,18 +338,20 @@ namespace Rebellion.AI.Proposals
             int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
                 Fleet
             );
-            int requiredRegiments = GetRequiredRegimentCount(context, targetPlanet);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, Fleet)
+                .Count;
             return Fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0
                 && availableCombat >= demand.CombatStrength
                 && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegiments
                 && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= requiredRegiments
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= GetRequiredRegimentStrength(context, targetPlanet)
+                    >= context.GetAttackRegimentRequirements(targetPlanet, Fleet).Strength
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
                     >= demand.BombardmentStrength
                 && (
-                    CanBombardMilitaryTargets(context, targetPlanet)
+                    context.Assessment.CanBombardMilitaryTargets(Fleet, targetPlanet)
                     || context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, targetPlanet)
                         >= context
                             .Game
@@ -356,50 +360,6 @@ namespace Rebellion.AI.Proposals
                             .FleetDeployment
                             .MinimumPlanetaryAssaultSuccessPercent
                 );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required after current fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The current regiment count requirement.</returns>
-        private int GetRequiredRegimentCount(AITurnContext context, Planet targetPlanet)
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
-            if (demand == null)
-                return 0;
-            return context.Assessment.CanBombardDefenders(Fleet, targetPlanet, false)
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-        }
-
-        /// <summary>
-        /// Returns the regiment strength required after current fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The current regiment strength requirement.</returns>
-        private int GetRequiredRegimentStrength(AITurnContext context, Planet targetPlanet)
-        {
-            return context.Assessment.CanBombardDefenders(Fleet, targetPlanet, false)
-                ? 0
-                : context.GetAttackDemand(targetPlanet, Fleet)?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether the fleet can immediately bombard hostile military targets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when hostile targets are exposed.</returns>
-        private bool CanBombardMilitaryTargets(AITurnContext context, Planet targetPlanet)
-        {
-            return Fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
-                && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
 
         /// <summary>

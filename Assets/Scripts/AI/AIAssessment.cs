@@ -3653,6 +3653,20 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether ready fleet bombardment can strike known military targets.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when military targets are exposed to bombardment.</returns>
+        public bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
+        {
+            return fleet != null
+                && targetPlanet != null
+                && GetFleetBombardmentStrength(fleet) > GetBombardmentShieldStrength(targetPlanet)
+                && HasBombardmentTargets(targetPlanet);
+        }
+
+        /// <summary>
         /// Returns loaded regiment count for a fleet.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>

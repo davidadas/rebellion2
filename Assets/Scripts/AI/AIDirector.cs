@@ -22,7 +22,6 @@ namespace Rebellion.AI
         private readonly FogOfWarQueries _fogOfWar;
         private readonly IRandomNumberProvider _random;
         private readonly MissionCommands _missions;
-        private readonly MissionQueries _missionQueries;
         private readonly MissionEncounterOdds.Cache _missionEncounterCache;
         private readonly MovementCommands _movement;
         private readonly HeadquartersCommands _headquarters;
@@ -30,9 +29,7 @@ namespace Rebellion.AI
         private readonly ManufacturingCommands _manufacturing;
         private readonly MaintenanceCommands _maintenance;
         private readonly BombardmentCommands _bombardment;
-        private readonly BombardmentQueries _bombardmentQueries;
         private readonly PlanetaryAssaultCommands _planetaryAssault;
-        private readonly PlanetaryAssaultQueries _planetaryAssaultQueries;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
@@ -87,7 +84,6 @@ namespace Rebellion.AI
             _fogOfWar = game == null ? null : new FogOfWarQueries(game);
             _random = random;
             _missions = missions;
-            _missionQueries = game == null ? null : new MissionQueries(game);
             _missionEncounterCache = new MissionEncounterOdds.Cache(
                 game?.Config?.AI?.MissionPlanning?.EncounterCacheCapacity ?? 0
             );
@@ -97,9 +93,7 @@ namespace Rebellion.AI
             _manufacturing = manufacturing;
             _maintenance = maintenance;
             _bombardment = bombardment;
-            _bombardmentQueries = game == null ? null : new BombardmentQueries(game);
             _planetaryAssault = planetaryAssault;
-            _planetaryAssaultQueries = game == null ? null : new PlanetaryAssaultQueries(game);
             AIProductionDemandGenerator productionDemandGenerator =
                 new AIProductionDemandGenerator();
             AIProductionPlanner productionPlanner = new AIProductionPlanner();

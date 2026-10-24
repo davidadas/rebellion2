@@ -888,7 +888,10 @@ namespace Rebellion.AI.Planners
                     producerPlanet,
                     product,
                     distributesDemand,
-                    getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                    replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                        producerPlanet,
+                        proposalDemand.ManufacturingType
+                    )
                 );
 
                 proposals.Add(proposal);
@@ -1028,11 +1031,19 @@ namespace Rebellion.AI.Planners
 
             proposals.Add(
                 new AIManufactureProposal(
-                    proposalDemand,
-                    producerPlanets,
-                    product,
-                    distributesDemand: false,
-                    getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                    producerPlanets
+                        .Select(candidateProducer => new AIManufactureProposal(
+                            proposalDemand,
+                            candidateProducer,
+                            product,
+                            false,
+                            replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                                candidateProducer,
+                                proposalDemand.ManufacturingType
+                            )
+                        ))
+                        .ToArray(),
+                    carriesReducedCountAcrossAlternatives: true
                 )
             );
         }
@@ -1074,7 +1085,10 @@ namespace Rebellion.AI.Planners
                             producerPlanet,
                             product,
                             distributesDemand,
-                            getReplaceableOrder: context.Assessment.GetReplaceableManufacturingOrder
+                            replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                                producerPlanet,
+                                candidateDemand.ManufacturingType
+                            )
                         );
                 })
                 .Where(candidate => candidate != null)
