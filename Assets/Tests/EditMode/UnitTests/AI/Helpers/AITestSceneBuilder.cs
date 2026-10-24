@@ -11,6 +11,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
@@ -535,6 +536,7 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="random">The random.</param>
         /// <param name="maintenance">The maintenance.</param>
         /// <param name="headquarters">The headquarters system.</param>
+        /// <param name="optionalProductionOrders">Priority memory shared by the arranged turns.</param>
         /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
@@ -546,9 +548,12 @@ namespace Rebellion.Tests.AI.Helpers
             PlanetaryAssaultCommands planetaryAssault = null,
             IRandomNumberProvider random = null,
             MaintenanceCommands maintenance = null,
-            HeadquartersCommands headquarters = null
+            HeadquartersCommands headquarters = null,
+            HashSet<string> optionalProductionOrders = null
         )
         {
+            HashSet<string> priorities =
+                optionalProductionOrders ?? new HashSet<string>(System.StringComparer.Ordinal);
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarCommands fog = new FogOfWarCommands(game);
             FogOfWarQueries fogQueries = new FogOfWarQueries(game);
@@ -590,7 +595,12 @@ namespace Rebellion.Tests.AI.Helpers
             HeadquartersCommands headquartersSystem =
                 headquarters ?? new HeadquartersCommands(game, movementSystem, headquartersQueries);
             GalaxyMap factionView = fogQueries.BuildFactionView(faction);
-            AIAssessment assessment = new AIAssessment(game, faction, factionView);
+            AIAssessment assessment = new AIAssessment(
+                game,
+                faction,
+                factionView,
+                order => order is ISceneNode node && priorities.Contains(node.InstanceID)
+            );
             AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
 
             AITurnContext context = new AITurnContext(
@@ -606,7 +616,16 @@ namespace Rebellion.Tests.AI.Helpers
                 strategicPlan,
                 factionView,
                 maintenanceSystem,
-                headquartersSystem
+                headquartersSystem,
+                recordProductionPriority: (order, optional) =>
+                {
+                    if (order is not ISceneNode node)
+                        return;
+                    if (optional)
+                        priorities.Add(node.InstanceID);
+                    else
+                        priorities.Remove(node.InstanceID);
+                }
             );
             new AIAttackDemandGenerator().Generate(context);
             return context;

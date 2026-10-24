@@ -16,9 +16,19 @@ public static partial class HeadlessSimulationRunner
     private sealed class AttackReadinessTracker
     {
         private const int _readinessSampleIntervalInAITurns = 25;
+        private readonly Func<IManufacturable, bool> _isOptionalProduction;
         private readonly Dictionary<string, AttackReadinessFactionCounters> _counters = new(
             StringComparer.Ordinal
         );
+
+        /// <summary>
+        /// Creates readiness tracking for the active AI session.
+        /// </summary>
+        /// <param name="isOptionalProduction">Queries session-owned production priorities.</param>
+        public AttackReadinessTracker(Func<IManufacturable, bool> isOptionalProduction)
+        {
+            _isOptionalProduction = isOptionalProduction;
+        }
 
         /// <summary>
         /// Records failed readiness gates for attack fleets waiting to launch.
@@ -58,7 +68,12 @@ public static partial class HeadlessSimulationRunner
                     continue;
 
                 GalaxyMap factionView = new FogOfWarQueries(game).BuildFactionView(faction);
-                AIAssessment assessment = new AIAssessment(game, faction, factionView);
+                AIAssessment assessment = new AIAssessment(
+                    game,
+                    faction,
+                    factionView,
+                    _isOptionalProduction
+                );
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
                 AITurnContext context = new AITurnContext(
                     game,

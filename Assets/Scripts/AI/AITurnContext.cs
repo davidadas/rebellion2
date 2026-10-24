@@ -19,6 +19,8 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AITurnContext
     {
+        private readonly Action<IManufacturable, bool> _recordProductionPriority;
+
         // Turn Dependencies.
         public GameRoot Game { get; }
         public Faction Faction { get; }
@@ -102,6 +104,7 @@ namespace Rebellion.AI
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         /// <param name="officerCommands">Officer command appointment operations.</param>
         /// <param name="missionQueries">Optional mission queries prepared for the current assessment.</param>
+        /// <param name="recordProductionPriority">Records production intent in session memory.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -117,10 +120,12 @@ namespace Rebellion.AI
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
             OfficerCommandCommands officerCommands = null,
-            MissionQueries missionQueries = null
+            MissionQueries missionQueries = null,
+            Action<IManufacturable, bool> recordProductionPriority = null
         )
         {
             Game = game;
+            _recordProductionPriority = recordProductionPriority;
             Faction = faction;
             Missions = missions;
             MissionQueries =
@@ -172,6 +177,16 @@ namespace Rebellion.AI
                         )
                         .ToHashSet()
                     : new HashSet<SpecialForces>();
+        }
+
+        /// <summary>
+        /// Updates the session's priority bookkeeping after an order changes.
+        /// </summary>
+        /// <param name="order">The queued manufacturing order.</param>
+        /// <param name="optional">Whether the order may yield to demanded work.</param>
+        internal void SetOptionalProduction(IManufacturable order, bool optional)
+        {
+            _recordProductionPriority?.Invoke(order, optional);
         }
 
         /// <summary>

@@ -24,6 +24,7 @@ namespace Rebellion.AI
         > _arrivalOrbitalCapabilities = new();
 
         private readonly GameRoot _game;
+        private readonly Func<IManufacturable, bool> _isOptionalProduction;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
         private readonly Dictionary<string, int> _specialForcesReserveTargets = new();
@@ -484,14 +485,90 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether an order is registered as optional in this AI session.
+        /// </summary>
+        /// <param name="order">The order to inspect.</param>
+        /// <returns>True when current session bookkeeping permits interruption.</returns>
+        public bool IsOptionalProduction(IManufacturable order)
+        {
+            return _isOptionalProduction?.Invoke(order) == true;
+        }
+
+        /// <summary>
+        /// Gets a single unfinished filler order that may be interrupted by AI-demanded work.
+        /// </summary>
+        /// <param name="producer">The production planet.</param>
+        /// <param name="type">The production lane.</param>
+        /// <returns>The interruptible order, or null when the lane contains protected work.</returns>
+        public IManufacturable GetInterruptibleManufacturingOrder(
+            Planet producer,
+            ManufacturingType type
+        )
+        {
+            if (
+                producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                    != true
+                || queue == null
+                || queue.Count != 1
+            )
+                return null;
+            IManufacturable unit = queue[0];
+            return
+                unit is ISceneNode node
+                && IsOptionalProduction(unit)
+                && unit.ManufacturingStatus == ManufacturingStatus.Building
+                && !unit.IsManufacturingComplete()
+                && node.GetOwnerInstanceID() == producer.GetOwnerInstanceID()
+                && unit.ProducerPlanetID == producer.InstanceID
+                ? unit
+                : null;
+        }
+
+        /// <summary>
+        /// Returns building space including orders registered as optional during this session.
+        /// </summary>
+        /// <param name="destination">The planet receiving construction.</param>
+        /// <returns>The actual or reclaimable building space.</returns>
+        public int GetAvailableBuildingSpace(Planet destination)
+        {
+            int available = destination?.GetAvailableEnergy() ?? 0;
+            if (_game == null || destination == null)
+                return available;
+            foreach (Building building in destination.GetAllBuildings())
+            {
+                if (
+                    !IsOptionalProduction(building)
+                    || string.IsNullOrEmpty(building.ProducerPlanetID)
+                )
+                    continue;
+                Planet producer = _game.GetSceneNodeByInstanceID<Planet>(building.ProducerPlanetID);
+                if (
+                    ReferenceEquals(
+                        GetInterruptibleManufacturingOrder(producer, ManufacturingType.Building),
+                        building
+                    )
+                )
+                    available++;
+            }
+            return available;
+        }
+
+        /// <summary>
         /// Creates an AI assessment from the faction-visible turn state.
         /// </summary>
         /// <param name="game">The game being assessed.</param>
         /// <param name="faction">The faction being assessed.</param>
         /// <param name="factionView">The faction-visible galaxy state.</param>
-        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
+        /// <param name="isOptionalProduction">Queries the session-owned production priorities.</param>
+        public AIAssessment(
+            GameRoot game,
+            Faction faction,
+            GalaxyMap factionView,
+            Func<IManufacturable, bool> isOptionalProduction = null
+        )
         {
             _game = game;
+            _isOptionalProduction = isOptionalProduction;
             _faction = faction;
             _factionView = factionView;
             _opposingFactionIds =

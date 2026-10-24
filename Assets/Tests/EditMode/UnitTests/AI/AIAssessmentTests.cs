@@ -21,6 +21,80 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(true, ManufacturingStatus.Building, true)]
+        [TestCase(false, ManufacturingStatus.Building, false)]
+        [TestCase(true, ManufacturingStatus.Complete, false)]
+        public void GetInterruptibleManufacturingOrder_SingleOrder_UsesSessionPriority(
+            bool optional,
+            ManufacturingStatus status,
+            bool expected
+        )
+        {
+            AITurnContext context = CreateOptionalProductionContext(
+                optional,
+                status,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+
+            Assert.AreSame(
+                expected ? order : null,
+                context.Assessment.GetInterruptibleManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [Test]
+        public void GetInterruptibleManufacturingOrder_MixedQueue_PreservesAllWork()
+        {
+            AITurnContext context = CreateOptionalProductionContext(
+                true,
+                ManufacturingStatus.Building,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+            destination.EnergyCapacity = 2;
+            Building second = AITestSceneBuilder.CreateBuildingTemplate(
+                "required",
+                BuildingType.Defense
+            );
+            second.OwnerInstanceID = context.Faction.InstanceID;
+            second.ProducerPlanetID = producer.InstanceID;
+            second.ManufacturingStatus = ManufacturingStatus.Building;
+            context.Game.AttachNode(second, destination);
+            producer.AddToManufacturingQueue(second);
+
+            Assert.IsNull(
+                context.Assessment.GetInterruptibleManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [TestCase(true, 1)]
+        [TestCase(false, 0)]
+        public void GetAvailableBuildingSpace_FullDestination_CountsOnlyOptionalWork(
+            bool optional,
+            int expected
+        )
+        {
+            AITurnContext context = CreateOptionalProductionContext(
+                optional,
+                ManufacturingStatus.Building,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+
+            Assert.AreEqual(0, destination.GetAvailableEnergy());
+            Assert.AreEqual(expected, context.Assessment.GetAvailableBuildingSpace(destination));
+        }
+
         [TestCase(0, true, false)]
         [TestCase(1, true, false)]
         [TestCase(5, true, true)]
@@ -2428,6 +2502,56 @@ namespace Rebellion.Tests.AI
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Assert.AreEqual(130, assessment.GetKnownIncomingHostileFleetStrength(planet));
+        }
+
+        /// <summary>
+        /// Arranges an unfinished defense and its session-owned priority.
+        /// </summary>
+        /// <param name="optional">Whether the AI may replace the order.</param>
+        /// <param name="status">The manufacturing status to inspect.</param>
+        /// <param name="order">Receives the queued defense.</param>
+        /// <param name="producer">Receives the construction planet.</param>
+        /// <param name="destination">Receives the full destination planet.</param>
+        /// <returns>A faction turn bound to the arranged priority memory.</returns>
+        private static AITurnContext CreateOptionalProductionContext(
+            bool optional,
+            ManufacturingStatus status,
+            out Building order,
+            out Planet producer,
+            out Planet destination
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            producer = AITestSceneBuilder.AddPlanet(game, sector, "producer", faction.InstanceID);
+            destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                faction.InstanceID,
+                energyCapacity: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            order = AITestSceneBuilder.CreateBuildingTemplate("shield", BuildingType.Defense);
+            order.OwnerInstanceID = faction.InstanceID;
+            order.ProducerPlanetID = producer.InstanceID;
+            order.ManufacturingStatus = status;
+            game.AttachNode(order, destination);
+            producer.AddToManufacturingQueue(order);
+            HashSet<string> priorities = new();
+            if (optional)
+                priorities.Add(order.InstanceID);
+            return AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
         }
     }
 }

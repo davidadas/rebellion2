@@ -142,11 +142,6 @@ namespace Rebellion.Game.Units
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
-        /// <summary>
-        /// Gets or sets whether this unfinished order was started using spare AI capacity.
-        /// </summary>
-        public bool IsAIProductionFiller { get; set; }
-
         public int RefinedMaterialProgress { get; set; }
         public int ProductionCapacity { get; set; }
         public int ProductionCapacityUsed { get; set; }
@@ -408,7 +403,6 @@ namespace Rebellion.Game.Units
             copy.Bombardment = Bombardment;
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
-            copy.IsAIProductionFiller = IsAIProductionFiller;
             copy.RefinedMaterialProgress = RefinedMaterialProgress;
             copy.ProductionCapacity = ProductionCapacity;
             copy.ProductionCapacityUsed = ProductionCapacityUsed;

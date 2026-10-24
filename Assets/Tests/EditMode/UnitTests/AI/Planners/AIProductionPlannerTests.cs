@@ -1202,7 +1202,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext setup = AITestSceneBuilder.CreateContext(game, faction);
             Assert.IsTrue(setup.Manufacturing.Enqueue(planet, defense, planet));
             defense.ManufacturingProgress = 3;
-            defense.IsAIProductionFiller = true;
+            HashSet<string> priorities = new() { defense.InstanceID };
             Fleet hostile = EntityFactory.CreateFleet("hostile", enemy.InstanceID);
             hostile.Movement = new MovementState { TransitTicks = 10 };
             game.AttachNode(hostile, planet);
@@ -1210,7 +1210,11 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.CreateCapitalShip("hostile-ship", enemy.InstanceID),
                 hostile
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
@@ -1225,7 +1229,7 @@ namespace Rebellion.Tests.AI.Planners
                 planet.GetManufacturingQueue()[ManufacturingType.Building].Single()
             );
             Assert.AreEqual(3, defense.ManufacturingProgress);
-            Assert.IsFalse(defense.IsAIProductionFiller);
+            Assert.IsFalse(context.Assessment.IsOptionalProduction(defense));
         }
 
         [TestCase(false, false)]

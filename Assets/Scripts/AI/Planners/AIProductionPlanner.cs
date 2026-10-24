@@ -125,7 +125,7 @@ namespace Rebellion.AI.Planners
             foreach (Planet producer in context.Assessment.OwnedPlanets)
             {
                 if (
-                    ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                    context.Assessment.GetInterruptibleManufacturingOrder(
                         producer,
                         ManufacturingType.Building
                     )
@@ -939,7 +939,8 @@ namespace Rebellion.AI.Planners
                     proposalDemand,
                     producerPlanet,
                     product,
-                    distributesDemand
+                    distributesDemand,
+                    getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
                 );
 
                 proposals.Add(proposal);
@@ -1082,7 +1083,8 @@ namespace Rebellion.AI.Planners
                     proposalDemand,
                     producerPlanets,
                     product,
-                    distributesDemand: false
+                    distributesDemand: false,
+                    getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
                 )
             );
         }
@@ -1123,7 +1125,10 @@ namespace Rebellion.AI.Planners
                             candidateDemand,
                             producerPlanet,
                             product,
-                            distributesDemand
+                            distributesDemand,
+                            getInterruptibleOrder: context
+                                .Assessment
+                                .GetInterruptibleManufacturingOrder
                         );
                 })
                 .Where(candidate => candidate != null)
@@ -1459,7 +1464,7 @@ namespace Rebellion.AI.Planners
 
             double targetWork = work.TargetWork;
             long queuedWork = work.QueuedWork;
-            IManufacturable filler = ManufacturingQueries.GetInterruptibleManufacturingOrder(
+            IManufacturable filler = context.Assessment.GetInterruptibleManufacturingOrder(
                 producerPlanet,
                 manufacturingType
             );
@@ -2315,7 +2320,7 @@ namespace Rebellion.AI.Planners
                     ? CanQueueFacilityExpansion(context, planet)
                 : mode == ProducerMode.Distributed
                     ? HasProductionFacility(context, planet, demand.ManufacturingType)
-                : CanProduce(planet, demand.ManufacturingType)
+                : CanProduce(context, planet, demand.ManufacturingType)
             );
             eligibleProducers = eligibleProducers.Where(producer =>
                 CanUseProducerForDemand(context, producer, demand)
@@ -2551,10 +2556,15 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns whether a planet can produce a manufacturing type.
         /// </summary>
+        /// <param name="context">The current faction turn.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="manufacturingType">Manufacturing type to produce.</param>
         /// <returns>True if the planet can produce the type.</returns>
-        private bool CanProduce(Planet planet, ManufacturingType manufacturingType)
+        private bool CanProduce(
+            AITurnContext context,
+            Planet planet,
+            ManufacturingType manufacturingType
+        )
         {
             if (planet == null)
                 return false;
@@ -2563,7 +2573,7 @@ namespace Rebellion.AI.Planners
                 && !planet.IsDestroyed
                 && (
                     planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
-                    || ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                    || context.Assessment.GetInterruptibleManufacturingOrder(
                         planet,
                         manufacturingType
                     ) != null

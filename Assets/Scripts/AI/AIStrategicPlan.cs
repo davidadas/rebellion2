@@ -763,7 +763,7 @@ namespace Rebellion.AI
                 )
             )
                 return 0;
-            int available = ManufacturingQueries.GetAvailableBuildingSpace(_game, planet, true);
+            int available = _assessment.GetAvailableBuildingSpace(planet);
             available -= selectedBuildings?.Values.Sum() ?? 0;
             if (
                 !isEmergencyDefense
@@ -843,7 +843,7 @@ namespace Rebellion.AI
                     )
                         return false;
                     if (
-                        !building.IsAIProductionFiller
+                        !_assessment.IsOptionalProduction(building)
                         || string.IsNullOrEmpty(building.ProducerPlanetID)
                     )
                         return true;
@@ -852,7 +852,7 @@ namespace Rebellion.AI
                     );
                     return !ReferenceEquals(
                         building,
-                        ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                        _assessment.GetInterruptibleManufacturingOrder(
                             producer,
                             ManufacturingType.Building
                         )

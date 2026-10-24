@@ -1147,8 +1147,8 @@ namespace Rebellion.Tests.AI.Proposals
                 .GetManufacturingQueue()[ManufacturingType.Troop]
                 .Cast<SpecialForces>()
                 .Single();
-            Assert.IsTrue(unit.IsAIProductionFiller);
-            Assert.IsFalse(template.IsAIProductionFiller);
+            Assert.IsTrue(context.Assessment.IsOptionalProduction(unit));
+            Assert.IsFalse(context.Assessment.IsOptionalProduction(template));
         }
 
         [TestCase(true)]
@@ -1159,7 +1159,7 @@ namespace Rebellion.Tests.AI.Proposals
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             SpecialForces existing = (SpecialForces)template.CreateCopy();
             Assert.IsTrue(context.Manufacturing.Enqueue(planet, existing, planet));
-            existing.IsAIProductionFiller = interruptible;
+            context.SetOptionalProduction(existing, interruptible);
             existing.ManufacturingProgress = 1;
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
@@ -1173,7 +1173,8 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 planet,
                 new Technology(template),
-                true
+                true,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
 
             proposal.Execute(context);
@@ -1187,14 +1188,15 @@ namespace Rebellion.Tests.AI.Proposals
             );
             Assert.AreSame(existing, queued);
             Assert.AreEqual(1, queued.ManufacturingProgress);
-            Assert.IsFalse(queued.IsAIProductionFiller);
+            Assert.IsFalse(context.Assessment.IsOptionalProduction(queued));
         }
 
         [TestCase(true)]
         [TestCase(false)]
         public void Execute_FullDestination_ReplacesOnlyMarkedSurplusDefense(bool marked)
         {
-            var (game, faction, producer, destination, shield) = CreateDefenseFillerScene(marked);
+            var (game, faction, producer, destination, shield, priorities) =
+                CreateDefenseFillerScene(marked);
             destination.EnergyCapacity = 2;
             Building requiredShield = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -1209,6 +1211,11 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.TrainingFacility,
                 ManufacturingType.Troop
             );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
                     "required",
@@ -1220,9 +1227,9 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 producer,
                 new Technology(facility),
-                false
+                false,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
 
             Assert.AreEqual(marked, proposal.CanSelect(context));
             proposal.Execute(context);
@@ -1231,7 +1238,7 @@ namespace Rebellion.Tests.AI.Proposals
                 .GetManufacturingQueue()[ManufacturingType.Building]
                 .Single();
             Assert.AreEqual(marked ? facility.TypeID : shield.TypeID, queued.GetTypeID());
-            Assert.IsFalse(queued.IsAIProductionFiller);
+            Assert.IsFalse(context.Assessment.IsOptionalProduction(queued));
             if (!marked)
             {
                 Assert.AreSame(shield, queued);
@@ -1242,7 +1249,13 @@ namespace Rebellion.Tests.AI.Proposals
         [Test]
         public void Execute_MatchingEmergencyDefense_PreservesProgressAndProtectsOrder()
         {
-            var (game, faction, producer, destination, shield) = CreateDefenseFillerScene(true);
+            var (game, faction, producer, destination, shield, priorities) =
+                CreateDefenseFillerScene(true);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
                     "urgent",
@@ -1255,9 +1268,9 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 producer,
                 new Technology(shield),
-                false
+                false,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
 
             proposal.Execute(context);
 
@@ -1266,15 +1279,20 @@ namespace Rebellion.Tests.AI.Proposals
                 producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
             );
             Assert.AreEqual(3, shield.ManufacturingProgress);
-            Assert.IsFalse(shield.IsAIProductionFiller);
+            Assert.IsFalse(context.Assessment.IsOptionalProduction(shield));
         }
 
         [TestCase(true)]
         [TestCase(false)]
         public void Execute_DefenseDemand_MarksOnlyRoutineProductionAsFiller(bool emergency)
         {
-            var (game, faction, producer, destination, shield) = CreateDefenseFillerScene(false);
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            var (game, faction, producer, destination, shield, priorities) =
+                CreateDefenseFillerScene(false);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
             Assert.IsTrue(context.Manufacturing.CancelManufacturing(shield, faction.InstanceID));
             destination.EnergyCapacity = 3;
             AIManufactureProposal proposal = new AIManufactureProposal(
@@ -1289,7 +1307,8 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 producer,
                 new Technology(shield),
-                false
+                false,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
 
             proposal.Execute(context);
@@ -1298,13 +1317,16 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Building
             ];
             Assert.AreEqual(emergency ? 2 : 1, queue.Count);
-            Assert.IsTrue(queue.All(item => item.IsAIProductionFiller == !emergency));
+            Assert.IsTrue(
+                queue.All(item => context.Assessment.IsOptionalProduction(item) == !emergency)
+            );
         }
 
         [Test]
         public void CanSelect_RoutineDefenseWithExistingOrder_LeavesProductionUnchanged()
         {
-            var (game, faction, producer, destination, shield) = CreateDefenseFillerScene(true);
+            var (game, faction, producer, destination, shield, priorities) =
+                CreateDefenseFillerScene(true);
             destination.EnergyCapacity = 3;
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -1312,6 +1334,11 @@ namespace Rebellion.Tests.AI.Proposals
                 "second-yard",
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
@@ -1324,10 +1351,19 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 producer,
                 new Technology(shield),
-                false
+                false,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
 
-            Assert.IsFalse(proposal.CanSelect(AITestSceneBuilder.CreateContext(game, faction)));
+            Assert.IsFalse(
+                proposal.CanSelect(
+                    AITestSceneBuilder.CreateContext(
+                        game,
+                        faction,
+                        optionalProductionOrders: priorities
+                    )
+                )
+            );
             Assert.AreSame(
                 shield,
                 producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
@@ -1338,8 +1374,14 @@ namespace Rebellion.Tests.AI.Proposals
         [Test]
         public void CanSelect_CompletedMarkedDefense_DoesNotOfferReplacement()
         {
-            var (game, faction, producer, destination, shield) = CreateDefenseFillerScene(true);
+            var (game, faction, producer, destination, shield, priorities) =
+                CreateDefenseFillerScene(true);
             shield.ManufacturingStatus = ManufacturingStatus.Complete;
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                optionalProductionOrders: priorities
+            );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
                     "required",
@@ -1357,10 +1399,19 @@ namespace Rebellion.Tests.AI.Proposals
                         ManufacturingType.Troop
                     )
                 ),
-                false
+                false,
+                getInterruptibleOrder: context.Assessment.GetInterruptibleManufacturingOrder
             );
 
-            Assert.IsFalse(proposal.CanSelect(AITestSceneBuilder.CreateContext(game, faction)));
+            Assert.IsFalse(
+                proposal.CanSelect(
+                    AITestSceneBuilder.CreateContext(
+                        game,
+                        faction,
+                        optionalProductionOrders: priorities
+                    )
+                )
+            );
             Assert.AreSame(shield, destination.GetChildren<Building>().Single());
         }
 
@@ -1368,10 +1419,15 @@ namespace Rebellion.Tests.AI.Proposals
         /// Creates a producer occupied by an unfinished planetary defense order.
         /// </summary>
         /// <param name="marked">Whether the unfinished order is interruptible AI filler.</param>
-        /// <returns>The game, faction, producer, destination, and unfinished defense.</returns>
-        private static (GameRoot, Faction, Planet, Planet, Building) CreateDefenseFillerScene(
-            bool marked
-        )
+        /// <returns>The game, faction, producer, destination, unfinished defense, and session priorities.</returns>
+        private static (
+            GameRoot,
+            Faction,
+            Planet,
+            Planet,
+            Building,
+            HashSet<string>
+        ) CreateDefenseFillerScene(bool marked)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
@@ -1405,9 +1461,11 @@ namespace Rebellion.Tests.AI.Proposals
             shield.OwnerInstanceID = faction.InstanceID;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             Assert.IsTrue(context.Manufacturing.Enqueue(producer, shield, destination));
-            shield.IsAIProductionFiller = marked;
+            HashSet<string> priorities = new();
+            if (marked)
+                priorities.Add(shield.InstanceID);
             shield.ManufacturingProgress = 3;
-            return (game, faction, producer, destination, shield);
+            return (game, faction, producer, destination, shield, priorities);
         }
 
         /// <summary>

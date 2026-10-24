@@ -45,11 +45,6 @@ namespace Rebellion.Game.Units
         public ManufacturingStatus ManufacturingStatus { get; set; }
 
         /// <summary>
-        /// Gets or sets whether this unfinished order was started using spare AI capacity.
-        /// </summary>
-        public bool IsAIProductionFiller { get; set; }
-
-        /// <summary>
         /// Returns the construction cost of the manufacturable.
         /// </summary>
         /// <returns>The construction cost of the manufacturable.</returns>

@@ -642,10 +642,9 @@ namespace Rebellion.Tests.AI.Phases
             selected.Single().Execute(context);
 
             Assert.IsTrue(
-                planet
-                    .GetManufacturingQueue()[ManufacturingType.Building]
-                    .Single()
-                    .IsAIProductionFiller
+                context.Assessment.IsOptionalProduction(
+                    planet.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                )
             );
         }
 
