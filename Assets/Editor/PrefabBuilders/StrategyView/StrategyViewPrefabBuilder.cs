@@ -573,7 +573,7 @@ public static class StrategyViewPrefabBuilder
         );
         SetSourceRect(
             icon.rectTransform,
-            0,
+            layout.IconOffsetX,
             Mathf.Max(0, (layout.ItemHeight - layout.IconHeight) / 2),
             layout.IconWidth,
             layout.IconHeight
