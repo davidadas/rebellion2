@@ -106,58 +106,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
-        [TestCase(UserFrameGenerationMode.Off)]
-        [TestCase(UserFrameGenerationMode.On)]
-        public void StepFullScreen_ExclusiveMode_PreservesFrameGenerationPreference(
-            UserFrameGenerationMode preference
-        )
-        {
-            GameObject graphicsOwner = new GameObject("Options Graphics Test Owner");
-            GraphicsManager graphicsManager = new GraphicsManager(
-                graphicsOwner.transform,
-                () => true,
-                _ => { }
-            );
-            OptionsSettingsSession session = new OptionsSettingsSession(
-                _userSettings,
-                _displayManager,
-                _audioManager,
-                _inputManager,
-                graphicsManager
-            );
-            try
-            {
-                session.Begin();
-                session.Video.FullScreenMode = (int)FullScreenMode.FullScreenWindow;
-                session.Video.FrameGenerationMode = (int)preference;
-
-                session.StepFullScreen(-1);
-
-                Assert.AreEqual(
-                    (int)FullScreenMode.ExclusiveFullScreen,
-                    session.Video.FullScreenMode
-                );
-                Assert.AreEqual("Fullscreen", session.FullScreenLabel);
-                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
-                OptionsGraphicsValue exclusiveValue = session.GetGraphicsValues()[
-                    UserGraphicsSetting.FrameGeneration
-                ];
-                Assert.IsFalse(exclusiveValue.Available);
-                Assert.AreEqual("Off (Fullscreen)", exclusiveValue.Label);
-
-                session.StepFullScreen(1);
-
-                Assert.AreEqual((int)FullScreenMode.FullScreenWindow, session.Video.FullScreenMode);
-                Assert.AreEqual("Borderless", session.FullScreenLabel);
-                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
-            }
-            finally
-            {
-                graphicsManager.Dispose();
-                UnityEngine.Object.DestroyImmediate(graphicsOwner);
-            }
-        }
-
         /// <summary>
         /// Verifies returning a graphics setting to its snapshot clears the dirty state.
         /// </summary>
@@ -254,8 +202,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsFalse(values[UserGraphicsSetting.RayTracing].Available);
             Assert.AreEqual("Unavailable", values[UserGraphicsSetting.RayTracing].Label);
-            Assert.IsFalse(values[UserGraphicsSetting.FrameGeneration].Available);
-            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.FrameGeneration].Label);
             Assert.IsFalse(values[UserGraphicsSetting.HdrOutput].Available);
             Assert.AreEqual("Unavailable", values[UserGraphicsSetting.HdrOutput].Label);
             Assert.IsTrue(values[UserGraphicsSetting.Bloom].Available);

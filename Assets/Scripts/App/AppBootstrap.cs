@@ -191,8 +191,6 @@ public sealed class AppBootstrap : MonoBehaviour
 
         _displayManager = new DisplayManager();
         _graphicsManager = new GraphicsManager(transform);
-        _cutsceneManager.PlaybackStarting += _graphicsManager.PauseFrameGenerationPresentation;
-        _cutsceneManager.PlaybackFinished += _graphicsManager.ResumeFrameGenerationPresentation;
         _userSettingsManager = new UserSettingsManager(
             audioManager,
             _displayManager,
@@ -202,8 +200,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _userSettingsManager.Load();
         FrameRateMonitor.EnsureExists(
             transform,
-            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true,
-            () => _graphicsManager?.PresentationFrameMultiplier ?? 1u
+            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
         );
         _runtime = new GameRuntime(
             _contentPack,
@@ -408,11 +405,6 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void ReleaseRuntimeServices()
     {
-        if (_cutsceneManager != null && _graphicsManager != null)
-        {
-            _cutsceneManager.PlaybackStarting -= _graphicsManager.PauseFrameGenerationPresentation;
-            _cutsceneManager.PlaybackFinished -= _graphicsManager.ResumeFrameGenerationPresentation;
-        }
         _graphicsManager?.Dispose();
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();

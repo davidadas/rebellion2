@@ -52,14 +52,6 @@
       Condition="'$(HighDefinitionRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
       >Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
     >
-    <TndFrameGenerationHintPath
-      Condition="Exists('$(UnityManagedAssembliesPath)/TND.FrameGen.Runtime.Core.dll')"
-      >$(UnityManagedAssembliesPath)/TND.FrameGen.Runtime.Core.dll</TndFrameGenerationHintPath
-    >
-    <TndFrameGenerationHintPath
-      Condition="'$(TndFrameGenerationHintPath)' == '' And Exists('Library/ScriptAssemblies/TND.FrameGen.Runtime.Core.dll')"
-      >Library/ScriptAssemblies/TND.FrameGen.Runtime.Core.dll</TndFrameGenerationHintPath
-    >
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -177,10 +169,6 @@
       Condition="'$(HighDefinitionRenderPipelineHintPath)' != ''"
     >
       <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="TND.FrameGen.Runtime.Core" Condition="'$(TndFrameGenerationHintPath)' != ''">
-      <HintPath>$(TndFrameGenerationHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="glTFast" Condition="Exists('Library/ScriptAssemblies/glTFast.dll')">
