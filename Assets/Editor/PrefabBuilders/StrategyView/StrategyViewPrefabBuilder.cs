@@ -5252,6 +5252,17 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(detailLineTemplate.rectTransform, 0, 0, 382, 15);
         detailLineTemplate.gameObject.SetActive(false);
 
+        RawImage missionContinueImage = CreateRawButton(
+            "MissionContinueButton",
+            detailPanelTransform
+        );
+        SetSourceRect(missionContinueImage.rectTransform, 355, 244, 51, 35);
+        Button missionContinueButton = CreateButton(missionContinueImage);
+
+        RawImage missionAbortImage = CreateRawButton("MissionAbortButton", detailPanelTransform);
+        SetSourceRect(missionAbortImage.rectTransform, 355, 281, 51, 35);
+        Button missionAbortButton = CreateButton(missionAbortImage);
+
         Transform[] detailLayerOrder =
         {
             detailBacking.transform,
@@ -5260,6 +5271,8 @@ public static class StrategyViewPrefabBuilder
             detailStrip.transform,
             detailBody.transform,
             detailLinesScrollArea.transform,
+            missionContinueImage.transform,
+            missionAbortImage.transform,
             detailIcon.transform,
             detailHeader.transform,
             detailNext.transform,
@@ -5373,6 +5386,20 @@ public static class StrategyViewPrefabBuilder
         AssignReference(detailPanel, "previousButton", detailPreviousButton);
         AssignReference(detailPanel, "linesScrollArea", detailLinesScrollArea);
         AssignReference(detailPanel, "lineTextTemplate", detailLineTemplate);
+        AssignReference(detailPanel, "missionContinueButtonImage", missionContinueImage);
+        AssignReference(
+            detailPanel,
+            "missionContinueButtonPressVisual",
+            missionContinueImage.GetComponent<RawImagePressVisual>()
+        );
+        AssignReference(detailPanel, "missionContinueButton", missionContinueButton);
+        AssignReference(detailPanel, "missionAbortButtonImage", missionAbortImage);
+        AssignReference(
+            detailPanel,
+            "missionAbortButtonPressVisual",
+            missionAbortImage.GetComponent<RawImagePressVisual>()
+        );
+        AssignReference(detailPanel, "missionAbortButton", missionAbortButton);
         AssignInt(detailPanel, "linesContentPadding", 4);
 
         AssignVector2Int(rowTemplate, "normalIconOffset", new Vector2Int(-1, -1));
@@ -5442,6 +5469,28 @@ public static class StrategyViewPrefabBuilder
             detailPanel,
             "nextButtonDisabledTexture",
             LoadStrategyViewTexture("ui_strategyview_messages_window_next_button_disabled")
+        );
+        AssignReference(
+            detailPanel,
+            "missionContinueButtonUpTexture",
+            LoadStrategyViewTexture("ui_strategyview_messages_window_mission_continue_button_up")
+        );
+        AssignReference(
+            detailPanel,
+            "missionContinueButtonDownTexture",
+            LoadStrategyViewTexture(
+                "ui_strategyview_messages_window_mission_continue_button_pressed"
+            )
+        );
+        AssignReference(
+            detailPanel,
+            "missionAbortButtonUpTexture",
+            LoadStrategyViewTexture("ui_strategyview_messages_window_mission_abort_button_up")
+        );
+        AssignReference(
+            detailPanel,
+            "missionAbortButtonDownTexture",
+            LoadStrategyViewTexture("ui_strategyview_messages_window_mission_abort_button_pressed")
         );
         GameObject saved = SaveGeneratedPrefabAsset(window, _messagesWindowPrefabPath);
         Object.DestroyImmediate(window);

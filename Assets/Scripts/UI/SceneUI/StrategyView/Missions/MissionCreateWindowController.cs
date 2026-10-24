@@ -570,7 +570,11 @@ public sealed class MissionCreateWindowController
                 .GetService<MissionQueries>()
                 .GetAvailableMissionOptions(context)
         )
+        {
             choices.Add(new StrategyMissionChoice(option));
+            if (option.CanRepeat)
+                choices.Add(new StrategyMissionChoice(option, isRepeating: true));
+        }
 
         return choices;
     }
@@ -819,6 +823,7 @@ internal sealed class MissionCreateWindowSession
             Location = planet,
             SelectedTarget = target,
             Discipline = choice.Discipline,
+            IsRepeating = choice.IsRepeating,
             MainParticipants = agents.ToList(),
             DecoyParticipants = decoys.ToList(),
         };

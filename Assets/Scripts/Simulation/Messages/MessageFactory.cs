@@ -73,6 +73,7 @@ namespace Rebellion.Simulation
             message.NavigationSecondaryTargetInstanceID =
                 content.NavigationSecondaryTargetInstanceID;
             message.MissionInstanceID = content.MissionInstanceID;
+            message.MissionContinuationPending = content.MissionContinuationPending;
             return message;
         }
 
@@ -361,7 +362,10 @@ namespace Rebellion.Simulation
             );
 
             if (message != null && result.CanContinue)
+            {
                 message.Message.MissionInstanceID = result.MissionInstanceID;
+                message.Message.MissionContinuationPending = true;
+            }
 
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)

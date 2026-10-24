@@ -700,6 +700,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryAbortMission_WorkingPlayerMission_AbortsWithoutSourceWindow()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            DiplomacyMission mission = CreateWorkingMission("mission", _officer);
+
+            bool aborted = _controller.TryAbortMission(mission.InstanceID);
+
+            Assert.IsTrue(aborted);
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(origin, _officer.GetParent());
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryAbortMission_MissingMission_ReturnsFalseWithoutCallbacks()
+        {
+            bool aborted = _controller.TryAbortMission("missing");
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(0, _rebuildCount);
+            Assert.AreEqual(0, _dirtyCount);
+        }
+
+        [Test]
         public void OpenMissionAbortConfirmWindow_MissionStartsWaitingBeforeConfirmation_PreservesCompleteSelection()
         {
             Planet origin = _specialForces.GetParentOfType<Planet>();

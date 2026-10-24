@@ -31,6 +31,11 @@ namespace Rebellion.Game.Missions
         public MissionTargetKind TargetKind { get; }
 
         /// <summary>
+        /// Whether the picker offers a repeat variant for this single-attempt mission.
+        /// </summary>
+        public bool CanRepeat { get; }
+
+        /// <summary>
         /// Creates a selectable mission option.
         /// </summary>
         /// <param name="missionTypeID">The mission type ID used to start the mission.</param>
@@ -39,13 +44,15 @@ namespace Rebellion.Game.Missions
         /// <param name="targetKind">The kind of target accepted by the mission.</param>
         /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
         /// <param name="discipline">The research discipline used by research options.</param>
+        /// <param name="canRepeat">Whether to offer a repeat variant in the picker.</param>
         public MissionOption(
             string missionTypeID,
             string displayName,
             SkillRating participantRating,
             MissionTargetKind targetKind,
             SkillRating decoyParticipantRating = SkillRating.None,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            bool canRepeat = false
         )
         {
             if (string.IsNullOrEmpty(missionTypeID))
@@ -57,6 +64,7 @@ namespace Rebellion.Game.Missions
             TargetKind = targetKind;
             DecoyParticipantRating = decoyParticipantRating;
             Discipline = discipline;
+            CanRepeat = canRepeat;
         }
     }
 
@@ -161,7 +169,8 @@ namespace Rebellion.Game.Missions
                 "Espionage",
                 SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
         };
 
@@ -222,7 +231,11 @@ namespace Rebellion.Game.Missions
                 candidate.MissionTypeID == context.MissionTypeID
                 && candidate.Discipline == context.Discipline
             );
-            if (option == null || !AcceptsTarget(context, option.TargetKind))
+            if (
+                option == null
+                || !AcceptsTarget(context, option.TargetKind)
+                || (context.IsRepeating && !option.CanRepeat)
+            )
                 return false;
 
             MissionContext resolvedContext = new MissionContext
@@ -235,6 +248,7 @@ namespace Rebellion.Game.Missions
                 MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
                 DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
                 Discipline = context.Discipline,
+                IsRepeating = context.IsRepeating,
             };
 
             if (resolvedContext.MainParticipants.Count == 0)
