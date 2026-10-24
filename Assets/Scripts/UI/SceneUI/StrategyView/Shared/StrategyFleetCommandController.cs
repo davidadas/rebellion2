@@ -45,7 +45,7 @@ public sealed class StrategyFleetCommandController
             && !string.IsNullOrEmpty(playerFactionId)
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && fleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
+            && fleetSystem.CreateFleet(ships, playerFactionId) != null;
     }
 
     /// <summary>

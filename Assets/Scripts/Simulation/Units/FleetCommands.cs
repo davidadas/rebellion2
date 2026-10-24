@@ -55,10 +55,7 @@ namespace Rebellion.Simulation
         /// <param name="capitalShips">The capital ships or their snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to form the fleet.</param>
         /// <returns>The attached fleet, or null when the selection is invalid.</returns>
-        public Fleet CreateFromCapitalShips(
-            IReadOnlyList<CapitalShip> capitalShips,
-            string ownerInstanceId
-        )
+        public Fleet CreateFleet(IReadOnlyList<CapitalShip> capitalShips, string ownerInstanceId)
         {
             if (
                 capitalShips == null

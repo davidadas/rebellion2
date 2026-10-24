@@ -72,13 +72,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_PartialSourceSelection_PreservesSourceFleet()
+        public void CreateFleet_PartialSourceSelection_PreservesSourceFleet()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip selectedShip);
             CapitalShip remainingShip = CreateShip("remaining");
             _game.AttachNode(remainingShip, sourceFleet);
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
+            Fleet createdFleet = _fleetSystem.CreateFleet(
                 new List<CapitalShip> { selectedShip },
                 _ownerId
             );
@@ -93,14 +93,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_CompleteSourceSelection_RemovesSourceFleet()
+        public void CreateFleet_CompleteSourceSelection_RemovesSourceFleet()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
-                new List<CapitalShip> { ship },
-                _ownerId
-            );
+            Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);
 
             Assert.IsNotNull(createdFleet);
             Assert.AreSame(createdFleet, ship.GetParent());
@@ -112,17 +109,14 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_OwnedShip_PreservesOwnershipAndMaintenance()
+        public void CreateFleet_OwnedShip_PreservesOwnershipAndMaintenance()
         {
             CreateFleet("source", out CapitalShip ship);
             ship.MaintenanceCost = 17;
             Faction faction = _game.GetFactionByOwnerInstanceID(_ownerId);
             Assert.AreEqual(17, faction.GetTotalMaintenanceCost());
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
-                new List<CapitalShip> { ship },
-                _ownerId
-            );
+            Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);
 
             Assert.IsNotNull(createdFleet);
             CollectionAssert.Contains(faction.GetOwnedUnitsByType<CapitalShip>(), ship);
@@ -130,12 +124,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_SnapshotSelection_UsesLiveShip()
+        public void CreateFleet_SnapshotSelection_UsesLiveShip()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
             CapitalShip snapshot = new CapitalShip { InstanceID = ship.InstanceID };
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
+            Fleet createdFleet = _fleetSystem.CreateFleet(
                 new List<CapitalShip> { snapshot },
                 _ownerId
             );
@@ -147,14 +141,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_UnauthorizedOwner_PreservesSourceGraph()
+        public void CreateFleet_UnauthorizedOwner_PreservesSourceGraph()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
-                new List<CapitalShip> { ship },
-                "other"
-            );
+            Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, "other");
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
@@ -162,15 +153,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_CompletedShipInTransit_PreservesSourceGraph()
+        public void CreateFleet_CompletedShipInTransit_PreservesSourceGraph()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
             sourceFleet.Movement = new MovementState();
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
-                new List<CapitalShip> { ship },
-                _ownerId
-            );
+            Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);
 
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
@@ -178,16 +166,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateFromCapitalShips_ShipUnderConstruction_ChangesDeliveryFleet()
+        public void CreateFleet_ShipUnderConstruction_ChangesDeliveryFleet()
         {
             Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
             sourceFleet.Movement = new MovementState();
             ship.ManufacturingStatus = ManufacturingStatus.Building;
 
-            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
-                new List<CapitalShip> { ship },
-                _ownerId
-            );
+            Fleet createdFleet = _fleetSystem.CreateFleet(new List<CapitalShip> { ship }, _ownerId);
 
             Assert.IsNotNull(createdFleet);
             Assert.AreSame(createdFleet, ship.GetParent());
