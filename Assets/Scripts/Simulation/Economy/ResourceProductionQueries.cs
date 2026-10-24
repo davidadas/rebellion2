@@ -319,7 +319,11 @@ namespace Rebellion.Simulation
         )
         {
             List<Building> facilities = new List<Building>();
-            foreach (Planet planet in faction.GetOwnedColonizedPlanets())
+            foreach (
+                Planet planet in faction
+                    .GetOwnedColonizedPlanets()
+                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
             {
                 if (planet.IsResourceProductionSuspended())
                     continue;
@@ -358,7 +362,11 @@ namespace Rebellion.Simulation
         )
         {
             List<Building> facilities = new List<Building>();
-            foreach (Planet planet in faction.GetOwnedColonizedPlanets())
+            foreach (
+                Planet planet in faction
+                    .GetOwnedColonizedPlanets()
+                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
             {
                 if (planet.IsResourceProductionSuspended())
                     continue;
