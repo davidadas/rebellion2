@@ -15,6 +15,16 @@ using Rebellion.Util.Random;
 namespace Rebellion.AI
 {
     /// <summary>
+    /// Describes how the AI intends to use an available special-forces unit this turn.
+    /// </summary>
+    public enum SpecialForcesIntent
+    {
+        PrimaryAgent,
+        Decoy,
+        Reserve,
+    }
+
+    /// <summary>
     /// Shared state for one faction AI turn.
     /// </summary>
     public sealed class AITurnContext
