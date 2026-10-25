@@ -244,6 +244,24 @@ public sealed class GameRuntime
     }
 
     /// <summary>
+    /// Replaces the active graph with an authoritative multiplayer snapshot while preserving the
+    /// scene's stable session and presentation subscriptions.
+    /// </summary>
+    /// <param name="game">The validated authoritative game state.</param>
+    internal void ReplaceMultiplayerGame(GameRoot game)
+    {
+        if (_activeGameSession == null)
+            throw new InvalidOperationException("No active game can receive a multiplayer state.");
+
+        ValidateGameContent(game);
+        ReconcileStaticContent(game);
+        _activeGameSession.ReplaceGame(game);
+        _gameManager.Reset();
+        GameReplaced?.Invoke(_activeGameSession.Game);
+        _activeGameSession.Tick.ReconcileLoadedState();
+    }
+
+    /// <summary>
     /// Verifies that a game was created by the active pack, version, and scenario.
     /// </summary>
     /// <param name="game">The game whose content identity is being validated.</param>

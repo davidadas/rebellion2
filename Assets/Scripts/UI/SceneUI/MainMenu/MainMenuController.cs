@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
 using UnityEngine;
 
 /// <summary>
@@ -37,6 +38,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private bool optionsDirty;
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
+    private MultiplayerCoordinator _multiplayerCoordinator;
+    private MultiplayerMenuOverlay _multiplayerOverlay;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -55,6 +58,12 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
+        _multiplayerCoordinator = MultiplayerCoordinator.EnsureExists();
+        _multiplayerCoordinator.Disconnect();
+        _multiplayerOverlay = GetComponent<MultiplayerMenuOverlay>();
+        if (_multiplayerOverlay == null)
+            _multiplayerOverlay = gameObject.AddComponent<MultiplayerMenuOverlay>();
+        _multiplayerOverlay.Initialize(_multiplayerCoordinator);
 
         if (view == null)
             return;
@@ -89,6 +98,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.CreditsRequested += ShowCredits;
         view.NewGameSettingsRequested += OpenNewGameSettings;
         view.AudioCueRequested += PlayAudioCue;
+        _multiplayerCoordinator.LaunchRequested += HandleMultiplayerLaunchRequested;
     }
 
     /// <summary>
@@ -159,6 +169,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.CreditsRequested -= ShowCredits;
         view.NewGameSettingsRequested -= OpenNewGameSettings;
         view.AudioCueRequested -= PlayAudioCue;
+        if (_multiplayerCoordinator != null)
+            _multiplayerCoordinator.LaunchRequested -= HandleMultiplayerLaunchRequested;
 
         if (_appInputController != null)
         {
@@ -256,6 +268,16 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private void HandleStartGameRequested(string factionId)
     {
         SelectFaction(factionId);
+        StartGame();
+    }
+
+    /// <summary>
+    /// Applies negotiated multiplayer settings and enters the strategy scene.
+    /// </summary>
+    /// <param name="configuration">The synchronized launch configuration.</param>
+    private void HandleMultiplayerLaunchRequested(MultiplayerLaunchConfiguration configuration)
+    {
+        GameLaunchContext.PrepareMultiplayer(configuration);
         StartGame();
     }
 
@@ -557,7 +579,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     {
         GameLaunchContext.IsLoadGame = false;
         GameLaunchContext.SaveFileName = null;
-        GameLaunchContext.PlayIntroCutscene = true;
+        GameLaunchContext.PlayIntroCutscene = !GameLaunchContext.IsMultiplayer;
 
         // Start a new game session.
         AppBootstrap.Instance.GetRuntime()?.EndGame();

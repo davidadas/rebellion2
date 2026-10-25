@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
+using Rebellion.Multiplayer;
 using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using UnityEngine;
@@ -139,6 +140,12 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
+        if (MultiplayerCoordinator.Instance?.ShouldAdvanceLocalTicks() == false)
+        {
+            DisposeActiveTick();
+            return;
+        }
+
         if (activeTick != null)
         {
             AdvanceActiveTick();
@@ -205,6 +212,8 @@ public sealed class GameFlowController : MonoBehaviour
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
         GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
         game = builder.Build();
+        if (GameLaunchContext.IsMultiplayer)
+            MultiplayerCoordinator.EnsureExists().ConfigureGame(game);
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
@@ -293,6 +302,8 @@ public sealed class GameFlowController : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
         GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
+        if (GameLaunchContext.IsMultiplayer)
+            MultiplayerCoordinator.EnsureExists().AttachGame(runtime);
         ApplyGameLaunchSpeed(
             runtime.GetActiveGameManager(),
             bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
@@ -642,6 +653,7 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         bootstrap.GetRuntime()?.EndGame();
+        MultiplayerCoordinator.Instance?.Disconnect();
         bootstrap.LoadScene("MainMenu");
     }
 }

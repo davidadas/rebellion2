@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
 using Rebellion.Util.Reflection;
 
 /// <summary>
@@ -20,6 +21,16 @@ public static class GameLaunchContext
     public static bool PlayIntroCutscene { get; set; }
 
     /// <summary>
+    /// Gets whether the pending strategy launch belongs to a negotiated multiplayer session.
+    /// </summary>
+    public static bool IsMultiplayer { get; private set; }
+
+    /// <summary>
+    /// Gets the faction presented and controlled on this machine.
+    /// </summary>
+    public static string LocalPlayerFactionID { get; private set; }
+
+    /// <summary>
     /// Configures the next strategy-scene launch to restore a save.
     /// </summary>
     /// <param name="fileName">The save identifier to restore.</param>
@@ -31,6 +42,8 @@ public static class GameLaunchContext
         SaveFileName = fileName;
         IsLoadGame = true;
         PlayIntroCutscene = false;
+        IsMultiplayer = false;
+        LocalPlayerFactionID = null;
     }
 
     /// <summary>
@@ -43,6 +56,8 @@ public static class GameLaunchContext
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;
+        IsMultiplayer = false;
+        LocalPlayerFactionID = null;
     }
 
     /// <summary>
@@ -55,6 +70,25 @@ public static class GameLaunchContext
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;
+        IsMultiplayer = false;
+        LocalPlayerFactionID = null;
+    }
+
+    /// <summary>
+    /// Configures the next strategy launch from an agreed multiplayer handshake.
+    /// </summary>
+    /// <param name="configuration">The negotiated game and local faction settings.</param>
+    public static void PrepareMultiplayer(MultiplayerLaunchConfiguration configuration)
+    {
+        if (configuration == null)
+            throw new ArgumentNullException(nameof(configuration));
+
+        Summary = configuration.Summary.GetDeepCopy();
+        SaveFileName = null;
+        IsLoadGame = false;
+        PlayIntroCutscene = false;
+        IsMultiplayer = true;
+        LocalPlayerFactionID = configuration.LocalFactionID;
     }
 
     /// <summary>

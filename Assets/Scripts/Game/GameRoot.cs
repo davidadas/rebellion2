@@ -59,6 +59,13 @@ namespace Rebellion.Game
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
 
+        /// <summary>
+        /// Gets or sets the faction presented as local on this machine. This runtime-only value is
+        /// intentionally excluded from shared saves and network snapshots.
+        /// </summary>
+        [PersistableIgnore]
+        public string LocalPlayerFactionID { get; set; }
+
         // Random generators.
         [PersistableIgnore]
         private IRandomNumberProvider _random;
@@ -351,9 +358,11 @@ namespace Rebellion.Game
         /// </exception>
         public Faction GetPlayerFaction()
         {
-            string factionInstanceID = _players
-                .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
-                ?.FactionID;
+            string factionInstanceID = !string.IsNullOrWhiteSpace(LocalPlayerFactionID)
+                ? LocalPlayerFactionID
+                : _players
+                    .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+                    ?.FactionID;
             if (string.IsNullOrEmpty(factionInstanceID))
                 throw new InvalidOperationException("No human player faction is configured.");
 
