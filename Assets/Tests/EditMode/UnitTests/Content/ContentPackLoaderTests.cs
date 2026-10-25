@@ -128,6 +128,30 @@ namespace Rebellion.Tests.Content
             CollectionAssert.Contains(han.Traits, smuggler.ID);
         }
 
+        [Test]
+        public void OpenActive_HardAiStartingTerritory_LoadsSymmetricFactionOverrides()
+        {
+            FactionBucketConfig[] factionBuckets =
+                TestContent.Pack.GameData.GenerationConfig.GalaxyClassification.FactionBuckets.ToArray();
+            FactionBucketOverride allianceOverride = factionBuckets
+                .Single(bucket => bucket.FactionID == "FNALL1")
+                .Overrides.Single(candidate =>
+                    candidate.Difficulty == GameDifficulty.Hard
+                    && candidate.ControllerType == PlayerControllerType.AI
+                );
+            FactionBucketOverride empireOverride = factionBuckets
+                .Single(bucket => bucket.FactionID == "FNEMP1")
+                .Overrides.Single(candidate =>
+                    candidate.Difficulty == GameDifficulty.Hard
+                    && candidate.ControllerType == PlayerControllerType.AI
+                );
+
+            Assert.AreEqual(25, allianceOverride.StrongPct);
+            Assert.AreEqual(0, allianceOverride.WeakPct);
+            Assert.AreEqual(empireOverride.StrongPct, allianceOverride.StrongPct);
+            Assert.AreEqual(empireOverride.WeakPct, allianceOverride.WeakPct);
+        }
+
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]
