@@ -96,6 +96,85 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Assesses mission eligibility after a team has finished arriving at a common departure planet.
+        /// </summary>
+        /// <param name="context">The observed objective and live participant identities.</param>
+        /// <param name="departure">The owned planet receiving the team.</param>
+        /// <param name="mission">Receives an unstarted mission containing detached participant projections.</param>
+        /// <returns>True when all participants are present or already traveling to the departure planet.</returns>
+        internal bool TryCreateMissionAfterArrival(
+            MissionContext context,
+            Planet departure,
+            out Mission mission
+        )
+        {
+            mission = null;
+            MissionContext resolved = ResolveMissionContext(context);
+            if (resolved == null || departure?.GetOwnerInstanceID() != resolved.OwnerInstanceId)
+                return false;
+            Dictionary<IMissionParticipant, IMissionParticipant> projections = new();
+            foreach (
+                IMissionParticipant participant in resolved.MainParticipants.Concat(
+                    resolved.DecoyParticipants
+                )
+            )
+            {
+                if (
+                    participant.GetParent() is not Planet origin
+                    || origin.InstanceID != departure.InstanceID
+                    || participant.IsOnMission()
+                    || participant is not BaseSceneNode node
+                )
+                    return false;
+                IMissionParticipant projection = (IMissionParticipant)node.CreateCopy();
+                projection.SetParent(departure);
+                projection.Movement = null;
+                projections[participant] = projection;
+            }
+            resolved.MainParticipants = resolved.MainParticipants.ConvertAll(participant =>
+                projections[participant]
+            );
+            resolved.DecoyParticipants = resolved.DecoyParticipants.ConvertAll(participant =>
+                projections[participant]
+            );
+            return _missionFactory.TryCreateMission(resolved, out mission);
+        }
+
+        /// <summary>
+        /// Estimates mission odds after currently inbound personnel have reached their departure planet.
+        /// </summary>
+        /// <param name="context">The objective and participant roles to assess.</param>
+        /// <param name="departure">The team's current or recorded destination planet.</param>
+        /// <param name="observedDetectorSource">Supplies observed encounter defenders.</param>
+        /// <param name="includePersonnelLoss">Whether to calculate personnel-loss risk.</param>
+        /// <param name="minimumOverallProbability">The required success floor.</param>
+        /// <returns>The projected odds, or null when the team cannot assemble at that planet.</returns>
+        internal MissionOdds GetMissionOddsAfterArrival(
+            MissionContext context,
+            Planet departure,
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                ISceneNode,
+                IReadOnlyList<ISceneNode>
+            > observedDetectorSource,
+            bool includePersonnelLoss,
+            double minimumOverallProbability = 0
+        )
+        {
+            return TryCreateMissionAfterArrival(context, departure, out Mission mission)
+                ? GetMissionOddsCore(
+                    context,
+                    observedDetectorSource,
+                    includePersonnelLoss,
+                    minimumOverallProbability,
+                    projectedMission: mission
+                )
+                : null;
+        }
+
+        /// <summary>
         /// Returns the mission options available for the supplied context.
         /// </summary>
         /// <param name="context">The mission context to resolve and evaluate.</param>
@@ -270,6 +349,7 @@ namespace Rebellion.Simulation
         /// <param name="context">The fixed primary team and complete candidate-decoy pool.</param>
         /// <param name="observedDetectorSource">The observed encounter defenders.</param>
         /// <param name="minimumOverallProbability">The floor below which evaluation may stop.</param>
+        /// <param name="departure">Optional assembly planet for personnel already traveling there.</param>
         /// <returns>The optimistic success percentage, or null when even that bound misses the floor.</returns>
         internal double? GetMissionSuccessUpperBound(
             MissionContext context,
@@ -280,15 +360,25 @@ namespace Rebellion.Simulation
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
-            double minimumOverallProbability
-        ) =>
-            GetMissionOddsCore(
+            double minimumOverallProbability,
+            Planet departure = null
+        )
+        {
+            Mission projectedMission = null;
+            if (
+                departure != null
+                && !TryCreateMissionAfterArrival(context, departure, out projectedMission)
+            )
+                return null;
+            return GetMissionOddsCore(
                 context,
                 observedDetectorSource,
                 false,
                 minimumOverallProbability,
-                true
+                true,
+                projectedMission: projectedMission
             )?.OverallSuccessProbability;
+        }
 
         /// <summary>
         /// Calculates objective and encounter odds without mutating the mission or its participants.
@@ -303,6 +393,7 @@ namespace Rebellion.Simulation
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded query.</param>
         /// <param name="reusableDecoys">Whether to calculate an optimistic bound rather than actual odds.</param>
         /// <param name="evaluationState">Optional turn-scoped objective assessment.</param>
+        /// <param name="projectedMission">Optional validated mission using detached arrival-time personnel projections.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionContext context,
@@ -316,7 +407,8 @@ namespace Rebellion.Simulation
             bool includePersonnelLoss,
             double minimumOverallProbability = 0,
             bool reusableDecoys = false,
-            Mission.MissionEvaluationState evaluationState = null
+            Mission.MissionEvaluationState evaluationState = null,
+            Mission projectedMission = null
         )
         {
             var previousLookups = _probabilityLookups;
@@ -327,7 +419,8 @@ namespace Rebellion.Simulation
             _commanders = new();
             try
             {
-                if (!TryCreateMission(context, out Mission mission))
+                Mission mission = projectedMission;
+                if (mission == null && !TryCreateMission(context, out mission))
                     return null;
 
                 double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(

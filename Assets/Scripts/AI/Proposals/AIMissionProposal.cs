@@ -5,6 +5,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
@@ -181,6 +182,64 @@ namespace Rebellion.AI.Proposals
         internal void SetOperationalOdds(MissionOdds odds)
         {
             OperationalOdds = odds;
+        }
+
+        /// <summary>
+        /// Estimates outbound and grouped return travel for this complete mission team.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The time until every participant could finish its return journey.</returns>
+        internal long EstimateTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            long outbound = Participants.Max(participant =>
+            {
+                Planet origin = departure ?? participant.GetParentOfType<Planet>();
+                return origin.InstanceID == TargetPlanet.InstanceID
+                    ? 0
+                    : context.MovementQueries.CalculateTransitTicks(
+                        participant,
+                        origin,
+                        TargetPlanet
+                    );
+            });
+            return outbound + EstimateReturnTravelTicks(context, departure);
+        }
+
+        /// <summary>
+        /// Estimates grouped travel from the mission planet back to the team's departure containers.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The time until every surviving participant could return.</returns>
+        internal long EstimateReturnTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            int returning = 0;
+            foreach (
+                IGrouping<string, IMissionParticipant> group in Participants.GroupBy(participant =>
+                    departure?.InstanceID ?? participant.GetParent()?.InstanceID
+                )
+            )
+            {
+                int percent = MovementQueries.GetPersonnelGroupTravelTimePercent(
+                    group.Cast<IMovable>().ToArray()
+                );
+                foreach (IMissionParticipant participant in group)
+                {
+                    Planet destination = departure ?? participant.GetParentOfType<Planet>();
+                    if (destination.InstanceID != TargetPlanet.InstanceID)
+                        returning = System.Math.Max(
+                            returning,
+                            context.MovementQueries.CalculateTransitTicks(
+                                participant,
+                                TargetPlanet,
+                                destination,
+                                percent
+                            )
+                        );
+                }
+            }
+            return returning;
         }
 
         /// <summary>

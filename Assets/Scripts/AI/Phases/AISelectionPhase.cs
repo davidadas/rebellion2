@@ -55,6 +55,29 @@ namespace Rebellion.AI.Phases
                 if (!HasSelectableScore(proposal, minimumSelectableScore))
                     continue;
 
+                if (proposal is AIMissionProposal missionProposal)
+                {
+                    if (
+                        !missionSelector.TryResolve(
+                            context,
+                            missionProposal,
+                            out var resolvedMission
+                        )
+                    )
+                        continue;
+                    if (!ReferenceEquals(resolvedMission, proposal))
+                    {
+                        pending.AddLast(resolvedMission);
+                        pending = new LinkedList<AIProposal>(
+                            productionSelector.OrderInfrastructureProduction(
+                                context,
+                                GetSortedProposals(context, pending, false)
+                            )
+                        );
+                        continue;
+                    }
+                }
+
                 AIProposal selectedProposal = proposal;
                 if (proposal is AIMaintenanceRecoveryProposal recovery)
                 {
@@ -95,7 +118,10 @@ namespace Rebellion.AI.Phases
                         ? !productionSelector.TrySelect(context, removalProposal)
                     : selectedProposal is AIHeadquartersRelocationProposal relocationProposal
                         ? !productionSelector.TrySelect(context, relocationProposal)
-                    : selectedProposal is AIMissionProposal or AIAbortMissionProposal
+                    : selectedProposal
+                        is AIMissionProposal
+                            or AIAbortMissionProposal
+                            or AIMissionStagingProposal
                         ? !missionSelector.TrySelect(context, selectedProposal)
                     : IsFleetDomainProposal(selectedProposal)
                         ? !fleetSelector.TrySelect(context, selectedProposal)
@@ -130,13 +156,22 @@ namespace Rebellion.AI.Phases
                         productionSelector.OrderInfrastructureProduction(context, pending)
                     );
                 if (
-                    selectedProposal is AIManufactureProposal
-                    {
-                        DistributesDemand: true,
-                        Demand: { Kind: AIProductionDemandKind.FleetCapitalShip }
-                    }
+                    proposal is AIManufactureProposal fleetRequest
+                    && productionSelector.TryCreateNextFleetProposal(
+                        context,
+                        fleetRequest,
+                        out AIManufactureProposal next
+                    )
                 )
-                    pending.AddFirst(proposal);
+                {
+                    pending.AddLast(next);
+                    pending = new LinkedList<AIProposal>(
+                        productionSelector.OrderInfrastructureProduction(
+                            context,
+                            GetSortedProposals(context, pending, false)
+                        )
+                    );
+                }
             }
 
             return selectedProposals;

@@ -29,6 +29,80 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
+        /// Assembles a hostile mission's protection before its personnel can be reserved.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The scored mission opportunity.</param>
+        /// <param name="resolved">The complete team to score and consider for selection.</param>
+        /// <returns>True when the mission has an available, executable team.</returns>
+        internal bool TryResolve(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            out AIMissionProposal resolved
+        )
+        {
+            resolved = proposal;
+            if (
+                proposal.IsTeamFinal
+                || !context.Assessment.IsEnemyPlanet(proposal.TargetPlanet)
+                || proposal.Participant is not (Officer or SpecialForces)
+            )
+                return true;
+
+            if (!_state.CanReserve(GetReservations(proposal)) || !proposal.CanExecute(context))
+                return false;
+
+            bool officerLed = proposal.Participant is Officer;
+            List<IMissionParticipant> candidates = context
+                .Assessment.AvailableMissionParticipants.Where(participant =>
+                    !proposal.Participants.Contains(participant)
+                    && (
+                        officerLed
+                            ? IsAvailableDecoy(context, participant)
+                            : participant is SpecialForces
+                    )
+                    && (
+                        participant is not SpecialForces
+                        || participant.CanPerformMission(proposal.MissionTypeID)
+                    )
+                    && _state.CanReserve(GetParticipantReservations(new[] { participant }))
+                )
+                .ToList();
+            Dictionary<IMissionParticipant, Planet> origins = candidates.ToDictionary(
+                participant => participant,
+                participant => participant.GetParentOfType<Planet>()
+            );
+            List<IMissionParticipant> decoys = proposal.DecoyParticipants.ToList();
+            int maximumDecoys = officerLed ? _maximumDecoysPerMission : 1;
+            while (decoys.Count < maximumDecoys)
+            {
+                IMissionParticipant decoy = SelectDecoy(proposal, candidates, origins);
+                if (decoy == null)
+                    break;
+                decoys.Add(decoy);
+                candidates.Remove(decoy);
+            }
+            if (decoys.Count == 0 && (!officerLed || ExceedsUnprotectedFoilRisk(context, proposal)))
+                return false;
+
+            resolved = new AIMissionProposal(
+                proposal.MainParticipants,
+                proposal.MissionTypeID,
+                proposal.TargetPlanet,
+                proposal.SelectedTarget,
+                proposal.TargetOfficer,
+                proposal.Discipline,
+                decoys,
+                teamIsFinal: true
+            );
+            if (!resolved.CanExecute(context))
+                return false;
+
+            resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
+            return true;
+        }
+
+        /// <summary>
         /// Checks fixed officer teams before reserving mission resources.
         /// </summary>
         /// <param name="context">Current AI turn context.</param>
@@ -117,6 +191,15 @@ namespace Rebellion.AI.Selectors
         private static List<AISelectionReservation> GetReservations(AIProposal proposal)
         {
             List<AISelectionReservation> reservations = new();
+            if (proposal is AIMissionStagingProposal staging)
+            {
+                reservations.AddRange(
+                    GetParticipantReservations(
+                        staging.IsWaiting ? staging.Participants : staging.Mission.Participants
+                    )
+                );
+                return reservations;
+            }
             if (proposal is AIAbortMissionProposal abort)
             {
                 Add(reservations, AISelectionReservationKind.Mission, abort.Mission?.InstanceID);
@@ -126,8 +209,7 @@ namespace Rebellion.AI.Selectors
             if (proposal is not AIMissionProposal mission)
                 return reservations;
 
-            foreach (IMissionParticipant participant in mission.Participants)
-                Add(reservations, AISelectionReservationKind.MissionActor, participant.InstanceID);
+            reservations.AddRange(GetParticipantReservations(mission.Participants));
 
             if (mission.MissionTypeID == MissionTypeIDs.Recruitment)
                 Add(
@@ -177,278 +259,86 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Assigns distinct decoys by priority.
+        /// Identifies the actor and movement resources needed by mission personnel.
         /// </summary>
-        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participants">The personnel used by a mission or preparation action.</param>
+        /// <returns>The reservations that prevent competing assignments of those personnel.</returns>
+        private static IEnumerable<AISelectionReservation> GetParticipantReservations(
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (string.IsNullOrEmpty(participant?.InstanceID))
+                    continue;
+                yield return new AISelectionReservation(
+                    AISelectionReservationKind.MissionActor,
+                    participant.InstanceID
+                );
+                yield return new AISelectionReservation(
+                    AISelectionReservationKind.UnitTransfer,
+                    participant.InstanceID
+                );
+            }
+        }
+
+        /// <summary>
+        /// Validates selected teams with the same assignment rules and marks unused decoys.
+        /// </summary>
+        /// <param name="context">The faction turn containing the selected proposals.</param>
         internal void FinalizeSelection(AITurnContext context)
         {
             if (context?.SelectedProposals == null || context.Assessment == null)
                 return;
 
             List<AIProposal> selected = context.SelectedProposals.ToList();
+            IMissionParticipant[] otherAssignments = selected
+                .OfType<AIMissionStagingProposal>()
+                .SelectMany(proposal =>
+                    proposal.IsWaiting ? proposal.Participants : proposal.Mission.Participants
+                )
+                .Concat(
+                    selected.OfType<AIOfficerCommandProposal>().Select(proposal => proposal.Officer)
+                )
+                .Concat(
+                    selected
+                        .OfType<AIMaintenanceRecoveryProposal>()
+                        .SelectMany(proposal => proposal.SelectedUnits)
+                        .Select(candidate => candidate.Unit)
+                        .OfType<IMissionParticipant>()
+                )
+                .Concat(
+                    selected
+                        .OfType<AITransferUnitProposal>()
+                        .Select(proposal => proposal.Unit)
+                        .OfType<IMissionParticipant>()
+                )
+                .ToArray();
+            _state.Reserve(GetParticipantReservations(otherAssignments));
+            for (int index = 0; index < selected.Count; index++)
+            {
+                if (selected[index] is not AIMissionProposal mission)
+                    continue;
+                selected[index] =
+                    TryResolve(context, mission, out AIMissionProposal resolved)
+                    && TrySelect(context, resolved)
+                        ? resolved
+                        : null;
+            }
             HashSet<IMissionParticipant> claimedParticipants = selected
                 .OfType<AIMissionProposal>()
                 .SelectMany(proposal => proposal.Participants)
+                .Concat(otherAssignments)
                 .ToHashSet();
-            claimedParticipants.UnionWith(
-                selected.OfType<AIOfficerCommandProposal>().Select(proposal => proposal.Officer)
-            );
-            claimedParticipants.UnionWith(
-                selected
-                    .OfType<AIMaintenanceRecoveryProposal>()
-                    .SelectMany(proposal => proposal.SelectedUnits)
-                    .Select(candidate => candidate.Unit)
-                    .OfType<IMissionParticipant>()
-            );
-            List<IMissionParticipant> decoys = context
-                .Assessment.AvailableMissionParticipants.Where(participant =>
-                    !claimedParticipants.Contains(participant)
-                    && IsAvailableDecoy(context, participant)
-                )
-                .ToList();
-            Dictionary<IMissionParticipant, Planet> origins = decoys.ToDictionary(
-                participant => participant,
-                participant => participant.GetParentOfType<Planet>()
-            );
-            Dictionary<AIMissionProposal, int> selectedIndexes = selected
-                .Select((proposal, index) => (Proposal: proposal as AIMissionProposal, index))
-                .Where(entry => entry.Proposal != null)
-                .ToDictionary(entry => entry.Proposal, entry => entry.index);
-
-            List<AIMissionProposal> orderedMissions = selected
-                .OfType<AIMissionProposal>()
-                .Where(proposal => IsOfficerLedHostileMission(context, proposal))
-                .OrderByDescending(proposal => GetUnprotectedFoilRisk(context, proposal))
-                .ThenByDescending(proposal => proposal.Score)
-                .ThenBy(proposal => proposal.GetSortKey(), StringComparer.Ordinal)
-                .ToList();
-            List<AIMissionProposal> unprotectedRiskyMissions = new List<AIMissionProposal>();
-            foreach (AIMissionProposal mission in orderedMissions)
-            {
-                IMissionParticipant decoy = SelectDecoy(mission, decoys, origins);
-                if (decoy == null)
-                {
-                    if (ExceedsUnprotectedFoilRisk(context, mission))
-                        unprotectedRiskyMissions.Add(mission);
-                    continue;
-                }
-
-                selected[selectedIndexes[mission]] = mission.WithAdditionalDecoy(decoy);
-                decoys.Remove(decoy);
-            }
-
-            PairRiskyOfficerMissions(selected, selectedIndexes, unprotectedRiskyMissions);
-            AssignAdditionalDecoys(
-                context,
-                selected,
-                orderedMissions,
-                selectedIndexes,
-                decoys,
-                origins
-            );
-            RemoveUnsafeOfficerMissions(context, selected);
-            PairSpecialForcesMissions(context, selected);
-
-            foreach (SpecialForces unusedDecoy in decoys.OfType<SpecialForces>())
-            {
+            foreach (
+                SpecialForces unit in context.Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
+            )
                 if (
-                    !selected
-                        .OfType<AIMissionProposal>()
-                        .Any(mission => mission.Participants.Contains(unusedDecoy))
+                    context.GetSpecialForcesIntent(unit) == SpecialForcesIntent.Decoy
+                    && !claimedParticipants.Contains(unit)
                 )
-                    context.SetSpecialForcesIntent(unusedDecoy, SpecialForcesIntent.Reserve);
-            }
+                    context.SetSpecialForcesIntent(unit, SpecialForcesIntent.Reserve);
             context.SetSelectedProposals(selected);
-        }
-
-        /// <summary>
-        /// Pairs hostile special-forces missions with compatible unclaimed units or lower-priority
-        /// mission leaders, leaving unmatched teams available for a later turn.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="selected">The selected proposals after officer protection.</param>
-        private static void PairSpecialForcesMissions(
-            AITurnContext context,
-            IList<AIProposal> selected
-        )
-        {
-            List<AIMissionProposal> missions = selected
-                .OfType<AIMissionProposal>()
-                .Where(mission =>
-                    mission.Participant is SpecialForces
-                    && !mission.IsTeamFinal
-                    && mission.DecoyParticipants.Count == 0
-                    && context.Assessment.IsEnemyPlanet(mission.TargetPlanet)
-                )
-                .OrderByDescending(mission => GetUnprotectedFoilRisk(context, mission))
-                .ThenByDescending(mission => mission.Score)
-                .ThenBy(mission => mission.GetSortKey(), StringComparer.Ordinal)
-                .ToList();
-            if (missions.Count == 0)
-                return;
-
-            Dictionary<AIMissionProposal, int> indexes = selected
-                .Select((proposal, index) => (Mission: proposal as AIMissionProposal, Index: index))
-                .Where(entry => entry.Mission != null)
-                .ToDictionary(entry => entry.Mission, entry => entry.Index);
-            HashSet<IMissionParticipant> claimed = selected
-                .OfType<AIMissionProposal>()
-                .SelectMany(mission => mission.Participants)
-                .ToHashSet();
-            List<IMissionParticipant> available = context
-                .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
-                .Cast<IMissionParticipant>()
-                .ToList();
-            Dictionary<IMissionParticipant, Planet> origins = available.ToDictionary(
-                participant => participant,
-                participant => participant.GetParentOfType<Planet>()
-            );
-            List<IMissionParticipant> unclaimed = available
-                .Where(participant => !claimed.Contains(participant))
-                .ToList();
-
-            for (int index = 0; index < missions.Count; index++)
-            {
-                AIMissionProposal mission = missions[index];
-                if (selected[indexes[mission]] == null)
-                    continue;
-
-                IMissionParticipant partner = SelectDecoy(mission, unclaimed, origins);
-                if (partner == null)
-                {
-                    List<AIMissionProposal> partners = missions
-                        .Skip(index + 1)
-                        .Where(candidate => selected[indexes[candidate]] != null)
-                        .ToList();
-                    partner = SelectDecoy(
-                        mission,
-                        partners.Select(candidate => candidate.Participant),
-                        origins
-                    );
-                    if (partner != null)
-                        selected[
-                            indexes[partners.Single(candidate => candidate.Participant == partner)]
-                        ] = null;
-                }
-
-                selected[indexes[mission]] =
-                    partner == null ? null : mission.WithAdditionalDecoy(partner);
-                if (partner != null)
-                    unclaimed.Remove(partner);
-            }
-        }
-
-        /// <summary>
-        /// Assigns a second decoy after every eligible selected mission has had an opportunity to
-        /// receive its first.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="selected">The selected proposals being finalized.</param>
-        /// <param name="orderedMissions">Hostile officer missions in protection priority order.</param>
-        /// <param name="selectedIndexes">Selected indexes keyed by original mission proposal.</param>
-        /// <param name="decoys">Unclaimed decoys remaining after first-pass assignment.</param>
-        /// <param name="origins">Cached origin planets for available decoys.</param>
-        private static void AssignAdditionalDecoys(
-            AITurnContext context,
-            IList<AIProposal> selected,
-            IReadOnlyList<AIMissionProposal> orderedMissions,
-            IReadOnlyDictionary<AIMissionProposal, int> selectedIndexes,
-            IList<IMissionParticipant> decoys,
-            IReadOnlyDictionary<IMissionParticipant, Planet> origins
-        )
-        {
-            foreach (AIMissionProposal originalMission in orderedMissions)
-            {
-                int selectedIndex = selectedIndexes[originalMission];
-                if (
-                    selected[selectedIndex] is not AIMissionProposal mission
-                    || !CanAssignAdditionalDecoy(context, mission)
-                )
-                    continue;
-
-                IMissionParticipant decoy = SelectDecoy(mission, decoys, origins);
-                if (decoy == null)
-                    continue;
-
-                selected[selectedIndex] = mission.WithAdditionalDecoy(decoy);
-                decoys.Remove(decoy);
-            }
-        }
-
-        /// <summary>
-        /// Returns whether a hostile officer mission can accept another decoy.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal to inspect.</param>
-        /// <returns>True when the mission has room for another decoy.</returns>
-        private static bool CanAssignAdditionalDecoy(
-            AITurnContext context,
-            AIMissionProposal proposal
-        )
-        {
-            return proposal.DecoyParticipants.Count > 0
-                && proposal.DecoyParticipants.Count < _maximumDecoysPerMission
-                && proposal.Participant is Officer
-                && context.Assessment.IsEnemyPlanet(proposal.TargetPlanet);
-        }
-
-        /// <summary>
-        /// Removes officer missions whose finalized participant team exceeds the loss limit.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="selected">The selected proposals after decoy assignment.</param>
-        private static void RemoveUnsafeOfficerMissions(
-            AITurnContext context,
-            IList<AIProposal> selected
-        )
-        {
-            for (int index = 0; index < selected.Count; index++)
-            {
-                if (
-                    selected[index] is not AIMissionProposal mission
-                    || mission.IsTeamFinal
-                    || !mission.Participants.OfType<Officer>().Any()
-                )
-                    continue;
-
-                MissionOdds odds = context.Assessment.GetMissionOdds(
-                    context.MissionQueries,
-                    mission.CreateContext()
-                );
-                double? personnelLossProbability = odds?.PersonnelLossProbability;
-                if (
-                    personnelLossProbability
-                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
-                )
-                    selected[index] = null;
-            }
-        }
-
-        /// <summary>
-        /// Combines risky officer missions into protected two-officer teams.
-        /// </summary>
-        /// <param name="selected">The selected proposal collection.</param>
-        /// <param name="selectedIndexes">Selected indexes keyed by mission proposal.</param>
-        /// <param name="missions">Risky missions ordered from highest to lowest priority.</param>
-        private static void PairRiskyOfficerMissions(
-            IList<AIProposal> selected,
-            IReadOnlyDictionary<AIMissionProposal, int> selectedIndexes,
-            IReadOnlyList<AIMissionProposal> missions
-        )
-        {
-            int index = 0;
-            for (; index + 1 < missions.Count; index += 2)
-            {
-                AIMissionProposal protectedMission = missions[index];
-                AIMissionProposal decoyMission = missions[index + 1];
-                selected[selectedIndexes[protectedMission]] = protectedMission.WithAdditionalDecoy(
-                    decoyMission.Participant
-                );
-                selected[selectedIndexes[decoyMission]] = null;
-            }
-
-            if (index < missions.Count)
-                selected[selectedIndexes[missions[index]]] = null;
         }
 
         /// <summary>
@@ -462,23 +352,6 @@ namespace Rebellion.AI.Selectors
             return participant is Officer
                 || participant is SpecialForces specialForces
                     && context.GetSpecialForcesIntent(specialForces) == SpecialForcesIntent.Decoy;
-        }
-
-        /// <summary>
-        /// Returns whether a selected mission sends an officer into opposing territory.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal to inspect.</param>
-        /// <returns>True when the mission is eligible for an optional decoy.</returns>
-        private static bool IsOfficerLedHostileMission(
-            AITurnContext context,
-            AIMissionProposal proposal
-        )
-        {
-            return !proposal.IsTeamFinal
-                && proposal.DecoyParticipants.Count == 0
-                && proposal.Participant is Officer
-                && context.Assessment.IsEnemyPlanet(proposal.TargetPlanet);
         }
 
         /// <summary>

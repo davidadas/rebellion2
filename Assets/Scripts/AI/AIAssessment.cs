@@ -18,6 +18,12 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIAssessment
     {
+        private const PlanetIntelligenceCategory _missionDefenseIntelligence =
+            PlanetIntelligenceCategory.CapitalShips
+            | PlanetIntelligenceCategory.Starfighters
+            | PlanetIntelligenceCategory.GroundForces
+            | PlanetIntelligenceCategory.Officers;
+
         private readonly Dictionary<
             (string Planet, int Ticks),
             (int Combat, int CapitalFirepower, int FighterFirepower, int Fighters)
@@ -87,10 +93,23 @@ namespace Rebellion.AI
                 Rebellion.Game.Research.ResearchDiscipline? Discipline,
                 string MainParticipants,
                 string Decoys,
-                bool OperationalOnly
+                bool OperationalOnly,
+                Planet Departure
             ),
             MissionOdds
         > _missionOdds = new();
+        private readonly Dictionary<
+            (
+                string Owner,
+                ISceneNode Location,
+                string TargetOwner,
+                string MainParticipants,
+                string DecoyParticipants,
+                bool OperationalOnly,
+                Planet Departure
+            ),
+            (double Foil, double PersonnelLoss)
+        > _sabotageBuildingRisks = new();
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -748,6 +767,16 @@ namespace Rebellion.AI
                             _game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks
                         )
                 );
+        }
+
+        /// <summary>
+        /// Returns whether the faction knows all military categories needed to assess mission defenders.
+        /// </summary>
+        /// <param name="planet">The planet whose observed defenders are required.</param>
+        /// <returns>True when capital ships, fighters, ground forces, and officers have been observed.</returns>
+        public bool HasMissionDefenseIntelligence(Planet planet)
+        {
+            return HasPlanetIntelligence(planet, _missionDefenseIntelligence);
         }
 
         /// <summary>
@@ -1445,6 +1474,32 @@ namespace Rebellion.AI
         ) => GetCachedMissionOdds(queries, context, true);
 
         /// <summary>
+        /// Evaluates an assembling team with the same defense uncertainty as an immediate mission.
+        /// </summary>
+        /// <param name="queries">The shared mission calculations.</param>
+        /// <param name="context">The complete planned participant roles.</param>
+        /// <param name="departure">The planet receiving the inbound personnel.</param>
+        /// <param name="operationalOnly">Whether to omit detailed personnel-loss odds.</param>
+        /// <param name="minimumOverallProbability">The success floor below which evaluation may stop.</param>
+        /// <returns>The adjusted arrival-time estimate, or null when the team cannot assemble.</returns>
+        internal MissionOdds GetMissionOddsAfterArrival(
+            MissionQueries queries,
+            MissionContext context,
+            Planet departure,
+            bool operationalOnly,
+            double minimumOverallProbability = 0
+        )
+        {
+            return GetCachedMissionOdds(
+                queries,
+                context,
+                operationalOnly,
+                minimumOverallProbability,
+                departure
+            );
+        }
+
+        /// <summary>
         /// Evaluates exact operational odds only while the required success floor is reachable.
         /// </summary>
         /// <param name="queries">The shared mission calculations.</param>
@@ -1469,17 +1524,20 @@ namespace Rebellion.AI
         /// <param name="queries">The shared mission probability calculations.</param>
         /// <param name="context">The fixed primary team and complete candidate-decoy pool.</param>
         /// <param name="minimumOverallProbability">The required adjusted success percentage.</param>
+        /// <param name="departure">Optional assembly planet for personnel already traveling there.</param>
         /// <returns>False only when the optimistic success bound misses the required floor.</returns>
         internal bool CanMeetOperationalMissionSuccess(
             MissionQueries queries,
             MissionContext context,
-            double minimumOverallProbability
+            double minimumOverallProbability,
+            Planet departure = null
         )
         {
             double? observed = queries.GetMissionSuccessUpperBound(
                 context,
                 GetMissionDetectors,
-                minimumOverallProbability
+                minimumOverallProbability,
+                departure
             );
             if (!observed.HasValue)
                 return false;
@@ -1494,7 +1552,8 @@ namespace Rebellion.AI
             double? baseline = queries.GetMissionSuccessUpperBound(
                 context,
                 GetMissionDefenseBaselineSource(context, target),
-                baselineFloor
+                baselineFloor,
+                departure
             );
             return baseline.HasValue
                 && Math.Min(
@@ -1510,42 +1569,87 @@ namespace Rebellion.AI
         /// <param name="context">The mission and exact participant roles being evaluated.</param>
         /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
+        /// <param name="departure">Optional common departure planet after current inbound travel completes.</param>
         /// <returns>The cached or newly calculated uncertainty-adjusted mission odds.</returns>
         private MissionOdds GetCachedMissionOdds(
             MissionQueries queries,
             MissionContext context,
             bool operationalOnly,
-            double minimumOverallProbability = 0
+            double minimumOverallProbability = 0,
+            Planet departure = null
         )
         {
             if (context == null)
                 return null;
             var key = (
-                context.MissionTypeID,
-                context.OwnerInstanceId,
-                context.Location,
-                context.SelectedTarget,
-                context.Discipline,
-                string.Join(
+                MissionType: context.MissionTypeID,
+                Owner: context.OwnerInstanceId,
+                Location: context.Location,
+                Target: context.SelectedTarget,
+                Discipline: context.Discipline,
+                MainParticipants: string.Join(
                     ",",
                     context.MainParticipants?.Select(participant => participant?.InstanceID)
                         ?? Enumerable.Empty<string>()
                 ),
-                string.Join(
+                DecoyParticipants: string.Join(
                     ",",
                     context.DecoyParticipants?.Select(participant => participant?.InstanceID)
                         ?? Enumerable.Empty<string>()
                 ),
-                operationalOnly
+                OperationalOnly: operationalOnly,
+                Departure: departure
             );
             if (!_missionOdds.TryGetValue(key, out MissionOdds odds))
             {
-                odds = GetMissionOddsCore(
-                    queries,
-                    context,
-                    operationalOnly,
-                    minimumOverallProbability
+                var riskKey = (
+                    key.Owner,
+                    key.Location,
+                    TargetOwner: context.SelectedTarget?.GetOwnerInstanceID(),
+                    key.MainParticipants,
+                    key.DecoyParticipants,
+                    key.OperationalOnly,
+                    key.Departure
                 );
+                bool sharesBuildingEncounters =
+                    context.MissionTypeID == MissionTypeIDs.Sabotage
+                    && context.SelectedTarget is Building building
+                    && building.GetParent() is Planet;
+                if (
+                    sharesBuildingEncounters
+                    && _sabotageBuildingRisks.TryGetValue(riskKey, out var risk)
+                )
+                {
+                    Mission mission;
+                    bool valid =
+                        departure == null
+                            ? queries.TryCreateMission(context, out mission)
+                            : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+                    if (!valid)
+                        return null;
+                    double objectiveProbability = mission.GetObjectiveSuccessProbability(
+                        mission.GetMainParticipants(),
+                        _game,
+                        context.Location as Planet,
+                        context.SelectedTarget
+                    );
+                    odds = new MissionOdds(objectiveProbability, risk.Foil, risk.PersonnelLoss);
+                }
+                else
+                {
+                    odds = GetMissionOddsCore(
+                        queries,
+                        context,
+                        operationalOnly,
+                        minimumOverallProbability,
+                        departure
+                    );
+                    if (sharesBuildingEncounters && odds != null)
+                        _sabotageBuildingRisks[riskKey] = (
+                            odds.FoilProbability,
+                            odds.PersonnelLossProbability
+                        );
+                }
                 if (odds != null || minimumOverallProbability <= 0)
                     _missionOdds.Add(key, odds);
             }
@@ -1559,16 +1663,26 @@ namespace Rebellion.AI
         /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
         /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
+        /// <param name="departure">Optional common departure planet after current inbound travel completes.</param>
         /// <returns>The adjusted mission odds, or null when the mission cannot be created.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionQueries queries,
             MissionContext context,
             bool operationalOnly,
-            double minimumOverallProbability = 0
+            double minimumOverallProbability = 0,
+            Planet departure = null
         )
         {
             MissionOdds observed;
-            if (operationalOnly)
+            if (departure != null)
+                observed = queries.GetMissionOddsAfterArrival(
+                    context,
+                    departure,
+                    GetMissionDetectors,
+                    !operationalOnly,
+                    minimumOverallProbability
+                );
+            else if (operationalOnly)
                 queries.TryGetOperationalMissionOdds(
                     context,
                     GetMissionDetectors,
@@ -1589,7 +1703,25 @@ namespace Rebellion.AI
                 return observed;
             var baselineSource = GetMissionDefenseBaselineSource(context, target);
             MissionOdds baseline;
-            if (operationalOnly)
+            if (departure != null)
+            {
+                baseline = queries.GetMissionOddsAfterArrival(
+                    context,
+                    departure,
+                    baselineSource,
+                    !operationalOnly,
+                    Math.Max(
+                        0,
+                        (
+                            minimumOverallProbability
+                            - (1 - weight) * observed.OverallSuccessProbability
+                        ) / weight
+                    )
+                );
+                if (baseline == null && minimumOverallProbability > 0)
+                    return null;
+            }
+            else if (operationalOnly)
             {
                 double baselineFloor = Math.Max(
                     0,
@@ -2839,6 +2971,34 @@ namespace Rebellion.AI
                 .ToHashSet(StringComparer.Ordinal);
 
             return _hostileSectorIds.Contains(sectorId);
+        }
+
+        /// <summary>
+        /// Returns whether destroying one enemy garrison regiment would destabilize the planet.
+        /// </summary>
+        /// <param name="planet">The hostile planet to inspect.</param>
+        /// <returns>True when one loss starts an uprising or transfers control to the AI faction.</returns>
+        public bool IsGarrisonSabotageCritical(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId) || ownerInstanceId == _faction?.InstanceID)
+                return false;
+
+            int activeGarrisonCount = GetActiveGarrisonCount(planet, ownerInstanceId);
+            if (activeGarrisonCount <= 0)
+                return false;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            int stabilityRequirement =
+                owner == null
+                    ? 0
+                    : UprisingQueries.CalculateGarrisonRequirement(
+                        planet,
+                        owner,
+                        _game.Config.AI.Garrison
+                    );
+            return activeGarrisonCount - 1 < stabilityRequirement
+                || activeGarrisonCount == 1 && HasFactionControlSupport(planet);
         }
 
         /// <summary>

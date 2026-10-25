@@ -1,9 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 
 namespace Rebellion.AI.Selectors
 {
@@ -188,75 +188,43 @@ namespace Rebellion.AI.Selectors
             CapitalShip hull
         )
         {
-            _fleetReinforcements.TryGetValue(
-                demand.DestinationFleet.InstanceID,
-                out List<CapitalShip> selected
-            );
-            selected ??= new();
-            if (
-                demand.RegimentCapacityDeficit > selected.Sum(ship => ship.RegimentCapacity)
-                    && hull.RegimentCapacity > 0
-                || demand.StarfighterCapacityDeficit
-                    > selected.Sum(ship => ship.StarfighterCapacity)
-                    && hull.StarfighterCapacity > 0
-                || demand.BombardmentDeficit > selected.Sum(ship => ship.Bombardment)
-                    && hull.Bombardment > 0
-                || demand.CapitalFirepowerDeficit
-                    > selected.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
-                    )
-                    && SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
-                        hull
-                    ) > 0
-                || demand.StarfighterFirepowerDeficit
-                    > selected.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
-                    )
-                    && SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
-                        hull
-                    ) > 0
-                || demand.CombatStrengthDeficit
-                    > selected.Sum(ship => GetHullCombatValue(context, demand, ship))
-                    && GetHullCombatValue(context, demand, hull) > 0
-                || demand.EscortDeficit
-                    > selected.Count(SpaceCombatStrengthCalculator.IsArmedEscort)
-                    && SpaceCombatStrengthCalculator.IsArmedEscort(hull)
-                || demand.InterdictionDeficit > selected.Count(ship => ship.HasGravityWell)
-                    && hull.HasGravityWell
-                || demand.PlanetDestroyerDeficit > selected.Count(ship => ship.CanDestroyPlanets)
-                    && hull.CanDestroyPlanets
-            )
-                return true;
-
-            bool hasCapabilityDeficit =
-                demand.RegimentCapacityDeficit > 0
-                || demand.StarfighterCapacityDeficit > 0
-                || demand.BombardmentDeficit > 0
-                || demand.CapitalFirepowerDeficit > 0
-                || demand.StarfighterFirepowerDeficit > 0
-                || demand.CombatStrengthDeficit > 0
-                || demand.EscortDeficit > 0
-                || demand.InterdictionDeficit > 0
-                || demand.PlanetDestroyerDeficit > 0;
-            return !hasCapabilityDeficit && selected.Count == 0;
+            AIProductionDemand remaining = GetRemainingFleetDemand(context, demand);
+            bool hasRequirements = demand
+                .GetCapitalShipRequirements(context.Assessment)
+                .Any(item => item.Deficit > 0);
+            return remaining
+                    .GetCapitalShipRequirements(context.Assessment)
+                    .Any(item => item.Deficit > 0 && item.Contribution(hull) > 0)
+                || !hasRequirements && GetCommittedFleetHulls(demand.DestinationFleet).Count == 0;
         }
 
         /// <summary>
-        /// Values a committed hull using the combat measure required by its receiving fleet.
+        /// Returns hulls accepted for a fleet during the current selection pass.
         /// </summary>
-        /// <param name="context">The faction combat assessment.</param>
-        /// <param name="demand">The receiving fleet's shortage.</param>
-        /// <param name="hull">The committed hull.</param>
-        /// <returns>The hull's contribution to the required combat measure.</returns>
-        private static int GetHullCombatValue(
+        /// <param name="fleet">The receiving fleet.</param>
+        /// <returns>Accepted manufacturing and transfer contributions.</returns>
+        internal IReadOnlyList<CapitalShip> GetCommittedFleetHulls(Fleet fleet)
+        {
+            return _fleetReinforcements.TryGetValue(fleet.InstanceID, out var hulls)
+                ? hulls
+                : Array.Empty<CapitalShip>();
+        }
+
+        /// <summary>
+        /// Removes accepted hull contributions from a fleet's measured requirements.
+        /// </summary>
+        /// <param name="context">The current combat measurements.</param>
+        /// <param name="demand">The original measured fleet request.</param>
+        /// <returns>The requirements still uncovered by this turn's assignments.</returns>
+        internal AIProductionDemand GetRemainingFleetDemand(
             AITurnContext context,
-            AIProductionDemand demand,
-            CapitalShip hull
+            AIProductionDemand demand
         )
         {
-            return demand.ReferencePlanet == null
-                ? context.Assessment.GetProjectedCapitalShipCombatValue(hull)
-                : context.Assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(hull);
+            return demand.WithoutCommittedShips(
+                context.Assessment,
+                GetCommittedFleetHulls(demand.DestinationFleet)
+            );
         }
     }
 }

@@ -308,6 +308,23 @@ namespace Rebellion.AI.Selectors
             out AIManufactureProposal selectedProposal
         )
         {
+            if (proposal.CapitalShipChoices.Count > 0)
+            {
+                AIProductionDemand remaining = _selectionState.GetRemainingFleetDemand(
+                    context,
+                    proposal.Demand
+                );
+                var requirement = remaining
+                    .GetCapitalShipRequirements(context.Assessment)
+                    .FirstOrDefault(item => item.Deficit > 0);
+                if (requirement.Contribution == null)
+                {
+                    selectedProposal = proposal;
+                    return false;
+                }
+                if (requirement.Contribution((CapitalShip)proposal.Product.GetReference()) <= 0)
+                    return TryCreateNextFleetProposal(context, proposal, out selectedProposal);
+            }
             int equivalentProducerCount = proposal.ManufacturingCount;
             if (TryResolveQuantity(context, proposal, out selectedProposal))
                 return true;
@@ -330,7 +347,90 @@ namespace Rebellion.AI.Selectors
                     equivalentProducerCount = selectedProposal.ManufacturingCount;
             }
 
+            if (
+                proposal.CapitalShipChoices.Count > 0
+                && TryCreateNextFleetProposal(context, proposal, out selectedProposal)
+            )
+                return true;
             selectedProposal = proposal;
+            return false;
+        }
+
+        /// <summary>
+        /// Chooses a fresh hull for uncovered fleet needs and ranks its remaining producer options.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="request">The original hull and producer catalogue.</param>
+        /// <param name="next">The next independently selected and scored production request.</param>
+        /// <returns>True when an available producer can fill an uncovered fleet capability.</returns>
+        internal bool TryCreateNextFleetProposal(
+            AITurnContext context,
+            AIManufactureProposal request,
+            out AIManufactureProposal next
+        )
+        {
+            next = null;
+            if (request.CapitalShipChoices.Count == 0)
+                return false;
+            AIProductionDemand remaining = _selectionState.GetRemainingFleetDemand(
+                context,
+                request.Demand
+            );
+            foreach (var requirement in remaining.GetCapitalShipRequirements(context.Assessment))
+            {
+                if (requirement.Deficit <= 0)
+                    continue;
+                List<AIManufactureProposal> eligible = new();
+                foreach (AIManufactureProposal choice in request.CapitalShipChoices)
+                {
+                    if (requirement.Contribution((CapitalShip)choice.Product.GetReference()) <= 0)
+                        continue;
+                    AIManufactureProposal[] producers = new[] { choice }
+                        .Concat(choice.ProducerAlternatives)
+                        .Where(candidate => CanSelect(context, candidate))
+                        .ToArray();
+                    if (producers.Length > 0)
+                        eligible.Add(
+                            new AIManufactureProposal(
+                                producers,
+                                capitalShipChoices: request.CapitalShipChoices
+                            )
+                        );
+                }
+                if (eligible.Count == 0)
+                    continue;
+                int preferredInterdiction = context
+                    .Game
+                    .Config
+                    .AI
+                    .Selection
+                    .PreferredInterdictionCountPerFleet;
+                int committedInterdiction = _selectionState
+                    .GetCommittedFleetHulls(request.Demand.DestinationFleet)
+                    .Count(hull => hull.HasGravityWell);
+                if (
+                    preferredInterdiction > 0
+                    && context.Assessment.GetProjectedFleetInterdictionCount(
+                        request.Demand.DestinationFleet
+                    ) + committedInterdiction
+                        >= preferredInterdiction
+                    && eligible.Any(choice =>
+                        !((CapitalShip)choice.Product.GetReference()).HasGravityWell
+                    )
+                )
+                    eligible.RemoveAll(choice =>
+                        ((CapitalShip)choice.Product.GetReference()).HasGravityWell
+                    );
+                next = eligible[context.Random.NextInt(0, eligible.Count)];
+                AIManufactureProposal scored = new(
+                    remaining,
+                    next.ProducerPlanet,
+                    next.Product,
+                    true
+                );
+                next.SetScore(_scorer.Score(context, scored));
+                return true;
+            }
             return false;
         }
 
@@ -394,7 +494,7 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Orders competing attack-fleet production within its existing global priority slots.
+        /// Orders competing fleet production by score, using fleet priority to break score ties.
         /// </summary>
         /// <param name="context">The faction turn containing ranked fleet needs.</param>
         /// <param name="proposals">Globally ranked proposals to order without moving other domains.</param>
@@ -419,7 +519,8 @@ namespace Rebellion.AI.Selectors
                 int[] slots = group.ToArray();
                 AIProposal[] ordered = slots
                     .Select(index => proposals[index])
-                    .OrderBy(proposal =>
+                    .OrderByDescending(proposal => proposal.Score)
+                    .ThenBy(proposal =>
                         ((AIManufactureProposal)proposal).Demand.DestinationFleet is Fleet fleet
                         && ranks.TryGetValue(fleet.InstanceID, out int rank)
                             ? rank

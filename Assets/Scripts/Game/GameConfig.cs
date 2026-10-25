@@ -216,6 +216,11 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
 
+            /// <summary>
+            /// Gets or sets optional travel-duration tuning for sabotage and espionage.
+            /// </summary>
+            public AIConsiderationConfig TravelTime { get; set; }
+
             public AIConsiderationConfig OfficerRisk { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig IntelAge { get; set; } = new AIConsiderationConfig();
@@ -276,6 +281,8 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig GarrisonStarfighter { get; set; } =
                 new AIConsiderationConfig();
+
+            public AIConsiderationConfig SpecialForces { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig OtherUnit { get; set; } = new AIConsiderationConfig();
         }

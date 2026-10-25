@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Demands
 {
@@ -43,6 +46,19 @@ namespace Rebellion.AI.Demands
 
         Bombardment,
 
+        Interdiction,
+    }
+
+    internal enum AIFleetCapability
+    {
+        RegimentCapacity,
+        Bombardment,
+        CapitalFirepower,
+        CombatStrength,
+        StarfighterFirepower,
+        Escort,
+        StarfighterCapacity,
+        PlanetDestroyer,
         Interdiction,
     }
 
@@ -244,6 +260,123 @@ namespace Rebellion.AI.Demands
                 CombatStrengthDeficit,
                 IsEmergencyDefense,
                 ExistingOrder
+            );
+        }
+
+        /// <summary>
+        /// Describes capital-ship contributions in the order unmet capabilities are filled.
+        /// </summary>
+        /// <param name="assessment">The current combat measurements.</param>
+        /// <returns>Capability deficits paired with their per-hull contributions.</returns>
+        internal IEnumerable<(
+            AIFleetCapability Capability,
+            int Deficit,
+            Func<CapitalShip, int> Contribution
+        )> GetCapitalShipRequirements(AIAssessment assessment)
+        {
+            yield return (
+                AIFleetCapability.RegimentCapacity,
+                RegimentCapacityDeficit,
+                ship => ship.RegimentCapacity
+            );
+            yield return (
+                AIFleetCapability.Bombardment,
+                BombardmentDeficit,
+                ship => ship.Bombardment
+            );
+            yield return (
+                AIFleetCapability.CapitalFirepower,
+                CapitalFirepowerDeficit,
+                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
+            );
+            yield return (
+                AIFleetCapability.CombatStrength,
+                CombatStrengthDeficit,
+                ReferencePlanet == null
+                    ? assessment.GetProjectedCapitalShipCombatValue
+                    : assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips
+            );
+            yield return (
+                AIFleetCapability.StarfighterFirepower,
+                StarfighterFirepowerDeficit,
+                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
+            );
+            yield return (
+                AIFleetCapability.Escort,
+                EscortDeficit,
+                ship => SpaceCombatStrengthCalculator.IsArmedEscort(ship) ? 1 : 0
+            );
+            yield return (
+                AIFleetCapability.StarfighterCapacity,
+                StarfighterCapacityDeficit,
+                ship => ship.StarfighterCapacity
+            );
+            yield return (
+                AIFleetCapability.PlanetDestroyer,
+                PlanetDestroyerDeficit,
+                ship => ship.CanDestroyPlanets ? 1 : 0
+            );
+            yield return (
+                AIFleetCapability.Interdiction,
+                InterdictionDeficit,
+                ship => ship.HasGravityWell ? 1 : 0
+            );
+        }
+
+        /// <summary>
+        /// Copies fleet requirements after accounting for hulls accepted during this selection pass.
+        /// </summary>
+        /// <param name="assessment">The current combat measurements.</param>
+        /// <param name="committed">Hulls already assigned to this fleet during selection.</param>
+        /// <returns>The remaining capability request, retaining its strategic identity.</returns>
+        internal AIProductionDemand WithoutCommittedShips(
+            AIAssessment assessment,
+            IReadOnlyList<CapitalShip> committed
+        )
+        {
+            if (committed.Count == 0)
+                return this;
+            var requirements = GetCapitalShipRequirements(assessment).ToArray();
+            Dictionary<AIFleetCapability, int> remaining = requirements.ToDictionary(
+                requirement => requirement.Capability,
+                requirement =>
+                    Math.Max(0, requirement.Deficit - committed.Sum(requirement.Contribution))
+            );
+            double unmet = requirements.Max(requirement =>
+                requirement.Deficit > 0
+                    ? remaining[requirement.Capability] / (double)requirement.Deficit
+                    : 0
+            );
+            return new AIProductionDemand(
+                Id,
+                Kind,
+                ManufacturingType,
+                BuildingType,
+                Destination,
+                QuantityNeeded,
+                ProductTypeId,
+                CapitalShipRole,
+                BuildingToReplace,
+                TargetCount,
+                BaseDemandPercent,
+                ReferencePlanet,
+                EstablishesInitialShield,
+                (int)Math.Ceiling(DeficitCount * unmet),
+                UsesIdleShipyardCapacity,
+                capitalFirepowerDeficit: remaining[AIFleetCapability.CapitalFirepower],
+                starfighterFirepowerDeficit: remaining[AIFleetCapability.StarfighterFirepower],
+                starfighterCapacityDeficit: remaining[AIFleetCapability.StarfighterCapacity],
+                regimentCapacityDeficit: remaining[AIFleetCapability.RegimentCapacity],
+                planetDestroyerDeficit: remaining[AIFleetCapability.PlanetDestroyer],
+                bombardmentDeficit: remaining[AIFleetCapability.Bombardment],
+                interdictionDeficit: remaining[AIFleetCapability.Interdiction],
+                embarkedRegimentDeficit: EmbarkedRegimentDeficit,
+                embarkedStarfighterDeficit: EmbarkedStarfighterDeficit,
+                escortDeficit: remaining[AIFleetCapability.Escort],
+                infrastructureHubIndex: InfrastructureHubIndex,
+                combatStrengthDeficit: remaining[AIFleetCapability.CombatStrength],
+                isEmergencyDefense: IsEmergencyDefense,
+                existingOrder: ExistingOrder
             );
         }
 

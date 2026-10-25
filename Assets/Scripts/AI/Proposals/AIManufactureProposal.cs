@@ -25,6 +25,9 @@ namespace Rebellion.AI.Proposals
 
         internal IReadOnlyList<AIManufactureProposal> ProducerAlternatives { get; }
 
+        internal IReadOnlyList<AIManufactureProposal> CapitalShipChoices { get; } =
+            Array.Empty<AIManufactureProposal>();
+
         internal bool CarriesReducedCountAcrossAlternatives { get; }
 
         public Technology Product { get; }
@@ -139,9 +142,11 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="candidates">Exact eligible manufacturing actions in preference order.</param>
         /// <param name="carriesReducedCountAcrossAlternatives">Whether each producer retains earlier quantity reductions.</param>
+        /// <param name="capitalShipChoices">Eligible hulls with their ranked producer alternatives.</param>
         internal AIManufactureProposal(
             IReadOnlyList<AIManufactureProposal> candidates,
-            bool carriesReducedCountAcrossAlternatives = false
+            bool carriesReducedCountAcrossAlternatives = false,
+            IReadOnlyList<AIManufactureProposal> capitalShipChoices = null
         )
         {
             AIManufactureProposal first = candidates?.FirstOrDefault();
@@ -153,6 +158,7 @@ namespace Rebellion.AI.Proposals
             ProducerAlternatives =
                 candidates?.Skip(1).ToArray() ?? Array.Empty<AIManufactureProposal>();
             CarriesReducedCountAcrossAlternatives = carriesReducedCountAcrossAlternatives;
+            CapitalShipChoices = capitalShipChoices ?? Array.Empty<AIManufactureProposal>();
         }
 
         /// <summary>

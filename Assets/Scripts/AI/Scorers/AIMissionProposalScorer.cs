@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 
 namespace Rebellion.AI.Scorers
 {
@@ -23,7 +21,10 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the proposal is a mission proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIMissionProposal or AIAbortMissionProposal;
+            return proposal
+                is AIMissionProposal
+                    or AIAbortMissionProposal
+                    or AIMissionStagingProposal;
         }
 
         /// <summary>
@@ -43,13 +44,26 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The mission proposal to score.</param>
         /// <param name="commitments">Diplomats and their selected destinations.</param>
+        /// <param name="includeTravelTime">Whether to discount sabotage and espionage by their complete mission cycle.</param>
+        /// <param name="travelTicks">Optional complete preparation and travel time for the team.</param>
         /// <returns>The current mission score.</returns>
         internal double Score(
             AITurnContext context,
             AIProposal proposal,
-            IReadOnlyDictionary<Officer, Planet> commitments
+            IReadOnlyDictionary<Officer, Planet> commitments,
+            bool includeTravelTime = true,
+            long? travelTicks = null
         )
         {
+            AIMissionStagingProposal staging = proposal as AIMissionStagingProposal;
+            if (staging != null)
+            {
+                if (!staging.TryGetTravelTicks(context, out _, out long stagedTicks))
+                    return 0;
+                travelTicks = stagedTicks;
+                proposal = staging.Mission;
+            }
+
             if (proposal is AIAbortMissionProposal)
                 return 0;
 
@@ -71,7 +85,9 @@ namespace Rebellion.AI.Scorers
                 return 0;
 
             bool isSabotage = missionProposal.MissionTypeID == MissionTypeIDs.Sabotage;
-            double successProbability = isSabotage
+            bool usesMissionTime =
+                isSabotage || missionProposal.MissionTypeID == MissionTypeIDs.Espionage;
+            double successProbability = usesMissionTime
                 ? odds.OverallSuccessProbability
                 : odds.ObjectiveSuccessProbability;
             if (
@@ -81,6 +97,11 @@ namespace Rebellion.AI.Scorers
                     || successProbability
                         < context.Game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent
                 )
+            )
+                return 0;
+            if (
+                isSabotage
+                && IsOvertakenByCommittedAttack(context, missionProposal, staging, travelTicks)
             )
                 return 0;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
@@ -98,16 +119,23 @@ namespace Rebellion.AI.Scorers
                 context,
                 missionProposal,
                 successProbability,
-                commitments
+                commitments,
+                odds.ObjectiveSuccessProbability
             );
-            AddMissionPriorityUtility(ref score, context, utility.Priority, missionProposal);
+            AddMissionPriorityUtility(
+                ref score,
+                context,
+                utility.Priority,
+                missionProposal,
+                odds.ObjectiveSuccessProbability
+            );
             score.AddCost(
                 AIUtility.Fulfillment(foilProbability, utility.Objective.FoilRisk),
                 utility.Objective.FoilRisk
             );
             score.AddCost(
                 AIUtility.Fulfillment(
-                    GetTravelCost(context, missionProposal),
+                    usesMissionTime ? 0 : GetTravelCost(context, missionProposal),
                     utility.Objective.TravelCost
                 ),
                 utility.Objective.TravelCost
@@ -116,6 +144,13 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
+            if (usesMissionTime && includeTravelTime)
+                AddMissionTimeCost(
+                    ref score,
+                    context,
+                    missionProposal,
+                    travelTicks ?? missionProposal.EstimateTravelTicks(context)
+                );
 
             double value =
                 missionProposal.MissionTypeID == MissionTypeIDs.Diplomacy
@@ -157,8 +192,13 @@ namespace Rebellion.AI.Scorers
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <param name="departure">Optional assembly planet for personnel already in transit.</param>
         /// <returns>An upper bound for the proposal score.</returns>
-        public double GetScoreUpperBound(AITurnContext context, AIMissionProposal proposal)
+        public double GetScoreUpperBound(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            Planet departure = null
+        )
         {
             if (context?.Faction == null || context.Game?.Config == null || proposal == null)
                 return 0;
@@ -174,7 +214,9 @@ namespace Rebellion.AI.Scorers
             score.AddCost(0, utility.Objective.FoilRisk);
             score.AddCost(
                 AIUtility.Fulfillment(
-                    GetTravelCost(context, proposal),
+                    proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage
+                        ? 0
+                        : GetTravelCost(context, proposal),
                     utility.Objective.TravelCost
                 ),
                 utility.Objective.TravelCost
@@ -183,6 +225,26 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
+            if (proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage)
+            {
+                IMissionParticipant leader = proposal.Participant;
+                Planet origin = departure ?? leader.GetParentOfType<Planet>();
+                long minimumTravel =
+                    origin?.InstanceID == proposal.TargetPlanet?.InstanceID ? 0
+                    : origin == null || proposal.TargetPlanet == null ? 0
+                    : context.MovementQueries.CalculateTransitTicks(
+                        leader,
+                        origin,
+                        proposal.TargetPlanet
+                    );
+                if (departure != null)
+                    minimumTravel += Math.Max(
+                        0,
+                        leader.GetTransitMovement()?.TicksRemaining() ?? 0
+                    );
+                AddMissionTimeCost(ref score, context, proposal, minimumTravel);
+                return score.RankValue;
+            }
             return proposal.MissionTypeID == MissionTypeIDs.Diplomacy
                 ? ApplyDiplomacyModifiers(
                     context,
@@ -200,12 +262,14 @@ namespace Rebellion.AI.Scorers
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
         /// <param name="commitments">Diplomats and destinations already selected this turn.</param>
+        /// <param name="intelligenceProbability">The chance of obtaining intelligence after reaching the objective.</param>
         /// <returns>The objective score before general bonuses and penalties.</returns>
         private AIUtilityScore GetMissionScore(
             AITurnContext context,
             AIMissionProposal proposal,
             double successProbability,
-            IReadOnlyDictionary<Officer, Planet> commitments = null
+            IReadOnlyDictionary<Officer, Planet> commitments = null,
+            double intelligenceProbability = 100
         )
         {
             GameConfig.AIMissionObjectiveUtilityConfig utility = context
@@ -219,6 +283,10 @@ namespace Rebellion.AI.Scorers
             score.Add(AIUtility.Fulfillment(successProbability, utility.Success), utility.Success);
             bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
             bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
+            double intelligenceSuccess =
+                proposal.MissionTypeID == MissionTypeIDs.Espionage
+                    ? intelligenceProbability / 100d
+                    : 0;
             AddDiplomacyUtility(ref score, context, proposal, isDiplomacy, commitments);
             AddSabotageTargetUtility(
                 ref score,
@@ -227,16 +295,11 @@ namespace Rebellion.AI.Scorers
                 isSabotage ? proposal.SelectedTarget as IManufacturable : null
             );
             score.Add(
-                AIUtility.Fulfillment(
-                    proposal.MissionTypeID == MissionTypeIDs.Espionage
-                        ? GetIntelAge(context, proposal)
-                        : 0,
-                    utility.IntelAge
-                ),
+                GetIntelligenceNeed(context, proposal) * intelligenceSuccess,
                 utility.IntelAge
             );
             score.Add(
-                GetAttackPreparationIntelPriority(context, proposal),
+                GetAttackPreparationIntelPriority(context, proposal) * intelligenceSuccess,
                 utility.AttackPreparationIntel
             );
             score.Add(
@@ -268,6 +331,9 @@ namespace Rebellion.AI.Scorers
                 || !context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
             )
                 return 0;
+
+            if (!context.Assessment.HasMissionDefenseIntelligence(proposal.TargetPlanet))
+                return 1;
 
             int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
             int refreshInterval = Math.Max(
@@ -333,50 +399,21 @@ namespace Rebellion.AI.Scorers
             score.Add(isAttackTarget ? 1 : 0, utility.AttackTarget);
             score.Add(isAttackTarget && isPlanetaryDefense ? 1 : 0, utility.AttackDefense);
             score.Add(
-                isGarrisonRegiment && IsGarrisonSabotageCritical(context, planet) ? 1 : 0,
+                isGarrisonRegiment && context.Assessment.IsGarrisonSabotageCritical(planet) ? 1 : 0,
                 utility.FavoredSupportRegiment
             );
             score.Add(isGarrisonRegiment ? 1 : 0, utility.GarrisonRegiment);
             score.Add(isGarrisonStarfighter ? 1 : 0, utility.GarrisonStarfighter);
+            score.Add(target is SpecialForces ? 1 : 0, utility.SpecialForces);
             score.Add(
-                building == null && !isGarrisonRegiment && !isGarrisonStarfighter ? 1 : 0,
+                building == null
+                && !isGarrisonRegiment
+                && !isGarrisonStarfighter
+                && target is not SpecialForces
+                    ? 1
+                    : 0,
                 utility.OtherUnit
             );
-        }
-
-        /// <summary>
-        /// Returns whether destroying one enemy garrison regiment would destabilize the planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The hostile planet to inspect.</param>
-        /// <returns>True when one loss starts an uprising or transfers control to the AI faction.</returns>
-        private static bool IsGarrisonSabotageCritical(AITurnContext context, Planet planet)
-        {
-            string ownerInstanceId = planet?.GetOwnerInstanceID();
-            if (
-                string.IsNullOrEmpty(ownerInstanceId)
-                || ownerInstanceId == context?.Faction?.InstanceID
-            )
-                return false;
-
-            int activeGarrisonCount = context.Assessment.GetActiveGarrisonCount(
-                planet,
-                ownerInstanceId
-            );
-            if (activeGarrisonCount <= 0)
-                return false;
-
-            Faction owner = context.Game.GetFactionByOwnerInstanceID(ownerInstanceId);
-            int stabilityRequirement =
-                owner == null
-                    ? 0
-                    : UprisingQueries.CalculateGarrisonRequirement(
-                        planet,
-                        owner,
-                        context.Game.Config.AI.Garrison
-                    );
-            return activeGarrisonCount - 1 < stabilityRequirement
-                || activeGarrisonCount == 1 && context.Assessment.HasFactionControlSupport(planet);
         }
 
         /// <summary>
@@ -702,12 +739,13 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">The current AI turn context.</param>
         /// <param name="utility">The applicable utility configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The mission-type priority bonus.</returns>
+        /// <param name="successProbability">The probability that an intelligence objective is achieved.</param>
         private static void AddMissionPriorityUtility(
             ref AIUtilityScore score,
             AITurnContext context,
             GameConfig.AIMissionPriorityUtilityConfig utility,
-            AIMissionProposal proposal
+            AIMissionProposal proposal,
+            double successProbability = 100
         )
         {
             string missionTypeId = proposal.MissionTypeID;
@@ -723,13 +761,16 @@ namespace Rebellion.AI.Scorers
             );
             score.Add(missionTypeId == MissionTypeIDs.Research ? 1 : 0, utility.Research);
             score.Add(missionTypeId == MissionTypeIDs.JediTraining ? 1 : 0, utility.JediTraining);
-            score.Add(missionTypeId == MissionTypeIDs.Espionage ? 1 : 0, utility.Espionage);
+            score.Add(
+                missionTypeId == MissionTypeIDs.Espionage ? successProbability / 100d : 0,
+                utility.Espionage
+            );
             score.Add(
                 missionTypeId == MissionTypeIDs.Espionage
                 && proposal.Participant is SpecialForces specialForces
                 && context.IsHeadquartersEspionageAgent(specialForces)
                 && proposal.TargetPlanet == context.Assessment.FactionHeadquarters
-                    ? 1
+                    ? successProbability / 100d
                     : 0,
                 utility.MobileHeadquartersEspionage
             );
@@ -763,6 +804,122 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Avoids starting sabotage that a capable, already committed attack is expected to overtake.
+        /// </summary>
+        /// <param name="context">The current faction turn and measured attack requirements.</param>
+        /// <param name="mission">The sabotage objective under consideration.</param>
+        /// <param name="staging">Optional preparation before starting the mission.</param>
+        /// <param name="travelTicks">Optional complete preparation and round-trip travel.</param>
+        /// <returns>True when a committed fleet can address the defenses before the mission does.</returns>
+        private static bool IsOvertakenByCommittedAttack(
+            AITurnContext context,
+            AIMissionProposal mission,
+            AIMissionStagingProposal staging,
+            long? travelTicks
+        )
+        {
+            Planet target = mission.TargetPlanet;
+            double objectiveTicks =
+                (travelTicks ?? mission.EstimateTravelTicks(context))
+                - mission.EstimateReturnTravelTicks(context, staging?.Destination)
+                + EstimateExecutionTicks(context, mission);
+            foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
+            {
+                if (
+                    fleet.Order.TargetPlanetId != target.InstanceID
+                    || fleet.Order.Status == FleetOrderStatus.Returning
+                    || fleet.IsInCombat
+                    || context.Assessment.GetFleetPlanet(fleet)?.InstanceID != target.InstanceID
+                )
+                    continue;
+
+                int decisionTicks = Math.Max(1, context.Game.Config.AI.TickInterval);
+                int captureTicks = (fleet.Movement?.TicksRemaining() ?? 0) + decisionTicks;
+                if (fleet.Order.Status != FleetOrderStatus.Ready)
+                    captureTicks += decisionTicks;
+                if (captureTicks >= objectiveTicks)
+                    continue;
+
+                var demand = context.GetAttackDemand(target, fleet);
+                if (demand == null || !context.Game.Config.AI.EnablePlanetaryAssaults)
+                    continue;
+                bool canBombard = context.Assessment.CanBombardMilitaryTargets(fleet, target);
+                if (
+                    context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
+                        >= demand.CombatStrength
+                    && !demand.IsAssaultBlockedByShields
+                    && !canBombard
+                    && context.Assessment.GetReadyFleetRegimentCount(fleet) >= demand.RegimentCount
+                    && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                        >= demand.RegimentStrength
+                    && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, target)
+                        >= context
+                            .Game
+                            .Config
+                            .AI
+                            .FleetDeployment
+                            .MinimumPlanetaryAssaultSuccessPercent
+                )
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Estimates execution time using the mission's configured duration and faction difficulty.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="mission">The mission whose duration is required.</param>
+        /// <returns>The expected execution duration after the team arrives.</returns>
+        private static double EstimateExecutionTicks(
+            AITurnContext context,
+            AIMissionProposal mission
+        )
+        {
+            GameConfig.MissionTickConfig duration =
+                context.Game.Config.ProbabilityTables.Mission.TickRanges.GetTickConfig(
+                    mission.MissionTypeID
+                );
+            int speedIncrease = Math.Max(
+                0,
+                context
+                    .Game.GetDifficultyModifier(context.Faction.InstanceID)
+                    .MissionExecutionSpeedIncreasePercent
+            );
+            return ((duration?.Base ?? 0) + (duration?.Spread ?? 0) / 2d)
+                / (1 + speedIncrease / 100d);
+        }
+
+        /// <summary>
+        /// Adds accumulated waiting, travel, and mission time to the shared utility costs.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="mission">The mission opportunity being compared.</param>
+        /// <param name="score">The mission utility receiving the elapsed-time cost.</param>
+        /// <param name="travelTicks">Waiting and travel until the complete team returns.</param>
+        private static void AddMissionTimeCost(
+            ref AIUtilityScore score,
+            AITurnContext context,
+            AIMissionProposal mission,
+            long travelTicks
+        )
+        {
+            GameConfig.AIMissionObjectiveUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Objective;
+            GameConfig.AIConsiderationConfig cost = utility.TravelTime ?? utility.TravelCost;
+            double missionTicks = EstimateExecutionTicks(context, mission);
+            double periods = (travelTicks + missionTicks) / Math.Max(1, cost.SaturationValue);
+            double completePeriods = Math.Floor(periods);
+            score.AddCost(1, cost, completePeriods);
+            score.AddCost(periods - completePeriods, cost);
+        }
+
+        /// <summary>
         /// Returns the longest participant travel distance as a score penalty.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -786,16 +943,29 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the value of refreshing stale intelligence for an espionage mission.
+        /// Values obtaining missing military information or refreshing an aging observation.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The intelligence age measured in AI-turn intervals.</returns>
-        private static double GetIntelAge(AITurnContext context, AIMissionProposal proposal)
+        /// <param name="proposal">The intelligence mission to evaluate.</param>
+        /// <returns>The normalized need for new military information.</returns>
+        private static double GetIntelligenceNeed(AITurnContext context, AIMissionProposal proposal)
         {
+            if (proposal.MissionTypeID != MissionTypeIDs.Espionage)
+                return 0;
+
             int tickInterval = context.Game.Config.AI.TickInterval;
             int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
-            return tickInterval > 0 && age < int.MaxValue ? (double)age / tickInterval : 0;
+            if (!context.Assessment.HasMissionDefenseIntelligence(proposal.TargetPlanet))
+                age = Math.Max(
+                    age,
+                    context.Game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks
+                );
+            return tickInterval > 0
+                ? AIUtility.Fulfillment(
+                    (double)age / tickInterval,
+                    context.Game.Config.AI.MissionPlanning.Utility.Objective.IntelAge
+                )
+                : 0;
         }
     }
 }

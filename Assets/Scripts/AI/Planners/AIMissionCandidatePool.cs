@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
+using Rebellion.Game.Galaxy;
 
 namespace Rebellion.AI.Planners
 {
@@ -14,9 +15,9 @@ namespace Rebellion.AI.Planners
         private readonly AIMissionProposalScorer _scorer = new AIMissionProposalScorer();
         private readonly Dictionary<
             (string ParticipantId, string MissionTypeId),
-            List<AIMissionProposal>
+            List<AIProposal>
         > _alternatives =
-            new Dictionary<(string ParticipantId, string MissionTypeId), List<AIMissionProposal>>();
+            new Dictionary<(string ParticipantId, string MissionTypeId), List<AIProposal>>();
 
         /// <summary>
         /// Clears candidates retained from the previous planning turn.
@@ -31,34 +32,35 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The complete proposal collection being built.</param>
-        /// <param name="proposal">The candidate proposal.</param>
+        /// <param name="proposal">The candidate mission used to group and bound alternatives.</param>
+        /// <param name="preparation">Optional preparation action instead of an immediate mission.</param>
         internal void TryAdd(
             AITurnContext context,
             ICollection<AIProposal> proposals,
-            AIMissionProposal proposal
+            AIMissionProposal proposal,
+            AIMissionStagingProposal preparation = null
         )
         {
-            if (!CanRetain(context, proposal))
+            if (!CanRetain(context, proposal, preparation?.Destination))
                 return;
 
             int retainedAlternatives = Math.Max(
                 1,
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
-            List<AIMissionProposal> alternatives = GetAlternatives(proposal);
-            double score = _scorer.Score(context, proposal);
+            List<AIProposal> alternatives = GetAlternatives(proposal);
+            AIProposal action = preparation ?? (AIProposal)proposal;
+            double score = _scorer.Score(context, action);
             if (score <= 0)
                 return;
 
-            proposal.SetScore(score);
-            alternatives.Add(proposal);
-            proposals.Add(proposal);
+            action.SetScore(score);
+            alternatives.Add(action);
+            proposals.Add(action);
             if (alternatives.Count <= retainedAlternatives)
                 return;
 
-            AIMissionProposal lowestPriorityAlternative = FindLowestPriorityAlternative(
-                alternatives
-            );
+            AIProposal lowestPriorityAlternative = FindLowestPriorityAlternative(alternatives);
             alternatives.Remove(lowestPriorityAlternative);
             proposals.Remove(lowestPriorityAlternative);
         }
@@ -68,19 +70,29 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current planning scope.</param>
         /// <param name="proposal">The proposal whose score bound is being checked.</param>
-        /// <returns>False only when its upper bound is strictly below an already retained alternative.</returns>
-        internal bool CanRetain(AITurnContext context, AIMissionProposal proposal)
+        /// <param name="departure">Optional assembly planet for an incoming team.</param>
+        /// <returns>False when the bound misses the minimum score or the retained alternatives.</returns>
+        internal bool CanRetain(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            Planet departure = null
+        )
         {
             if (proposal == null)
+                return false;
+            double upperBound = _scorer.GetScoreUpperBound(context, proposal, departure);
+            if (
+                upperBound <= 0
+                || upperBound < context.Game.Config.AI.MissionPlanning.MinimumMissionScore
+            )
                 return false;
             int retainedAlternatives = Math.Max(
                 1,
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
-            List<AIMissionProposal> alternatives = GetAlternatives(proposal);
+            List<AIProposal> alternatives = GetAlternatives(proposal);
             return alternatives.Count < retainedAlternatives
-                || _scorer.GetScoreUpperBound(context, proposal)
-                    >= FindLowestPriorityAlternative(alternatives).Score;
+                || upperBound >= FindLowestPriorityAlternative(alternatives).Score;
         }
 
         /// <summary>
@@ -88,15 +100,15 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="proposal">The proposal identifying the alternatives collection.</param>
         /// <returns>The mutable alternatives collection for the proposal.</returns>
-        private List<AIMissionProposal> GetAlternatives(AIMissionProposal proposal)
+        private List<AIProposal> GetAlternatives(AIMissionProposal proposal)
         {
             (string ParticipantId, string MissionTypeId) key = (
                 proposal.Participant?.InstanceID,
                 proposal.MissionTypeID
             );
-            if (!_alternatives.TryGetValue(key, out List<AIMissionProposal> alternatives))
+            if (!_alternatives.TryGetValue(key, out List<AIProposal> alternatives))
             {
-                alternatives = new List<AIMissionProposal>();
+                alternatives = new List<AIProposal>();
                 _alternatives.Add(key, alternatives);
             }
 
@@ -108,12 +120,12 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="alternatives">The alternatives to inspect.</param>
         /// <returns>The lowest-priority proposal, or null when the collection is empty.</returns>
-        private static AIMissionProposal FindLowestPriorityAlternative(
-            IEnumerable<AIMissionProposal> alternatives
+        private static AIProposal FindLowestPriorityAlternative(
+            IEnumerable<AIProposal> alternatives
         )
         {
-            AIMissionProposal lowestPriority = null;
-            foreach (AIMissionProposal proposal in alternatives)
+            AIProposal lowestPriority = null;
+            foreach (AIProposal proposal in alternatives)
             {
                 if (lowestPriority == null || HasLowerRetentionPriority(proposal, lowestPriority))
                     lowestPriority = proposal;
@@ -128,10 +140,7 @@ namespace Rebellion.AI.Planners
         /// <param name="candidate">The proposal being compared.</param>
         /// <param name="other">The proposal currently considered lowest priority.</param>
         /// <returns>True when the candidate has a lower score, or loses the deterministic sort-key tie.</returns>
-        private static bool HasLowerRetentionPriority(
-            AIMissionProposal candidate,
-            AIMissionProposal other
-        )
+        private static bool HasLowerRetentionPriority(AIProposal candidate, AIProposal other)
         {
             int scoreComparison = candidate.Score.CompareTo(other.Score);
             return scoreComparison != 0
