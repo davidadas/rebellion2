@@ -6,6 +6,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 using TMPro;
 using UnityEditor;
@@ -66,21 +67,34 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void Initialize_ExistingOverrides_ShowsOverrideValues()
+        public void Initialize_ExistingCustomSettings_ShowsConfiguredValues()
         {
-            summary.PlayerDifficultyModifiers = new DifficultyModifiers
+            summary.CustomSettings = new CustomGameSettings
             {
-                ManufacturingSpeedPercent = 135,
-            };
-            summary.AIDifficultyModifiers = new DifficultyModifiers
-            {
-                ManufacturingSpeedPercent = 165,
+                PlayerDifficultyModifiers = new DifficultyModifiers
+                {
+                    ManufacturingSpeedPercent = 135,
+                },
+                AIDifficultyModifiers = new DifficultyModifiers { ManufacturingSpeedPercent = 165 },
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                GarrisonRules = new GarrisonRuleSettings
+                {
+                    SupportThreshold = 70,
+                    SupportDeficitPerRegiment = 5,
+                    UprisingMultiplier = 3,
+                },
+                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
             };
 
             view.Initialize(TestContent.Pack, summary);
 
             Assert.AreEqual("135", Input("manufacturing-speed", "Player").text);
             Assert.AreEqual("165", Input("manufacturing-speed", "AI").text);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Assert.AreEqual("70", Input("garrison-support-threshold", "World").text);
+            Assert.AreEqual("5", Input("garrison-support-deficit-per-regiment", "World").text);
+            Assert.AreEqual("3", Input("garrison-uprising-multiplier", "World").text);
+            Assert.AreEqual("150", Input("travel-speed", "World").text);
         }
 
         [Test]
@@ -324,8 +338,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             ApplyButton().onClick.Invoke();
 
-            Assert.AreEqual(125, applied.PlayerDifficultyModifiers.ManufacturingSpeedPercent);
-            Assert.AreEqual(20, applied.AIDifficultyModifiers.MissionFoilChancePoints);
+            Assert.AreEqual(
+                125,
+                applied.CustomSettings.PlayerDifficultyModifiers.ManufacturingSpeedPercent
+            );
+            Assert.AreEqual(
+                20,
+                applied.CustomSettings.AIDifficultyModifiers.MissionFoilChancePoints
+            );
             Assert.IsTrue(ApplyButton().interactable);
         }
 
@@ -440,7 +460,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void ChangeGameSetup_WhenValuesDifferFromInitialState_RemainsNeutral()
+        public void ChangeGameSummary_WhenValuesDifferFromInitialState_RemainsNeutral()
         {
             summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
@@ -595,21 +615,25 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             EventToggle(category).GetComponentInChildren<Button>().onClick.Invoke();
             ApplyButton().onClick.Invoke();
 
-            CollectionAssert.AreEqual(new[] { category }, launched.DisabledEventCategories);
-            Assert.IsEmpty(summary.DisabledEventCategories);
+            CollectionAssert.AreEqual(
+                new[] { category },
+                launched.CustomSettings.GenerationConfig.DisabledEventCategories
+            );
+            Assert.IsNull(summary.CustomSettings);
             Assert.AreEqual("OFF", ToggleState(EventToggle(category)));
             Assert.AreNotEqual(ModifiedTextColor, ToggleStateText(EventToggle(category)).color);
         }
 
         [Test]
-        public void RestoreDefaults_GameSetup_ReenablesEveryEventCategory()
+        public void RestoreDefaults_GameSummary_ReenablesEveryEventCategory()
         {
             GameSummary launched = null;
-            summary.DisabledEventCategories = new[]
+            summary.CustomSettings = new CustomGameSettings
             {
-                GameEventCategory.Story,
-                GameEventCategory.Disaster,
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
             };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
             view.StartRequested += (_, configured) => launched = configured;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
@@ -617,7 +641,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             view.RestoreDefaults();
             ApplyButton().onClick.Invoke();
 
-            Assert.IsEmpty(launched.DisabledEventCategories);
+            Assert.IsEmpty(launched.CustomSettings.GenerationConfig.DisabledEventCategories);
             Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Story)));
             Assert.AreEqual("ON", ToggleState(EventToggle(GameEventCategory.Disaster)));
             Assert.AreEqual(
@@ -711,9 +735,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameSize.Small, launched.GalaxySize);
             Assert.AreEqual(GameVictoryCondition.Headquarters, launched.VictoryCondition);
             Assert.AreEqual(GameResourceAvailability.Normal, launched.ResourceAvailability);
-            Assert.IsNotNull(launched.PlayerDifficultyModifiers);
-            Assert.IsNull(launched.AIDifficultyModifiers);
-            Assert.IsNotNull(launched.GenerationConfigOverride);
+            Assert.IsNotNull(launched.CustomSettings);
+            Assert.IsNotNull(launched.CustomSettings.PlayerDifficultyModifiers);
+            Assert.IsNull(launched.CustomSettings.AIDifficultyModifiers);
+            Assert.IsNotNull(launched.CustomSettings.GenerationConfig);
         }
 
         [Test]
@@ -778,8 +803,12 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             DifficultyModifiers medium = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
                 GameDifficulty.Medium
             ];
-            summary.AIDifficultyModifiers = easy.CreateCopy();
-            summary.AIDifficultyModifiers.MineOutputPercent = 777;
+            summary.CustomSettings = new CustomGameSettings
+            {
+                AIDifficultyModifiers = easy.CreateCopy(),
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+            };
+            summary.CustomSettings.AIDifficultyModifiers.MineOutputPercent = 777;
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
             view.SelectCategory(NewGameSettingsCategory.GameSetup);
 
@@ -909,7 +938,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(3, config.FactionModifiers[0].Settings.UprisingResistance);
             Assert.AreEqual(
                 authored,
@@ -986,7 +1015,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-forces", "AI").onEndEdit.Invoke("50");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(
                 40,
                 config
@@ -1004,6 +1033,97 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Initialize_HardDifficulty_ShowsConfiguredAIStartingUnitBonuses()
+        {
+            summary.Difficulty = GameDifficulty.Hard;
+            summary.GalaxySize = GameSize.Medium;
+            summary.PlayerFactionID = TestContent.Pack.GameData.Factions[0].InstanceID;
+            string aiFactionID = TestContent.Pack.GameData.Factions[1].InstanceID;
+            FactionBudget aiBudget =
+                TestContent.Pack.GameData.GenerationConfig.UnitDeployment.FactionBudgets.Single(
+                    budget => budget.FactionID == aiFactionID
+                );
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            int starfighterBonus = aiBudget
+                .Bonuses.Single(bonus =>
+                    bonus.AIOnly
+                    && bonus.Difficulty == GameDifficulty.Hard
+                    && bonus.Category == StartingUnitBudgetCategory.Starfighter
+                )
+                .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Medium)
+                .Percentage;
+            int regimentBonus = aiBudget
+                .Bonuses.Single(bonus =>
+                    bonus.AIOnly
+                    && bonus.Difficulty == GameDifficulty.Hard
+                    && bonus.Category == StartingUnitBudgetCategory.Regiment
+                )
+                .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Medium)
+                .Percentage;
+
+            Assert.AreEqual(
+                starfighterBonus.ToString(CultureInfo.InvariantCulture),
+                TableInput("starting-starfighter-bonus", "AI").text
+            );
+            Assert.AreEqual(
+                regimentBonus.ToString(CultureInfo.InvariantCulture),
+                TableInput("starting-regiment-bonus", "AI").text
+            );
+            Assert.AreEqual(
+                1,
+                TableRow("starting-starfighter-bonus")
+                    .GetComponentsInChildren<TMP_InputField>()
+                    .Length
+            );
+        }
+
+        [Test]
+        public void Apply_MissingAIStartingUnitBonuses_CreatesSelectedDifficultyValues()
+        {
+            GameSummary applied = null;
+            summary.Difficulty = GameDifficulty.Easy;
+            summary.GalaxySize = GameSize.Small;
+            summary.PlayerFactionID = TestContent.Pack.GameData.Factions[0].InstanceID;
+            string aiFactionID = TestContent.Pack.GameData.Factions[1].InstanceID;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-starfighter-bonus", "AI").onEndEdit.Invoke("12");
+            TableInput("starting-regiment-bonus", "AI").onEndEdit.Invoke("8");
+            ApplyButton().onClick.Invoke();
+
+            FactionBudget aiBudget =
+                applied.CustomSettings.GenerationConfig.UnitDeployment.FactionBudgets.Single(
+                    budget => budget.FactionID == aiFactionID
+                );
+            Assert.AreEqual(
+                12,
+                aiBudget
+                    .Bonuses.Single(bonus =>
+                        bonus.AIOnly
+                        && bonus.Difficulty == GameDifficulty.Easy
+                        && bonus.Category == StartingUnitBudgetCategory.Starfighter
+                    )
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
+            );
+            Assert.AreEqual(
+                8,
+                aiBudget
+                    .Bonuses.Single(bonus =>
+                        bonus.AIOnly
+                        && bonus.Difficulty == GameDifficulty.Easy
+                        && bonus.Category == StartingUnitBudgetCategory.Regiment
+                    )
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
+            );
+        }
+
+        [Test]
         public void Apply_PerFactionResearchLevels_PublishesIndependentValues()
         {
             GameSummary applied = null;
@@ -1015,7 +1135,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-research", "AI").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(3, config.GalaxyClassification.FactionSetups[0].StartingResearchLevel);
             Assert.AreEqual(7, config.GalaxyClassification.FactionSetups[1].StartingResearchLevel);
         }
@@ -1051,13 +1171,15 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 new[]
                 {
                     "FACTION STARTING CONDITIONS",
-                    "PLANET ENERGY (NORMAL)",
-                    "RAW MATERIALS (NORMAL)",
-                    "PLANET RESOURCE LIMITS (NORMAL)",
+                    "PLANET ENERGY",
+                    "RAW MATERIALS",
+                    "PLANET RESOURCE LIMITS",
                     "RIM COLONIZATION",
                     "STARTING PLANET SUPPORT",
-                    "MINE GENERATION",
-                    "GARRISONS AND SUPPORT",
+                    "STARTING FACILITIES",
+                    "STARTING GARRISONS AND SUPPORT",
+                    "LIVE GARRISON REQUIREMENTS",
+                    "MOVEMENT",
                 },
                 labels
             );
@@ -1123,7 +1245,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform previousRow = (RectTransform)
                 transforms.Single(candidate => candidate.name == "Setting-weak-core-worlds");
             RectTransform section = (RectTransform)
-                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY-(NORMAL)");
+                transforms.Single(candidate => candidate.name == "Section-PLANET-ENERGY");
 
             Assert.AreEqual(
                 -previousRow.anchoredPosition.y + previousRow.sizeDelta.y + 8f,
@@ -1187,6 +1309,77 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual("Base Support", row.Find("Label").GetComponent<TMP_Text>().text);
             Assert.AreEqual(3, row.GetComponentsInChildren<TMP_InputField>().Length);
+        }
+
+        [Test]
+        public void Initialize_MineChanceControl_UsesCompactLabel()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setting-mine-chance-per-resource");
+            TMP_Text label = row.Find("Label").GetComponent<TMP_Text>();
+
+            Assert.AreEqual("Mine Chance per Resource %", label.text);
+            Assert.LessOrEqual(label.preferredWidth, label.rectTransform.rect.width);
+        }
+
+        [Test]
+        public void Initialize_StartingFacilityControls_ShowCoreAndRimChances()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual("43", TableInput("starting-refinery-chance", "Player").text);
+            Assert.AreEqual("5", TableInput("starting-refinery-chance", "AI").text);
+            Assert.AreEqual("3", TableInput("starting-shipyard-chance", "Player").text);
+            Assert.AreEqual("1", TableInput("starting-shipyard-chance", "AI").text);
+            Assert.AreEqual("3", TableInput("starting-construction-yard-chance", "Player").text);
+            Assert.AreEqual("1", TableInput("starting-construction-yard-chance", "AI").text);
+        }
+
+        [Test]
+        public void Apply_StartingFacilityChances_ReassignsOnlyEmptyOutcomes()
+        {
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-refinery-chance", "Player").onEndEdit.Invoke("30");
+            TableInput("starting-shipyard-chance", "Player").onEndEdit.Invoke("10");
+            ApplyButton().onClick.Invoke();
+
+            FacilityGenerationChanceEditor editor = new FacilityGenerationChanceEditor(
+                TestContent.Pack.GameData.Buildings
+            );
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
+            Assert.AreEqual(30, editor.GetChance(config, true, BuildingType.Refinery));
+            Assert.AreEqual(10, editor.GetChance(config, true, BuildingType.Shipyard));
+            Assert.AreEqual(3, editor.GetChance(config, true, BuildingType.TrainingFacility));
+            Assert.AreEqual(3, editor.GetChance(config, true, BuildingType.ConstructionFacility));
+            Assert.AreEqual(
+                43,
+                editor.GetChance(
+                    TestContent.Pack.GameData.GenerationConfig,
+                    true,
+                    BuildingType.Refinery
+                )
+            );
+        }
+
+        [Test]
+        public void EditValue_StartingFacilityChanceExceedsEmptyCapacity_RetainsPreviousValue()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TMP_InputField input = TableInput("starting-shipyard-chance", "Player");
+
+            input.onEndEdit.Invoke("40");
+
+            Assert.AreEqual("3", TableInput("starting-shipyard-chance", "Player").text);
         }
 
         [Test]
@@ -1258,11 +1451,75 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("mine-chance-per-resource", "Player").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = applied.GenerationConfigOverride;
+            GameGenerationConfig config = applied.CustomSettings.GenerationConfig;
             Assert.AreEqual(7, config.FacilityGeneration.CoreMineMultiplier);
             Assert.AreEqual(
                 authored,
                 TestContent.Pack.GameData.GenerationConfig.FacilityGeneration.CoreMineMultiplier
+            );
+        }
+
+        [Test]
+        public void Apply_EditedGarrisonRules_PublishesRuntimeOverridesWithoutMutatingContent()
+        {
+            GameSummary applied = null;
+            int authoredThreshold = TestContent
+                .Pack
+                .GameData
+                .GameConfig
+                .AI
+                .Garrison
+                .SupportThreshold;
+            int authoredDivisor = TestContent.Pack.GameData.GameConfig.AI.Garrison.GarrisonDivisor;
+            int authoredMultiplier = TestContent
+                .Pack
+                .GameData
+                .GameConfig
+                .AI
+                .Garrison
+                .UprisingMultiplier;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Input("garrison-support-threshold", "World").onEndEdit.Invoke("70");
+            Input("garrison-support-deficit-per-regiment", "World").onEndEdit.Invoke("5");
+            Input("garrison-uprising-multiplier", "World").onEndEdit.Invoke("3");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(70, applied.CustomSettings.GarrisonRules.SupportThreshold);
+            Assert.AreEqual(5, applied.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
+            Assert.AreEqual(3, applied.CustomSettings.GarrisonRules.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.SupportThreshold
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.GarrisonDivisor
+            );
+            Assert.AreEqual(
+                authoredMultiplier,
+                TestContent.Pack.GameData.GameConfig.AI.Garrison.UprisingMultiplier
+            );
+        }
+
+        [Test]
+        public void Apply_EditedMovementRule_PublishesRuntimeOverrideWithoutMutatingContent()
+        {
+            GameSummary applied = null;
+            double authoredDivisor = TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Input("travel-speed", "World").onEndEdit.Invoke("150");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(150, applied.CustomSettings.MovementRules.TravelSpeedPercent);
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Pack.GameData.GameConfig.Movement.DistanceDivisor
             );
         }
 

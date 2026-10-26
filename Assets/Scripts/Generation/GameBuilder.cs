@@ -47,7 +47,7 @@ namespace Rebellion.Generation
             IRandomNumberProvider randomProvider
         )
         {
-            _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+            _summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _randomProvider =
                 randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
@@ -106,8 +106,10 @@ namespace Rebellion.Generation
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
             GameGenerationConfig generationConfig =
-                _summary.GenerationConfigOverride?.GetDeepCopy()
+                _summary.CustomSettings?.GenerationConfig?.GetDeepCopy()
                 ?? _gameData.GenerationConfig.GetDeepCopy();
+            GameConfig gameConfig = _gameData.GameConfig.GetDeepCopy();
+            _summary.CustomSettings?.ApplyRuntimeRules(gameConfig);
             Faction[] factions = _gameData.Factions.GetDeepCopy();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
@@ -115,7 +117,7 @@ namespace Rebellion.Generation
             {
                 Summary = _summary,
                 Config = generationConfig,
-                GameConfig = _gameData.GameConfig.GetDeepCopy(),
+                GameConfig = gameConfig,
                 Rng = _randomProvider,
 
                 Sectors = sectors,
@@ -126,7 +128,7 @@ namespace Rebellion.Generation
                 Regiments = CopyTemplates(_gameData.Regiments),
                 SpecialForces = CopyTemplates(_gameData.SpecialForces),
                 Officers = CopyTemplates(_gameData.Officers),
-                Events = FilterEvents(_gameData.GameEvents, _summary).GetDeepCopy(),
+                Events = FilterEvents(_gameData.GameEvents, generationConfig).GetDeepCopy(),
             };
         }
 
@@ -135,11 +137,11 @@ namespace Rebellion.Generation
         /// prerequisite chain includes an excluded event.
         /// </summary>
         /// <param name="events">The authored event definitions.</param>
-        /// <param name="summary">The selected game settings.</param>
+        /// <param name="generationConfig">The resolved generation settings.</param>
         /// <returns>The event definitions available to the generated campaign.</returns>
         private static GameEvent[] FilterEvents(
             IReadOnlyCollection<GameEvent> events,
-            GameSummary summary
+            GameGenerationConfig generationConfig
         )
         {
             HashSet<string> authoredEventIDs = new HashSet<string>(
@@ -147,7 +149,7 @@ namespace Rebellion.Generation
                 StringComparer.Ordinal
             );
             List<GameEvent> retained = events
-                .Where(gameEvent => summary.IsEventCategoryEnabled(gameEvent.Category))
+                .Where(gameEvent => generationConfig.IsEventCategoryEnabled(gameEvent.Category))
                 .ToList();
             HashSet<string> retainedEventIDs = new HashSet<string>(
                 retained.Select(gameEvent => gameEvent.InstanceID),

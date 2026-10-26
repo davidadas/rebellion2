@@ -339,22 +339,22 @@ public sealed class StrategyWindowCommandController
             missions,
             () =>
             {
-                if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> liveMissions))
-                    return;
-
-                GameRoot game = services.GetService<GameRoot>();
-                string voicePath = GetMissionAbortVoicePath(liveMissions, game);
-                if (
-                    services.GetService<MissionCommands>()?.AbortMissions(missionInstanceIds)
-                    != true
-                )
-                    return;
-
-                if (!string.IsNullOrEmpty(voicePath))
-                    playSfx(voicePath);
-                RefreshAfterMutation(sourceWindow);
+                TryAbortMissions(missionInstanceIds, sourceWindow);
             }
         );
+    }
+
+    /// <summary>
+    /// Aborts one active player-controlled mission without opening another confirmation.
+    /// </summary>
+    /// <param name="missionInstanceId">The persistent mission identifier.</param>
+    /// <returns>True when the mission remained eligible and was aborted.</returns>
+    public bool TryAbortMission(string missionInstanceId)
+    {
+        if (string.IsNullOrEmpty(missionInstanceId))
+            return false;
+
+        return TryAbortMissions(new[] { missionInstanceId }, null);
     }
 
     /// <summary>
@@ -596,6 +596,36 @@ public sealed class StrategyWindowCommandController
                 missions.Cast<ISceneNode>().ToList(),
                 GetPlayerFactionID()
             );
+    }
+
+    /// <summary>
+    /// Revalidates and aborts a complete mission selection through the shared command pipeline.
+    /// </summary>
+    /// <param name="missionInstanceIds">The persistent mission identifiers.</param>
+    /// <param name="sourceWindow">The optional source window whose selection should be cleared.</param>
+    /// <returns>True when every mission was aborted.</returns>
+    private bool TryAbortMissions(IReadOnlyList<string> missionInstanceIds, UIWindow sourceWindow)
+    {
+        if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
+            return false;
+
+        GameRoot game = services.GetService<GameRoot>();
+        string voicePath = GetMissionAbortVoicePath(missions, game);
+        if (services.GetService<MissionCommands>()?.AbortMissions(missionInstanceIds) != true)
+            return false;
+
+        if (!string.IsNullOrEmpty(voicePath))
+            playSfx(voicePath);
+
+        if (sourceWindow != null)
+            RefreshAfterMutation(sourceWindow);
+        else
+        {
+            rebuildSnapshot();
+            markDirty();
+        }
+
+        return true;
     }
 
     /// <summary>

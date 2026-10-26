@@ -79,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
                 .transform.Find("ShuttleRig/CameraOrbit/Camera")
                 .GetComponent<Camera>();
 
-            Assert.AreEqual(new Vector3(0f, 0.08f, -8f), camera.transform.localPosition);
+            Assert.AreEqual(new Vector3(0f, 0.08f, -6.5f), camera.transform.localPosition);
             Assert.AreEqual(32f, camera.fieldOfView);
         }
 

@@ -73,6 +73,7 @@ namespace Rebellion.Simulation
             message.NavigationSecondaryTargetInstanceID =
                 content.NavigationSecondaryTargetInstanceID;
             message.MissionInstanceID = content.MissionInstanceID;
+            message.MissionContinuationPending = content.MissionContinuationPending;
             return message;
         }
 
@@ -356,12 +357,15 @@ namespace Rebellion.Simulation
                     bodyTemplate: reporter == null ? definition?.UnattributedBody : null
                 ),
                 target,
-                GetMissionNavigationTarget(result),
+                GetMissionNavigationTarget(result, game),
                 result.Mission
             );
 
             if (message != null && result.CanContinue)
+            {
                 message.Message.MissionInstanceID = result.MissionInstanceID;
+                message.Message.MissionContinuationPending = true;
+            }
 
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
@@ -1346,9 +1350,26 @@ namespace Rebellion.Simulation
         /// Resolves the scene node opened from a completed mission message.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
-        /// <returns>The first participant scene node or the mission itself.</returns>
-        private static ISceneNode GetMissionNavigationTarget(MissionCompletedResult result)
+        /// <param name="game">The game state used to resolve mission-specific targets.</param>
+        /// <returns>The mission-specific target, first participant, or mission itself.</returns>
+        private static ISceneNode GetMissionNavigationTarget(
+            MissionCompletedResult result,
+            GameRoot game
+        )
         {
+            if (
+                result?.Outcome == MissionOutcome.Success
+                && result.Mission is RecruitmentMission recruitment
+                && !string.IsNullOrEmpty(recruitment.RecruitedOfficerInstanceID)
+            )
+            {
+                Officer recruitedOfficer = game?.GetSceneNodeByInstanceID<Officer>(
+                    recruitment.RecruitedOfficerInstanceID
+                );
+                if (recruitedOfficer != null)
+                    return recruitedOfficer;
+            }
+
             return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
                     .OfType<ISceneNode>()
                     .FirstOrDefault()

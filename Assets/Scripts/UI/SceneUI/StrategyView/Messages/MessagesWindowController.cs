@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -30,6 +33,13 @@ public interface IMessagesWindowActions
         string secondaryTargetInstanceId,
         string locationInstanceId
     );
+
+    /// <summary>
+    /// Aborts the active mission represented by a continuing mission report.
+    /// </summary>
+    /// <param name="missionInstanceId">The active mission identifier.</param>
+    /// <returns>True when the mission was aborted.</returns>
+    bool TryAbortMission(string missionInstanceId);
 }
 
 /// <summary>
@@ -140,6 +150,8 @@ public sealed class MessagesWindowController
         view.MessageRowSelected += HandleMessageRowSelected;
         view.MessageSelectAllRequested += HandleMessageSelectAllRequested;
         view.MessageTargetRequested += HandleMessageTargetRequested;
+        view.MissionAbortRequested += HandleMissionAbortRequested;
+        view.MissionContinueRequested += HandleMissionContinueRequested;
         view.NotificationToggleRequested += HandleNotificationToggleRequested;
         view.TabRequested += HandleTabRequested;
     }
@@ -151,8 +163,10 @@ public sealed class MessagesWindowController
     /// <param name="tab">The semantic Messages tab.</param>
     public void OpenTab(MessagesWindowView view, MessagesTab tab)
     {
-        StopMessageDetailAudio();
         MessagesWindowSession session = GetSession(view);
+        if (session.DetailVisible)
+            ConsumeMissionContinuationChoice(session.GetSelectedMessage());
+        StopMessageDetailAudio();
         MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)tab);
         if (session.HasPresentedTab && session.ActiveTab != requestedTab)
         {
@@ -283,6 +297,11 @@ public sealed class MessagesWindowController
         Faction playerFaction = uiContext.Game?.GetPlayerFaction();
         IReadOnlyList<Message> messages = session.Messages;
         Message selectedMessage = session.GetSelectedMessage();
+        bool missionContinuationChoiceVisible = CanChooseMissionContinuation(
+            uiContext.Game,
+            playerFaction?.InstanceID,
+            selectedMessage
+        );
         view.Render(
             MessagesWindowProjector.Project(
                 uiContext,
@@ -294,7 +313,8 @@ public sealed class MessagesWindowController
                 IsMessageNotificationEnabled(playerFaction, session.ActiveTab),
                 HasNavigationTarget(selectedMessage),
                 window.X,
-                window.Y
+                window.Y,
+                missionContinuationChoiceVisible
             )
         );
     }
@@ -471,6 +491,49 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
+    /// Returns whether one report currently owns an abortable continuing mission choice.
+    /// </summary>
+    /// <param name="game">The active game state.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="message">The selected report.</param>
+    /// <returns>True when the report's mission remains active and player-controlled.</returns>
+    internal static bool CanChooseMissionContinuation(
+        GameRoot game,
+        string playerFactionId,
+        Message message
+    )
+    {
+        if (
+            game == null
+            || string.IsNullOrEmpty(playerFactionId)
+            || message?.MissionContinuationPending != true
+            || string.IsNullOrEmpty(message?.MissionInstanceID)
+        )
+            return false;
+
+        Mission mission = game.GetSceneNodeByInstanceID<Mission>(message.MissionInstanceID);
+        return mission != null
+            && StrategyContextMenuAvailability.CanAbortMissions(
+                new ISceneNode[] { mission },
+                playerFactionId
+            );
+    }
+
+    /// <summary>
+    /// Consumes the one-shot continuing-mission choice carried by a report.
+    /// </summary>
+    /// <param name="message">The report whose pending choice should be discarded.</param>
+    /// <returns>True when a pending choice was consumed.</returns>
+    internal static bool ConsumeMissionContinuationChoice(Message message)
+    {
+        if (message?.MissionContinuationPending != true)
+            return false;
+
+        message.MissionContinuationPending = false;
+        return true;
+    }
+
+    /// <summary>
     /// Returns messages for a semantic tab without changing their stored ordering.
     /// </summary>
     /// <param name="faction">The faction that owns the messages.</param>
@@ -577,6 +640,8 @@ public sealed class MessagesWindowController
         FocusWindow(view);
         if (TryGetSession(view, out MessagesWindowSession session))
         {
+            if (session.DetailVisible)
+                ConsumeMissionContinuationChoice(session.GetSelectedMessage());
             StopMessageDetailAudio();
             AcknowledgeWindow(session.Window);
             closeWindow(session.Window);
@@ -639,6 +704,8 @@ public sealed class MessagesWindowController
             return;
 
         FocusWindow(view);
+        if (session.DetailVisible)
+            ConsumeMissionContinuationChoice(session.GetSelectedMessage());
         StopMessageDetailAudio();
         session.HideDetail();
         RequestRender();
@@ -780,6 +847,51 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
+    /// Keeps the report's mission active and returns to the message index.
+    /// </summary>
+    /// <param name="view">The requesting Messages view.</param>
+    private void HandleMissionContinueRequested(MessagesWindowView view)
+    {
+        if (!TryGetSession(view, out MessagesWindowSession session))
+            return;
+
+        FocusWindow(view);
+        CompleteMissionContinuationChoice(session, session.GetSelectedMessage());
+        RequestRender();
+    }
+
+    /// <summary>
+    /// Aborts the report's continuing mission and returns to the message index.
+    /// </summary>
+    /// <param name="view">The requesting Messages view.</param>
+    private void HandleMissionAbortRequested(MessagesWindowView view)
+    {
+        if (!TryGetSession(view, out MessagesWindowSession session))
+            return;
+
+        FocusWindow(view);
+        Message message = session.GetSelectedMessage();
+        string missionInstanceId = message?.MissionInstanceID;
+        if (!string.IsNullOrEmpty(missionInstanceId))
+            actions.TryAbortMission(missionInstanceId);
+
+        CompleteMissionContinuationChoice(session, message);
+        RequestRender();
+    }
+
+    /// <summary>
+    /// Consumes a mission continuation choice and restores the message index.
+    /// </summary>
+    /// <param name="session">The Messages session displaying the report.</param>
+    /// <param name="message">The report whose continuation choice was resolved.</param>
+    private void CompleteMissionContinuationChoice(MessagesWindowSession session, Message message)
+    {
+        ConsumeMissionContinuationChoice(message);
+        StopMessageDetailAudio();
+        session.HideDetail();
+    }
+
+    /// <summary>
     /// Toggles notification policy for the active Messages tab.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
@@ -823,6 +935,8 @@ public sealed class MessagesWindowController
         sessions.Remove(view);
 
         StopMessageDetailAudio();
+        if (session.DetailVisible && ConsumeMissionContinuationChoice(session.GetSelectedMessage()))
+            markDirty();
         view.ChatRequested -= HandleChatRequested;
         view.CloseRequested -= HandleCloseRequested;
         view.ContextRequested -= HandleContextRequested;
@@ -837,6 +951,8 @@ public sealed class MessagesWindowController
         view.MessageRowSelected -= HandleMessageRowSelected;
         view.MessageSelectAllRequested -= HandleMessageSelectAllRequested;
         view.MessageTargetRequested -= HandleMessageTargetRequested;
+        view.MissionAbortRequested -= HandleMissionAbortRequested;
+        view.MissionContinueRequested -= HandleMissionContinueRequested;
         view.NotificationToggleRequested -= HandleNotificationToggleRequested;
         view.TabRequested -= HandleTabRequested;
     }
@@ -847,6 +963,14 @@ public sealed class MessagesWindowController
     /// <param name="window">The window that closed.</param>
     private void HandleWindowClosed(UIWindow window)
     {
+        MessagesWindowSession session = sessions.Values.FirstOrDefault(candidate =>
+            candidate.Window == window
+        );
+        if (
+            session?.DetailVisible == true
+            && ConsumeMissionContinuationChoice(session.GetSelectedMessage())
+        )
+            markDirty();
         AcknowledgeWindow(window);
     }
 
@@ -861,7 +985,10 @@ public sealed class MessagesWindowController
             return;
 
         FocusWindow(view);
+        Message previousMessage = session.GetSelectedMessage();
         bool moved = session.MoveSelection(direction);
+        if (moved && session.DetailVisible)
+            ConsumeMissionContinuationChoice(previousMessage);
         Message message = session.GetSelectedMessage();
         MarkMessageRead(message);
         if (session.DetailVisible && moved)

@@ -4,9 +4,6 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-using TND.FrameGen;
-#endif
 
 /// <summary>
 /// Applies persisted graphics quality to HDRP and game-facing cameras.
@@ -22,37 +19,9 @@ public sealed class GraphicsManager : IDisposable
     private readonly ScreenSpaceAmbientOcclusion _ambientOcclusion;
     private readonly Bloom _bloom;
     private readonly MotionBlur _motionBlur;
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-    private readonly FrameGenerationController _frameGeneration;
-#endif
     private readonly HashSet<EntityId> _configuredCameraIds = new HashSet<EntityId>();
-    private readonly Dictionary<
-        EntityId,
-        (
-            bool CustomPassOverride,
-            bool CustomPassEnabled,
-            bool MotionOverride,
-            bool MotionEnabled,
-            bool ObjectOverride,
-            bool ObjectEnabled
-        )
-    > _frameGenerationCameraSettings =
-        new Dictionary<
-            EntityId,
-            (
-                bool CustomPassOverride,
-                bool CustomPassEnabled,
-                bool MotionOverride,
-                bool MotionEnabled,
-                bool ObjectOverride,
-                bool ObjectEnabled
-            )
-        >();
-    private readonly Func<bool> _frameGenerationAvailability;
-    private readonly Action<UserFrameGenerationMode> _setFrameGenerationMode;
 
     private UserAntiAliasingMode _antiAliasingMode;
-    private bool _frameGenerationEnabled;
     private bool _ambientOcclusionEnabled = true;
     private bool _bloomEnabled = true;
     private bool _motionBlurEnabled = true;
@@ -74,27 +43,10 @@ public sealed class GraphicsManager : IDisposable
     public bool HdrOutputAvailable => HDROutputSettings.main.available;
 
     /// <summary>
-    /// Gets whether the Windows player can execute DLSS Frame Generation.
-    /// </summary>
-    public bool FrameGenerationAvailable => _frameGenerationAvailability();
-
-    /// <summary>
-    /// Gets the number of frames requested from the active presentation path for each rendered
-    /// Unity frame.
-    /// </summary>
-    public uint PresentationFrameMultiplier => GetPresentationFrameMultiplier();
-
-    /// <summary>
     /// Creates the application graphics owner and its runtime volume overrides.
     /// </summary>
     /// <param name="owner">The application lifetime transform.</param>
-    /// <param name="frameGenerationAvailability">The runtime Frame Generation capability source.</param>
-    /// <param name="setFrameGenerationMode">The native Frame Generation setting sink.</param>
-    public GraphicsManager(
-        Transform owner,
-        Func<bool> frameGenerationAvailability = null,
-        Action<UserFrameGenerationMode> setFrameGenerationMode = null
-    )
+    public GraphicsManager(Transform owner)
     {
         _runtimeVolumeObject = new GameObject(_runtimeVolumeName, typeof(Volume));
         _runtimeVolumeObject.layer = RuntimeVolumeLayer;
@@ -118,13 +70,6 @@ public sealed class GraphicsManager : IDisposable
         volume.isGlobal = true;
         volume.priority = 100f;
         volume.sharedProfile = _runtimeVolumeProfile;
-
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        _frameGeneration = _runtimeVolumeObject.AddComponent<FrameGenerationController>();
-#endif
-        _frameGenerationAvailability =
-            frameGenerationAvailability ?? GetFrameGenerationAvailability;
-        _setFrameGenerationMode = setFrameGenerationMode ?? SetFrameGenerationMode;
 
         SceneManager.sceneLoaded += HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
@@ -152,16 +97,6 @@ public sealed class GraphicsManager : IDisposable
             settings.VerticalSync || settings.FrameRateLimit == 0 ? -1 : settings.FrameRateLimit;
 
         _antiAliasingMode = (UserAntiAliasingMode)settings.AntiAliasingMode;
-        UserFrameGenerationMode frameGenerationMode = (UserFrameGenerationMode)
-            settings.FrameGenerationMode;
-        bool frameGenerationRuntimeAvailable = FrameGenerationAvailable;
-        _frameGenerationEnabled =
-            frameGenerationMode != UserFrameGenerationMode.Off
-            && settings.SupportsFrameGeneration
-            && frameGenerationRuntimeAvailable;
-        _setFrameGenerationMode(
-            _frameGenerationEnabled ? frameGenerationMode : UserFrameGenerationMode.Off
-        );
         _ambientOcclusionEnabled = settings.AmbientOcclusion;
         _bloomEnabled = settings.Bloom;
         _motionBlurEnabled = settings.MotionBlur;
@@ -188,8 +123,6 @@ public sealed class GraphicsManager : IDisposable
 
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
-        _setFrameGenerationMode(UserFrameGenerationMode.Off);
-        RestoreFrameGenerationFrameSettings();
         DestroyObject(_runtimeVolumeProfile);
         DestroyObject(_runtimeVolumeObject);
         _disposed = true;
@@ -206,20 +139,7 @@ public sealed class GraphicsManager : IDisposable
             return;
 
         _configuredCameraIds.Clear();
-        if (mode == LoadSceneMode.Single)
-            _frameGenerationCameraSettings.Clear();
         ApplyToManagedCameras();
-    }
-
-    /// <summary>
-    /// Pauses native frame interpolation while Unity changes its display mode.
-    /// </summary>
-    internal void PrepareForDisplayChange()
-    {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        if (_frameGenerationEnabled && _frameGeneration)
-            _frameGeneration.PauseFrameGeneration();
-#endif
     }
 
     /// <summary>
@@ -286,7 +206,6 @@ public sealed class GraphicsManager : IDisposable
         SetFrameSetting(cameraData, FrameSettingsField.SSAO, _ambientOcclusionEnabled);
         SetFrameSetting(cameraData, FrameSettingsField.Bloom, _bloomEnabled);
         SetFrameSetting(cameraData, FrameSettingsField.MotionBlur, _motionBlurEnabled);
-        ApplyFrameGenerationFrameSettings(camera, cameraData);
         SetFrameSetting(cameraData, FrameSettingsField.RayTracing, _rayTracingEnabled);
         _configuredCameraIds.Add(camera.GetEntityId());
     }
@@ -334,94 +253,6 @@ public sealed class GraphicsManager : IDisposable
     }
 
     /// <summary>
-    /// Enables the HDRP submission pass and dense motion-vector inputs required by Frame
-    /// Generation while preserving the authored camera policy when the feature is disabled.
-    /// </summary>
-    /// <param name="camera">The camera whose authored overrides must be preserved.</param>
-    /// <param name="cameraData">The HDRP camera data to update.</param>
-    private void ApplyFrameGenerationFrameSettings(Camera camera, HDAdditionalCameraData cameraData)
-    {
-        EntityId cameraId = camera.GetEntityId();
-        bool isPresentationCamera = camera.targetTexture == null && camera.CompareTag("MainCamera");
-        if (_frameGenerationEnabled && isPresentationCamera)
-        {
-            if (!_frameGenerationCameraSettings.ContainsKey(cameraId))
-            {
-                _frameGenerationCameraSettings[cameraId] = (
-                    cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                        (uint)FrameSettingsField.CustomPass
-                    ],
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
-                        FrameSettingsField.CustomPass
-                    ),
-                    cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                        (uint)FrameSettingsField.MotionVectors
-                    ],
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
-                        FrameSettingsField.MotionVectors
-                    ),
-                    cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                        (uint)FrameSettingsField.ObjectMotionVectors
-                    ],
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
-                        FrameSettingsField.ObjectMotionVectors
-                    )
-                );
-            }
-            SetFrameSetting(cameraData, FrameSettingsField.CustomPass, true);
-            SetFrameSetting(cameraData, FrameSettingsField.MotionVectors, true);
-            SetFrameSetting(cameraData, FrameSettingsField.ObjectMotionVectors, true);
-            return;
-        }
-
-        if (_frameGenerationCameraSettings.Remove(cameraId, out var authoredSettings))
-        {
-            cameraData.renderingPathCustomFrameSettings.SetEnabled(
-                FrameSettingsField.CustomPass,
-                authoredSettings.CustomPassEnabled
-            );
-            cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                (uint)FrameSettingsField.CustomPass
-            ] = authoredSettings.CustomPassOverride;
-            cameraData.renderingPathCustomFrameSettings.SetEnabled(
-                FrameSettingsField.MotionVectors,
-                authoredSettings.MotionEnabled
-            );
-            cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                (uint)FrameSettingsField.MotionVectors
-            ] = authoredSettings.MotionOverride;
-            cameraData.renderingPathCustomFrameSettings.SetEnabled(
-                FrameSettingsField.ObjectMotionVectors,
-                authoredSettings.ObjectEnabled
-            );
-            cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
-                (uint)FrameSettingsField.ObjectMotionVectors
-            ] = authoredSettings.ObjectOverride;
-        }
-    }
-
-    /// <summary>
-    /// Restores authored custom-pass and motion-vector overrides before releasing this manager.
-    /// </summary>
-    private void RestoreFrameGenerationFrameSettings()
-    {
-        bool frameGenerationEnabled = _frameGenerationEnabled;
-        _frameGenerationEnabled = false;
-        foreach (
-            Camera camera in UnityEngine.Object.FindObjectsByType<Camera>(
-                FindObjectsInactive.Include
-            )
-        )
-        {
-            HDAdditionalCameraData cameraData = camera.GetComponent<HDAdditionalCameraData>();
-            if (cameraData != null)
-                ApplyFrameGenerationFrameSettings(camera, cameraData);
-        }
-        _frameGenerationEnabled = frameGenerationEnabled;
-        _frameGenerationCameraSettings.Clear();
-    }
-
-    /// <summary>
     /// Converts the persisted anti-aliasing value to HDRP's camera setting.
     /// </summary>
     /// <param name="mode">The persisted anti-aliasing mode.</param>
@@ -443,60 +274,6 @@ public sealed class GraphicsManager : IDisposable
                 .TemporalAntialiasing,
             _ => HDAdditionalCameraData.AntialiasingMode.None,
         };
-    }
-
-    /// <summary>
-    /// Gets whether the installed Frame Generation provider supports the active player.
-    /// </summary>
-    /// <returns>True when the DLSS Frame Generation provider is available.</returns>
-    private static bool GetFrameGenerationAvailability()
-    {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        return TNDFrameGeneration.IsSupportedFrameGeneration(FrameGenName.DLSS);
-#else
-        return false;
-#endif
-    }
-
-    /// <summary>
-    /// Gets the number of frames requested from the active Windows presentation provider.
-    /// </summary>
-    /// <returns>The active frame multiplier, or one when interpolation is inactive.</returns>
-    private uint GetPresentationFrameMultiplier()
-    {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        return
-            _frameGenerationEnabled
-            && _frameGeneration
-            && _frameGeneration.IsFrameGenerationEnabled()
-            && !_frameGeneration.IsFrameGenerationPaused()
-            ? _frameGeneration.GetFrameMultiplier()
-            : 1u;
-#else
-        return 1u;
-#endif
-    }
-
-    /// <summary>
-    /// Applies the requested Frame Generation mode through the installed provider.
-    /// </summary>
-    /// <param name="mode">The persisted user mode.</param>
-    private void SetFrameGenerationMode(UserFrameGenerationMode mode)
-    {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        if (!_frameGeneration)
-            return;
-
-        if (mode == UserFrameGenerationMode.On)
-        {
-            _frameGeneration.SetFrameGeneration(FrameGenName.DLSS);
-            _frameGeneration.UnpauseFrameGeneration();
-        }
-        else
-        {
-            _frameGeneration.DisableFrameGeneration();
-        }
-#endif
     }
 
     /// <summary>
@@ -541,19 +318,3 @@ public sealed class GraphicsManager : IDisposable
             UnityEngine.Object.DestroyImmediate(value);
     }
 }
-
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-/// <summary>
-/// Adapts the package controller to application-owned settings initialization.
-/// </summary>
-internal sealed class FrameGenerationController : TNDFrameGeneration
-{
-    /// <summary>
-    /// Enables frame presentation without issuing a second provider switch after settings load.
-    /// </summary>
-    protected override void Start()
-    {
-        UnpauseFrameGeneration();
-    }
-}
-#endif

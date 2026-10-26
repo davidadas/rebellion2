@@ -87,7 +87,7 @@ namespace Rebellion.AI.Proposals
             FleetCommands fleets = new FleetCommands(context.Game);
             foreach (CapitalShip ship in Ships)
             {
-                Fleet colonizationFleet = fleets.CreateFromCapitalShips(
+                Fleet colonizationFleet = fleets.CreateFleet(
                     new[] { ship },
                     context.Faction.InstanceID
                 );

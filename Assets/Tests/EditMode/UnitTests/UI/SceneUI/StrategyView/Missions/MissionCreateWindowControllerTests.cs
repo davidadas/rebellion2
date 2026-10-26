@@ -180,6 +180,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Offers repeat entries only for missions whose picker option supports them.
+        /// </summary>
+        /// <param name="espionage">Whether to use repeatable espionage instead of reconnaissance.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DropdownButton_MissionRepeatPolicy_OffersExpectedChoices(bool espionage)
+        {
+            if (espionage)
+            {
+                _specialForces.AllowedMissionTypeIDs = new List<string>
+                {
+                    EspionageMission.MissionTypeID,
+                };
+                _target.Planet.Planet.AddVisitor(_playerFactionId);
+            }
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            FindButton(view, "DropdownButtonImage").onClick.Invoke();
+            _controller.RenderWindow(view, window);
+            StrategyDropdownItemView[] rows =
+                view.GetComponentsInChildren<StrategyDropdownItemView>(true)
+                    .Where(row => row.gameObject.activeSelf)
+                    .OrderBy(row => row.Index)
+                    .ToArray();
+            string[] labels = rows.Select(row =>
+                    row.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                        .Single(text => text.name == "ItemTextField")
+                        .text
+                )
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                espionage
+                    ? new[] { "Espionage", "Espionage (Repeat)" }
+                    : new[] { "Reconnaissance" },
+                labels
+            );
+            Assert.AreEqual(355, UILayout.GetSourceRect((RectTransform)view.transform).height);
+            Assert.AreEqual(1, view.GetComponentsInChildren<UICheckboxView>(true).Length);
+        }
+
         [Test]
         public void MissionOddsCheckbox_InitializedSession_ChangesVisibilityAndInvalidates()
         {

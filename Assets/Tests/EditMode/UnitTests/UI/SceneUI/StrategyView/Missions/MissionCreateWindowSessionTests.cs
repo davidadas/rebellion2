@@ -154,6 +154,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsMissionIndexValid(2));
         }
 
+        /// <summary>
+        /// Sends the selected variant's flag without leaking it to the normal entry.
+        /// </summary>
+        [Test]
+        public void CreateMissionContext_RepeatThenNormalChoice_PassesSelectedRepeatFlag()
+        {
+            MissionOption option = new MissionOption(
+                EspionageMission.MissionTypeID,
+                "Espionage",
+                SkillRating.Espionage,
+                MissionTargetKind.Planet,
+                canRepeat: true
+            );
+            _choices.Clear();
+            _choices.Add(new StrategyMissionChoice(option));
+            _choices.Add(new StrategyMissionChoice(option, isRepeating: true));
+            MissionCreateWindowSession session = CreateSession();
+            session.SelectMission(1);
+            MissionContext repeating = session.CreateMissionContext(
+                session.SelectedChoice,
+                _target.Planet.Planet,
+                _target.Item
+            );
+            session.SelectMission(0);
+            MissionContext normal = session.CreateMissionContext(
+                session.SelectedChoice,
+                _target.Planet.Planet,
+                _target.Item
+            );
+
+            Assert.IsTrue(repeating.IsRepeating);
+            Assert.IsFalse(normal.IsRepeating);
+            Assert.AreEqual(repeating.MissionTypeID, normal.MissionTypeID);
+            Assert.AreSame(repeating.Location, normal.Location);
+            CollectionAssert.AreEqual(repeating.MainParticipants, normal.MainParticipants);
+        }
+
         [Test]
         public void SelectMission_InvalidIndex_PreservesSelection()
         {

@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Game
         [SetUp]
         public void SetUp()
         {
-            // Initialize game _summary.
+            // Initialize the game summary.
             _summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Game
             {
                 MissionSuccessChancePoints = 25,
             };
-            _summary.AIDifficultyModifiers = expected;
+            _summary.CustomSettings = new CustomGameSettings { AIDifficultyModifiers = expected };
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
@@ -164,7 +164,10 @@ namespace Rebellion.Tests.Game
             {
                 ManufacturingSpeedPercent = 125,
             };
-            _summary.PlayerDifficultyModifiers = expected;
+            _summary.CustomSettings = new CustomGameSettings
+            {
+                PlayerDifficultyModifiers = expected,
+            };
 
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 

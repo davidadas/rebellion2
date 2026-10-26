@@ -27,15 +27,15 @@ set_dotnet_root() {
 set_platform_defaults() {
     case "$(uname -s)" in
         Darwin)
-            UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/MacOS/Unity}"
-            FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
+            UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.12f1/Unity.app/Contents/MacOS/Unity}"
+            FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.12f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
             ;;
         Linux)
-            UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.4.0f1/Editor/Unity}"
+            UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.4.12f1/Editor/Unity}"
             FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
             ;;
         MINGW*|MSYS*|CYGWIN*)
-            UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
+            UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.12f1/Editor/Unity.exe}"
             FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
             ;;
         *)

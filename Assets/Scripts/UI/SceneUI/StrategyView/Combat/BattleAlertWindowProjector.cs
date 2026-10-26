@@ -180,8 +180,7 @@ internal sealed class BattleAlertWindowProjector
             panel,
             category,
             result.Title,
-            direct
-                    ? "Select one of the following buttons to close this display and go directly to..."
+            direct ? GetDirectNavigationPrompt(result, playerFactionId)
                 : panel == BattleResultPanel.Summary ? result.GetSummary(uiContext, playerFactionId)
                 : string.Empty,
             CreateButton(uiContext, theme?.ResultCloseButton, true, false),
@@ -194,7 +193,7 @@ internal sealed class BattleAlertWindowProjector
                 : Array.Empty<BattleResultCategoryRenderData>(),
             planetaryResult,
             direct
-                ? CreateDirectButtons(uiContext, theme)
+                ? CreateDirectButtons(uiContext, theme, result, playerFactionId)
                 : Array.Empty<BattleAlertButtonRenderData>(),
             table
         );
@@ -374,17 +373,42 @@ internal sealed class BattleAlertWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed battle presentation.</param>
+    /// <param name="playerFactionId">The current player's faction identifier.</param>
     /// <returns>The system and fleet controls in source order.</returns>
     private static IReadOnlyList<BattleAlertButtonRenderData> CreateDirectButtons(
         UIContext uiContext,
-        BattleAlertWindowTheme theme
+        BattleAlertWindowTheme theme,
+        BattleResultPresentation result,
+        string playerFactionId
     )
     {
+        bool hasFleetDestination = !string.IsNullOrEmpty(
+            result?.GetFleetPlanetInstanceID(playerFactionId)
+        );
         return new[]
         {
             CreateButton(uiContext, theme?.ResultDirectSectorButton, true, false),
-            CreateButton(uiContext, theme?.ResultDirectFleetButton, true, false),
+            hasFleetDestination
+                ? CreateButton(uiContext, theme?.ResultDirectFleetButton, true, false)
+                : null,
         };
+    }
+
+    /// <summary>
+    /// Returns the direct-navigation instruction appropriate to the surviving player forces.
+    /// </summary>
+    /// <param name="result">The completed battle presentation.</param>
+    /// <param name="playerFactionId">The current player's faction identifier.</param>
+    /// <returns>The singular or plural navigation instruction.</returns>
+    private static string GetDirectNavigationPrompt(
+        BattleResultPresentation result,
+        string playerFactionId
+    )
+    {
+        return string.IsNullOrEmpty(result?.GetFleetPlanetInstanceID(playerFactionId))
+            ? "Select the following button to close this display and go directly to..."
+            : "Select one of the following buttons to close this display and go directly to...";
     }
 
     /// <summary>

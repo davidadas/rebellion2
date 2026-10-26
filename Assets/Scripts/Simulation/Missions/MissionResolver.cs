@@ -94,7 +94,7 @@ namespace Rebellion.Simulation
             if (departureFoiled)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
-                MissionCompletedResult completed = mission.BuildCompletedResult(
+                MissionCompletedResult completed = mission.BuildTerminatingResult(
                     MissionOutcome.Foiled,
                     MissionCompletionReason.Foiled,
                     _game,

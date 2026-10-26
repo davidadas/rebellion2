@@ -97,6 +97,17 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
+        public void Play_ValidClip_NotifiesPresentationStart()
+        {
+            int startingCount = 0;
+            _manager.PlaybackStarting += () => startingCount++;
+
+            _manager.Play(_clip, null);
+
+            Assert.AreEqual(1, startingCount);
+        }
+
+        [Test]
         public void Play_ValidClip_AppliesMasterScaledVideoVolume()
         {
             _audioManager.SetMasterVolume(0.5f);
@@ -154,6 +165,18 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Assert.AreEqual(0.75f, Time.timeScale);
             Assert.IsFalse(AudioListener.pause);
+        }
+
+        [Test]
+        public void Play_NullClipDuringActivePlayback_NotifiesPresentationFinish()
+        {
+            int finishedCount = 0;
+            _manager.PlaybackFinished += () => finishedCount++;
+            _manager.Play(_clip, null);
+
+            _manager.Play((VideoClip)null, null);
+
+            Assert.AreEqual(1, finishedCount);
         }
 
         /// <summary>

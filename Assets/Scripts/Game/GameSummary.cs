@@ -1,5 +1,4 @@
 using System;
-using Rebellion.Game.Events;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -32,7 +31,7 @@ namespace Rebellion.Game
     }
 
     /// <summary>
-    /// Contains the configuration and state for a game session.
+    /// Contains the persisted selections and content identity used to create a game.
     /// </summary>
     [PersistableObject]
     public sealed class GameSummary
@@ -50,17 +49,8 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(ResourceAvailability))]
         private GameResourceAvailability _resourceAvailability = GameResourceAvailability.Normal;
 
-        [PersistableMember(Name = nameof(DisabledEventCategories))]
-        private GameEventCategory[] _disabledEventCategories = Array.Empty<GameEventCategory>();
-
-        [PersistableMember(Name = nameof(PlayerDifficultyModifiers))]
-        private DifficultyModifiers _playerDifficultyModifiers;
-
-        [PersistableMember(Name = nameof(AIDifficultyModifiers))]
-        private DifficultyModifiers _aiDifficultyModifiers;
-
-        [PersistableMember(Name = nameof(GenerationConfigOverride))]
-        private GameGenerationConfig _generationConfigOverride;
+        [PersistableMember(Name = nameof(CustomSettings))]
+        private CustomGameSettings _customSettings;
 
         [PersistableMember(Name = nameof(StartingFactionIDs))]
         private string[] _startingFactionIds = Array.Empty<string>();
@@ -115,31 +105,10 @@ namespace Rebellion.Game
         }
 
         [PersistableIgnore]
-        public GameEventCategory[] DisabledEventCategories
+        public CustomGameSettings CustomSettings
         {
-            get => _disabledEventCategories;
-            set => _disabledEventCategories = value ?? Array.Empty<GameEventCategory>();
-        }
-
-        [PersistableIgnore]
-        public DifficultyModifiers PlayerDifficultyModifiers
-        {
-            get => _playerDifficultyModifiers;
-            set => _playerDifficultyModifiers = value;
-        }
-
-        [PersistableIgnore]
-        public DifficultyModifiers AIDifficultyModifiers
-        {
-            get => _aiDifficultyModifiers;
-            set => _aiDifficultyModifiers = value;
-        }
-
-        [PersistableIgnore]
-        public GameGenerationConfig GenerationConfigOverride
-        {
-            get => _generationConfigOverride;
-            set => _generationConfigOverride = value;
+            get => _customSettings;
+            set => _customSettings = value;
         }
 
         [PersistableIgnore]
@@ -202,21 +171,10 @@ namespace Rebellion.Game
         /// Gets whether this campaign was created with a custom game configuration.
         /// </summary>
         [PersistableIgnore]
-        public bool IsCustomGame => _generationConfigOverride != null;
+        public bool IsCustomGame => _customSettings != null;
 
         /// <summary>
-        /// Returns whether one classified event category is enabled for this campaign.
-        /// </summary>
-        /// <param name="category">The category to inspect.</param>
-        /// <returns>True when events in the category should be included.</returns>
-        public bool IsEventCategoryEnabled(GameEventCategory category)
-        {
-            return category == GameEventCategory.None
-                || Array.IndexOf(_disabledEventCategories, category) < 0;
-        }
-
-        /// <summary>
-        /// Default constructor used for deserialization.
+        /// Creates a game summary with the standard launch selections.
         /// </summary>
         public GameSummary() { }
     }

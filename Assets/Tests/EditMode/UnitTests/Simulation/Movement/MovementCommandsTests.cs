@@ -2678,6 +2678,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryRequestMove_RegimentToShipAboveNeutralUncolonizedPlanet_DoesNotClaimPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            Fleet fleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(ship, fleet);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { regiment }, ship, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(ship, regiment.GetParent());
+            Assert.IsNotNull(regiment.Movement);
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
+        }
+
+        [Test]
         public void RequestMove_OfficerToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
         {
             GameConfig config = new GameConfig();

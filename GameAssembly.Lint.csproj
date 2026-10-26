@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultItems>false</EnableDefaultItems>
-    <UnityVersion>6000.4.0f1</UnityVersion>
+    <UnityVersion>6000.4.12f1</UnityVersion>
     <NoWarn>0169;0649;1701;1702;1591</NoWarn>
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
@@ -51,14 +51,6 @@
     <HighDefinitionRenderPipelineHintPath
       Condition="'$(HighDefinitionRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
       >Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
-    >
-    <TndFrameGenerationHintPath
-      Condition="Exists('$(UnityManagedAssembliesPath)/TND.FrameGen.Runtime.Core.dll')"
-      >$(UnityManagedAssembliesPath)/TND.FrameGen.Runtime.Core.dll</TndFrameGenerationHintPath
-    >
-    <TndFrameGenerationHintPath
-      Condition="'$(TndFrameGenerationHintPath)' == '' And Exists('Library/ScriptAssemblies/TND.FrameGen.Runtime.Core.dll')"
-      >Library/ScriptAssemblies/TND.FrameGen.Runtime.Core.dll</TndFrameGenerationHintPath
     >
   </PropertyGroup>
   <ItemGroup>
@@ -177,10 +169,6 @@
       Condition="'$(HighDefinitionRenderPipelineHintPath)' != ''"
     >
       <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="TND.FrameGen.Runtime.Core" Condition="'$(TndFrameGenerationHintPath)' != ''">
-      <HintPath>$(TndFrameGenerationHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="glTFast" Condition="Exists('Library/ScriptAssemblies/glTFast.dll')">

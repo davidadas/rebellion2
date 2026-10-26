@@ -313,6 +313,8 @@ public sealed class MessagesDetailPanelRenderData
 
     public bool NextDisabled { get; }
 
+    public bool MissionContinuationChoiceVisible { get; }
+
     /// <summary>
     /// Creates a message-detail presentation snapshot.
     /// </summary>
@@ -324,6 +326,7 @@ public sealed class MessagesDetailPanelRenderData
     /// <param name="iconTexture">The message-category icon.</param>
     /// <param name="previousDisabled">Whether previous navigation is disabled.</param>
     /// <param name="nextDisabled">Whether next navigation is disabled.</param>
+    /// <param name="missionContinuationChoiceVisible">Whether the continuing mission can be continued or aborted.</param>
     public MessagesDetailPanelRenderData(
         string messageId,
         string header,
@@ -332,7 +335,8 @@ public sealed class MessagesDetailPanelRenderData
         Texture overlayTexture,
         Texture iconTexture,
         bool previousDisabled,
-        bool nextDisabled
+        bool nextDisabled,
+        bool missionContinuationChoiceVisible = false
     )
     {
         MessageId = messageId ?? string.Empty;
@@ -343,5 +347,6 @@ public sealed class MessagesDetailPanelRenderData
         IconTexture = iconTexture;
         PreviousDisabled = previousDisabled;
         NextDisabled = nextDisabled;
+        MissionContinuationChoiceVisible = missionContinuationChoiceVisible;
     }
 }

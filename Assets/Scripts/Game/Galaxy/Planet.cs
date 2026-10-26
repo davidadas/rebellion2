@@ -554,7 +554,8 @@ namespace Rebellion.Game.Galaxy
             SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
             if (
                 faction.Settings.SupportResistance == direction
-                && GetParentOfType<PlanetSector>()?.SectorSuppressionDivisor > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
+                    > 1
                 && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
             )
                 shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;
@@ -594,7 +595,7 @@ namespace Rebellion.Game.Galaxy
                     (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
                 );
             PlanetSector sector = GetParentOfType<PlanetSector>();
-            garrison /= sector?.SectorSuppressionDivisor ?? 1;
+            garrison /= sector?.GetSectorSuppressionDivisor(faction.InstanceID) ?? 1;
             if (IsInUprising)
                 garrison *= config.UprisingMultiplier;
             return garrison;

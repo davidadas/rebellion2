@@ -43,31 +43,30 @@ namespace Rebellion.Game.Galaxy
         private List<Planet> _planets = new List<Planet>();
 
         private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
-        private int? _projectedSectorSuppression;
+        private string _projectedSectorSuppressionOwnerInstanceID;
+        private int? _projectedSectorSuppressionDivisor;
 
         /// <summary>
-        /// Returns the strongest operational, stationary ship's sector garrison divisor.
+        /// Returns the strongest operational, stationary suppression divisor owned by a faction.
         /// </summary>
-        [PersistableIgnore]
-        internal int SectorSuppressionDivisor
+        /// <param name="ownerInstanceID">The faction whose suppression sources are evaluated.</param>
+        /// <returns>The strongest divisor, or one when the faction has no active source.</returns>
+        internal int GetSectorSuppressionDivisor(string ownerInstanceID)
         {
-            get
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return 1;
+            if (_projectedSectorSuppressionDivisor.HasValue)
+                return ownerInstanceID == _projectedSectorSuppressionOwnerInstanceID
+                    ? _projectedSectorSuppressionDivisor.Value
+                    : 1;
+
+            int divisor = 1;
+            foreach (CapitalShip ship in _suppressionSources)
             {
-                if (_projectedSectorSuppression.HasValue)
-                    return _projectedSectorSuppression.Value;
-                int divisor = 1;
-                foreach (CapitalShip ship in _suppressionSources)
-                {
-                    if (
-                        ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.Movement == null
-                        && ship.GetParentOfType<Fleet>()?.Movement == null
-                        && ship.IsActive()
-                    )
-                        divisor = System.Math.Max(divisor, ship.SectorSuppression);
-                }
-                return divisor;
+                if (ship.OwnerInstanceID == ownerInstanceID && IsActiveSuppressionSource(ship))
+                    divisor = System.Math.Max(divisor, ship.SectorSuppression);
             }
+            return divisor;
         }
 
         /// <summary>
@@ -76,12 +75,27 @@ namespace Rebellion.Game.Galaxy
         public PlanetSector() { }
 
         /// <summary>
-        /// Captures sector suppression state for a faction view with partial descendants.
+        /// Captures owner-scoped sector suppression for a view with partial descendants.
         /// </summary>
-        /// <param name="divisor">The observed sector garrison divisor.</param>
-        internal void SetProjectedSectorSuppression(int divisor)
+        /// <param name="ownerInstanceID">The faction whose suppression was observed.</param>
+        /// <param name="divisor">The observed suppression divisor.</param>
+        internal void SetProjectedSectorSuppression(string ownerInstanceID, int divisor)
         {
-            _projectedSectorSuppression = divisor;
+            _projectedSectorSuppressionOwnerInstanceID = ownerInstanceID;
+            _projectedSectorSuppressionDivisor = divisor;
+        }
+
+        /// <summary>
+        /// Determines whether a registered ship currently provides sector suppression.
+        /// </summary>
+        /// <param name="ship">The registered suppression source.</param>
+        /// <returns>True when the ship is complete, stationary, and active.</returns>
+        private static bool IsActiveSuppressionSource(CapitalShip ship)
+        {
+            return ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.GetParentOfType<Fleet>()?.Movement == null
+                && ship.IsActive();
         }
 
         /// <summary>

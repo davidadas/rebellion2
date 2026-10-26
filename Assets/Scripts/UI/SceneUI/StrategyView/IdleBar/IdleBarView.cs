@@ -530,7 +530,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         );
         if (
             entry == null
-            || string.IsNullOrEmpty(entry.Name)
+            || string.IsNullOrEmpty(entry.HoverText)
             || !shelfHitArea.gameObject.activeSelf
         )
         {
@@ -538,7 +538,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             return;
         }
 
-        hoverLabelText.text = entry.Name;
+        hoverLabelText.text = entry.HoverText;
         int width = Mathf.CeilToInt(
             Mathf.Min(
                 _maximumHoverLabelWidth,

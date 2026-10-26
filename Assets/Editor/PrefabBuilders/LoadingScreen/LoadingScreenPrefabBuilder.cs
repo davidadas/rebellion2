@@ -168,7 +168,7 @@ public static class LoadingScreenPrefabBuilder
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(cameraOrbitObject.transform, false);
-        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -8f);
+        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -6.5f);
         Camera shuttleCamera = cameraObject.GetComponent<Camera>();
         shuttleCamera.clearFlags = CameraClearFlags.SolidColor;
         shuttleCamera.backgroundColor = Color.clear;

@@ -76,7 +76,11 @@ namespace Rebellion.Simulation
 
             Game = game;
             if (Game.Config == null)
-                Game.SetConfig(_gameData.GameConfig);
+            {
+                GameConfig config = _gameData.GameConfig.GetDeepCopy();
+                Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
+                Game.SetConfig(config);
+            }
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();
             Tick.Reset();

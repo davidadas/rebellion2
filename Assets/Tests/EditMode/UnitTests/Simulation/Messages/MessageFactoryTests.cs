@@ -37,6 +37,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "target",
                 NavigationSecondaryTargetInstanceID = "secondary",
                 MissionInstanceID = "mission",
+                MissionContinuationPending = true,
             };
             MessageDelivery delivery = new()
             {
@@ -64,6 +65,7 @@ namespace Rebellion.Tests.Simulation
                 message.NavigationSecondaryTargetInstanceID
             );
             Assert.AreEqual(content.MissionInstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
         }
 
         [Test]
@@ -149,6 +151,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "old-target",
                 NavigationSecondaryTargetInstanceID = "old-secondary",
                 MissionInstanceID = "old-mission",
+                MissionContinuationPending = true,
             };
 
             new MessageFactory(null).CreateMessage(
@@ -167,6 +170,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(report.NavigationTargetInstanceID);
             Assert.IsNull(report.NavigationSecondaryTargetInstanceID);
             Assert.IsNull(report.MissionInstanceID);
+            Assert.IsFalse(report.MissionContinuationPending);
         }
 
         [Test]
@@ -1863,6 +1867,55 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateMessages_RecruitmentSuccess_NavigatesToRecruitedOfficer()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer recruiter = new Officer
+            {
+                InstanceID = "RECRUITER",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer recruit = new Officer
+            {
+                InstanceID = "RECRUIT",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            RecruitmentMission mission = new RecruitmentMission
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                RecruitedOfficerInstanceID = recruit.InstanceID,
+            };
+            game.AttachNode(recruit, origin);
+            game.AttachNode(mission, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "body",
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeId: RecruitmentMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                        Participants = new List<IMissionParticipant> { recruiter },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(recruit.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
         public void CreateMessages_MissionFailure_UsesReporterVoiceAndAdvisorSubject()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -2145,6 +2198,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
             Assert.AreEqual("body", message.Body);
         }
 

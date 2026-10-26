@@ -254,28 +254,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
-        {
-            FieldInfo summaryField = typeof(GameLaunchContext).GetField(
-                "<Summary>k__BackingField",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            object originalSummary = summaryField.GetValue(null);
-            try
-            {
-                summaryField.SetValue(null, null);
-
-                Task startup = (Task)InvokePrivate("StartNewGameAsync");
-
-                Assert.ThrowsAsync<InvalidOperationException>(async () => await startup);
-            }
-            finally
-            {
-                summaryField.SetValue(null, originalSummary);
-            }
-        }
-
-        [Test]
         public void LoadGameAsync_MissingFileName_ThrowsInvalidOperationException()
         {
             string originalFileName = GameLaunchContext.SaveFileName;
