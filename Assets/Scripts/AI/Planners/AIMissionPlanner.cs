@@ -234,8 +234,14 @@ namespace Rebellion.AI.Planners
                 List<IMissionParticipant> candidates = present
                     .Concat(arrivals)
                     .OrderByDescending(participant =>
-                        participant.GetEffectiveRating(SkillRating.Espionage)
-                        + participant.GetEffectiveRating(SkillRating.Combat)
+                        AIMissionProposalScorer.GetParticipantPriority(
+                            context,
+                            participant,
+                            departure,
+                            participant.GetEffectiveRating(SkillRating.Espionage)
+                                + participant.GetEffectiveRating(SkillRating.Combat),
+                            departure: departure
+                        )
                     )
                     .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
                     .Take(Math.Max(1, config.SabotageTeamCandidateCount))
@@ -252,8 +258,14 @@ namespace Rebellion.AI.Planners
             {
                 var leaders = assemblies
                     .OrderByDescending(assembly =>
-                        assembly.Leader.GetEffectiveRating(SkillRating.Espionage)
-                        + assembly.Leader.GetEffectiveRating(SkillRating.Combat)
+                        AIMissionProposalScorer.GetParticipantPriority(
+                            context,
+                            assembly.Leader,
+                            planet,
+                            assembly.Leader.GetEffectiveRating(SkillRating.Espionage)
+                                + assembly.Leader.GetEffectiveRating(SkillRating.Combat),
+                            departure: assembly.Departure
+                        )
                     )
                     .ThenBy(assembly => assembly.Departure.GetRawDistanceTo(planet))
                     .ThenBy(assembly => assembly.Leader.InstanceID, StringComparer.Ordinal)
@@ -809,8 +821,13 @@ namespace Rebellion.AI.Planners
             {
                 List<IMissionParticipant> leaders = _sabotageParticipants
                     .OrderByDescending(participant =>
-                        participant.GetEffectiveRating(SkillRating.Espionage)
-                        + participant.GetEffectiveRating(SkillRating.Combat)
+                        AIMissionProposalScorer.GetParticipantPriority(
+                            context,
+                            participant,
+                            planet,
+                            participant.GetEffectiveRating(SkillRating.Espionage)
+                                + participant.GetEffectiveRating(SkillRating.Combat)
+                        )
                     )
                     .ThenBy(participant =>
                         participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
@@ -829,7 +846,12 @@ namespace Rebellion.AI.Planners
                             .Where(participant => allowsOfficers || participant is SpecialForces)
                             .OrderByDescending(participant => participant is SpecialForces)
                             .ThenByDescending(participant =>
-                                participant.GetEffectiveRating(SkillRating.Espionage)
+                                AIMissionProposalScorer.GetParticipantPriority(
+                                    context,
+                                    participant,
+                                    planet,
+                                    participant.GetEffectiveRating(SkillRating.Espionage)
+                                )
                             )
                             .ThenByDescending(participant =>
                                 participant.GetEffectiveRating(SkillRating.Combat)
@@ -907,14 +929,22 @@ namespace Rebellion.AI.Planners
                     ? Math.Min(config.MaximumSabotageMainParticipants, maximumSize - 1)
                     : maximumSize - 1;
             List<IMissionParticipant> mains = new() { leader };
+            long outboundTicks = team.EstimateOutboundTravelTicks(context, departure);
             List<IMissionParticipant> mainCandidates = candidates
                 .Where(candidate => candidate != leader)
                 .OrderByDescending(candidate =>
-                    mission.GetObjectiveSuccessProbability(
-                        new[] { candidate },
-                        context.Game,
+                    AIMissionProposalScorer.GetParticipantPriority(
+                        context,
+                        candidate,
                         planet,
-                        target
+                        mission.GetObjectiveSuccessProbability(
+                            new[] { candidate },
+                            context.Game,
+                            planet,
+                            target
+                        ),
+                        outboundTicks,
+                        departure
                     )
                 )
                 .ThenByDescending(candidate => candidate.GetEffectiveRating(SkillRating.Espionage))
@@ -976,10 +1006,21 @@ namespace Rebellion.AI.Planners
                     ? Math.Min(config.MaximumSabotageDecoyParticipants, remainingSlots)
                     : remainingSlots;
             List<IMissionParticipant> decoys = new();
+            AIMissionProposal mainGroup = new(mains, MissionTypeIDs.Sabotage, planet);
+            long outboundTicks = mainGroup.EstimateOutboundTravelTicks(context, departure);
             List<IMissionParticipant> decoyCandidates = candidates
                 .Except(mains)
                 .OrderByDescending(candidate => candidate is SpecialForces)
-                .ThenByDescending(candidate => candidate.GetEffectiveRating(SkillRating.Espionage))
+                .ThenByDescending(candidate =>
+                    AIMissionProposalScorer.GetParticipantPriority(
+                        context,
+                        candidate,
+                        planet,
+                        candidate.GetEffectiveRating(SkillRating.Espionage),
+                        outboundTicks,
+                        departure
+                    )
+                )
                 .ThenByDescending(candidate => candidate.GetEffectiveRating(SkillRating.Combat))
                 .ThenBy(candidate => candidate.GetParentOfType<Planet>().GetRawDistanceTo(planet))
                 .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)

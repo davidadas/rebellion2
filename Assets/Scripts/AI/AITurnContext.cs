@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -67,6 +68,21 @@ namespace Rebellion.AI
             Array.Empty<Fleet>();
         public IReadOnlyList<AIProposal> Proposals => _proposals;
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
+
+        /// <summary>
+        /// Gets or sets shared reservations for selection stages within this faction turn.
+        /// </summary>
+        internal AISelectionState SelectionState { get; set; }
+
+        /// <summary>
+        /// Gets or sets the production selector retaining this turn's accepted budgets and claims.
+        /// </summary>
+        internal AIProductionSelector ProductionSelector { get; set; }
+
+        /// <summary>
+        /// Gets or sets the proposal boundary already considered by an earlier selection stage.
+        /// </summary>
+        internal int SelectionProposalCount { get; set; }
         public IReadOnlyList<GameResult> Results => _results;
 
         private IReadOnlyList<AIProductionDemand> _productionDemands =

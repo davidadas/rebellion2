@@ -563,6 +563,7 @@ namespace Rebellion.AI.Demands
             if (context == null)
                 return;
 
+            context.StrategicPlan.RefreshDiplomacyEconomy(context);
             context.SetProductionDemands(BuildDemands(context));
         }
 
@@ -768,10 +769,9 @@ namespace Rebellion.AI.Demands
         {
             return context.Assessment.PendingRawMaterialRequestCount > 0
                 || context.Assessment.PendingRefinedMaterialRequestCount > 0
-                || context.Assessment.ProjectedRefinedMaterialPercent
+                || context.StrategicPlan.EconomyPlanningRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
-                || context.Assessment.ProjectedEconomyMaintenanceHeadroom
-                    < context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                || context.Assessment.ProjectedEconomyMaintenanceHeadroom < 0
                 || context.StrategicPlan.EconomyPlanningMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
         }

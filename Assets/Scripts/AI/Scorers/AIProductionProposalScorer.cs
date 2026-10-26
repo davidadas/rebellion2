@@ -562,7 +562,7 @@ namespace Rebellion.AI.Scorers
                 floor,
                 context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
             );
-            if (context.Assessment.ProjectedEconomyMaintenanceHeadroom < floor)
+            if (context.Assessment.ProjectedEconomyMaintenanceHeadroom < 0 || headroom < floor)
                 return AIUtility.EvaluatePressure(1, utility.MaintenanceShortfall);
             return headroom >= target
                 ? 0
@@ -585,7 +585,7 @@ namespace Rebellion.AI.Scorers
                 reservePercent,
                 config.RefinedMaterialEconomyWarningPercent
             );
-            int projectedPercent = context.Assessment.ProjectedRefinedMaterialPercent;
+            int projectedPercent = context.StrategicPlan.EconomyPlanningRefinedMaterialPercent;
             if (projectedPercent >= warningPercent)
                 return 0;
             double urgency = Math.Min(

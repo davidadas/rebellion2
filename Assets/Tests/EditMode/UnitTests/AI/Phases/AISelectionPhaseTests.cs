@@ -727,7 +727,7 @@ namespace Rebellion.Tests.AI.Phases
         [TestCase(AIProductionDemandKind.FleetCapitalShip)]
         [TestCase(AIProductionDemandKind.FleetStarfighter)]
         [TestCase(AIProductionDemandKind.FleetRegiment)]
-        public void Select_PriorityFleetsWithIndependentCapacity_SelectsBothInFleetOrder(
+        public void Select_PriorityFleetsWithIndependentCapacity_SelectsBothInScoreOrder(
             AIProductionDemandKind kind
         )
         {
@@ -753,11 +753,11 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { primary, secondary }, selected);
+            CollectionAssert.AreEqual(new[] { secondary, primary }, selected);
         }
 
         [Test]
-        public void Select_PriorityFleetWithSpareCapacity_AllowsNewBattleFleetSeed()
+        public void Select_HigherScoringFleetSeedWithSpareCapacity_AllowsBothRequests()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -779,7 +779,122 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { primary, seed }, selected);
+            CollectionAssert.AreEqual(new[] { seed, primary }, selected);
+        }
+
+        [TestCase(0, 0)]
+        [TestCase(1, 100)]
+        public void Select_FleetNeedsTwoShips_ChoosesHullIndependentlyForEachYard(
+            int firstCost,
+            int secondCost
+        )
+        {
+            AITurnContext context = CreateIndependentHullContext(2, false, firstCost, secondCost);
+            List<AIManufactureProposal> selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            CollectionAssert.AreEqual(
+                new[] { "a-first", "b-second" },
+                selected.Select(proposal => proposal.Product.GetReference().GetTypeID())
+            );
+            Assert.AreEqual(
+                2,
+                selected.Select(proposal => proposal.ProducerPlanet).Distinct().Count()
+            );
+            Assert.IsTrue(selected.All(proposal => proposal.ManufacturingCount == 1));
+        }
+
+        [Test]
+        public void Select_FirstHullCoversTroopCapacity_ChoosesNextHullForRemainingFirepower()
+        {
+            AITurnContext context = CreateIndependentHullContext(2, true);
+            List<AIManufactureProposal> selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            CollectionAssert.AreEqual(
+                new[] { "a-first", "b-second" },
+                selected.Select(proposal => proposal.Product.GetReference().GetTypeID())
+            );
+        }
+
+        [Test]
+        public void Select_FleetNeedsOneHull_DoesNotAssignExtraYard()
+        {
+            AITurnContext context = CreateIndependentHullContext(1, false);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, selected.Count);
+        }
+
+        [Test]
+        public void Select_RemainingFleetRequestScoresLower_AllowsOtherRequestFirst()
+        {
+            AITurnContext context = CreateIndependentHullContext(2, false);
+            AIManufactureProposal first = (AIManufactureProposal)context.Proposals.Single();
+            AIManufactureProposal competing = new(
+                new AIProductionDemand(
+                    "other-fleet",
+                    AIProductionDemandKind.FleetSeedCapitalShip,
+                    ManufacturingType.Ship,
+                    BuildingType.None,
+                    first.ProducerPlanet,
+                    1
+                ),
+                first.ProducerAlternatives.Single().ProducerPlanet,
+                first.Product,
+                false
+            );
+            competing.SetScore(0.5);
+            context.AddProposal(competing);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(2, selected.Count);
+            Assert.AreSame(competing, selected[1]);
+        }
+
+        [TestCase(2, 1, true)]
+        [TestCase(1, 2, false)]
+        [TestCase(1, 1, false)]
+        public void Select_NewFleetCompetesForOneYard_SelectsHigherScoringRequest(
+            double seedScore,
+            double reinforcementScore,
+            bool selectsSeed
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal reinforcement = CreateFleetProductionProposal(
+                context,
+                "reinforcement",
+                AIProductionDemandKind.FleetCapitalShip,
+                reinforcementScore
+            );
+            AIManufactureProposal seed = CreateFleetProductionProposal(
+                context,
+                "seed",
+                AIProductionDemandKind.FleetSeedCapitalShip,
+                seedScore
+            );
+            seed = new AIManufactureProposal(
+                seed.Demand,
+                reinforcement.ProducerPlanet,
+                seed.Product,
+                false
+            );
+            seed.SetScore(seedScore);
+            context.SetFleetProductionPriorities(new[] { reinforcement.Demand.DestinationFleet });
+            context.AddProposal(reinforcement);
+            context.AddProposal(seed);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { selectsSeed ? seed : reinforcement }, selected);
         }
 
         [Test]
@@ -890,7 +1005,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { primary, assembly }, selected);
+            CollectionAssert.AreEqual(new[] { assembly, primary }, selected);
         }
 
         [Test]
@@ -918,11 +1033,11 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { troops, ship }, selected);
+            CollectionAssert.AreEqual(new[] { ship, troops }, selected);
         }
 
         [Test]
-        public void Select_PriorityFleetsCompeteForOneYard_SelectsHigherPriorityFleet()
+        public void Select_PriorityFleetsCompeteForOneYard_SelectsHigherScoringFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -953,7 +1068,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { primary }, selected);
+            CollectionAssert.AreEqual(new[] { secondary }, selected);
         }
 
         [TestCase(
@@ -2947,6 +3062,97 @@ namespace Rebellion.Tests.AI.Phases
             game.AttachNode(spare, donor);
             context = AITestSceneBuilder.CreateContext(game, faction);
             return new AITransferUnitProposal(donor, receiver, spare, receiver, target);
+        }
+
+        /// <summary>
+        /// Creates two available yards and a fleet request with independently selectable hulls.
+        /// </summary>
+        /// <param name="requiredShips">The number of equal firepower contributions required.</param>
+        /// <param name="mixedRequirements">Whether the first hull fills only troop capacity.</param>
+        /// <param name="firstCost">Construction cost of the first hull option.</param>
+        /// <param name="secondCost">Construction cost of the second hull option.</param>
+        /// <returns>The planned and scored faction turn.</returns>
+        private static AITurnContext CreateIndependentHullContext(
+            int requiredShips,
+            bool mixedRequirements,
+            int firstCost = 0,
+            int secondCost = 0
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "hull-sector");
+            Planet first = AITestSceneBuilder.AddPlanet(game, sector, "a-yard", faction.InstanceID);
+            Planet second = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "b-yard",
+                faction.InstanceID
+            );
+            foreach (Planet producer in new[] { first, second })
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    producer.InstanceID + "-yard",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            Fleet fleet = EntityFactory.CreateFleet("hull-fleet", faction.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder { OrderType = FleetOrderType.Attack };
+            game.AttachNode(fleet, first);
+            CapitalShip firstHull = AITestSceneBuilder.CreateCapitalShip(
+                "a-first",
+                faction.InstanceID,
+                regimentCapacity: 2
+            );
+            CapitalShip secondHull = AITestSceneBuilder.CreateCapitalShip(
+                "b-second",
+                faction.InstanceID,
+                regimentCapacity: 0
+            );
+            firstHull.ConstructionCost = firstCost;
+            secondHull.ConstructionCost = secondCost;
+            if (mixedRequirements)
+                foreach (int[] arc in firstHull.PrimaryWeapons.Values)
+                    Array.Clear(arc, 0, arc.Length);
+            faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new(firstHull),
+                new(secondHull),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                random: new SequenceRNG(intValues: new[] { 0, 1 })
+            );
+            int firepower =
+                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                    secondHull
+                );
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "hull-demand",
+                        AIProductionDemandKind.FleetCapitalShip,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        fleet,
+                        1,
+                        baseDemandPercent: 100,
+                        capitalFirepowerDeficit: firepower
+                            * (mixedRequirements ? 1 : requiredShips),
+                        regimentCapacityDeficit: mixedRequirements ? 2 : 0
+                    ),
+                }
+            );
+            foreach (AIProposal proposal in new AIProductionPlanner().Plan(context))
+            {
+                proposal.SetScore(1);
+                context.AddProposal(proposal);
+            }
+            return context;
         }
 
         /// <summary>

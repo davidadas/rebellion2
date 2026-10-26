@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -57,7 +58,33 @@ namespace Rebellion.AI
         /// <summary>
         /// Gets discounted maintenance growth from known neutral worlds under active diplomacy.
         /// </summary>
-        public int ExpectedDiplomacyMaintenanceGain { get; }
+        public int ExpectedDiplomacyMaintenanceGain { get; private set; }
+
+        /// <summary>
+        /// Gets discounted refined materials from known worlds under active diplomacy.
+        /// </summary>
+        public int ExpectedDiplomacyRefinedMaterialGain { get; private set; }
+
+        /// <summary>
+        /// Gets the material reserve used for economy planning, including anticipated diplomacy gains.
+        /// </summary>
+        public int EconomyPlanningRefinedMaterialPercent
+        {
+            get
+            {
+                long materials = Math.Max(
+                    0,
+                    (long)_assessment.RefinedMaterialStockpile
+                        - _assessment.NearTermRefinedMaterialCommitment
+                        + ExpectedDiplomacyRefinedMaterialGain
+                );
+                return _assessment.RefinedMaterialSupply <= 0
+                    ? materials > 0
+                        ? 100
+                        : 0
+                    : (int)Math.Min(100, materials * 100 / _assessment.RefinedMaterialSupply);
+            }
+        }
 
         /// <summary>
         /// Gets economy-planning headroom without authorizing spending against unowned capacity.
@@ -131,29 +158,103 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Estimates discounted resource-pair growth from active diplomacy against visible neutral worlds.
+        /// Refreshes economy expectations from active missions and this turn's selected assignments.
         /// </summary>
-        /// <returns>The expected net maintenance gain used only when prioritizing economic construction.</returns>
-        private int CalculateExpectedDiplomacyMaintenanceGain()
+        /// <param name="context">The faction turn containing selected mission commitments.</param>
+        internal void RefreshDiplomacyEconomy(AITurnContext context)
+        {
+            (ExpectedDiplomacyMaintenanceGain, ExpectedDiplomacyRefinedMaterialGain) =
+                CalculateExpectedDiplomacyEconomy(context);
+        }
+
+        /// <summary>
+        /// Estimates economic growth from active and selected diplomacy against visible neutral worlds.
+        /// </summary>
+        /// <param name="context">The faction turn containing selected missions, or null before selection.</param>
+        /// <returns>Discounted maintenance and near-term refined-material gains for economy planning.</returns>
+        private (int MaintenanceGain, int RefinedMaterialGain) CalculateExpectedDiplomacyEconomy(
+            AITurnContext context = null
+        )
         {
             double confidence =
                 Math.Clamp(_game.Config.AI.Selection.DiplomacyEconomyConfidencePercent, 0, 100)
                 / 100d;
             int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
             if (confidence <= 0 || threshold <= 0)
-                return 0;
+                return (0, 0);
 
+            int horizon = Math.Max(
+                0,
+                _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            double rawMaterials = 0;
+            double refinedMaterials = 0;
+            int rawStockpile = 0;
             double nodes = _assessment.ProjectedResourceNodeCapacity;
             double mines = _assessment.ProjectedMinedResourceCapacity;
             double refineries = _assessment.ProjectedRefinementCapacity;
             double maintenance = 0;
+            HashSet<string> aborted =
+                context
+                    ?.SelectedProposals.OfType<AIAbortMissionProposal>()
+                    .Select(proposal => proposal.Mission.InstanceID)
+                    .ToHashSet(StringComparer.Ordinal)
+                ?? new HashSet<string>(StringComparer.Ordinal);
+            var missions = _assessment
+                .ActiveMissions.Where(mission =>
+                    mission.ConfigKey == MissionTypeIDs.Diplomacy
+                    && !aborted.Contains(mission.InstanceID)
+                )
+                .Select(mission =>
+                {
+                    IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
+                    return (
+                        Planet: _assessment.GetKnownPlanet(mission.LocationInstanceID),
+                        OwnerId: mission.GetOwnerInstanceID(),
+                        Success: mission.GetObjectiveSuccessProbability(participants, _game),
+                        Transit: (double)
+                            participants
+                                .Select(participant => participant.Movement?.TicksRemaining() ?? 0)
+                                .DefaultIfEmpty()
+                                .Max(),
+                        Execution: (double)
+                            Math.Max(0, mission.MaxProgress - mission.CurrentProgress)
+                    );
+                })
+                .ToList();
+            if (context != null)
+                foreach (
+                    AIMissionProposal proposal in context
+                        .SelectedProposals.OfType<AIMissionProposal>()
+                        .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                )
+                {
+                    MissionOdds odds = _assessment.GetOperationalMissionOdds(
+                        context.MissionQueries,
+                        proposal.CreateContext()
+                    );
+                    if (odds == null)
+                        continue;
+                    missions.Add(
+                        (
+                            proposal.TargetPlanet,
+                            context.Faction.InstanceID,
+                            odds.ObjectiveSuccessProbability,
+                            proposal.EstimateOutboundTravelTicks(context),
+                            context.MissionQueries.EstimateExecutionTicks(
+                                proposal.MissionTypeID,
+                                context.Faction.InstanceID
+                            )
+                        )
+                    );
+                }
             foreach (
-                IGrouping<string, Mission> group in _assessment
-                    .ActiveMissions.Where(mission => mission.ConfigKey == MissionTypeIDs.Diplomacy)
-                    .GroupBy(mission => mission.LocationInstanceID, StringComparer.Ordinal)
+                var group in missions
+                    .Where(mission => mission.Planet != null)
+                    .GroupBy(mission => mission.Planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                Planet planet = _assessment.GetKnownPlanet(group.Key);
+                Planet planet = group.First().Planet;
                 if (
                     planet == null
                     || !_assessment.IsNeutralPlanet(planet)
@@ -170,32 +271,22 @@ namespace Rebellion.AI
                 );
                 if (readiness <= 0)
                     continue;
-                double likelihood =
-                    group
-                        .Select(mission =>
-                        {
-                            IReadOnlyList<IMissionParticipant> participants =
-                                mission.GetMainParticipants();
-                            int transit = participants
-                                .Select(participant => participant.Movement?.TicksRemaining() ?? 0)
-                                .DefaultIfEmpty()
-                                .Max();
-                            int remaining = Math.Max(
-                                0,
-                                mission.MaxProgress - mission.CurrentProgress
-                            );
-                            return mission.GetObjectiveSuccessProbability(
-                                    participants,
-                                    _game,
-                                    planet
-                                )
-                                / 100d
-                                * GetDiplomacyTravelWeight(transit + remaining);
-                        })
-                        .DefaultIfEmpty()
-                        .Max()
-                    * readiness
-                    * confidence;
+                var faction = _game.GetFactionByOwnerInstanceID(group.First().OwnerId);
+                double productionTicks = 0;
+                double likelihood = 0;
+                foreach (var mission in group)
+                {
+                    double completionTicks = mission.Transit + mission.Execution;
+                    double successWeight =
+                        mission.Success / 100d * GetDiplomacyTravelWeight(completionTicks);
+                    likelihood = Math.Max(likelihood, successWeight);
+                    productionTicks = Math.Max(
+                        productionTicks,
+                        Math.Max(0, horizon - completionTicks) * successWeight
+                    );
+                }
+                likelihood *= readiness * confidence;
+                productionTicks *= readiness * confidence;
                 List<Building> buildings = _assessment
                     .GetPlanetBuildings(planet)
                     .Where(building =>
@@ -215,12 +306,39 @@ namespace Rebellion.AI
                     * likelihood;
                 maintenance +=
                     buildings.Sum(building => Math.Max(0, building.MaintenanceCost)) * likelihood;
+                if (faction == null || productionTicks <= 0)
+                    continue;
+
+                rawStockpile = faction.RawMaterialStockpile;
+                rawMaterials += buildings
+                    .Where(building => building.BuildingType == BuildingType.Mine)
+                    .Take(resourceNodes)
+                    .Sum(building =>
+                        productionTicks
+                        / (double)
+                            ResourceProductionQueries.CalculateSteadyCycleDuration(
+                                _game,
+                                faction,
+                                building
+                            )
+                    );
+                refinedMaterials += buildings
+                    .Where(building => building.BuildingType == BuildingType.Refinery)
+                    .Sum(building =>
+                        productionTicks
+                        / (double)
+                            ResourceProductionQueries.CalculateSteadyCycleDuration(
+                                _game,
+                                faction,
+                                building
+                            )
+                    );
             }
             double addedCapacity = Math.Max(
                 0,
                 Math.Min(nodes, Math.Min(mines, refineries)) - _assessment.ProjectedMaterialCapacity
             );
-            return (int)
+            int maintenanceGain = (int)
                 Math.Min(
                     int.MaxValue,
                     Math.Max(
@@ -228,6 +346,12 @@ namespace Rebellion.AI
                         addedCapacity * _assessment.MaintenanceCapacityPerResourcePair - maintenance
                     )
                 );
+            int materialGain = (int)
+                Math.Min(
+                    int.MaxValue,
+                    Math.Max(0, Math.Min(rawStockpile + rawMaterials, refinedMaterials))
+                );
+            return (maintenanceGain, materialGain);
         }
 
         /// <summary>
@@ -430,7 +554,7 @@ namespace Rebellion.AI
         /// </summary>
         /// <param name="transitTicks">The remaining or proposed travel duration.</param>
         /// <returns>A travel weight from zero through one, without a maximum journey cutoff.</returns>
-        private double GetDiplomacyTravelWeight(int transitTicks)
+        private double GetDiplomacyTravelWeight(double transitTicks)
         {
             double scale = Math.Max(
                 1,
@@ -1485,7 +1609,8 @@ namespace Rebellion.AI
             if (_game?.Config == null)
                 return;
 
-            ExpectedDiplomacyMaintenanceGain = CalculateExpectedDiplomacyMaintenanceGain();
+            (ExpectedDiplomacyMaintenanceGain, ExpectedDiplomacyRefinedMaterialGain) =
+                CalculateExpectedDiplomacyEconomy();
             var config = _game.Config.AI.FleetDeployment;
             int operationalPlanetCount = _assessment.OwnedPlanets.Count(planet =>
                 planet.IsColonized && !planet.IsDestroyed

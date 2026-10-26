@@ -63,14 +63,6 @@ namespace Rebellion.AI.Planners
                 List<Planet>
             >();
         private readonly Dictionary<
-            (string PlanetId, ManufacturingType ManufacturingType),
-            (double TargetWork, long QueuedWork)
-        > _queueWork =
-            new Dictionary<
-                (string PlanetId, ManufacturingType ManufacturingType),
-                (double TargetWork, long QueuedWork)
-            >();
-        private readonly Dictionary<
             (string FleetId, Type UnitType, string TypeId),
             int
         > _fleetUnitCounts = new Dictionary<(string FleetId, Type UnitType, string TypeId), int>();
@@ -859,7 +851,6 @@ namespace Rebellion.AI.Planners
             _unlockedTechnologies.Clear();
             _selectedTechnologies.Clear();
             _producerPlanets.Clear();
-            _queueWork.Clear();
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
@@ -1441,12 +1432,12 @@ namespace Rebellion.AI.Planners
                     remainingQuantity
                 );
                 return distributedQuantity > 0
-                    ? CreateProposalDemand(demand, distributedQuantity)
+                    ? CreateProposalDemand(demand, Math.Min(1, distributedQuantity))
                     : null;
             }
 
             if (!IsFacilityExpansionDemand(demand) && !demand.UsesDefensiveReserve)
-                return demand;
+                return CreateProposalDemand(demand, Math.Min(1, demand.QuantityNeeded));
 
             int quantity;
             if (IsFacilityExpansionDemand(demand))
@@ -1464,7 +1455,7 @@ namespace Rebellion.AI.Planners
             if (quantity <= 0)
                 return null;
 
-            return CreateProposalDemand(demand, quantity);
+            return CreateProposalDemand(demand, Math.Min(1, quantity));
         }
 
         /// <summary>
@@ -1534,60 +1525,31 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns queue batch capacity.
+        /// Returns whether the producer has room for one new or replacement item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="producerPlanet">The producing planet.</param>
         /// <param name="product">The manufacturable product.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>One for an idle or replaceable queue, otherwise zero.</returns>
         private int GetQueueBatchCapacity(
             AITurnContext context,
             Planet producerPlanet,
             IManufacturable product
         )
         {
-            ManufacturingType manufacturingType = product.GetManufacturingType();
-            (string PlanetId, ManufacturingType ManufacturingType) key = (
-                producerPlanet.InstanceID,
-                manufacturingType
-            );
-            if (!_queueWork.TryGetValue(key, out (double TargetWork, long QueuedWork) work))
-            {
-                work.TargetWork =
-                    context.Assessment.GetPlanetProductionRate(producerPlanet, manufacturingType)
-                    * context.Game.Config.AI.TickInterval
-                    * context.Game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals;
-                work.QueuedWork = producerPlanet
+            if (
+                !producerPlanet
                     .GetManufacturingQueue()
-                    .TryGetValue(manufacturingType, out List<IManufacturable> queue)
-                    ? queue.Sum(item =>
-                        (long)Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
-                    )
-                    : 0;
-                _queueWork.Add(key, work);
-            }
+                    .TryGetValue(product.GetManufacturingType(), out List<IManufacturable> queue)
+                || queue.Count == 0
+            )
+                return 1;
 
-            double targetWork = work.TargetWork;
-            long queuedWork = work.QueuedWork;
-            IManufacturable filler = context.Assessment.GetReplaceableManufacturingOrder(
+            IManufacturable replacement = context.Assessment.GetReplaceableManufacturingOrder(
                 producerPlanet,
-                manufacturingType
+                product.GetManufacturingType()
             );
-            if (filler != null && filler.GetTypeID() != product.GetTypeID())
-                queuedWork -= Math.Max(
-                    0,
-                    filler.GetConstructionCost() - filler.ManufacturingProgress
-                );
-            long additionalWork = (long)Math.Ceiling(targetWork) - queuedWork;
-            if (additionalWork <= 0)
-                return 0;
-
-            int constructionCost = product.GetConstructionCost();
-            if (constructionCost <= 0)
-                return int.MaxValue;
-
-            long capacity = IntegerMath.DivideRoundedUp(additionalWork, constructionCost);
-            return capacity > int.MaxValue ? int.MaxValue : (int)capacity;
+            return queue.Count == 1 && ReferenceEquals(queue[0], replacement) ? 1 : 0;
         }
 
         /// <summary>

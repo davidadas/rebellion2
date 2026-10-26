@@ -22,6 +22,51 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
+        [Test]
+        public void Score_WaitingForSameTeamLonger_DecreasesValue()
+        {
+            var (context, waiting, _) = CreateWaitingScenario();
+            AIMissionProposalScorer scorer = new();
+            double sooner = scorer.Score(context, waiting);
+            waiting.Mission.Participants[0].Movement.TransitTicks = 130;
+
+            double later = scorer.Score(context, waiting);
+
+            Assert.Greater(sooner, later);
+        }
+
+        [TestCase(1)]
+        [TestCase(13)]
+        [TestCase(130)]
+        public void GetScoreUpperBound_InboundTeam_NeverUnderstatesWaitingScore(int arrivalTicks)
+        {
+            var (context, waiting, _) = CreateWaitingScenario();
+            waiting.Mission.Participants[0].Movement.TransitTicks = arrivalTicks;
+            AIMissionProposalScorer scorer = new();
+
+            Assert.GreaterOrEqual(
+                scorer.GetScoreUpperBound(context, waiting.Mission, waiting.Destination),
+                scorer.Score(context, waiting)
+            );
+        }
+
+        [TestCase(100, false)]
+        [TestCase(50, true)]
+        public void Score_WaitingVersusImmediateTeam_TradesSuccessAgainstCompletionTime(
+            int immediateSuccess,
+            bool shouldWait
+        )
+        {
+            var (context, waiting, immediate) = CreateWaitingScenario();
+            immediate.SetOperationalOdds(new MissionOdds(immediateSuccess, 0, 0));
+            AIMissionProposalScorer scorer = new();
+
+            Assert.AreEqual(
+                shouldWait,
+                scorer.Score(context, waiting) > scorer.Score(context, immediate)
+            );
+        }
+
         /// <summary>
         /// Values a selected diplomat in the candidate sector more than the same diplomat assigned elsewhere.
         /// </summary>
@@ -1847,6 +1892,68 @@ namespace Rebellion.Tests.AI.Scorers
             double score = new AIMissionProposalScorer().Score(context, proposal);
 
             Assert.AreEqual(0, score);
+        }
+
+        /// <summary>
+        /// Creates equal-risk sabotage choices with either a ready or an inbound leader.
+        /// </summary>
+        /// <returns>The faction turn, waiting alternative, and immediate mission.</returns>
+        private static (
+            AITurnContext Context,
+            AIMissionStagingProposal Waiting,
+            AIMissionProposal Immediate
+        ) CreateWaitingScenario()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "waiting-sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "waiting-origin",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "waiting-target",
+                rebels.InstanceID,
+                positionX: 10
+            );
+            Building facility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "waiting-yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Officer incoming = EntityFactory.CreateOfficer("incoming", empire.InstanceID);
+            Officer present = EntityFactory.CreateOfficer("present", empire.InstanceID);
+            Officer spare = EntityFactory.CreateOfficer("spare", empire.InstanceID);
+            game.AttachNode(incoming, origin);
+            game.AttachNode(present, origin);
+            game.AttachNode(spare, origin);
+            incoming.Movement = new MovementState { TransitTicks = 13 };
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AIMissionProposal future = new(
+                new[] { incoming },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: facility,
+                decoyParticipants: new[] { present },
+                teamIsFinal: true
+            );
+            future.SetOperationalOdds(new MissionOdds(100, 0, 0));
+            AIMissionProposal immediate = new(
+                new[] { spare },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: facility,
+                decoyParticipants: new[] { present },
+                teamIsFinal: true
+            );
+            game.Config.AI.MissionPlanning.Utility.Objective.TravelCost.Weight = 0.5;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            return (context, AIMissionStagingProposal.WaitForArrivals(future, origin), immediate);
         }
 
         /// <summary>

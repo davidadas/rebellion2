@@ -716,7 +716,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_PriorityFleetsWithSevenAndOneYard_AssignsLargeAndSmallHullsRespectively()
+        public void Plan_ScoredFleetsWithSevenAndOneYard_AssignsLargeHullToHigherScoringFleet()
         {
             AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
 
@@ -735,9 +735,10 @@ namespace Rebellion.Tests.AI.Planners
                 .ToList();
 
             Assert.AreEqual(2, selected.Count);
-            Assert.AreEqual("primary", selected[0].Demand.Id);
+            Assert.AreEqual("secondary", selected[0].Demand.Id);
             Assert.AreSame(large, selected[0].ProducerPlanet);
             Assert.AreEqual("a-large-hull", selected[0].Product.GetReference().GetTypeID());
+            Assert.AreEqual("primary", selected[1].Demand.Id);
             Assert.AreSame(small, selected[1].ProducerPlanet);
             Assert.AreEqual("z-small-hull", selected[1].Product.GetReference().GetTypeID());
             Assert.IsTrue(selected.All(proposal => proposal.ManufacturingCount == 1));
@@ -879,7 +880,8 @@ namespace Rebellion.Tests.AI.Planners
                         original.BuildingType,
                         original.Destination,
                         1,
-                        capitalFirepowerDeficit: original.CapitalFirepowerDeficit * 2
+                        capitalFirepowerDeficit: original.CapitalFirepowerDeficit * 2,
+                        baseDemandPercent: original.BaseDemandPercent
                     ),
                 }
             );

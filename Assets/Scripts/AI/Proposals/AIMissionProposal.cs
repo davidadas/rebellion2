@@ -192,7 +192,19 @@ namespace Rebellion.AI.Proposals
         /// <returns>The time until every participant could finish its return journey.</returns>
         internal long EstimateTravelTicks(AITurnContext context, Planet departure = null)
         {
-            long outbound = Participants.Max(participant =>
+            return EstimateOutboundTravelTicks(context, departure)
+                + EstimateReturnTravelTicks(context, departure);
+        }
+
+        /// <summary>
+        /// Estimates the travel until every participant reaches the mission objective.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The slowest participant's outbound travel duration.</returns>
+        internal long EstimateOutboundTravelTicks(AITurnContext context, Planet departure = null)
+        {
+            return Participants.Max(participant =>
             {
                 Planet origin = departure ?? participant.GetParentOfType<Planet>();
                 return origin.InstanceID == TargetPlanet.InstanceID
@@ -203,7 +215,6 @@ namespace Rebellion.AI.Proposals
                         TargetPlanet
                     );
             });
-            return outbound + EstimateReturnTravelTicks(context, departure);
         }
 
         /// <summary>

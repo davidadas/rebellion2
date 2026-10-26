@@ -110,19 +110,18 @@ namespace Rebellion.AI
                         new AIMissionPlanner(),
                         new AIOrbitalEngagementPlanner(),
                         new AIFleetPlanner(),
-                    }
-                ),
-                new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
-                new AIPlanningPhase(
-                    new IAIProposalPlanner[]
-                    {
-                        productionPlanner,
-                        new AIFacilityRemovalPlanner(),
                         new AIMaintenanceRecoveryPlanner(),
                     }
                 ),
+                new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
+                new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[] { productionPlanner, new AIFacilityRemovalPlanner() }
+                ),
+                new AIScoringPhase(),
+                new AISelectionPhase(continueSelection: true),
                 new AIExecutionPhase(results),
             };
         }

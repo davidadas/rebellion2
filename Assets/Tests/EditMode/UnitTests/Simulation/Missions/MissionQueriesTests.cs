@@ -21,6 +21,156 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public sealed class MissionQueriesTests
     {
+        [TestCase(0)]
+        [TestCase(2)]
+        [TestCase(8)]
+        public void GetMissionSuccessUpperBound_InboundTeam_NeverUnderstatesArrivalSuccess(
+            int defenderCount
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                defenderCount,
+                2,
+                false,
+                1
+            );
+            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
+            MissionOdds exact = queries.GetMissionOddsAfterArrival(context, departure, null, false);
+
+            double? upperBound = queries.GetMissionSuccessUpperBound(
+                context,
+                null,
+                exact.OverallSuccessProbability,
+                departure
+            );
+
+            Assert.IsNotNull(upperBound);
+            Assert.GreaterOrEqual(upperBound.Value, exact.OverallSuccessProbability);
+            Assert.IsNotNull(context.MainParticipants[0].Movement);
+        }
+
+        [TestCase(0)]
+        [TestCase(2)]
+        [TestCase(8)]
+        public void GetMissionOddsAfterArrival_ExactSuccessFloor_PreservesQualifyingOdds(
+            int defenderCount
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                defenderCount,
+                2,
+                false,
+                1
+            );
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 67 },
+            };
+            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
+            MissionOdds expected = queries.GetMissionOddsAfterArrival(
+                context,
+                departure,
+                null,
+                false
+            );
+
+            MissionOdds bounded = queries.GetMissionOddsAfterArrival(
+                context,
+                departure,
+                null,
+                false,
+                expected.OverallSuccessProbability
+            );
+
+            Assert.IsNotNull(bounded);
+            Assert.AreEqual(expected.OverallSuccessProbability, bounded.OverallSuccessProbability);
+        }
+
+        [Test]
+        public void GetMissionOddsAfterArrival_InboundPersonnel_MatchesActualArrivalWithoutMovingUnits()
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                4,
+                2,
+                false,
+                1
+            );
+            Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
+            MovementState movement = new() { TransitTicks = 13 };
+            context.MainParticipants[0].Movement = movement;
+
+            MissionOdds projected = queries.GetMissionOddsAfterArrival(
+                context,
+                departure,
+                null,
+                true
+            );
+
+            Assert.IsNotNull(projected);
+            Assert.AreSame(movement, context.MainParticipants[0].Movement);
+            Assert.IsFalse(queries.CanCreateMission(context));
+            context.MainParticipants[0].Movement = null;
+            MissionOdds arrived = queries.GetMissionOdds(context);
+            Assert.AreEqual(
+                arrived.ObjectiveSuccessProbability,
+                projected.ObjectiveSuccessProbability
+            );
+            Assert.AreEqual(arrived.FoilProbability, projected.FoilProbability);
+            Assert.AreEqual(arrived.PersonnelLossProbability, projected.PersonnelLossProbability);
+        }
+
+        [Test]
+        public void GetMissionOddsAfterArrival_ValidProjection_DoesNotConsumeGameplayIdentifiers()
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                4,
+                2,
+                false,
+                1
+            );
+            Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
+            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+            try
+            {
+                BaseGameEntity.SetInstanceIdSeed(1234);
+                string expected = new BaseGameEntity().InstanceID;
+                BaseGameEntity.SetInstanceIdSeed(1234);
+
+                queries.GetMissionOddsAfterArrival(context, departure, null, true);
+
+                Assert.AreEqual(expected, new BaseGameEntity().InstanceID);
+            }
+            finally
+            {
+                BaseGameEntity.SetInstanceIdSeed(null);
+            }
+        }
+
+        [Test]
+        public void TryCreateMissionAfterArrival_TeammateHeadingElsewhere_ReturnsFalse()
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                4,
+                2,
+                false,
+                1
+            );
+            Planet departure = context.MainParticipants[0].GetParentOfType<Planet>();
+            Planet elsewhere = new()
+            {
+                InstanceID = "elsewhere",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            context.Game.AttachNode(elsewhere, departure.GetParent());
+            context.Game.MoveNode(context.MainParticipants[0], elsewhere);
+            context.MainParticipants[0].Movement = new MovementState { TransitTicks = 13 };
+
+            Assert.IsFalse(queries.TryCreateMissionAfterArrival(context, departure, out _));
+        }
+
         /// <summary>
         /// Verifies probability lookups are refreshed when configuration changes between evaluations.
         /// </summary>

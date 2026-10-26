@@ -205,6 +205,24 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Estimates execution duration from configured mission timing and faction difficulty.
+        /// </summary>
+        /// <param name="missionTypeId">The mission type to estimate.</param>
+        /// <param name="factionId">The faction carrying out the mission.</param>
+        /// <returns>The expected ticks spent executing after the team arrives.</returns>
+        public double EstimateExecutionTicks(string missionTypeId, string factionId)
+        {
+            GameConfig.MissionTickConfig duration =
+                _game.Config.ProbabilityTables.Mission.TickRanges.GetTickConfig(missionTypeId);
+            int speedIncrease = Math.Max(
+                0,
+                _game.GetDifficultyModifier(factionId).MissionExecutionSpeedIncreasePercent
+            );
+            return ((duration?.Base ?? 0) + (duration?.Spread ?? 0) / 2d)
+                / (1 + speedIncrease / 100d);
+        }
+
+        /// <summary>
         /// Estimates a mission's visible objective-roll and foiling chances without resolving an
         /// outcome. Hidden betrayal and state changes produced during uprising resolution are
         /// intentionally excluded. Foiling uses the caller's observed destination state.

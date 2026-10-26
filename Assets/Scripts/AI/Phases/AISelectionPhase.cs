@@ -13,6 +13,23 @@ namespace Rebellion.AI.Phases
     /// </summary>
     public sealed class AISelectionPhase : IAITurnPhase
     {
+        private readonly bool _continueSelection;
+
+        /// <summary>
+        /// Creates the first selection stage for a faction turn.
+        /// </summary>
+        public AISelectionPhase()
+            : this(false) { }
+
+        /// <summary>
+        /// Creates a selection stage that can retain earlier accepted assignments.
+        /// </summary>
+        /// <param name="continueSelection">Whether to consider newly added proposals using the turn's existing reservations.</param>
+        internal AISelectionPhase(bool continueSelection)
+        {
+            _continueSelection = continueSelection;
+        }
+
         /// <summary>
         /// Selects proposals and stores the result on the turn context.
         /// </summary>
@@ -22,8 +39,31 @@ namespace Rebellion.AI.Phases
             if (context == null)
                 return;
 
-            context.SetSelectedProposals(Select(context));
-            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+            AISelectionState state = _continueSelection
+                ? context.SelectionState
+                    ?? throw new System.InvalidOperationException(
+                        "Selection must begin before it can continue."
+                    )
+                : new AISelectionState();
+            AIProductionSelector production = _continueSelection
+                ? context.ProductionSelector
+                : new AIProductionSelector(state);
+            IEnumerable<AIProposal> candidates = _continueSelection
+                ? context.Proposals.Skip(context.SelectionProposalCount)
+                : context.Proposals;
+            List<AIProposal> selected = _continueSelection
+                ? context.SelectedProposals.ToList()
+                : new List<AIProposal>();
+            context.SetSelectedProposals(Select(context, state, production, candidates, selected));
+            if (!_continueSelection)
+            {
+                new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+                foreach (AIProposal proposal in context.SelectedProposals)
+                    state.Reserve(AIMissionSelector.GetReservations(proposal));
+            }
+            context.SelectionState = state;
+            context.ProductionSelector = production;
+            context.SelectionProposalCount = context.Proposals.Count;
         }
 
         /// <summary>
@@ -33,19 +73,43 @@ namespace Rebellion.AI.Phases
         /// <returns>The selected proposals.</returns>
         public List<AIProposal> Select(AITurnContext context)
         {
-            List<AIProposal> selectedProposals = new List<AIProposal>();
-            if (context?.Proposals == null)
+            AISelectionState state = new AISelectionState();
+            return Select(
+                context,
+                state,
+                new AIProductionSelector(state),
+                context?.Proposals,
+                new List<AIProposal>()
+            );
+        }
+
+        /// <summary>
+        /// Extends a turn's accepted actions using shared reservations and production budgets.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="selectionState">Reservations retained across selection stages.</param>
+        /// <param name="productionSelector">The production budgets and claims retained across stages.</param>
+        /// <param name="candidates">The proposals not yet considered for selection.</param>
+        /// <param name="selectedProposals">The actions already accepted for this turn.</param>
+        /// <returns>The accepted actions including feasible new proposals.</returns>
+        private List<AIProposal> Select(
+            AITurnContext context,
+            AISelectionState selectionState,
+            AIProductionSelector productionSelector,
+            IEnumerable<AIProposal> candidates,
+            List<AIProposal> selectedProposals
+        )
+        {
+            if (context?.Proposals == null || candidates == null)
                 return selectedProposals;
 
-            AISelectionState selectionState = new AISelectionState();
             AIFleetSelector fleetSelector = new AIFleetSelector(selectionState);
             AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
-            AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             LinkedList<AIProposal> pending = new(
                 productionSelector.OrderInfrastructureProduction(
                     context,
-                    GetSortedProposals(context, context.Proposals, true)
+                    GetSortedProposals(context, candidates, true)
                 )
             );
             while (pending.First != null)

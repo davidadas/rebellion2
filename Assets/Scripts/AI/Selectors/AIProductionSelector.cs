@@ -23,9 +23,6 @@ namespace Rebellion.AI.Selectors
         private readonly Dictionary<string, int> _reservedProducerCapacity = new(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<string, int> _availableProducerCapacity = new(
-            StringComparer.Ordinal
-        );
         private readonly Dictionary<string, string> _selectedProducerProducts = new(
             StringComparer.Ordinal
         );
@@ -326,7 +323,7 @@ namespace Rebellion.AI.Selectors
                     return TryCreateNextFleetProposal(context, proposal, out selectedProposal);
             }
             int equivalentProducerCount = proposal.ManufacturingCount;
-            if (TryResolveQuantity(context, proposal, out selectedProposal))
+            if (TryResolveProducer(context, proposal, out selectedProposal))
                 return true;
 
             if (proposal.CarriesReducedCountAcrossAlternatives)
@@ -340,7 +337,7 @@ namespace Rebellion.AI.Selectors
                     && equivalentProducerCount < candidate.ManufacturingCount
                 )
                     candidate = alternative.WithManufacturingCount(equivalentProducerCount);
-                if (TryResolveQuantity(context, candidate, out selectedProposal))
+                if (TryResolveProducer(context, candidate, out selectedProposal))
                     return true;
 
                 if (proposal.CarriesReducedCountAcrossAlternatives)
@@ -642,34 +639,20 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Resolves the largest currently available quantity for one exact producer.
+        /// Resolves whether one exact producer can accept the requested item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The exact-producer manufacturing option.</param>
-        /// <param name="selectedProposal">The exact available quantity.</param>
+        /// <param name="selectedProposal">The exact manufacturing action.</param>
         /// <returns>True when at least one item is selectable.</returns>
-        private bool TryResolveQuantity(
+        private bool TryResolveProducer(
             AITurnContext context,
             AIManufactureProposal proposal,
             out AIManufactureProposal selectedProposal
         )
         {
-            int requestedCount = proposal.GetManufacturingCount();
-            if (requestedCount <= 1)
-            {
-                selectedProposal = proposal;
-                return CanSelect(context, proposal);
-            }
-
-            int maximumCount = GetAvailableCount(context, proposal, requestedCount);
-            if (maximumCount <= 0)
-            {
-                selectedProposal = proposal;
-                return false;
-            }
-
-            selectedProposal = proposal.WithManufacturingCount(maximumCount);
-            return CanSelect(context, selectedProposal);
+            selectedProposal = proposal;
+            return proposal.GetManufacturingCount() > 0 && CanSelect(context, proposal);
         }
 
         /// <summary>
@@ -778,82 +761,14 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Returns the quantity allowed by production capacity, energy, and maintenance headroom.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The manufacturing action to inspect.</param>
-        /// <param name="requestedCount">The requested manufacturing count.</param>
-        /// <returns>The currently feasible count.</returns>
-        private int GetAvailableCount(
-            AITurnContext context,
-            AIManufactureProposal proposal,
-            int requestedCount
-        )
-        {
-            int availableCount = requestedCount;
-            if (proposal.UsesSharedProducerCapacity)
-            {
-                string capacityKey = proposal.GetProducerCapacityKey();
-                int reservedCapacity = _reservedProducerCapacity.TryGetValue(
-                    capacityKey,
-                    out int reserved
-                )
-                    ? reserved
-                    : 0;
-                if (!_availableProducerCapacity.TryGetValue(capacityKey, out int capacity))
-                {
-                    capacity = proposal.AvailableProducerCapacity;
-                    _availableProducerCapacity[capacityKey] = capacity;
-                }
-
-                availableCount = Math.Min(availableCount, Math.Max(0, capacity - reservedCapacity));
-            }
-
-            availableCount = Math.Min(
-                availableCount,
-                GetAvailableDestinationEnergy(context, proposal)
-            );
-            int unitMaintenanceCost = proposal.GetUnitMaintenanceCost();
-            if (unitMaintenanceCost <= 0)
-                return availableCount;
-
-            int availableMaintenance =
-                context.Assessment.ProjectedMaintenanceHeadroom
-                - _selectedMaintenanceCost
-                - proposal.GetMinimumMaintenanceHeadroom(context)
-                + proposal.ReplacedMaintenanceCost;
-            return Math.Min(
-                availableCount,
-                Math.Max(0, availableMaintenance / unitMaintenanceCost)
-            );
-        }
-
-        /// <summary>
         /// Returns whether the selected producer has capacity remaining this turn.
         /// </summary>
         /// <param name="proposal">The manufacturing action to inspect.</param>
         /// <returns>True when the producer has unreserved capacity.</returns>
         private bool HasProducerCapacity(AIManufactureProposal proposal)
         {
-            if (proposal.IsContinuation)
-                return true;
-            string capacityKey = proposal.GetProducerCapacityKey();
-            if (!proposal.UsesSharedProducerCapacity)
-                return !_reservedProducerCapacity.ContainsKey(capacityKey);
-
-            int reservedCapacity = _reservedProducerCapacity.TryGetValue(
-                capacityKey,
-                out int reserved
-            )
-                ? reserved
-                : 0;
-            if (!_availableProducerCapacity.TryGetValue(capacityKey, out int capacity))
-            {
-                capacity = proposal.AvailableProducerCapacity;
-                _availableProducerCapacity[capacityKey] = capacity;
-            }
-
-            return reservedCapacity < capacity;
+            return proposal.IsContinuation
+                || !_reservedProducerCapacity.ContainsKey(proposal.GetProducerCapacityKey());
         }
 
         /// <summary>
@@ -933,22 +848,7 @@ namespace Rebellion.AI.Selectors
             _selectedProducerProducts[capacityKey] = proposal.Product.GetReference().GetTypeID();
             if (proposal.IsContinuation)
                 return;
-            if (!proposal.UsesSharedProducerCapacity)
-            {
-                _reservedProducerCapacity[capacityKey] = int.MaxValue;
-                return;
-            }
-
-            int reservedCapacity = _reservedProducerCapacity.TryGetValue(
-                capacityKey,
-                out int reserved
-            )
-                ? reserved
-                : 0;
-            long updatedCapacity =
-                (long)reservedCapacity + Math.Max(1, proposal.GetManufacturingCount());
-            _reservedProducerCapacity[capacityKey] =
-                updatedCapacity > int.MaxValue ? int.MaxValue : (int)updatedCapacity;
+            _reservedProducerCapacity[capacityKey] = int.MaxValue;
         }
 
         /// <summary>
@@ -1140,7 +1040,7 @@ namespace Rebellion.AI.Selectors
                     AISelectionReservationKind.ProductionDemand,
                     manufacture.Demand.Id
                 );
-            if (manufacture.ProducerPlanet != null && !manufacture.UsesSharedProducerCapacity)
+            if (manufacture.ProducerPlanet != null)
                 Add(
                     reservations,
                     AISelectionReservationKind.ManufacturingLane,

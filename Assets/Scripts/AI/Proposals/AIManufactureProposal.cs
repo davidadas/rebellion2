@@ -88,13 +88,6 @@ namespace Rebellion.AI.Proposals
 
         internal bool DistributesDemand { get; }
 
-        internal bool UsesSharedProducerCapacity =>
-            !IsContinuation
-            && !IsFacilityExpansionDemand()
-            && Product?.GetReference() is not CapitalShip
-            && !DistributesDemand
-            && Demand?.IsProductionFiller != true;
-
         internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
 
         internal override AIProposalPriority Priority =>
@@ -425,6 +418,12 @@ namespace Rebellion.AI.Proposals
                 .TryGetValue(Demand.ManufacturingType, out List<IManufacturable> queue);
             IManufacturable currentOrder = CurrentOrder;
             if (_replacementOrder != null && currentOrder == null && hasQueue && queue.Count > 0)
+                return false;
+            if (
+                !IsContinuation
+                && hasQueue
+                && queue.Any(item => !ReferenceEquals(item, currentOrder))
+            )
                 return false;
             if (
                 !validateOrderAcceptance
@@ -761,7 +760,7 @@ namespace Rebellion.AI.Proposals
         {
             if (Demand?.IsProductionFiller == true || ContinuesExistingOrder)
                 return 1;
-            return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
+            return Demand?.QuantityNeeded > 0 ? 1 : 0;
         }
 
         /// <summary>

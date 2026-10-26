@@ -144,13 +144,23 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
+            long outboundTicks = 0;
             if (usesMissionTime && includeTravelTime)
-                AddMissionTimeCost(
-                    ref score,
-                    context,
-                    missionProposal,
-                    travelTicks ?? missionProposal.EstimateTravelTicks(context)
-                );
+            {
+                long completeTravelTicks =
+                    travelTicks ?? missionProposal.EstimateTravelTicks(context);
+                outboundTicks = travelTicks.HasValue
+                    ? Math.Max(
+                        0,
+                        completeTravelTicks
+                            - missionProposal.EstimateReturnTravelTicks(
+                                context,
+                                staging?.Destination
+                            )
+                    )
+                    : missionProposal.EstimateOutboundTravelTicks(context);
+                AddMissionTimeCost(ref score, context, missionProposal, completeTravelTicks);
+            }
 
             double value =
                 missionProposal.MissionTypeID == MissionTypeIDs.Diplomacy
@@ -161,6 +171,11 @@ namespace Rebellion.AI.Scorers
                         score.RankValue
                     )
                     : score.RankValue;
+            if (usesMissionTime && includeTravelTime)
+                value *= GetElapsedDiscount(
+                    outboundTicks + EstimateExecutionTicks(context, missionProposal),
+                    utility.Objective.ExecutionDelay
+                );
             return value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? value : 0;
         }
 
@@ -243,7 +258,11 @@ namespace Rebellion.AI.Scorers
                         leader.GetTransitMovement()?.TicksRemaining() ?? 0
                     );
                 AddMissionTimeCost(ref score, context, proposal, minimumTravel);
-                return score.RankValue;
+                return score.RankValue
+                    * GetElapsedDiscount(
+                        minimumTravel + EstimateExecutionTicks(context, proposal),
+                        utility.Objective.ExecutionDelay
+                    );
             }
             return proposal.MissionTypeID == MissionTypeIDs.Diplomacy
                 ? ApplyDiplomacyModifiers(
@@ -876,22 +895,74 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal mission
         )
         {
-            GameConfig.MissionTickConfig duration =
-                context.Game.Config.ProbabilityTables.Mission.TickRanges.GetTickConfig(
-                    mission.MissionTypeID
-                );
-            int speedIncrease = Math.Max(
-                0,
-                context
-                    .Game.GetDifficultyModifier(context.Faction.InstanceID)
-                    .MissionExecutionSpeedIncreasePercent
+            return context.MissionQueries.EstimateExecutionTicks(
+                mission.MissionTypeID,
+                context.Faction.InstanceID
             );
-            return ((duration?.Base ?? 0) + (duration?.Spread ?? 0) / 2d)
-                / (1 + speedIncrease / 100d);
         }
 
         /// <summary>
-        /// Adds accumulated waiting, travel, and mission time to the shared utility costs.
+        /// Ranks personnel by skill discounted by the time their team needs to reach its objective.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="participant">The available or currently arriving participant.</param>
+        /// <param name="target">The observed mission planet.</param>
+        /// <param name="skill">The participant's rating or objective probability for the role.</param>
+        /// <param name="teamTravelTicks">The outbound duration already required by the team.</param>
+        /// <param name="departure">An optional common future departure planet.</param>
+        /// <returns>The skill value discounted by configured travel costs.</returns>
+        internal static double GetParticipantPriority(
+            AITurnContext context,
+            IMissionParticipant participant,
+            Planet target,
+            double skill,
+            long teamTravelTicks = 0,
+            Planet departure = null
+        )
+        {
+            GameConfig.AIConsiderationConfig cost = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Objective
+                .ParticipantTravelTime;
+            if (cost == null || cost.Weight <= 0)
+                return skill;
+
+            Planet origin = departure ?? participant.GetParentOfType<Planet>();
+            long travel =
+                origin.InstanceID == target.InstanceID
+                    ? 0
+                    : context.MovementQueries.CalculateTransitTicks(participant, origin, target);
+            travel += Math.Max(0, participant.GetTransitMovement()?.TicksRemaining() ?? 0);
+            return skill * GetElapsedDiscount(Math.Max(teamTravelTicks, travel), cost);
+        }
+
+        /// <summary>
+        /// Returns the configured discount for delaying useful work.
+        /// </summary>
+        /// <param name="ticks">The estimated delay.</param>
+        /// <param name="consideration">The optional travel-delay consideration.</param>
+        /// <returns>A multiplier from zero through one, with one preserving the current value.</returns>
+        private static double GetElapsedDiscount(
+            double ticks,
+            GameConfig.AIConsiderationConfig consideration
+        )
+        {
+            if (consideration == null || consideration.Weight <= 0)
+                return 1;
+            double periods = ticks / Math.Max(1, consideration.SaturationValue);
+            double completePeriods = Math.Floor(periods);
+            double delay =
+                completePeriods
+                + AIUtility.EvaluateCurve(periods - completePeriods, consideration.Curve);
+            return 1 / (1 + consideration.Weight * delay);
+        }
+
+        /// <summary>
+        /// Adds complete mission-cycle duration to the shared travel costs.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="mission">The mission opportunity being compared.</param>
@@ -913,7 +984,24 @@ namespace Rebellion.AI.Scorers
                 .Objective;
             GameConfig.AIConsiderationConfig cost = utility.TravelTime ?? utility.TravelCost;
             double missionTicks = EstimateExecutionTicks(context, mission);
-            double periods = (travelTicks + missionTicks) / Math.Max(1, cost.SaturationValue);
+            AddElapsedTimeCost(ref score, travelTicks + missionTicks, cost);
+        }
+
+        /// <summary>
+        /// Adds a configured duration cost without capping long journeys at one cost unit.
+        /// </summary>
+        /// <param name="score">The mission utility receiving the duration penalty.</param>
+        /// <param name="ticks">The estimated duration.</param>
+        /// <param name="cost">The optional duration consideration.</param>
+        private static void AddElapsedTimeCost(
+            ref AIUtilityScore score,
+            double ticks,
+            GameConfig.AIConsiderationConfig cost
+        )
+        {
+            if (cost == null || cost.Weight <= 0)
+                return;
+            double periods = ticks / Math.Max(1, cost.SaturationValue);
             double completePeriods = Math.Floor(periods);
             score.AddCost(1, cost, completePeriods);
             score.AddCost(periods - completePeriods, cost);

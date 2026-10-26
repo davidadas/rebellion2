@@ -221,6 +221,16 @@ namespace Rebellion.Game
             /// </summary>
             public AIConsiderationConfig TravelTime { get; set; }
 
+            /// <summary>
+            /// Gets or sets optional value discounting until sabotage and espionage objectives resolve.
+            /// </summary>
+            public AIConsiderationConfig ExecutionDelay { get; set; }
+
+            /// <summary>
+            /// Gets or sets travel discounting when selecting mission personnel by skill.
+            /// </summary>
+            public AIConsiderationConfig ParticipantTravelTime { get; set; }
+
             public AIConsiderationConfig OfficerRisk { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig IntelAge { get; set; } = new AIConsiderationConfig();

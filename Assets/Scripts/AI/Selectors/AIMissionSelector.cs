@@ -74,13 +74,28 @@ namespace Rebellion.AI.Selectors
             );
             List<IMissionParticipant> decoys = proposal.DecoyParticipants.ToList();
             int maximumDecoys = officerLed ? _maximumDecoysPerMission : 1;
+            long teamTravelTicks = proposal.EstimateOutboundTravelTicks(context);
             while (decoys.Count < maximumDecoys)
             {
-                IMissionParticipant decoy = SelectDecoy(proposal, candidates, origins);
+                IMissionParticipant decoy = SelectDecoy(
+                    context,
+                    proposal,
+                    candidates,
+                    origins,
+                    teamTravelTicks
+                );
                 if (decoy == null)
                     break;
                 decoys.Add(decoy);
                 candidates.Remove(decoy);
+                teamTravelTicks = Math.Max(
+                    teamTravelTicks,
+                    context.MovementQueries.CalculateTransitTicks(
+                        decoy,
+                        origins[decoy],
+                        proposal.TargetPlanet
+                    )
+                );
             }
             if (decoys.Count == 0 && (!officerLed || ExceedsUnprotectedFoilRisk(context, proposal)))
                 return false;
@@ -188,7 +203,7 @@ namespace Rebellion.AI.Selectors
         /// </summary>
         /// <param name="proposal">Proposal to inspect.</param>
         /// <returns>Reservations required by the proposal.</returns>
-        private static List<AISelectionReservation> GetReservations(AIProposal proposal)
+        internal static List<AISelectionReservation> GetReservations(AIProposal proposal)
         {
             List<AISelectionReservation> reservations = new();
             if (proposal is AIMissionStagingProposal staging)
@@ -402,14 +417,18 @@ namespace Rebellion.AI.Selectors
         /// <summary>
         /// Selects the preferred compatible decoy.
         /// </summary>
+        /// <param name="context">The current faction turn.</param>
         /// <param name="mission">The selected mission requiring a decoy.</param>
         /// <param name="decoys">Unclaimed decoys available during this turn.</param>
         /// <param name="origins">Cached origin planets for the available decoys.</param>
+        /// <param name="teamTravelTicks">The outbound duration already needed by the team.</param>
         /// <returns>The preferred decoy, or null when no compatible unit is available.</returns>
         private static IMissionParticipant SelectDecoy(
+            AITurnContext context,
             AIMissionProposal mission,
             IEnumerable<IMissionParticipant> decoys,
-            IReadOnlyDictionary<IMissionParticipant, Planet> origins
+            IReadOnlyDictionary<IMissionParticipant, Planet> origins,
+            long teamTravelTicks
         )
         {
             IMissionParticipant selected = null;
@@ -421,7 +440,10 @@ namespace Rebellion.AI.Selectors
                 )
                     continue;
 
-                if (selected == null || IsPreferred(candidate, selected, mission, origins))
+                if (
+                    selected == null
+                    || IsPreferred(context, candidate, selected, mission, origins, teamTravelTicks)
+                )
                     selected = candidate;
             }
 
@@ -431,16 +453,20 @@ namespace Rebellion.AI.Selectors
         /// <summary>
         /// Returns whether one compatible decoy is preferable to the current selection.
         /// </summary>
+        /// <param name="context">The current faction turn.</param>
         /// <param name="candidate">The candidate decoy.</param>
         /// <param name="selected">The currently preferred decoy.</param>
         /// <param name="mission">The mission requiring a decoy.</param>
         /// <param name="origins">Cached origin planets for the available decoys.</param>
+        /// <param name="teamTravelTicks">The outbound duration already needed by the team.</param>
         /// <returns>True when the candidate should replace the current selection.</returns>
         private static bool IsPreferred(
+            AITurnContext context,
             IMissionParticipant candidate,
             IMissionParticipant selected,
             AIMissionProposal mission,
-            IReadOnlyDictionary<IMissionParticipant, Planet> origins
+            IReadOnlyDictionary<IMissionParticipant, Planet> origins,
+            long teamTravelTicks
         )
         {
             bool candidateIsSpecialForces = candidate is SpecialForces;
@@ -448,9 +474,21 @@ namespace Rebellion.AI.Selectors
             if (candidateIsSpecialForces != selectedIsSpecialForces)
                 return candidateIsSpecialForces;
 
-            int ratingComparison = candidate
-                .GetEffectiveRating(SkillRating.Espionage)
-                .CompareTo(selected.GetEffectiveRating(SkillRating.Espionage));
+            double candidatePriority = AIMissionProposalScorer.GetParticipantPriority(
+                context,
+                candidate,
+                mission.TargetPlanet,
+                candidate.GetEffectiveRating(SkillRating.Espionage),
+                teamTravelTicks
+            );
+            double selectedPriority = AIMissionProposalScorer.GetParticipantPriority(
+                context,
+                selected,
+                mission.TargetPlanet,
+                selected.GetEffectiveRating(SkillRating.Espionage),
+                teamTravelTicks
+            );
+            int ratingComparison = candidatePriority.CompareTo(selectedPriority);
             if (ratingComparison != 0)
                 return ratingComparison > 0;
 
