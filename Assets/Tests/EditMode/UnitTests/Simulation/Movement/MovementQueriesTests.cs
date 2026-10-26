@@ -372,6 +372,98 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CalculateTransitTicks_Regiment_UsesStandardTravelRating()
+        {
+            GameConfig config = CreateMovementConfig();
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            int officerTransitTicks = movement.CalculateTransitTicks(officer, origin, destination);
+            int regimentTransitTicks = movement.CalculateTransitTicks(
+                regiment,
+                origin,
+                destination
+            );
+
+            Assert.AreEqual(20, regimentTransitTicks);
+            Assert.AreEqual(officerTransitTicks, regimentTransitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_Building_UsesStandardTravelRating()
+        {
+            GameConfig config = CreateMovementConfig();
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            origin.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, origin);
+
+            int transitTicks = movement.CalculateTransitTicks(building, origin, destination);
+
+            Assert.AreEqual(20, transitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_StarfighterWithHyperdrive_UsesUnitRating()
+        {
+            GameConfig config = CreateMovementConfig();
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.Hyperdrive = 80;
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+
+            int transitTicks = movement.CalculateTransitTicks(starfighter, origin, destination);
+
+            Assert.AreEqual(16, transitTicks);
+        }
+
+        [Test]
+        public void TryEstimateManufacturedTransitTicks_StarfighterWithoutHyperdrive_UsesStandardTravelRating()
+        {
+            GameConfig config = CreateMovementConfig();
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.Hyperdrive = 0;
+            starfighter.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(starfighter, origin);
+
+            bool estimated = movement.TryEstimateManufacturedTransitTicks(
+                starfighter,
+                origin,
+                destination,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(20, transitTicks);
+        }
+
+        [Test]
         public void CalculateTransitTicks_ZeroDistanceDivisor_ThrowsInvalidOperationException()
         {
             GameConfig config = new GameConfig
