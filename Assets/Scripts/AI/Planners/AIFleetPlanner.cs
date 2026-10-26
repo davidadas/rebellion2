@@ -546,7 +546,8 @@ namespace Rebellion.AI.Planners
             }
 
             bool strandedAtHostileNonTarget =
-                currentPlanet != null
+                fleet.Movement == null
+                && currentPlanet != null
                 && currentPlanet.InstanceID != targetPlanet.InstanceID
                 && !string.IsNullOrEmpty(currentPlanet.GetOwnerInstanceID())
                 && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
@@ -565,7 +566,8 @@ namespace Rebellion.AI.Planners
             }
 
             bool targetCannotBeAttacked =
-                currentPlanet?.InstanceID == targetPlanet.InstanceID
+                fleet.Movement == null
+                && currentPlanet?.InstanceID == targetPlanet.InstanceID
                 && !CanAdvance(context, fleet, targetPlanet);
             if (targetCannotBeAttacked)
             {
