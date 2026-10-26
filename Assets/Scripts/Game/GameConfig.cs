@@ -238,6 +238,11 @@ namespace Rebellion.Game
             public AIConsiderationConfig AttackPreparationIntel { get; set; } =
                 new AIConsiderationConfig();
 
+            /// <summary>
+            /// Gets or sets intelligence value for staged fleets blocked by uncertain combat requirements.
+            /// </summary>
+            public AIConsiderationConfig BlockedAttackIntel { get; set; }
+
             public AIConsiderationConfig TrainingValue { get; set; } = new AIConsiderationConfig();
         }
 

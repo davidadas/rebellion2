@@ -322,6 +322,10 @@ namespace Rebellion.AI.Scorers
                 utility.AttackPreparationIntel
             );
             score.Add(
+                GetBlockedAttackIntelPriority(context, proposal) * intelligenceSuccess,
+                utility.BlockedAttackIntel
+            );
+            score.Add(
                 AIUtility.Fulfillment(
                     proposal.MissionTypeID == MissionTypeIDs.JediTraining
                         ? GetJediTrainingValue(proposal)
@@ -369,6 +373,61 @@ namespace Rebellion.AI.Scorers
                     context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
                 )
             );
+        }
+
+        /// <summary>
+        /// Returns intelligence urgency from staged fleets meeting known but not uncertain combat requirements.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The intelligence mission to evaluate.</param>
+        /// <returns>The greatest blocked fleet's combat fulfillment, or zero without a blocked fleet.</returns>
+        private static double GetBlockedAttackIntelPriority(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (
+                proposal.MissionTypeID != MissionTypeIDs.Espionage
+                || !context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
+            )
+                return 0;
+
+            double priority = 0;
+            foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
+            {
+                if (
+                    fleet.Order.TargetPlanetId != proposal.TargetPlanet.InstanceID
+                    || fleet.Order.Status
+                        is not (FleetOrderStatus.Building or FleetOrderStatus.Staging)
+                    || fleet.Movement != null
+                    || fleet.IsInCombat
+                )
+                    continue;
+
+                var demand = context.GetAttackDemand(proposal.TargetPlanet, fleet);
+                if (demand == null)
+                    continue;
+
+                int knownRequirement = Math.Max(
+                    context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
+                    demand.OrbitalStrength
+                );
+                if (demand.CombatStrength <= knownRequirement)
+                    continue;
+
+                int available = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
+                    fleet
+                );
+                if (available < knownRequirement || available >= demand.CombatStrength)
+                    continue;
+
+                priority = Math.Max(
+                    priority,
+                    AIUtility.Fulfillment(available, demand.CombatStrength)
+                );
+            }
+
+            return priority;
         }
 
         /// <summary>
