@@ -4430,6 +4430,42 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateMessages_UncolonizedPlanetLosesOwnership_DoesNotReportNeutrality()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            target.IsColonized = false;
+            target.OwnerInstanceID = null;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PlanetDeclaredNeutralityBySupport,
+                        MessageType.PopularSupport,
+                        "{system} neutral",
+                        "neutral:{system}:{faction}"
+                    ),
+                },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = null,
+                    ObserverFactionInstanceIDs = new List<string>
+                    {
+                        alliance.InstanceID,
+                        empire.InstanceID,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_PlanetOwnershipChangeWithoutSupportReason_DoesNotReportJoin()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
