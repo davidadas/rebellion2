@@ -232,6 +232,58 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleApply_InvalidMod_ShowsNamedFailureAndKeepsMenuOpen()
+        {
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            _testModDirectoryPath = Path.Combine(
+                Directory.GetParent(contentPack.ContentRootPath).FullName,
+                "Mods",
+                nameof(HandleApply_InvalidMod_ShowsNamedFailureAndKeepsMenuOpen)
+                    + "-"
+                    + Guid.NewGuid().ToString("N")
+            );
+            Directory.CreateDirectory(_testModDirectoryPath);
+            File.WriteAllText(
+                Path.Combine(_testModDirectoryPath, "mod.xml"),
+                "<ContentModDefinition><ID>broken-mod</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Broken Mod</DisplayName>"
+                    + $"<BasePackID>{contentPack.Definition.ID}</BasePackID>"
+                    + "</ContentModDefinition>"
+            );
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+            OptionsToggleRowView row = view.GetComponentsInChildren<OptionsToggleRowView>(true)
+                .Single(candidate =>
+                    GetField<TextMeshProUGUI>(candidate, "_labelTextField").text == "Broken Mod"
+                );
+
+            Assert.AreEqual("ERROR", GetField<TextMeshProUGUI>(row, "_stateTextField").text);
+            Assert.IsFalse(GetField<Button>(row, "_button").interactable);
+            GetField<Button>(view, "_applyButton").onClick.Invoke();
+            _controller.RenderWindows();
+
+            Assert.IsTrue(_controller.IsOpen);
+            string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
+            StringAssert.Contains("Broken Mod", status);
+            StringAssert.Contains("BasePackVersion", status);
+        }
+
+        [Test]
+        public void HandleApply_Settings_ShowsAppliedStatus()
+        {
+            OptionsMenuView view = OpenAndRender();
+
+            GetField<Button>(view, "_applyButton").onClick.Invoke();
+            _controller.RenderWindows();
+
+            Assert.AreEqual(
+                "Settings applied.",
+                GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text
+            );
+        }
+
+        [Test]
         public void HandleDefaults_ModsConfirmed_RestoresCatalogPackAndEnablesAllMods()
         {
             _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs = new[]

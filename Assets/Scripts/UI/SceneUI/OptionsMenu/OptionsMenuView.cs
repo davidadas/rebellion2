@@ -18,6 +18,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _badgeColor = new Color(0.204f, 0.243f, 0.302f);
     private static readonly Color _badgeListeningColor = new Color(0.373f, 0.659f, 0.925f);
+    private static readonly Color _errorColor = new Color(0.95f, 0.30f, 0.26f);
 
     private readonly List<TextMeshProUGUI> _bindingHeaderFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _bindingActionFields = new List<TextMeshProUGUI>();
@@ -96,6 +97,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [Header("Settings actions")]
     [SerializeField]
     private GameObject _settingsActions;
+
+    [SerializeField]
+    private TextMeshProUGUI _settingsStatusTextField;
 
     [SerializeField]
     private Button _applyButton;
@@ -501,6 +505,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="data">The Options menu data.</param>
     private void RenderFooter(OptionsMenuRenderData data)
     {
+        UILayout.SetTextContent(_settingsStatusTextField, data.StatusMessage);
+        _settingsStatusTextField.color = data.StatusIsError ? _errorColor : _accentColor;
         bool layoutChanged = _backToGameButton.gameObject.activeSelf != data.HasActiveGame;
         _backToGameButton.gameObject.SetActive(data.HasActiveGame);
         if (layoutChanged && _backToGameButton.transform.parent is RectTransform navigationRoot)
@@ -585,10 +591,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         _contentPackChoice.Render(data.ContentPackLabel);
         int loadedCount = data.Mods.Count(mod => mod.Loaded);
+        int errorCount = data.Mods.Count(mod => mod.HasError);
         string status =
-            data.Mods.Count == 0
-                ? "NO COMPATIBLE MODS FOUND"
-                : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
+            data.Mods.Count == 0 ? "NO COMPATIBLE MODS FOUND"
+            : errorCount > 0
+                ? $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED - {errorCount} {(errorCount == 1 ? "ERROR" : "ERRORS")}"
+            : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
         UILayout.SetTextContent(_modsStatusTextField, status);
 
         for (int index = 0; index < data.Mods.Count; index++)
@@ -596,7 +604,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             OptionsToggleRowView row = GetModRow(index);
             OptionsModRow mod = data.Mods[index];
             UILayout.SetSourcePosition(row.transform as RectTransform, 0, index * 20);
-            row.Render(mod.Enabled, mod.DisplayName);
+            if (mod.HasError)
+                row.RenderError(mod.DisplayName);
+            else
+                row.Render(mod.Enabled, mod.DisplayName);
             row.gameObject.SetActive(true);
         }
         for (int index = data.Mods.Count; index < _modRows.Count; index++)
@@ -1450,7 +1461,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name} is missing an autosave input field.");
         if (_backToGameButton == null || _mainMenuButton == null || _quitButton == null)
             throw new MissingReferenceException($"{name} is missing a footer button.");
-        if (_settingsActions == null || _applyButton == null || _defaultsButton == null)
+        if (
+            _settingsActions == null
+            || _settingsStatusTextField == null
+            || _applyButton == null
+            || _defaultsButton == null
+        )
             throw new MissingReferenceException($"{name} is missing a settings-action button.");
         if (_confirmDialog == null)
             throw new MissingReferenceException($"{name} is missing the confirm dialog.");
