@@ -329,7 +329,12 @@ namespace Rebellion.Tests.Simulation
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
-            Building building = new Building { InstanceID = "b1", OwnerInstanceID = "empire" };
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             _game.AttachNode(building, _targetPlanet);
 
             TransferPlanet(_targetPlanet, _rebels);
@@ -342,7 +347,12 @@ namespace Rebellion.Tests.Simulation
         {
             _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
-            Building building = new Building { InstanceID = "b1", OwnerInstanceID = "empire" };
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             _game.AttachNode(building, _targetPlanet);
             _targetPlanet.IsEnabled = false;
 

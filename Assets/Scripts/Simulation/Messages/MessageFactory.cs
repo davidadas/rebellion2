@@ -3607,7 +3607,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Adds ownership messages.
+        /// Adds political ownership messages for colonized planets.
         /// </summary>
         /// <param name="results">The results.</param>
         /// <param name="game">The game.</param>
@@ -3620,6 +3620,9 @@ namespace Rebellion.Simulation
         {
             foreach (PlanetOwnershipChangedResult result in results)
             {
+                if (result.Planet?.IsColonized != true)
+                    continue;
+
                 if (
                     result.NewOwner != null
                     && result.Reason != PlanetOwnershipChangeReason.PopularSupport

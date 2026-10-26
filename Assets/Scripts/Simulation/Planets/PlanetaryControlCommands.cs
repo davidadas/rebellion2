@@ -526,7 +526,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Transfers all buildings on the planet to the new owner.
+        /// Transfers completed, stationary buildings on the planet to the new owner.
         /// </summary>
         /// <param name="planet">The planet whose buildings are transferred.</param>
         /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
@@ -534,6 +534,12 @@ namespace Rebellion.Simulation
         {
             foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
             {
+                if (
+                    building.ManufacturingStatus != ManufacturingStatus.Complete
+                    || building.Movement != null
+                )
+                    continue;
+
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
         }
