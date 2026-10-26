@@ -31,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private bool _menuOpenWhenLoadCalled;
         private string _loadedFileName;
         private string _testModDirectoryPath;
+        private string _testPackDirectoryPath;
 
         /// <summary>
         /// Sets up.
@@ -85,6 +86,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Directory.Delete(_saveDirectoryPath, true);
             if (Directory.Exists(_testModDirectoryPath))
                 Directory.Delete(_testModDirectoryPath, true);
+            if (Directory.Exists(_testPackDirectoryPath))
+                Directory.Delete(_testPackDirectoryPath, true);
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
@@ -270,6 +273,48 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleApply_InvalidContentPack_ShowsNamedFailureAndKeepsMenuOpen()
+        {
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            const string brokenPackName = "Broken Content Pack";
+            _testPackDirectoryPath = Path.Combine(
+                contentPack.ContentRootPath,
+                "Packs",
+                brokenPackName
+            );
+            Directory.CreateDirectory(_testPackDirectoryPath);
+            File.WriteAllText(
+                Path.Combine(_testPackDirectoryPath, "pack.xml"),
+                "<ContentPack><ID>broken-pack</ID>"
+            );
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+            Button nextPack = GetField<Button>(view, "_contentPackNextButton");
+            TextMeshProUGUI packName = GetField<TextMeshProUGUI>(view, "_contentPackValueField");
+            int availablePackCount = GetField<IReadOnlyList<InstalledContentPack>>(
+                _controller,
+                "_availablePacks"
+            ).Count;
+            for (int attempt = 0; attempt < availablePackCount; attempt++)
+            {
+                if (packName.text == brokenPackName)
+                    break;
+                nextPack.onClick.Invoke();
+                _controller.RenderWindows();
+            }
+
+            Assert.AreEqual(brokenPackName, packName.text);
+            GetField<Button>(view, "_applyButton").onClick.Invoke();
+            _controller.RenderWindows();
+
+            Assert.IsTrue(_controller.IsOpen);
+            string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
+            StringAssert.Contains(brokenPackName, status);
+            StringAssert.Contains("could not be loaded", status);
+        }
+
+        [Test]
         public void HandleApply_Settings_ShowsAppliedStatus()
         {
             OptionsMenuView view = OpenAndRender();
@@ -281,6 +326,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Settings applied.",
                 GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text
             );
+        }
+
+        [Test]
+        public void HandleTabSelected_AppliedStatus_ClearsFeedback()
+        {
+            OptionsMenuView view = OpenAndRender();
+            GetField<Button>(view, "_applyButton").onClick.Invoke();
+            _controller.RenderWindows();
+            Assert.IsNotEmpty(GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text);
+
+            GetField<Button[]>(view, "_tabButtons")[(int)OptionsMenuTab.Audio].onClick.Invoke();
+            _controller.RenderWindows();
+
+            Assert.IsEmpty(GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text);
         }
 
         [Test]

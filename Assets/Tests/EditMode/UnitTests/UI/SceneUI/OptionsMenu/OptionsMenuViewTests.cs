@@ -830,6 +830,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Settings applied.",
                 GetField<TextMeshProUGUI>("_settingsStatusTextField").text
             );
+            Assert.AreEqual(
+                HorizontalAlignmentOptions.Center,
+                GetField<TextMeshProUGUI>("_settingsStatusTextField").horizontalAlignment
+            );
         }
 
         [Test]

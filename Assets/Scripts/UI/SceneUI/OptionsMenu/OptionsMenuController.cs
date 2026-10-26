@@ -21,7 +21,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly SaveGameManager _saveGameManager;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
-    private readonly IReadOnlyList<ContentPackDefinition> _availablePacks;
+    private readonly IReadOnlyList<InstalledContentPack> _availablePacks;
     private readonly bool _showModsTab;
 
     private readonly OptionsSettingsSession _settingsSession;
@@ -41,6 +41,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _disposed;
     private string _selectedPackID;
     private ContentFileResolver _selectedModResolver;
+    private string _selectedPackError = string.Empty;
     private string _statusMessage = string.Empty;
     private bool _statusIsError;
     private readonly HashSet<string> _selectedDisabledModIDs = new HashSet<string>(
@@ -98,7 +99,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
-        _availablePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+        _availablePacks = ContentPackLoader.DiscoverInstalledPacks(contentPack.ContentRootPath);
         ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
@@ -258,6 +259,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private IEnumerable<OptionsModRow> BuildModRows()
     {
         ContentFileResolver resolver = _selectedModResolver;
+        if (resolver == null)
+            return Array.Empty<OptionsModRow>();
+
         HashSet<string> disabledIDs = new HashSet<string>(
             _selectedDisabledModIDs,
             StringComparer.Ordinal
@@ -293,6 +297,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleModToggle(int index)
     {
         ContentFileResolver resolver = _selectedModResolver;
+        if (resolver == null)
+            return;
+
         if (index < 0 || index >= resolver.AvailableMods.Count)
             return;
 
@@ -303,10 +310,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Gets the definition selected for the next application start.
+    /// Gets the installed pack selected for the next application start.
     /// </summary>
-    /// <returns>The selected pack definition, or null when unavailable.</returns>
-    private ContentPackDefinition GetSelectedPack()
+    /// <returns>The selected installed pack, or null when unavailable.</returns>
+    private InstalledContentPack GetSelectedPack()
     {
         return _availablePacks.FirstOrDefault(pack =>
             string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
@@ -343,10 +350,18 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void RefreshSelectedModResolver()
     {
-        _selectedModResolver = ContentPackLoader.DiscoverModResolver(
+        InstalledContentPack selectedPack = GetSelectedPack();
+        _selectedPackError = selectedPack?.ErrorMessage ?? string.Empty;
+        _selectedModResolver = null;
+        if (!string.IsNullOrWhiteSpace(_selectedPackError))
+            return;
+
+        ContentPackLoader.TryDiscoverModResolver(
             _bootstrap.GetContentPack().ContentRootPath,
             _selectedPackID,
-            _selectedDisabledModIDs
+            _selectedDisabledModIDs,
+            out _selectedModResolver,
+            out _selectedPackError
         );
     }
 
@@ -395,6 +410,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void ApplyContentSelection()
     {
+        if (!string.IsNullOrWhiteSpace(_selectedPackError))
+        {
+            SetStatus(
+                $"{GetSelectedPack()?.DisplayName ?? _selectedPackID} could not be loaded: {_selectedPackError}",
+                true
+            );
+            return;
+        }
+
         if (_selectedModResolver.ModIssues.Count > 0)
         {
             ContentModIssue issue = _selectedModResolver.ModIssues[0];
@@ -524,7 +548,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _saveSlotsLoaded = true;
         }
 
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>

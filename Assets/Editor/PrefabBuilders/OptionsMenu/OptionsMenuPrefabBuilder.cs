@@ -1186,10 +1186,10 @@ public static class OptionsMenuPrefabBuilder
         settingsStatus.text = string.Empty;
         settingsStatus.color = textDim;
         settingsStatus.fontSize = 10;
-        settingsStatus.alignment = TextAlignmentOptions.BottomRight;
+        settingsStatus.alignment = TextAlignmentOptions.Bottom;
         settingsStatus.textWrappingMode = TextWrappingModes.Normal;
         settingsStatus.overflowMode = TextOverflowModes.Ellipsis;
-        SetSourceRect(settingsStatus.rectTransform, 300, 378, 200, 24);
+        SetSourceRect(settingsStatus.rectTransform, 250, 370, 300, 32);
         Button defaultsButton = CreateMenuActionButton(
             settingsActions,
             "DefaultsButton",
