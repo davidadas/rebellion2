@@ -1,0 +1,350 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay.Scripting.Events;
+using Rebellion.SceneGraph;
+using Rebellion.Util.DependencyInjection;
+using Rebellion.Util.Random;
+using Rebellion.Util.Reflection;
+
+namespace Rebellion.Gameplay
+{
+    /// <summary>
+    /// Constructs and connects runtime components for the active game graph.
+    /// </summary>
+    public sealed class GameSession : IServiceLocator, IDisposable
+    {
+        private readonly GameDataCatalog _gameData;
+        private readonly List<Action> _disconnect = new();
+        private readonly List<ServiceLocator> _retiredServiceScopes = new();
+        private IRandomNumberProvider _randomProvider;
+        private ServiceLocator _serviceScope;
+
+        public GameRoot Game { get; private set; }
+        public GameResultPipeline Pipeline { get; }
+        public GameTickProcessor Tick { get; }
+
+        internal MessageObserver MessageObserver { get; private set; }
+
+        internal GameEventCommands GameEventCommands { get; private set; }
+
+        internal GameResultBus Results { get; private set; }
+
+        /// <summary>
+        /// Prepares a game graph and constructs its connected runtime components.
+        /// </summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
+        public GameSession(GameRoot game, GameDataCatalog gameData)
+        {
+            _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
+            Tick = new GameTickProcessor(
+                (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
+                results => Pipeline.ProcessMessageReactions(results)
+            );
+            ReplaceGame(game);
+        }
+
+        /// <summary>
+        /// Resolves a runtime service from the current game's scope.
+        /// </summary>
+        /// <typeparam name="T">The requested runtime service type.</typeparam>
+        /// <returns>The current game's service instance.</returns>
+        public T GetService<T>() => _serviceScope.GetService<T>();
+
+        /// <summary>
+        /// Resolves a runtime service by its type.
+        /// </summary>
+        /// <param name="serviceType">The requested runtime service type.</param>
+        /// <returns>The current game's service instance.</returns>
+        public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
+
+        /// <summary>
+        /// Rebuilds components in place, preserving partial initialization on failure.
+        /// </summary>
+        /// <param name="game">The replacement graph to prepare.</param>
+        internal void ReplaceGame(GameRoot game)
+        {
+            if (game == null)
+                throw new InvalidOperationException("Cannot manage a null game.");
+
+            Game = game;
+            if (Game.Config == null)
+            {
+                GameConfig config = _gameData.GameConfig.GetDeepCopy();
+                Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
+                Game.SetConfig(config);
+            }
+            Game.RebuildSceneState();
+            RestoreSectorSuppressionDefaults();
+            Tick.Reset();
+            _randomProvider = game.Random;
+            Action[] previousConnections = _disconnect.ToArray();
+            ServiceLocator previousServiceScope = _serviceScope;
+            try
+            {
+                InitializeComponents();
+                RebuildDerivedState();
+            }
+            catch
+            {
+                if (previousServiceScope != null && previousServiceScope != _serviceScope)
+                    _retiredServiceScopes.Add(previousServiceScope);
+                throw;
+            }
+
+            foreach (Action disconnect in previousConnections)
+            {
+                disconnect();
+                _disconnect.Remove(disconnect);
+            }
+            previousServiceScope?.Dispose();
+            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
+                retiredScope.Dispose();
+            _retiredServiceScopes.Clear();
+        }
+
+        /// <summary>
+        /// Detaches the result subscriptions and producer connections owned by this runtime.
+        /// </summary>
+        public void Dispose()
+        {
+            foreach (Action disconnect in _disconnect)
+                disconnect();
+            _disconnect.Clear();
+            _serviceScope?.Dispose();
+            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
+                retiredScope.Dispose();
+            _retiredServiceScopes.Clear();
+        }
+
+        /// <summary>
+        /// Restores newly authored suppression values on units from older saved games.
+        /// </summary>
+        private void RestoreSectorSuppressionDefaults()
+        {
+            Dictionary<string, CapitalShip> templates = _gameData
+                .CapitalShips.Where(template => !string.IsNullOrEmpty(template?.TypeID))
+                .ToDictionary(template => template.TypeID, StringComparer.Ordinal);
+            foreach (
+                CapitalShip ship in Game.GetRegisteredSceneNodesByType<CapitalShip>(
+                    includeDisabled: true
+                )
+            )
+            {
+                if (
+                    !string.IsNullOrEmpty(ship.TypeID)
+                    && templates.TryGetValue(ship.TypeID, out CapitalShip template)
+                )
+                    ship.ApplySectorSuppressionDefault(template.SectorSuppression);
+            }
+        }
+
+        /// <summary>
+        /// Constructs the runtime components and connects their explicit dependencies.
+        /// </summary>
+        private void InitializeComponents()
+        {
+            MessageFactory messageFactory = new MessageFactory(
+                _gameData.MessageDefinitions.GetDeepCopy()
+            );
+            GameResultBus resultBus = new GameResultBus();
+            _serviceScope = GameServiceRegistration.Create(
+                Game,
+                _gameData,
+                _randomProvider,
+                messageFactory,
+                resultBus
+            );
+            MessageObserver = GetService<MessageObserver>();
+            GetService<MovementQueries>()
+                .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
+            Tick.ConnectRuntime(_serviceScope);
+            GameEventCommands = GetService<GameEventCommands>();
+            GameEventCommands.ValidateEvents(Game.GetEventPool());
+
+            Results = resultBus;
+            ConnectResults();
+        }
+
+        /// <summary>
+        /// Connects result producers, typed reactions, and observers.
+        /// </summary>
+        private void ConnectResults()
+        {
+            GameServiceRegistration.ConnectObservers(_serviceScope, Results);
+
+            PlanetaryControlCommands planetaryControlSystem =
+                GetService<PlanetaryControlCommands>();
+            PlanetaryControlObserver planetaryControlObserver =
+                GetService<PlanetaryControlObserver>();
+            FogOfWarObserver fogOfWarObserver = GetService<FogOfWarObserver>();
+            planetaryControlSystem.OwnershipChanging +=
+                planetaryControlObserver.ObserveOwnershipChange;
+            planetaryControlSystem.OwnershipChanged += fogOfWarObserver.ObserveOwnershipChange;
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanging -=
+                    planetaryControlObserver.ObserveOwnershipChange
+            );
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanged -= fogOfWarObserver.ObserveOwnershipChange
+            );
+
+            MovementCommands movementSystem = GetService<MovementCommands>();
+            movementSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => movementSystem.ResultsProduced -= ProcessImmediateResults);
+            MissionCommands missionSystem = GetService<MissionCommands>();
+            missionSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => missionSystem.ResultsProduced -= ProcessImmediateResults);
+            MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
+            maintenanceSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);
+            OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
+            officerCommandSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
+            CaptiveCommands captiveSystem = GetService<CaptiveCommands>();
+            captiveSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => captiveSystem.ResultsProduced -= ProcessImmediateResults);
+            BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
+            bombardmentSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);
+            PlanetaryAssaultCommands planetaryAssaultSystem =
+                GetService<PlanetaryAssaultCommands>();
+            planetaryAssaultSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() =>
+                planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
+            );
+            VictoryCommands victorySystem = GetService<VictoryCommands>();
+            victorySystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => victorySystem.ResultsProduced -= ProcessImmediateResults);
+        }
+
+        /// <summary>
+        /// Routes results produced outside the tick loop and then refreshes visible intelligence.
+        /// </summary>
+        /// <param name="results">The immediately produced game results.</param>
+        private void ProcessImmediateResults(IReadOnlyList<GameResult> results)
+        {
+            Pipeline.ProcessImmediate(results);
+            GetService<FogOfWarObserver>().RefreshVisibleKnowledge();
+        }
+
+        /// <summary>
+        /// Rebuilds derived state that is not persisted.
+        /// </summary>
+        private void RebuildDerivedState()
+        {
+            _gameData.BindOfficerTraits(GetPersistedOfficers());
+
+            IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
+                .Cast<IManufacturable>()
+                .Concat(CopyTemplates(_gameData.CapitalShips))
+                .Concat(CopyTemplates(_gameData.Starfighters))
+                .Concat(CopyTemplates(_gameData.Regiments))
+                .Concat(CopyTemplates(_gameData.SpecialForces))
+                .ToArray();
+
+            foreach (Faction faction in Game.GetFactions())
+                faction.RebuildResearchCatalog(templates);
+
+            GetService<ManufacturingObserver>().RebuildQueues();
+            GetService<FogOfWarObserver>().ReconcileKnowledge();
+        }
+
+        /// <summary>
+        /// Enumerates every authoritative and remembered officer whose derived trait definitions
+        /// must be restored after loading a game.
+        /// </summary>
+        /// <returns>All officers persisted by the active game.</returns>
+        private IEnumerable<Officer> GetPersistedOfficers()
+        {
+            foreach (
+                Officer officer in Game.GetRegisteredSceneNodesByType<Officer>(
+                    includeDisabled: true
+                )
+            )
+            {
+                yield return officer;
+            }
+
+            foreach (Officer officer in Game.GetUnrecruitedOfficers())
+                yield return officer;
+
+            foreach (Faction faction in Game.GetFactions())
+            {
+                foreach (
+                    PlanetSectorSnapshot sectorSnapshot in faction.Fog?.Snapshots?.Values
+                        ?? Enumerable.Empty<PlanetSectorSnapshot>()
+                )
+                {
+                    foreach (
+                        PlanetSnapshot planetSnapshot in sectorSnapshot?.Planets?.Values
+                            ?? Enumerable.Empty<PlanetSnapshot>()
+                    )
+                    {
+                        foreach (Officer officer in GetSnapshotOfficers(planetSnapshot))
+                            yield return officer;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enumerates officers stored directly or as cargo and mission participants in one fog
+        /// snapshot.
+        /// </summary>
+        /// <param name="snapshot">The persisted planet snapshot.</param>
+        /// <returns>Every officer retained by the snapshot.</returns>
+        private static IEnumerable<Officer> GetSnapshotOfficers(PlanetSnapshot snapshot)
+        {
+            if (snapshot == null)
+                yield break;
+
+            foreach (Officer officer in snapshot.Officers ?? Enumerable.Empty<Officer>())
+            {
+                if (officer != null)
+                    yield return officer;
+            }
+
+            foreach (Fleet fleet in snapshot.Fleets ?? Enumerable.Empty<Fleet>())
+            {
+                if (fleet == null)
+                    continue;
+                foreach (Officer officer in fleet.GetChildren<Officer>(true, true))
+                    yield return officer;
+            }
+
+            foreach (Mission mission in snapshot.Missions ?? Enumerable.Empty<Mission>())
+            {
+                if (mission == null)
+                    continue;
+                foreach (Officer officer in mission.GetChildren<Officer>(true, true))
+                    yield return officer;
+            }
+        }
+
+        /// <summary>
+        /// Creates detached template copies with fresh runtime identities.
+        /// </summary>
+        /// <typeparam name="T">The scene-node template type.</typeparam>
+        /// <param name="templates">The templates to copy.</param>
+        /// <returns>Detached copies suitable for derived catalogs.</returns>
+        private static IEnumerable<T> CopyTemplates<T>(IEnumerable<T> templates)
+            where T : class, ISceneNode
+        {
+            foreach (T template in templates)
+            {
+                T copy = (T)template.CreateCopy();
+                copy.InstanceID = null;
+                yield return copy;
+            }
+        }
+    }
+}

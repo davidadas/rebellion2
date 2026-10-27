@@ -1,6 +1,6 @@
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 internal static class TestContent
 {

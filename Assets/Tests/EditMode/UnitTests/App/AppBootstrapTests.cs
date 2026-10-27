@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEngine;

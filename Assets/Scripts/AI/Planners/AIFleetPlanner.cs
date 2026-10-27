@@ -7,7 +7,7 @@ using Rebellion.AI.Scorers;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 namespace Rebellion.AI.Planners
 {

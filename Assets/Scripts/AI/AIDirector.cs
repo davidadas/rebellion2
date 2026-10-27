@@ -8,7 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
