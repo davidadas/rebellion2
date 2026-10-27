@@ -65,6 +65,15 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
+    /// Verifies that Windows players start in the stable borderless fullscreen mode.
+    /// </summary>
+    [Test]
+    public void WindowsFullscreen_ProjectConfiguration_StartsBorderless()
+    {
+        Assert.AreEqual(FullScreenMode.FullScreenWindow, PlayerSettings.fullScreenMode);
+    }
+
+    /// <summary>
     /// Verifies that Linux uses the graphics API supported by HDRP.
     /// </summary>
     [Test]
