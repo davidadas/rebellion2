@@ -11,9 +11,9 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay.Runtime;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 

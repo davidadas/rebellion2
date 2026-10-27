@@ -78,7 +78,7 @@ Rebellion 2 is approximately **60% complete toward a feature-complete single-pla
 
 - [Development setup and commands](Docs/Development.md)
 - [Modding and content packs](Docs/Modding/Index.md)
-- [Creating game events](Docs/Modding/Events/Index.md)
+- [Creating game events](Docs/Modding/Scripting/Events/Index.md)
 
 Game assets and generated UI artifacts live outside this source repository. Development checkouts
 use the separate `rebellion2-media` repository and the ignored asset directories described in the

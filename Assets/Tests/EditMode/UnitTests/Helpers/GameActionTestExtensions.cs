@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.Game.Rules;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
+using Rebellion.Gameplay.Scripting;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests
@@ -19,7 +20,11 @@ namespace Rebellion.Tests
         internal static List<GameResult> Execute(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
-            GameActionCommands.ExecuteAction(action, context);
+            GameActionInterpreter.ExecuteAction(
+                action,
+                context,
+                new GameActionCommands(context.Game, context.Random)
+            );
             return context.Results;
         }
 
@@ -37,7 +42,11 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, random);
-            GameActionCommands.ExecuteAction(action, context);
+            GameActionInterpreter.ExecuteAction(
+                action,
+                context,
+                new GameActionCommands(context.Game, context.Random)
+            );
             return context.Results;
         }
 
@@ -57,7 +66,11 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, random, evaluation);
-            GameActionCommands.ExecuteAction(action, context);
+            GameActionInterpreter.ExecuteAction(
+                action,
+                context,
+                new GameActionCommands(context.Game, context.Random)
+            );
             return context.Results;
         }
 
@@ -74,8 +87,12 @@ namespace Rebellion.Tests
             UnitFactory unitFactory
         )
         {
-            GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
-            GameActionCommands.ExecuteAction(action, context);
+            GameActionContext context = new GameActionContext(game, game.Random);
+            GameActionInterpreter.ExecuteAction(
+                action,
+                context,
+                new GameActionCommands(context.Game, context.Random, unitFactory)
+            );
             return context.Results;
         }
     }

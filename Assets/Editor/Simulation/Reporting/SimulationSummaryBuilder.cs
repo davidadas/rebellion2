@@ -12,7 +12,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner

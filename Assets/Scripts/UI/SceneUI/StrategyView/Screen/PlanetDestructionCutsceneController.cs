@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
-using Rebellion.Simulation;
+using Rebellion.Gameplay.Runtime;
 
 /// <summary>
 /// Requests ship-specific movies for planet destruction involving the viewing player.

@@ -54,19 +54,28 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
 
-## Game rules
+## Code organization
 
-Authored rule definitions live in `Rebellion.Game.Rules`. Events combine these shared definitions with event-specific schedules and activation history.
+`Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.
 
-| Runtime service | Responsibility |
+`Gameplay` contains the operations, queries, calculations, and reactions used to run a campaign. Both player-facing controllers and AI use these services. Supporting request and result types stay with the feature that owns them.
+
+| Area | Ownership |
 | --- | --- |
-| `GameConditionEvaluator` | Evaluating conditions against the game and current bindings. |
-| `GameSelectorResolver` | Resolving registered game objects from selectors. |
-| `GameBindingResolver` | Binding selected objects, scalar values, and trigger arguments. |
-| `GameTriggerMatcher` | Matching simulation results against trigger definitions. |
-| `GameActionCommands` | Interpreting an action batch and then running its deferred command requests. |
-| `GameEventCommands` | Validating events, scheduling activations, and updating event history. |
+| `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
+| `Game/Scripting/Events` | Event definitions, schedules, and saved activation history. |
+| `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
+| `Gameplay/Scripting/Events` | Event validation, activation, and campaign tick/result integration. |
+| `Gameplay/Runtime` | Session construction, service registration, tick scheduling, and result delivery. |
 
-`GameEvaluationContext` carries the execution's source ID, bindings, triggering result, and directly produced results. Event activations also supply their event ID for result attribution. It contains no event definition or activation history.
+Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
 
-The shared services use the existing simulation commands and result bus. This separation adds no tick loop, result observer, saved state, or new content behavior. See the [game-rule reference](Modding/Rules/Index.md) for authored XML.
+## Game scripting
+
+`GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.
+
+`GameEvaluationContext` holds bindings, source attribution, the triggering result, and results produced during an activation. `GameConditionContext` supplies condition-evaluation inputs. `GameActionContext` collects action results and deferred operations. These temporary contexts stay within the scripting subsystem.
+
+Actions retain their authored order. Capture cleanup remains immediate; queued command requests execute after the full action batch. Event scheduling, activation history, XML names, and save fields retain their existing contracts.
+
+See the [scripting reference](Modding/Scripting/Index.md) for authored XML.

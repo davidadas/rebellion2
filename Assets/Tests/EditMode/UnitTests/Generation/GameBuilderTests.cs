@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
+using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Gameplay.Runtime;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Generation

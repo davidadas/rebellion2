@@ -1,0 +1,6440 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Gameplay.Runtime;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
+
+namespace Rebellion.Tests.Gameplay
+{
+    [TestFixture]
+    public class MovementCommandsTests
+    {
+        [TestCase(typeof(Building))]
+        [TestCase(typeof(Regiment))]
+        [TestCase(typeof(SpecialForces))]
+        [TestCase(typeof(Starfighter))]
+        public void ProcessTick_SurfaceDestinationDestroyedDuringTransit_ReroutesWithoutArrival(
+            Type unitType
+        )
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            IManufacturable unit = (IManufacturable)Activator.CreateInstance(unitType);
+            unit.InstanceID = "incoming-unit";
+            unit.SetOwnerInstanceID("empire");
+            unit.ManufacturingStatus = ManufacturingStatus.Delivering;
+            if (unit is Building building)
+                building.BuildingType = BuildingType.Headquarters;
+            if (unit is Starfighter fighter)
+                fighter.Hyperdrive = 1;
+            game.AttachNode(unit, destination);
+            unit.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(origin, unit.GetParent());
+            Assert.IsNotNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Delivering, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
+            Assert.IsEmpty(results.OfType<UnitArrivedResult>());
+
+            unit.Movement.TicksElapsed = unit.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> arrival = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(arrival.OfType<GameObjectEnrouteResult>().Any());
+            Assert.AreSame(origin, arrival.OfType<UnitArrivedResult>().Single().Destination);
+            Assert.IsNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+        }
+
+        [Test]
+        public void ProcessTick_OrbitalDestinationDestroyedDuringTransit_CompletesFleetArrival()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("incoming-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            game.AttachNode(CreateMovableCapitalShip("incoming-ship"), fleet);
+            fleet.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any(result => result.Unit == fleet));
+            Assert.IsFalse(destination.IsColonized);
+        }
+
+        [Test]
+        public void RequestMove_SingleUnit_QueuesResultsUntilMovementPass()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            int publications = 0;
+            movement.ResultsProduced += _ => publications++;
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(0, publications);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.AreEqual(
+                1,
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+                    .Count()
+            );
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+            );
+        }
+
+        [Test]
+        public void RequestMove_AdmiralFromFleetToPlanet_ResignsOfficer()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("source-ship");
+            officer.CurrentRank = OfficerRank.Admiral;
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+            CommandKindChangedResult rankResult = results
+                .OfType<CommandKindChangedResult>()
+                .Single();
+            Assert.AreSame(officer, rankResult.Officer);
+            Assert.AreEqual((int)OfficerRank.None, rankResult.CommandKind);
+            Assert.AreEqual((int)OfficerRank.Admiral, rankResult.Detail);
+            OfficerCommandingResult commandingResult = results
+                .OfType<OfficerCommandingResult>()
+                .Single();
+            Assert.IsNull(commandingResult.CommandTarget);
+            Assert.AreSame(fleet, commandingResult.Context);
+        }
+
+        [Test]
+        public void RequestMove_FleetWithRankedOfficer_PreservesFleetCommand()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("ranked-fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("ranked-fleet-ship");
+            officer.CurrentRank = OfficerRank.Admiral;
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+
+            movement.RequestMove(fleet, destination);
+
+            Assert.AreEqual(OfficerRank.Admiral, officer.CurrentRank);
+            Assert.AreSame(fleet, officer.GetParentOfType<Fleet>());
+            Assert.IsNotNull(fleet.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GeneralToOccupiedPlanet_ResignsRelocatedOfficer()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer relocated,
+                MovementCommands movement
+            ) = BuildScene();
+            Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
+            relocated.CurrentRank = OfficerRank.General;
+            incumbent.CurrentRank = OfficerRank.General;
+            game.AttachNode(incumbent, destination);
+
+            movement.RequestMove(relocated, destination);
+
+            Assert.AreSame(destination, relocated.GetParent());
+            Assert.AreEqual(OfficerRank.None, relocated.CurrentRank);
+            Assert.AreEqual(OfficerRank.General, incumbent.CurrentRank);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+            CommandKindChangedResult rankResult = results
+                .OfType<CommandKindChangedResult>()
+                .Single();
+            Assert.AreSame(relocated, rankResult.Officer);
+            Assert.AreEqual((int)OfficerRank.General, rankResult.Detail);
+            Assert.AreSame(origin, results.OfType<OfficerCommandingResult>().Single().Context);
+        }
+
+        [Test]
+        public void TryRequestMove_Selection_PublishesImmediatelyWithoutQueuingAgain()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            List<GameResult> published = new List<GameResult>();
+            movement.ResultsProduced += results => published.AddRange(results);
+
+            bool accepted = movement.TryRequestMove(
+                new ISceneNode[] { officer },
+                destination,
+                officer.OwnerInstanceID
+            );
+
+            Assert.IsTrue(accepted);
+            Assert.AreEqual(1, published.OfType<GameObjectEnrouteResult>().Count());
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+            );
+        }
+
+        [Test]
+        public void TryRequestMove_ListenerThrows_RetainsAcceptedMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            movement.ResultsProduced += _ =>
+                throw new InvalidOperationException("listener failure");
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                movement.TryRequestMove(
+                    new ISceneNode[] { officer },
+                    destination,
+                    officer.OwnerInstanceID
+                )
+            );
+
+            Assert.AreEqual("listener failure", exception.Message);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_WrongControllingFaction_RejectsWithoutPublication()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            int publications = 0;
+            movement.ResultsProduced += _ => publications++;
+
+            bool accepted = movement.TryRequestMove(
+                new ISceneNode[] { officer },
+                destination,
+                "other"
+            );
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual(0, publications);
+            Assert.AreSame(origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void RelocateUnits_NoCompatibleShip_MovesHyperdriveStarfighterToFriendlyPlanet()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip unfinishedCarrier = new CapitalShip
+            {
+                InstanceID = "unfinished",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(unfinishedCarrier, fleet);
+            game.AttachNode(starfighter, destroyedShip);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RelocateUnits(new[] { starfighter });
+
+            Assert.AreSame(friendlyPlanet, starfighter.GetParent());
+        }
+
+        [Test]
+        public void RelocateUnits_NoCompatibleShipAndNoHyperdrive_LeavesStarfighterWithCurrentShip()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(starfighter, destroyedShip);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RelocateUnits(new[] { starfighter });
+
+            Assert.AreSame(destroyedShip, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void RelocateUnits_LimitedRecoveryCapacity_PrioritizesNonHyperdriveStarfighter()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+            };
+            CapitalShip recoveryCarrier = new CapitalShip
+            {
+                InstanceID = "recovery",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter hyperdriveFighter = new Starfighter
+            {
+                InstanceID = "hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter nonHyperdriveFighter = new Starfighter
+            {
+                InstanceID = "non-hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(recoveryCarrier, fleet);
+            game.AttachNode(hyperdriveFighter, destroyedShip);
+            game.AttachNode(nonHyperdriveFighter, destroyedShip);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RelocateUnits(new IMovable[] { hyperdriveFighter, nonHyperdriveFighter });
+
+            Assert.AreSame(recoveryCarrier, nonHyperdriveFighter.GetParent());
+            Assert.IsNull(nonHyperdriveFighter.Movement);
+            Assert.AreSame(friendlyPlanet, hyperdriveFighter.GetParent());
+            Assert.IsNotNull(hyperdriveFighter.Movement);
+        }
+
+        [Test]
+        public void RelocateUnits_HyperdriveFighterOccupiesRecoveryCapacity_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip recoveryCarrier = new CapitalShip
+            {
+                InstanceID = "recovery",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter hyperdriveFighter = new Starfighter
+            {
+                InstanceID = "hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter nonHyperdriveFighter = new Starfighter
+            {
+                InstanceID = "non-hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(recoveryCarrier, fleet);
+            game.AttachNode(hyperdriveFighter, recoveryCarrier);
+            game.AttachNode(nonHyperdriveFighter, destroyedShip);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RelocateUnits(new[] { nonHyperdriveFighter });
+
+            Assert.AreSame(recoveryCarrier, nonHyperdriveFighter.GetParent());
+            Assert.IsNull(nonHyperdriveFighter.Movement);
+            Assert.AreSame(friendlyPlanet, hyperdriveFighter.GetParent());
+            Assert.IsNotNull(hyperdriveFighter.Movement);
+        }
+
+        [Test]
+        public void Constructor_WithNullGame_ThrowsArgumentNullException()
+        {
+            GameRoot dependencyGame = TestGame.Create(TestConfig.Create());
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementCommands(
+                    null,
+                    new FogOfWarCommands(dependencyGame),
+                    new FleetCommands(dependencyGame),
+                    new FogOfWarQueries(null),
+                    new MovementQueries(null)
+                )
+            );
+
+            Assert.AreEqual("game", exception.ParamName);
+        }
+
+        [Test]
+        public void Constructor_WithNullFogOfWar_ThrowsArgumentNullException()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementCommands(
+                    game,
+                    null,
+                    new FleetCommands(game),
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
+            );
+
+            Assert.AreEqual("fogOfWar", exception.ParamName);
+        }
+
+        [Test]
+        public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementCommands(
+                    game,
+                    new FogOfWarCommands(game),
+                    null,
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
+            );
+
+            Assert.AreEqual("fleetSystem", exception.ParamName);
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_ImmediatelyReparentsUnit()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_UnitIsNoLongerAtOrigin()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreNotEqual(origin, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_SetsMovementStateWithDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreEqual(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_SetsOriginPositionFromDeparturePlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Point expectedOrigin = origin.GetPosition();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(expectedOrigin, officer.Movement.OriginPosition);
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_SetsTransitTicksGreaterThanZero()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.Greater(officer.Movement.TransitTicks, 0);
+        }
+
+        [Test]
+        public void RequestMove_SameSectorDestination_CanUseLocalTransitMinimum()
+        {
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, sector);
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            game.AttachNode(destination, sector);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RequestMove(officer, destination);
+
+            Assert.Less(officer.Movement.TransitTicks, config.Movement.MinTransitTicks);
+            Assert.GreaterOrEqual(
+                officer.Movement.TransitTicks,
+                config.Movement.SameSectorMinTransitTicks
+            );
+        }
+
+        [Test]
+        public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
+        {
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector originSector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(originSector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, originSector);
+
+            PlanetSector destinationSector = new PlanetSector { InstanceID = "sector2" };
+            game.AttachNode(destinationSector, game.GetGalaxyMap());
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            game.AttachNode(destination, destinationSector);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(config.Movement.MinTransitTicks, officer.Movement.TransitTicks);
+        }
+
+        [Test]
+        public void RequestMove_ValidDestination_SetsMovementGroupID()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsFalse(string.IsNullOrEmpty(officer.Movement.MovementGroupID));
+        }
+
+        [Test]
+        public void RequestMove_WhenUnitAlreadyInTransit_DoesNotRedirect()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            MovementState originalMovement = officer.Movement;
+            Point originalOrigin = officer.Movement.OriginPosition;
+
+            movement.RequestMove(officer, origin);
+
+            Assert.AreSame(originalMovement, officer.Movement);
+            Assert.AreEqual(originalOrigin, officer.Movement.OriginPosition);
+            Assert.AreEqual(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_WhenUnitNotAtAnyPlanet_IsIgnored()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            game.DetachNode(officer);
+
+            Assert.DoesNotThrow(() => movement.RequestMove(officer, destination));
+            Assert.IsNull(officer.Movement, "Orphaned unit must not be given a movement state");
+        }
+
+        [Test]
+        public void RequestMove_WhenDestinationRejectsUnit_LeavesUnitAtOriginWithoutMovement()
+        {
+            // Destination ownership changes after scene setup (e.g. enemy captures the planet).
+            // RequestMove must not propagate the SceneAccessException — the unit stays at origin.
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            destination.OwnerInstanceID = "rebels";
+
+            Assert.DoesNotThrow(
+                () => movement.RequestMove(officer, destination),
+                "RequestMove must not throw when the destination rejects the unit"
+            );
+            Assert.AreEqual(
+                origin,
+                officer.GetParent(),
+                "Unit must remain at origin when destination rejects it"
+            );
+            Assert.IsNull(
+                officer.Movement,
+                "Movement state must not be set when the destination rejected the unit"
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapturedOfficer_IsNotMoved()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            officer.IsCaptured = true;
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(
+                origin,
+                officer.GetParent(),
+                "Captured officer must not be moved by its owning faction"
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapturedOfficerAtSamePlanet_ReparentsWithoutMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                LocationInstanceID = origin.InstanceID,
+                HasInitiated = true,
+            };
+            game.AttachNode(mission, origin);
+            mission.AddChild(officer);
+            game.MoveNode(officer, mission);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+
+            movement.RequestMove(officer, origin);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_CompletedBuilding_DoesNotMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupNonCapturedUnits_AllMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.AreEqual(destination, officer2.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_GroupNonCapturedUnits_SetsSharedMovementGroupID()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+
+            Assert.IsFalse(string.IsNullOrEmpty(officer.Movement.MovementGroupID));
+            Assert.AreEqual(officer.Movement.MovementGroupID, officer2.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void RequestMove_OfficerGroupWithTravelTrait_UsesDisplayedReducedTransitTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Officer companion = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(companion, origin);
+            MovementQueries queries = new MovementQueries(game);
+            List<IMovable> group = new List<IMovable> { officer, companion };
+            Assert.IsTrue(queries.TryGetTransitTicks(group, destination, out int normalTicks));
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            Assert.IsTrue(queries.TryGetTransitTicks(group, destination, out int displayedTicks));
+
+            movement.RequestMove(group, destination);
+
+            Assert.Less(displayedTicks, normalTicks);
+            Assert.AreEqual(displayedTicks, officer.Movement.TransitTicks);
+            Assert.AreEqual(displayedTicks, companion.Movement.TransitTicks);
+        }
+
+        [Test]
+        public void RequestMove_GroupToFactionViewFleet_BoardsLiveFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer officer, MovementCommands movement) =
+                BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            Fleet liveFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(liveFleet, origin);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, liveFleet);
+
+            Fleet viewFleet = EntityFactory.CreateFleet(liveFleet.InstanceID, "empire");
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, viewFleet);
+
+            Assert.AreEqual(ship, officer.GetParent());
+            Assert.AreEqual(ship, officer2.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_GroupUnitsAtDifferentLocations_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, destination);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(destination, officer2.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(officer2.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupUnitAlreadyInTransit_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer movingOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(movingOfficer, origin);
+            movement.RequestMove(movingOfficer, destination);
+            MovementState originalMovement = movingOfficer.Movement;
+
+            movement.RequestMove(new List<IMovable> { officer, movingOfficer }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(destination, movingOfficer.GetParent());
+            Assert.AreSame(originalMovement, movingOfficer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupUnitUnderConstruction_RetargetsDelivery()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(starfighter, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, starfighter }, destination);
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.AreEqual(destination, starfighter.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsNull(starfighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Building, starfighter.ManufacturingStatus);
+        }
+
+        [Test]
+        public void RequestMove_GroupCompletedBuilding_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, building }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithCapturingOfficerEscort_BothMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
+            Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithCapturingSpecialForcesEscort_BothMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, origin);
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
+            Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithCapturingRegimentEscort_DoesNotMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Regiment escort = new Regiment
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, origin);
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
+
+            Assert.AreEqual(origin, escort.GetParent());
+            Assert.AreEqual(origin, captive.GetParent());
+            Assert.IsNull(escort.Movement);
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithoutEscort_NotMoved()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { captive },
+                destination
+            );
+
+            Assert.AreEqual(
+                origin,
+                captive.GetParent(),
+                "Captive must not move without an escort from the capturing faction"
+            );
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerEscortFromWrongFaction_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "other",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(
+                origin,
+                escort.GetParent(),
+                "Group movement must fail atomically when a captive has no valid escort"
+            );
+            Assert.AreEqual(
+                origin,
+                captive.GetParent(),
+                "Captive must not move when the escort is from a different faction than the captor"
+            );
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerEscortAtDifferentLocation_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, destination);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(origin, escort.GetParent());
+            Assert.AreEqual(destination, captive.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, sector);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, sector);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10000,
+                PositionY = 0,
+            };
+            game.AttachNode(planetC, sector);
+
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination", "empire");
+            game.AttachNode(destinationFleet, planetB);
+
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+                RegimentCapacity = 2,
+            };
+            game.AttachNode(carrier, destinationFleet);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
+            game.AttachNode(sourceFleet, planetA);
+
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, sourceFleet);
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(starfighter, planetA);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, planetA);
+
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planetA);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, planetA);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            IMovable[] inboundUnits =
+            {
+                capitalShip,
+                starfighter,
+                regiment,
+                officer,
+                specialForces,
+            };
+
+            foreach (IMovable inboundUnit in inboundUnits)
+                movement.RequestMove(inboundUnit, destinationFleet);
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Dictionary<IMovable, MovementState> previousMovements = inboundUnits.ToDictionary(
+                unit => unit,
+                unit => unit.Movement
+            );
+
+            movement.RequestMove(destinationFleet, planetC);
+
+            foreach (IMovable inboundUnit in inboundUnits)
+            {
+                MovementState previousMovement = previousMovements[inboundUnit];
+                Assert.IsNotNull(inboundUnit.Movement);
+                Assert.AreNotSame(previousMovement, inboundUnit.Movement);
+                Assert.AreEqual(
+                    previousMovement.CurrentPosition,
+                    inboundUnit.Movement.OriginPosition
+                );
+                Assert.AreEqual(
+                    previousMovement.CurrentPosition,
+                    inboundUnit.Movement.CurrentPosition
+                );
+                Assert.AreEqual(
+                    previousMovement.MovementGroupID,
+                    inboundUnit.Movement.MovementGroupID
+                );
+                Assert.AreEqual(0, inboundUnit.Movement.TicksElapsed);
+                Assert.Greater(
+                    inboundUnit.Movement.TransitTicks,
+                    previousMovement.TicksRemaining()
+                );
+            }
+        }
+
+        [Test]
+        public void RequestMove_FleetWithInboundOfficerGroup_PreservesSharedTravelTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet fleetPlanet,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Planet destination = new Planet
+            {
+                InstanceID = "retarget-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1000,
+                PositionY = 1000,
+            };
+            game.AttachNode(destination, fleetPlanet.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "destination-carrier",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, fleetPlanet);
+            game.AttachNode(carrier, fleet);
+            Officer companion = EntityFactory.CreateOfficer("companion", "empire");
+            game.AttachNode(companion, origin);
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "shared-travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            movement.RequestMove(new List<IMovable> { officer, companion }, fleet);
+            string movementGroupID = officer.Movement.MovementGroupID;
+            MovementQueries queries = new MovementQueries(game);
+            Assert.IsTrue(
+                queries.TryEstimateRetargetedTransitTicks(
+                    companion,
+                    destination,
+                    out int unsharedTransitTicks
+                )
+            );
+
+            movement.RequestMove(fleet, destination);
+
+            Assert.AreEqual(movementGroupID, officer.Movement.MovementGroupID);
+            Assert.AreEqual(movementGroupID, companion.Movement.MovementGroupID);
+            Assert.AreEqual(officer.Movement.TransitTicks, companion.Movement.TransitTicks);
+            Assert.Less(officer.Movement.TransitTicks, unsharedTransitTicks);
+        }
+
+        [Test]
+        public void RequestMove_BuildingUnderConstruction_RetargetsDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreEqual(
+                destination,
+                building.GetParent(),
+                "Building destination should change while it is still under construction."
+            );
+            Assert.IsNull(
+                building.Movement,
+                "Building should have no movement state while its manufacturing destination changes."
+            );
+        }
+
+        [Test]
+        public void RequestMove_StarfighterUnderConstruction_RetargetsDestination()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(empire);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, sector);
+
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(otherPlanet, sector);
+
+            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destFleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, destFleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            ManufacturingCommands mfg = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            mfg.Enqueue(planet, fighter, destFleet);
+
+            Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
+            movement.RequestMove(fighter, otherPlanet);
+
+            Assert.AreEqual(
+                otherPlanet,
+                fighter.GetParent(),
+                "Fighter destination should change while it is still under construction."
+            );
+            Assert.IsNull(
+                fighter.Movement,
+                "Fighter should have no movement state while its manufacturing destination changes."
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipToFleet_LandsAtFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, sector);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, sector);
+
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            game.AttachNode(sourceFleet, planetA);
+            game.AttachNode(capitalShip, sourceFleet);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetB);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(capitalShip, fleet);
+
+            // Tick until transit completes.
+            int transit = capitalShip.Movement.TransitTicks;
+            for (int i = 0; i < transit; i++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsNull(
+                capitalShip.Movement,
+                "Capital ship should have no movement state after arrival."
+            );
+            Assert.AreEqual(
+                fleet,
+                capitalShip.GetParent(),
+                "Capital ship should be in the destination fleet."
+            );
+            Assert.AreEqual(planetB, fleet.GetParent(), "Fleet should still be at planet B.");
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipInFriendlyFleetOverHostilePlanet_StartsTransit()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet productionPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(productionPlanet, sector);
+
+            Planet capturedPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(capturedPlanet, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, capturedPlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(ship, fleet, productionPlanet);
+
+            Assert.IsNotNull(
+                ship.Movement,
+                "Capital ship should travel to its assigned fleet over a hostile planet."
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipInFleetDestinationCaptured_ShipRemainsInFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet productionPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(productionPlanet, sector);
+
+            Planet capturedPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(capturedPlanet, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, capturedPlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(ship, fleet, productionPlanet);
+
+            Assert.AreEqual(
+                fleet,
+                ship.GetParent(),
+                "Capital ship should remain in its fleet when destination planet is captured"
+            );
+        }
+
+        [Test]
+        public void RequestMove_ManufacturedUnitDestinationWithoutPlanet_Throws()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                movement.RequestMove(ship, fleet, origin)
+            );
+            Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
+        public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
+        {
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, sector);
+
+            Planet missionPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(missionPlanet, sector);
+
+            Fleet fleet = new Fleet { InstanceID = "fl1", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, origin);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, ship);
+
+            StubMission mission = EntityFactory.CreateMission("m1", "empire", "p2");
+            game.AttachNode(mission, missionPlanet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            Assert.DoesNotThrow(
+                () => movement.RequestMove(officer, mission),
+                "Officer on a CapitalShip should be movable to a mission"
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipFromFleetToFleetAtSamePlanet_ReparentsWithoutTransit()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination", "empire");
+            game.AttachNode(sourceFleet, planet);
+            game.AttachNode(destinationFleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, sourceFleet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(ship, destinationFleet);
+
+            Assert.AreEqual(destinationFleet, ship.GetParent());
+            Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupFromDifferentShipsAtSamePlanet_MovesAllToDestinationFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination", "empire");
+            game.AttachNode(sourceFleet, planet);
+            game.AttachNode(destinationFleet, planet);
+
+            CapitalShip sourceShip1 = new CapitalShip
+            {
+                InstanceID = "source1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip sourceShip2 = new CapitalShip
+            {
+                InstanceID = "source2",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip destinationShip = new CapitalShip
+            {
+                InstanceID = "destination1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(sourceShip1, sourceFleet);
+            game.AttachNode(sourceShip2, sourceFleet);
+            game.AttachNode(destinationShip, destinationFleet);
+
+            Officer officer1 = EntityFactory.CreateOfficer("o1", "empire");
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer1, sourceShip1);
+            game.AttachNode(officer2, sourceShip2);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(new List<IMovable> { officer1, officer2 }, destinationFleet);
+
+            Assert.AreEqual(destinationShip, officer1.GetParent());
+            Assert.AreEqual(destinationShip, officer2.GetParent());
+            Assert.IsNull(officer1.Movement);
+            Assert.IsNull(officer2.Movement);
+        }
+
+        [Test]
+        public void RequestMove_SpecialForcesToFleetAtSamePlanet_BoardsFirstShip()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, planet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(specialForces, fleet);
+
+            Assert.AreEqual(ship, specialForces.GetParent());
+            Assert.IsNull(specialForces.Movement);
+        }
+
+        [Test]
+        public void RequestMove_ManufacturedBuildingCompletedAtBlockadedProductionPlanet_RemainsLocal()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                Planet blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            scene.game.AttachNode(building, scene.blockadedDestination);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.movement.RequestMove(
+                building,
+                scene.blockadedDestination,
+                scene.blockadedDestination
+            );
+
+            Assert.AreSame(building, scene.game.GetSceneNodeByInstanceID<Building>("building"));
+            Assert.AreSame(scene.blockadedDestination, building.GetParent());
+            Assert.IsNull(building.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+        }
+
+        [Test]
+        public void RequestMove_ManufacturedStarfighterForBlockadedPlanet_DeploysAtProducer()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                Planet blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.game.AttachNode(starfighter, scene.blockadedDestination);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+
+            scene.movement.RequestMove(starfighter, scene.blockadedDestination, scene.origin);
+
+            Assert.AreSame(scene.origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, starfighter.ManufacturingStatus);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
+        {
+            // FixedRNG returns 0 -> 0 < 50 -> loss
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID),
+                "Regiment should be destroyed running the blockade"
+            );
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
+        {
+            // MaximumRNG returns 99 -> 99 >= 50 -> survives
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new MaximumRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Regiment>("r1"),
+                "Regiment should survive the blockade"
+            );
+            Assert.IsNotNull(regiment.Movement, "Surviving regiment should be in transit");
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            // Evacuation results are pending — flush via ProcessTick
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            EvacuationLossesResult evacResult = results
+                .OfType<EvacuationLossesResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(evacResult, "Should emit EvacuationLossesResult");
+            Assert.AreEqual(origin, evacResult.Location);
+            Assert.AreEqual(1, evacResult.LostRegiments.Count);
+        }
+
+        [Test]
+        public void RequestMove_LastBlockadingFleetDeparts_ReportsBlockadeEnd()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG());
+            Fleet blockadingFleet = origin.GetChildren<Fleet>().Single();
+
+            movement.RequestMove(blockadingFleet, destination);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsFalse(origin.IsBlockaded());
+            BlockadeChangedResult blockade = results
+                .OfType<BlockadeChangedResult>()
+                .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
+        {
+            // FixedRNG would cause loss, but planet isn't blockaded
+            GameConfig config = TestConfig.Create();
+            config.Blockade.EvacuationLossPercent = 100;
+            GameRoot game = TestGame.Create(config);
+
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(destination, sector);
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            Assert.IsFalse(origin.IsBlockaded());
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game),
+                new FixedRNG()
+            );
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Regiment>("r1"),
+                "Regiment on unblockaded planet should never be destroyed"
+            );
+        }
+
+        [Test]
+        public void RequestMove_OfficerFromBlockadedPlanetWithoutDetector_StartsTransit()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_OfficerLeavingHostileFleet_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_OfficerLeavingHostileFleet_DoesNotRollEvasionOrInjury()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsFalse(officer.IsKilled);
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_HostileForceUser_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.Jedi.MissionParticipantEncounterMinimum = 1;
+            game.Config.Jedi.MissionDefenderEncounterMinimum = 1;
+            game.Config.Jedi.EncounterProbabilityOffset = 100;
+            AddPersonnelTransitDetector(game, origin);
+            CapitalShip hostileShip = origin
+                .GetChildren<Fleet>()
+                .Single(fleet => fleet.OwnerInstanceID == "rebels")
+                .GetChildren<CapitalShip>()
+                .Single();
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 1;
+            game.AttachNode(defender, hostileShip);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            officer.ForceValue = 1;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_DetectorWithCommander_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Starfighter detector = AddPersonnelTransitDetector(game, origin);
+            CapitalShip hostileShip = detector.GetParentOfType<CapitalShip>();
+            Officer commander = EntityFactory.CreateOfficer("commander", "rebels");
+            commander.CurrentRank = OfficerRank.Commander;
+            game.AttachNode(commander, hostileShip);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_OfficerLeavingProtectedPlanet_StartsTransitWithoutEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            AddPersonnelTransitDetector(game, origin);
+            origin.EnergyCapacity = 1;
+            Building blocker = new Building
+            {
+                InstanceID = "detection-blocker",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsDetectionBlocker = true,
+            };
+            game.AttachNode(blocker, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void SendToMission_OfficerLeavingHostileFleet_DoesNotDuplicateMissionEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = "empire",
+                LocationInstanceID = destination.InstanceID,
+            };
+            game.AttachNode(mission, destination);
+
+            movement.SendToMission(officer, mission);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_SpecialForcesLeavingHostileFleet_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            movement.RequestMove(specialForces, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.AreSame(
+                specialForces,
+                game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID)
+            );
+            Assert.AreSame(destination, specialForces.GetParent());
+            Assert.IsNotNull(specialForces.Movement);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_CaptiveWithSpecialForcesEscort_BothContinueMovement()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(escort, origin);
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
+
+            Assert.AreSame(escort, game.GetSceneNodeByInstanceID<SpecialForces>(escort.InstanceID));
+            Assert.AreSame(destination, escort.GetParent());
+            Assert.IsNotNull(escort.Movement);
+            Assert.AreSame(destination, captive.GetParent());
+            Assert.IsNotNull(captive.Movement);
+        }
+
+        [Test]
+        public void ProcessTick_OrdinaryOfficerArrivingNearHostileFleet_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_OrdinaryOfficerGroupArrivingNearHostileFleet_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            first.IsMain = true;
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            second.IsMain = true;
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+
+            movement.RequestMove(new List<IMovable> { first, second }, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
+            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsFalse(first.IsCaptured);
+            Assert.IsFalse(second.IsCaptured);
+            Assert.IsNull(first.Movement);
+            Assert.IsNull(second.Movement);
+        }
+
+        [Test]
+        public void ProcessTick_OrdinarySpecialForcesGroupArrival_DoesNotResolveEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            SpecialForces first = new SpecialForces
+            {
+                InstanceID = "first",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            SpecialForces second = new SpecialForces
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+
+            movement.RequestMove(new List<IMovable> { first, second }, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
+            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+
+            Assert.DoesNotThrow(() => new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.AreSame(destination, first.GetParent());
+            Assert.AreSame(destination, second.GetParent());
+            Assert.IsNull(first.Movement);
+            Assert.IsNull(second.Movement);
+        }
+
+        [Test]
+        public void RequestMove_BuildingUnderConstructionToUncolonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsFalse(destination.IsColonized);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_ClaimsImmediately()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+            Assert.AreEqual(100, destination.GetPopularSupport("empire"));
+            Assert.AreEqual(destination, regiment.GetParent());
+            PlanetOwnershipChangedResult ownershipChange = movement
+                .TakePendingResults()
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            CollectionAssert.Contains(ownershipChange.BlockadedFactionInstanceIDs, "rebels");
+        }
+
+        [Test]
+        public void TryRequestMove_RegimentToShipAboveNeutralUncolonizedPlanet_DoesNotClaimPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            Fleet fleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(ship, fleet);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { regiment }, ship, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(ship, regiment.GetParent());
+            Assert.IsNotNull(regiment.Movement);
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
+        }
+
+        [Test]
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
+        {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene(config);
+            destination.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                InstanceID = "stationed-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedRegiment, destination);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
+        {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            destination.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                InstanceID = "stationed-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedRegiment, destination);
+            Regiment arrivingRegiment = new Regiment
+            {
+                InstanceID = "arriving-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(arrivingRegiment, origin);
+
+            movement.RequestMove(arrivingRegiment, destination);
+
+            Assert.AreSame(destination, arrivingRegiment.GetParent());
+            Assert.IsNotNull(arrivingRegiment.Movement);
+        }
+
+        [Test]
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_StartsTransit()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.IsColonized = false;
+            Regiment inboundRegiment = new Regiment
+            {
+                InstanceID = "inbound-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            game.AttachNode(inboundRegiment, destination);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Faction observer = AddFaction(game, "observer");
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+            destination.EnergyCapacity = 1;
+
+            CapturePlanetSnapshot(game, observer, destination, 5);
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            game.CurrentTick = 20;
+            movement.RequestMove(regiment, destination);
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, destination);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.IsNull(snapshot.OwnerInstanceID);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtEnemyUncolonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreNotEqual(destination, regiment.GetParent());
+            Assert.AreEqual(destination, regiment.GetParentOfType<Planet>());
+            Assert.AreEqual("rebels", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "reg-from-planet",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual(origin, regiment.GetParent());
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, origin, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreNotEqual(destination, regiment.GetParent());
+            Assert.AreEqual(origin, regiment.GetParentOfType<Planet>());
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_StarfighterToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter-to-uncolonized",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(starfighter, origin);
+
+            movement.RequestMove(starfighter, destination);
+
+            Assert.AreEqual(origin, starfighter.GetParent());
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_FleetToNeutralUncolonizedPlanet_IsAllowed()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet-to-uncolonized", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "fleet-to-uncolonized-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, fleet);
+
+            movement.RequestMove(fleet, destination);
+
+            Assert.AreEqual(destination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_FleetToRejectedDestination_PreservesWaypointRoute()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            Fleet rejectedDestination = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(rejectedDestination, firstDestination);
+            fleet.Waypoints.Add(secondDestination.InstanceID);
+
+            movement.RequestMove(fleet, rejectedDestination);
+
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = true;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.AreNotEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_DoesNotImmediatelyReleaseToNeutral()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = false;
+
+            // Garrison the planet directly, then stage an empty fleet to receive the regiment.
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffColonizedOwnedPlanet_OwnershipPersists()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = true;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void TryRequestMove_ValidRequest_RoutesThroughAuthoritativeMovePath()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+
+            bool accepted = movement.TryRequestMove(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { destination },
+                null,
+                new List<GameResult>()
+            );
+
+            Assert.IsTrue(accepted);
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_EventOriginatedRequest_PropagatesSourceToArrival()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            bool accepted = movement.TryRequestMove(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { destination },
+                "SEND_OFFICER",
+                new List<GameResult>()
+            );
+
+            Assert.IsTrue(accepted);
+            int transitTicks = officer.Movement.TransitTicks;
+
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
+            Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void TryRequestMove_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
+        {
+            (_, Planet origin, _, Officer officer, MovementCommands movement) = BuildScene();
+
+            List<GameResult> results = new List<GameResult>();
+            bool accepted = movement.TryRequestMove(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { origin },
+                "SEND_OFFICER",
+                results
+            );
+
+            Assert.IsTrue(accepted);
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
+
+            Assert.AreSame(officer, arrival.Unit);
+            Assert.AreSame(origin, arrival.Destination);
+            Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void TryRequestMove_FirstCandidateRejectsGroup_UsesNextCandidate()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Planet rejected = new Planet
+            {
+                InstanceID = "rejected",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rejected, origin.GetParent());
+
+            bool accepted = movement.TryRequestMove(
+                new List<IMovable> { officer },
+                new List<ContainerNode> { rejected, destination },
+                null,
+                new List<GameResult>()
+            );
+
+            Assert.IsTrue(accepted);
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryPlaceUnits_GroupExceedsCapacity_LeavesEveryUnitUnchanged()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            CapitalShip sourceShip = new CapitalShip
+            {
+                InstanceID = "source-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+            };
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip destinationShip = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter first = new Starfighter
+            {
+                InstanceID = "first",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter second = new Starfighter
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(sourceShip, sourceFleet);
+            game.AttachNode(first, sourceShip);
+            game.AttachNode(second, sourceShip);
+            game.AttachNode(destinationFleet, destination);
+            game.AttachNode(destinationShip, destinationFleet);
+
+            bool accepted = movement.TryPlaceUnits(
+                new List<IMovable> { first, second },
+                new List<ContainerNode> { destinationFleet }
+            );
+
+            Assert.IsFalse(accepted);
+
+            Assert.AreSame(sourceShip, first.GetParent());
+            Assert.AreSame(sourceShip, second.GetParent());
+        }
+
+        [Test]
+        public void SendToMission_OfficerAboardShip_RecordsShipAndPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+
+            movement.SendToMission(officer, mission);
+
+            Assert.AreEqual(ship.InstanceID, officer.MissionReturnParentInstanceID);
+            Assert.AreEqual(origin.InstanceID, officer.MissionReturnLocationInstanceID);
+            Assert.AreEqual(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void CompleteMissionAtLocation_RankedOfficerToOccupiedCommand_ResignsOfficer()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            officer.CurrentRank = OfficerRank.Commander;
+            Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
+            incumbent.CurrentRank = OfficerRank.Commander;
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(incumbent, destination);
+            game.AttachNode(mission, destination);
+            game.MoveNode(officer, mission);
+
+            List<IMovable> stranded = movement.CompleteMissionAtLocation(
+                new IMissionParticipant[] { officer },
+                destination,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            Assert.AreEqual(OfficerRank.Commander, incumbent.CurrentRank);
+        }
+
+        [Test]
+        public void ReturnFromMission_RecordedShipMoved_ReturnsToRecordedShip()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            game.MoveNode(fleet, destination);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out Planet returnLocation,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(ship, officer.GetParent());
+            Assert.AreSame(destination, returnLocation);
+        }
+
+        [Test]
+        public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_MissingOwnerAndRecordedLocation_ReturnsParticipantAsStranded()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.OwnerInstanceID = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            origin.OwnerInstanceID = "rebels";
+            Planet fallback = new Planet
+            {
+                InstanceID = "fallback",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 200,
+            };
+            game.AttachNode(fallback, destination.GetParent());
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(fallback, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_MissingRecordedLocation_UsesNearestCompatibleFleet()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(ship, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_NoFriendlyDestination_ReturnsParticipantAsStranded()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.OwnerInstanceID = "rebels";
+            destination.OwnerInstanceID = "rebels";
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void ReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
+        {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementCommands movement
+            ) = BuildScene(config);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { passenger },
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, escort.GetParent());
+            Assert.AreSame(origin, passenger.GetParent());
+            Assert.AreEqual(escort.Movement.MovementGroupID, passenger.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void ReturnFromMission_OfficerNearHostileFleet_StartsReturnWithoutEncounter()
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, missionPlanet);
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = true;
+            officer.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsTrue(officer.Movement.ResolveEncounterOnArrival);
+            Assert.AreSame(returnPlanet, officer.GetParent());
+            Assert.IsFalse(
+                movement
+                    .TakePendingResults()
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => result.TargetOfficer == officer)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ReturningOfficerDetectedAtArrival_IsCaptured()
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            Fleet hostileFleet = detector.GetParentOfType<Fleet>();
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = true;
+            officer.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            Assert.IsFalse(officer.IsCaptured, "Departure must not resolve the encounter.");
+            game.MoveNode(hostileFleet, returnPlanet);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(returnPlanet, officer.GetParent());
+            Assert.IsTrue(
+                results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => result.TargetOfficer == officer)
+            );
+        }
+
+        [TestCase(1)]
+        [TestCase(1000)]
+        public void ProcessTick_ReturnFleetChangesDestination_ResolvesArrivalEncounterOnce(
+            int fleetHyperdrive
+        )
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            Planet newDestination = new Planet
+            {
+                InstanceID = "new-return-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1000,
+                PositionY = 1000,
+            };
+            game.AttachNode(newDestination, returnPlanet.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("return-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "return-carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = fleetHyperdrive,
+            };
+            game.AttachNode(fleet, returnPlanet);
+            game.AttachNode(carrier, fleet);
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = true;
+            officer.MissionReturnParentInstanceID = carrier.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+            Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
+            Assert.IsTrue(captive.TryCapture("empire"));
+            game.AttachNode(captive, missionPlanet);
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[] { captive },
+                out _,
+                new List<GameResult>()
+            );
+            int previousTransitTicks = officer.Movement.TransitTicks;
+            string movementGroupID = officer.Movement.MovementGroupID;
+
+            movement.RequestMove(fleet, newDestination);
+            Assert.AreSame(carrier, officer.GetParent());
+            Assert.AreSame(carrier, captive.GetParent());
+            int transitTicks = officer.Movement.TransitTicks;
+            Assert.Greater(transitTicks, previousTransitTicks);
+            Assert.AreEqual(transitTicks, captive.Movement.TransitTicks);
+            Assert.AreEqual(movementGroupID, officer.Movement.MovementGroupID);
+            Assert.AreEqual(movementGroupID, captive.Movement.MovementGroupID);
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            game.MoveNode(detector.GetParentOfType<Fleet>(), newDestination);
+
+            MovementTickProcessor processor = new MovementTickProcessor(movement);
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks - 1; tick++)
+            {
+                results.AddRange(processor.ProcessTick(game));
+                Assert.Zero(
+                    officer.InjuryPoints,
+                    "Continued travel must not resolve arrival detection."
+                );
+                Assert.IsNotNull(officer.Movement);
+                Assert.IsNotNull(captive.Movement);
+            }
+            results.AddRange(processor.ProcessTick(game));
+
+            Assert.AreEqual(1, officer.InjuryPoints);
+            Assert.IsNull(
+                officer.Movement,
+                "Reaching the destination must not restart the same trip."
+            );
+            Assert.IsNull(captive.Movement);
+            Assert.AreSame(carrier, officer.GetParent());
+            Assert.AreSame(carrier, captive.GetParent());
+            Assert.AreEqual(fleetHyperdrive == 1000, fleet.Movement != null);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.Zero(captive.InjuryPoints);
+            for (int tick = 0; tick < 3; tick++)
+                results.AddRange(processor.ProcessTick(game));
+            Assert.AreEqual(
+                1,
+                officer.InjuryPoints,
+                "Later ticks must not repeat the arrival encounter."
+            );
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == officer)
+            );
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == captive)
+            );
+        }
+
+        [TestCase(0)]
+        [TestCase(100)]
+        public void ProcessTick_ReturningForceUser_UsesOnlyOrdinaryDetection(
+            int detectionProbability
+        )
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            game.Config.Jedi.MissionParticipantEncounterMinimum = 1;
+            game.Config.Jedi.MissionDefenderEncounterMinimum = 1;
+            game.Config.Jedi.EncounterProbabilityOffset = 100;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, detectionProbability },
+            };
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            Fleet hostileFleet = detector.GetParentOfType<Fleet>();
+            CapitalShip hostileShip = detector.GetParentOfType<CapitalShip>();
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 1;
+            game.AttachNode(defender, hostileShip);
+            Officer forceTraveler = EntityFactory.CreateOfficer("force-traveler", "empire");
+            forceTraveler.IsMain = true;
+            forceTraveler.ForceValue = 1;
+            forceTraveler.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            forceTraveler.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(forceTraveler, missionPlanet);
+            Officer companion = EntityFactory.CreateOfficer("companion", "empire");
+            companion.IsMain = true;
+            companion.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            companion.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(companion, missionPlanet);
+
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { forceTraveler, companion },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            game.MoveNode(hostileFleet, returnPlanet);
+            forceTraveler.Movement.TicksElapsed = forceTraveler.Movement.TransitTicks - 1;
+            companion.Movement.TicksElapsed = companion.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsEmpty(results.OfType<DuelResult>());
+            Assert.AreEqual(detectionProbability > 0, forceTraveler.IsCaptured);
+            Assert.AreEqual(detectionProbability > 0, companion.IsCaptured);
+            Assert.AreEqual(
+                detectionProbability > 0,
+                results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => result.TargetOfficer == companion)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ReturnGroupSplitAcrossPlanets_UsesEachDestination()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Starfighter detector = AddPersonnelTransitDetector(game, origin);
+            Officer safe = EntityFactory.CreateOfficer("safe-return", "empire");
+            Officer exposed = EntityFactory.CreateOfficer("exposed-return", "empire");
+            foreach (Officer officer in new[] { safe, exposed })
+            {
+                officer.IsMain = true;
+                officer.MissionReturnParentInstanceID = destination.InstanceID;
+                officer.MissionReturnLocationInstanceID = destination.InstanceID;
+                game.AttachNode(officer, origin);
+            }
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { safe, exposed },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            Assert.AreEqual(safe.Movement.MovementGroupID, exposed.Movement.MovementGroupID);
+            game.MoveNode(safe, origin);
+            game.MoveNode(detector.GetParentOfType<Fleet>(), destination);
+            safe.Movement.TicksElapsed = safe.Movement.TransitTicks - 1;
+            exposed.Movement.TicksElapsed = exposed.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsFalse(safe.IsCaptured);
+            Assert.IsTrue(exposed.IsCaptured);
+            Assert.AreSame(origin, safe.GetParent());
+            Assert.AreSame(destination, exposed.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_ReturningSpecialForcesDetectedAtArrival_IsDestroyedForDetection()
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            Fleet hostileFleet = detector.GetParentOfType<Fleet>();
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "returning-special-forces",
+                DisplayName = "returning-special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MissionReturnParentInstanceID = returnPlanet.InstanceID,
+                MissionReturnLocationInstanceID = returnPlanet.InstanceID,
+            };
+            game.AttachNode(specialForces, missionPlanet);
+
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { specialForces },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            game.MoveNode(hostileFleet, returnPlanet);
+            specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID));
+            GameObjectDestroyedResult destroyed = results
+                .OfType<GameObjectDestroyedResult>()
+                .Single(result => ReferenceEquals(result.DestroyedObject, specialForces));
+            Assert.AreEqual(UnitDestructionReason.Detection, destroyed.Reason);
+        }
+
+        [Test]
+        public void ReturnFromMission_RecordedMissionPlanet_KeepsEscortAndCaptiveAtPlanet()
+        {
+            (GameRoot game, Planet _, Planet missionPlanet, Officer _, MovementCommands movement) =
+                BuildScene();
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, missionPlanet);
+            StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
+            game.AttachNode(mission, missionPlanet);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(captive, missionPlanet);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { captive },
+                out Planet returnLocation,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(missionPlanet, returnLocation);
+            Assert.AreSame(missionPlanet, escort.GetParent());
+            Assert.AreSame(missionPlanet, captive.GetParent());
+            Assert.IsNull(escort.Movement);
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
+        public void ReturnFromMission_SpecialForcesEscortAndCaptiveOfficer_ArriveTogether()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 50,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (
+                GameRoot game,
+                Planet returnPlanet,
+                Planet missionPlanet,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, returnPlanet);
+            StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
+            game.AttachNode(mission, missionPlanet);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(captive, missionPlanet);
+            int expectedTransitTicks = new MovementQueries(game).CalculateTransitTicks(
+                captive,
+                missionPlanet,
+                returnPlanet
+            );
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { captive },
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.NotNull(escort.Movement);
+            Assert.NotNull(captive.Movement);
+            Assert.AreEqual(expectedTransitTicks, escort.Movement.TransitTicks);
+            Assert.AreEqual(expectedTransitTicks, captive.Movement.TransitTicks);
+            Assert.AreEqual(escort.Movement.MovementGroupID, captive.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void ReturnFromMission_PassengerWithoutParticipant_ReturnsPassengerAsStranded()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[0],
+                new IMovable[] { passenger },
+                out _,
+                new List<GameResult>()
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { passenger }, stranded);
+            Assert.AreSame(destination, passenger.GetParent());
+            Assert.IsNull(passenger.Movement);
+        }
+
+        [Test]
+        public void ReturnFromMission_ParticipantsWithDifferentOrigins_ReturnToTheirOwnLocations()
+        {
+            (
+                GameRoot game,
+                Planet firstOrigin,
+                Planet destination,
+                Officer firstOfficer,
+                MovementCommands movement
+            ) = BuildScene();
+            PlanetSector secondSector = new PlanetSector
+            {
+                InstanceID = "sector2",
+                PositionX = 200,
+                PositionY = 0,
+            };
+            Planet secondOrigin = new Planet
+            {
+                InstanceID = "p3",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(secondSector, game.GetGalaxyMap());
+            game.AttachNode(secondOrigin, secondSector);
+            game.AttachNode(secondOfficer, secondOrigin);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(firstOfficer, mission);
+            movement.SendToMission(secondOfficer, mission);
+            firstOfficer.Movement = null;
+            secondOfficer.Movement = null;
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { firstOfficer, secondOfficer },
+                new IMovable[0],
+                out _,
+                new List<GameResult>()
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreEqual(firstOrigin, firstOfficer.GetParent());
+            Assert.AreEqual(secondOrigin, secondOfficer.GetParent());
+            Assert.AreNotEqual(
+                firstOfficer.Movement.MovementGroupID,
+                secondOfficer.Movement.MovementGroupID
+            );
+        }
+
+        [Test]
+        public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            Fleet fleet = EntityFactory.CreateFleet("mixed-speed-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
+            fastShip.Hyperdrive = 80;
+            game.AttachNode(fastShip, fleet);
+            Assert.IsTrue(
+                new MovementQueries(game).TryGetTransitTicks(
+                    new List<IMovable> { fleet },
+                    destination,
+                    out int fastTransitTicks
+                )
+            );
+            CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
+            slowShip.Hyperdrive = 100;
+            game.AttachNode(slowShip, fleet);
+
+            movement.RequestMove(fleet, destination);
+
+            int expectedTransitTicks = (int)(
+                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor
+            );
+            Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
+            Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
+
+            for (int tick = 0; tick < expectedTransitTicks; tick++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.AreSame(fleet, fastShip.GetParent());
+            Assert.AreSame(fleet, slowShip.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_WhenNotInTransit_DoesNothing()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Assert.DoesNotThrow(() => new MovementTickProcessor(movement).ProcessTick(game));
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void ProcessTick_InTransit_IncrementsElapsedTicks()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            movement.RequestMove(officer, destination);
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.AreEqual(1, officer.Movement.TicksElapsed);
+        }
+
+        [Test]
+        public void ProcessTick_OnArrival_ClearsMovementState()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            movement.RequestMove(officer, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsNull(officer.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any());
+            GameObjectEnrouteResult enroute = results
+                .OfType<GameObjectEnrouteResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(enroute);
+            Assert.AreEqual(officer, enroute.GameObject);
+            Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => r.IsActive));
+            Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => !r.IsActive));
+        }
+
+        [Test]
+        public void ProcessTick_OnArrival_PreservesMovementGroupIDInArrivalResult()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            movement.RequestMove(officer, destination);
+            string movementGroupId = officer.Movement.MovementGroupID;
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            UnitArrivedResult arrival = new MovementTickProcessor(movement)
+                .ProcessTick(game)
+                .OfType<UnitArrivedResult>()
+                .Single();
+
+            Assert.AreEqual(movementGroupId, arrival.MovementGroupID);
+        }
+
+        [Test]
+        public void ProcessTick_OnArrival_UnitRemainsAtDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            movement.RequestMove(officer, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.AreEqual(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_OfficerArrivesAtMission_ClearsMovementState()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            // Attach a mission to the destination planet so the officer can be sent to it
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                LocationInstanceID = destination.InstanceID,
+                HasInitiated = true,
+            };
+            game.AttachNode(mission, destination);
+            mission.AddChild(officer);
+
+            movement.RequestMove(officer, mission);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsNull(officer.Movement, "Movement should be cleared on arrival at a mission");
+            Assert.AreEqual(
+                mission,
+                officer.GetParent(),
+                "Officer should remain parented to the mission node, not be rerouted"
+            );
+            Assert.IsTrue(results.OfType<GameObjectEnrouteResult>().Any());
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
+            Assert.AreSame(officer, arrival.Unit);
+            Assert.AreSame(destination, arrival.Destination);
+        }
+
+        [Test]
+        public void ProcessTick_SpecialForcesArrivesAtMission_ClearsRoleEnrouteState()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                LocationInstanceID = destination.InstanceID,
+                HasInitiated = true,
+            };
+            game.AttachNode(mission, destination);
+            mission.AddChild(specialForces);
+
+            movement.RequestMove(specialForces, mission);
+            specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsNull(specialForces.Movement);
+            Assert.AreEqual(mission, specialForces.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_GroupNonCapturedUnits_PreservesMovementGroupIDInArrivalResults()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+            string movementGroupId = officer.Movement.MovementGroupID;
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            officer2.Movement.TicksElapsed = officer2.Movement.TransitTicks;
+
+            List<UnitArrivedResult> arrivals = new MovementTickProcessor(movement)
+                .ProcessTick(game)
+                .OfType<UnitArrivedResult>()
+                .Where(result => result.Unit == officer || result.Unit == officer2)
+                .ToList();
+
+            Assert.AreEqual(2, arrivals.Count);
+            Assert.IsFalse(string.IsNullOrEmpty(movementGroupId));
+            Assert.IsTrue(arrivals.All(result => result.MovementGroupID == movementGroupId));
+        }
+
+        [Test]
+        public void ProcessTick_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
+        {
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot game = TestGame.Create(config);
+
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, sector);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(planetB, sector);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 500,
+                PositionY = 500,
+            };
+            game.AttachNode(planetC, sector);
+
+            // Fleet starts at planet B
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetB);
+            CapitalShip fleetShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleetShip, fleet);
+
+            // Officer at planet A moves toward the fleet
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planetA);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(officer, fleet);
+
+            int transitTicks = officer.Movement.TransitTicks;
+
+            // Tick until one tick before arrival
+            for (int i = 0; i < transitTicks - 1; i++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsNotNull(officer.Movement, "Officer should still be in transit.");
+
+            // Fleet moves to planet C the tick before officer would arrive
+            movement.RequestMove(fleet, planetC);
+
+            // Tick once more — officer would have arrived at old position
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            // Officer should still be en route because the fleet moved
+            Assert.IsNotNull(
+                officer.Movement,
+                "Officer should still be en route after fleet moved away."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_InTransitFleetWithInTransitChildren_FleetArrivesBeforeChildren()
+        {
+            (
+                GameRoot game,
+                MovementCommands movement,
+                Fleet fleet,
+                CapitalShip capitalShip1,
+                CapitalShip capitalShip2,
+                Starfighter starfighter,
+                Regiment regiment,
+                Officer officer,
+                Planet planetA,
+                Planet planetB,
+                Planet planetC,
+                int fleetTransit,
+                int capitalShip2Transit
+            ) scene = BuildFleetWithInTransitChildrenScene();
+
+            Assert.Greater(
+                scene.capitalShip2Transit,
+                scene.fleetTransit,
+                "CS2 must have a longer transit than the fleet for this test to be meaningful."
+            );
+
+            // Advance until the fleet arrives.
+            for (int i = 0; i < scene.fleetTransit; i++)
+                new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
+
+            Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
+            Assert.AreEqual(scene.planetB, scene.fleet.GetParent(), "Fleet should be at planet B.");
+            Assert.IsNotNull(
+                scene.capitalShip2.Movement,
+                "CS2 should still be in transit while fleet has arrived."
+            );
+
+            // Verify fleet children are intact.
+            Assert.AreEqual(
+                scene.fleet,
+                scene.capitalShip1.GetParent(),
+                "CS1 should still be in the fleet."
+            );
+            Assert.AreEqual(scene.capitalShip1, scene.starfighter.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.capitalShip1, scene.regiment.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.capitalShip1, scene.officer.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_InTransitFleetWithInTransitChildren_ChildrenArriveAfterFleet()
+        {
+            (
+                GameRoot game,
+                MovementCommands movement,
+                Fleet fleet,
+                CapitalShip capitalShip1,
+                CapitalShip capitalShip2,
+                Starfighter starfighter,
+                Regiment regiment,
+                Officer officer,
+                Planet planetA,
+                Planet planetB,
+                Planet planetC,
+                int fleetTransit,
+                int capitalShip2Transit
+            ) scene = BuildFleetWithInTransitChildrenScene();
+
+            Assert.Greater(
+                scene.capitalShip2Transit,
+                scene.fleetTransit,
+                "CS2 must have a longer transit than the fleet for this test to be meaningful."
+            );
+
+            // Advance until CS2 also arrives (covers fleet arrival + remaining ticks).
+            for (int i = 0; i < scene.capitalShip2Transit; i++)
+                new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
+
+            Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
+            Assert.IsNull(scene.capitalShip2.Movement, "CS2 should have arrived.");
+            Assert.AreEqual(
+                scene.fleet,
+                scene.capitalShip2.GetParent(),
+                "CS2 should be in the fleet."
+            );
+            Assert.AreEqual(
+                scene.planetB,
+                scene.fleet.GetParent(),
+                "Fleet should still be at planet B."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+
+            Planet destPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destPlanet, sector);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            game.AttachNode(mine, destPlanet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(mine, destPlanet, originPlanet);
+
+            // Destination captured while building is in transit.
+            destPlanet.OwnerInstanceID = "rebels";
+
+            int transit = mine.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
+            for (int i = 0; i < transit; i++)
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>(mine.InstanceID),
+                "Building should be destroyed when destination changes sides during transit."
+            );
+            Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_NonBuildingInTransitDestinationChangedSides_UnitRerouted()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+
+            Planet destPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destPlanet, sector);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destPlanet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(regiment, destPlanet, originPlanet);
+
+            // Destination captured while regiment is in transit.
+            destPlanet.OwnerInstanceID = "rebels";
+
+            int transit = regiment.Movement.TransitTicks;
+            for (int i = 0; i < transit; i++)
+                new MovementTickProcessor(movement).ProcessTick(game);
+
+            // Regiment should be rerouted to nearest friendly planet (originPlanet).
+            Assert.AreEqual(
+                originPlanet,
+                regiment.GetParent(),
+                "Regiment should reroute to nearest friendly planet."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetInTransitToHostilePlanet_FleetArrivesAtHostilePlanet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+
+            Planet hostilePlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(hostilePlanet, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, originPlanet);
+            game.AttachNode(capitalShip, fleet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(fleet, hostilePlanet);
+
+            int transit = fleet.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
+            for (int i = 0; i < transit; i++)
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.IsNull(fleet.Movement, "Fleet should complete arrival at the hostile planet.");
+            Assert.AreEqual(hostilePlanet, fleet.GetParent());
+            Assert.IsTrue(
+                allResults.OfType<UnitArrivedResult>().Any(result => result.Unit == fleet)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_RegimentInTransitToFriendlyFleetAtHostilePlanet_ArrivesInFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+
+            Planet hostilePlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(hostilePlanet, sector);
+
+            Fleet hostileOrbitFleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip receivingShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                RegimentCapacity = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileOrbitFleet, hostilePlanet);
+            game.AttachNode(receivingShip, hostileOrbitFleet);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            CapitalShip sourceShip = new CapitalShip
+            {
+                InstanceID = "cs0",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                RegimentCapacity = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(sourceFleet, originPlanet);
+            game.AttachNode(sourceShip, sourceFleet);
+            game.AttachNode(regiment, sourceShip);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(regiment, hostileOrbitFleet);
+
+            int transit = regiment.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
+            for (int i = 0; i < transit; i++)
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.IsNull(
+                regiment.Movement,
+                "Regiment should complete arrival into the friendly fleet at the hostile planet."
+            );
+            Assert.AreEqual(receivingShip, regiment.GetParent());
+            Assert.IsTrue(
+                allResults.OfType<UnitArrivedResult>().Any(result => result.Unit == regiment)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ManufacturedBuildingDispatchedAfterBlockadeStarted_DestroysOnArrival()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                Planet blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            scene.game.AttachNode(building, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
+
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
+
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            GameObjectDestroyedOnArrivalResult destroyed = results
+                .OfType<GameObjectDestroyedOnArrivalResult>()
+                .Single();
+            Assert.AreSame(building, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
+            Assert.AreSame(scene.blockadedDestination, destroyed.Context);
+            Assert.IsFalse(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, building))
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ManufacturedRegimentDispatchedAfterBlockadeStarted_DestroysOnArrival()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                Planet blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            scene.game.AttachNode(regiment, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.movement.RequestMove(regiment, scene.blockadedDestination, scene.origin);
+
+            int transitTicks = regiment.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
+
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            GameObjectDestroyedOnArrivalResult destroyed = results
+                .OfType<GameObjectDestroyedOnArrivalResult>()
+                .Single();
+            Assert.AreSame(regiment, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
+            Assert.AreSame(scene.blockadedDestination, destroyed.Context);
+            Assert.IsFalse(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, regiment))
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeEndsBeforeManufacturedBuildingArrival_CompletesArrival()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                Planet blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            scene.game.AttachNode(building, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            building.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
+            scene.game.DetachNode(blockadingFleet);
+
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
+
+            Assert.AreSame(
+                building,
+                scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID)
+            );
+            Assert.AreSame(scene.blockadedDestination, building.GetParent());
+            Assert.IsNull(building.Movement);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            UnitArrivedResult arrival = results
+                .OfType<UnitArrivedResult>()
+                .Single(result => ReferenceEquals(result.Unit, building));
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDeployedResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, building))
+            );
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_MultipleDestinations_ContinuesRouteAfterArrival()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(routeSet);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                fleet.Waypoints
+            );
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> firstArrivalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
+
+            Assert.IsNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+            Assert.IsFalse(firstArrivalResults.OfType<FleetWaypointsCompletedResult>().Any());
+
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.AreSame(secondDestination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> finalArrivalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
+
+            FleetWaypointsCompletedResult completed = finalArrivalResults
+                .OfType<FleetWaypointsCompletedResult>()
+                .Single();
+            Assert.AreSame(fleet, completed.Fleet);
+            Assert.AreSame(secondDestination, completed.Destination);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_FleetAlreadyMoving_QueuesContinuation()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { fleet },
+                firstDestination,
+                "empire"
+            );
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { secondDestination.InstanceID },
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.IsTrue(routeSet);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                fleet.Waypoints
+            );
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_OpposingFleet_ReturnsFalse()
+        {
+            (_, Planet origin, Planet firstDestination, _, Fleet fleet, MovementCommands movement) =
+                BuildWaypointScene();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID },
+                "rebels"
+            );
+
+            Assert.IsFalse(routeSet);
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.AreSame(origin, fleet.GetParent());
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_CapitalShip_CreatesFleetAndCompletesRoute()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+
+            Fleet routeFleet = ship.GetParentOfType<Fleet>();
+            Assert.IsTrue(routeSet);
+            Assert.AreNotSame(sourceFleet, routeFleet);
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.AreSame(firstDestination, routeFleet.GetParent());
+            Assert.IsNotNull(ship.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                routeFleet.Waypoints
+            );
+
+            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+            new MovementTickProcessor(movement).ProcessTick(game);
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNotNull(routeFleet.Movement);
+            Assert.AreSame(secondDestination, routeFleet.GetParent());
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
+
+            routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> finalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
+
+            FleetWaypointsCompletedResult completed = finalResults
+                .OfType<FleetWaypointsCompletedResult>()
+                .Single();
+            Assert.AreSame(routeFleet, completed.Fleet);
+            Assert.AreSame(secondDestination, completed.Destination);
+            Assert.IsEmpty(routeFleet.Waypoints);
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_CapitalShipArrivesAtIntermediateWaypoint_CapturesIntelligence()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            game.ChangeOwnership(firstDestination, "rebels");
+            Regiment defendingRegiment = EntityFactory.CreateRegiment("defender", "rebels");
+            defendingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(defendingRegiment, firstDestination);
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            Assert.IsTrue(routeSet);
+            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sector"].Planets[
+                firstDestination.InstanceID
+            ];
+            Assert.AreEqual(game.CurrentTick, snapshot.TickCaptured);
+            Assert.IsTrue(
+                snapshot.Regiments.Any(regiment =>
+                    regiment.InstanceID == defendingRegiment.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void TrySetFleetWaypointRoute_CapitalShipUnderConstruction_PreservesRouteUntilComplete()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            Fleet routeFleet = ship.GetParentOfType<Fleet>();
+            List<GameResult> buildingResults = movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsTrue(routeSet);
+            Assert.IsEmpty(buildingResults);
+            Assert.AreSame(firstDestination, routeFleet.GetParent());
+            Assert.IsNull(routeFleet.Movement);
+            CollectionAssert.AreEqual(
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                routeFleet.Waypoints
+            );
+
+            ship.ManufacturingStatus = ManufacturingStatus.Complete;
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNotNull(routeFleet.Movement);
+            Assert.AreSame(secondDestination, routeFleet.GetParent());
+            CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
+        }
+
+        [Test]
+        public void ClearFleetWaypoints_ActiveRoute_PreservesCurrentMovementAndStopsContinuation()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            MovementState activeMovement = fleet.Movement;
+
+            bool cleared = movement.ClearFleetWaypoints(new ISceneNode[] { fleet }, "empire");
+
+            Assert.IsTrue(cleared);
+            Assert.AreSame(activeMovement, fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            new MovementTickProcessor(movement).ProcessTick(game);
+            movement.ContinueFleetWaypointRoutes();
+
+            Assert.IsNull(fleet.Movement);
+            Assert.AreSame(firstDestination, fleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_FleetWithQueuedWaypoints_ReplacesRoute()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, origin, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+            Assert.AreSame(origin, fleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_GroupUnderConstructionExceedsCapacity_NoneRetarget()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter firstStarfighter = new Starfighter
+            {
+                InstanceID = "first-starfighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Starfighter secondStarfighter = new Starfighter
+            {
+                InstanceID = "second-starfighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(destinationFleet, destination);
+            game.AttachNode(carrier, destinationFleet);
+            game.AttachNode(firstStarfighter, origin);
+            game.AttachNode(secondStarfighter, origin);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { firstStarfighter, secondStarfighter },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, firstStarfighter.GetParent());
+            Assert.AreSame(origin, secondStarfighter.GetParent());
+            Assert.IsEmpty(carrier.GetChildren<Starfighter>());
+            Assert.IsNull(results);
+        }
+
+        [Test]
+        public void TryRequestMove_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+            AddBlockadingFleet(game, destination);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { starfighter },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_RegimentToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+            AddBlockadingFleet(game, destination);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { regiment },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, regiment.GetParent());
+            Assert.IsNull(regiment.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_RegimentToShip_ReturnsGarrisonChange()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, origin);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(ship, fleet);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { regiment }, ship, "empire");
+
+            Assert.IsTrue(moved);
+            PlanetGarrisonChangedResult result = results
+                .OfType<PlanetGarrisonChangedResult>()
+                .Single();
+            Assert.AreSame(origin, result.Planet);
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<PlanetGarrisonChangedResult>()
+            );
+        }
+
+        [Test]
+        public void TryRequestMove_FleetToFleet_MovesShipsAndRemovesSourceFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip firstShip = CreateMovableCapitalShip("first-ship");
+            CapitalShip secondShip = CreateMovableCapitalShip("second-ship");
+            game.AttachNode(firstShip, sourceFleet);
+            game.AttachNode(secondShip, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { sourceFleet },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, firstShip.GetParent());
+            Assert.AreSame(destinationFleet, secondShip.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_FleetWithOnlyShipsUnderConstruction_RetargetsDelivery()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("unfinished-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "unfinished-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(ship, fleet);
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, destination, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.AreSame(fleet, ship.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipToFleet_RemovesEmptySourceFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, ship.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_ShipWithRankedOfficerToOccupiedCommand_ResignsRelocatedOfficer()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip sourceShip = CreateMovableCapitalShip("source-ship");
+            CapitalShip destinationShip = CreateMovableCapitalShip("destination-ship");
+            Officer relocated = EntityFactory.CreateOfficer("relocated", "empire");
+            relocated.CurrentRank = OfficerRank.Admiral;
+            Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
+            incumbent.CurrentRank = OfficerRank.Admiral;
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            game.AttachNode(sourceShip, sourceFleet);
+            game.AttachNode(destinationShip, destinationFleet);
+            game.AttachNode(relocated, sourceShip);
+            game.AttachNode(incumbent, destinationShip);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { sourceShip },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, sourceShip.GetParent());
+            Assert.AreEqual(OfficerRank.None, relocated.CurrentRank);
+            Assert.AreEqual(OfficerRank.Admiral, incumbent.CurrentRank);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipUnderConstruction_RetargetsDelivery()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(ship, sourceFleet);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, ship.GetParent());
+            Assert.IsNull(ship.Movement);
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipInMovingFleet_PreservesSourceGraph()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+            sourceFleet.Movement = new MovementState();
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(sourceFleet, ship.GetParent());
+            CollectionAssert.AreEquivalent(
+                new[] { sourceFleet, destinationFleet },
+                origin.GetChildren<Fleet>().ToList()
+            );
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipToPlanet_CreatesDestinationFleet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, destination, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], ship.GetParent());
+            Assert.IsNotNull(ship.Movement);
+            Assert.IsNull(sourceFleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_SnapshotPlanet_CreatesFleetOnLiveDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+            Planet snapshot = new Planet { InstanceID = destination.InstanceID };
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, snapshot, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destination, ship.GetParentOfType<Planet>());
+            Assert.AreEqual(0, snapshot.GetChildren<Fleet>().Count);
+        }
+
+        [Test]
+        public void TryRequestMove_MultipleCapitalShipsToPlanet_CreatesOneDestinationFleet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip firstShip = CreateMovableCapitalShip("first-ship");
+            CapitalShip secondShip = CreateMovableCapitalShip("second-ship");
+            game.AttachNode(firstShip, sourceFleet);
+            game.AttachNode(secondShip, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { firstShip, secondShip },
+                destination,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], firstShip.GetParent());
+            Assert.AreSame(destination.GetChildren<Fleet>()[0], secondShip.GetParent());
+            Assert.AreEqual(
+                2,
+                destination.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count
+            );
+        }
+
+        [Test]
+        public void TryRequestMove_MixedSpeedCapitalShipsToPlanet_UsesGroupTransitTime()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 10,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            destination.PositionX = 12;
+            destination.PositionY = 6;
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
+            fastShip.Hyperdrive = 80;
+            CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
+            slowShip.Hyperdrive = 100;
+            game.AttachNode(fastShip, sourceFleet);
+            game.AttachNode(slowShip, sourceFleet);
+            MovementQueries queries = new MovementQueries(game);
+            Assert.IsTrue(
+                queries.TryGetSelectionTransitTicks(
+                    new ISceneNode[] { fastShip, slowShip },
+                    destination,
+                    "empire",
+                    out int displayedTransitTicks
+                )
+            );
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { fastShip, slowShip },
+                destination,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(2, displayedTransitTicks);
+            Assert.AreEqual(displayedTransitTicks, fastShip.Movement.TransitTicks);
+            Assert.AreEqual(displayedTransitTicks, slowShip.Movement.TransitTicks);
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsNotNull(fastShip.Movement);
+            Assert.IsNotNull(slowShip.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipsAtDifferentPlanets_PreservesSourceFleets()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            Fleet originFleet = EntityFactory.CreateFleet("origin-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(originFleet, origin);
+            game.AttachNode(destinationFleet, destination);
+            CapitalShip originShip = CreateMovableCapitalShip("origin-ship");
+            CapitalShip destinationShip = CreateMovableCapitalShip("destination-ship");
+            game.AttachNode(originShip, originFleet);
+            game.AttachNode(destinationShip, destinationFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { originShip, destinationShip },
+                origin,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            CollectionAssert.AreEqual(new[] { originFleet }, origin.GetChildren<Fleet>().ToList());
+            CollectionAssert.AreEqual(
+                new[] { destinationFleet },
+                destination.GetChildren<Fleet>().ToList()
+            );
+            Assert.AreSame(originFleet, originShip.GetParent());
+            Assert.AreSame(destinationFleet, destinationShip.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_GroupCapturedOfficerArrivesAtCaptorPlanet_CompletesMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementCommands movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+            escort.Movement.TicksElapsed = escort.Movement.TransitTicks;
+            captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(destination, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+            Assert.IsTrue(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, captive))
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+
+            // Precondition: destination has not yet been visited by anyone.
+            Assert.IsFalse(destination.WasVisitedBy("empire"));
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Fleet arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsNull(
+                fleet.Movement,
+                "Fleet should complete arrival at a neutral planet, clearing its movement state"
+            );
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Arrival at a neutral planet must record the visitor for first-contact tracking"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+
+            game.DetachNode(officer);
+            game.AttachNode(officer, destination);
+            officer.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Officer arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtAlreadyVisitedPlanet_DoesNotDuplicate()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.AddVisitor("empire");
+            int countBefore = destination.VisitingFactionIDs.Count;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.AreEqual(
+                countBefore,
+                destination.VisitingFactionIDs.Count,
+                "Repeat arrivals must not duplicate visitor entries"
+            );
+        }
+
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <returns>The constructed scene.</returns>
+        private (
+            GameRoot game,
+            Planet origin,
+            Planet destination,
+            Officer officer,
+            MovementCommands movement
+        ) BuildScene(GameConfig config = null)
+        {
+            GameRoot game = TestGame.Create(config ?? TestContent.Data.GameConfig);
+
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                TypeID = "origin-type",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, sector);
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(destination, sector);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            return (game, origin, destination, officer, movement);
+        }
+
+        /// <summary>
+        /// Builds waypoint scene.
+        /// </summary>
+        /// <returns>The constructed waypoint scene.</returns>
+        private static (
+            GameRoot game,
+            Planet origin,
+            Planet firstDestination,
+            Planet secondDestination,
+            Fleet fleet,
+            MovementCommands movement
+        ) BuildWaypointScene()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet firstDestination = new Planet
+            {
+                InstanceID = "first-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 50,
+                PositionY = 25,
+            };
+            Planet secondDestination = new Planet
+            {
+                InstanceID = "second-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 50,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(firstDestination, sector);
+            game.AttachNode(secondDestination, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            return (game, origin, firstDestination, secondDestination, fleet, movement);
+        }
+
+        /// <summary>
+        /// Builds fleet with in transit children scene.
+        /// </summary>
+        /// <returns>The constructed fleet with in transit children scene.</returns>
+        private (
+            GameRoot game,
+            MovementCommands movement,
+            Fleet fleet,
+            CapitalShip capitalShip1,
+            CapitalShip capitalShip2,
+            Starfighter starfighter,
+            Regiment regiment,
+            Officer officer,
+            Planet planetA,
+            Planet planetB,
+            Planet planetC,
+            int fleetTransit,
+            int capitalShip2Transit
+        ) BuildFleetWithInTransitChildrenScene()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, sector);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, sector);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(planetC, sector);
+
+            // Fleet at A with capitalShip1 carrying a starfighter, regiment, and officer.
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetA);
+
+            CapitalShip capitalShip1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+                RegimentCapacity = 2,
+            };
+            game.AttachNode(capitalShip1, fleet);
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(starfighter, capitalShip1);
+
+            Regiment regiment = new Regiment { InstanceID = "reg1", OwnerInstanceID = "empire" };
+            game.AttachNode(regiment, capitalShip1);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, capitalShip1);
+
+            // capitalShip2 at planet C will move to the fleet.
+            Fleet sourceFleet = EntityFactory.CreateFleet("f2", "empire");
+            game.AttachNode(sourceFleet, planetC);
+            CapitalShip capitalShip2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip2, sourceFleet);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+
+            // Fleet moves A -> B (MinTransitTicks, since A and B are very close).
+            movement.RequestMove(fleet, planetB);
+            int fleetTransit = fleet.Movement.TransitTicks;
+
+            // capitalShip2 moves from C toward fleet (now at B; C is farther from B than A is, so transit > fleetTransit).
+            movement.RequestMove(capitalShip2, fleet);
+            int capitalShip2Transit = capitalShip2.Movement.TransitTicks;
+
+            return (
+                game,
+                movement,
+                fleet,
+                capitalShip1,
+                capitalShip2,
+                starfighter,
+                regiment,
+                officer,
+                planetA,
+                planetB,
+                planetC,
+                fleetTransit,
+                capitalShip2Transit
+            );
+        }
+
+        /// <summary>
+        /// Builds blockade retargeting scene.
+        /// </summary>
+        /// <returns>The constructed blockade retargeting scene.</returns>
+        private (
+            GameRoot game,
+            Planet origin,
+            Planet blockadedDestination,
+            Planet nearestSafeDestination,
+            Planet fartherSafeDestination,
+            Planet blockade,
+            MovementCommands movement,
+            GameResultBus resultBus
+        ) BuildBlockadeRetargetingScene()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Blockade.EvacuationLossPercent = 100;
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet blockadedDestination = new Planet
+            {
+                InstanceID = "blockaded",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            Planet nearestSafeDestination = new Planet
+            {
+                InstanceID = "nearest-safe",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 120,
+                PositionY = 0,
+            };
+            Planet fartherSafeDestination = new Planet
+            {
+                InstanceID = "farther-safe",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 160,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(blockadedDestination, sector);
+            game.AttachNode(nearestSafeDestination, sector);
+            game.AttachNode(fartherSafeDestination, sector);
+
+            Planet blockade = blockadedDestination;
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game),
+                new FixedRNG()
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(game, movement, new MovementQueries(game)).Connect(resultBus);
+
+            return (
+                game,
+                origin,
+                blockadedDestination,
+                nearestSafeDestination,
+                fartherSafeDestination,
+                blockade,
+                movement,
+                resultBus
+            );
+        }
+
+        /// <summary>
+        /// Adds blockading fleet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="starfighterCapacity">The starfighter capacity.</param>
+        /// <returns>The result of add blockading fleet.</returns>
+        private static (Fleet fleet, CapitalShip ship) AddBlockadingFleet(
+            GameRoot game,
+            Planet planet,
+            int starfighterCapacity = 0
+        )
+        {
+            Fleet fleet = EntityFactory.CreateFleet($"blockader-{planet.InstanceID}", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"blockader-ship-{planet.InstanceID}",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = starfighterCapacity,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            return (fleet, ship);
+        }
+
+        /// <summary>
+        /// Adds a completed hostile starfighter that can detect personnel in transit.
+        /// </summary>
+        /// <param name="game">The game containing the hostile fleet.</param>
+        /// <param name="planet">The planet containing the hostile fleet.</param>
+        /// <returns>The added detector.</returns>
+        private static Starfighter AddPersonnelTransitDetector(GameRoot game, Planet planet)
+        {
+            CapitalShip hostileShip = planet
+                .GetChildren<Fleet>()
+                .Where(fleet => fleet.OwnerInstanceID == "rebels")
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Single();
+            hostileShip.StarfighterCapacity++;
+            Starfighter detector = EntityFactory.CreateStarfighter(
+                $"detector-{planet.InstanceID}",
+                "rebels"
+            );
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, hostileShip);
+            return detector;
+        }
+
+        /// <summary>
+        /// Configures deterministic personnel transit detection, evasion, and injury outcomes.
+        /// </summary>
+        /// <param name="game">The game whose probability tables are configured.</param>
+        /// <param name="evasionProbability">The evasion percentage returned for every score.</param>
+        private static void ConfigurePersonnelTransitEncounter(
+            GameRoot game,
+            int evasionProbability
+        )
+        {
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, evasionProbability },
+            };
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.MinimumInjuryChance = 100;
+            game.Config.DuelResolution.InjuryBase = 1;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Assassination.KillProbability = 0;
+        }
+
+        /// <summary>
+        /// Processes blockade start.
+        /// </summary>
+        /// <param name="game">The game being processed.</param>
+        /// <param name="blockade">The blockaded planet.</param>
+        /// <param name="resultBus">The bus that delivers blockade reactions.</param>
+        /// <returns>The result of process blockade start.</returns>
+        private static List<GameResult> ProcessBlockadeStart(
+            GameRoot game,
+            Planet blockade,
+            GameResultBus resultBus
+        )
+        {
+            Fleet blockadingFleet = blockade
+                .GetChildren<Fleet>()
+                .First(fleet =>
+                    fleet.Movement == null
+                    && fleet.OwnerInstanceID != blockade.OwnerInstanceID
+                    && fleet.HasOperationalCapitalShips()
+                );
+            return resultBus.Publish(
+                new BlockadeChangedResult
+                {
+                    Planet = blockade,
+                    BlockadingFleet = blockadingFleet,
+                    Blockaded = true,
+                    Tick = game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Builds blockade scene.
+        /// </summary>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The constructed blockade scene.</returns>
+        private (
+            GameRoot game,
+            Planet origin,
+            Planet destination,
+            MovementCommands movement
+        ) BuildBlockadeScene(IRandomNumberProvider rng)
+        {
+            GameConfig config = TestConfig.Create();
+            config.Blockade.EvacuationLossPercent = 50;
+            GameRoot game = TestGame.Create(config);
+
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, sector);
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(destination, sector);
+
+            // Hostile fleet creates the blockade
+            Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
+            game.AttachNode(hostile, origin);
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileShip, hostile);
+
+            Assert.IsTrue(origin.IsBlockaded());
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game),
+                rng
+            );
+
+            return (game, origin, destination, movement);
+        }
+
+        /// <summary>
+        /// Builds a fleet of the given faction parked over the given planet, holding one
+        /// idle regiment ready to drop. The planet has the faction as a visitor.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The result of stage fleet with regiment at.</returns>
+        private (Fleet fleet, Regiment regiment) StageFleetWithRegimentAt(
+            GameRoot game,
+            Planet planet,
+            string factionId
+        )
+        {
+            planet.AddVisitor(factionId);
+
+            Fleet fleet = new Fleet(factionId, $"{factionId}-fleet");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{factionId}-ship-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = $"{factionId}-reg-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            game.AttachNode(regiment, ship);
+
+            return (fleet, regiment);
+        }
+
+        /// <summary>
+        /// Creates movable capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The created movable capital ship.</returns>
+        private static CapitalShip CreateMovableCapitalShip(string instanceId)
+        {
+            return new CapitalShip
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Adds faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The result of add faction.</returns>
+        private static Faction AddFaction(GameRoot game, string instanceId)
+        {
+            Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
+            game.GetFactions().Add(faction);
+            return faction;
+        }
+
+        /// <summary>
+        /// Captures planet snapshot.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="tick">The tick.</param>
+        private static void CapturePlanetSnapshot(
+            GameRoot game,
+            Faction faction,
+            Planet planet,
+            int tick
+        )
+        {
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            game.CurrentTick = tick;
+            new FogOfWarCommands(game).ObservePlanet(faction, planet);
+        }
+
+        /// <summary>
+        /// Gets planet snapshot.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The requested planet snapshot.</returns>
+        private static PlanetSnapshot GetPlanetSnapshot(Faction faction, Planet planet)
+        {
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            return faction.Fog.Snapshots[sector.InstanceID].Planets[planet.InstanceID];
+        }
+    }
+}

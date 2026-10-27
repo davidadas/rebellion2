@@ -15,7 +15,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
+using Rebellion.Gameplay.Runtime;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Phases
