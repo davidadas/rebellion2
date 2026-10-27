@@ -224,6 +224,28 @@ namespace Rebellion.Tests.App
             yield return AssertActivationCanceled(destroyApplication: false);
         }
 
+        [UnityTest]
+        public IEnumerator PreloadAsync_ApplicationDestroyedDuringAudioLoad_CancelsPendingPreload()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            ContentAssets assets = bootstrap.GetContentAssets();
+            using CancellationTokenSource cancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(bootstrap.destroyCancellationToken);
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Audio = { "Application/Audio/pending" },
+            };
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+
+            DestroyApplication();
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!preload.IsCompleted && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.IsTrue(preload.IsCanceled, preload.Exception?.ToString());
+        }
+
         /// <summary>
         /// Verifies that a caller-owned scene lifetime cancels pending strategy activation.
         /// </summary>

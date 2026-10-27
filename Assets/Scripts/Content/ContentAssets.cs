@@ -110,7 +110,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        await Task.WhenAll(manifest.Audio.Distinct(StringComparer.Ordinal).Select(LoadAudioAsync));
+        Task audioPreload = Task.WhenAll(
+            manifest.Audio.Distinct(StringComparer.Ordinal).Select(LoadAudioAsync)
+        );
+        await WaitForCompletionAsync(audioPreload, cancellationToken);
     }
 
     /// <summary>
@@ -372,6 +375,65 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         load = LoadAndCacheAudioAsync(normalizedPath);
         audioLoads.Add(normalizedPath, load);
         return load;
+    }
+
+    /// <summary>
+    /// Waits for a shared asset operation without requiring the operation to share one caller's
+    /// lifetime.
+    /// </summary>
+    /// <param name="operation">The shared operation to await.</param>
+    /// <param name="cancellationToken">Cancels this caller's wait.</param>
+    /// <returns>A task representing the caller's wait.</returns>
+    private static async Task WaitForCompletionAsync(
+        Task operation,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!cancellationToken.CanBeCanceled)
+        {
+            await operation;
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        TaskCompletionSource<bool> cancellation = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using CancellationTokenRegistration registration = cancellationToken.Register(() =>
+            cancellation.TrySetResult(true)
+        );
+        Task completed = await Task.WhenAny(operation, cancellation.Task);
+        if (completed != operation)
+        {
+            ObserveFailure(operation);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        try
+        {
+            await operation;
+        }
+        catch when (cancellationToken.IsCancellationRequested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    /// Observes a shared operation that outlives a canceled caller.
+    /// </summary>
+    /// <param name="operation">The abandoned caller's shared operation.</param>
+    private static void ObserveFailure(Task operation)
+    {
+        _ = operation.ContinueWith(
+            completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default
+        );
     }
 
     /// <summary>

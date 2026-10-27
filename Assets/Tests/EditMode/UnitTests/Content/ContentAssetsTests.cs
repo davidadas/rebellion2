@@ -171,6 +171,35 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public async Task PreloadAsync_CanceledDuringAudioLoad_CancelsBeforeDisposedAssetAccessAsync()
+        {
+            ContentAssets assets = CreateAssets();
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Audio = { "Application/Audio/pending" },
+            };
+
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+            cancellation.Cancel();
+            assets.Dispose();
+
+            try
+            {
+                await preload;
+                Assert.Fail("The abandoned audio preload should have been canceled.");
+            }
+            catch (OperationCanceledException exception)
+            {
+                Assert.AreEqual(cancellation.Token, exception.CancellationToken);
+                Assert.IsTrue(preload.IsCanceled);
+            }
+
+            await Task.Yield();
+        }
+
+        [Test]
         public void GetVideoUrl_ExistingAddress_ReturnsExistingLocalFile()
         {
             using ContentAssets assets = CreateAssets();
