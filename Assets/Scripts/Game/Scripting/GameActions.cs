@@ -238,7 +238,7 @@ namespace Rebellion.Game.Scripting
     }
 
     /// <summary>
-    /// Removes one event-owned trait from explicitly named or selected officers.
+    /// Removes one script-owned trait from explicitly named or selected officers.
     /// </summary>
     [PersistableObject(Name = "RemoveOfficerTrait")]
     public sealed class RemoveOfficerTraitAction : GameAction

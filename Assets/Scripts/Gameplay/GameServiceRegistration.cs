@@ -5,6 +5,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.Gameplay.Scripting.Events;
+using Rebellion.Gameplay.Scripting.Traits;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -18,6 +19,7 @@ namespace Rebellion.Gameplay
         private static readonly Type[] _resultObserverTypes =
         {
             typeof(GameEventObserver),
+            typeof(OfficerTraitObserver),
             typeof(MovementObserver),
             typeof(HeadquartersObserver),
             typeof(MissionObserver),
@@ -152,6 +154,7 @@ namespace Rebellion.Gameplay
             ));
 
             services.AddSingleton<GameEventCommands>();
+            services.AddSingleton<OfficerTraitCommands>();
 
             return services.BuildServiceLocator();
         }

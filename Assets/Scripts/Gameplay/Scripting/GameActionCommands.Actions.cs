@@ -417,7 +417,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Grants one event-owned trait to every selected officer.
+        /// Grants one script-owned trait to every selected officer.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -438,7 +438,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Removes one event-owned trait from every selected officer.
+        /// Removes one script-owned trait from every selected officer.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -459,11 +459,11 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Returns the active event identifier that owns a dynamic trait assignment.
+        /// Returns the active script identifier that owns a dynamic trait assignment.
         /// </summary>
         /// <param name="context">The current action execution context.</param>
         /// <param name="actionName">The action name used in diagnostics.</param>
-        /// <returns>The stable event source identifier.</returns>
+        /// <returns>The stable script source identifier.</returns>
         private static string RequireTraitSource(GameActionContext context, string actionName)
         {
             string sourceID = context.Evaluation?.SourceID;

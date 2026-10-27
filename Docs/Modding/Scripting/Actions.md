@@ -654,6 +654,43 @@ Requests normal duel resolution between two active officers.
 
 The duel produces a result consumed by the typed [`DuelCompleted`](Triggers.md#duelcompleted) trigger.
 
+### ApplyOfficerTrait
+
+Grants a content-defined officer trait from the current script source. Repeating the same grant
+from one source does not duplicate it.
+
+**Required options**
+
+- `TraitID` **[Required]:** An identifier from the active pack's officer trait definitions.
+- Officer source **[Required]:** Provide `OfficerInstanceID`, an `Officers` selector collection,
+  or both. The combined targets are deduplicated.
+
+```xml
+<ApplyOfficerTrait TraitID="training">
+  <Officers><SelectBinding Binding="$officer"/></Officers>
+</ApplyOfficerTrait>
+```
+
+The current event or trait behavior owns the grant. Other sources and authored officer traits
+remain independent. A newly granted trait can supply [trait behaviors](Traits.md).
+
+### RemoveOfficerTrait
+
+Removes only the matching grant owned by the current script source. It does not remove authored
+traits or grants owned by another script.
+
+**Required options**
+
+- `TraitID` **[Required]:** The identifier of the trait grant to remove.
+- Officer source **[Required]:** Provide `OfficerInstanceID`, an `Officers` selector collection,
+  or both.
+
+```xml
+<RemoveOfficerTrait TraitID="training">
+  <Officers><SelectBinding Binding="$officer"/></Officers>
+</RemoveOfficerTrait>
+```
+
 ### SetOfficerImages
 
 Updates the images used to present an officer.
