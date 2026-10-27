@@ -70,7 +70,28 @@ public class SaveGameManager
     /// Creates the singleton save manager for the application's persistent save directory.
     /// </summary>
     private SaveGameManager()
-        : this(Path.Combine(UnityEngine.Application.persistentDataPath, "saves")) { }
+        : this(GetDefaultSaveDirectory()) { }
+
+    /// <summary>
+    /// Resolves an explicit save-directory argument before falling back to the player's save folder.
+    /// </summary>
+    /// <returns>The absolute directory owned by this application's save manager.</returns>
+    private static string GetDefaultSaveDirectory()
+    {
+        string[] arguments = Environment.GetCommandLineArgs();
+        for (int index = 0; index < arguments.Length - 1; index++)
+        {
+            if (
+                string.Equals(
+                    arguments[index],
+                    "-saveDirectory",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                return Path.GetFullPath(arguments[index + 1]);
+        }
+        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves");
+    }
 
     /// <summary>
     /// Creates a save manager for a specified directory.

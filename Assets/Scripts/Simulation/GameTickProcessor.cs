@@ -57,6 +57,8 @@ namespace Rebellion.Simulation
 
         public bool IsSettled => _tickState == TickExecutionState.Idle;
         public bool IsBusy => _tickInProgress || !IsSettled;
+        public bool CanAcceptPlayerActions => !_tickInProgress;
+        internal Func<bool> CanStartTick { get; set; }
 
         public event Action TickCompleted;
 
@@ -168,6 +170,7 @@ namespace Rebellion.Simulation
         {
             if (
                 _tickInProgress
+                || CanStartTick?.Invoke() == false
                 || _tickState != TickExecutionState.Idle
                 || _game.GetGameSpeed() == TickSpeed.Paused
             )
