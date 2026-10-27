@@ -283,6 +283,35 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void TryDiscoverModResolver_PackInheritanceCycle_ReturnsContentError()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-safe-discovery-" + Guid.NewGuid().ToString("N")
+            );
+            WritePackDefinition(contentRoot, "First", "first-pack", "second-pack");
+            WritePackDefinition(contentRoot, "Second", "second-pack", "first-pack");
+            try
+            {
+                bool discovered = ContentPackLoader.TryDiscoverModResolver(
+                    contentRoot,
+                    "first-pack",
+                    Array.Empty<string>(),
+                    out ContentFileResolver resolver,
+                    out string errorMessage
+                );
+
+                Assert.IsFalse(discovered);
+                Assert.IsNull(resolver);
+                StringAssert.Contains("cycle", errorMessage);
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void DiscoverModResolver_PackWithoutVersion_ThrowsInvalidDataException()
         {
             string contentRoot = Path.Combine(

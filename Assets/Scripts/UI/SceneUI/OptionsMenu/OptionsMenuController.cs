@@ -410,7 +410,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void ApplyContentSelection()
     {
-        if (!string.IsNullOrWhiteSpace(_selectedPackError))
+        if (_selectedModResolver == null || !string.IsNullOrWhiteSpace(_selectedPackError))
         {
             SetStatus(BuildContentErrorStatus("Content pack"), true);
             return;

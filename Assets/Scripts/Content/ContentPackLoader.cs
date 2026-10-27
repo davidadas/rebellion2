@@ -975,7 +975,8 @@ public static class ContentPackLoader
     private static bool IsContentDiscoveryException(Exception exception)
     {
         return exception
-            is IOException
+            is InvalidDataException
+                or IOException
                 or UnauthorizedAccessException
                 or InvalidOperationException
                 or XmlException;
