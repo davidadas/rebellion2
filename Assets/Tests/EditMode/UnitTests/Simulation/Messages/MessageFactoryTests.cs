@@ -37,6 +37,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "target",
                 NavigationSecondaryTargetInstanceID = "secondary",
                 MissionInstanceID = "mission",
+                MissionContinuationPending = true,
             };
             MessageDelivery delivery = new()
             {
@@ -64,6 +65,7 @@ namespace Rebellion.Tests.Simulation
                 message.NavigationSecondaryTargetInstanceID
             );
             Assert.AreEqual(content.MissionInstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
         }
 
         [Test]
@@ -149,6 +151,7 @@ namespace Rebellion.Tests.Simulation
                 NavigationTargetInstanceID = "old-target",
                 NavigationSecondaryTargetInstanceID = "old-secondary",
                 MissionInstanceID = "old-mission",
+                MissionContinuationPending = true,
             };
 
             new MessageFactory(null).CreateMessage(
@@ -167,6 +170,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(report.NavigationTargetInstanceID);
             Assert.IsNull(report.NavigationSecondaryTargetInstanceID);
             Assert.IsNull(report.MissionInstanceID);
+            Assert.IsFalse(report.MissionContinuationPending);
         }
 
         [Test]
@@ -1863,6 +1867,55 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateMessages_RecruitmentSuccess_NavigatesToRecruitedOfficer()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer recruiter = new Officer
+            {
+                InstanceID = "RECRUITER",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer recruit = new Officer
+            {
+                InstanceID = "RECRUIT",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            RecruitmentMission mission = new RecruitmentMission
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                RecruitedOfficerInstanceID = recruit.InstanceID,
+            };
+            game.AttachNode(recruit, origin);
+            game.AttachNode(mission, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "body",
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeId: RecruitmentMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                        Participants = new List<IMissionParticipant> { recruiter },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(recruit.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
         public void CreateMessages_MissionFailure_UsesReporterVoiceAndAdvisorSubject()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -2145,6 +2198,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
+            Assert.IsTrue(message.MissionContinuationPending);
             Assert.AreEqual("body", message.Body);
         }
 
@@ -4376,6 +4430,42 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateMessages_UncolonizedPlanetLosesOwnership_DoesNotReportNeutrality()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            target.IsColonized = false;
+            target.OwnerInstanceID = null;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PlanetDeclaredNeutralityBySupport,
+                        MessageType.PopularSupport,
+                        "{system} neutral",
+                        "neutral:{system}:{faction}"
+                    ),
+                },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = null,
+                    ObserverFactionInstanceIDs = new List<string>
+                    {
+                        alliance.InstanceID,
+                        empire.InstanceID,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_PlanetOwnershipChangeWithoutSupportReason_DoesNotReportJoin()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -4913,11 +5003,19 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
         }
 
-        [Test]
-        public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition(
+            bool releaseControl
+        )
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
+            if (releaseControl)
+            {
+                target.IsDestroyed = true;
+                game.NeutralizeDestroyedPlanet(target);
+            }
             MessageDefinition generic = Definition(
                 MessageResultType.Bombardment,
                 MessageType.Conflict,
@@ -4936,22 +5034,29 @@ namespace Rebellion.Tests.Simulation
                 planetDestroyed: true
             );
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[] { generic, planetDestroyed },
-                    new BombardmentResult
-                    {
-                        AttackingFaction = alliance,
-                        Planet = target,
-                        PlanetDestroyed = true,
-                    }
-                ),
-                empire
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[] { generic, planetDestroyed },
+                new BombardmentResult
+                {
+                    AttackingFaction = alliance,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    PlanetDestroyed = true,
+                }
             );
 
-            Assert.AreEqual("Yavin Destroyed!", message.Title);
-            Assert.AreEqual("The Death Star has destroyed the Empire system Yavin.", message.Body);
+            foreach (Faction recipient in new[] { alliance, empire })
+            {
+                Message message = FirstMessageFor(deliveries, recipient);
+                Assert.AreEqual("Yavin Destroyed!", message.Title);
+                Assert.AreEqual(
+                    "The Death Star has destroyed the Empire system Yavin.",
+                    message.Body
+                );
+                Assert.AreEqual(empire.InstanceID, ((CombatReport)message).DefenderOwnerInstanceID);
+            }
         }
 
         [Test]

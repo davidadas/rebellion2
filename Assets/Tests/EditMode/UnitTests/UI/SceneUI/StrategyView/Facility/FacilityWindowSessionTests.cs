@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
@@ -46,6 +47,117 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
+        }
+
+        [Test]
+        public void RefreshManufacturingQueue_QueueHeadChanges_UsesNextQueuedItem()
+        {
+            _planet.OwnerInstanceID = "player";
+            Building finished = CreateBuilding("finished", "Finished", BuildingType.Mine);
+            Building next = CreateBuilding("next", "Next", BuildingType.Mine);
+            _planet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                finished,
+                next,
+            };
+            Planet producer = new Planet
+            {
+                InstanceID = _planet.InstanceID,
+                OwnerInstanceID = "player",
+            };
+            producer.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                next,
+            };
+
+            _session.RefreshManufacturingQueue(producer);
+
+            CollectionAssert.AreEqual(
+                new IManufacturable[] { next },
+                _planet.ManufacturingQueue[ManufacturingType.Building]
+            );
+        }
+
+        [Test]
+        public void RefreshManufacturingQueue_ProducerQueueCleared_RemovesStaleQueue()
+        {
+            _planet.OwnerInstanceID = "player";
+            _planet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                CreateBuilding("finished", "Finished", BuildingType.Mine),
+            };
+            Planet producer = new Planet
+            {
+                InstanceID = _planet.InstanceID,
+                OwnerInstanceID = "player",
+            };
+
+            _session.RefreshManufacturingQueue(producer);
+
+            Assert.IsEmpty(_planet.ManufacturingQueue);
+        }
+
+        [Test]
+        public void RefreshManufacturingQueue_MatchingProducer_DoesNotShareQueueCollections()
+        {
+            _planet.OwnerInstanceID = "player";
+            Planet producer = new Planet
+            {
+                InstanceID = _planet.InstanceID,
+                OwnerInstanceID = "player",
+            };
+            List<IManufacturable> queue = new()
+            {
+                CreateBuilding("next", "Next", BuildingType.Mine),
+            };
+            producer.ManufacturingQueue[ManufacturingType.Building] = queue;
+
+            _session.RefreshManufacturingQueue(producer);
+            _planet.ManufacturingQueue[ManufacturingType.Building].Clear();
+
+            Assert.AreEqual(1, queue.Count);
+        }
+
+        [TestCase("other", "player")]
+        [TestCase("planet", "enemy")]
+        public void RefreshManufacturingQueue_DifferentPlanetOrOwner_LeavesProjectionUnchanged(
+            string producerId,
+            string ownerId
+        )
+        {
+            _planet.OwnerInstanceID = "player";
+            var original = _planet.ManufacturingQueue;
+            Planet producer = new Planet { InstanceID = producerId, OwnerInstanceID = ownerId };
+
+            _session.RefreshManufacturingQueue(producer);
+
+            Assert.AreSame(original, _planet.ManufacturingQueue);
+        }
+
+        [Test]
+        public void RefreshManufacturingQueue_SelectedManufacturingLane_PreservesSelection()
+        {
+            _planet.OwnerInstanceID = "player";
+            _session.SelectManufacturingCard(0);
+            Planet producer = new Planet
+            {
+                InstanceID = _planet.InstanceID,
+                OwnerInstanceID = "player",
+            };
+
+            _session.RefreshManufacturingQueue(producer);
+
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
+        }
+
+        [Test]
+        public void RefreshManufacturingQueue_ProjectionIsLiveProducer_DoesNotReplaceQueue()
+        {
+            var original = _planet.ManufacturingQueue;
+
+            _session.RefreshManufacturingQueue(_planet);
+
+            Assert.AreSame(original, _planet.ManufacturingQueue);
         }
 
         [Test]

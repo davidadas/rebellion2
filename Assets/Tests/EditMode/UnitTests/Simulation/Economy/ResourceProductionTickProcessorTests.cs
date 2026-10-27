@@ -283,6 +283,71 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_ReloadedGame_PreservesResourceProcessingOrder()
+        {
+            Planet firstPlanet = CreateOwnedPlanet("A_PLANET");
+            Planet secondPlanet = CreateOwnedPlanet("B_PLANET");
+            firstPlanet.OwnerInstanceID = null;
+            secondPlanet.OwnerInstanceID = null;
+            _game.AttachNode(firstPlanet, _planetSector);
+            _game.AttachNode(secondPlanet, _planetSector);
+            _game.ChangeOwnership(secondPlanet, _faction.InstanceID);
+            _game.ChangeOwnership(firstPlanet, _faction.InstanceID);
+            Building firstRefinery = AddCompleteBuilding(
+                firstPlanet,
+                BuildingType.Refinery,
+                processRate: 2
+            );
+            Building secondRefinery = AddCompleteBuilding(
+                secondPlanet,
+                BuildingType.Refinery,
+                processRate: 2
+            );
+            firstRefinery.ProductionCycleDuration = 10;
+            secondRefinery.ProductionCycleDuration = 10;
+            firstRefinery.ResourceStartupCyclePending = false;
+            secondRefinery.ResourceStartupCyclePending = false;
+            _faction.RawMaterialStockpile = 1;
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            restored.SetConfig(TestConfig.Create());
+            restored.RebuildSceneState();
+            SmugglingCommands restoredSmuggling = new SmugglingCommands(restored);
+            ResourceProductionTickProcessor restoredSystem = new ResourceProductionTickProcessor(
+                new SmugglingTickProcessor(restoredSmuggling),
+                restoredSmuggling
+            );
+
+            _system.ProcessTick(_game);
+            restoredSystem.ProcessTick(restored);
+
+            Building restoredFirst = restored.GetSceneNodeByInstanceID<Building>(
+                firstRefinery.InstanceID
+            );
+            Building restoredSecond = restored.GetSceneNodeByInstanceID<Building>(
+                secondRefinery.InstanceID
+            );
+            Assert.IsTrue(firstRefinery.ProductionInputReserved);
+            Assert.IsFalse(secondRefinery.ProductionInputReserved);
+            Assert.AreEqual(
+                firstRefinery.ProductionInputReserved,
+                restoredFirst.ProductionInputReserved
+            );
+            Assert.AreEqual(
+                secondRefinery.ProductionInputReserved,
+                restoredSecond.ProductionInputReserved
+            );
+            CollectionAssert.AreEqual(
+                _faction.PendingRawMaterialFacilityIDs,
+                restored
+                    .GetFactionByOwnerInstanceID(_faction.InstanceID)
+                    .PendingRawMaterialFacilityIDs
+            );
+        }
+
+        [Test]
         public void ProcessTick_PendingProductionFacility_ReceivesAvailableRefinedMaterial()
         {
             Building facility = AddCompleteBuilding(

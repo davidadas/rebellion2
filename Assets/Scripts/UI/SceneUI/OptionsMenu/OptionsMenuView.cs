@@ -150,12 +150,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
+    [SerializeField]
+    private TMP_Dropdown _gameLaunchSpeedDropdown;
+
     [Header("User Interface page")]
     [SerializeField]
     private TMP_Dropdown _idleBarLocationDropdown;
-
-    [SerializeField]
-    private TMP_Dropdown _gameLaunchSpeedDropdown;
 
     [SerializeField]
     private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
@@ -429,6 +429,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="data">The data.</param>
     private void RenderGameplayPage(OptionsMenuRenderData data)
     {
+        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
+        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _gameplayRows)
         {
             if (row == null)
@@ -469,8 +471,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         _idleBarLocationDropdown.SetValueWithoutNotify((int)data.IdleBarLocation);
         _idleBarLocationDropdown.RefreshShownValue();
-        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
-        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row == null)
@@ -1123,12 +1123,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="name">The cloned selector name.</param>
     /// <param name="x">The destination left coordinate.</param>
     /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The space available for the destination selector.</param>
     /// <returns>The reusable cloned choice field.</returns>
     internal OptionsChoiceFieldView CloneContentPackChoice(
         Transform parent,
         string name,
         int x,
-        int y
+        int y,
+        int width
     )
     {
         Transform sourceParent = _contentPackValueField.transform.parent;
@@ -1144,8 +1146,35 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _contentPackPrevButton,
             _contentPackNextButton,
             x,
-            y
+            y,
+            width
         );
+    }
+
+    /// <summary>
+    /// Clones the established Boolean toggle into another Options-style page.
+    /// </summary>
+    /// <param name="parent">The destination settings row.</param>
+    /// <param name="name">The cloned toggle name.</param>
+    /// <param name="optionIndex">The semantic option index emitted when toggled.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The destination toggle width.</param>
+    /// <returns>The reusable cloned toggle row.</returns>
+    internal OptionsToggleRowView CloneToggleRow(
+        Transform parent,
+        string name,
+        int optionIndex,
+        int x,
+        int y,
+        int width
+    )
+    {
+        OptionsToggleRowView source = _gameplayRows.FirstOrDefault(row => row != null);
+        if (source == null)
+            throw new MissingReferenceException("A gameplay toggle row is required.");
+
+        return OptionsToggleRowView.Clone(source, parent, name, optionIndex, x, y, width);
     }
 
     /// <summary>
@@ -1389,6 +1418,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (
             _gameplayRows.Length != gameplayOptionCount
             || Array.Exists(_gameplayRows, row => row == null)
+            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {gameplayOptionCount} gameplay rows."
@@ -1398,7 +1428,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _userInterfaceRows.Length != userInterfaceOptionCount
             || Array.Exists(_userInterfaceRows, row => row == null)
             || _idleBarLocationDropdown == null
-            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {userInterfaceOptionCount} user-interface rows."

@@ -17,7 +17,7 @@ namespace Rebellion.Tests.UserSettings
             settings.UserInterface.KeepIdleBarOpen = true;
             settings.UserInterface.ShowUnitCardStats = true;
             settings.UserInterface.ShowFrameRate = true;
-            settings.UserInterface.GameLaunchSpeed = GameLaunchSpeed.Fast;
+            settings.Gameplay.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.Gameplay.ShowMissionOdds = false;
 
             string json = JsonUtility.ToJson(settings);
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
             Assert.IsTrue(restored.UserInterface.ShowUnitCardStats);
             Assert.IsTrue(restored.UserInterface.ShowFrameRate);
-            Assert.AreEqual(GameLaunchSpeed.Fast, restored.UserInterface.GameLaunchSpeed);
+            Assert.AreEqual(GameLaunchSpeed.Fast, restored.Gameplay.GameLaunchSpeed);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
@@ -61,11 +61,13 @@ namespace Rebellion.Tests.UserSettings
             settings.PauseAfterEnemyBombardment = false;
             settings.PauseWhenSpaceBattleBegins = false;
             settings.ShowMissionOdds = false;
+            settings.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.RestoreDefaults();
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
             Assert.IsTrue(settings.ShowMissionOdds);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
         }
 
         [Test]
@@ -86,7 +88,6 @@ namespace Rebellion.Tests.UserSettings
                 ShowUnitCardStats = true,
                 ShowFrameRate = true,
                 IdleBarLocation = IdleBarLocation.BottomLeft,
-                GameLaunchSpeed = GameLaunchSpeed.Fast,
             };
 
             settings.RestoreDefaults();
@@ -96,7 +97,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.ShowUnitCardStats);
             Assert.IsFalse(settings.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
-            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
         }
 
         [Test]
@@ -113,9 +113,9 @@ namespace Rebellion.Tests.UserSettings
         }
 
         [Test]
-        public void UserInterfaceOptions_InvalidGameLaunchSpeed_NormalizesToUnchanged()
+        public void GameplayOptions_InvalidGameLaunchSpeed_NormalizesToUnchanged()
         {
-            UserInterfaceSettings settings = new UserInterfaceSettings
+            UserGameplaySettings settings = new UserGameplaySettings
             {
                 GameLaunchSpeed = (GameLaunchSpeed)int.MaxValue,
             };

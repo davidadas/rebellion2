@@ -22,9 +22,20 @@ public sealed class CutsceneManager : MonoBehaviour
 
     private CutscenePlayer activePlayer;
     private bool _audioPauseApplied;
+    private bool _presentationPauseApplied;
     private bool ownsTimePause;
     private bool previousAudioPause;
     private float previousTimeScale = _runningTimeScale;
+
+    /// <summary>
+    /// Occurs when full-screen video takes ownership of presentation.
+    /// </summary>
+    internal event Action PlaybackStarting;
+
+    /// <summary>
+    /// Occurs when full-screen video releases presentation.
+    /// </summary>
+    internal event Action PlaybackFinished;
 
     /// <summary>
     /// Binds the authored player prefab used for cutscene instances.
@@ -63,6 +74,7 @@ public sealed class CutsceneManager : MonoBehaviour
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
+        RestorePresentation();
     }
 
     /// <summary>
@@ -131,10 +143,11 @@ public sealed class CutsceneManager : MonoBehaviour
 
         activePlayer = player;
         player.SetVolume(GetVideoVolume());
-        PauseApplicationAudio();
-        PauseTimeScale();
         try
         {
+            PausePresentation();
+            PauseApplicationAudio();
+            PauseTimeScale();
             player.Play(clip, () => FinishPlayback(player, onFinished));
         }
         catch
@@ -142,6 +155,7 @@ public sealed class CutsceneManager : MonoBehaviour
             DestroyActivePlayer();
             RestoreApplicationAudio();
             RestoreTimeScale();
+            RestorePresentation();
             throw;
         }
     }
@@ -168,10 +182,11 @@ public sealed class CutsceneManager : MonoBehaviour
 
         activePlayer = player;
         player.SetVolume(GetVideoVolume());
-        PauseApplicationAudio();
-        PauseTimeScale();
         try
         {
+            PausePresentation();
+            PauseApplicationAudio();
+            PauseTimeScale();
             player.Play(videoUrl, () => FinishPlayback(player, onFinished));
         }
         catch
@@ -179,6 +194,7 @@ public sealed class CutsceneManager : MonoBehaviour
             DestroyActivePlayer();
             RestoreApplicationAudio();
             RestoreTimeScale();
+            RestorePresentation();
             throw;
         }
     }
@@ -205,8 +221,33 @@ public sealed class CutsceneManager : MonoBehaviour
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
+        RestorePresentation();
 
         onFinished?.Invoke();
+    }
+
+    /// <summary>
+    /// Notifies presentation owners before full-screen video starts.
+    /// </summary>
+    private void PausePresentation()
+    {
+        if (_presentationPauseApplied)
+            return;
+
+        _presentationPauseApplied = true;
+        PlaybackStarting?.Invoke();
+    }
+
+    /// <summary>
+    /// Notifies presentation owners after full-screen video ends or is cancelled.
+    /// </summary>
+    private void RestorePresentation()
+    {
+        if (!_presentationPauseApplied)
+            return;
+
+        _presentationPauseApplied = false;
+        PlaybackFinished?.Invoke();
     }
 
     /// <summary>
@@ -281,5 +322,6 @@ public sealed class CutsceneManager : MonoBehaviour
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
+        RestorePresentation();
     }
 }

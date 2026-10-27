@@ -23,19 +23,6 @@ public enum IdleBarLocation
 }
 
 /// <summary>
-/// Identifies the game speed applied when entering the galaxy view.
-/// </summary>
-public enum GameLaunchSpeed
-{
-    Unchanged,
-    Paused,
-    VerySlow,
-    Slow,
-    Medium,
-    Fast,
-}
-
-/// <summary>
 /// Stores user-configurable interface presentation settings.
 /// </summary>
 [Serializable]
@@ -46,7 +33,6 @@ public sealed class UserInterfaceSettings
     public bool ShowUnitCardStats;
     public bool ShowFrameRate;
     public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
-    public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
 
     /// <summary>
     /// Replaces unsupported persisted values with interface defaults.
@@ -55,8 +41,6 @@ public sealed class UserInterfaceSettings
     {
         if (!Enum.IsDefined(typeof(IdleBarLocation), IdleBarLocation))
             IdleBarLocation = global::IdleBarLocation.TopRight;
-        if (!Enum.IsDefined(typeof(GameLaunchSpeed), GameLaunchSpeed))
-            GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 
     /// <summary>
@@ -112,6 +96,5 @@ public sealed class UserInterfaceSettings
         ShowUnitCardStats = false;
         ShowFrameRate = false;
         IdleBarLocation = global::IdleBarLocation.TopRight;
-        GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }
 }

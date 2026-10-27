@@ -72,7 +72,8 @@ public sealed class FrameRateMonitor : MonoBehaviour
         if (_elapsedSeconds < _sampleIntervalSeconds)
             return;
 
-        _label.SetText("{0:0} FPS", _sampledFrames / _elapsedSeconds);
+        float frameRate = _sampledFrames / _elapsedSeconds;
+        _label.SetText("{0:0} FPS", frameRate);
         _elapsedSeconds = 0f;
         _sampledFrames = 0;
     }

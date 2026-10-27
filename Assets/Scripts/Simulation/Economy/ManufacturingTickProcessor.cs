@@ -200,8 +200,8 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Cancels unfinished building and troop orders whose planet destination is no longer
-        /// controlled by the producing faction.
+        /// Cancels unfinished orders assigned to destroyed planets and building or troop orders
+        /// whose planet destination is no longer controlled by the producing faction.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
         /// <param name="items">The production lane to validate.</param>
@@ -223,8 +223,8 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether an unfinished building or troop has a directly assigned planet that
-        /// is not controlled by its producer. Fleet and capital-ship destinations are excluded.
+        /// Returns whether an unfinished item targets a destroyed planet or a building or troop
+        /// targets a planet outside its producer's control. Orbital destinations are excluded.
         /// </summary>
         /// <param name="item">The item.</param>
         /// <returns>True when the invalid planet destination condition is met; otherwise false.</returns>
@@ -233,18 +233,21 @@ namespace Rebellion.Simulation
             if (
                 item is not ISceneNode sceneNode
                 || item is CapitalShip
-                || item is Starfighter
                 || sceneNode.GetParent() is not Planet destination
             )
             {
                 return false;
             }
 
-            return !string.Equals(
-                destination.GetOwnerInstanceID(),
-                item.ProducerOwnerID,
-                StringComparison.Ordinal
-            );
+            return destination.IsDestroyed
+                || (
+                    item is not Starfighter
+                    && !string.Equals(
+                        destination.GetOwnerInstanceID(),
+                        item.ProducerOwnerID,
+                        StringComparison.Ordinal
+                    )
+                );
         }
 
         /// <summary>

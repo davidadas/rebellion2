@@ -44,6 +44,44 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     public event Action<int> ToggleRequested;
 
     /// <summary>
+    /// Clones an authored toggle row into another Options-style settings page.
+    /// </summary>
+    /// <param name="source">The authored toggle row to clone.</param>
+    /// <param name="parent">The destination row.</param>
+    /// <param name="name">The cloned row name.</param>
+    /// <param name="optionIndex">The semantic option index emitted when toggled.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The destination row width.</param>
+    /// <returns>The configured cloned toggle row.</returns>
+    public static OptionsToggleRowView Clone(
+        OptionsToggleRowView source,
+        Transform parent,
+        string name,
+        int optionIndex,
+        int x,
+        int y,
+        int width
+    )
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+        if (parent == null)
+            throw new ArgumentNullException(nameof(parent));
+        if (width < 110)
+            throw new ArgumentOutOfRangeException(nameof(width));
+
+        OptionsToggleRowView clone = Instantiate(source, parent, false);
+        clone.name = name;
+        clone.SetOptionIndex(optionIndex);
+        UILayout.SetSourceRect((RectTransform)clone.transform, x, y, width, 14);
+        UILayout.SetSourceRect(clone._labelTextField.rectTransform, 0, 0, width - 110, 14);
+        UILayout.SetSourceRect(clone._stateTextField.rectTransform, width - 91, 0, 50, 14);
+        UILayout.SetSourceRect(clone._toggleImage.rectTransform, width - 31, 0, 30, 14);
+        return clone;
+    }
+
+    /// <summary>
     /// Assigns the owning page's semantic option index.
     /// </summary>
     /// <param name="optionIndex">The option index emitted when toggled.</param>

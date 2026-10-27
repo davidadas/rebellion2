@@ -17,6 +17,7 @@ namespace Rebellion.Simulation
         public IRandomNumberProvider Random { get; }
         public GameEventEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
+        internal BlockadeTransitionResolver BlockadeTransitionResolver { get; }
         internal List<(
             string Name,
             string SourceEventInstanceID,
@@ -48,12 +49,14 @@ namespace Rebellion.Simulation
         /// <param name="evaluation">The event evaluation context.</param>
         /// <param name="unitFactory">The runtime unit factory.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
         internal GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation,
             UnitFactory unitFactory,
-            MissionResolver missionResolver
+            MissionResolver missionResolver,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
@@ -61,6 +64,8 @@ namespace Rebellion.Simulation
             Evaluation = evaluation;
             UnitFactory = unitFactory;
             _missionResolver = missionResolver;
+            BlockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>

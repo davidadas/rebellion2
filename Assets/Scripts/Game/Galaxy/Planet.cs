@@ -238,6 +238,8 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
+            if (IsDestroyed)
+                return false;
             bool hasHostile = GetChildren<Fleet>()
                 .Any(f =>
                     f.Movement == null
@@ -276,20 +278,20 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
-        /// <returns>True during a blockade or uprising.</returns>
+        /// <returns>True when destroyed, blockaded, or in uprising.</returns>
         public bool IsResourceProductionSuspended()
         {
-            return IsBlockaded() || IsInUprising;
+            return IsDestroyed || IsBlockaded() || IsInUprising;
         }
 
         /// <summary>
         /// Returns true if planet has any faction presence.
         /// Used by uprising system to filter unpopulated planets.
         /// </summary>
-        /// <returns>True if any faction has popular support on this planet.</returns>
+        /// <returns>True if the planet is intact and any faction has popular support.</returns>
         public bool IsPopulated()
         {
-            return PopularSupport.Any(kvp => kvp.Value > 0);
+            return !IsDestroyed && PopularSupport.Any(kvp => kvp.Value > 0);
         }
 
         /// <summary>
@@ -297,7 +299,7 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         public void BeginUprising()
         {
-            if (IsInUprising)
+            if (IsDestroyed || IsInUprising)
                 return;
 
             IsInUprising = true;
@@ -311,6 +313,23 @@ namespace Rebellion.Game.Galaxy
         {
             IsInUprising = false;
             ResetUprisingTimers();
+        }
+
+        /// <summary>
+        /// Clears a destroyed planet's control, population, and scheduled planetary activity.
+        /// Registered planets must be removed from their faction's ownership index first.
+        /// </summary>
+        internal void ClearDestroyedControl()
+        {
+            if (!IsDestroyed)
+                return;
+
+            SetOwnerInstanceID(null);
+            IsColonized = false;
+            IsHeadquarters = false;
+            EndUprising();
+            NextBlockadeSupportShiftTick = 0;
+            BlockadeSupportShiftIntervalTicks = 0;
         }
 
         /// <summary>
@@ -363,10 +382,10 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the remaining energy available for new facilities.
         /// </summary>
-        /// <returns>Remaining energy units (capacity minus used).</returns>
+        /// <returns>Remaining energy units, or zero when the planet is destroyed.</returns>
         public int GetAvailableEnergy()
         {
-            return Math.Max(0, EnergyCapacity - GetEnergyUsed());
+            return IsDestroyed ? 0 : Math.Max(0, EnergyCapacity - GetEnergyUsed());
         }
 
         /// <summary>
@@ -391,9 +410,12 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of raw resource nodes without any mine assigned.
         /// </summary>
-        /// <returns>The number of unmined raw resource nodes.</returns>
+        /// <returns>The number of unmined raw resource nodes, or zero when destroyed.</returns>
         public int GetUnminedResourceNodeCount()
         {
+            if (IsDestroyed)
+                return 0;
+
             return Math.Max(
                 0,
                 GetRawResourceNodes() - GetTotalBuildingTypeCount(BuildingType.Mine)
@@ -506,6 +528,9 @@ namespace Rebellion.Game.Galaxy
             string soleRegimentOwner
         )
         {
+            if (IsDestroyed)
+                return null;
+
             if (regimentOwnerCount == 1)
                 return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
             if (regimentOwnerCount > 1)
@@ -536,6 +561,16 @@ namespace Rebellion.Game.Galaxy
         {
             if (faction == null || shift == 0 || !IsPopulated())
                 return;
+
+            SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
+            if (
+                faction.Settings.SupportResistance == direction
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
+                    > 1
+                && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
+            )
+                shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;
+
             int currentSupport = GetPopularSupport(faction.InstanceID);
             int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
             if (newSupport == currentSupport)
@@ -571,12 +606,7 @@ namespace Rebellion.Game.Galaxy
                     (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
                 );
             PlanetSector sector = GetParentOfType<PlanetSector>();
-            if (
-                sector != null
-                && sector.SectorType == PlanetSectorType.Core
-                && faction.Settings.GarrisonEfficiency > 1
-            )
-                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
+            garrison /= sector?.GetSectorSuppressionDivisor(faction.InstanceID) ?? 1;
             if (IsInUprising)
                 garrison *= config.UprisingMultiplier;
             return garrison;
@@ -862,6 +892,9 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The active production facilities ordered by production cycle length.</returns>
         public List<Building> GetProductionFacilities(ManufacturingType type)
         {
+            if (IsDestroyed)
+                return new List<Building>();
+
             return _buildings
                 .Where(building =>
                     building.GetProductionType() == type
@@ -1290,7 +1323,8 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns true if this planet can accept the child. Fleets and Missions are always
+        /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
+        /// surface units. Fleets and Missions are always
         /// accepted. Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
@@ -1300,6 +1334,9 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
         public override bool CanAcceptChild(ISceneNode child)
         {
+            if (IsDestroyed && child is IManufacturable)
+                return false;
+
             switch (child)
             {
                 case Fleet _:
@@ -1381,6 +1418,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="child">The game node to add as a reference.</param>
         public override void AddChild(ISceneNode child)
         {
+            if (IsDestroyed && child is IManufacturable)
+                throw new SceneAccessException(child, this);
+
             switch (child)
             {
                 case Fleet fleet:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -125,7 +126,29 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_GenerationConfigOverride_UsesOverrideForPlanetResources()
+        public void Build_InputSetupMutatedAfterConstruction_UsesDetachedSnapshot()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Small,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+            };
+            GameBuilder builder = new GameBuilder(summary, TestContent.Data);
+
+            summary.GalaxySize = GameSize.Large;
+            summary.PlayerFactionID = "FNEMP1";
+            GameRoot game = builder.Build();
+
+            Assert.AreNotSame(summary, game.Summary);
+            Assert.AreEqual(GameSize.Small, game.Summary.GalaxySize);
+            Assert.AreEqual("FNALL1", game.Summary.PlayerFactionID);
+            Assert.IsEmpty(summary.StartingFactionIDs);
+            Assert.IsNotEmpty(game.Summary.StartingFactionIDs);
+        }
+
+        [Test]
+        public void Build_CustomGenerationConfig_UsesSettingsForPlanetResources()
         {
             GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
             PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
@@ -140,7 +163,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -151,6 +174,72 @@ namespace Rebellion.Tests.Generation
                     .SelectMany(sector => sector.GetChildren<Planet>())
             )
                 Assert.AreEqual(6, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void Build_CustomGarrisonRules_AppliesRuntimeConfiguration()
+        {
+            int authoredThreshold = TestContent.Data.GameConfig.AI.Garrison.SupportThreshold;
+            int authoredDivisor = TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor;
+            int authoredMultiplier = TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 70,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 3,
+                    },
+                },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.AreEqual(70, game.Config.AI.Garrison.SupportThreshold);
+            Assert.AreEqual(5, game.Config.AI.Garrison.GarrisonDivisor);
+            Assert.AreEqual(3, game.Config.AI.Garrison.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                TestContent.Data.GameConfig.AI.Garrison.SupportThreshold
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor
+            );
+            Assert.AreEqual(
+                authoredMultiplier,
+                TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier
+            );
+        }
+
+        [Test]
+        public void Build_CustomMovementRules_AppliesTravelSpeedWithoutMutatingContent()
+        {
+            double authoredDivisor = TestContent.Data.GameConfig.Movement.DistanceDivisor;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
+                },
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.AreEqual(authoredDivisor * 1.5d, game.Config.Movement.DistanceDivisor, 0.0001d);
+            Assert.AreEqual(authoredDivisor, TestContent.Data.GameConfig.Movement.DistanceDivisor);
         }
 
         [Test]
@@ -172,7 +261,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -200,7 +289,7 @@ namespace Rebellion.Tests.Generation
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
-                GenerationConfigOverride = generation,
+                CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -521,6 +610,163 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void Build_DisabledEventCategory_ExcludesOnlyThatCategory(
+            GameEventCategory disabledCategory
+        )
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                },
+            };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { disabledCategory };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.IsFalse(
+                game.GetEventPool().Any(gameEvent => gameEvent.Category == disabledCategory)
+            );
+            foreach (
+                GameEvent template in TestContent.Data.GameEvents.Where(gameEvent =>
+                    gameEvent.Category != disabledCategory
+                )
+            )
+            {
+                Assert.IsTrue(
+                    game.GetEventPool()
+                        .Any(gameEvent => gameEvent.InstanceID == template.InstanceID)
+                );
+            }
+        }
+
+        [Test]
+        public void Build_AllClassifiedEventsDisabled_RetainsUnclassifiedEvents()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+                },
+            };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.IsNotEmpty(game.GetEventPool());
+            Assert.IsTrue(
+                game.GetEventPool().All(gameEvent => gameEvent.Category == GameEventCategory.None)
+            );
+        }
+
+        [Test]
+        public void Build_EnabledEventsDependOnDisabledEvent_ExcludesDependentChains()
+        {
+            GameEvent story = new GameEvent
+            {
+                InstanceID = "STORY_EVENT",
+                Category = GameEventCategory.Story,
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 10 } },
+            };
+            GameEvent dependent = new GameEvent
+            {
+                InstanceID = "DEPENDENT_EVENT",
+                Category = GameEventCategory.Disaster,
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent { EventInstanceID = story.InstanceID, DelayTicks = 5 },
+                },
+            };
+            GameEvent transitiveDependent = new GameEvent
+            {
+                InstanceID = "TRANSITIVE_DEPENDENT_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent
+                    {
+                        EventInstanceID = dependent.InstanceID,
+                        DelayTicks = 5,
+                    },
+                },
+            };
+            GameEvent dependentAfterAll = new GameEvent
+            {
+                InstanceID = "DEPENDENT_AFTER_ALL_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    AfterAll = new AfterEvents
+                    {
+                        Events = new List<EventDependency>
+                        {
+                            new EventDependency { EventInstanceID = story.InstanceID },
+                        },
+                    },
+                },
+            };
+            GameEvent dependentAfterAny = new GameEvent
+            {
+                InstanceID = "DEPENDENT_AFTER_ANY_EVENT",
+                Schedule = new GameEventSchedule
+                {
+                    AfterAny = new AfterEvents
+                    {
+                        Events = new List<EventDependency>
+                        {
+                            new EventDependency { EventInstanceID = story.InstanceID },
+                        },
+                    },
+                },
+            };
+            GameEvent independent = new GameEvent
+            {
+                InstanceID = "INDEPENDENT_EVENT",
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 20 } },
+            };
+            GameDataCatalog gameData = CopyGameDataWithEvents(
+                story,
+                dependent,
+                transitiveDependent,
+                dependentAfterAll,
+                dependentAfterAny,
+                independent
+            );
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                CustomSettings = new CustomGameSettings
+                {
+                    GenerationConfig = gameData.GenerationConfig.GetDeepCopy(),
+                },
+            };
+            summary.CustomSettings.GenerationConfig.DisabledEventCategories =
+                new List<GameEventCategory> { GameEventCategory.Story };
+
+            GameRoot game = new GameBuilder(summary, gameData).Build();
+
+            CollectionAssert.AreEqual(
+                new[] { independent.InstanceID },
+                game.GetEventPool().Select(gameEvent => gameEvent.InstanceID).ToArray()
+            );
+            Assert.DoesNotThrow(() =>
+            {
+                using GameSession session = new GameSession(game, gameData);
+            });
+        }
+
         [Test]
         public void Build_FogOfWar_CoresHaveInitialResourceSnapshotsForNonOwners()
         {
@@ -687,6 +933,33 @@ namespace Rebellion.Tests.Generation
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Copies the shared game-data catalog with a replacement event collection.
+        /// </summary>
+        /// <param name="events">The replacement event definitions.</param>
+        /// <returns>A game-data catalog containing the replacement events.</returns>
+        private static GameDataCatalog CopyGameDataWithEvents(params GameEvent[] events)
+        {
+            GameDataCatalog source = TestContent.Data;
+            return new GameDataCatalog(
+                source.GameConfig,
+                source.GenerationConfig,
+                source.Factions,
+                source.PlanetSectors,
+                source.Buildings,
+                source.CapitalShips,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                source.Officers,
+                events,
+                source.MessageDefinitions,
+                source.EncyclopediaEntries,
+                source.FactionThemes,
+                source.OfficerTraits
+            );
         }
     }
 }

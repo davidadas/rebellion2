@@ -20,6 +20,7 @@ public static class OptionsMenuPrefabBuilder
     private const int _optionsPageTopInset = 16;
     private const int _optionsPageBottomInset = 10;
     private const int _optionsContentInset = 20;
+    private const int _graphicsFieldWidth = 150;
     private const int _optionsSectionHeaderHeight = 16;
     private const int _optionsSectionHeaderSpacing = 12;
     private const int _optionsSectionSpacing = 10;
@@ -308,13 +309,21 @@ public static class OptionsMenuPrefabBuilder
         );
 
         CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 134, accent);
+        TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
+            gameplayPage,
+            "GameLaunchSpeed",
+            "Galaxy speed override",
+            new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
+            162,
+            accent
+        );
         OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
             gameplayPage,
             "GameplayDisableBriefings",
             (int)UserGameplayOption.DisableBriefings,
             "Disable Briefings",
             20,
-            162
+            188
         );
         UserGameplayOption[] options =
         {
@@ -333,11 +342,12 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                188 + i * 26
+                214 + i * 26
             );
         }
 
         AssignReferenceArray(view, "_gameplayRows", rows);
+        AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);
         AssignReference(view, "_autosaveIntervalBadgeImage", autosaveIntervalBadge);
         AssignReference(view, "_autosavesToKeepInputField", autosavesToKeepInput);
@@ -361,16 +371,16 @@ public static class OptionsMenuPrefabBuilder
             "GraphicsScrollArea",
             0,
             0,
-            374,
-            328,
-            0,
-            0,
-            356,
-            328,
             362,
-            0,
-            12,
             328,
+            0,
+            0,
+            344,
+            328,
+            350,
+            _optionsPageTopInset,
+            12,
+            328 - _optionsPageTopInset,
             out RectTransform graphicsContent
         );
         int nextRowY = _optionsPageTopInset;
@@ -387,7 +397,8 @@ public static class OptionsMenuPrefabBuilder
             "Resolution",
             ref nextRowY,
             out Button resolutionPrev,
-            out Button resolutionNext
+            out Button resolutionNext,
+            _graphicsFieldWidth
         );
         TextMeshProUGUI fullScreenValue = AppendOptionsFieldRow(
             graphicsContent,
@@ -395,7 +406,8 @@ public static class OptionsMenuPrefabBuilder
             "Display Mode",
             ref nextRowY,
             out Button fullScreenPrev,
-            out Button fullScreenNext
+            out Button fullScreenNext,
+            _graphicsFieldWidth
         );
 
         int graphicsSettingCount = Enum.GetValues(typeof(UserGraphicsSetting)).Length;
@@ -554,14 +566,6 @@ public static class OptionsMenuPrefabBuilder
             44,
             accent
         );
-        TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
-            userInterfacePage,
-            "GameLaunchSpeed",
-            "Galaxy speed override",
-            new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
-            70,
-            accent
-        );
         UserInterfaceOption[] options =
         {
             UserInterfaceOption.ShowIdleBar,
@@ -576,8 +580,8 @@ public static class OptionsMenuPrefabBuilder
             "Show Unit Card Stats",
             "Show FPS Counter",
         };
-        int[] yPositions = { 96, 122, 148, 206 };
-        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
+        int[] yPositions = { 70, 96, 122, 180 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 158, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
@@ -592,7 +596,6 @@ public static class OptionsMenuPrefabBuilder
         }
 
         AssignReference(view, "_idleBarLocationDropdown", idleBarLocationDropdown);
-        AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReferenceArray(view, "_userInterfaceRows", rows);
     }
 
@@ -1425,7 +1428,7 @@ public static class OptionsMenuPrefabBuilder
             fieldX,
             y,
             previousWidth,
-            0
+            false
         );
         TextMeshProUGUI valueField = CreateTextLabel($"{name}Value", parent);
         valueField.text = "-";
@@ -1448,7 +1451,7 @@ public static class OptionsMenuPrefabBuilder
             fieldX + previousWidth,
             y,
             nextWidth,
-            nextWidth - 26
+            true
         );
         OverflowTextTooltip tooltip = valueField.gameObject.AddComponent<OverflowTextTooltip>();
         tooltip.Configure(valueField);
@@ -1466,6 +1469,7 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="nextRowY">The shared page-layout cursor.</param>
     /// <param name="prevButton">Receives the previous-step button.</param>
     /// <param name="nextButton">Receives the next-step button.</param>
+    /// <param name="fieldWidth">The selector width within the content viewport.</param>
     /// <returns>The value text field.</returns>
     private static TextMeshProUGUI AppendOptionsFieldRow(
         RectTransform parent,
@@ -1473,7 +1477,8 @@ public static class OptionsMenuPrefabBuilder
         string caption,
         ref int nextRowY,
         out Button prevButton,
-        out Button nextButton
+        out Button nextButton,
+        int fieldWidth = 155
     )
     {
         TextMeshProUGUI value = CreateOptionsFieldRow(
@@ -1482,7 +1487,8 @@ public static class OptionsMenuPrefabBuilder
             caption,
             nextRowY,
             out prevButton,
-            out nextButton
+            out nextButton,
+            fieldWidth: fieldWidth
         );
         nextRowY += _optionsFieldRowStride;
         return value;
@@ -1515,7 +1521,8 @@ public static class OptionsMenuPrefabBuilder
             caption,
             ref nextRowY,
             out previousButtons[index],
-            out nextButtons[index]
+            out nextButtons[index],
+            _graphicsFieldWidth
         );
     }
 
@@ -1582,7 +1589,7 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="x">The source-space hotspot left.</param>
     /// <param name="y">The source-space hotspot top.</param>
     /// <param name="hitWidth">The full clickable width.</param>
-    /// <param name="glyphX">The chevron's horizontal position inside the hotspot.</param>
+    /// <param name="alignRight">Whether the glyph follows the hotspot's right edge.</param>
     /// <returns>The configured button.</returns>
     private static Button CreateOptionsStepperButton(
         Transform parent,
@@ -1591,7 +1598,7 @@ public static class OptionsMenuPrefabBuilder
         int x,
         int y,
         int hitWidth,
-        int glyphX
+        bool alignRight
     )
     {
         GameObject hotspot = new GameObject(
@@ -1619,7 +1626,11 @@ public static class OptionsMenuPrefabBuilder
         glyphText.color = new Color(0.373f, 0.659f, 0.925f);
         glyphText.fontSize = 10;
         glyphText.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(glyphText.rectTransform, glyphX, 0, 26, _optionsFieldRowHeight);
+        SetSourceRect(glyphText.rectTransform, 0, 0, 26, _optionsFieldRowHeight);
+        glyphText.rectTransform.anchorMin =
+            glyphText.rectTransform.anchorMax =
+            glyphText.rectTransform.pivot =
+                new Vector2(alignRight ? 1 : 0, 1);
         ApplyOptionsButtonFeedback(button, glyphText);
         return button;
     }

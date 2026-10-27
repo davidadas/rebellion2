@@ -58,6 +58,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Observes every completed result batch after all reactions have settled.
+        /// </summary>
+        /// <param name="observer">The callback receiving each complete settled batch.</param>
+        /// <returns>A handle that detaches the observer when disposed.</returns>
+        public IDisposable ObserveAll(Action<IReadOnlyList<GameResult>> observer)
+        {
+            if (observer == null)
+                throw new ArgumentNullException(nameof(observer));
+
+            Subscription subscription = new Subscription(observer, _observers);
+            _observers.Add(subscription);
+            return subscription;
+        }
+
+        /// <summary>
         /// Publishes one completed change and drains its reactions before returning.
         /// Nested publication queues the change until the current wave finishes.
         /// </summary>

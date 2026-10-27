@@ -76,8 +76,13 @@ namespace Rebellion.Simulation
 
             Game = game;
             if (Game.Config == null)
-                Game.SetConfig(_gameData.GameConfig);
+            {
+                GameConfig config = _gameData.GameConfig.GetDeepCopy();
+                Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
+                Game.SetConfig(config);
+            }
             Game.RebuildSceneState();
+            RestoreSectorSuppressionDefaults();
             Tick.Reset();
             _randomProvider = game.Random;
             Action[] previousConnections = _disconnect.ToArray();
@@ -120,6 +125,28 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Restores newly authored suppression values on units from older saved games.
+        /// </summary>
+        private void RestoreSectorSuppressionDefaults()
+        {
+            Dictionary<string, CapitalShip> templates = _gameData
+                .CapitalShips.Where(template => !string.IsNullOrEmpty(template?.TypeID))
+                .ToDictionary(template => template.TypeID, StringComparer.Ordinal);
+            foreach (
+                CapitalShip ship in Game.GetRegisteredSceneNodesByType<CapitalShip>(
+                    includeDisabled: true
+                )
+            )
+            {
+                if (
+                    !string.IsNullOrEmpty(ship.TypeID)
+                    && templates.TryGetValue(ship.TypeID, out CapitalShip template)
+                )
+                    ship.ApplySectorSuppressionDefault(template.SectorSuppression);
+            }
+        }
+
+        /// <summary>
         /// Constructs the runtime components and connects their explicit dependencies.
         /// </summary>
         private void InitializeComponents()
@@ -132,7 +159,8 @@ namespace Rebellion.Simulation
                 Game,
                 _gameData,
                 _randomProvider,
-                messageFactory
+                messageFactory,
+                resultBus
             );
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()

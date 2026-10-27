@@ -36,6 +36,8 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
+            Assert.IsNull(summary.CustomSettings);
+            Assert.IsFalse(summary.IsCustomGame);
         }
 
         [Test]
@@ -50,7 +52,42 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SerializeAndDeserialize_PopulatedSummary_MaintainsState()
+        public void SerializeAndDeserialize_StandardSetup_RemainsStandard()
+        {
+            GameSummary summary = new GameSummary { Seed = 12345 };
+
+            string serialized = SerializationHelper.Serialize(summary);
+            GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
+
+            Assert.IsNull(deserialized.CustomSettings);
+            Assert.IsFalse(deserialized.IsCustomGame);
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_DifficultyOnlyCustomSettings_RemainsCustom()
+        {
+            GameSummary summary = new GameSummary
+            {
+                CustomSettings = new CustomGameSettings
+                {
+                    PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 125 },
+                },
+            };
+
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(summary)
+            );
+
+            Assert.IsTrue(restored.IsCustomGame);
+            Assert.IsNull(restored.CustomSettings.GenerationConfig);
+            Assert.AreEqual(
+                125,
+                restored.CustomSettings.PlayerDifficultyModifiers.MineOutputPercent
+            );
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_PopulatedSetup_MaintainsState()
         {
             GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.GetDeepCopy();
             generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
@@ -62,19 +99,29 @@ namespace Rebellion.Tests.Game
                 ResourceAvailability = GameResourceAvailability.Abundant,
                 StartingFactionIDs = new string[] { "FACTION1", "FACTION2" },
                 PlayerFactionID = "FACTION1",
-                PlayerDifficultyModifiers = new DifficultyModifiers
+                CustomSettings = new CustomGameSettings
                 {
-                    MineOutputPercent = 125,
-                    MissionSuccessChancePoints = 10,
-                    DetectionRatingMultiplier = 1.1,
+                    PlayerDifficultyModifiers = new DifficultyModifiers
+                    {
+                        MineOutputPercent = 125,
+                        MissionSuccessChancePoints = 10,
+                        DetectionRatingMultiplier = 1.1,
+                    },
+                    AIDifficultyModifiers = new DifficultyModifiers
+                    {
+                        ManufacturingSpeedPercent = 150,
+                        MissionFoilChancePoints = 20,
+                        DetectionRatingMultiplier = 1.25,
+                    },
+                    GenerationConfig = generationConfig,
+                    GarrisonRules = new GarrisonRuleSettings
+                    {
+                        SupportThreshold = 70,
+                        SupportDeficitPerRegiment = 5,
+                        UprisingMultiplier = 3,
+                    },
+                    MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
                 },
-                AIDifficultyModifiers = new DifficultyModifiers
-                {
-                    ManufacturingSpeedPercent = 150,
-                    MissionFoilChancePoints = 20,
-                    DetectionRatingMultiplier = 1.25,
-                },
-                GenerationConfigOverride = generationConfig,
             };
 
             string serialized = SerializationHelper.Serialize(summary);
@@ -112,39 +159,44 @@ namespace Rebellion.Tests.Game
             );
             Assert.AreEqual(
                 125,
-                deserialized.PlayerDifficultyModifiers.MineOutputPercent,
+                deserialized.CustomSettings.PlayerDifficultyModifiers.MineOutputPercent,
                 "Player modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 10,
-                deserialized.PlayerDifficultyModifiers.MissionSuccessChancePoints,
+                deserialized.CustomSettings.PlayerDifficultyModifiers.MissionSuccessChancePoints,
                 "Player mission modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 1.1,
-                deserialized.PlayerDifficultyModifiers.DetectionRatingMultiplier,
+                deserialized.CustomSettings.PlayerDifficultyModifiers.DetectionRatingMultiplier,
                 "Player detection modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 150,
-                deserialized.AIDifficultyModifiers.ManufacturingSpeedPercent,
+                deserialized.CustomSettings.AIDifficultyModifiers.ManufacturingSpeedPercent,
                 "AI modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 20,
-                deserialized.AIDifficultyModifiers.MissionFoilChancePoints,
+                deserialized.CustomSettings.AIDifficultyModifiers.MissionFoilChancePoints,
                 "AI mission modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 1.25,
-                deserialized.AIDifficultyModifiers.DetectionRatingMultiplier,
+                deserialized.CustomSettings.AIDifficultyModifiers.DetectionRatingMultiplier,
                 "AI detection modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
                 17,
-                deserialized.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
+                deserialized.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier,
                 "Generation overrides should be correctly deserialized."
             );
+            Assert.AreEqual(70, deserialized.CustomSettings.GarrisonRules.SupportThreshold);
+            Assert.AreEqual(5, deserialized.CustomSettings.GarrisonRules.SupportDeficitPerRegiment);
+            Assert.AreEqual(3, deserialized.CustomSettings.GarrisonRules.UprisingMultiplier);
+            Assert.AreEqual(150, deserialized.CustomSettings.MovementRules.TravelSpeedPercent);
+            Assert.IsTrue(deserialized.IsCustomGame);
         }
     }
 } // namespace Rebellion.Tests.Game

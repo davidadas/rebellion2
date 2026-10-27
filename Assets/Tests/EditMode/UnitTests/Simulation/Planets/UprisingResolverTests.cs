@@ -22,6 +22,26 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DestroyedPlanetWithSavedUprising_EndsUprisingWithoutResolvingIncidents()
+        {
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
+                ownerSupport: 0,
+                troopCount: 0,
+                rng: new ThrowingRNG()
+            );
+            planet.BeginUprising();
+            planet.NextUprisingIncidentTick = 1;
+            planet.IsDestroyed = true;
+            game.CurrentTick = 10;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.Zero(planet.NextUprisingIncidentTick);
+        }
+
+        [Test]
         public void ProcessTick_UnscheduledActiveUprising_PreservesTimerInitializationOrder()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
@@ -573,11 +593,17 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising, "Neutral planet should not revolt");
         }
 
-        [Test]
-        public void ProcessTick_EmpireGarrisonOnCoreSector_HalvesRequirement()
+        /// <summary>
+        /// Verifies that a sector suppression source reduces the garrison needed to prevent uprising.
+        /// </summary>
+        /// <param name="region">The sector's galactic region.</param>
+        [TestCase(PlanetSectorType.Core)]
+        [TestCase(PlanetSectorType.OuterRim)]
+        public void ProcessTick_EmpireGarrisonWithSuppressionSource_HalvesRequirement(
+            PlanetSectorType region
+        )
         {
-            // In a core sector with GarrisonEfficiency=2, the base garrison requirement of 3
-            // is halved to 1. One troop meets it, so no uprising.
+            // Sector suppression divides the base requirement of three by two before truncation.
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             Faction empire = new Faction
@@ -591,7 +617,7 @@ namespace Rebellion.Tests.Simulation
             PlanetSector planetSector = new PlanetSector
             {
                 InstanceID = "sector1",
-                SectorType = PlanetSectorType.Core,
+                SectorType = region,
             };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
@@ -605,6 +631,23 @@ namespace Rebellion.Tests.Simulation
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, planet);
+
+            Fleet suppressionFleet = new Fleet
+            {
+                InstanceID = "suppression-fleet",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(suppressionFleet, planet);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "suppression-source",
+                    OwnerInstanceID = "empire",
+                    SectorSuppression = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                suppressionFleet
+            );
 
             MovementCommands movementSystem = new MovementCommands(
                 game,
@@ -627,15 +670,14 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "GarrisonEfficiency=2 in a core sector should halve the garrison requirement"
+                "Sector suppression should halve the garrison requirement"
             );
         }
 
         [Test]
         public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
         {
-            // On an outer rim planet, GarrisonEfficiency does not apply. Garrison requirement
-            // stays at 3 with one troop, so the deficit triggers an uprising.
+            // Without a sector suppression source, the requirement stays at three with one troop.
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             Faction empire = new Faction
@@ -685,7 +727,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(
                 planet.IsInUprising,
-                "Outer rim should NOT apply GarrisonEfficiency — garrison deficit triggers uprising"
+                "Without sector suppression, the garrison deficit should trigger an uprising"
             );
         }
 

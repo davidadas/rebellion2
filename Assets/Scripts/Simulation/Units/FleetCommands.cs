@@ -55,10 +55,7 @@ namespace Rebellion.Simulation
         /// <param name="capitalShips">The capital ships or their snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to form the fleet.</param>
         /// <returns>The attached fleet, or null when the selection is invalid.</returns>
-        public Fleet CreateFromCapitalShips(
-            IReadOnlyList<CapitalShip> capitalShips,
-            string ownerInstanceId
-        )
+        public Fleet CreateFleet(IReadOnlyList<CapitalShip> capitalShips, string ownerInstanceId)
         {
             if (
                 capitalShips == null
@@ -102,11 +99,11 @@ namespace Rebellion.Simulation
             if (faction == null)
                 return null;
 
-            foreach (CapitalShip ship in ships)
-                _game.DetachNode(ship);
-
-            Fleet fleet = faction.CreateFleet(ships.ToArray());
+            Fleet fleet = faction.CreateFleet();
             _game.AttachNode(fleet, planet);
+
+            foreach (CapitalShip ship in ships)
+                _game.MoveNode(ship, fleet);
 
             foreach (Fleet sourceFleet in sourceFleets.Distinct())
                 FleetLifecycle.RemoveEmptyFleet(_game, sourceFleet);

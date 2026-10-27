@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -71,6 +72,53 @@ namespace Rebellion.Tests.UI.Components
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
+        }
+
+        /// <summary>
+        /// Keeps the themed thumb proportional and contained after feature-specific layout.
+        /// </summary>
+        /// <param name="position">The requested normalized scroll position.</param>
+        [TestCase(0f)]
+        [TestCase(0.5f)]
+        [TestCase(1f)]
+        public void SetLayout_MenuPrefab_KeepsSlicedThumbInsideTrack(float position)
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(
+                "Assets/Prefabs/UI/Common/MenuScrollArea.prefab"
+            );
+            try
+            {
+                ScrollAreaView area = root.GetComponent<ScrollAreaView>();
+                area.SetLayout(
+                    Vector2.zero,
+                    new Vector2(344, 328),
+                    new Vector2(350, 16),
+                    new Vector2(12, 312)
+                );
+                area.SetContentHeight(446, 26, true);
+                area.VerticalNormalizedPosition = position;
+                Scrollbar scrollbar = root.GetComponentInChildren<Scrollbar>();
+                RectTransform handle = scrollbar.handleRect;
+                RectTransform track = handle.parent as RectTransform;
+                Bounds thumbBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                    track,
+                    handle
+                );
+                Image frame = handle
+                    .GetComponentsInChildren<Image>()
+                    .First(image => image.type == Image.Type.Sliced);
+
+                Assert.AreEqual(track.rect.height * scrollbar.size, handle.rect.height, 0.001f);
+                Assert.GreaterOrEqual(thumbBounds.min.y, track.rect.yMin - 0.001f);
+                Assert.LessOrEqual(thumbBounds.max.y, track.rect.yMax + 0.001f);
+                Assert.AreEqual(Vector2.zero, handle.sizeDelta);
+                Assert.AreNotEqual(Vector4.zero, frame.sprite.border);
+                Assert.IsNotNull(frame.GetComponent<ContentSpriteBinding>());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]

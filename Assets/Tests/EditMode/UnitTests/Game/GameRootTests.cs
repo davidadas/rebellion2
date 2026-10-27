@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Game
         [SetUp]
         public void SetUp()
         {
-            // Initialize game _summary.
+            // Initialize the game summary.
             _summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Game
             {
                 MissionSuccessChancePoints = 25,
             };
-            _summary.AIDifficultyModifiers = expected;
+            _summary.CustomSettings = new CustomGameSettings { AIDifficultyModifiers = expected };
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
@@ -166,7 +166,10 @@ namespace Rebellion.Tests.Game
             {
                 ManufacturingSpeedPercent = 125,
             };
-            _summary.PlayerDifficultyModifiers = expected;
+            _summary.CustomSettings = new CustomGameSettings
+            {
+                PlayerDifficultyModifiers = expected,
+            };
 
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 
@@ -1118,6 +1121,46 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Fleet>(),
                 restoredFleet
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedDestroyedPlanet_ClearsControlAndPreservesOrbitingFleet()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _planet.SetFullPopularSupport(_faction1.InstanceID);
+            _planet.IsHeadquarters = true;
+            _faction1.HQInstanceID = _planet.InstanceID;
+            _planet.BeginUprising();
+            _planet.NextUprisingIncidentTick = 100;
+            _planet.NextBlockadeSupportShiftTick = 100;
+            _planet.IsDestroyed = true;
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            restored.SetConfig(TestConfig.Create());
+            restored.RebuildSceneState();
+
+            Planet planet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
+            Fleet fleet = restored.GetSceneNodeByInstanceID<Fleet>(_fleet.InstanceID);
+            Assert.IsNull(planet.OwnerInstanceID);
+            Assert.IsFalse(planet.IsColonized);
+            Assert.IsFalse(planet.IsPopulated());
+            Assert.IsFalse(planet.IsInUprising);
+            Assert.IsFalse(planet.IsHeadquarters);
+            Assert.IsNull(restored.GetFactionByOwnerInstanceID(_faction1.InstanceID).HQInstanceID);
+            Assert.Zero(planet.NextUprisingIncidentTick);
+            Assert.Zero(planet.NextBlockadeSupportShiftTick);
+            Assert.AreEqual(100, planet.GetPopularSupport(_faction1.InstanceID));
+            Assert.AreSame(planet, fleet.GetParent());
+            Assert.AreEqual(_faction1.InstanceID, fleet.OwnerInstanceID);
+            Assert.IsEmpty(
+                restored
+                    .GetFactionByOwnerInstanceID(_faction1.InstanceID)
+                    .GetOwnedUnitsByType<Planet>()
             );
         }
 

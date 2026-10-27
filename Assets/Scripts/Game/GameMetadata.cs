@@ -20,6 +20,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(Difficulty))]
         private GameDifficulty? _difficulty;
 
+        [PersistableMember(Name = nameof(IsCustomGame))]
+        private bool _isCustomGame;
+
         [PersistableMember(Name = nameof(CurrentTick))]
         private int? _currentTick;
 
@@ -66,6 +69,13 @@ namespace Rebellion.Game
         {
             get => _difficulty;
             set => _difficulty = value;
+        }
+
+        [PersistableIgnore]
+        public bool IsCustomGame
+        {
+            get => _isCustomGame;
+            set => _isCustomGame = value;
         }
 
         [PersistableIgnore]

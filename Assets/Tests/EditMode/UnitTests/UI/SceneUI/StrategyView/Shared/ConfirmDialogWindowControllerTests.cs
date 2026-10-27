@@ -340,6 +340,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
+        public void OpenMissionAbort_MultipleMissions_RendersCountedPromptWithoutPromptSound()
+        {
+            Mission firstMission = new TestMission { DisplayName = "Diplomacy" };
+            Mission secondMission = new TestMission { DisplayName = "Espionage" };
+
+            _controller.OpenMissionAbort(new[] { firstMission, secondMission }, Confirm);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindows();
+
+            CollectionAssert.AreEqual(
+                new[] { "Are you sure you want to abort these 2 missions?" },
+                GetVisibleLines(view)
+            );
+            Assert.IsEmpty(_playedSounds);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSessionState()
         {
             ConfirmDialogWindowView view = OpenScrapAndInitializeView(out UIWindow window);

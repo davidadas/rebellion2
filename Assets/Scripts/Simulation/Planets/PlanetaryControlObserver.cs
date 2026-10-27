@@ -19,6 +19,7 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _commands;
         private readonly MovementCommands _movement;
         private readonly PlanetaryControlQueries _queries;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly ConditionalWeakTable<
             PlanetOwnershipChangedResult,
             List<GameResult>
@@ -34,17 +35,21 @@ namespace Rebellion.Simulation
         /// <param name="commands">The ownership and support operations.</param>
         /// <param name="movement">The movement operations used to evacuate displaced units.</param>
         /// <param name="queries">The planetary-control state queries.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after control transitions.</param>
         public PlanetaryControlObserver(
             GameRoot game,
             PlanetaryControlCommands commands,
             MovementCommands movement,
-            PlanetaryControlQueries queries
+            PlanetaryControlQueries queries,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -131,6 +136,12 @@ namespace Rebellion.Simulation
                 .ToList();
             foreach (BombardmentResult bombardment in results.OfType<BombardmentResult>())
             {
+                if (bombardment.PlanetDestroyed)
+                {
+                    bombardment.OwnershipChange = null;
+                    continue;
+                }
+
                 List<PlanetOwnershipChangedResult> matchingChanges = ownershipChanges
                     .Where(change => change.Planet == bombardment.Planet)
                     .ToList();
@@ -233,6 +244,9 @@ namespace Rebellion.Simulation
         private List<GameResult> ReconcileGarrisonChange(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
+            if (planet.IsDestroyed)
+                return results;
+
             if (!planet.IsColonized)
             {
                 string ownerInstanceId = planet.GetOwnerInstanceID();
@@ -381,8 +395,15 @@ namespace Rebellion.Simulation
 
             foreach (Planet planet in planets)
             {
+                if (planet.IsDestroyed)
+                    continue;
+
+                int previousSupport = planet.GetPopularSupport(faction.InstanceID);
                 Faction previousOwner = _queries.GetPlanetOwner(planet);
                 _commands.ChangePopularSupport(planet, faction, shift);
+                if (previousSupport == planet.GetPopularSupport(faction.InstanceID))
+                    continue;
+
                 Faction controller = _queries.GetPlanetController(planet);
                 if (previousOwner?.InstanceID == controller?.InstanceID)
                     continue;
@@ -452,7 +473,7 @@ namespace Rebellion.Simulation
         private List<GameResult> ApplyOwnershipReaction(PlanetOwnershipChangedResult change)
         {
             List<GameResult> results = new List<GameResult>();
-            if (change?.Planet == null)
+            if (change?.Planet == null || change.Planet.IsDestroyed)
                 return results;
 
             if (_transitionResults.TryGetValue(change, out List<GameResult> transitionResults))
@@ -466,7 +487,12 @@ namespace Rebellion.Simulation
             }
 
             bool wasBlockaded = change.BlockadedFactionInstanceIDs?.Count > 0;
-            BlockadeTransitions.AddChangedResult(_game, change.Planet, wasBlockaded, results);
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                change.Planet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                results.Add(blockade);
 
             int shift;
             switch (change.Reason)

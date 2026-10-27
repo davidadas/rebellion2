@@ -29,6 +29,77 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetProductionFacilities_DestroyedPlanet_ReturnsNoUsableCapacity()
+        {
+            _planet.NumRawResourceNodes = 10;
+            _planet.AddChild(
+                new Building
+                {
+                    OwnerInstanceID = "FNALL1",
+                    ProductionType = ManufacturingType.Building,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    ProcessRate = 1,
+                }
+            );
+            _planet.IsDestroyed = true;
+
+            Assert.IsEmpty(_planet.GetProductionFacilities(ManufacturingType.Building));
+            Assert.Zero(_planet.GetAvailableEnergy());
+            Assert.Zero(_planet.GetUnminedResourceNodeCount());
+            Assert.Zero(_planet.GetAvailableResourceNodes());
+            Assert.IsTrue(_planet.IsResourceProductionSuspended());
+            Assert.AreEqual(5, _planet.EnergyCapacity);
+            Assert.AreEqual(10, _planet.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void IsPopulated_DestroyedPlanetWithRetainedSupport_ReturnsFalse()
+        {
+            _planet.SetFullPopularSupport("FNALL1");
+            _planet.IsDestroyed = true;
+
+            Assert.IsFalse(_planet.IsPopulated());
+            Assert.AreEqual(100, _planet.GetPopularSupport("FNALL1"));
+        }
+
+        [Test]
+        public void BeginUprising_DestroyedPlanet_DoesNotStartUprising()
+        {
+            _planet.IsDestroyed = true;
+
+            _planet.BeginUprising();
+
+            Assert.IsFalse(_planet.IsInUprising);
+        }
+
+        [TestCase(typeof(Building))]
+        [TestCase(typeof(Regiment))]
+        [TestCase(typeof(Starfighter))]
+        [TestCase(typeof(SpecialForces))]
+        public void CanAcceptChild_DestroyedPlanet_RejectsSurfaceManufacturing(Type unitType)
+        {
+            IManufacturable unit = (IManufacturable)Activator.CreateInstance(unitType);
+            unit.SetOwnerInstanceID("FNALL1");
+            _planet.IsDestroyed = true;
+
+            Assert.IsFalse(_planet.CanAcceptChild(unit));
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(unit));
+            Assert.IsEmpty(_planet.GetChildren<IManufacturable>());
+        }
+
+        [Test]
+        public void AddFleet_DestroyedPlanet_PreservesOrbitalAccess()
+        {
+            _planet.IsDestroyed = true;
+            Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
+
+            Assert.IsTrue(_planet.CanAcceptChild(fleet));
+            _planet.AddChild(fleet);
+
+            CollectionAssert.Contains(_planet.GetChildren<Fleet>(), fleet);
+        }
+
+        [Test]
         public void AddFleet_ValidFleet_AddsToPlanet()
         {
             Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };

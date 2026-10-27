@@ -58,6 +58,9 @@ namespace Rebellion.Game.Messages
         [PersistableMember(Name = nameof(MissionInstanceID))]
         private string _missionInstanceId;
 
+        [PersistableMember(Name = nameof(MissionContinuationPending))]
+        private bool _missionContinuationPending;
+
         [PersistableMember(Name = nameof(CreatedTick))]
         private int _createdTick;
 
@@ -149,6 +152,13 @@ namespace Rebellion.Game.Messages
         {
             get => _missionInstanceId;
             set => _missionInstanceId = value;
+        }
+
+        [PersistableIgnore]
+        public bool MissionContinuationPending
+        {
+            get => _missionContinuationPending;
+            set => _missionContinuationPending = value;
         }
 
         [PersistableIgnore]

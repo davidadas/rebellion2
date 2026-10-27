@@ -31,7 +31,7 @@ namespace Rebellion.Game
     }
 
     /// <summary>
-    /// Contains the configuration and state for a game session.
+    /// Contains the persisted selections and content identity used to create a game.
     /// </summary>
     [PersistableObject]
     public sealed class GameSummary
@@ -49,14 +49,8 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(ResourceAvailability))]
         private GameResourceAvailability _resourceAvailability = GameResourceAvailability.Normal;
 
-        [PersistableMember(Name = nameof(PlayerDifficultyModifiers))]
-        private DifficultyModifiers _playerDifficultyModifiers;
-
-        [PersistableMember(Name = nameof(AIDifficultyModifiers))]
-        private DifficultyModifiers _aiDifficultyModifiers;
-
-        [PersistableMember(Name = nameof(GenerationConfigOverride))]
-        private GameGenerationConfig _generationConfigOverride;
+        [PersistableMember(Name = nameof(CustomSettings))]
+        private CustomGameSettings _customSettings;
 
         [PersistableMember(Name = nameof(StartingFactionIDs))]
         private string[] _startingFactionIds = Array.Empty<string>();
@@ -111,24 +105,10 @@ namespace Rebellion.Game
         }
 
         [PersistableIgnore]
-        public DifficultyModifiers PlayerDifficultyModifiers
+        public CustomGameSettings CustomSettings
         {
-            get => _playerDifficultyModifiers;
-            set => _playerDifficultyModifiers = value;
-        }
-
-        [PersistableIgnore]
-        public DifficultyModifiers AIDifficultyModifiers
-        {
-            get => _aiDifficultyModifiers;
-            set => _aiDifficultyModifiers = value;
-        }
-
-        [PersistableIgnore]
-        public GameGenerationConfig GenerationConfigOverride
-        {
-            get => _generationConfigOverride;
-            set => _generationConfigOverride = value;
+            get => _customSettings;
+            set => _customSettings = value;
         }
 
         [PersistableIgnore]
@@ -188,7 +168,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Default constructor used for deserialization.
+        /// Gets whether this campaign was created with a custom game configuration.
+        /// </summary>
+        [PersistableIgnore]
+        public bool IsCustomGame => _customSettings != null;
+
+        /// <summary>
+        /// Creates a game summary with the standard launch selections.
         /// </summary>
         public GameSummary() { }
     }

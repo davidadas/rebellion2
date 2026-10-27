@@ -376,14 +376,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleGameLaunchSpeedChanged_DropdownSelection_StagesSpeed()
         {
-            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_gameLaunchSpeedDropdown");
 
             dropdown.value = (int)GameLaunchSpeed.Fast;
 
             Assert.AreEqual(
                 GameLaunchSpeed.Fast,
-                _bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
             );
         }
 
@@ -567,6 +567,26 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotMetadata0");
             Assert.AreEqual("Hard • Turn 42", metadata.text);
+        }
+
+        [Test]
+        public void RefreshSaveSlots_CustomGame_RendersCustomAndTurn()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.GalaxySize = GameSize.Small;
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = new GameGenerationConfig(),
+            };
+            game.CurrentTick = 42;
+            _saveGameManager.SaveGameData(game, "custom_save", "Custom Save");
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+
+            TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.AreEqual("Custom • Turn 42", metadata.text);
         }
 
         [Test]

@@ -116,6 +116,13 @@ public interface IStrategyConfirmationActions
     bool CanRetire(IReadOnlyList<ISceneNode> items);
 
     /// <summary>
+    /// Opens abort confirmation for a complete active mission selection.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected missions.</param>
+    void OpenMissionAbortConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
+
+    /// <summary>
     /// Opens scrap confirmation for selected units.
     /// </summary>
     /// <param name="sourceWindow">The strategy window that owns the selection.</param>

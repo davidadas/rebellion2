@@ -47,7 +47,7 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
         UILayout.SetImage(
             iconImage,
             bookmark.IconTexture,
-            0,
+            layout.IconOffsetX,
             GetCenteredOffset(slot.height, iconHeight),
             iconWidth,
             iconHeight

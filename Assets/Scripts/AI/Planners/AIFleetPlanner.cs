@@ -1217,7 +1217,13 @@ namespace Rebellion.AI.Planners
                 context.Faction,
                 context.Game.Config.AI.Garrison
             );
-            return Math.Max(0, readyRegimentCount - requiredGarrison);
+            int ownershipRequirement =
+                planet.GetPopularSupport(context.Faction.InstanceID)
+                < context.Game.Config.SupportShift.OwnershipTransferThreshold
+                    ? 1
+                    : 0;
+            int requiredRegimentCount = Math.Max(requiredGarrison, ownershipRequirement);
+            return Math.Max(0, readyRegimentCount - requiredRegimentCount);
         }
 
         /// <summary>

@@ -19,6 +19,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private InputManager _inputManager;
         private string _settingsPath;
         private OptionsSettingsSession _session;
+        private UserSettingsManager _userSettings;
 
         /// <summary>
         /// Creates a settings session backed by deterministic display and input services.
@@ -45,15 +46,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Path.GetTempPath(),
                 $"rebellion2-options-session-{Guid.NewGuid():N}.json"
             );
-            UserSettingsManager settings = new UserSettingsManager(
+            _userSettings = new UserSettingsManager(
                 _audioManager,
                 _displayManager,
                 _inputManager,
                 _settingsPath
             );
-            settings.Load();
+            _userSettings.Load();
             _session = new OptionsSettingsSession(
-                settings,
+                _userSettings,
                 _displayManager,
                 _audioManager,
                 _inputManager
@@ -261,17 +262,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void RestoreDefaults_GameplaySelected_PreservesUserInterfaceSettings()
+        public void RestoreDefaults_GameplaySelected_RestoresGameplayAndPreservesUserInterfaceSettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Fast);
 
             _session.RestoreDefaults(OptionsMenuTab.Gameplay);
 
             Assert.IsTrue(_session.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]
-        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceSettings()
+        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceAndPreservesGameplaySettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
@@ -287,7 +290,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
             Assert.IsFalse(_session.UserInterface.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);
-            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.UserInterface.GameLaunchSpeed);
+            Assert.AreEqual(GameLaunchSpeed.Fast, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]

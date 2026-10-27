@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Util.Serialization;
 
@@ -26,8 +27,22 @@ namespace Rebellion.Game
 
         public BalanceSection Balance { get; set; }
 
+        public List<GameEventCategory> DisabledEventCategories { get; set; } =
+            new List<GameEventCategory>();
+
         public List<FactionModifierConfig> FactionModifiers { get; set; } =
             new List<FactionModifierConfig>();
+
+        /// <summary>
+        /// Returns whether one classified event category is enabled by these generation settings.
+        /// </summary>
+        /// <param name="category">The category to inspect.</param>
+        /// <returns>True when events in the category should be included.</returns>
+        public bool IsEventCategoryEnabled(GameEventCategory category)
+        {
+            return category == GameEventCategory.None
+                || DisabledEventCategories?.Contains(category) != true;
+        }
     }
 
     /// <summary>

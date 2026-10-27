@@ -16,19 +16,22 @@ public sealed class StrategyMissionChoice
 
     public MissionTargetKind TargetKind { get; }
 
+    public bool IsRepeating { get; }
+
     /// <summary>
     /// Creates a strategy mission choice from one available game option.
     /// </summary>
     /// <param name="option">The available mission option.</param>
-    public StrategyMissionChoice(MissionOption option)
+    /// <param name="isRepeating">Whether this choice requests repeating attempts; defaults to false.</param>
+    public StrategyMissionChoice(MissionOption option, bool isRepeating = false)
     {
         if (option == null)
             throw new System.ArgumentNullException(nameof(option));
-
         MissionTypeID = option.MissionTypeID;
         Discipline = option.Discipline;
-        Name = option.DisplayName;
+        Name = isRepeating ? option.DisplayName + " (Repeat)" : option.DisplayName;
         IconKey = MissionIconKeys.GetMissionIconKey(option.MissionTypeID, option.Discipline);
         TargetKind = option.TargetKind;
+        IsRepeating = isRepeating;
     }
 }

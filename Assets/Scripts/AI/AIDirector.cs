@@ -65,6 +65,7 @@ namespace Rebellion.AI
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
+        /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -74,7 +75,8 @@ namespace Rebellion.AI
             PlanetaryAssaultCommands planetaryAssault,
             IRandomNumberProvider random,
             MaintenanceCommands maintenance = null,
-            HeadquartersCommands headquarters = null
+            HeadquartersCommands headquarters = null,
+            GameResultBus results = null
         )
         {
             _game = game;
@@ -113,7 +115,7 @@ namespace Rebellion.AI
                 new AIPlanningPhase(new IAIProposalPlanner[] { productionPlanner }),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
-                new AIExecutionPhase(),
+                new AIExecutionPhase(results),
             };
         }
 

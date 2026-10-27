@@ -8,6 +8,8 @@ using UnityEngine;
 /// </summary>
 internal static class MessagesWindowProjector
 {
+    private const string _missionContinuationPrompt = "Do you wish the mission to continue?";
+
     /// <summary>
     /// Builds the complete presentation for controller-owned Messages state.
     /// </summary>
@@ -21,6 +23,7 @@ internal static class MessagesWindowProjector
     /// <param name="hasNavigationTarget">Whether the selected message has a strategy target.</param>
     /// <param name="x">The window's source-space x coordinate.</param>
     /// <param name="y">The window's source-space y coordinate.</param>
+    /// <param name="missionContinuationChoiceVisible">Whether the selected report owns a continuing mission choice.</param>
     /// <returns>The complete immutable messages presentation.</returns>
     internal static MessagesWindowRenderData Project(
         UIContext uiContext,
@@ -32,7 +35,8 @@ internal static class MessagesWindowProjector
         bool notificationsEnabled,
         bool hasNavigationTarget,
         int x,
-        int y
+        int y,
+        bool missionContinuationChoiceVisible = false
     )
     {
         IReadOnlyList<Message> safeMessages = messages ?? Array.Empty<Message>();
@@ -63,7 +67,13 @@ internal static class MessagesWindowProjector
                     selectedMessageIds
                 ),
             showDetail
-                ? CreateDetailPanelRenderData(uiContext, theme, safeMessages, selectedIndex)
+                ? CreateDetailPanelRenderData(
+                    uiContext,
+                    theme,
+                    safeMessages,
+                    selectedIndex,
+                    missionContinuationChoiceVisible
+                )
                 : null
         );
     }
@@ -360,12 +370,14 @@ internal static class MessagesWindowProjector
     /// <param name="theme">The current messages theme.</param>
     /// <param name="messages">The active tab's source messages.</param>
     /// <param name="selectedIndex">The selected source message index.</param>
+    /// <param name="missionContinuationChoiceVisible">Whether the continuing mission choice is available.</param>
     /// <returns>The immutable detail-panel presentation.</returns>
     private static MessagesDetailPanelRenderData CreateDetailPanelRenderData(
         UIContext uiContext,
         MessagesWindowTheme theme,
         IReadOnlyList<Message> messages,
-        int selectedIndex
+        int selectedIndex,
+        bool missionContinuationChoiceVisible
     )
     {
         selectedIndex = Math.Max(0, Math.Min(selectedIndex, messages.Count - 1));
@@ -376,13 +388,30 @@ internal static class MessagesWindowProjector
         return new MessagesDetailPanelRenderData(
             message.InstanceID,
             GetHeader(message),
-            message.Body,
+            missionContinuationChoiceVisible
+                ? AppendMissionContinuationPrompt(message.Body)
+                : message.Body,
             GetTexture(uiContext, imagePath),
             GetTexture(uiContext, message.OverlayImagePath),
             GetTexture(uiContext, theme?.GetNormalIconImagePath(message.Type)),
             selectedIndex == 0,
-            selectedIndex == messages.Count - 1
+            selectedIndex == messages.Count - 1,
+            missionContinuationChoiceVisible
         );
+    }
+
+    /// <summary>
+    /// Appends the active continuing-mission choice prompt to a report body.
+    /// </summary>
+    /// <param name="body">The resolved report body.</param>
+    /// <returns>The report body followed by the continuation prompt.</returns>
+    private static string AppendMissionContinuationPrompt(string body)
+    {
+        if (string.IsNullOrEmpty(body))
+            return _missionContinuationPrompt;
+
+        string separator = char.IsWhiteSpace(body[body.Length - 1]) ? string.Empty : "  ";
+        return body + separator + _missionContinuationPrompt;
     }
 
     /// <summary>
