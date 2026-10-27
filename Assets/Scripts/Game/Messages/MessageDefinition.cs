@@ -87,6 +87,7 @@ namespace Rebellion.Game.Messages
         PersonnelArrived,
         PersonnelArrivedByOfficer,
         PersonnelArrivedByOfficerWithCompany,
+        EmperorSeatOfPower,
         FacilityDeployed,
         CapitalShipDeployed,
         DeathStarDeployed,
