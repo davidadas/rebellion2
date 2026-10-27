@@ -948,6 +948,7 @@ namespace Rebellion.Tests.Generation
                 source.GenerationConfig,
                 source.Factions,
                 source.PlanetSectors,
+                source.BattleMaps,
                 source.Buildings,
                 source.CapitalShips,
                 source.Starfighters,
@@ -958,7 +959,8 @@ namespace Rebellion.Tests.Generation
                 source.MessageDefinitions,
                 source.EncyclopediaEntries,
                 source.FactionThemes,
-                source.OfficerTraits
+                source.OfficerTraits,
+                source.DefaultSpaceBattleMapInstanceIDs
             );
         }
     }

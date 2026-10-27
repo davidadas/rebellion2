@@ -1778,6 +1778,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 generationConfig,
                 sourceData.Factions,
                 sourceData.PlanetSectors,
+                sourceData.BattleMaps,
                 sourceData.Buildings,
                 sourceData.CapitalShips,
                 sourceData.Starfighters,
@@ -1788,7 +1789,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 sourceData.MessageDefinitions,
                 sourceData.EncyclopediaEntries,
                 sourceData.FactionThemes,
-                sourceData.OfficerTraits
+                sourceData.OfficerTraits,
+                sourceData.DefaultSpaceBattleMapInstanceIDs
             );
             return new ContentPack(
                 source.ContentRootPath,

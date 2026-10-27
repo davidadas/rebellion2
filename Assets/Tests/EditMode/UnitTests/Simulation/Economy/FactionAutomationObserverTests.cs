@@ -188,6 +188,7 @@ namespace Rebellion.Tests.Simulation
                 new GameGenerationConfig(),
                 new[] { new Faction { InstanceID = _factionId } },
                 Array.Empty<PlanetSector>(),
+                Array.Empty<BattleMap>(),
                 new[] { mine, refinery },
                 Array.Empty<CapitalShip>(),
                 Array.Empty<Starfighter>(),
