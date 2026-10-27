@@ -381,7 +381,8 @@ public sealed class StrategyController
             audioManager.PreloadSfx,
             strategyHudController,
             galaxyMapController,
-            () => PlaySfx(StrategyUISoundPaths.GalacticInformationControl)
+            () => PlaySfx(StrategyUISoundPaths.GalacticInformationControl),
+            presentationCancellationToken
         );
         galacticInformationDisplayController = new GalacticInformationDisplayController(
             () => uiContext,
@@ -1048,6 +1049,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        briefingController?.Dispose();
         if (_appBootstrap != null)
         {
             _appBootstrap.LoadStarting -= HandleLoadStarting;
