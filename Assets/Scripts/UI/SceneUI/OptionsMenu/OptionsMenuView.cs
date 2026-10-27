@@ -1130,6 +1130,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Clones the established content-pack selector into another Options-style page.
     /// </summary>
+    /// <param name="contentAssets">The active content source applied to the cloned selector.</param>
     /// <param name="parent">The destination settings row.</param>
     /// <param name="name">The cloned selector name.</param>
     /// <param name="x">The destination left coordinate.</param>
@@ -1137,6 +1138,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="width">The space available for the destination selector.</param>
     /// <returns>The reusable cloned choice field.</returns>
     internal OptionsChoiceFieldView CloneContentPackChoice(
+        IContentAssetSource contentAssets,
         Transform parent,
         string name,
         int x,
@@ -1144,12 +1146,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         int width
     )
     {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
         Transform sourceParent = _contentPackValueField.transform.parent;
         Image badge = sourceParent.Find("ContentPackBadge")?.GetComponent<Image>();
         if (badge == null)
             throw new MissingReferenceException("ContentPackBadge is missing.");
 
-        return OptionsChoiceFieldView.Clone(
+        OptionsChoiceFieldView choice = OptionsChoiceFieldView.Clone(
             parent,
             name,
             badge,
@@ -1160,6 +1165,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             y,
             width
         );
+        ContentBindings.Apply(choice.gameObject, contentAssets);
+        return choice;
     }
 
     /// <summary>

@@ -1651,10 +1651,10 @@ namespace Rebellion.Simulation
             if (unit is CapitalShip capitalShip)
                 return Math.Max(capitalShip.Hyperdrive, 1);
 
-            if (unit is Officer or SpecialForces)
-                return Math.Max(_game.GetConfig().Movement.DefaultPersonnelHyperdrive, 1);
+            if (unit is Starfighter starfighter && starfighter.Hyperdrive > 0)
+                return starfighter.Hyperdrive;
 
-            return Math.Max(_game.GetConfig().Movement.DefaultFighterHyperdrive, 1);
+            return Math.Max(_game.GetConfig().Movement.DefaultPersonnelHyperdrive, 1);
         }
 
         /// <summary>

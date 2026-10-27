@@ -39,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             instance.SetActive(true);
             view = instance.GetComponent<NewGameSettingsView>();
+            view.InitializeContent(TestContent.Assets);
             summary = new GameSummary { Difficulty = GameDifficulty.Easy };
             optionsPrefab = AssetDatabase.LoadAssetAtPath<OptionsMenuView>(
                 "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab"
@@ -552,6 +553,34 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                         choice.name + "/" + name
                     );
                 }
+            }
+        }
+
+        [Test]
+        public void SelectCategory_GameSetup_BindsClonedSelectorBackgrounds()
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                Image sourceBadge = source
+                    .GetComponentsInChildren<Image>(true)
+                    .Single(image => image.name == "ContentPackBadge");
+                sourceBadge.sprite = null;
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+                foreach (
+                    OptionsChoiceFieldView choice in instance.GetComponentsInChildren<OptionsChoiceFieldView>()
+                )
+                {
+                    Image badge = choice.transform.Find("Badge").GetComponent<Image>();
+                    Assert.IsNotNull(badge.sprite, choice.name);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
             }
         }
 
