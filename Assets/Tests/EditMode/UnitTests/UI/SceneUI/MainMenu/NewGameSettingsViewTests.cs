@@ -751,6 +751,110 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsTrue(ApplyButton().gameObject.activeSelf);
         }
 
+        [TestCase("SaveIcon")]
+        [TestCase("SaveIconDisabled")]
+        [TestCase("LoadIcon")]
+        [TestCase("LoadIconDisabled")]
+        public void SelectCategory_SaveLoadWithStrippedTextures_RestoresCommandArtwork(string name)
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                ClearSaveListTextures(source.gameObject);
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+
+                RawImage image = instance
+                    .GetComponentInChildren<OptionsSaveListView>(true)
+                    .GetComponentsInChildren<RawImage>(true)
+                    .Single(candidate => candidate.name == name);
+                ContentTextureBinding binding = image.GetComponent<ContentTextureBinding>();
+                string address =
+                    binding != null
+                        ? binding.Address
+                        : image.GetComponent<ContentPressVisualBinding>().UpAddress;
+                Assert.AreSame(
+                    ContentBindings.RequireTexture(TestContent.Assets, address),
+                    image.texture
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
+            }
+        }
+
+        [TestCase("SaveIcon")]
+        [TestCase("LoadIcon")]
+        public void SelectCategory_SaveLoadWithStrippedTextures_RestoresPressedArtwork(string name)
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                ClearSaveListTextures(source.gameObject);
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+                OptionsSaveListView saveList =
+                    instance.GetComponentInChildren<OptionsSaveListView>();
+                saveList.Render(
+                    new[]
+                    {
+                        new OptionsSaveSlot("Preset", string.Empty, null, false, "preset.json"),
+                    },
+                    0,
+                    true,
+                    false
+                );
+                Button button = PresetButton(name);
+                ContentPressVisualBinding binding =
+                    button.GetComponent<ContentPressVisualBinding>();
+
+                button
+                    .GetComponent<RawImagePressVisual>()
+                    .OnPointerDown(
+                        new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                    );
+
+                Assert.AreSame(
+                    ContentBindings.RequireTexture(TestContent.Assets, binding.DownAddress),
+                    button.GetComponent<RawImage>().texture
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
+            }
+        }
+
+        [TestCase("SaveIcon")]
+        [TestCase("SaveIconDisabled")]
+        [TestCase("LoadIcon")]
+        [TestCase("LoadIconDisabled")]
+        public void InitializeContent_ExistingPresetPage_RestoresCommandArtwork(string name)
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            ClearSaveListTextures(instance);
+
+            view.InitializeContent(TestContent.Assets);
+
+            RawImage image = instance
+                .GetComponentInChildren<OptionsSaveListView>(true)
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(candidate => candidate.name == name);
+            ContentTextureBinding binding = image.GetComponent<ContentTextureBinding>();
+            string address =
+                binding != null
+                    ? binding.Address
+                    : image.GetComponent<ContentPressVisualBinding>().UpAddress;
+            Assert.AreSame(
+                ContentBindings.RequireTexture(TestContent.Assets, address),
+                image.texture
+            );
+        }
+
         [Test]
         public void Apply_CycledGameSetup_PublishesCompleteLaunchSummary()
         {
@@ -1944,6 +2048,23 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             else
                 PresetButton("SaveIcon").onClick.Invoke();
             return preset;
+        }
+
+        /// <summary>
+        /// Removes authored command textures to reproduce stripped player-build references.
+        /// </summary>
+        /// <param name="source">The hierarchy containing the shared Save/Load page.</param>
+        private static void ClearSaveListTextures(GameObject source)
+        {
+            OptionsSaveListView saveList = source.GetComponentInChildren<OptionsSaveListView>(true);
+            foreach (RawImage image in saveList.GetComponentsInChildren<RawImage>(true))
+                image.texture = null;
+            foreach (
+                RawImagePressVisual visual in saveList.GetComponentsInChildren<RawImagePressVisual>(
+                    true
+                )
+            )
+                visual.SetTextures(null, null);
         }
 
         /// <summary>
