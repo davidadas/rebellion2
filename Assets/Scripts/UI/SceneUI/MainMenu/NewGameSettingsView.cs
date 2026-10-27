@@ -110,7 +110,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private GameObject presetPage;
     private IContentAssetSource contentAssets;
     private int selectedPresetSlot = -1;
-    private string pendingPresetDeleteFileName;
+    private Action pendingPresetConfirmAction;
     private NewGameSettingsCategory selectedCategory;
     private bool controlsBound;
 
@@ -310,7 +310,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         BindControls();
 
         settingsSession = new CustomGameSettingsSession(pack, summary);
-        pendingPresetDeleteFileName = null;
+        pendingPresetConfirmAction = null;
         presetConfirmDialog?.Hide();
         availablePacks =
             installedPacks?.Where(candidate => candidate != null).ToArray()
@@ -1020,8 +1020,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         presetConfirmDialog.name = "CustomGamePresetConfirmDialog";
         if (contentAssets != null)
             presetConfirmDialog.InitializeContent(contentAssets);
-        presetConfirmDialog.Confirmed += ConfirmPresetDelete;
-        presetConfirmDialog.Canceled += CancelPresetDelete;
+        presetConfirmDialog.Confirmed += ConfirmPresetAction;
+        presetConfirmDialog.Canceled += CancelPresetAction;
         presetConfirmDialog.gameObject.SetActive(false);
 
         presetSaveList.SaveRequested += HandlePresetSaveRequested;
@@ -1036,7 +1036,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// Rebuilds the visible preset list from configurations compatible with active content.
     /// </summary>
     /// <param name="resetScroll">Whether to restore the list to its top.</param>
-    private void RefreshPresetSlots(bool resetScroll)
+    /// <param name="selectedFileName">The preset identity to select after refreshing, when supplied.</param>
+    private void RefreshPresetSlots(bool resetScroll, string selectedFileName = null)
     {
         if (presetSaveList == null || presetManager == null || settingsSession == null)
             return;
@@ -1063,7 +1064,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             );
         }
 
-        if (selectedPresetSlot >= presetSlots.Count)
+        if (!string.IsNullOrEmpty(selectedFileName))
+            selectedPresetSlot = presetSlots.FindIndex(slot => slot.FileName == selectedFileName);
+        else if (selectedPresetSlot >= presetSlots.Count)
             selectedPresetSlot = -1;
         presetSaveList.Render(presetSlots, selectedPresetSlot, true, resetScroll);
     }
@@ -1114,11 +1117,10 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         {
             CustomGamePresetEntry entry = presetEntries[slot - 1];
             if (submitted)
-                presetManager.SavePreset(
-                    entry.FileName,
-                    newName,
-                    settingsSession.CreateSummarySnapshot()
-                );
+            {
+                RequestPresetOverwrite(entry, newName);
+                return;
+            }
             else
                 presetManager.RenamePreset(entry.FileName, newName);
         }
@@ -1127,7 +1129,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Overwrites the selected preset with the current custom-game draft.
+    /// Requests confirmation before replacing the selected preset with the current draft.
     /// </summary>
     private void HandlePresetSaveRequested()
     {
@@ -1139,12 +1141,25 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             return;
 
         CustomGamePresetEntry entry = presetEntries[selectedPresetSlot - 1];
-        presetManager.SavePreset(
-            entry.FileName,
-            entry.DisplayName,
-            settingsSession.CreateSummarySnapshot()
+        RequestPresetOverwrite(entry, entry.DisplayName);
+    }
+
+    /// <summary>
+    /// Confirms replacement of one preset with the draft captured for that request.
+    /// </summary>
+    /// <param name="entry">The existing preset to replace.</param>
+    /// <param name="displayName">The display name to persist after confirmation.</param>
+    private void RequestPresetOverwrite(CustomGamePresetEntry entry, string displayName)
+    {
+        GameSummary snapshot = settingsSession.CreateSummarySnapshot();
+        RequestPresetConfirm(
+            $"Overwrite \"{entry.DisplayName}\"?",
+            () =>
+            {
+                presetManager.SavePreset(entry.FileName, displayName, snapshot);
+                RefreshPresetSlots(false, entry.FileName);
+            }
         );
-        RefreshPresetSlots(false);
     }
 
     /// <summary>
@@ -1180,30 +1195,44 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             return;
 
         CustomGamePresetEntry entry = presetEntries[slot - 1];
-        pendingPresetDeleteFileName = entry.FileName;
-        presetConfirmDialog.Show($"Delete \"{entry.DisplayName}\"?");
+        RequestPresetConfirm(
+            $"Delete \"{entry.DisplayName}\"?",
+            () =>
+            {
+                presetManager.DeletePreset(entry.FileName);
+                selectedPresetSlot = -1;
+                RefreshPresetSlots(false);
+            }
+        );
     }
 
     /// <summary>
-    /// Deletes the preset accepted by the confirmation dialog.
+    /// Shows the shared confirmation dialog for one captured preset operation.
     /// </summary>
-    private void ConfirmPresetDelete()
+    /// <param name="message">The confirmation prompt.</param>
+    /// <param name="onConfirmed">The operation to run after acceptance.</param>
+    private void RequestPresetConfirm(string message, Action onConfirmed)
     {
-        if (presetManager == null || string.IsNullOrWhiteSpace(pendingPresetDeleteFileName))
-            return;
-
-        presetManager.DeletePreset(pendingPresetDeleteFileName);
-        pendingPresetDeleteFileName = null;
-        selectedPresetSlot = -1;
-        RefreshPresetSlots(false);
+        pendingPresetConfirmAction = onConfirmed;
+        presetConfirmDialog.Show(message);
     }
 
     /// <summary>
-    /// Clears a canceled preset-deletion request.
+    /// Runs and clears the preset operation accepted by the confirmation dialog.
     /// </summary>
-    private void CancelPresetDelete()
+    private void ConfirmPresetAction()
     {
-        pendingPresetDeleteFileName = null;
+        Action confirmed = pendingPresetConfirmAction;
+        pendingPresetConfirmAction = null;
+        confirmed?.Invoke();
+    }
+
+    /// <summary>
+    /// Clears a canceled preset operation without changing stored presets.
+    /// </summary>
+    private void CancelPresetAction()
+    {
+        pendingPresetConfirmAction = null;
     }
 
     /// <summary>
@@ -1784,5 +1813,10 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Requests closure through the scene's existing modal owner.
     /// </summary>
-    private void RequestClose() => CloseRequested?.Invoke();
+    private void RequestClose()
+    {
+        CancelPresetAction();
+        presetConfirmDialog?.Hide();
+        CloseRequested?.Invoke();
+    }
 }
