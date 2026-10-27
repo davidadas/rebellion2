@@ -1,16 +1,42 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    public partial class GameEventCommands
+    /// <summary>
+    /// Resolves authored values and result arguments into execution bindings.
+    /// </summary>
+    public static class GameBindingResolver
     {
+        /// <summary>
+        /// Adds the authored result arguments to the rule evaluation context.
+        /// </summary>
+        /// <param name="definition">The authored trigger or participant filter.</param>
+        /// <param name="context">The rule evaluation context receiving the bindings.</param>
+        /// <param name="result">The matched simulation result.</param>
+        internal static void Bind(
+            GameTrigger definition,
+            GameEvaluationContext context,
+            GameResult result
+        )
+        {
+            foreach (GameBinding binding in definition.Bindings)
+            {
+                GameTriggerArgument argument = GameTriggerArguments.Get(
+                    GameTriggerMatcher.GetResultType(definition),
+                    binding.Argument
+                );
+                context.Bind(binding.As, argument.Resolve(result));
+            }
+        }
+
         /// <summary>
         /// Resolves the requested operation.
         /// </summary>
@@ -21,7 +47,7 @@ namespace Rebellion.Simulation
         private static object ResolveSource(
             SkillRatingBindingSource source,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             bool hasInstanceID = !string.IsNullOrWhiteSpace(source.OfficerInstanceID);
@@ -51,7 +77,7 @@ namespace Rebellion.Simulation
         private static object ResolveSource(
             OfficerForceBindingSource source,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             bool hasInstanceID = !string.IsNullOrWhiteSpace(source.OfficerInstanceID);
@@ -81,7 +107,7 @@ namespace Rebellion.Simulation
         private static object ResolveSource(
             PlanetStatBindingSource source,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             bool hasInstanceID = !string.IsNullOrWhiteSpace(source.PlanetInstanceID);
@@ -113,7 +139,7 @@ namespace Rebellion.Simulation
             SelectionCountBindingSource source,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             if (source.Selectors.Count == 0)
@@ -122,7 +148,7 @@ namespace Rebellion.Simulation
                 );
             return source
                 .Selectors.SelectMany(selector =>
-                    GameEventCommands.Select(selector, game, provider, context)
+                    GameSelectorResolver.Select(selector, game, provider, context)
                 )
                 .Distinct()
                 .Count();
@@ -133,7 +159,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="binding">The authored binding definition.</param>
         /// <returns>The bound value type.</returns>
-        private static Type GetValueType(GameEventBinding binding)
+        internal static Type GetValueType(GameBinding binding)
         {
             if (binding.RollInteger != null)
                 return typeof(int);
@@ -150,12 +176,12 @@ namespace Rebellion.Simulation
         /// <param name="binding">The authored binding definition.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">The random number provider used by selectors and rolls.</param>
-        /// <param name="context">The event evaluation context that receives the binding.</param>
+        /// <param name="context">The rule evaluation context that receives the binding.</param>
         internal static void Bind(
-            GameEventBinding binding,
+            GameBinding binding,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             int modeCount =
@@ -196,7 +222,7 @@ namespace Rebellion.Simulation
                     $"Selection binding '{binding.As}' requires exactly one selector."
                 );
 
-            ISceneNode[] values = GameEventCommands
+            ISceneNode[] values = GameSelectorResolver
                 .Select(binding.Selectors[0], game, provider, context)
                 .Distinct()
                 .ToArray();
@@ -251,7 +277,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="source">The authored source.</param>
         /// <returns>The source's scalar value type.</returns>
-        private static Type GetSourceValueType(GameEventBindingSource source) =>
+        private static Type GetSourceValueType(GameBindingSource source) =>
             source switch
             {
                 SkillRatingBindingSource => typeof(int),
@@ -273,10 +299,10 @@ namespace Rebellion.Simulation
         /// <param name="context">The current activation bindings.</param>
         /// <returns>The resolved scalar value.</returns>
         private static object ResolveSource(
-            GameEventBindingSource source,
+            GameBindingSource source,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) =>
             source switch
             {

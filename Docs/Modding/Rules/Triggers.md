@@ -487,4 +487,4 @@ Activates when a manufactured unit is deployed.
 
 ---
 
-<p align="center"><a href="Schedules.md">← Schedules</a> · <a href="Index.md">Event guide</a> · <a href="Conditionals.md">Conditionals →</a></p>
+<p align="center"><a href="../Events/Schedules.md">← Schedules</a> · <a href="../Events/Index.md">Event guide</a> · <a href="Conditionals.md">Conditionals →</a></p>

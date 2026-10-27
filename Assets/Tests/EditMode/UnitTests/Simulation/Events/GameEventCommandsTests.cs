@@ -11,6 +11,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
@@ -33,7 +34,12 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _game = TestGame.Create(TestConfig.Create());
-            _system = new GameEventCommands(_game, new FixedRandomProvider(new[] { 0.5 }));
+            var eventRandom = new FixedRandomProvider(new[] { 0.5 });
+            _system = new GameEventCommands(
+                _game,
+                eventRandom,
+                new GameActionCommands(_game, eventRandom)
+            );
         }
 
         [Test]
@@ -86,7 +92,12 @@ namespace Rebellion.Tests.Simulation
                 },
             };
             _game.GetEventPool().Add(gameEvent);
-            GameEventCommands executor = new GameEventCommands(_game, new QueueRNG(roll));
+            var eventRandom = new QueueRNG(roll);
+            GameEventCommands executor = new GameEventCommands(
+                _game,
+                eventRandom,
+                new GameActionCommands(_game, eventRandom)
+            );
 
             executor.ProcessScheduledEvents(_game.GetEventPool());
 
@@ -114,7 +125,12 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
             _game.EventRuntime.GetState(gameEvent.InstanceID).IsInitialized = true;
-            GameEventCommands executor = new GameEventCommands(_game, new QueueRNG(roll));
+            var eventRandom = new QueueRNG(roll);
+            GameEventCommands executor = new GameEventCommands(
+                _game,
+                eventRandom,
+                new GameActionCommands(_game, eventRandom)
+            );
 
             executor.ProcessScheduledEvents(_game.GetEventPool());
 
@@ -140,7 +156,11 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands system = new GameEventCommands(
                 _game,
                 _game.Random,
-                messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
             );
 
             List<GameResult> results = system.ProcessScheduledEvents(_game.GetEventPool());
@@ -179,7 +199,11 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands system = new GameEventCommands(
                 _game,
                 _game.Random,
-                messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
             );
             LogAssert.Expect(
                 LogType.Error,
@@ -202,7 +226,11 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
-                messageCommands: new MessageCommands(game, new MessageFactory(null))
+                new GameActionCommands(
+                    game,
+                    game.Random,
+                    messageCommands: new MessageCommands(game, new MessageFactory(null))
+                )
             );
             LogAssert.Expect(
                 LogType.Error,
@@ -228,8 +256,12 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
-                duelCommands: new DuelCommands(game, new CaptureThenThrowRandom()),
-                messageCommands: new MessageCommands(game, new MessageFactory(null))
+                new GameActionCommands(
+                    game,
+                    game.Random,
+                    duelCommands: new DuelCommands(game, new CaptureThenThrowRandom()),
+                    messageCommands: new MessageCommands(game, new MessageFactory(null))
+                )
             );
             LogAssert.Expect(
                 LogType.Error,
@@ -277,7 +309,11 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
-                duelCommands: new DuelCommands(game, new ThrowingRNG())
+                new GameActionCommands(
+                    game,
+                    game.Random,
+                    duelCommands: new DuelCommands(game, new ThrowingRNG())
+                )
             );
 
             List<GameResult> results = executor.ProcessScheduledEvents(
@@ -302,7 +338,7 @@ namespace Rebellion.Tests.Simulation
                     new ChangeOwnerAction
                     {
                         FactionInstanceID = "rebels",
-                        Units = new List<GameEventSelector>
+                        Units = new List<GameSelector>
                         {
                             new SelectOfficers { InstanceID = officer.InstanceID },
                         },
@@ -323,7 +359,7 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
-                planetaryControlCommands: control
+                new GameActionCommands(game, game.Random, planetaryControlCommands: control)
             );
 
             List<GameResult> results = executor.ProcessScheduledEvents(
@@ -353,7 +389,11 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 _game,
                 _game.Random,
-                messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
             );
 
             List<GameResult> results = executor.ProcessScheduledEvents(_game.GetEventPool());
@@ -407,7 +447,7 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
-                movementCommands: movement
+                new GameActionCommands(game, game.Random, movementCommands: movement)
             );
 
             executor.ProcessScheduledEvents(new List<GameEvent> { gameEvent });
@@ -454,13 +494,13 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_BINDING",
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "target")) },
                 },
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
                         RollInteger = new RollInteger { Minimum = 1, Maximum = 1 },
@@ -482,9 +522,9 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "INVALID_BINDING",
                 Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         RollInteger = new RollInteger { Minimum = 1, Maximum = 1 },
                     },
@@ -505,7 +545,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "INVALID_BINDING",
                 Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
-                Bindings = new List<GameEventBinding> { new GameEventBinding { As = "target" } },
+                Bindings = new List<GameBinding> { new GameBinding { As = "target" } },
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -521,7 +561,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "MULTI_TRIGGER",
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger { Bindings = TriggerBindings(("Unit", "result")) },
                     new DuelCompletedTrigger(),
@@ -540,7 +580,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "MULTI_TRIGGER",
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger
                     {
@@ -671,20 +711,20 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "BOUND_UNTIL",
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "planet",
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectPlanets { InstanceID = planet.InstanceID },
                         },
                     },
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "rawResourceNodes",
-                        Sources = new List<GameEventBindingSource>
+                        Sources = new List<GameBindingSource>
                         {
                             new PlanetStatBindingSource
                             {
@@ -867,7 +907,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RESULT_ONLY",
-                Triggers = new List<GameEventTrigger> { new DuelCompletedTrigger() },
+                Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "unexpected", Operand = 1 },
@@ -898,12 +938,12 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "SCOPED",
 
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectPlanets { InstanceID = first.InstanceID },
                         },
@@ -950,12 +990,12 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "OWNED_ONLY",
 
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
-                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                        Selectors = new List<GameSelector> { new SelectPlanets() },
                     },
                 },
                 Conditionals = new List<GameConditional>
@@ -1000,12 +1040,12 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "OWNED_ONLY",
 
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
-                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                        Selectors = new List<GameSelector> { new SelectPlanets() },
                     },
                 },
                 Conditionals = new List<GameConditional>
@@ -1048,12 +1088,12 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ONE_SHOT_PER_PLANET",
                 MaximumActivations = 1,
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
-                        Selectors = new List<GameEventSelector> { new SelectPlanets() },
+                        Selectors = new List<GameSelector> { new SelectPlanets() },
                     },
                 },
                 Actions = new List<GameAction>
@@ -1084,17 +1124,17 @@ namespace Rebellion.Tests.Simulation
                 InstanceID = "DELAYED_RANDOM_TARGET",
                 MaximumActivations = 1,
                 Schedule = new GameEventSchedule { At = new AtTick { Tick = 10 } },
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "target",
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectRandom
                             {
                                 Count = 1,
-                                Selectors = new List<GameEventSelector>
+                                Selectors = new List<GameSelector>
                                 {
                                     new SelectPlanets { SectorType = PlanetSectorType.Core },
                                 },
@@ -1153,7 +1193,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ARRIVAL_REACTION",
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger
                     {
@@ -1163,12 +1203,12 @@ namespace Rebellion.Tests.Simulation
                         ),
                     },
                 },
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "arrivalRating",
-                        Sources = new List<GameEventBindingSource>
+                        Sources = new List<GameBindingSource>
                         {
                             new SkillRatingBindingSource
                             {
@@ -1177,10 +1217,10 @@ namespace Rebellion.Tests.Simulation
                             },
                         },
                     },
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "arrivalResources",
-                        Sources = new List<GameEventBindingSource>
+                        Sources = new List<GameBindingSource>
                         {
                             new PlanetStatBindingSource
                             {
@@ -1230,7 +1270,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ALTERNATE_ARRIVALS",
                 Category = category,
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger { UnitInstanceID = "first" },
                     new UnitArrivedTrigger { UnitInstanceID = "second" },
@@ -1256,7 +1296,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "SOURCE_FILTERED_ARRIVAL",
-                Triggers = new List<GameEventTrigger>
+                Triggers = new List<GameTrigger>
                 {
                     new UnitArrivedTrigger { SourceEventInstanceID = "EXPECTED_SOURCE" },
                 },
@@ -1280,7 +1320,7 @@ namespace Rebellion.Tests.Simulation
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HIDDEN_MISSION_REPORT",
-                Triggers = new List<GameEventTrigger> { new MissionCompletedTrigger() },
+                Triggers = new List<GameTrigger> { new MissionCompletedTrigger() },
             };
             _game.GetEventPool().Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
@@ -1404,7 +1444,7 @@ namespace Rebellion.Tests.Simulation
             PlaceUnitsAction action = new PlaceUnitsAction
             {
                 DestinationInstanceID = destination.InstanceID,
-                Units = new List<GameEventSelector>
+                Units = new List<GameSelector>
                 {
                     new SelectOfficers { InstanceID = officer.InstanceID },
                     new SpawnUnits
@@ -1470,7 +1510,7 @@ namespace Rebellion.Tests.Simulation
             ChangeOwnerAction action = new ChangeOwnerAction
             {
                 FactionInstanceID = "rebels",
-                Units = new List<GameEventSelector>
+                Units = new List<GameSelector>
                 {
                     new SelectOfficers { InstanceID = officer.InstanceID },
                 },
@@ -1492,8 +1532,8 @@ namespace Rebellion.Tests.Simulation
             ChangeOwnerAction action = new ChangeOwnerAction
             {
                 FactionInstanceID = "rebels",
-                Planets = new List<GameEventSelector> { new SelectPlanets() },
-                Units = new List<GameEventSelector> { new SelectOfficers() },
+                Planets = new List<GameSelector> { new SelectPlanets() },
+                Units = new List<GameSelector> { new SelectOfficers() },
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -1560,7 +1600,7 @@ namespace Rebellion.Tests.Simulation
             new SetNodeStateAction
             {
                 State = SceneNodeState.Inactive,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectOfficers { PlanetInstanceID = rebelPlanet.InstanceID },
                 },
@@ -1614,7 +1654,7 @@ namespace Rebellion.Tests.Simulation
             SetNodeStateAction action = new SetNodeStateAction
             {
                 State = SceneNodeState.Active,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectOfficers
                     {
@@ -1721,14 +1761,15 @@ namespace Rebellion.Tests.Simulation
             RevealToFactionAction action = new RevealToFactionAction
             {
                 FactionInstanceID = "rebels",
-                Targets = new List<GameEventSelector>
+                Targets = new List<GameSelector>
                 {
                     new SelectOfficers { InstanceID = officer.InstanceID },
                 },
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState()
+            GameEvaluationContext context = new GameEvaluationContext(
+                "INFORMANTS",
+                sourceEventInstanceID: "INFORMANTS",
+                sourceKind: "Event"
             );
 
             List<GameResult> results = action.Execute(game, game.Random, context);
@@ -1890,9 +1931,9 @@ namespace Rebellion.Tests.Simulation
             };
             DuelCompletedTrigger trigger = new DuelCompletedTrigger
             {
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding { Argument = "AudioPath", As = "audioPath" },
+                    new GameBinding { Argument = "AudioPath", As = "audioPath" },
                 },
             };
 
@@ -2021,7 +2062,7 @@ namespace Rebellion.Tests.Simulation
             SendUnitsAction action = new SendUnitsAction
             {
                 DestinationInstanceID = destination.InstanceID,
-                Units = new List<GameEventSelector>
+                Units = new List<GameSelector>
                 {
                     new SelectPlanets { InstanceID = destination.InstanceID },
                 },
@@ -2050,11 +2091,11 @@ namespace Rebellion.Tests.Simulation
             SendUnitsAction action = new SendUnitsAction
             {
                 UnitInstanceID = officer.InstanceID,
-                Destination = new List<GameEventSelector>
+                Destination = new List<GameSelector>
                 {
                     new SelectFirst
                     {
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectPlanets { InstanceID = first.InstanceID },
                             new SelectPlanets { InstanceID = second.InstanceID },
@@ -2077,7 +2118,7 @@ namespace Rebellion.Tests.Simulation
             {
                 IsCaptured = true,
                 CaptorFactionInstanceID = "rebels",
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectPlanets { InstanceID = planet.InstanceID },
                 },
@@ -2607,9 +2648,10 @@ namespace Rebellion.Tests.Simulation
                 PlanetBinding = "target",
                 Amount = 1,
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("target", planet);
 
@@ -2634,9 +2676,10 @@ namespace Rebellion.Tests.Simulation
                 PlanetBinding = "target",
                 Amount = 1,
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("target", planet);
 
@@ -2654,9 +2697,10 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("change", -2);
             ChangeRawResourceNodesAction action = new ChangeRawResourceNodesAction
@@ -2743,7 +2787,11 @@ namespace Rebellion.Tests.Simulation
                 MinimumTotalLoss = 1,
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
+            GameEvaluationContext context = new GameEvaluationContext(
+                gameEvent?.InstanceID,
+                sourceEventInstanceID: gameEvent?.InstanceID,
+                sourceKind: "Event"
+            );
             context.Bind("target", planet);
 
             List<GameResult> results = action.Execute(game, new FixedRNG(0.99), context);
@@ -2883,7 +2931,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment, planet);
             DestroyUnitsAction action = new DestroyUnitsAction
             {
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectRegiments { InstanceID = regiment.InstanceID },
                 },
@@ -2905,7 +2953,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(ship, fleet);
             DestroyUnitsAction action = new DestroyUnitsAction
             {
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectFleets { InstanceID = fleet.InstanceID },
                     new SelectCapitalShips { InstanceID = ship.InstanceID },
@@ -2937,7 +2985,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(ship, fleet);
             DestroyUnitsAction action = new DestroyUnitsAction
             {
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectFleets { InstanceID = fleet.InstanceID },
                 },
@@ -2957,9 +3005,10 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = new GameRoot();
             GameEvent gameEvent = new GameEvent { InstanceID = "test-event" };
-            GameEventEvaluationContext evaluation = new GameEventEvaluationContext(
-                gameEvent,
-                new GameEventState()
+            GameEvaluationContext evaluation = new GameEvaluationContext(
+                gameEvent?.InstanceID,
+                sourceEventInstanceID: gameEvent?.InstanceID,
+                sourceKind: "Event"
             );
             GameActionContext context = new GameActionContext(game, game.Random, evaluation);
             SetEventVariableAction firstAction = new SetEventVariableAction
@@ -2983,7 +3032,7 @@ namespace Rebellion.Tests.Simulation
                 new Regex("Event 'test-event' action 'SetEventVariableAction' failed:")
             );
 
-            GameEventCommands.ExecuteActions(actions, context);
+            GameActionCommands.ExecuteActions(actions, context);
 
             Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
             Assert.AreEqual(1, game.EventRuntime.GetVariable("last"));
@@ -3012,10 +3061,14 @@ namespace Rebellion.Tests.Simulation
             GameActionContext context = new GameActionContext(
                 _game,
                 _game.Random,
-                new GameEventEvaluationContext(gameEvent, new GameEventState())
+                new GameEvaluationContext(
+                    gameEvent?.InstanceID,
+                    sourceEventInstanceID: gameEvent?.InstanceID,
+                    sourceKind: "Event"
+                )
             );
 
-            GameEventCommands.ExecuteAction(
+            GameActionCommands.ExecuteAction(
                 new ApplyOfficerTraitAction
                 {
                     TraitID = trait.ID,
@@ -3025,7 +3078,7 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
 
-            GameEventCommands.ExecuteAction(
+            GameActionCommands.ExecuteAction(
                 new RemoveOfficerTraitAction
                 {
                     TraitID = trait.ID,
@@ -3045,9 +3098,9 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "future",
                 Schedule = new GameEventSchedule { At = new AtTick { Tick = 10 } },
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "count",
                         RollInteger = new RollInteger { Minimum = 0, Maximum = 3 },
@@ -3056,7 +3109,11 @@ namespace Rebellion.Tests.Simulation
             };
             game.GetEventPool().Add(gameEvent);
 
-            new GameEventCommands(game, random).ProcessScheduledEvents(game.GetEventPool());
+            new GameEventCommands(
+                game,
+                random,
+                new GameActionCommands(game, random)
+            ).ProcessScheduledEvents(game.GetEventPool());
 
             Assert.AreEqual(0.75, random.NextDouble());
             Assert.Zero(game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
@@ -3070,7 +3127,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "invalid-binding",
                 Schedule = new GameEventSchedule { At = new AtTick { Tick = 0 } },
-                Bindings = new List<GameEventBinding> { new GameEventBinding { As = "missing" } },
+                Bindings = new List<GameBinding> { new GameBinding { As = "missing" } },
             };
             GameEvent following = new GameEvent
             {
@@ -3083,7 +3140,11 @@ namespace Rebellion.Tests.Simulation
             };
             game.GetEventPool().Add(invalid);
             game.GetEventPool().Add(following);
-            GameEventCommands executor = new GameEventCommands(game, game.Random);
+            GameEventCommands executor = new GameEventCommands(
+                game,
+                game.Random,
+                new GameActionCommands(game, game.Random)
+            );
 
             Assert.Throws<InvalidOperationException>(() =>
                 executor.ProcessScheduledEvents(game.GetEventPool())
@@ -3100,7 +3161,7 @@ namespace Rebellion.Tests.Simulation
             GameActionContext context = new GameActionContext(game, game.Random);
             LogAssert.Expect(LogType.Error, new Regex("Event 'unknown' action 'null' failed:"));
 
-            GameEventCommands.ExecuteActions(
+            GameActionCommands.ExecuteActions(
                 new GameAction[]
                 {
                     null,
@@ -3134,13 +3195,13 @@ namespace Rebellion.Tests.Simulation
                 new Regex("Event 'unknown' action 'SetNodeStateAction' failed:")
             );
 
-            GameEventCommands.ExecuteActions(
+            GameActionCommands.ExecuteActions(
                 new[]
                 {
                     new SetNodeStateAction
                     {
                         State = SceneNodeState.Inactive,
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectOfficers { InstanceID = idle.InstanceID },
                             new SelectOfficers { InstanceID = assigned.InstanceID },
@@ -3163,14 +3224,15 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             GameEvent gameEvent = new GameEvent { InstanceID = "nested" };
-            GameEventEvaluationContext evaluation = new GameEventEvaluationContext(
-                gameEvent,
-                new GameEventState()
+            GameEvaluationContext evaluation = new GameEvaluationContext(
+                gameEvent?.InstanceID,
+                sourceEventInstanceID: gameEvent?.InstanceID,
+                sourceKind: "Event"
             );
             RecordingRandom provider = new RecordingRandom(evaluation);
             GameActionContext context = new GameActionContext(game, provider, evaluation);
 
-            GameEventCommands.ExecuteActions(
+            GameActionCommands.ExecuteActions(
                 new[]
                 {
                     new IfAction
@@ -3196,20 +3258,21 @@ namespace Rebellion.Tests.Simulation
         public void Bind_DuplicateAlias_ConsumesRollBeforeRejectingAlias()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("count", 42);
             QueueRNG random = new QueueRNG(0.25, 0.75);
-            GameEventBinding binding = new GameEventBinding
+            GameBinding binding = new GameBinding
             {
                 As = "count",
                 RollInteger = new RollInteger { Minimum = 0, Maximum = 3 },
             };
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.Bind(binding, game, random, context)
+                GameBindingResolver.Bind(binding, game, random, context)
             );
 
             Assert.AreEqual(0.75, random.NextDouble());
@@ -3221,20 +3284,24 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent gameEvent = new GameEvent();
-            GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
-            GameEventBinding integerBinding = new GameEventBinding
+            GameEvaluationContext context = new GameEvaluationContext(
+                gameEvent?.InstanceID,
+                sourceEventInstanceID: gameEvent?.InstanceID,
+                sourceKind: "Event"
+            );
+            GameBinding integerBinding = new GameBinding
             {
                 As = "count",
                 RollInteger = new RollInteger { Minimum = 1, Maximum = 5 },
             };
-            GameEventBinding doubleBinding = new GameEventBinding
+            GameBinding doubleBinding = new GameBinding
             {
                 As = "probability",
                 RollDouble = new RollDouble { Minimum = 0.1, Maximum = 0.9 },
             };
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5, 0.5 });
-            GameEventCommands.Bind(integerBinding, game, random, context);
-            GameEventCommands.Bind(doubleBinding, game, random, context);
+            GameBindingResolver.Bind(integerBinding, game, random, context);
+            GameBindingResolver.Bind(doubleBinding, game, random, context);
 
             Assert.AreEqual(3, context.GetBinding<int>("count"));
             Assert.AreEqual(0.5, context.GetBinding<double>("probability"), 0.0001);
@@ -3262,16 +3329,17 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, planet);
             int expectedCombatRating = officer.GetEffectiveRating(SkillRating.Combat);
             int expectedForceRank = officer.ForceRank;
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5 });
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "combat",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new SkillRatingBindingSource
                         {
@@ -3284,11 +3352,11 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "force",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new OfficerForceBindingSource { OfficerInstanceID = officer.InstanceID },
                     },
@@ -3297,11 +3365,11 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "resources",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new PlanetStatBindingSource
                         {
@@ -3314,15 +3382,15 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "officerCount",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new SelectionCountBindingSource
                         {
-                            Selectors = new List<GameEventSelector>
+                            Selectors = new List<GameSelector>
                             {
                                 new SelectOfficers { PlanetInstanceID = planet.InstanceID },
                             },
@@ -3362,16 +3430,17 @@ namespace Rebellion.Tests.Simulation
             officer.IsEnabled = false;
             int expectedCombatRating = officer.GetEffectiveRating(SkillRating.Combat);
             int expectedForceRank = officer.ForceRank;
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5 });
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "combat",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new SkillRatingBindingSource
                         {
@@ -3384,11 +3453,11 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventCommands.Bind(
-                new GameEventBinding
+            GameBindingResolver.Bind(
+                new GameBinding
                 {
                     As = "force",
-                    Sources = new List<GameEventBindingSource>
+                    Sources = new List<GameBindingSource>
                     {
                         new OfficerForceBindingSource { OfficerInstanceID = officer.InstanceID },
                     },
@@ -3411,14 +3480,15 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             planet.IsEnabled = false;
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
-            GameEventBinding binding = new GameEventBinding
+            GameBinding binding = new GameBinding
             {
                 As = "resources",
-                Sources = new List<GameEventBindingSource>
+                Sources = new List<GameBindingSource>
                 {
                     new PlanetStatBindingSource
                     {
@@ -3427,7 +3497,12 @@ namespace Rebellion.Tests.Simulation
                     },
                 },
             };
-            GameEventCommands.Bind(binding, game, new FixedRandomProvider(new[] { 0.5 }), context);
+            GameBindingResolver.Bind(
+                binding,
+                game,
+                new FixedRandomProvider(new[] { 0.5 }),
+                context
+            );
 
             Assert.AreEqual(7, context.GetBinding<int>("resources"));
         }
@@ -3441,7 +3516,7 @@ namespace Rebellion.Tests.Simulation
                 Maximum = double.MaxValue,
             };
 
-            double result = GameEventCommands.Roll(roll, new FixedRNG(0.5));
+            double result = GameBindingResolver.Roll(roll, new FixedRNG(0.5));
 
             Assert.IsFalse(double.IsNaN(result));
             Assert.IsFalse(double.IsInfinity(result));
@@ -3475,7 +3550,7 @@ namespace Rebellion.Tests.Simulation
                 "Not" => new NotConditional { Conditionals = conditions },
                 _ => throw new ArgumentOutOfRangeException(nameof(operation)),
             };
-            GameEventCommands.IsMet(conditional, game);
+            GameConditionEvaluator.IsMet(conditional, game);
 
             Assert.AreEqual(0.25, game.Random.NextDouble());
         }
@@ -3500,7 +3575,7 @@ namespace Rebellion.Tests.Simulation
                 },
             };
 
-            bool result = GameEventCommands.IsMet(conditional, game);
+            bool result = GameConditionEvaluator.IsMet(conditional, game);
 
             Assert.IsFalse(result);
             Assert.AreEqual(0.75, game.Random.NextDouble());
@@ -3519,7 +3594,7 @@ namespace Rebellion.Tests.Simulation
                 CompareToVariable = "bounty.chance",
             };
 
-            bool result = GameEventCommands.IsMet(conditional, game);
+            bool result = GameConditionEvaluator.IsMet(conditional, game);
 
             Assert.IsTrue(result);
         }
@@ -3537,7 +3612,7 @@ namespace Rebellion.Tests.Simulation
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game)
+                GameConditionEvaluator.IsMet(conditional, game)
             );
 
             StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
@@ -3554,7 +3629,7 @@ namespace Rebellion.Tests.Simulation
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game)
+                GameConditionEvaluator.IsMet(conditional, game)
             );
 
             StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
@@ -3570,14 +3645,15 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = "expected-event",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("sourceEventInstanceID", null);
 
-            bool result = GameEventCommands.IsMet(conditional, game, context);
+            bool result = GameConditionEvaluator.IsMet(conditional, game, context);
 
             Assert.IsFalse(result);
         }
@@ -3598,15 +3674,16 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = emperor.InstanceID,
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("unit", fleet);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game, context)
+                GameConditionEvaluator.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("cannot be compared", exception.Message);
@@ -3622,15 +3699,16 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = empirePlanet.InstanceID,
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("destination", rebelPlanet);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game, context)
+                GameConditionEvaluator.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("cannot be compared", exception.Message);
@@ -3646,15 +3724,16 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.GreaterThan,
                 CompareToBinding = "second",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("first", 80);
             context.Bind("second", 60);
 
-            bool result = GameEventCommands.IsMet(conditional, game, context);
+            bool result = GameConditionEvaluator.IsMet(conditional, game, context);
 
             Assert.IsTrue(result);
         }
@@ -3669,16 +3748,17 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareToBinding = "second",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("first", 80);
             context.Bind("second", "80");
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game, context)
+                GameConditionEvaluator.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("incompatible value types", exception.Message);
@@ -3694,14 +3774,15 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareTo = "GreaterThan",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("comparison", ComparisonOperator.GreaterThan);
 
-            Assert.IsTrue(GameEventCommands.IsMet(conditional, game, context));
+            Assert.IsTrue(GameConditionEvaluator.IsMet(conditional, game, context));
         }
 
         [Test]
@@ -3714,16 +3795,17 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.Equal,
                 CompareToBinding = "second",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("first", ComparisonOperator.GreaterThan);
             context.Bind("second", "GreaterThan");
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game, context)
+                GameConditionEvaluator.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("incompatible value types", exception.Message);
@@ -3739,15 +3821,16 @@ namespace Rebellion.Tests.Simulation
                 Comparison = ComparisonOperator.GreaterThan,
                 CompareTo = "Equal",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("comparison", ComparisonOperator.GreaterThan);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.IsMet(conditional, game, context)
+                GameConditionEvaluator.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
@@ -3771,14 +3854,15 @@ namespace Rebellion.Tests.Simulation
                 Comparison = comparison,
                 CompareTo = "EXPECTED_SOURCE",
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("sourceEventInstanceID", null);
 
-            Assert.AreEqual(expected, GameEventCommands.IsMet(conditional, game, context));
+            Assert.AreEqual(expected, GameConditionEvaluator.IsMet(conditional, game, context));
         }
 
         [Test]
@@ -3791,7 +3875,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "activated",
             };
 
-            Assert.IsTrue(GameEventCommands.IsMet(conditional, game));
+            Assert.IsTrue(GameConditionEvaluator.IsMet(conditional, game));
         }
 
         [Test]
@@ -3804,7 +3888,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "limited",
             };
 
-            bool isComplete = GameEventCommands.IsMet(conditional, game);
+            bool isComplete = GameConditionEvaluator.IsMet(conditional, game);
 
             Assert.IsTrue(isComplete);
         }
@@ -3820,7 +3904,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "unlimited",
             };
 
-            bool isComplete = GameEventCommands.IsMet(conditional, game);
+            bool isComplete = GameConditionEvaluator.IsMet(conditional, game);
 
             Assert.IsFalse(isComplete);
         }
@@ -3837,13 +3921,14 @@ namespace Rebellion.Tests.Simulation
                     FactionInstanceID = "faction",
                     PlanetBinding = "target",
                 };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent { InstanceID = "INFORMANTS" },
-                new GameEventState()
+            GameEvaluationContext context = new GameEvaluationContext(
+                "INFORMANTS",
+                sourceEventInstanceID: "INFORMANTS",
+                sourceKind: "Event"
             );
             context.Bind("target", planet);
 
-            bool result = GameEventCommands.IsMet(
+            bool result = GameConditionEvaluator.IsMet(
                 conditional,
                 new GameConditionContext(game, context)
             );
@@ -3868,7 +3953,7 @@ namespace Rebellion.Tests.Simulation
                 Units = References(planetOfficer, shipOfficer),
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
             Assert.AreSame(planet, fleet.GetParent());
@@ -3888,7 +3973,7 @@ namespace Rebellion.Tests.Simulation
                 Units = References(planetOfficer, shipOfficer),
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3905,7 +3990,7 @@ namespace Rebellion.Tests.Simulation
                 ParentInstanceID = planet.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3922,7 +4007,7 @@ namespace Rebellion.Tests.Simulation
                 ParentInstanceID = planet.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
         }
@@ -3936,7 +4021,7 @@ namespace Rebellion.Tests.Simulation
                 ParentInstanceID = "missing-parent",
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, _game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, _game);
 
             Assert.IsFalse(isMet);
         }
@@ -3955,7 +4040,7 @@ namespace Rebellion.Tests.Simulation
                 CaptorFactionInstanceID = "captor",
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
         }
@@ -3970,13 +4055,13 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, planet);
 
             Assert.IsTrue(
-                GameEventCommands.IsMet(
+                GameConditionEvaluator.IsMet(
                     new IsCapturedConditional { OfficerInstanceID = officer.InstanceID },
                     game
                 )
             );
             Assert.IsFalse(
-                GameEventCommands.IsMet(
+                GameConditionEvaluator.IsMet(
                     new IsCapturedConditional
                     {
                         OfficerInstanceID = officer.InstanceID,
@@ -3999,7 +4084,7 @@ namespace Rebellion.Tests.Simulation
                 OfficerInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4016,7 +4101,7 @@ namespace Rebellion.Tests.Simulation
                 NodeInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
             Assert.AreSame(
@@ -4036,7 +4121,7 @@ namespace Rebellion.Tests.Simulation
                 NodeInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4053,7 +4138,7 @@ namespace Rebellion.Tests.Simulation
                 UnitInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4078,7 +4163,7 @@ namespace Rebellion.Tests.Simulation
                 Type = BuildingType.Defense,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4103,7 +4188,7 @@ namespace Rebellion.Tests.Simulation
                 Type = BuildingType.Defense,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
         }
@@ -4122,7 +4207,7 @@ namespace Rebellion.Tests.Simulation
                 Rank = ForceRankLabel.ForceKnight,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4142,7 +4227,7 @@ namespace Rebellion.Tests.Simulation
                 Rank = ForceRankLabel.ForceKnight,
             };
 
-            bool isMet = GameEventCommands.IsMet(condition, game);
+            bool isMet = GameConditionEvaluator.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4156,7 +4241,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets(), new SpawnUnits() },
             };
 
-            ISceneNode selected = GameEventCommands
+            ISceneNode selected = GameSelectorResolver
                 .Select(selector, game, new StubRNG(), null)
                 .Single();
 
@@ -4167,7 +4252,7 @@ namespace Rebellion.Tests.Simulation
         public void Select_PlanetDestroyedBeforeEnumeration_ExcludesPlanet()
         {
             GameRoot game = BuildSelectionGame(out Planet planet);
-            IEnumerable<ISceneNode> selected = GameEventCommands.Select(
+            IEnumerable<ISceneNode> selected = GameSelectorResolver.Select(
                 new SelectPlanets(),
                 game,
                 new StubRNG(),
@@ -4191,7 +4276,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets(), new SelectPlanets() },
             };
 
-            IEnumerable<ISceneNode> selected = GameEventCommands.Select(
+            IEnumerable<ISceneNode> selected = GameSelectorResolver.Select(
                 selector,
                 game,
                 provider,
@@ -4209,7 +4294,7 @@ namespace Rebellion.Tests.Simulation
             QueueRNG provider = new QueueRNG(0.25);
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.Select(new SpawnUnits(), game, provider, null)
+                GameSelectorResolver.Select(new SpawnUnits(), game, provider, null)
             );
 
             Assert.AreEqual(0.25, provider.NextDouble());
@@ -4221,7 +4306,7 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = BuildSelectionGame(out Planet planet);
             SelectPlanets selector = new SelectPlanets { InstanceID = planet.InstanceID };
 
-            Planet selected = GameEventCommands
+            Planet selected = GameSelectorResolver
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .Single();
@@ -4236,7 +4321,7 @@ namespace Rebellion.Tests.Simulation
             planet.IsDestroyed = true;
             SelectPlanets selector = new SelectPlanets { InstanceID = planet.InstanceID };
 
-            bool any = GameEventCommands.Select(selector, game, new StubRNG(), null).Any();
+            bool any = GameSelectorResolver.Select(selector, game, new StubRNG(), null).Any();
 
             Assert.IsFalse(any);
         }
@@ -4249,7 +4334,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(secondPlanet, firstPlanet.GetParent());
             SelectPlanets selector = new SelectPlanets();
 
-            Planet[] selected = GameEventCommands
+            Planet[] selected = GameSelectorResolver
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .ToArray();
@@ -4275,7 +4360,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets { SectorType = PlanetSectorType.OuterRim } },
             };
 
-            Planet selected = GameEventCommands
+            Planet selected = GameSelectorResolver
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .Single();
@@ -4304,7 +4389,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingType = ManufacturingType.Building,
             };
 
-            IManufacturable selected = GameEventCommands
+            IManufacturable selected = GameSelectorResolver
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<IManufacturable>()
                 .Single();
@@ -4331,7 +4416,7 @@ namespace Rebellion.Tests.Simulation
                 IncludeInactive = true,
             };
 
-            ISceneNode selected = GameEventCommands
+            ISceneNode selected = GameSelectorResolver
                 .Select(selector, game, new FixedRNG(0), null)
                 .Single();
 
@@ -4354,7 +4439,7 @@ namespace Rebellion.Tests.Simulation
                 IncludeInactive = true,
             };
 
-            List<ISceneNode> selected = GameEventCommands
+            List<ISceneNode> selected = GameSelectorResolver
                 .Select(selector, game, new FixedRNG(0), null)
                 .ToList();
 
@@ -4380,7 +4465,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(otherMission, planet);
             SelectMissions selector = new SelectMissions { OwnerFactionInstanceID = "faction" };
 
-            List<ISceneNode> selected = GameEventCommands
+            List<ISceneNode> selected = GameSelectorResolver
                 .Select(selector, game, new FixedRNG(0), null)
                 .ToList();
 
@@ -4394,14 +4479,15 @@ namespace Rebellion.Tests.Simulation
             Officer canonical = EntityFactory.CreateOfficer("han", "faction");
             game.AttachNode(canonical, origin);
             Officer stale = EntityFactory.CreateOfficer(canonical.InstanceID, "faction");
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
+            GameEvaluationContext context = new GameEvaluationContext(
                 null,
-                null
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("officer", stale);
 
-            ISceneNode selected = GameEventCommands
+            ISceneNode selected = GameSelectorResolver
                 .Select(new SelectBinding { Binding = "officer" }, game, new FixedRNG(0), context)
                 .Single();
 
@@ -4415,14 +4501,15 @@ namespace Rebellion.Tests.Simulation
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, origin);
             officer.IsEnabled = false;
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
+            GameEvaluationContext context = new GameEvaluationContext(
                 null,
-                null
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("officer", officer);
 
-            ISceneNode selected = GameEventCommands
+            ISceneNode selected = GameSelectorResolver
                 .Select(new SelectBinding { Binding = "officer" }, game, new FixedRNG(0), context)
                 .Single();
 
@@ -4442,7 +4529,7 @@ namespace Rebellion.Tests.Simulation
                 UnitInstanceID = officer.InstanceID,
             };
 
-            ISceneNode selected = GameEventCommands
+            ISceneNode selected = GameSelectorResolver
                 .Select(selector, game, new FixedRNG(0), null)
                 .Single();
 
@@ -4458,17 +4545,18 @@ namespace Rebellion.Tests.Simulation
             {
                 Bindings =
                 {
-                    new GameEventBinding { Argument = "FirstOfficer", As = "officer" },
-                    new GameEventBinding { Argument = "Missing", As = "missing" },
+                    new GameBinding { Argument = "FirstOfficer", As = "officer" },
+                    new GameBinding { Argument = "Missing", As = "missing" },
                 },
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState()
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.Bind(trigger, context, result)
+                GameBindingResolver.Bind(trigger, context, result)
             );
 
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
@@ -4488,17 +4576,18 @@ namespace Rebellion.Tests.Simulation
             {
                 Bindings =
                 {
-                    new GameEventBinding { Argument = "FirstOfficer", As = "officer" },
-                    new GameEventBinding { Argument = "SecondOfficer", As = "officer" },
+                    new GameBinding { Argument = "FirstOfficer", As = "officer" },
+                    new GameBinding { Argument = "SecondOfficer", As = "officer" },
                 },
             };
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState()
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventCommands.Bind(trigger, context, result)
+                GameBindingResolver.Bind(trigger, context, result)
             );
 
             Assert.AreSame(first, context.GetBinding<Officer>("officer"));
@@ -4520,9 +4609,9 @@ namespace Rebellion.Tests.Simulation
                 Reason = PlanetOwnershipChangeReason.PopularSupport,
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.Reason = PlanetOwnershipChangeReason.None;
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4539,9 +4628,9 @@ namespace Rebellion.Tests.Simulation
                 Observations = new List<ISceneNode> { new Planet { InstanceID = "planet" } },
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.Observations.Clear();
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4556,9 +4645,9 @@ namespace Rebellion.Tests.Simulation
                 Faction = new Faction { InstanceID = "alliance" },
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.Faction.InstanceID = "empire";
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4570,9 +4659,9 @@ namespace Rebellion.Tests.Simulation
                 MissionTypeID = DiplomacyMission.MissionTypeID,
                 Participants = new MissionParticipantFilter
                 {
-                    Units = new List<EventUnitReference>
+                    Units = new List<GameUnitReference>
                     {
-                        new EventUnitReference { UnitInstanceID = officer.InstanceID },
+                        new GameUnitReference { UnitInstanceID = officer.InstanceID },
                     },
                 },
             };
@@ -4582,9 +4671,9 @@ namespace Rebellion.Tests.Simulation
                 Participants = new List<IMissionParticipant> { officer },
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.Participants.Clear();
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4601,9 +4690,9 @@ namespace Rebellion.Tests.Simulation
                 IsCaptured = true,
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.IsCaptured = false;
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4620,9 +4709,9 @@ namespace Rebellion.Tests.Simulation
                 EventType = ForceEventType.ForceUserDiscovered,
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.EventType = ForceEventType.DiscoveringForceUser;
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4639,9 +4728,9 @@ namespace Rebellion.Tests.Simulation
                 Destination = new Planet { InstanceID = "planet" },
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.Destination.InstanceID = "elsewhere";
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [TestCaseSource(nameof(UnitDestructionResults))]
@@ -4656,7 +4745,7 @@ namespace Rebellion.Tests.Simulation
                 Reason = reason,
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4675,9 +4764,9 @@ namespace Rebellion.Tests.Simulation
                 SourceEventInstanceID = "encounter",
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.SourceEventInstanceID = "other";
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         [Test]
@@ -4696,9 +4785,9 @@ namespace Rebellion.Tests.Simulation
                 PlanetDestroyed = true,
             };
 
-            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
+            Assert.IsTrue(GameTriggerMatcher.Matches(trigger, result));
             result.PlanetDestroyed = false;
-            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
+            Assert.IsFalse(GameTriggerMatcher.Matches(trigger, result));
         }
 
         /// <summary>
@@ -4786,7 +4875,7 @@ namespace Rebellion.Tests.Simulation
             IRandomNumberProvider random = null,
             UnitFactory unitFactory = null,
             GameResult triggerResult = null,
-            GameEventTrigger trigger = null
+            GameTrigger trigger = null
         )
         {
             random ??= new FixedRNG(0.99);
@@ -4799,11 +4888,15 @@ namespace Rebellion.Tests.Simulation
             GameEventCommands executor = new GameEventCommands(
                 game,
                 random,
-                unitFactory,
-                movement,
-                control,
-                new DuelCommands(game, random),
-                new MessageCommands(game, new MessageFactory(null))
+                new GameActionCommands(
+                    game,
+                    random,
+                    unitFactory,
+                    movement,
+                    control,
+                    new DuelCommands(game, random),
+                    new MessageCommands(game, new MessageFactory(null))
+                )
             );
             GameEvent gameEvent = new GameEvent
             {
@@ -4930,8 +5023,8 @@ namespace Rebellion.Tests.Simulation
         /// Executes encounter trigger.
         /// </summary>
         /// <returns>The result of encounter trigger.</returns>
-        private static List<GameEventTrigger> EncounterTrigger() =>
-            new List<GameEventTrigger>
+        private static List<GameTrigger> EncounterTrigger() =>
+            new List<GameTrigger>
             {
                 new DuelCompletedTrigger
                 {
@@ -4949,15 +5042,11 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="bindings">The bindings.</param>
         /// <returns>The result of trigger bindings.</returns>
-        private static List<GameEventBinding> TriggerBindings(
+        private static List<GameBinding> TriggerBindings(
             params (string Argument, string As)[] bindings
         ) =>
             bindings
-                .Select(binding => new GameEventBinding
-                {
-                    Argument = binding.Argument,
-                    As = binding.As,
-                })
+                .Select(binding => new GameBinding { Argument = binding.Argument, As = binding.As })
                 .ToList();
 
         /// <summary>
@@ -5078,11 +5167,11 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="nodes">The nodes.</param>
         /// <returns>The result of references.</returns>
-        private static List<EventUnitReference> References(params ISceneNode[] nodes) =>
-            new List<EventUnitReference>(
+        private static List<GameUnitReference> References(params ISceneNode[] nodes) =>
+            new List<GameUnitReference>(
                 System.Array.ConvertAll(
                     nodes,
-                    node => new EventUnitReference { UnitInstanceID = node.InstanceID }
+                    node => new GameUnitReference { UnitInstanceID = node.InstanceID }
                 )
             );
 
@@ -5142,14 +5231,14 @@ namespace Rebellion.Tests.Simulation
 
         private sealed class RecordingRandom : IRandomNumberProvider
         {
-            private readonly GameEventEvaluationContext _evaluation;
+            private readonly GameEvaluationContext _evaluation;
             public int ResultsAtRoll { get; private set; } = -1;
 
             /// <summary>
             /// Captures the evaluation whose local result visibility is observed.
             /// </summary>
             /// <param name="evaluation">The active event evaluation.</param>
-            internal RecordingRandom(GameEventEvaluationContext evaluation)
+            internal RecordingRandom(GameEvaluationContext evaluation)
             {
                 _evaluation = evaluation;
             }

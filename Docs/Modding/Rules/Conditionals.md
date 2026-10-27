@@ -445,4 +445,4 @@ Passes when the selected planet contains a completed building of the requested t
 
 ---
 
-<p align="center"><a href="Triggers.md">← Triggers</a> · <a href="Index.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>
+<p align="center"><a href="Triggers.md">← Triggers</a> · <a href="../Events/Index.md">Event guide</a> · <a href="Actions.md">Actions →</a></p>

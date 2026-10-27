@@ -4,8 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
+using Rebellion.Game.Rules;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -17,79 +16,23 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
-        private readonly UnitFactory _unitFactory;
-        private readonly MovementCommands _movementCommands;
-        private readonly PlanetaryControlCommands _planetaryControlCommands;
-        private readonly DuelCommands _duelCommands;
-        private readonly MessageCommands _messageCommands;
-        private readonly MissionResolver _missionResolver;
-        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
+        private readonly GameActionCommands _actions;
 
         /// <summary>
-        /// Creates a new GameEventCommands.
+        /// Creates event activation processing with a shared action executor.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for stochastic event actions.</param>
-        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <param name="movementCommands">The movement and placement operations.</param>
-        /// <param name="planetaryControlCommands">The ownership operations.</param>
-        /// <param name="duelCommands">The officer encounter operations.</param>
-        /// <param name="messageCommands">The authored message delivery operations.</param>
+        /// <param name="game">The active game.</param>
+        /// <param name="provider">The random provider used for event schedules and bindings.</param>
+        /// <param name="actions">The executor for authored game actions.</param>
         public GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
-            UnitFactory unitFactory = null,
-            MovementCommands movementCommands = null,
-            PlanetaryControlCommands planetaryControlCommands = null,
-            DuelCommands duelCommands = null,
-            MessageCommands messageCommands = null
-        )
-            : this(
-                game,
-                provider,
-                unitFactory,
-                movementCommands,
-                planetaryControlCommands,
-                duelCommands,
-                messageCommands,
-                missionResolver: null,
-                blockadeTransitionResolver: null
-            ) { }
-
-        /// <summary>
-        /// Creates game-event processing with registered mission lifecycle handling.
-        /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for stochastic event actions.</param>
-        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <param name="movementCommands">The movement and placement operations.</param>
-        /// <param name="planetaryControlCommands">The ownership operations.</param>
-        /// <param name="duelCommands">The officer encounter operations.</param>
-        /// <param name="messageCommands">The authored message delivery operations.</param>
-        /// <param name="missionResolver">The mission lifecycle resolver.</param>
-        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
-        internal GameEventCommands(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            UnitFactory unitFactory,
-            MovementCommands movementCommands,
-            PlanetaryControlCommands planetaryControlCommands,
-            DuelCommands duelCommands,
-            MessageCommands messageCommands,
-            MissionResolver missionResolver,
-            BlockadeTransitionResolver blockadeTransitionResolver
+            GameActionCommands actions
         )
         {
             _game = game;
             _provider = provider;
-            _unitFactory = unitFactory;
-            _movementCommands = movementCommands;
-            _planetaryControlCommands = planetaryControlCommands;
-            _duelCommands = duelCommands;
-            _messageCommands = messageCommands;
-            _missionResolver = missionResolver;
-            _blockadeTransitionResolver =
-                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
+            _actions = actions ?? throw new ArgumentNullException(nameof(actions));
         }
 
         /// <summary>
@@ -136,18 +79,18 @@ namespace Rebellion.Simulation
 
                 Dictionary<string, Type> aliases = new(StringComparer.Ordinal);
                 Dictionary<string, Type> sharedTriggerBindings = null;
-                foreach (GameEventTrigger trigger in gameEvent.Triggers)
+                foreach (GameTrigger trigger in gameEvent.Triggers)
                 {
-                    _ = GetResultType(trigger);
+                    _ = GameTriggerMatcher.GetResultType(trigger);
                     Dictionary<string, Type> triggerBindings = new(StringComparer.Ordinal);
-                    foreach (GameEventBinding binding in trigger.Bindings)
+                    foreach (GameBinding binding in trigger.Bindings)
                     {
                         if (
                             string.IsNullOrWhiteSpace(binding.Argument)
                             || string.IsNullOrWhiteSpace(binding.As)
                             || !triggerBindings.TryAdd(
                                 binding.As,
-                                GetBindingType(trigger, binding.Argument)
+                                GameTriggerMatcher.GetBindingType(trigger, binding.Argument)
                             )
                         )
                             throw new InvalidOperationException(
@@ -174,7 +117,7 @@ namespace Rebellion.Simulation
                     }
                 }
 
-                foreach (GameEventBinding binding in gameEvent.Bindings)
+                foreach (GameBinding binding in gameEvent.Bindings)
                 {
                     int bindingModeCount =
                         (binding.Selectors.Count > 0 ? 1 : 0)
@@ -194,7 +137,7 @@ namespace Rebellion.Simulation
                             $"Event '{gameEvent.InstanceID}' has a binding with a missing alias."
                         );
 
-                    Type bindingType = GetValueType(binding);
+                    Type bindingType = GameBindingResolver.GetValueType(binding);
                     if (!aliases.TryAdd(binding.As, bindingType))
                         throw new InvalidOperationException(
                             $"Event '{gameEvent.InstanceID}' has duplicate binding alias '{binding.As}'."
@@ -359,22 +302,22 @@ namespace Rebellion.Simulation
             if (results == null)
                 return eventResults;
 
-            Dictionary<Type, List<(GameEvent Event, GameEventTrigger Trigger)>> triggerIndex =
+            Dictionary<Type, List<(GameEvent Event, GameTrigger Trigger)>> triggerIndex =
                 BuildTriggerIndex();
 
             foreach (GameResult triggerResult in results)
             {
-                List<(GameEvent Event, GameEventTrigger Trigger)> candidates = triggerIndex
+                List<(GameEvent Event, GameTrigger Trigger)> candidates = triggerIndex
                     .Where(entry => entry.Key.IsInstanceOfType(triggerResult))
                     .SelectMany(entry => entry.Value)
                     .ToList();
                 HashSet<GameEvent> processedEvents = new HashSet<GameEvent>();
-                foreach ((GameEvent gameEvent, GameEventTrigger trigger) in candidates)
+                foreach ((GameEvent gameEvent, GameTrigger trigger) in candidates)
                 {
                     if (
                         processedEvents.Contains(gameEvent)
                         || !_game.GetEventPool().Contains(gameEvent)
-                        || !Matches(trigger, triggerResult)
+                        || !GameTriggerMatcher.Matches(trigger, triggerResult)
                     )
                         continue;
                     processedEvents.Add(gameEvent);
@@ -401,25 +344,22 @@ namespace Rebellion.Simulation
         /// Builds trigger index.
         /// </summary>
         /// <returns>The constructed trigger index.</returns>
-        private Dictionary<
-            Type,
-            List<(GameEvent Event, GameEventTrigger Trigger)>
-        > BuildTriggerIndex()
+        private Dictionary<Type, List<(GameEvent Event, GameTrigger Trigger)>> BuildTriggerIndex()
         {
-            Dictionary<Type, List<(GameEvent Event, GameEventTrigger Trigger)>> index = new();
+            Dictionary<Type, List<(GameEvent Event, GameTrigger Trigger)>> index = new();
             foreach (GameEvent gameEvent in _game.GetEventPool())
             {
-                foreach (GameEventTrigger trigger in gameEvent.Triggers)
+                foreach (GameTrigger trigger in gameEvent.Triggers)
                 {
                     if (
                         !index.TryGetValue(
-                            GetResultType(trigger),
-                            out List<(GameEvent, GameEventTrigger)> entries
+                            GameTriggerMatcher.GetResultType(trigger),
+                            out List<(GameEvent, GameTrigger)> entries
                         )
                     )
                     {
-                        entries = new List<(GameEvent, GameEventTrigger)>();
-                        index.Add(GetResultType(trigger), entries);
+                        entries = new List<(GameEvent, GameTrigger)>();
+                        index.Add(GameTriggerMatcher.GetResultType(trigger), entries);
                     }
                     entries.Add((gameEvent, trigger));
                 }
@@ -437,7 +377,7 @@ namespace Rebellion.Simulation
         /// <returns>True when the event activated; otherwise false.</returns>
         private bool TryActivateEvent(
             GameEvent gameEvent,
-            GameEventTrigger trigger,
+            GameTrigger trigger,
             GameResult triggerResult,
             out List<GameResult> results
         )
@@ -455,14 +395,15 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                gameEvent,
-                state,
-                triggerResult,
-                trigger
+            GameEvaluationContext context = new GameEvaluationContext(
+                gameEvent?.InstanceID,
+                triggerResult: triggerResult,
+                trigger: trigger,
+                sourceEventInstanceID: gameEvent?.InstanceID,
+                sourceKind: "Event"
             );
-            foreach (GameEventBinding binding in gameEvent.Bindings)
-                Bind(binding, _game, _provider, context);
+            foreach (GameBinding binding in gameEvent.Bindings)
+                GameBindingResolver.Bind(binding, _game, _provider, context);
             if (ShouldCompleteSchedule(gameEvent, state, context))
             {
                 results = new List<GameResult>();
@@ -480,29 +421,7 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            GameActionContext actionContext = ExecuteActions(
-                gameEvent,
-                _game,
-                _provider,
-                context,
-                _unitFactory,
-                _missionResolver,
-                _blockadeTransitionResolver
-            );
-            results = new List<GameResult>(actionContext.Results);
-            if (actionContext.DeferredOperations.Count > 0)
-            {
-                if (
-                    _movementCommands == null
-                    && _planetaryControlCommands == null
-                    && _duelCommands == null
-                    && _messageCommands == null
-                )
-                    throw new InvalidOperationException(
-                        $"Event '{gameEvent.InstanceID}' produced deferred work without configured commands."
-                    );
-                results.AddRange(ExecuteDeferred(actionContext));
-            }
+            results = _actions.Execute(gameEvent.Actions, context);
 
             state.ActivationCount++;
             state.LastActivationTick = _game.CurrentTick;
@@ -521,43 +440,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Executes resolved command calls in authored order, retaining per-operation failure containment.
-        /// </summary>
-        /// <param name="context">The activation containing the queued calls.</param>
-        /// <returns>The completed operations' facts, without adding them to action-local evaluation.</returns>
-        private List<GameResult> ExecuteDeferred(GameActionContext context)
-        {
-            List<GameResult> results = new List<GameResult>();
-            foreach (var operation in context.DeferredOperations)
-            {
-                try
-                {
-                    List<GameResult> produced = operation.Execute(
-                        this,
-                        operation.SourceEventInstanceID
-                    );
-                    if (produced == null)
-                        continue;
-                    foreach (GameResult result in produced.Where(result => result != null))
-                    {
-                        if (string.IsNullOrWhiteSpace(result.SourceEventInstanceID))
-                            result.SourceEventInstanceID = operation.SourceEventInstanceID;
-                        results.Add(result);
-                    }
-                }
-                catch (Exception exception)
-                {
-                    string eventInstanceID = operation.SourceEventInstanceID ?? "unknown";
-                    GameLogger.Log(
-                        $"Event '{eventInstanceID}' deferred action '{operation.Name}' failed: {exception}",
-                        GameLogger.LogLevel.Error
-                    );
-                }
-            }
-            return results;
-        }
-
-        /// <summary>
         /// Permanently completes a recurring schedule when all of its terminal conditions are met.
         /// </summary>
         /// <param name="gameEvent">The game event.</param>
@@ -567,7 +449,7 @@ namespace Rebellion.Simulation
         private bool ShouldCompleteSchedule(
             GameEvent gameEvent,
             GameEventState state,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             if (state.IsComplete)
@@ -577,7 +459,10 @@ namespace Rebellion.Simulation
             state.IsComplete =
                 until?.Count > 0
                 && until.All(condition =>
-                    GameEventCommands.IsMet(condition, new GameConditionContext(_game, context))
+                    GameConditionEvaluator.IsMet(
+                        condition,
+                        new GameConditionContext(_game, context)
+                    )
                 );
             return state.IsComplete;
         }
@@ -726,48 +611,15 @@ namespace Rebellion.Simulation
         private static bool AreConditionsMet(
             GameEvent gameEvent,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             foreach (GameConditional conditional in gameEvent.Conditionals)
             {
-                if (!GameEventCommands.IsMet(conditional, game, context))
+                if (!GameConditionEvaluator.IsMet(conditional, game, context))
                     return false;
             }
             return true;
-        }
-
-        /// <summary>
-        /// Executes the event's actions and returns their shared context.
-        /// </summary>
-        /// <param name="gameEvent">The event whose actions are executed.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">Random number provider for stochastic actions.</param>
-        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
-        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <param name="missionResolver">The mission lifecycle resolver.</param>
-        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
-        /// <returns>The context containing requests and results produced by the actions.</returns>
-        private static GameActionContext ExecuteActions(
-            GameEvent gameEvent,
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context,
-            UnitFactory unitFactory = null,
-            MissionResolver missionResolver = null,
-            BlockadeTransitionResolver blockadeTransitionResolver = null
-        )
-        {
-            GameActionContext actionContext = new GameActionContext(
-                game,
-                provider,
-                context,
-                unitFactory,
-                missionResolver,
-                blockadeTransitionResolver
-            );
-            ExecuteActions(gameEvent.Actions, actionContext);
-            return actionContext;
         }
 
         /// <summary>

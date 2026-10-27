@@ -761,4 +761,4 @@ Removes the supplemental status text shown for one or more scene nodes.
 
 ---
 
-<p align="center"><a href="Conditionals.md">← Conditionals</a> · <a href="Index.md">Event guide</a> · <a href="Examples.md">Examples →</a></p>
+<p align="center"><a href="Conditionals.md">← Conditionals</a> · <a href="../Events/Index.md">Event guide</a> · <a href="../Events/Examples.md">Examples →</a></p>

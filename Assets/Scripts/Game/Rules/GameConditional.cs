@@ -1,10 +1,10 @@
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     /// <summary>
-    /// Represents an authored condition evaluated within one game-event activation.
+    /// Represents an authored condition evaluated against game state and bindings.
     /// </summary>
     [PersistableObject]
     public abstract class GameConditional : BaseGameEntity { }

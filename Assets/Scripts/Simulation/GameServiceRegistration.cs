@@ -137,7 +137,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
                 services.AddSingleton(observerType);
-            services.AddSingleton<GameEventCommands>(locator => new GameEventCommands(
+            services.AddSingleton<GameActionCommands>(locator => new GameActionCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<IRandomNumberProvider>(),
                 locator.GetService<UnitFactory>(),
@@ -148,6 +148,8 @@ namespace Rebellion.Simulation
                 locator.GetService<MissionResolver>(),
                 locator.GetService<BlockadeTransitionResolver>()
             ));
+
+            services.AddSingleton<GameEventCommands>();
 
             return services.BuildServiceLocator();
         }

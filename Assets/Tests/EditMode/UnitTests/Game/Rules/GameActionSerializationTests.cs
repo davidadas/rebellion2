@@ -3,8 +3,9 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Rules;
 
-namespace Rebellion.Tests.Game.Events
+namespace Rebellion.Tests.Game.Rules
 {
     [TestFixture]
     public sealed class GameActionSerializationTests

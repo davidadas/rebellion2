@@ -387,4 +387,4 @@ The dependent event restores him at that same location.
 
 ---
 
-<p align="center"><a href="Actions.md">← Actions</a> · <a href="Index.md">Event guide</a> · <a href="Testing.md">Testing →</a></p>
+<p align="center"><a href="../Rules/Actions.md">← Actions</a> · <a href="Index.md">Event guide</a> · <a href="Testing.md">Testing →</a></p>

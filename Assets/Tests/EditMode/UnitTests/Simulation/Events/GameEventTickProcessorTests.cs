@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Rules;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -20,7 +21,10 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NullGame_ThrowsArgumentNullException()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            GameEventTickProcessor processor = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventTickProcessor processor = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
 
             Assert.Throws<ArgumentNullException>(() => processor.ProcessTick(null));
         }
@@ -40,7 +44,10 @@ namespace Rebellion.Tests.Simulation
             };
             game.GetEventPool().Add(gameEvent);
             game.CurrentTick = 1;
-            GameEventTickProcessor processor = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventTickProcessor processor = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
 
             processor.ProcessTick(game);
 

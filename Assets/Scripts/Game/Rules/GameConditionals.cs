@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     #region CompositeConditions
     /// <summary>
@@ -292,7 +292,7 @@ namespace Rebellion.Game.Events
     }
 
     [PersistableObject(Name = "Unit")]
-    public sealed class EventUnitReference
+    public sealed class GameUnitReference
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -311,7 +311,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ShareParent")]
     public sealed class ShareParentConditional : GameConditional
     {
-        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
+        public List<GameUnitReference> Units { get; set; } = new List<GameUnitReference>();
     }
 
     [PersistableObject(Name = "ShareAncestor")]
@@ -320,7 +320,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
-        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
+        public List<GameUnitReference> Units { get; set; } = new List<GameUnitReference>();
     }
 
     /// <summary>

@@ -2,16 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventCommands
+    /// <summary>
+    /// Resolves authored selectors against registered game objects.
+    /// </summary>
+    public static class GameSelectorResolver
     {
         /// <summary>
         /// Resolves an authored selector without changing its evaluation timing.
@@ -22,10 +25,10 @@ namespace Rebellion.Simulation
         /// <param name="context">The activation bindings available to the selector.</param>
         /// <returns>The selected scene-node sequence.</returns>
         internal static IEnumerable<ISceneNode> Select(
-            GameEventSelector definition,
+            GameSelector definition,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) =>
             definition switch
             {
@@ -108,7 +111,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<T> SelectLocated<T>(
             LocatedSceneNodeSelector<T> definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
             where T : class, ISceneNode =>
             SelectOwned(definition, game)
@@ -132,7 +135,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<T> SelectManufacturable<T>(
             ManufacturableSelector<T> definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
             where T : class, ISceneNode, IManufacturable =>
             SelectLocated(definition, game, context)
@@ -194,7 +197,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectOfficers definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             return SelectOwned(definition, game)
@@ -222,7 +225,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectSpecialForces definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectLocated(definition, game, context);
 
         /// <summary>
@@ -235,7 +238,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectFleets definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectLocated(definition, game, context);
 
         /// <summary>
@@ -248,7 +251,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectMissions definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectLocated(definition, game, context);
 
         /// <summary>
@@ -261,7 +264,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectCapitalShips definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectManufacturable(definition, game, context);
 
         /// <summary>
@@ -274,7 +277,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectStarfighters definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectManufacturable(definition, game, context);
 
         /// <summary>
@@ -287,7 +290,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectRegiments definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectManufacturable(definition, game, context);
 
         /// <summary>
@@ -300,7 +303,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectBuildings definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) =>
             SelectManufacturable(definition, game, context)
                 .Where(building => MatchesCategory(definition, building));
@@ -335,7 +338,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectManufacturingOrders definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             Planet boundPlanet = !string.IsNullOrWhiteSpace(definition.PlanetBinding)
@@ -377,7 +380,7 @@ namespace Rebellion.Simulation
             SelectRandom definition,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             if (definition.ChancePercent < 0 || definition.ChancePercent > 100)
@@ -443,7 +446,7 @@ namespace Rebellion.Simulation
             SelectFirst definition,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) => SelectCandidates(definition, game, provider, context).Take(1);
 
         /// <summary>
@@ -458,7 +461,7 @@ namespace Rebellion.Simulation
             SelectFirst definition,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) =>
             definition
                 .Selectors.SelectMany(selector => Select(selector, game, provider, context))
@@ -474,7 +477,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectBinding definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             if (context?.TryGetBindingReference(definition.Binding, out object value) != true)
@@ -522,7 +525,7 @@ namespace Rebellion.Simulation
             SelectNearestParent definition,
             GameRoot game,
             IRandomNumberProvider provider,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         ) =>
             definition
                 .Selectors.SelectMany(selector => Select(selector, game, provider, context))
@@ -540,7 +543,7 @@ namespace Rebellion.Simulation
         private static IEnumerable<ISceneNode> Select(
             SelectPreviousLocation definition,
             GameRoot game,
-            GameEventEvaluationContext context
+            GameEvaluationContext context
         )
         {
             bool hasInstanceID = !string.IsNullOrWhiteSpace(definition.UnitInstanceID);
@@ -586,7 +589,7 @@ namespace Rebellion.Simulation
         /// <returns>True when the value matches location; otherwise false.</returns>
         private static bool MatchesLocation(
             ISceneNode node,
-            GameEventEvaluationContext context,
+            GameEvaluationContext context,
             string planetInstanceID,
             string planetBinding
         )

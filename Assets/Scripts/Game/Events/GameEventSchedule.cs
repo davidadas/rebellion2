@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Rules;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events

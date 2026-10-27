@@ -5,14 +5,14 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     #region Base selectors
 
     /// <summary>
     /// Filters scene nodes by stable instance identity and faction ownership.
     /// </summary>
-    public abstract class OwnedSceneNodeSelector<T> : GameEventSelector
+    public abstract class OwnedSceneNodeSelector<T> : GameSelector
         where T : class, ISceneNode
     {
         [PersistableAttribute]
@@ -69,7 +69,7 @@ namespace Rebellion.Game.Events
     /// Selects active planet sectors.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectPlanetSectors : GameEventSelector
+    public sealed class SelectPlanetSectors : GameSelector
     {
         [PersistableAttribute]
         public bool IncludeInactive { get; set; }
@@ -155,7 +155,7 @@ namespace Rebellion.Game.Events
     /// Selects manufacturing orders queued at matching planets.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectManufacturingOrders : GameEventSelector
+    public sealed class SelectManufacturingOrders : GameSelector
     {
         [PersistableAttribute]
         public bool IncludeInactive { get; set; }
@@ -181,7 +181,7 @@ namespace Rebellion.Game.Events
     /// Randomly samples the union of its candidate selectors.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectRandom : GameEventSelector
+    public sealed class SelectRandom : GameSelector
     {
         [PersistableAttribute]
         public int ChancePercent { get; set; } = 100;
@@ -196,24 +196,24 @@ namespace Rebellion.Game.Events
         public int? MaximumCount { get; set; }
 
         [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
     /// Selects the first node from an ordered candidate union.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectFirst : GameEventSelector
+    public sealed class SelectFirst : GameSelector
     {
         [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
     /// Selects canonical scene nodes held in an event binding.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectBinding : GameEventSelector
+    public sealed class SelectBinding : GameSelector
     {
         [PersistableAttribute]
         public string Binding { get; set; }
@@ -223,20 +223,20 @@ namespace Rebellion.Game.Events
     /// Selects the nearest parent of a requested type for each candidate node.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectNearestParent : GameEventSelector
+    public sealed class SelectNearestParent : GameSelector
     {
         [PersistableAttribute]
         public SceneAncestorType Type { get; set; }
 
         [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
     /// Selects the remembered previous parent of one unit.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectPreviousLocation : GameEventSelector
+    public sealed class SelectPreviousLocation : GameSelector
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }

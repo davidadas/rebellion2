@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
@@ -19,7 +19,7 @@ namespace Rebellion.Tests
         internal static List<GameResult> Execute(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
-            GameEventCommands.ExecuteAction(action, context);
+            GameActionCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -37,7 +37,7 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, random);
-            GameEventCommands.ExecuteAction(action, context);
+            GameActionCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -53,11 +53,11 @@ namespace Rebellion.Tests
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventEvaluationContext evaluation
+            GameEvaluationContext evaluation
         )
         {
             GameActionContext context = new GameActionContext(game, random, evaluation);
-            GameEventCommands.ExecuteAction(action, context);
+            GameActionCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -75,7 +75,7 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
-            GameEventCommands.ExecuteAction(action, context);
+            GameActionCommands.ExecuteAction(action, context);
             return context.Results;
         }
     }

@@ -53,3 +53,20 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
+
+## Game rules
+
+Authored rule definitions live in `Rebellion.Game.Rules`. Events combine these shared definitions with event-specific schedules and activation history.
+
+| Runtime service | Responsibility |
+| --- | --- |
+| `GameConditionEvaluator` | Evaluating conditions against the game and current bindings. |
+| `GameSelectorResolver` | Resolving registered game objects from selectors. |
+| `GameBindingResolver` | Binding selected objects, scalar values, and trigger arguments. |
+| `GameTriggerMatcher` | Matching simulation results against trigger definitions. |
+| `GameActionCommands` | Interpreting an action batch and then running its deferred command requests. |
+| `GameEventCommands` | Validating events, scheduling activations, and updating event history. |
+
+`GameEvaluationContext` carries the execution's source ID, bindings, triggering result, and directly produced results. Event activations also supply their event ID for result attribution. It contains no event definition or activation history.
+
+The shared services use the existing simulation commands and result bus. This separation adds no tick loop, result observer, saved state, or new content behavior. See the [game-rule reference](Modding/Rules/Index.md) for authored XML.

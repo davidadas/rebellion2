@@ -176,4 +176,4 @@ cannot use the same name.
 
 ---
 
-<p align="center"><a href="Selectors.md">← Selectors</a> · <a href="Index.md">Event guide</a> · <a href="Schedules.md">Schedules →</a></p>
+<p align="center"><a href="Selectors.md">← Selectors</a> · <a href="../Events/Index.md">Event guide</a> · <a href="../Events/Schedules.md">Schedules →</a></p>

@@ -3,19 +3,19 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     /// <summary>
-    /// Defines a typed scalar source for an event-local binding.
+    /// Defines a typed scalar source for an execution-local binding.
     /// </summary>
     [PersistableObject]
-    public abstract class GameEventBindingSource { }
+    public abstract class GameBindingSource { }
 
     /// <summary>
     /// Resolves one officer's effective authored rating.
     /// </summary>
     [PersistableObject(Name = "SkillRating")]
-    public sealed class SkillRatingBindingSource : GameEventBindingSource
+    public sealed class SkillRatingBindingSource : GameBindingSource
     {
         // Officer.
         [PersistableAttribute]
@@ -33,7 +33,7 @@ namespace Rebellion.Game.Events
     /// Resolves one officer's current effective Force value.
     /// </summary>
     [PersistableObject(Name = "OfficerForce")]
-    public sealed class OfficerForceBindingSource : GameEventBindingSource
+    public sealed class OfficerForceBindingSource : GameBindingSource
     {
         // Officer.
         [PersistableAttribute]
@@ -47,7 +47,7 @@ namespace Rebellion.Game.Events
     /// Resolves one authored statistic from a planet.
     /// </summary>
     [PersistableObject(Name = "PlanetStat")]
-    public sealed class PlanetStatBindingSource : GameEventBindingSource
+    public sealed class PlanetStatBindingSource : GameBindingSource
     {
         // Planet.
         [PersistableAttribute]
@@ -65,17 +65,17 @@ namespace Rebellion.Game.Events
     /// Resolves the number of distinct scene nodes returned by authored selectors.
     /// </summary>
     [PersistableObject(Name = "SelectionCount")]
-    public sealed class SelectionCountBindingSource : GameEventBindingSource
+    public sealed class SelectionCountBindingSource : GameBindingSource
     {
         [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
-    /// Assigns an explicitly selected value to an event-local binding name.
+    /// Assigns an explicitly selected value to an execution-local binding name.
     /// </summary>
     [PersistableObject(Name = "Bind")]
-    public sealed class GameEventBinding
+    public sealed class GameBinding
     {
         // Binding Configuration.
         [PersistableAttribute]
@@ -85,12 +85,11 @@ namespace Rebellion.Game.Events
         public string As { get; set; }
 
         [PersistableMember(Name = "From")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
         public RollInteger RollInteger { get; set; }
         public RollDouble RollDouble { get; set; }
 
         [PersistableInlineCollection]
-        public List<GameEventBindingSource> Sources { get; set; } =
-            new List<GameEventBindingSource>();
+        public List<GameBindingSource> Sources { get; set; } = new List<GameBindingSource>();
     }
 }

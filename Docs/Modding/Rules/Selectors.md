@@ -343,4 +343,4 @@ resulting units to their destination.
 
 ---
 
-<p align="center"><a href="Index.md">← Event guide</a> · <a href="Bindings.md">Bindings →</a></p>
+<p align="center"><a href="../Events/Index.md">← Event guide</a> · <a href="Bindings.md">Bindings →</a></p>

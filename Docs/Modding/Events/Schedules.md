@@ -158,4 +158,4 @@ also applies to trigger-driven events.
 
 ---
 
-<p align="center"><a href="Bindings.md">← Bindings</a> · <a href="Index.md">Event guide</a> · <a href="Triggers.md">Triggers →</a></p>
+<p align="center"><a href="../Rules/Bindings.md">← Bindings</a> · <a href="Index.md">Event guide</a> · <a href="../Rules/Triggers.md">Triggers →</a></p>

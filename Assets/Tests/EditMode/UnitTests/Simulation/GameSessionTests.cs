@@ -14,6 +14,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
@@ -522,7 +523,7 @@ namespace Rebellion.Tests.Simulation
             DestroyUnitsAction action = new DestroyUnitsAction
             {
                 PlanetInstanceID = _planet.InstanceID,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectCapitalShips { InstanceID = carrier.InstanceID },
                 },
@@ -580,7 +581,7 @@ namespace Rebellion.Tests.Simulation
             DestroyUnitsAction action = new DestroyUnitsAction
             {
                 PlanetInstanceID = _planet.InstanceID,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectCapitalShips { InstanceID = carrier.InstanceID },
                 },
@@ -618,7 +619,7 @@ namespace Rebellion.Tests.Simulation
             DestroyUnitsAction action = new DestroyUnitsAction
             {
                 PlanetInstanceID = _planet.InstanceID,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectCapitalShips { InstanceID = carrier.InstanceID },
                     new SelectOfficers { InstanceID = officer.InstanceID },
@@ -2201,7 +2202,7 @@ namespace Rebellion.Tests.Simulation
                     new GameEvent
                     {
                         InstanceID = "UNRELATED_SOURCE_FILTERED_ARRIVAL",
-                        Triggers = new List<GameEventTrigger>
+                        Triggers = new List<GameTrigger>
                         {
                             new UnitArrivedTrigger { SourceEventInstanceID = "SOME_OTHER_EVENT" },
                         },

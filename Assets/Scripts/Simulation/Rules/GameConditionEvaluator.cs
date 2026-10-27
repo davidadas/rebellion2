@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventCommands
+    /// <summary>
+    /// Evaluates authored conditions against game state and execution bindings.
+    /// </summary>
+    public static class GameConditionEvaluator
     {
         /// <summary>
         /// Evaluates an authored condition against its activation context.
@@ -86,7 +89,7 @@ namespace Rebellion.Simulation
         internal static bool IsMet(
             GameConditional definition,
             GameRoot game,
-            GameEventEvaluationContext evaluation
+            GameEvaluationContext evaluation
         ) => IsMet(definition, new GameConditionContext(game, evaluation));
 
         /// <summary>
@@ -750,7 +753,7 @@ namespace Rebellion.Simulation
         /// <returns>The resolved distinct.</returns>
         public static List<ISceneNode> ResolveDistinct(
             GameRoot game,
-            IReadOnlyCollection<EventUnitReference> references
+            IReadOnlyCollection<GameUnitReference> references
         )
         {
             if (references == null || references.Count < 2)

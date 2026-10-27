@@ -1,45 +1,48 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.Events;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Holds the trigger result, state, and bindings available during one event evaluation.
-    /// Scoped events receive the entity whose independent schedule activated them.
+    /// Holds source attribution, a triggering result, and bindings for one game-rule execution.
     /// </summary>
-    public sealed class GameEventEvaluationContext
+    public sealed class GameEvaluationContext
     {
         private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
             StringComparer.Ordinal
         );
         private readonly List<GameResult> _results = new List<GameResult>();
 
-        public GameEvent Event { get; }
-        public GameEventState State { get; }
+        public string SourceID { get; }
+        public string SourceEventInstanceID { get; }
+        public string SourceKind { get; }
         public GameResult TriggerResult { get; }
         public IReadOnlyList<GameResult> Results => _results;
 
         /// <summary>
-        /// Creates the runtime context for one event evaluation.
+        /// Creates an execution scope independently of event scheduling and activation history.
         /// </summary>
-        /// <param name="gameEvent">The event definition being activated.</param>
-        /// <param name="state">Persistent scheduling state for this event.</param>
-        /// <param name="triggerResult">The result that activated this event, if any.</param>
-        /// <param name="trigger">The trigger definition that matched the result, if any.</param>
-        public GameEventEvaluationContext(
-            GameEvent gameEvent,
-            GameEventState state,
+        /// <param name="sourceID">The stable identifier owning this execution and its grants.</param>
+        /// <param name="triggerResult">The triggering result, when execution reacts to a result.</param>
+        /// <param name="trigger">The trigger whose authored arguments should be bound.</param>
+        /// <param name="sourceEventInstanceID">Optional event attribution for produced results.</param>
+        /// <param name="sourceKind">The source label used in action diagnostics.</param>
+        public GameEvaluationContext(
+            string sourceID,
             GameResult triggerResult = null,
-            GameEventTrigger trigger = null
+            GameTrigger trigger = null,
+            string sourceEventInstanceID = null,
+            string sourceKind = "Rule"
         )
         {
-            Event = gameEvent;
-            State = state;
+            SourceID = sourceID;
+            SourceEventInstanceID = sourceEventInstanceID;
+            SourceKind = sourceKind;
             TriggerResult = triggerResult;
             if (trigger != null)
-                GameEventCommands.Bind(trigger, this, triggerResult);
+                GameBindingResolver.Bind(trigger, this, triggerResult);
         }
 
         /// <summary>

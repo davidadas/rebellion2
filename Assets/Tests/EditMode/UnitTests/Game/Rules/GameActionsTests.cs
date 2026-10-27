@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Rules;
 
-namespace Rebellion.Tests.Game.Events
+namespace Rebellion.Tests.Game.Rules
 {
     [TestFixture]
     public class GameActionsTests
@@ -19,7 +20,7 @@ namespace Rebellion.Tests.Game.Events
                     new PlaceUnitsAction
                     {
                         DestinationInstanceID = "NABOO",
-                        Units = new List<GameEventSelector>
+                        Units = new List<GameSelector>
                         {
                             new SpawnUnits
                             {
@@ -121,15 +122,12 @@ namespace Rebellion.Tests.Game.Events
         {
             PlaceUnitsAction action = new PlaceUnitsAction
             {
-                Units = new List<GameEventSelector>
-                {
-                    new SelectBinding { Binding = "participants" },
-                },
-                Destination = new List<GameEventSelector>
+                Units = new List<GameSelector> { new SelectBinding { Binding = "participants" } },
+                Destination = new List<GameSelector>
                 {
                     new SelectFirst
                     {
-                        Selectors = new List<GameEventSelector>
+                        Selectors = new List<GameSelector>
                         {
                             new SelectPreviousLocation { UnitInstanceID = "LUKE_SKYWALKER" },
                             new SelectPlanets { InstanceID = "YAVIN" },
@@ -163,10 +161,7 @@ namespace Rebellion.Tests.Game.Events
             ChangeOwnerAction action = new ChangeOwnerAction
             {
                 FactionInstanceID = "FNALL1",
-                Planets = new List<GameEventSelector>
-                {
-                    new SelectPlanets { InstanceID = "NABOO" },
-                },
+                Planets = new List<GameSelector> { new SelectPlanets { InstanceID = "NABOO" } },
             };
 
             string xml = SerializationHelper.Serialize<GameAction>(action);
@@ -196,7 +191,7 @@ namespace Rebellion.Tests.Game.Events
             SetNodeStateAction action = new SetNodeStateAction
             {
                 State = SceneNodeState.Active,
-                Selectors = new List<GameEventSelector>
+                Selectors = new List<GameSelector>
                 {
                     new SelectOfficers
                     {

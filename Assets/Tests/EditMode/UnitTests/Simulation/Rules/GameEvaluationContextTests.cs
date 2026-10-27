@@ -1,23 +1,24 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game.Events;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class GameEventEvaluationContextTests
+    public class GameEvaluationContextTests
     {
         [Test]
         public void Bind_BlankName_ThrowsArgumentException()
         {
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
 
             TestDelegate bind = () => context.Bind(" ", new object());
@@ -28,10 +29,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_DuplicateName_ThrowsInvalidOperationException()
         {
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("binding", 1);
 
@@ -43,10 +45,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetBindingReference_ExactOpaqueName_ReturnsValue()
         {
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
             context.Bind("#@$#@binding", 42);
 
@@ -58,10 +61,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void AddResult_NullResult_DoesNotRecordResult()
         {
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                null
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: null,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
 
             context.AddResult(null);
@@ -76,17 +80,18 @@ namespace Rebellion.Tests.Simulation
             DuelResult result = new DuelResult { EncounteredOfficer = officer };
             DuelCompletedTrigger trigger = new DuelCompletedTrigger
             {
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding { Argument = "FirstOfficer", As = "officer" },
+                    new GameBinding { Argument = "FirstOfficer", As = "officer" },
                 },
             };
 
-            GameEventEvaluationContext context = new GameEventEvaluationContext(
-                new GameEvent(),
-                new GameEventState(),
-                result,
-                trigger
+            GameEvaluationContext context = new GameEvaluationContext(
+                null,
+                triggerResult: result,
+                trigger: trigger,
+                sourceEventInstanceID: null,
+                sourceKind: "Event"
             );
 
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));

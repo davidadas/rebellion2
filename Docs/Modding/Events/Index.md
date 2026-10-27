@@ -4,6 +4,8 @@
 
 Game events let content authors react to campaign time and simulation results without adding new C# code. An event can select game objects, test current game state, perform ordered actions, and persist its activation history across saves.
 
+Events use shared [game rules](../Rules/Index.md) for bindings, selectors, conditionals, triggers, and actions. Schedules and activation history belong to events.
+
 This guide explains the event lifecycle, where events are authored, and how each top-level part of a `GameEvent` works.
 
 ## How events work
@@ -108,7 +110,7 @@ Optionally assign names to selected scene nodes or matched trigger results and e
 the current event evaluation. Scheduled events declare selection bindings before `Schedule`,
 allowing recurring `Until` conditionals to consume them. Triggered events bind their matched result
 before resolving optional selection bindings. Top-level selectors, conditionals, and actions may
-consume either kind. See [Bindings](Bindings.md) and [Selectors](Selectors.md).
+consume either kind. See [Bindings](../Rules/Bindings.md) and [Selectors](../Rules/Selectors.md).
 
 ### Schedule
 
@@ -118,19 +120,19 @@ Optionally activates the event according to campaign time or another event. See
 ### Triggers
 
 Optionally activates the event in response to gameplay results and exposes result data. See
-[Triggers and bindings](Triggers.md). An event cannot combine `Triggers` with `Schedule`.
+[Triggers and bindings](../Rules/Triggers.md). An event cannot combine `Triggers` with `Schedule`.
 
 ### Conditionals
 
 Optional XML collection containing the conditionals that gate an activation against current game
 state and bindings. The collection is named `Conditionals`; the individual elements are called
-conditionals. See [Conditionals](Conditionals.md).
+conditionals. See [Conditionals](../Rules/Conditionals.md).
 
 ### Actions
 
 Optional collection of game changes performed in authored order. An event without actions can still
-serve as a persistent timing or completion marker. See [Actions](Actions.md).
+serve as a persistent timing or completion marker. See [Actions](../Rules/Actions.md).
 
 ---
 
-<p align="center"><a href="Selectors.md">Selectors →</a></p>
+<p align="center"><a href="../Rules/Selectors.md">Selectors →</a></p>

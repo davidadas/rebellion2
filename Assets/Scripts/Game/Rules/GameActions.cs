@@ -3,7 +3,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     #region RandomActions
     /// <summary>
@@ -120,7 +120,7 @@ namespace Rebellion.Game.Events
         public string FactionInstanceID { get; set; }
 
         [PersistableMember(Name = "Targets")]
-        public List<GameEventSelector> Targets { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Targets { get; set; } = new List<GameSelector>();
     }
     #endregion
 
@@ -185,7 +185,7 @@ namespace Rebellion.Game.Events
         public bool CanEscape { get; set; } = true;
 
         [PersistableMember(Name = "Officers")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -218,7 +218,7 @@ namespace Rebellion.Game.Events
 
         // Additional Officer Targets.
         [PersistableMember(Name = "Officers")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -234,7 +234,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableMember(Name = "Officers")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -250,7 +250,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableMember(Name = "Officers")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -279,7 +279,7 @@ namespace Rebellion.Game.Events
 
         // Additional Officer Targets.
         [PersistableMember(Name = "Officers")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -428,7 +428,7 @@ namespace Rebellion.Game.Events
         public string Name { get; set; }
 
         [PersistableMember(Name = "Targets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -444,7 +444,7 @@ namespace Rebellion.Game.Events
         public string Status { get; set; }
 
         [PersistableMember(Name = "Targets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ namespace Rebellion.Game.Events
         public string TargetInstanceID { get; set; }
 
         [PersistableMember(Name = "Targets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
     #endregion
 
@@ -482,7 +482,7 @@ namespace Rebellion.Game.Events
 
         // Additional Planet Targets.
         [PersistableMember(Name = "Planets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -522,7 +522,7 @@ namespace Rebellion.Game.Events
 
         // Additional Planet Targets.
         [PersistableMember(Name = "Planets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -549,7 +549,7 @@ namespace Rebellion.Game.Events
 
         // Additional Planet Targets.
         [PersistableMember(Name = "Planets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -591,7 +591,7 @@ namespace Rebellion.Game.Events
         public string PlanetBinding { get; set; }
 
         [PersistableMember(Name = "Units")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -603,9 +603,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
-        public List<GameEventSelector> Planets { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Planets { get; set; } = new List<GameSelector>();
 
-        public List<GameEventSelector> Units { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Units { get; set; } = new List<GameSelector>();
     }
 
     public abstract class UnitTransferAction : GameAction
@@ -616,9 +616,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string DestinationInstanceID { get; set; }
 
-        public List<GameEventSelector> Units { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Units { get; set; } = new List<GameSelector>();
 
-        public List<GameEventSelector> Destination { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Destination { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -631,7 +631,7 @@ namespace Rebellion.Game.Events
     /// Supplies newly instantiated units from one registered content definition.
     /// </summary>
     [PersistableObject]
-    public sealed class SpawnUnits : GameEventSelector
+    public sealed class SpawnUnits : GameSelector
     {
         [PersistableAttribute]
         public string TypeID { get; set; }
@@ -672,7 +672,7 @@ namespace Rebellion.Game.Events
         public SceneNodeState State { get; set; }
 
         [PersistableMember(Name = "Targets")]
-        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
     #endregion
 }

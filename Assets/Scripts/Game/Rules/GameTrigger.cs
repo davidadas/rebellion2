@@ -4,16 +4,16 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.Events
+namespace Rebellion.Game.Rules
 {
     /// <summary>
     /// Defines a typed predicate over one concrete kind of simulation result.
     /// </summary>
     [PersistableObject]
-    public abstract class GameEventTrigger
+    public abstract class GameTrigger
     {
         // Trigger Bindings.
-        public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
+        public List<GameBinding> Bindings { get; set; } = new List<GameBinding>();
     }
 
     #region Planet
@@ -22,7 +22,7 @@ namespace Rebellion.Game.Events
     /// Activates when ownership of a planet changes.
     /// </summary>
     [PersistableObject(Name = "PlanetOwnershipChanged")]
-    public sealed class PlanetOwnershipChangedTrigger : GameEventTrigger
+    public sealed class PlanetOwnershipChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -44,7 +44,7 @@ namespace Rebellion.Game.Events
     /// Activates when a recorded planet statistic changes.
     /// </summary>
     [PersistableObject(Name = "PlanetStatChanged")]
-    public sealed class PlanetStatChangedTrigger : GameEventTrigger
+    public sealed class PlanetStatChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -63,7 +63,7 @@ namespace Rebellion.Game.Events
     /// Activates when a planet's blockade state changes.
     /// </summary>
     [PersistableObject(Name = "BlockadeChanged")]
-    public sealed class BlockadeChangedTrigger : GameEventTrigger
+    public sealed class BlockadeChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -79,7 +79,7 @@ namespace Rebellion.Game.Events
     /// Activates when an uprising begins on a planet.
     /// </summary>
     [PersistableObject(Name = "UprisingStarted")]
-    public sealed class UprisingStartedTrigger : GameEventTrigger
+    public sealed class UprisingStartedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -95,7 +95,7 @@ namespace Rebellion.Game.Events
     /// Activates when an uprising ends on a planet.
     /// </summary>
     [PersistableObject(Name = "UprisingEnded")]
-    public sealed class UprisingEndedTrigger : GameEventTrigger
+    public sealed class UprisingEndedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -111,7 +111,7 @@ namespace Rebellion.Game.Events
     /// Activates when intelligence is revealed to a faction.
     /// </summary>
     [PersistableObject(Name = "IntelligenceRevealed")]
-    public sealed class IntelligenceRevealedTrigger : GameEventTrigger
+    public sealed class IntelligenceRevealedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string RecipientFactionInstanceID { get; set; }
@@ -127,7 +127,7 @@ namespace Rebellion.Game.Events
     /// Activates when a faction cannot meet a maintenance obligation.
     /// </summary>
     [PersistableObject(Name = "MaintenanceRequired")]
-    public sealed class MaintenanceRequiredTrigger : GameEventTrigger
+    public sealed class MaintenanceRequiredTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
@@ -144,7 +144,7 @@ namespace Rebellion.Game.Events
     /// Activates when a faction advances one research discipline.
     /// </summary>
     [PersistableObject(Name = "ResearchAdvanced")]
-    public sealed class ResearchAdvancedTrigger : GameEventTrigger
+    public sealed class ResearchAdvancedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }
@@ -182,14 +182,14 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public ParticipantMatch Match { get; set; } = ParticipantMatch.Any;
 
-        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
+        public List<GameUnitReference> Units { get; set; } = new List<GameUnitReference>();
     }
 
     /// <summary>
     /// Activates when a completed mission satisfies the authored mission filters.
     /// </summary>
     [PersistableObject(Name = "MissionCompleted")]
-    public sealed class MissionCompletedTrigger : GameEventTrigger
+    public sealed class MissionCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string MissionTypeID { get; set; }
@@ -210,7 +210,7 @@ namespace Rebellion.Game.Events
     /// Activates when a newly created mission satisfies the authored mission filters.
     /// </summary>
     [PersistableObject(Name = "MissionStarted")]
-    public sealed class MissionStartedTrigger : GameEventTrigger
+    public sealed class MissionStartedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string MissionTypeID { get; set; }
@@ -229,7 +229,7 @@ namespace Rebellion.Game.Events
     /// Activates when an officer's capture state changes.
     /// </summary>
     [PersistableObject(Name = "OfficerCaptureChanged")]
-    public sealed class OfficerCaptureChangedTrigger : GameEventTrigger
+    public sealed class OfficerCaptureChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -245,7 +245,7 @@ namespace Rebellion.Game.Events
     /// Activates when an officer is killed.
     /// </summary>
     [PersistableObject(Name = "OfficerKilled")]
-    public sealed class OfficerKilledTrigger : GameEventTrigger
+    public sealed class OfficerKilledTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -258,7 +258,7 @@ namespace Rebellion.Game.Events
     /// Activates when an officer is injured.
     /// </summary>
     [PersistableObject(Name = "OfficerInjured")]
-    public sealed class OfficerInjuredTrigger : GameEventTrigger
+    public sealed class OfficerInjuredTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -271,7 +271,7 @@ namespace Rebellion.Game.Events
     /// Activates when an officer recruitment result is produced.
     /// </summary>
     [PersistableObject(Name = "OfficerRecruited")]
-    public sealed class OfficerRecruitedTrigger : GameEventTrigger
+    public sealed class OfficerRecruitedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -290,7 +290,7 @@ namespace Rebellion.Game.Events
     /// Activates when an officer's Force discovery state changes.
     /// </summary>
     [PersistableObject(Name = "ForceDiscoveryChanged")]
-    public sealed class ForceDiscoveryChangedTrigger : GameEventTrigger
+    public sealed class ForceDiscoveryChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -313,7 +313,7 @@ namespace Rebellion.Game.Events
     /// Activates when ownership of a unit changes.
     /// </summary>
     [PersistableObject(Name = "UnitOwnershipChanged")]
-    public sealed class UnitOwnershipChangedTrigger : GameEventTrigger
+    public sealed class UnitOwnershipChangedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -332,7 +332,7 @@ namespace Rebellion.Game.Events
     /// Activates when a game unit is created.
     /// </summary>
     [PersistableObject(Name = "UnitCreated")]
-    public sealed class UnitCreatedTrigger : GameEventTrigger
+    public sealed class UnitCreatedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -345,7 +345,7 @@ namespace Rebellion.Game.Events
     /// Activates when a game unit is destroyed.
     /// </summary>
     [PersistableObject(Name = "UnitDestroyed")]
-    public sealed class UnitDestroyedTrigger : GameEventTrigger
+    public sealed class UnitDestroyedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -361,7 +361,7 @@ namespace Rebellion.Game.Events
     /// Activates when a unit-arrival result satisfies the authored identity filters.
     /// </summary>
     [PersistableObject(Name = "UnitArrived")]
-    public sealed class UnitArrivedTrigger : GameEventTrigger
+    public sealed class UnitArrivedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -381,7 +381,7 @@ namespace Rebellion.Game.Events
     /// Activates when a space battle is resolved.
     /// </summary>
     [PersistableObject(Name = "SpaceCombatCompleted")]
-    public sealed class SpaceCombatCompletedTrigger : GameEventTrigger
+    public sealed class SpaceCombatCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -403,7 +403,7 @@ namespace Rebellion.Game.Events
     /// Activates when orbital bombardment is resolved.
     /// </summary>
     [PersistableObject(Name = "BombardmentCompleted")]
-    public sealed class BombardmentCompletedTrigger : GameEventTrigger
+    public sealed class BombardmentCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -428,7 +428,7 @@ namespace Rebellion.Game.Events
     /// Activates when a planetary assault is resolved.
     /// </summary>
     [PersistableObject(Name = "PlanetaryAssaultCompleted")]
-    public sealed class PlanetaryAssaultCompletedTrigger : GameEventTrigger
+    public sealed class PlanetaryAssaultCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string PlanetInstanceID { get; set; }
@@ -453,7 +453,7 @@ namespace Rebellion.Game.Events
     /// Activates when a completed duel satisfies the authored officer and source filters.
     /// </summary>
     [PersistableObject(Name = "DuelCompleted")]
-    public sealed class DuelCompletedTrigger : GameEventTrigger
+    public sealed class DuelCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string FirstOfficerInstanceID { get; set; }
@@ -473,7 +473,7 @@ namespace Rebellion.Game.Events
     /// Activates when a manufactured unit is deployed.
     /// </summary>
     [PersistableObject(Name = "ManufacturingCompleted")]
-    public sealed class ManufacturingCompletedTrigger : GameEventTrigger
+    public sealed class ManufacturingCompletedTrigger : GameTrigger
     {
         [PersistableAttribute]
         public string FactionInstanceID { get; set; }

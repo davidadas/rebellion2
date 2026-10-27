@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -21,7 +22,10 @@ namespace Rebellion.Tests.Simulation
         public void Connect_NullResultBus_ThrowsArgumentNullException()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            GameEventObserver observer = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventObserver observer = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
 
             Assert.Throws<ArgumentNullException>(() => observer.Connect(null));
         }
@@ -30,7 +34,10 @@ namespace Rebellion.Tests.Simulation
         public void Connect_AlreadyConnected_ThrowsInvalidOperationException()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            GameEventObserver observer = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventObserver observer = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
             observer.Connect(new GameResultBus());
 
             Assert.Throws<InvalidOperationException>(() => observer.Connect(new GameResultBus()));
@@ -42,7 +49,10 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent gameEvent = CreateTriggeredEvent();
             game.GetEventPool().Add(gameEvent);
-            GameEventObserver observer = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventObserver observer = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
             GameResultBus results = new();
             observer.Connect(results);
 
@@ -58,7 +68,10 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent gameEvent = CreateTriggeredEvent();
             game.GetEventPool().Add(gameEvent);
-            GameEventObserver observer = new(new GameEventCommands(game, new FixedRNG()));
+            var eventRandom = new FixedRNG();
+            GameEventObserver observer = new(
+                new GameEventCommands(game, eventRandom, new GameActionCommands(game, eventRandom))
+            );
             GameResultBus results = new();
             observer.Connect(results);
             observer.Dispose();
@@ -79,7 +92,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "triggered-event",
                 MaximumActivations = 1,
-                Triggers = new List<GameEventTrigger> { new DuelCompletedTrigger() },
+                Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "triggered-event-fired", Operand = 1 },

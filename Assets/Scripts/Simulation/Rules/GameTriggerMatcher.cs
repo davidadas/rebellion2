@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventCommands
+    /// <summary>
+    /// Matches authored triggers against simulation results and their argument contracts.
+    /// </summary>
+    public static class GameTriggerMatcher
     {
         /// <summary>
         /// Tests a simulation result against an authored trigger.
@@ -20,7 +23,7 @@ namespace Rebellion.Simulation
         /// <param name="definition">The authored trigger and filters.</param>
         /// <param name="result">The existing simulation result.</param>
         /// <returns>Whether the result satisfies the trigger.</returns>
-        internal static bool Matches(GameEventTrigger definition, GameResult result) =>
+        internal static bool Matches(GameTrigger definition, GameResult result) =>
             definition switch
             {
                 PlanetOwnershipChangedTrigger value => Matches(value, result),
@@ -58,7 +61,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="definition">The authored trigger.</param>
         /// <returns>The existing simulation-result type consumed by the trigger.</returns>
-        private static Type GetResultType(GameEventTrigger definition) =>
+        internal static Type GetResultType(GameTrigger definition) =>
             definition switch
             {
                 PlanetOwnershipChangedTrigger => typeof(PlanetOwnershipChangedResult),
@@ -92,35 +95,13 @@ namespace Rebellion.Simulation
             };
 
         /// <summary>
-        /// Adds the authored result arguments to the event evaluation context.
-        /// </summary>
-        /// <param name="definition">The authored trigger or participant filter.</param>
-        /// <param name="context">The event evaluation context receiving the bindings.</param>
-        /// <param name="result">The matched simulation result.</param>
-        internal static void Bind(
-            GameEventTrigger definition,
-            GameEventEvaluationContext context,
-            GameResult result
-        )
-        {
-            foreach (GameEventBinding binding in definition.Bindings)
-            {
-                GameEventTriggerArgument argument = GameEventTriggerArguments.Get(
-                    GetResultType(definition),
-                    binding.Argument
-                );
-                context.Bind(binding.As, argument.Resolve(result));
-            }
-        }
-
-        /// <summary>
         /// Resolves the declared value type for an authored trigger argument.
         /// </summary>
         /// <param name="definition">The authored trigger or participant filter.</param>
         /// <param name="argument">The authored trigger argument name.</param>
         /// <returns>The declared argument type.</returns>
-        private static Type GetBindingType(GameEventTrigger definition, string argument) =>
-            GameEventTriggerArguments.Get(GetResultType(definition), argument).ValueType;
+        internal static Type GetBindingType(GameTrigger definition, string argument) =>
+            GameTriggerArguments.Get(GetResultType(definition), argument).ValueType;
 
         /// <summary>
         /// Compares an optional authored instance ID with an actual instance ID.
@@ -569,7 +550,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Describes one stable value that a trigger may expose without reflecting over result objects.
     /// </summary>
-    internal sealed class GameEventTriggerArgument
+    internal sealed class GameTriggerArgument
     {
         private readonly Func<GameResult, object> _resolve;
 
@@ -577,11 +558,11 @@ namespace Rebellion.Simulation
         internal Type ValueType { get; }
 
         /// <summary>
-        /// Initializes a new instance of the GameEventTriggerArgument class.
+        /// Initializes a new instance of the GameTriggerArgument class.
         /// </summary>
         /// <param name="valueType">The value type.</param>
         /// <param name="resolve">The resolve.</param>
-        private GameEventTriggerArgument(Type valueType, Func<GameResult, object> resolve)
+        private GameTriggerArgument(Type valueType, Func<GameResult, object> resolve)
         {
             ValueType = valueType;
             _resolve = resolve;
@@ -601,19 +582,17 @@ namespace Rebellion.Simulation
         /// <typeparam name="TValue">The exposed argument type.</typeparam>
         /// <param name="resolve">The function that resolves the argument value.</param>
         /// <returns>The trigger-argument accessor.</returns>
-        internal static GameEventTriggerArgument Create<TResult, TValue>(
-            Func<TResult, TValue> resolve
-        )
+        internal static GameTriggerArgument Create<TResult, TValue>(Func<TResult, TValue> resolve)
             where TResult : GameResult =>
-            new GameEventTriggerArgument(typeof(TValue), result => resolve((TResult)result));
+            new GameTriggerArgument(typeof(TValue), result => resolve((TResult)result));
     }
 
     /// <summary>
     /// Defines the stable arguments exposed by each supported trigger-result contract.
     /// </summary>
-    internal static class GameEventTriggerArguments
+    internal static class GameTriggerArguments
     {
-        private static readonly IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> _all =
+        private static readonly IReadOnlyDictionary<(Type, string), GameTriggerArgument> _all =
             Build();
 
         /// <summary>
@@ -622,11 +601,11 @@ namespace Rebellion.Simulation
         /// <param name="resultType">The simulation-result type.</param>
         /// <param name="argument">The authored argument name.</param>
         /// <returns>The declared trigger argument.</returns>
-        internal static GameEventTriggerArgument Get(Type resultType, string argument)
+        internal static GameTriggerArgument Get(Type resultType, string argument)
         {
             if (
                 string.IsNullOrWhiteSpace(argument)
-                || !_all.TryGetValue((resultType, argument), out GameEventTriggerArgument value)
+                || !_all.TryGetValue((resultType, argument), out GameTriggerArgument value)
             )
                 throw new InvalidOperationException(
                     $"Trigger result '{resultType?.Name}' does not expose argument '{argument}'."
@@ -638,9 +617,9 @@ namespace Rebellion.Simulation
         /// Builds the result-to-argument contracts used by event bindings.
         /// </summary>
         /// <returns>The supported trigger arguments indexed by result type and argument name.</returns>
-        private static IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> Build()
+        private static IReadOnlyDictionary<(Type, string), GameTriggerArgument> Build()
         {
-            Dictionary<(Type, string), GameEventTriggerArgument> arguments = new();
+            Dictionary<(Type, string), GameTriggerArgument> arguments = new();
             Add<PlanetOwnershipChangedResult, Planet>(arguments, "Planet", result => result.Planet);
             Add<PlanetOwnershipChangedResult, Faction>(
                 arguments,
@@ -948,11 +927,11 @@ namespace Rebellion.Simulation
         /// <param name="name">The authored argument name.</param>
         /// <param name="resolve">The function that resolves the argument value.</param>
         private static void Add<TResult, TValue>(
-            IDictionary<(Type, string), GameEventTriggerArgument> arguments,
+            IDictionary<(Type, string), GameTriggerArgument> arguments,
             string name,
             Func<TResult, TValue> resolve
         )
             where TResult : GameResult =>
-            arguments.Add((typeof(TResult), name), GameEventTriggerArgument.Create(resolve));
+            arguments.Add((typeof(TResult), name), GameTriggerArgument.Create(resolve));
     }
 }

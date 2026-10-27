@@ -15,13 +15,13 @@ namespace Rebellion.Simulation
     {
         public GameRoot Game { get; }
         public IRandomNumberProvider Random { get; }
-        public GameEventEvaluationContext Evaluation { get; }
+        public GameEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
         internal BlockadeTransitionResolver BlockadeTransitionResolver { get; }
         internal List<(
             string Name,
             string SourceEventInstanceID,
-            Func<GameEventCommands, string, List<GameResult>> Execute
+            Func<GameActionCommands, string, List<GameResult>> Execute
         )> DeferredOperations { get; } = new();
         internal List<GameResult> Results { get; } = new List<GameResult>();
         private readonly MissionResolver _missionResolver;
@@ -36,7 +36,7 @@ namespace Rebellion.Simulation
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventEvaluationContext evaluation = null,
+            GameEvaluationContext evaluation = null,
             UnitFactory unitFactory = null
         )
             : this(game, random, evaluation, unitFactory, missionResolver: null) { }
@@ -53,7 +53,7 @@ namespace Rebellion.Simulation
         internal GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
-            GameEventEvaluationContext evaluation,
+            GameEvaluationContext evaluation,
             UnitFactory unitFactory,
             MissionResolver missionResolver,
             BlockadeTransitionResolver blockadeTransitionResolver = null
@@ -73,11 +73,11 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="name">The authored operation name used in failure diagnostics.</param>
         /// <param name="execute">The command call and the resolved inputs it retains.</param>
-        internal void Defer(string name, Func<GameEventCommands, string, List<GameResult>> execute)
+        internal void Defer(string name, Func<GameActionCommands, string, List<GameResult>> execute)
         {
             if (execute == null)
                 return;
-            DeferredOperations.Add((name, Evaluation?.Event?.InstanceID, execute));
+            DeferredOperations.Add((name, Evaluation?.SourceEventInstanceID, execute));
         }
 
         /// <summary>
@@ -88,8 +88,11 @@ namespace Rebellion.Simulation
         {
             if (result == null)
                 return;
-            if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Evaluation?.Event != null)
-                result.SourceEventInstanceID = Evaluation.Event.InstanceID;
+            if (
+                string.IsNullOrEmpty(result.SourceEventInstanceID)
+                && !string.IsNullOrEmpty(Evaluation?.SourceEventInstanceID)
+            )
+                result.SourceEventInstanceID = Evaluation.SourceEventInstanceID;
             Evaluation?.AddResult(result);
             Results.Add(result);
         }

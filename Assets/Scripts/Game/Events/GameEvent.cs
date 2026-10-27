@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Rules;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -43,8 +44,8 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int? MaximumActivations { get; set; }
 
-        public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
-        public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
+        public List<GameBinding> Bindings { get; set; } = new List<GameBinding>();
+        public List<GameTrigger> Triggers { get; set; } = new List<GameTrigger>();
         public GameEventSchedule Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();

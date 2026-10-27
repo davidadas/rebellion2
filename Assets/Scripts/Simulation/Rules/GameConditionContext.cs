@@ -11,7 +11,7 @@ namespace Rebellion.Simulation
     public sealed class GameConditionContext
     {
         public GameRoot Game { get; }
-        public GameEventEvaluationContext Evaluation { get; }
+        public GameEvaluationContext Evaluation { get; }
         public GameResult TriggerResult { get; }
         public IRandomNumberProvider Random { get; }
 
@@ -35,7 +35,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="evaluation">The evaluation.</param>
-        public GameConditionContext(GameRoot game, GameEventEvaluationContext evaluation)
+        public GameConditionContext(GameRoot game, GameEvaluationContext evaluation)
             : this(game, evaluation, evaluation?.TriggerResult) { }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Rebellion.Simulation
         /// <param name="triggerResult">The trigger result.</param>
         private GameConditionContext(
             GameRoot game,
-            GameEventEvaluationContext evaluation,
+            GameEvaluationContext evaluation,
             GameResult triggerResult
         )
         {

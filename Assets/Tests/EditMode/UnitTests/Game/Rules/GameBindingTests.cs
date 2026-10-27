@@ -1,26 +1,27 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Rules;
 using Rebellion.Game.Units;
 
-namespace Rebellion.Tests.Game.Events
+namespace Rebellion.Tests.Game.Rules
 {
     [TestFixture]
-    public sealed class GameEventBindingTests
+    public sealed class GameBindingTests
     {
         [Test]
         public void RoundTrip_NumericRanges_RestoresConcreteRolls()
         {
             GameEvent gameEvent = new GameEvent
             {
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "count",
                         RollInteger = new RollInteger { Minimum = 1, Maximum = 5 },
                     },
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "probability",
                         RollDouble = new RollDouble { Minimum = 0.1, Maximum = 0.9 },
@@ -44,12 +45,12 @@ namespace Rebellion.Tests.Game.Events
         {
             GameEvent gameEvent = new GameEvent
             {
-                Bindings = new List<GameEventBinding>
+                Bindings = new List<GameBinding>
                 {
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "combat",
-                        Sources = new List<GameEventBindingSource>
+                        Sources = new List<GameBindingSource>
                         {
                             new SkillRatingBindingSource
                             {
@@ -58,14 +59,14 @@ namespace Rebellion.Tests.Game.Events
                             },
                         },
                     },
-                    new GameEventBinding
+                    new GameBinding
                     {
                         As = "unitCount",
-                        Sources = new List<GameEventBindingSource>
+                        Sources = new List<GameBindingSource>
                         {
                             new SelectionCountBindingSource
                             {
-                                Selectors = new List<GameEventSelector>
+                                Selectors = new List<GameSelector>
                                 {
                                     new SelectOfficers { OwnerFactionInstanceID = "faction" },
                                 },
