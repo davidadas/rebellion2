@@ -306,6 +306,19 @@ internal sealed class FacilityWindowSession
     }
 
     /// <summary>
+    /// Reports whether one current inventory index remains selected.
+    /// </summary>
+    /// <param name="itemIndex">The current inventory display index.</param>
+    /// <returns>True when the represented building is selected.</returns>
+    public bool IsBuildingSelected(int itemIndex)
+    {
+        IReadOnlyList<Building> items = GetItems(ActiveTab);
+        return itemIndex >= 0
+            && itemIndex < items.Count
+            && selectedBuildingIds.Contains(GetBuildingID(items[itemIndex]));
+    }
+
+    /// <summary>
     /// Reports whether every selected inventory building can change its delivery destination.
     /// </summary>
     /// <returns>True when the selection is non-empty and every building is under construction.</returns>

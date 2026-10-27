@@ -462,6 +462,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OnEndDrag_EligibilityRemovedAfterDrag_RaisesEndEvent()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Mines,
+                    Array.Empty<ManufacturingLaneCardRenderData>(),
+                    new[] { new FacilityInventoryItemRenderData(_texture, true, true) }
+                )
+            );
+            FacilityInventoryItemView item = FindInventoryItems().Single();
+            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+            int endedCount = 0;
+            _view.InventoryItemDragEnded += (_, _) => endedCount++;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Mines,
+                    Array.Empty<ManufacturingLaneCardRenderData>(),
+                    new[] { new FacilityInventoryItemRenderData(_texture, true) }
+                )
+            );
+
+            item.OnEndDrag(eventData);
+
+            Assert.AreEqual(1, endedCount);
+        }
+
+        [Test]
         public void TryCreateDragPreview_CompletedItem_ReturnsFalse()
         {
             _view.Render(

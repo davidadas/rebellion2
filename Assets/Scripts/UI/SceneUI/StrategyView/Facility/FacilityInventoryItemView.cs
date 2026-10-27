@@ -124,7 +124,7 @@ public sealed class FacilityInventoryItemView
     /// <param name="eventData">The pointer event.</param>
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (canDrag && eventData?.button == PointerEventData.InputButton.Left)
+        if (eventData?.button == PointerEventData.InputButton.Left)
             DragEnded?.Invoke(this, eventData);
     }
 

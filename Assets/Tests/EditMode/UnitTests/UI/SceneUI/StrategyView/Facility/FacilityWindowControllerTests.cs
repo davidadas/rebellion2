@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ManufacturingTrackingActions _trackingActions;
         private GameRoot _game;
         private GameSession _session;
+        private SelectionModifierState _selectionModifiers;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private TargetingController _targetingController;
@@ -51,6 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _dragEndCount = 0;
             _dragMoveCount = 0;
             _dragStartWindow = null;
+            _selectionModifiers = default;
             _game = CreateGame();
             _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
@@ -383,6 +385,60 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void InventoryItemPress_MultiSelectRemovesPressedBuilding_DoesNotStartDrag()
+        {
+            Building secondBuilding = new Building
+            {
+                InstanceID = "second-shipyard",
+                DisplayName = "Second Shipyard",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.Planet.AddTestChild(secondBuilding);
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            Assert.IsTrue(_controller.SelectTarget(view, _building));
+            _controller.RenderWindow(view, window);
+            FacilityInventoryItemView[] items =
+                view.GetComponentsInChildren<FacilityInventoryItemView>(true)
+                    .Where(candidate => candidate.gameObject.activeSelf)
+                    .ToArray();
+            Assert.AreEqual(2, items.Length);
+            foreach (FacilityInventoryItemView item in items)
+                UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+            _selectionModifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(items[1].TryGetDragImage(out _, out RectTransform secondImageTransform));
+            PointerEventData additionPointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    secondImageTransform.TransformPoint(secondImageTransform.rect.center)
+                ),
+            };
+            items[1].GetComponent<UIPointerGestureRelay>().OnPointerDown(additionPointer);
+            _dragStartWindow = null;
+            Assert.IsTrue(items[0].TryGetDragImage(out _, out RectTransform firstImageTransform));
+            PointerEventData removalPointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    firstImageTransform.TransformPoint(firstImageTransform.rect.center)
+                ),
+            };
+
+            items[0].GetComponent<UIPointerGestureRelay>().OnPointerDown(removalPointer);
+
+            Assert.IsNull(_dragStartWindow);
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { secondBuilding },
+                _controller.GetContextItems(window)
+            );
+        }
+
+        [Test]
         public void OnContextMenuCommandSelected_ManufacturingReservation_TogglesSelectedLane()
         {
             FacilityWindowView view = OpenWindow(out UIWindow window);
@@ -600,7 +656,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => _dirtyCount++,
-                instanceId => _game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+                instanceId => _game.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+                () => _selectionModifiers
             );
         }
 

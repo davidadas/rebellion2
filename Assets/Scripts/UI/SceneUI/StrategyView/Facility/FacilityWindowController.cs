@@ -1084,7 +1084,8 @@ public sealed class FacilityWindowController
             session.Window.RequestFocus();
             session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount);
             if (
-                session.CanDragSelectedBuildings()
+                session.IsBuildingSelected(itemIndex)
+                && session.CanDragSelectedBuildings()
                 && view.InventoryItemContainsDragSource(itemIndex, eventData)
             )
                 startItemDrag(session.Window, eventData);
