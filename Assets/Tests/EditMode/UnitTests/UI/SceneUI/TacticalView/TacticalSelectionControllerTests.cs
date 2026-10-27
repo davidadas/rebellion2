@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -56,6 +57,64 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_instance);
+        }
+
+        /// <summary>
+        /// Checks Control+A and Command+A select only active, deployed combatants owned by the viewer.
+        /// </summary>
+        /// <returns>The two primary-modifier input sequences and resulting selection updates.</returns>
+        [UnityTest]
+        public IEnumerator SelectedCombatants_PrimaryModifierA_SelectsAllOwnedVisibleCombatants()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+                CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+                CombatUnit enemy = AddHull(new Vector3(0f, 10f, 0f));
+                CombatUnit carried = AddHull(new Vector3(0f, -10f, 0f));
+                left.GetUnit().OwnerInstanceID = "PLAYER";
+                right.GetUnit().OwnerInstanceID = "PLAYER";
+                enemy.GetUnit().OwnerInstanceID = "ENEMY";
+                carried.GetUnit().OwnerInstanceID = "PLAYER";
+                _presentations[carried].gameObject.SetActive(false);
+                _controller.Initialize(_camera, _presentations, "PLAYER");
+
+                input.Press(keyboard.leftCtrlKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                CollectionAssert.AreEquivalent(
+                    new[] { left, right },
+                    _controller.SelectedCombatants
+                );
+
+                input.Release(keyboard.aKey);
+                input.Release(keyboard.leftCtrlKey);
+                yield return null;
+                _controller.SelectAt(_camera.ViewportToScreenPoint(new Vector3(0.95f, 0.95f)));
+                Assert.IsEmpty(_controller.SelectedCombatants);
+
+                input.Press(keyboard.leftMetaKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                CollectionAssert.AreEquivalent(
+                    new[] { left, right },
+                    _controller.SelectedCombatants
+                );
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
         }
 
         /// <summary>
@@ -128,6 +187,34 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
+        /// Checks empty space inside a large foreground hull envelope cannot steal a smaller ship's
+        /// visible center.
+        /// </summary>
+        [Test]
+        public void SelectAt_VisibleShipInsideLargerProjectedEnvelope_SelectsVisibleShip()
+        {
+            CombatUnit foreground = AddHull(Vector3.zero);
+            foreground.GetUnit().ModelSize = new ModelDimensions
+            {
+                Width = 30f,
+                Height = 20f,
+                Depth = 10f,
+            };
+            CombatUnit visible = AddHull(new Vector3(8f, 0f, 20f));
+            visible.GetUnit().ModelSize = new ModelDimensions
+            {
+                Width = 4f,
+                Height = 4f,
+                Depth = 8f,
+            };
+            _controller.Initialize(_camera, _presentations);
+
+            _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[visible].position));
+
+            Assert.AreSame(visible, _controller.SelectedCombatant);
+        }
+
+        /// <summary>
         /// Checks empty space clears selection.
         /// </summary>
         [Test]
@@ -161,18 +248,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Checks enemy hull allows inspection.
+        /// Checks a hostile hull cannot enter the locally controlled selection.
         /// </summary>
         [Test]
-        public void SelectAt_EnemyHull_AllowsInspection()
+        public void SelectAt_EnemyHull_DoesNotSelectCombatant()
         {
             CombatUnit combatant = AddHull(Vector3.zero);
             combatant.GetUnit().OwnerInstanceID = "ENEMY";
-            _controller.Initialize(_camera, _presentations);
+            _controller.Initialize(_camera, _presentations, "PLAYER");
 
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
-            Assert.AreSame(combatant, _controller.SelectedCombatant);
+            Assert.IsNull(_controller.SelectedCombatant);
         }
 
         /// <summary>
@@ -343,11 +430,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Checks escape preserves selection for menu.
+        /// Checks Control-click and Command-click preserve the existing world selection.
         /// </summary>
-        /// <returns>The runtime interaction and mode transitions.</returns>
+        /// <returns>The two primary-modifier click sequences.</returns>
         [UnityTest]
-        public IEnumerator SelectedCombatants_Escape_PreservesSelectionForMenu()
+        public IEnumerator SelectedCombatants_PrimaryModifierLeftClick_AddsHull()
         {
             PreparePlayMode();
             yield return new EnterPlayMode();
@@ -357,18 +444,64 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-                CombatUnit combatant = AddHull(Vector3.zero);
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+                CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
                 _controller.Initialize(_camera, _presentations);
-                _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
-                yield return null;
-                yield return null;
 
-                Assert.AreSame(combatant, _controller.SelectedCombatant);
+                foreach (var modifier in new[] { keyboard.leftCtrlKey, keyboard.leftMetaKey })
+                {
+                    _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[left].position));
+                    input.Press(modifier);
+                    Vector2 point = _camera.WorldToScreenPoint(_presentations[right].position);
+                    InputSystem.QueueStateEvent(
+                        mouse,
+                        new MouseState { position = point }.WithButton(MouseButton.Left)
+                    );
+                    yield return null;
+                    InputSystem.QueueStateEvent(mouse, new MouseState { position = point });
+                    yield return null;
+                    input.Release(modifier);
+                    yield return null;
+
+                    CollectionAssert.AreEqual(
+                        new[] { left, right },
+                        _controller.SelectedCombatants
+                    );
+                }
             }
             finally
             {
                 input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks tactical cancellation clears selection without releasing the battle binding.
+        /// </summary>
+        /// <returns>The runtime interaction and mode transitions.</returns>
+        [UnityTest]
+        public IEnumerator TryDeselect_SelectedCombatant_ClearsSelection()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            try
+            {
+                AddHull(Vector3.zero);
+                _controller.Initialize(_camera, _presentations);
+                _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
+
+                Assert.IsTrue(_controller.TryDeselect());
+
+                Assert.IsNull(_controller.SelectedCombatant);
+                Assert.IsEmpty(_controller.SelectedCombatants);
+                Assert.IsFalse(_controller.TryDeselect());
+            }
+            finally
+            {
                 UnityEngine.Object.DestroyImmediate(_instance);
             }
             yield return new ExitPlayMode();
@@ -440,6 +573,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                             MinimumZ = -1000f,
                             MaximumZ = 1000f,
                         },
+                        new Bounds(Vector3.zero, Vector3.one * 2000f),
                         Vector3.zero
                     );
                 int orders = 0;
@@ -473,6 +607,116 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 yield return null;
 
                 Assert.AreEqual(1, orders);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks Control-right-click and Command-right-click request synchronized movement.
+        /// </summary>
+        /// <returns>The runtime modifier and pointer input frames.</returns>
+        [UnityTest]
+        public IEnumerator MoveTogetherRequested_PrimaryModifierRightClick_EmitsSynchronizedOrder()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                CombatUnit unit = AddHull(Vector3.zero);
+                unit.GetUnit().OwnerInstanceID = "PLAYER";
+                _controller.Initialize(_camera, _presentations, "PLAYER");
+                _camera
+                    .GetComponent<TacticalViewCameraController>()
+                    .Configure(
+                        new BattleMapBounds
+                        {
+                            MinimumX = -1000f,
+                            MaximumX = 1000f,
+                            MinimumY = -1000f,
+                            MaximumY = 1000f,
+                            MinimumZ = -1000f,
+                            MaximumZ = 1000f,
+                        },
+                        new Bounds(Vector3.zero, Vector3.one * 2000f),
+                        Vector3.zero
+                    );
+                _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
+                int normalOrders = 0;
+                int synchronizedOrders = 0;
+                _controller.MoveRequested += _ => normalOrders++;
+                _controller.MoveTogetherRequested += _ => synchronizedOrders++;
+                Vector2 point = _camera.WorldToScreenPoint(new Vector3(20f, 0f, 20f));
+
+                foreach (var modifier in new[] { keyboard.leftCtrlKey, keyboard.leftMetaKey })
+                {
+                    input.Press(modifier);
+                    InputSystem.QueueStateEvent(
+                        mouse,
+                        new MouseState { position = point }.WithButton(MouseButton.Right)
+                    );
+                    yield return null;
+                    InputSystem.QueueStateEvent(mouse, new MouseState { position = point });
+                    yield return null;
+                    input.Release(modifier);
+                    yield return null;
+                }
+
+                Assert.AreEqual(0, normalOrders);
+                Assert.AreEqual(2, synchronizedOrders);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks a hostile hull under the pointer preserves the platform cursor.
+        /// </summary>
+        /// <returns>The runtime pointer frame and rendered cursor state.</returns>
+        [UnityTest]
+        public IEnumerator ContextualCursor_FriendlySelectionOverEnemy_RemainsHidden()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                CombatUnit friendly = AddHull(new Vector3(-10f, 0f, 0f));
+                CombatUnit enemy = AddHull(new Vector3(10f, 0f, 0f));
+                friendly.GetUnit().OwnerInstanceID = "PLAYER";
+                enemy.GetUnit().OwnerInstanceID = "ENEMY";
+                _controller.Initialize(_camera, _presentations, "PLAYER");
+                _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[friendly].position));
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState
+                    {
+                        position = _camera.WorldToScreenPoint(_presentations[enemy].position),
+                    }
+                );
+
+                yield return null;
+
+                TacticalHudGraphic cursor = _instance
+                    .transform.Find("SelectionOverlay/ContextualCursor")
+                    .GetComponent<TacticalHudGraphic>();
+                Assert.IsFalse(cursor.gameObject.activeSelf);
             }
             finally
             {
@@ -561,6 +805,135 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _controller.SelectWithin(_camera.pixelRect);
 
             CollectionAssert.AreEqual(new[] { left, right }, _controller.SelectedCombatants);
+        }
+
+        [Test]
+        public void SelectControlGroup_AssignedFriendlySelection_RestoresItsLiveMembers()
+        {
+            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            left.GetUnit().OwnerInstanceID = "PLAYER";
+            right.GetUnit().OwnerInstanceID = "PLAYER";
+            _controller.Initialize(_camera, _presentations, "PLAYER");
+            _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[left].position));
+            _controller.AssignControlGroup(0);
+            _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[right].position));
+
+            _controller.SelectControlGroup(0);
+
+            CollectionAssert.AreEqual(new[] { left }, _controller.SelectedCombatants);
+        }
+
+        [Test]
+        public void AssignControlGroup_EnemyInspection_DoesNotCreateCommandGroup()
+        {
+            CombatUnit enemy = AddHull(Vector3.zero);
+            enemy.GetUnit().OwnerInstanceID = "ENEMY";
+            _controller.Initialize(_camera, _presentations, "PLAYER");
+            _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
+
+            _controller.AssignControlGroup(0);
+            _controller.SelectAt(_camera.ViewportToScreenPoint(new Vector3(0.95f, 0.95f)));
+            _controller.SelectControlGroup(0);
+
+            Assert.IsEmpty(_controller.SelectedCombatants);
+        }
+
+        /// <summary>
+        /// Checks right-clicking an eligible carrier emits targeted recovery instead of movement.
+        /// </summary>
+        /// <returns>The pointer input frames and resulting targeted order.</returns>
+        [UnityTest]
+        public IEnumerator DockAtRequested_FighterOverEligibleCarrier_EmitsTargetedRecoveryOnly()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                ActiveBattle battle = new ActiveBattle { Kind = BattleKind.Space };
+                CapitalShip carrierSource = new CapitalShip
+                {
+                    InstanceID = "CARRIER",
+                    OwnerInstanceID = "PLAYER",
+                    StarfighterCapacity = 1,
+                    ModelSize = new ModelDimensions
+                    {
+                        Width = 10f,
+                        Height = 6f,
+                        Depth = 14f,
+                    },
+                };
+                Starfighter fighterSource = new Starfighter
+                {
+                    InstanceID = "FIGHTER",
+                    OwnerInstanceID = "PLAYER",
+                    CurrentSquadronSize = 12,
+                    SublightSpeed = 10,
+                    ModelSize = new ModelDimensions
+                    {
+                        Width = 2f,
+                        Height = 1f,
+                        Depth = 3f,
+                    },
+                };
+                CombatUnit carrier = battle.AddCombatants(carrierSource)[0];
+                CombatUnit fighter = battle.AddCombatants(fighterSource)[0];
+                AddPresentation(fighter, new Vector3(-10f, 0f, 0f));
+                AddPresentation(carrier, new Vector3(10f, 0f, 0f));
+                TacticalCarrierOperations operations = new TacticalCarrierOperations(
+                    battle,
+                    new Dictionary<CombatUnit, System.Numerics.Vector3[][]>
+                    {
+                        [carrier] = new[]
+                        {
+                            new[] { System.Numerics.Vector3.Zero, System.Numerics.Vector3.UnitZ },
+                        },
+                    }
+                );
+                _controller.Initialize(_camera, _presentations, "PLAYER");
+                _controller.BindCarrierOperations(operations);
+                _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[fighter].position));
+                _camera
+                    .GetComponent<TacticalViewCameraController>()
+                    .Configure(
+                        new BattleMapBounds
+                        {
+                            MinimumX = -1000f,
+                            MaximumX = 1000f,
+                            MinimumY = -1000f,
+                            MaximumY = 1000f,
+                            MinimumZ = -1000f,
+                            MaximumZ = 1000f,
+                        },
+                        new Bounds(Vector3.zero, Vector3.one * 2000f),
+                        Vector3.zero
+                    );
+                CombatUnit target = null;
+                int moves = 0;
+                _controller.DockAtRequested += value => target = value;
+                _controller.MoveRequested += _ => moves++;
+                Vector2 point = _camera.WorldToScreenPoint(_presentations[carrier].position);
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point }.WithButton(MouseButton.Right)
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = point });
+                yield return null;
+
+                Assert.AreSame(carrier, target);
+                Assert.AreEqual(0, moves);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
         }
 
         /// <summary>
@@ -672,10 +1045,56 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _controller.SelectWithin(_camera.pixelRect);
             TacticalUnitCardView group = _instance.GetComponentInChildren<TacticalUnitCardView>();
             Assert.AreEqual(2, group.Combatants.Count);
+            CombatUnit secondMember = group.Combatants[1];
 
             group.transform.Find("Member2").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
 
-            CollectionAssert.AreEqual(new[] { right }, _controller.SelectedCombatants);
+            CollectionAssert.AreEqual(new[] { secondMember }, _controller.SelectedCombatants);
+            UnityEngine.Object.DestroyImmediate(_instance);
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks double-clicking a roster card centers once on its visible battle presentation.
+        /// </summary>
+        /// <returns>The runtime card interaction and camera update.</returns>
+        [UnityTest]
+        public IEnumerator SelectedCombatant_RosterDoubleClick_CentersCameraWithoutFollowing()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            CombatUnit unit = AddHull(new Vector3(30f, 5f, 20f));
+            TacticalViewCameraController cameraInput =
+                _camera.GetComponent<TacticalViewCameraController>();
+            cameraInput.Configure(
+                new BattleMapBounds
+                {
+                    MinimumX = -1000f,
+                    MaximumX = 1000f,
+                    MinimumY = -1000f,
+                    MaximumY = 1000f,
+                    MinimumZ = -1000f,
+                    MaximumZ = 1000f,
+                },
+                new Bounds(Vector3.zero, Vector3.one * 2000f),
+                Vector3.zero
+            );
+            _controller.Initialize(_camera, _presentations);
+            _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[unit].position));
+            TacticalUnitCardView card = _instance.GetComponentInChildren<TacticalUnitCardView>();
+            PointerEventData pointer = new PointerEventData(
+                _instance.GetComponentInChildren<EventSystem>()
+            )
+            {
+                button = PointerEventData.InputButton.Left,
+                clickCount = 2,
+            };
+
+            card.OnPointerClick(pointer);
+
+            Assert.AreEqual(_presentations[unit].position, cameraInput.Pivot);
+            Assert.IsNull(cameraInput.FollowTarget);
             UnityEngine.Object.DestroyImmediate(_instance);
             yield return new ExitPlayMode();
         }
@@ -703,6 +1122,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     MinimumZ = -1000f,
                     MaximumZ = 1000f,
                 },
+                new Bounds(Vector3.zero, Vector3.one * 2000f),
                 Vector3.zero
             );
             _controller.Initialize(_camera, _presentations);
@@ -803,11 +1223,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     MaxShieldStrength = 50,
                 }
             );
+            AddPresentation(combatant, position);
+            return combatant;
+        }
+
+        /// <summary>
+        /// Adds a measured combatant root to the fixture's presentation index.
+        /// </summary>
+        /// <param name="combatant">The battle unit to present.</param>
+        /// <param name="position">The hull position.</param>
+        private void AddPresentation(CombatUnit combatant, Vector3 position)
+        {
             GameObject root = new GameObject("Test Hull");
             root.transform.SetParent(_instance.transform, false);
             root.transform.position = position;
             _presentations.Add(combatant, root.transform);
-            return combatant;
         }
     }
 }

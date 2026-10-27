@@ -22,12 +22,15 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="selection">The units selected by the player.</param>
         /// <param name="factionInstanceID">The faction issuing the order.</param>
         /// <param name="destination">The requested formation center.</param>
-        public static void MoveTo(
+        /// <param name="matchSpeed">Whether every ordered unit travels at the slowest selected unit's speed.</param>
+        /// <returns>True when at least one controlled unit received the order.</returns>
+        public static bool MoveTo(
             ActiveBattle battle,
             BattleMapBounds bounds,
             IReadOnlyList<CombatUnit> selection,
             string factionInstanceID,
-            BattleVector3 destination
+            BattleVector3 destination,
+            bool matchSpeed = false
         )
         {
             if (battle == null)
@@ -47,7 +50,15 @@ namespace Rebellion.Simulation.Tactical
 
             List<CombatUnit> ordered = GetControlledUnits(battle, selection, factionInstanceID);
             if (ordered.Count == 0)
-                return;
+                return false;
+            float? speedLimit = null;
+            if (matchSpeed)
+            {
+                float slowest = float.PositiveInfinity;
+                foreach (CombatUnit unit in ordered)
+                    slowest = Math.Min(slowest, GetSpeed(unit));
+                speedLimit = slowest;
+            }
             Vector3 center = Vector3.Zero;
             Vector3 minimum = new Vector3(float.PositiveInfinity);
             Vector3 maximum = new Vector3(float.NegativeInfinity);
@@ -66,7 +77,11 @@ namespace Rebellion.Simulation.Tactical
                 ClampOffset(offset.Z, bounds.MinimumZ - minimum.Z, bounds.MaximumZ - maximum.Z)
             );
             foreach (CombatUnit unit in ordered)
+            {
                 unit.MoveDestination = FromVector(ToVector(unit.Position) + offset);
+                unit.MoveSpeedLimit = speedLimit;
+            }
+            return true;
         }
 
         /// <summary>
@@ -86,7 +101,10 @@ namespace Rebellion.Simulation.Tactical
             if (selection == null)
                 throw new ArgumentNullException(nameof(selection));
             foreach (CombatUnit unit in GetControlledUnits(battle, selection, factionInstanceID))
+            {
                 unit.MoveDestination = null;
+                unit.MoveSpeedLimit = null;
+            }
         }
 
         /// <summary>
@@ -112,17 +130,9 @@ namespace Rebellion.Simulation.Tactical
                 )
             )
                 return;
-            float speed = unit.GetUnit() switch
-            {
-                CapitalShip ship when ship.MaxHullStrength > 0 && ship.CurrentHullStrength <= 0 =>
-                    0f,
-                Starfighter fighter
-                    when fighter.CurrentSquadronSize <= 0
-                        || (fighter.MaxHullStrength > 0 && fighter.CurrentHullStrength <= 0) => 0f,
-                CapitalShip ship => ship.GetSublightSpeed(),
-                Starfighter fighter => fighter.GetSublightSpeed(),
-                _ => 0f,
-            };
+            float speed = GetSpeed(unit);
+            if (unit.MoveSpeedLimit.HasValue)
+                speed = Math.Min(speed, Math.Max(0f, unit.MoveSpeedLimit.Value));
             if (speed <= 0f)
                 return;
             Vector3 position = ToVector(unit.Position);
@@ -132,6 +142,7 @@ namespace Rebellion.Simulation.Tactical
             if (distance == 0f)
             {
                 unit.MoveDestination = null;
+                unit.MoveSpeedLimit = null;
                 return;
             }
             Vector3 forward = displacement / distance;
@@ -242,10 +253,29 @@ namespace Rebellion.Simulation.Tactical
             {
                 SetVector(unit.Position, destination);
                 unit.MoveDestination = null;
+                unit.MoveSpeedLimit = null;
             }
             else
                 SetVector(unit.Position, position + displacement / distance * (float)travel);
         }
+
+        /// <summary>
+        /// Resolves the current unrestricted sublight speed of one live tactical unit.
+        /// </summary>
+        /// <param name="unit">The persistent battle unit.</param>
+        /// <returns>The available movement speed, or zero when the unit cannot move.</returns>
+        public static float GetSpeed(CombatUnit unit) =>
+            unit.GetUnit() switch
+            {
+                CapitalShip ship when ship.MaxHullStrength > 0 && ship.CurrentHullStrength <= 0 =>
+                    0f,
+                Starfighter fighter
+                    when fighter.CurrentSquadronSize <= 0
+                        || (fighter.MaxHullStrength > 0 && fighter.CurrentHullStrength <= 0) => 0f,
+                CapitalShip ship => ship.GetSublightSpeed(),
+                Starfighter fighter => fighter.GetSublightSpeed(),
+                _ => 0f,
+            };
 
         /// <summary>
         /// Resolves selected non-retreated members through the battle's participant ownership boundary.

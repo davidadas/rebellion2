@@ -1,3 +1,4 @@
+using Rebellion.Game.Combat;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -14,6 +15,12 @@ namespace Rebellion.Game.ShipComponents
         public string ModelNodePath { get; set; }
 
         /// <summary>
+        /// Gets or sets the component position relative to its bound model node.
+        /// Bounds-relative hardpoints interpret this as a normalized hull offset.
+        /// </summary>
+        public BattleVector3 Position { get; set; } = new BattleVector3();
+
+        /// <summary>
         /// Copies state shared by every ship component.
         /// </summary>
         /// <param name="copy">The destination component.</param>
@@ -22,6 +29,12 @@ namespace Rebellion.Game.ShipComponents
             copy.Health = Health;
             copy.Targetable = Targetable;
             copy.ModelNodePath = ModelNodePath;
+            copy.Position = new BattleVector3
+            {
+                X = Position.X,
+                Y = Position.Y,
+                Z = Position.Z,
+            };
             CopyEntityStateTo(copy);
         }
 

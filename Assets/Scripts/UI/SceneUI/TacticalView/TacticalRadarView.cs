@@ -72,9 +72,11 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
     {
         mesh.Clear();
         Rect r = GetPixelAdjustedRect();
-        TacticalHudGraphic.Quad(mesh, r, new Color(0.014f, 0.025f, 0.024f));
+        TacticalHudGraphic.Quad(mesh, r, new Color(0.006f, 0.01f, 0.012f));
         if (_presentations == null || _bounds == null)
             return;
+        Rect playableRect = GetPlayableRect(r);
+        TacticalHudGraphic.Quad(mesh, playableRect, new Color(0.014f, 0.025f, 0.024f));
         _selectedContacts.Clear();
         if (_selected != null)
             for (int i = 0; i < _selected.Count; i++)
@@ -83,7 +85,7 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         {
             if (!pair.Value || !pair.Value.gameObject.activeInHierarchy || pair.Key.HasRetreated)
                 continue;
-            Vector2 p = Project(pair.Value.position, r);
+            Vector2 p = Project(pair.Value.position, playableRect);
             bool selected = _selectedContacts.Contains(pair.Key);
             Color tint =
                 selected ? Color.white
@@ -109,16 +111,48 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
     private Vector2 Project(Vector3 world, Rect rect) =>
         new Vector2(
             Mathf.Lerp(
-                rect.xMin + 4f,
-                rect.xMax - 4f,
+                rect.xMin,
+                rect.xMax,
                 Mathf.InverseLerp(_bounds.MinimumX, _bounds.MaximumX, world.x)
             ),
             Mathf.Lerp(
-                rect.yMin + 4f,
-                rect.yMax - 4f,
+                rect.yMin,
+                rect.yMax,
                 Mathf.InverseLerp(_bounds.MinimumZ, _bounds.MaximumZ, world.z)
             )
         );
+
+    /// <summary>
+    /// Fits the authored X/Z playable area inside the square instrument without distorting it.
+    /// </summary>
+    /// <param name="rect">The full local instrument rectangle.</param>
+    /// <returns>The inset, aspect-correct playable rectangle.</returns>
+    private Rect GetPlayableRect(Rect rect)
+    {
+        Rect available = Rect.MinMaxRect(
+            rect.xMin + 4f,
+            rect.yMin + 4f,
+            rect.xMax - 4f,
+            rect.yMax - 4f
+        );
+        float width = Mathf.Max(0.0001f, _bounds.MaximumX - _bounds.MinimumX);
+        float depth = Mathf.Max(0.0001f, _bounds.MaximumZ - _bounds.MinimumZ);
+        float playableAspect = width / depth;
+        float availableAspect = available.width / available.height;
+        if (playableAspect > availableAspect)
+        {
+            float height = available.width / playableAspect;
+            available.y += (available.height - height) * 0.5f;
+            available.height = height;
+        }
+        else
+        {
+            float fittedWidth = available.height * playableAspect;
+            available.x += (available.width - fittedWidth) * 0.5f;
+            available.width = fittedWidth;
+        }
+        return available;
+    }
 
     /// <summary>
     /// Moves the camera pivot to a clicked location without moving ships.
@@ -137,18 +171,20 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
             )
         )
             return;
-        Rect r = rectTransform.rect;
+        Rect r = GetPlayableRect(rectTransform.rect);
+        if (!r.Contains(local))
+            return;
         Vector3 point = new Vector3(
             Mathf.Lerp(
                 _bounds.MinimumX,
                 _bounds.MaximumX,
-                Mathf.InverseLerp(r.xMin + 4f, r.xMax - 4f, local.x)
+                Mathf.InverseLerp(r.xMin, r.xMax, local.x)
             ),
             (_bounds.MinimumY + _bounds.MaximumY) * 0.5f,
             Mathf.Lerp(
                 _bounds.MinimumZ,
                 _bounds.MaximumZ,
-                Mathf.InverseLerp(r.yMin + 4f, r.yMax - 4f, local.y)
+                Mathf.InverseLerp(r.yMin, r.yMax, local.y)
             )
         );
         _camera.GetComponent<TacticalViewCameraController>().Recenter(point);

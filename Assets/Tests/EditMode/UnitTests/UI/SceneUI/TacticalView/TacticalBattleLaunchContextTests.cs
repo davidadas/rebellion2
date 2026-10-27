@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -29,7 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Reset_DefaultContent_CreatesEveryConventionalCapitalShipTypeForEachPlayableFaction()
+        public void Reset_DefaultContent_CreatesTwoOfEveryConventionalCapitalShipTypeForEachPlayableFaction()
         {
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
 
@@ -47,7 +48,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         && !string.IsNullOrWhiteSpace(ship.ModelPath)
                         && !ship.CanDestroyPlanets
                     )
-                    .Select(ship => ship.TypeID)
+                    .SelectMany(ship => Enumerable.Repeat(ship.TypeID, 2))
                     .ToArray();
                 CollectionAssert.AreEquivalent(
                     expected,
@@ -78,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Checks every preview squadron has exactly one tactical representation with its configured strength.
+        /// Checks every modeled fighter type participates and every copy retains its configured squadron strength.
         /// </summary>
         [Test]
         public void Reset_DefaultContent_CreatesEveryFighterSquadronTypeForEachPlayableFaction()
@@ -94,23 +95,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         && !string.IsNullOrWhiteSpace(ship.ModelPath)
                     )
                     .ToArray();
-                IGrouping<string, CombatUnit>[] groups = participant
+                CombatUnit[] squadrons = participant
                     .GetCombatants()
                     .Where(combatant => combatant.GetUnit() is Starfighter)
-                    .GroupBy(combatant => combatant.SourceUnitInstanceID)
                     .ToArray();
                 CollectionAssert.AreEquivalent(
                     expected.Select(ship => ship.TypeID),
-                    groups.Select(group => group.First().GetUnit().TypeID)
+                    squadrons.Select(combatant => combatant.GetUnit().TypeID).Distinct()
                 );
                 foreach (Starfighter template in expected)
                 {
-                    CombatUnit[] squadron = groups
-                        .Single(group => group.First().GetUnit().TypeID == template.TypeID)
+                    CombatUnit[] copies = squadrons
+                        .Where(combatant => combatant.GetUnit().TypeID == template.TypeID)
                         .ToArray();
-                    Assert.That(squadron.Length, Is.EqualTo(1));
                     Assert.That(
-                        squadron.Select(combatant => (Starfighter)combatant.GetUnit()),
+                        copies.Select(combatant => (Starfighter)combatant.GetUnit()),
                         Has.All.Matches<Starfighter>(fighter =>
                             fighter.CurrentSquadronSize == template.CurrentSquadronSize
                             && fighter.MaxSquadronSize == template.MaxSquadronSize
@@ -121,20 +120,83 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Checks preview squadrons without hyperdrives begin carried by an available friendly ship.
+        /// Checks every carrier with an authored launch route begins at its actual squadron capacity.
         /// </summary>
         [Test]
-        public void Reset_NonHyperdriveSquadrons_StartsDockedWithFriendlyCarrier()
+        public void Reset_LaunchCapableCarriers_FillsEveryFighterBerth()
+        {
+            foreach (
+                BattleParticipant participant in TacticalBattleLaunchContext.ActiveBattle.GetParticipants()
+            )
+            {
+                CombatUnit[] combatants = participant.GetCombatants().ToArray();
+                foreach (
+                    CombatUnit carrier in combatants.Where(combatant =>
+                        combatant.GetUnit() is CapitalShip ship
+                        && ship.GetStarfighterCapacity() > 0
+                        && ship.GetComponents()
+                            .OfType<Rebellion.Game.ShipComponents.StarfighterBay>()
+                            .Any(bay => bay.FlightPath.Count > 0)
+                    )
+                )
+                {
+                    CapitalShip ship = (CapitalShip)carrier.GetUnit();
+                    Assert.That(
+                        combatants.Count(combatant =>
+                            combatant.GetUnit() is Starfighter
+                            && combatant.CarrierSourceUnitInstanceID == carrier.SourceUnitInstanceID
+                        ),
+                        Is.EqualTo(ship.GetStarfighterCapacity())
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks hyperdrive-equipped fighter types retain one deployed squadron in addition to carrier complements.
+        /// </summary>
+        [Test]
+        public void Reset_HyperdriveFighterTypes_CreatesOneDeployedSquadron()
         {
             foreach (
                 BattleParticipant participant in TacticalBattleLaunchContext.ActiveBattle.GetParticipants()
             )
             foreach (
-                CombatUnit fighter in participant
-                    .GetCombatants()
-                    .Where(unit => unit.GetUnit() is Starfighter { Hyperdrive: <= 0 })
+                Starfighter template in TestContent.Data.Starfighters.Where(fighter =>
+                    fighter.Hyperdrive > 0
+                    && !string.IsNullOrWhiteSpace(fighter.ModelPath)
+                    && fighter.ManufacturingFactionInstanceIDs?.Contains(
+                        participant.FactionInstanceID
+                    ) == true
+                )
             )
             {
+                Assert.That(
+                    participant
+                        .GetCombatants()
+                        .Count(combatant =>
+                            combatant.GetUnit().TypeID == template.TypeID
+                            && string.IsNullOrWhiteSpace(combatant.CarrierSourceUnitInstanceID)
+                            && combatant.FlightState == FighterFlightState.Deployed
+                        ),
+                    Is.EqualTo(1)
+                );
+            }
+        }
+
+        /// <summary>
+        /// Checks preview squadrons without hyperdrives begin carried by an available friendly ship.
+        /// </summary>
+        [Test]
+        public void Reset_ViewerCarrierSquadrons_StartDockedWithFriendlyCarrier()
+        {
+            BattleParticipant participant = TacticalBattleLaunchContext
+                .ActiveBattle.GetParticipants()
+                .First();
+            foreach (CombatUnit fighter in participant.GetCombatants())
+            {
+                if (string.IsNullOrWhiteSpace(fighter.CarrierSourceUnitInstanceID))
+                    continue;
                 Assert.That(fighter.FlightState, Is.EqualTo(FighterFlightState.Docked));
                 Assert.That(
                     participant
@@ -144,6 +206,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                             && unit.SourceUnitInstanceID == fighter.CarrierSourceUnitInstanceID
                         ),
                     Is.True
+                );
+            }
+        }
+
+        [Test]
+        public void Reset_OpposingCarrierSquadrons_StartDeployed()
+        {
+            foreach (
+                BattleParticipant participant in TacticalBattleLaunchContext
+                    .ActiveBattle.GetParticipants()
+                    .Skip(1)
+            )
+            {
+                CombatUnit[] carried = participant
+                    .GetCombatants()
+                    .Where(combatant =>
+                        !string.IsNullOrWhiteSpace(combatant.CarrierSourceUnitInstanceID)
+                    )
+                    .ToArray();
+                Assert.That(carried, Is.Not.Empty);
+                Assert.That(
+                    carried,
+                    Has.All.Matches<CombatUnit>(combatant =>
+                        combatant.FlightState == FighterFlightState.Deployed
+                    )
                 );
             }
         }
@@ -173,19 +260,60 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
+        public void Reset_DefaultContent_AttachesThreeFactionOfficersToOneCapitalShip()
+        {
+            foreach (
+                BattleParticipant participant in TacticalBattleLaunchContext.ActiveBattle.GetParticipants()
+            )
+            {
+                string[] expected = TestContent
+                    .Data.Officers.Where(officer =>
+                        officer.OwnerInstanceID == participant.FactionInstanceID
+                    )
+                    .Take(3)
+                    .Select(officer => officer.InstanceID)
+                    .ToArray();
+                Officer[] actual = participant
+                    .GetCombatants()
+                    .SelectMany(combatant =>
+                        combatant.GetUnit() is CapitalShip ship
+                            ? ship.GetChildren<Officer>(includeDisabled: true)
+                            : Array.Empty<Officer>()
+                    )
+                    .ToArray();
+
+                CollectionAssert.AreEquivalent(
+                    expected,
+                    actual.Select(officer => officer.InstanceID)
+                );
+                Assert.That(
+                    actual,
+                    Has.All.Matches<Officer>(officer => officer.ParentNode is CapitalShip)
+                );
+                Assert.That(
+                    actual.Select(officer => officer.ParentNode).Distinct().Count(),
+                    Is.EqualTo(1)
+                );
+            }
+        }
+
+        [Test]
         public void Reset_DefaultContent_PreservesCatalogTemplates()
         {
             BaseSceneNode[] templates = TestContent
                 .Data.CapitalShips.Cast<BaseSceneNode>()
                 .Concat(TestContent.Data.Starfighters)
+                .Concat(TestContent.Data.Officers)
                 .ToArray();
             string[] identities = templates.Select(ship => ship.InstanceID).ToArray();
             string[] owners = templates.Select(ship => ship.OwnerInstanceID).ToArray();
+            ISceneNode[] parents = templates.Select(ship => ship.ParentNode).ToArray();
 
             _ = TacticalBattleLaunchContext.ActiveBattle;
 
             CollectionAssert.AreEqual(identities, templates.Select(ship => ship.InstanceID));
             CollectionAssert.AreEqual(owners, templates.Select(ship => ship.OwnerInstanceID));
+            CollectionAssert.AreEqual(parents, templates.Select(ship => ship.ParentNode));
         }
 
         [Test]

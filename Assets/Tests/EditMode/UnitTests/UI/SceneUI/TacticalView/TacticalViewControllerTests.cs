@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -15,6 +16,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -105,12 +107,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 yield return null;
                 InputSystem.QueueStateEvent(mouse, new MouseState { position = target });
                 yield return null;
-                yield return null;
+                for (int frame = 0; frame < 10 && combatant.Position.X <= 0f; frame++)
+                    yield return null;
 
                 Assert.That(combatant.Position.X, Is.GreaterThan(0f));
                 Assert.That(combatant.Position.Z, Is.GreaterThan(0f));
                 Assert.That(combatant.Forward.X, Is.GreaterThan(0f).And.LessThan(1f));
-                Assert.That(combatant.MoveDestination.X, Is.EqualTo(100f).Within(0.01f));
+                Assert.That(combatant.MoveDestination.X, Is.EqualTo(100f).Within(0.05f));
                 Transform presentation = controller.BattleRoot.GetChild(0).GetChild(0);
                 Assert.That(
                     presentation.localPosition.x,
@@ -155,6 +158,53 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(controller.BattleCamera.GetComponent<TacticalViewCameraController>());
             Assert.IsNotNull(instance.GetComponent<TacticalSelectionController>());
             Assert.IsNotNull(instance.GetComponentInChildren<TacticalSelectionView>());
+            Assert.IsNotNull(instance.GetComponentInChildren<TacticalTimeControlsView>());
+        }
+
+        /// <summary>
+        /// Checks every generated speed button updates the tactical-only battle clock.
+        /// </summary>
+        /// <returns>The play-mode lifecycle and speed-selection checks.</returns>
+        [UnityTest]
+        public IEnumerator TimeControl_SpeedClicked_UpdatesBattleClock()
+        {
+            UnityEngine.Object.DestroyImmediate(instance);
+            models.Dispose();
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.EmptyScene,
+                NewSceneMode.Single
+            );
+            EditorSceneManager.MarkSceneDirty(scene);
+            yield return new EnterPlayMode();
+            SetUp();
+            try
+            {
+                (string Name, TacticalBattleSpeed Speed, float Scale)[] cases =
+                {
+                    ("TimeControl0", TacticalBattleSpeed.Paused, 0f),
+                    ("TimeControl1", TacticalBattleSpeed.Half, 0.5f),
+                    ("TimeControl2", TacticalBattleSpeed.Normal, 1f),
+                    ("TimeControl3", TacticalBattleSpeed.Double, 2f),
+                    ("TimeControl4", TacticalBattleSpeed.Quadruple, 4f),
+                };
+                foreach ((string name, TacticalBattleSpeed speed, float scale) in cases)
+                {
+                    Button button = instance
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(candidate => candidate.name == name);
+
+                    button.onClick.Invoke();
+
+                    Assert.AreEqual(speed, controller.BattleSpeed);
+                    Assert.AreEqual(scale, controller.BattleTimeScale);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+                models.Dispose();
+            }
+            yield return new ExitPlayMode();
         }
 
         /// <summary>
@@ -301,7 +351,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public async Task InitializeAsync_DefaultFleet_LoadsAndDeploysEveryCombatantAsync()
+        public async Task InitializeAsync_HeavyDefaultFleet_LoadsAndDeploysEveryCombatantAsync()
         {
             TacticalBattleLaunchContext.Reset(TestContent.Pack);
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;

@@ -57,6 +57,31 @@ namespace Rebellion.Tests.Simulation.Tactical
         }
 
         [Test]
+        public void Deploy_WideMixedFleet_StacksUnitClassesIntoVerticalRanks()
+        {
+            ActiveBattle battle = CreateBattle(5, 4, 12);
+
+            FleetDeploymentPlanner.Deploy(battle, CreateMap());
+
+            CombatUnit[] capitals = GetCombatants(battle)
+                .Where(unit => unit.GetUnit() is CapitalShip)
+                .ToArray();
+            CombatUnit[] fighters = GetCombatants(battle)
+                .Where(unit => unit.GetUnit() is Starfighter)
+                .ToArray();
+            float capitalDepth = capitals[0].Position.Z;
+            float fighterDepth = fighters[0].Position.Z;
+            Assert.That(fighterDepth, Is.GreaterThan(capitalDepth));
+            Assert.That(capitals.Select(unit => unit.Position.Y).Distinct().Count(), Is.EqualTo(2));
+            Assert.That(
+                fighters.Select(unit => unit.Position.Y).Distinct().Count(),
+                Is.GreaterThan(1)
+            );
+            Assert.That(capitals.Select(unit => unit.Position.Z).Distinct().Count(), Is.EqualTo(1));
+            Assert.That(fighters.Select(unit => unit.Position.Z).Distinct().Count(), Is.EqualTo(1));
+        }
+
+        [Test]
         public void Deploy_ReorderedCombatants_PreservesPositions()
         {
             ActiveBattle battle = CreateBattle(20, 4, 12);
@@ -109,6 +134,10 @@ namespace Rebellion.Tests.Simulation.Tactical
 
             Assert.That(
                 GetCombatants(battle).Select(unit => unit.Position.Z).Distinct().Count(),
+                Is.GreaterThan(1)
+            );
+            Assert.That(
+                GetCombatants(battle).Select(unit => unit.Position.Y).Distinct().Count(),
                 Is.GreaterThan(1)
             );
             AssertContainedAndSeparated(

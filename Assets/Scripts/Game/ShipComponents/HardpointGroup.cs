@@ -9,6 +9,8 @@ namespace Rebellion.Game.ShipComponents
     [PersistableObject]
     public sealed class HardpointGroup
     {
+        public string ID { get; set; }
+
         [PersistableMember(Name = "Hardpoints")]
         private List<Hardpoint> _hardpoints = new List<Hardpoint>();
 
@@ -29,6 +31,7 @@ namespace Rebellion.Game.ShipComponents
         {
             return new HardpointGroup
             {
+                ID = ID,
                 _hardpoints = _hardpoints?.ConvertAll(hardpoint =>
                     (Hardpoint)hardpoint?.CreateCopy()
                 ),

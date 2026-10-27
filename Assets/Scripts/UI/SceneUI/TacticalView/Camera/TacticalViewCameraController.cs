@@ -27,6 +27,8 @@ public sealed class TacticalViewCameraController : MonoBehaviour
 
     private Vector3 _playableMinimum;
     private Vector3 _playableMaximum;
+    private Vector3 _sceneMinimum;
+    private Vector3 _sceneMaximum;
     private Vector3 _pivot;
     private Vector2 _lastPointerPosition;
     private Vector2 _rightPointerPressPosition;
@@ -45,6 +47,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     private float _framingAspect;
     private float _framingFieldOfView;
     private Transform _followTarget;
+    private bool _suppressLeftPanUntilAReleased;
 
     internal bool IsConfigured => _configured;
     internal float Distance => _distance;
@@ -55,7 +58,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     /// </summary>
     public Transform FollowTarget => _followTarget;
 
-    public event Action<Vector2> RightClicked;
+    public event Action<Vector2, bool> RightClicked;
 
     /// <summary>
     /// Captures the required camera component.
@@ -94,6 +97,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     {
         _rightPointerGestureActive = false;
         _rightPointerDragging = false;
+        _suppressLeftPanUntilAReleased = false;
     }
 
     /// <summary>
@@ -128,16 +132,34 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     }
 
     /// <summary>
+    /// Centers once on a visible scene unit without enabling continuous tracking.
+    /// </summary>
+    /// <param name="target">The visible unit's presentation root.</param>
+    public void CenterOn(Transform target)
+    {
+        RequireConfiguration();
+        if (!target)
+            throw new ArgumentNullException(nameof(target));
+        if (!target.gameObject.activeInHierarchy)
+            throw new ArgumentException("Only visible units can be centered.", nameof(target));
+        _framingCorners = null;
+        _followTarget = null;
+        _pivot = ClampToPlayableVolume(target.position);
+        ApplyTransform();
+    }
+
+    /// <summary>
     /// Releases the tracked unit while preserving the current camera pose.
     /// </summary>
     public void StopFollowing() => _followTarget = null;
 
     /// <summary>
-    /// Configures camera navigation from authored map bounds and the current camera pose.
+    /// Configures camera navigation and visibility from the authored map volumes and current pose.
     /// </summary>
     /// <param name="playableBounds">The volume within which the camera pivot may move.</param>
+    /// <param name="sceneBounds">The volume containing scenery that must remain renderable.</param>
     /// <param name="pivot">The point around which the authored starting view orbits.</param>
-    public void Configure(BattleMapBounds playableBounds, Vector3 pivot)
+    public void Configure(BattleMapBounds playableBounds, Bounds sceneBounds, Vector3 pivot)
     {
         if (playableBounds == null)
             throw new ArgumentNullException(nameof(playableBounds));
@@ -152,6 +174,17 @@ public sealed class TacticalViewCameraController : MonoBehaviour
                 nameof(playableBounds)
             );
         }
+        if (
+            !IsFinite(sceneBounds.center)
+            || !IsFinite(sceneBounds.size)
+            || sceneBounds.size.x <= 0f
+            || sceneBounds.size.y <= 0f
+            || sceneBounds.size.z <= 0f
+        )
+            throw new ArgumentException(
+                "Tactical scene bounds must be finite and positive.",
+                nameof(sceneBounds)
+            );
 
         _playableMinimum = new Vector3(
             playableBounds.MinimumX,
@@ -163,6 +196,22 @@ public sealed class TacticalViewCameraController : MonoBehaviour
             playableBounds.MaximumY,
             playableBounds.MaximumZ
         );
+        _sceneMinimum = sceneBounds.min;
+        _sceneMaximum = sceneBounds.max;
+        if (
+            _sceneMinimum.x > _playableMinimum.x
+            || _sceneMinimum.y > _playableMinimum.y
+            || _sceneMinimum.z > _playableMinimum.z
+            || _sceneMaximum.x < _playableMaximum.x
+            || _sceneMaximum.y < _playableMaximum.y
+            || _sceneMaximum.z < _playableMaximum.z
+        )
+        {
+            throw new ArgumentException(
+                "Tactical scene bounds must contain the playable volume.",
+                nameof(sceneBounds)
+            );
+        }
         _pivot = ClampToPlayableVolume(pivot);
 
         Vector3 playableSize = _playableMaximum - _playableMinimum;
@@ -186,6 +235,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         _configured = true;
         _framingCorners = null;
         StopFollowing();
+        UpdateFarClipPlane();
     }
 
     /// <summary>
@@ -288,14 +338,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         Vector3 eyeDirection = -transform.forward;
         _yaw = NormalizeRadians(Mathf.Atan2(eyeDirection.z, eyeDirection.x));
         _elevation = Mathf.Asin(Mathf.Clamp(eyeDirection.y, -1f, 1f));
-        Vector3 farthest = Vector3.Max(
-            Abs(_playableMinimum - transform.position),
-            Abs(_playableMaximum - transform.position)
-        );
-        _controlledCamera.farClipPlane = Mathf.Max(
-            _controlledCamera.farClipPlane,
-            farthest.magnitude + 100f
-        );
+        UpdateFarClipPlane();
     }
 
     /// <summary>
@@ -476,8 +519,24 @@ public sealed class TacticalViewCameraController : MonoBehaviour
             _rightPointerGestureActive = false;
             _rightPointerDragging = false;
             if (clicked)
-                RightClicked?.Invoke(pointerPosition);
+                RightClicked?.Invoke(pointerPosition, IsPrimaryShortcutModifierPressed());
         }
+    }
+
+    /// <summary>
+    /// Returns whether Control or Command is held for a pointer command.
+    /// </summary>
+    /// <returns>True when a primary shortcut modifier is pressed.</returns>
+    private static bool IsPrimaryShortcutModifierPressed()
+    {
+        Keyboard keyboard = Keyboard.current;
+        return keyboard != null
+            && (
+                keyboard.leftCtrlKey.isPressed
+                || keyboard.rightCtrlKey.isPressed
+                || keyboard.leftMetaKey.isPressed
+                || keyboard.rightMetaKey.isPressed
+            );
     }
 
     /// <summary>
@@ -488,6 +547,17 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return;
+        bool primaryModifier =
+            keyboard.leftCtrlKey.isPressed
+            || keyboard.rightCtrlKey.isPressed
+            || keyboard.leftMetaKey.isPressed
+            || keyboard.rightMetaKey.isPressed;
+        if (primaryModifier && keyboard.aKey.isPressed)
+            _suppressLeftPanUntilAReleased = true;
+        else if (!keyboard.aKey.isPressed)
+            _suppressLeftPanUntilAReleased = false;
+        if (primaryModifier)
+            return;
 
         if (keyboard.numpadPlusKey.isPressed || keyboard.equalsKey.isPressed)
             Zoom(_keyboardZoomInMultiplier);
@@ -495,7 +565,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
             Zoom(_keyboardZoomOutMultiplier);
 
         Vector2 panInput = Vector2.zero;
-        if (keyboard.aKey.isPressed)
+        if (keyboard.aKey.isPressed && !_suppressLeftPanUntilAReleased)
             panInput.x--;
         if (keyboard.dKey.isPressed)
             panInput.x++;
@@ -541,6 +611,19 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         );
         transform.position = _pivot + offset;
         transform.rotation = Quaternion.LookRotation(_pivot - transform.position, Vector3.up);
+        UpdateFarClipPlane();
+    }
+
+    /// <summary>
+    /// Fits the far clipping plane to all authored scenery from the current camera position.
+    /// </summary>
+    private void UpdateFarClipPlane()
+    {
+        Vector3 farthest = Vector3.Max(
+            Abs(_sceneMinimum - transform.position),
+            Abs(_sceneMaximum - transform.position)
+        );
+        _controlledCamera.farClipPlane = Mathf.Max(1000f, farthest.magnitude + 100f);
     }
 
     /// <summary>

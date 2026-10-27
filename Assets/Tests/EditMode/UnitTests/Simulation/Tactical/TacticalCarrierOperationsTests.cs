@@ -193,6 +193,107 @@ namespace Rebellion.Tests.Simulation.Tactical
             Assert.IsTrue(_operations.CanLaunch(new[] { _carrier }, "OWNER"));
         }
 
+        [Test]
+        public void Launch_SelectedRecoveredSquadron_LeavesCarrier()
+        {
+            _operations.Launch(new[] { _carrier }, "OWNER");
+            _operations.Advance(5f);
+            _operations.Advance(3f);
+            _operations.Recall(new[] { _fighters[0] }, "OWNER");
+            for (int frame = 0; frame < 2000; frame++)
+                _operations.Advance(0.05f);
+
+            Assert.IsTrue(_operations.CanLaunch(new[] { _fighters[0] }, "OWNER"));
+            _operations.Launch(new[] { _fighters[0] }, "OWNER");
+            _operations.Advance(5f);
+
+            Assert.That(_fighters[0].FlightState, Is.EqualTo(FighterFlightState.Launching));
+        }
+
+        [TestCase(FighterFlightState.Returning)]
+        [TestCase(FighterFlightState.Docking)]
+        public void CancelRecovery_ActiveRecovery_ReturnsControlToSquadron(
+            FighterFlightState flightState
+        )
+        {
+            CombatUnit fighter = _fighters[0];
+            fighter.FlightState = flightState;
+            fighter.RecallRequested = true;
+            fighter.MoveDestination = new BattleVector3 { X = 4f };
+
+            Assert.IsTrue(_operations.CancelRecovery(new[] { fighter }, "OWNER"));
+
+            Assert.That(fighter.FlightState, Is.EqualTo(FighterFlightState.Deployed));
+            Assert.IsFalse(fighter.RecallRequested);
+            Assert.IsNull(fighter.MoveDestination);
+        }
+
+        [Test]
+        public void DockAt_FriendlyCarrierWithCapacity_ReassignsAndRecoversSquadron()
+        {
+            CapitalShip targetSource = new CapitalShip
+            {
+                InstanceID = "TARGET",
+                OwnerInstanceID = "OWNER",
+                StarfighterCapacity = 1,
+            };
+            CombatUnit target = _battle.AddCombatants(targetSource)[0];
+            _operations = new TacticalCarrierOperations(
+                _battle,
+                new Dictionary<CombatUnit, Vector3[][]>
+                {
+                    [_carrier] = CreateBayPath(),
+                    [target] = CreateBayPath(),
+                },
+                new IntervalRandom(0)
+            );
+            _operations.Launch(new[] { _carrier }, "OWNER");
+            _operations.Advance(5f);
+            _operations.Advance(3f);
+
+            Assert.IsTrue(_operations.CanDockAt(_fighters, target, "OWNER"));
+            Assert.IsTrue(_operations.DockAt(_fighters, target, "OWNER"));
+
+            Assert.That(_fighters[0].FlightState, Is.EqualTo(FighterFlightState.Returning));
+            Assert.That(_fighters[0].CarrierSourceUnitInstanceID, Is.EqualTo("TARGET"));
+            Assert.That(_operations.GetManifest(_carrier), Is.Empty);
+            Assert.That(_operations.GetManifest(target), Is.EqualTo(_fighters));
+        }
+
+        [Test]
+        public void CanDockAt_FullFriendlyCarrier_RejectsSquadron()
+        {
+            CapitalShip targetSource = new CapitalShip
+            {
+                InstanceID = "TARGET",
+                OwnerInstanceID = "OWNER",
+                StarfighterCapacity = 1,
+            };
+            CombatUnit target = _battle.AddCombatants(targetSource)[0];
+            Starfighter occupyingSquadron = new Starfighter
+            {
+                InstanceID = "OCCUPANT",
+                OwnerInstanceID = "OWNER",
+                CurrentSquadronSize = 12,
+                SublightSpeed = 10,
+            };
+            targetSource.AddChild(occupyingSquadron);
+            occupyingSquadron.SetParent(targetSource);
+            _battle.AddCombatants(occupyingSquadron);
+            _operations = new TacticalCarrierOperations(
+                _battle,
+                new Dictionary<CombatUnit, Vector3[][]>
+                {
+                    [_carrier] = CreateBayPath(),
+                    [target] = CreateBayPath(),
+                }
+            );
+            _operations.Launch(new[] { _carrier }, "OWNER");
+            _operations.Advance(20f);
+
+            Assert.IsFalse(_operations.CanDockAt(_fighters, target, "OWNER"));
+        }
+
         /// <summary>
         /// Checks a saved pending release resumes its remaining deadline rather than starting over.
         /// </summary>
@@ -353,15 +454,16 @@ namespace Rebellion.Tests.Simulation.Tactical
         ) =>
             new TacticalCarrierOperations(
                 battle,
-                new Dictionary<CombatUnit, Vector3[][]>
-                {
-                    [carrier] = new[]
-                    {
-                        new[] { Vector3.Zero, new Vector3(0f, 0f, 10f), new Vector3(0f, 0f, 20f) },
-                    },
-                },
+                new Dictionary<CombatUnit, Vector3[][]> { [carrier] = CreateBayPath() },
                 random
             );
+
+        /// <summary>
+        /// Creates the fixture's straight carrier-local recovery route.
+        /// </summary>
+        /// <returns>One authored bay path.</returns>
+        private static Vector3[][] CreateBayPath() =>
+            new[] { new[] { Vector3.Zero, new Vector3(0f, 0f, 10f), new Vector3(0f, 0f, 20f) } };
 
         private sealed class IntervalRandom : IRandomNumberProvider
         {

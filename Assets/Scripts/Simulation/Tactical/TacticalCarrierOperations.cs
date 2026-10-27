@@ -110,6 +110,65 @@ namespace Rebellion.Simulation.Tactical
                 : Array.Empty<CombatUnit>();
 
         /// <summary>
+        /// Reports whether every selected squadron can recover aboard one visible friendly carrier.
+        /// </summary>
+        /// <param name="selection">The selected battle units.</param>
+        /// <param name="target">The carrier under the pointer.</param>
+        /// <param name="owner">The ordering faction.</param>
+        /// <returns>Whether the complete selection can accept the targeted recovery order.</returns>
+        public bool CanDockAt(IReadOnlyList<CombatUnit> selection, CombatUnit target, string owner)
+        {
+            if (
+                selection == null
+                || selection.Count == 0
+                || target == null
+                || !_carriers.TryGetValue(target, out Carrier carrier)
+                || carrier.Bays.Length == 0
+                || !IsControlled(target, owner)
+            )
+                return false;
+
+            int requiredSlots = 0;
+            foreach (CombatUnit unit in selection)
+            {
+                if (
+                    unit.GetUnit() is not Starfighter
+                    || !IsControlled(unit, owner)
+                    || unit.FlightState != FighterFlightState.Deployed
+                )
+                    return false;
+                if (!_assignments.TryGetValue(unit, out Carrier assigned) || assigned != carrier)
+                    requiredSlots++;
+            }
+
+            return requiredSlots <= GetAvailableCapacity(carrier);
+        }
+
+        /// <summary>
+        /// Reassigns the selected deployed squadrons to one targeted carrier and begins recovery.
+        /// </summary>
+        /// <param name="selection">The selected fighter squadrons.</param>
+        /// <param name="target">The friendly carrier receiving them.</param>
+        /// <param name="owner">The ordering faction.</param>
+        /// <returns>Whether the complete docking order was accepted.</returns>
+        public bool DockAt(IReadOnlyList<CombatUnit> selection, CombatUnit target, string owner)
+        {
+            if (!CanDockAt(selection, target, owner))
+                return false;
+
+            Carrier targetCarrier = _carriers[target];
+            foreach (CombatUnit fighter in selection)
+            {
+                if (!_assignments.TryGetValue(fighter, out Carrier assigned))
+                    assigned = null;
+                if (assigned != targetCarrier)
+                    Reassign(fighter, assigned, targetCarrier);
+                RecallFighter(targetCarrier, fighter);
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Reports whether the selection contains a controlled, docked squadron with an authored bay.
         /// </summary>
         /// <param name="selection">The live player selection.</param>
@@ -215,6 +274,40 @@ namespace Rebellion.Simulation.Tactical
                 else if (_assignments.TryGetValue(unit, out Carrier assigned))
                     RecallFighter(assigned, unit);
             }
+        }
+
+        /// <summary>
+        /// Cancels active recovery for controlled squadrons so another movement or stop order owns them.
+        /// </summary>
+        /// <param name="selection">The selected battle units.</param>
+        /// <param name="owner">The ordering faction.</param>
+        /// <returns>Whether any recovery state changed.</returns>
+        public bool CancelRecovery(IReadOnlyList<CombatUnit> selection, string owner)
+        {
+            if (selection == null)
+                throw new ArgumentNullException(nameof(selection));
+            bool changed = false;
+            foreach (CombatUnit fighter in selection)
+            {
+                if (
+                    !IsControlled(fighter, owner)
+                    || fighter.GetUnit() is not Starfighter
+                    || fighter.FlightState
+                        is not (FighterFlightState.Returning or FighterFlightState.Docking)
+                )
+                    continue;
+                fighter.FlightState = FighterFlightState.Deployed;
+                fighter.RecallRequested = false;
+                fighter.FlightWaypointIndex = 0;
+                fighter.FlightSegmentDistance = 0f;
+                fighter.FlightDelay = 0f;
+                fighter.MoveDestination = null;
+                fighter.MoveSpeedLimit = null;
+                changed = true;
+            }
+            if (changed)
+                Revision++;
+            return changed;
         }
 
         /// <summary>
@@ -360,6 +453,7 @@ namespace Rebellion.Simulation.Tactical
                     fighter.FlightDelay = delay;
                     fighter.FlightState = FighterFlightState.Launching;
                     fighter.MoveDestination = null;
+                    fighter.MoveSpeedLimit = null;
                     SetVector(fighter.Position, ToWorld(carrier.Unit, bay.Path[0]));
                     SetVector(
                         fighter.Forward,
@@ -394,6 +488,7 @@ namespace Rebellion.Simulation.Tactical
             else
                 return;
             fighter.MoveDestination = null;
+            fighter.MoveSpeedLimit = null;
             if (fighter.FlightState == FighterFlightState.Docked)
             {
                 fighter.RecallRequested = false;
@@ -401,6 +496,51 @@ namespace Rebellion.Simulation.Tactical
                 carrier.Unit.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
             }
             Revision++;
+        }
+
+        /// <summary>
+        /// Moves one deployed squadron between the indexed carrier manifests without scene-graph scans.
+        /// </summary>
+        /// <param name="fighter">The deployed squadron changing carriers.</param>
+        /// <param name="source">Its previous carrier, when assigned.</param>
+        /// <param name="destination">The carrier receiving the squadron.</param>
+        private void Reassign(CombatUnit fighter, Carrier source, Carrier destination)
+        {
+            if (source != null)
+            {
+                source.Cargo.Remove(fighter);
+                source.Squadrons.Remove(fighter.SourceUnitInstanceID);
+                source.Unit.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
+            }
+
+            fighter.CarrierSourceUnitInstanceID = destination.Unit.SourceUnitInstanceID;
+            fighter.FlightBayIndex = destination.Cargo.Count % destination.Bays.Length;
+            fighter.LaunchFormationOffset = FromVector(
+                ToLocal(
+                    destination.Unit,
+                    ToVector(fighter.Position) - ToVector(destination.Unit.Position)
+                )
+            );
+            destination.Cargo.Add(fighter);
+            destination.Squadrons[fighter.SourceUnitInstanceID] = fighter;
+            _assignments[fighter] = destination;
+        }
+
+        /// <summary>
+        /// Counts unoccupied strategic fighter berths for one indexed carrier.
+        /// </summary>
+        /// <param name="carrier">The inspected carrier state.</param>
+        /// <returns>The non-negative number of available squadron berths.</returns>
+        private static int GetAvailableCapacity(Carrier carrier)
+        {
+            int occupied = 0;
+            foreach (CombatUnit fighter in carrier.Cargo)
+                if (IsAlive(fighter))
+                    occupied++;
+            return Math.Max(
+                0,
+                ((CapitalShip)carrier.Unit.GetUnit()).GetStarfighterCapacity() - occupied
+            );
         }
 
         /// <summary>
@@ -421,6 +561,7 @@ namespace Rebellion.Simulation.Tactical
                     offset += GetRadius(bay.Returning[index - 1]) + GetRadius(fighter);
                 Vector3 target = ToWorld(carrier.Unit, approach + outward * offset);
                 fighter.MoveDestination ??= new BattleVector3();
+                fighter.MoveSpeedLimit = null;
                 SetVector(fighter.MoveDestination, target);
                 TacticalMovement.Advance(fighter, deltaTime);
                 if (
@@ -501,6 +642,7 @@ namespace Rebellion.Simulation.Tactical
                         : FromVector(
                             ToWorld(carrier.Unit, ToVector(fighter.LaunchFormationOffset))
                         );
+                fighter.MoveSpeedLimit = null;
                 Revision++;
                 return;
             }

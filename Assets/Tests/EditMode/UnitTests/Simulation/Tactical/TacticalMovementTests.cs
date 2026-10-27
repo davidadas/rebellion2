@@ -35,6 +35,23 @@ namespace Rebellion.Tests.Simulation.Tactical
         }
 
         /// <summary>
+        /// Checks a synchronized order limits a faster ship without changing its configured speed.
+        /// </summary>
+        [Test]
+        public void Advance_SynchronizedOrder_UsesOrderSpeedLimit()
+        {
+            CapitalShip ship = new CapitalShip { SublightSpeed = 10 };
+            CombatUnit unit = CombatUnit.Create(ship);
+            unit.MoveDestination = new BattleVector3 { Z = 100f };
+            unit.MoveSpeedLimit = 4f;
+
+            TacticalMovement.Advance(unit, 2f);
+
+            Assert.AreEqual(8f, unit.Position.Z);
+            Assert.AreEqual(10, ship.SublightSpeed);
+        }
+
+        /// <summary>
         /// Checks fighter movement uses the same speed contract as capital movement.
         /// </summary>
         [Test]
@@ -442,6 +459,50 @@ namespace Rebellion.Tests.Simulation.Tactical
         }
 
         /// <summary>
+        /// Checks a synchronized formation order records the slowest selected movement speed.
+        /// </summary>
+        [Test]
+        public void MoveTo_MatchingSpeed_AssignsSlowestSpeedLimitToFormation()
+        {
+            ActiveBattle battle = CreateBattle();
+            CombatUnit slow = AddShip(battle, "FRIEND", -10f, 4);
+            CombatUnit fast = AddShip(battle, "FRIEND", 10f, 9);
+
+            TacticalMovement.MoveTo(
+                battle,
+                CreateBounds(),
+                new[] { slow, fast },
+                "FRIEND",
+                new BattleVector3 { Z = 30f },
+                true
+            );
+
+            Assert.AreEqual(4f, slow.MoveSpeedLimit);
+            Assert.AreEqual(4f, fast.MoveSpeedLimit);
+        }
+
+        /// <summary>
+        /// Checks a normal movement order releases an earlier synchronized speed limit.
+        /// </summary>
+        [Test]
+        public void MoveTo_NormalOrder_ClearsPreviousSpeedLimit()
+        {
+            ActiveBattle battle = CreateBattle();
+            CombatUnit unit = AddShip(battle, "FRIEND", 0f, 9);
+            unit.MoveSpeedLimit = 4f;
+
+            TacticalMovement.MoveTo(
+                battle,
+                CreateBounds(),
+                new[] { unit },
+                "FRIEND",
+                new BattleVector3 { Z = 30f }
+            );
+
+            Assert.IsNull(unit.MoveSpeedLimit);
+        }
+
+        /// <summary>
         /// Checks map-edge clamping preserves formation spacing and keeps centers inside the map.
         /// </summary>
         [Test]
@@ -474,7 +535,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
             CombatUnit outsider = CombatUnit.Create(new CapitalShip { OwnerInstanceID = "FRIEND" });
 
-            TacticalMovement.MoveTo(
+            bool accepted = TacticalMovement.MoveTo(
                 battle,
                 CreateBounds(),
                 new[] { friendly, hostile, outsider },
@@ -482,9 +543,31 @@ namespace Rebellion.Tests.Simulation.Tactical
                 new BattleVector3 { Z = 30f }
             );
 
+            Assert.IsTrue(accepted);
             Assert.AreEqual(30f, friendly.MoveDestination.Z);
             Assert.IsNull(hostile.MoveDestination);
             Assert.IsNull(outsider.MoveDestination);
+        }
+
+        /// <summary>
+        /// Checks a selection without controlled deployed units reports no accepted order.
+        /// </summary>
+        [Test]
+        public void MoveTo_NoControlledDeployedUnits_ReturnsFalse()
+        {
+            ActiveBattle battle = CreateBattle();
+            CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
+
+            bool accepted = TacticalMovement.MoveTo(
+                battle,
+                CreateBounds(),
+                new[] { hostile },
+                "FRIEND",
+                new BattleVector3 { Z = 30f }
+            );
+
+            Assert.IsFalse(accepted);
+            Assert.IsNull(hostile.MoveDestination);
         }
 
         /// <summary>
@@ -497,12 +580,16 @@ namespace Rebellion.Tests.Simulation.Tactical
             CombatUnit friendly = AddShip(battle, "FRIEND", 0f);
             CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
             friendly.MoveDestination = new BattleVector3 { Z = 30f };
+            friendly.MoveSpeedLimit = 2f;
             hostile.MoveDestination = new BattleVector3 { Z = 30f };
+            hostile.MoveSpeedLimit = 2f;
 
             TacticalMovement.Stop(battle, new[] { friendly, hostile }, "FRIEND");
 
             Assert.IsNull(friendly.MoveDestination);
+            Assert.IsNull(friendly.MoveSpeedLimit);
             Assert.IsNotNull(hostile.MoveDestination);
+            Assert.AreEqual(2f, hostile.MoveSpeedLimit);
         }
 
         /// <summary>
@@ -517,11 +604,12 @@ namespace Rebellion.Tests.Simulation.Tactical
         /// <param name="battle">The receiving battle.</param>
         /// <param name="owner">The owning participant.</param>
         /// <param name="x">The initial horizontal coordinate.</param>
+        /// <param name="speed">The ship's configured sublight speed.</param>
         /// <returns>The newly added battle copy.</returns>
-        private static CombatUnit AddShip(ActiveBattle battle, string owner, float x)
+        private static CombatUnit AddShip(ActiveBattle battle, string owner, float x, int speed = 4)
         {
             CombatUnit unit = battle
-                .AddCombatants(new CapitalShip { OwnerInstanceID = owner, SublightSpeed = 4 })
+                .AddCombatants(new CapitalShip { OwnerInstanceID = owner, SublightSpeed = speed })
                 .Single();
             unit.Position.X = x;
             return unit;

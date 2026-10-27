@@ -30,17 +30,31 @@ public sealed class TacticalViewController : MonoBehaviour
     private Transform mapRoot;
 
     [SerializeField]
+    private TacticalTimeControlsView timeControls;
+
+    [SerializeField]
+    private Shader weaponShader;
+
+    [SerializeField]
+    private GameObject shieldTemplate;
+
+    [SerializeField]
     private Rect initialFleetViewport = new Rect(0.05f, 0.24f, 0.9f, 0.71f);
 
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
     private CancellationTokenSource modelLoading;
     private readonly Dictionary<CombatUnit, Transform> combatantPresentations =
         new Dictionary<CombatUnit, Transform>();
+    private readonly TacticalBattleClock battleClock = new TacticalBattleClock();
     private TacticalSelectionController selectionController;
     private string viewerFactionInstanceID;
     private TacticalArrivalView arrivals;
     private TacticalCarrierOperations carrierOperations;
     private TacticalFlightAudio flightAudio;
+    private TacticalCombat combat;
+    private TacticalCombatView combatView;
+    private readonly Dictionary<Hardpoint, TacticalCombat.Mount> weaponMounts =
+        new Dictionary<Hardpoint, TacticalCombat.Mount>();
     private readonly Dictionary<CombatUnit, System.Numerics.Vector3[][]> carrierPaths = new();
 
     /// <summary>
@@ -69,6 +83,16 @@ public sealed class TacticalViewController : MonoBehaviour
     public Transform MapRoot => mapRoot;
 
     /// <summary>
+    /// Gets the selected tactical-battle speed.
+    /// </summary>
+    public TacticalBattleSpeed BattleSpeed => battleClock.Speed;
+
+    /// <summary>
+    /// Gets the multiplier currently applied to tactical-battle time.
+    /// </summary>
+    public float BattleTimeScale => battleClock.TimeScale;
+
+    /// <summary>
     /// Verifies the authored tactical-scene references.
     /// </summary>
     private void Awake()
@@ -81,8 +105,14 @@ public sealed class TacticalViewController : MonoBehaviour
             throw new MissingReferenceException($"{name} is missing its map root.");
         if (mapRoot.GetComponent<TacticalMapRenderer>() == null)
             throw new MissingComponentException($"{mapRoot.name} is missing its map renderer.");
+        if (timeControls == null)
+            throw new MissingReferenceException($"{name} is missing its tactical time controls.");
+        if (shieldTemplate == null)
+            throw new MissingReferenceException($"{name} is missing its tactical shield template.");
         if (GetComponent<TacticalSelectionController>() == null)
             throw new MissingComponentException($"{name} is missing its selection controller.");
+        timeControls.SpeedRequested += HandleBattleSpeedRequested;
+        timeControls.Render(battleClock.Speed);
     }
 
     /// <summary>
@@ -91,32 +121,61 @@ public sealed class TacticalViewController : MonoBehaviour
     private void Update()
     {
         flightAudio?.Advance(Time.unscaledDeltaTime);
-        bool paused = GetComponent<TacticalMenuController>()?.IsOpen == true;
-        if (arrivals?.Advance(Time.deltaTime, paused) == false)
+        bool paused =
+            battleClock.IsPaused || GetComponent<TacticalMenuController>()?.IsOpen == true;
+        float battleDeltaTime = battleClock.ScaleDeltaTime(Time.unscaledDeltaTime);
+        if (arrivals?.Advance(battleDeltaTime, paused) == false)
         {
             arrivals.Dispose();
             arrivals = null;
         }
         if (paused)
+        {
+            combatView?.Advance(0f, true);
             return;
+        }
+        if (arrivals == null)
+            combat?.Advance(battleDeltaTime, AdvanceSimulation);
+        combatView?.Advance(battleDeltaTime, false);
+        foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
+        {
+            CombatUnit unit = presentation.Key;
+            Transform root = presentation.Value;
+            if (arrivals?.IsArriving(unit) == true)
+                continue;
+            root.gameObject.SetActive(IsVisible(unit));
+            root.localPosition = ToUnityVector(unit.Position);
+            Vector3 forward = ToUnityVector(unit.Forward);
+            if (forward.sqrMagnitude > Mathf.Epsilon)
+                root.localRotation = Quaternion.LookRotation(forward.normalized);
+        }
+    }
+
+    /// <summary>
+    /// Suspends tactical time while the application is unfocused and discards stale elapsed time on return.
+    /// </summary>
+    /// <param name="hasFocus">Whether the application currently has input focus.</param>
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+            battleClock.Resume();
+        else
+            battleClock.Suspend();
+    }
+
+    /// <summary>
+    /// Advances movement and carrier traffic on the combat simulation's fixed clock.
+    /// </summary>
+    /// <param name="deltaTime">The fixed tactical step in seconds.</param>
+    private void AdvanceSimulation(float deltaTime)
+    {
         foreach (CombatUnit unit in combatantPresentations.Keys)
             if (
                 (unit.GetUnit() is CapitalShip || unit.FlightState == FighterFlightState.Deployed)
                 && arrivals?.IsArriving(unit) != true
             )
-                TacticalMovement.Advance(unit, Time.deltaTime);
-        if (arrivals == null)
-            carrierOperations?.Advance(Time.deltaTime);
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
-        {
-            if (arrivals?.IsArriving(presentation.Key) == true)
-                continue;
-            presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
-            presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
-            Vector3 forward = ToUnityVector(presentation.Key.Forward);
-            if (forward.sqrMagnitude > Mathf.Epsilon)
-                presentation.Value.localRotation = Quaternion.LookRotation(forward.normalized);
-        }
+                TacticalMovement.Advance(unit, deltaTime);
+        carrierOperations?.Advance(deltaTime);
     }
 
     /// <summary>
@@ -125,6 +184,30 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="screenPosition">The clicked screen location.</param>
     private void RequestMove(Vector2 screenPosition)
     {
+        RequestMove(screenPosition, false);
+    }
+
+    /// <summary>
+    /// Projects a synchronized move command onto the selected formation's horizontal plane.
+    /// </summary>
+    /// <param name="screenPosition">The clicked screen location.</param>
+    private void RequestMoveTogether(Vector2 screenPosition)
+    {
+        RequestMove(screenPosition, true);
+    }
+
+    /// <summary>
+    /// Projects a world click onto the selected friendly formation's current horizontal plane.
+    /// </summary>
+    /// <param name="screenPosition">The clicked screen location.</param>
+    /// <param name="matchSpeed">Whether selected units should travel at their slowest shared speed.</param>
+    private void RequestMove(Vector2 screenPosition, bool matchSpeed)
+    {
+        carrierOperations?.CancelRecovery(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
+        ClearSelectedAttackTargets();
         float height = 0f;
         int count = 0;
         foreach (CombatUnit unit in selectionController.SelectedCombatants)
@@ -158,19 +241,80 @@ public sealed class TacticalViewController : MonoBehaviour
                 X = destination.x,
                 Y = destination.y,
                 Z = destination.z,
-            }
+            },
+            matchSpeed
         );
     }
 
     /// <summary>
     /// Stops pending movement for the selected friendly ships.
     /// </summary>
-    private void RequestStop() =>
+    private void RequestStop()
+    {
+        carrierOperations?.CancelRecovery(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
         TacticalMovement.Stop(
             ActiveBattle,
             selectionController.SelectedCombatants,
             viewerFactionInstanceID
         );
+        ClearSelectedAttackTargets();
+    }
+
+    /// <summary>
+    /// Assigns the hostile hull under the pointer and advances the selection toward its current position.
+    /// </summary>
+    /// <param name="screenPosition">The target screen point.</param>
+    /// <param name="moveTogether">Whether the selection should approach at its slowest member's speed.</param>
+    private void RequestAttack(Vector2 screenPosition, bool moveTogether)
+    {
+        CombatUnit target = selectionController.PickAt(screenPosition);
+        if (
+            target == null
+            || string.Equals(
+                target.GetUnit().OwnerInstanceID,
+                viewerFactionInstanceID,
+                StringComparison.Ordinal
+            )
+        )
+            return;
+        carrierOperations?.CancelRecovery(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
+        combat?.Attack(selectionController.SelectedCombatants, viewerFactionInstanceID, target);
+        TacticalMovement.MoveTo(
+            ActiveBattle,
+            BattleMap.PlayableBounds,
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID,
+            new BattleVector3
+            {
+                X = target.Position.X,
+                Y = target.Position.Y,
+                Z = target.Position.Z,
+            },
+            moveTogether
+        );
+    }
+
+    /// <summary>
+    /// Clears explicit attack targets on the locally controlled selection.
+    /// </summary>
+    private void ClearSelectedAttackTargets()
+    {
+        foreach (CombatUnit unit in selectionController.SelectedCombatants)
+            if (
+                string.Equals(
+                    unit.GetUnit().OwnerInstanceID,
+                    viewerFactionInstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                unit.AttackTargetInstanceID = null;
+    }
 
     /// <summary>
     /// Queues the selected friendly carrier's cargo or selected docked squadrons for departure.
@@ -183,6 +327,17 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void RequestRecall() =>
         carrierOperations.Recall(selectionController.SelectedCombatants, viewerFactionInstanceID);
+
+    /// <summary>
+    /// Sends the complete fighter selection to the eligible carrier chosen under the pointer.
+    /// </summary>
+    /// <param name="carrier">The targeted friendly carrier.</param>
+    private void RequestDockAt(CombatUnit carrier) =>
+        carrierOperations.DockAt(
+            selectionController.SelectedCombatants,
+            carrier,
+            viewerFactionInstanceID
+        );
 
     /// <summary>
     /// Resolves the active tactical battle after the scene becomes active.
@@ -202,7 +357,8 @@ public sealed class TacticalViewController : MonoBehaviour
             if (activeBattle == null)
                 throw new InvalidOperationException("TacticalView requires an active battle.");
 
-            GameDataCatalog gameData = bootstrap.GetContentPack().GameData;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            GameDataCatalog gameData = contentPack.GameData;
             if (
                 !gameData.TryGetBattleMap(activeBattle.BattleMapInstanceID, out BattleMap battleMap)
             )
@@ -210,6 +366,12 @@ public sealed class TacticalViewController : MonoBehaviour
                 throw new InvalidOperationException(
                     $"Active battle map '{activeBattle.BattleMapInstanceID}' is not loaded."
                 );
+            }
+            if (activeBattle.Kind == BattleKind.Space)
+            {
+                bootstrap
+                    .GetAudioManager()
+                    .PlayPlaylist(contentPack.Definition.SpaceCombatMusicPaths.ToArray(), true);
             }
 
             string viewerFactionInstanceID = game?.GetPlayerFaction().InstanceID;
@@ -222,6 +384,10 @@ public sealed class TacticalViewController : MonoBehaviour
             AudioClip launchClip = await bootstrap
                 .GetContentAssets()
                 .LoadAudioAsync(_launchSoundPath);
+            Dictionary<string, AudioClip> weaponClips = await TacticalCombatView.LoadAudioAsync(
+                activeBattle,
+                bootstrap.GetContentAssets()
+            );
             if (this == null)
                 return;
             if (game == null && activeBattle.Kind == BattleKind.Space)
@@ -243,6 +409,17 @@ public sealed class TacticalViewController : MonoBehaviour
                 transform,
                 launchClip,
                 bootstrap.GetAudioManager()
+            );
+            combatView = new TacticalCombatView(
+                activeBattle,
+                combat,
+                battleRoot,
+                battleCamera,
+                bootstrap.GetAudioManager(),
+                weaponClips,
+                weaponShader,
+                combatantPresentations,
+                shieldTemplate
             );
             carrierOperations.SquadronLaunched += flightAudio.PlayLaunch;
             GetComponentInChildren<TacticalSelectionView>()
@@ -350,6 +527,7 @@ public sealed class TacticalViewController : MonoBehaviour
         if (deployFleet)
             FleetDeploymentPlanner.Deploy(activeBattle, battleMap);
         carrierOperations = new TacticalCarrierOperations(activeBattle, carrierPaths);
+        combat = new TacticalCombat(activeBattle, weaponMounts);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
         {
             presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
@@ -358,23 +536,31 @@ public sealed class TacticalViewController : MonoBehaviour
             if (forward.sqrMagnitude > Mathf.Epsilon)
                 presentation.Value.localRotation = Quaternion.LookRotation(forward.normalized);
         }
-        ConfigureCamera(viewerFactionInstanceID);
-        battleRoot.gameObject.SetActive(true);
-        GetComponent<TacticalSelectionController>().Initialize(battleCamera, presentations);
         this.viewerFactionInstanceID =
             viewerFactionInstanceID
             ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
+        ConfigureCamera(this.viewerFactionInstanceID);
+        battleRoot.gameObject.SetActive(true);
+        GetComponent<TacticalSelectionController>()
+            .Initialize(battleCamera, presentations, this.viewerFactionInstanceID);
         selectionController = GetComponent<TacticalSelectionController>();
         selectionController.MoveRequested -= RequestMove;
+        selectionController.MoveTogetherRequested -= RequestMoveTogether;
         selectionController.StopRequested -= RequestStop;
+        selectionController.AttackRequested -= RequestAttack;
         selectionController.MoveRequested += RequestMove;
+        selectionController.MoveTogetherRequested += RequestMoveTogether;
         selectionController.StopRequested += RequestStop;
+        selectionController.AttackRequested += RequestAttack;
         selectionController.LaunchRequested -= RequestLaunch;
         selectionController.RecallRequested -= RequestRecall;
         selectionController.DockRequested -= RequestRecall;
+        selectionController.DockAtRequested -= RequestDockAt;
         selectionController.LaunchRequested += RequestLaunch;
         selectionController.RecallRequested += RequestRecall;
         selectionController.DockRequested += RequestRecall;
+        selectionController.DockAtRequested += RequestDockAt;
+        selectionController.BindCarrierOperations(carrierOperations);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
             combatantPresentations.Add(presentation.Key, presentation.Value);
         GetComponentInChildren<TacticalSelectionView>()
@@ -382,8 +568,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 presentations,
                 battleMap.PlayableBounds,
                 battleCamera,
-                viewerFactionInstanceID
-                    ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID,
+                this.viewerFactionInstanceID,
                 GetComponent<TacticalSelectionController>().SelectedCombatants
             );
         GetComponentInChildren<TacticalSelectionView>()
@@ -395,15 +580,30 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (timeControls)
+            timeControls.SpeedRequested -= HandleBattleSpeedRequested;
         if (selectionController)
         {
             selectionController.MoveRequested -= RequestMove;
+            selectionController.MoveTogetherRequested -= RequestMoveTogether;
             selectionController.StopRequested -= RequestStop;
+            selectionController.AttackRequested -= RequestAttack;
             selectionController.LaunchRequested -= RequestLaunch;
             selectionController.RecallRequested -= RequestRecall;
             selectionController.DockRequested -= RequestRecall;
+            selectionController.DockAtRequested -= RequestDockAt;
         }
         ReleaseModels();
+    }
+
+    /// <summary>
+    /// Applies a player-selected speed to the tactical-only battle clock and its controls.
+    /// </summary>
+    /// <param name="speed">The requested tactical-battle speed.</param>
+    private void HandleBattleSpeedRequested(TacticalBattleSpeed speed)
+    {
+        battleClock.SetSpeed(speed);
+        timeControls.Render(speed);
     }
 
     /// <summary>
@@ -438,6 +638,7 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         modelInstances.Add(instance);
         instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
+        ResolveWeaponMounts(combatant, presentation, instance.ModelRoot);
         if (combatant.GetUnit() is CapitalShip carrier)
         {
             List<System.Numerics.Vector3[]> paths = new();
@@ -473,6 +674,10 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ReleaseModels()
     {
+        combatView?.Dispose();
+        combatView = null;
+        combat = null;
+        weaponMounts.Clear();
         if (carrierOperations != null && flightAudio != null)
             carrierOperations.SquadronLaunched -= flightAudio.PlayLaunch;
         flightAudio?.Dispose();
@@ -488,6 +693,76 @@ public sealed class TacticalViewController : MonoBehaviour
         foreach (ContentModelInstance instance in modelInstances)
             instance.Dispose();
         modelInstances.Clear();
+    }
+
+    /// <summary>
+    /// Resolves authored hardpoint coordinates against the loaded model hierarchy once.
+    /// </summary>
+    /// <param name="unit">The mounted battle hull.</param>
+    /// <param name="presentation">The centered hull presentation.</param>
+    /// <param name="modelRoot">The loaded model root.</param>
+    private void ResolveWeaponMounts(CombatUnit unit, Transform presentation, Transform modelRoot)
+    {
+        foreach (HardpointGroup group in TacticalCombat.GetGroups(unit))
+        foreach (Hardpoint hardpoint in group.GetHardpoints())
+        {
+            Transform node =
+                hardpoint.ModelNodePath == "." || hardpoint.ModelNodePath == modelRoot.name
+                    ? modelRoot
+                    : modelRoot.Find(hardpoint.ModelNodePath);
+            if (!node)
+                throw new InvalidOperationException(
+                    $"Unknown weapon model node '{hardpoint.ModelNodePath}' on '{unit.GetUnit().TypeID}'."
+                );
+            Vector3 position;
+            Vector3 forward;
+            Vector3 up;
+            if (hardpoint.UsesHullBounds)
+            {
+                if (
+                    !ContentModelInstance.TryGetBounds(
+                        presentation,
+                        presentation,
+                        out Bounds bounds
+                    )
+                )
+                    throw new InvalidOperationException(
+                        "Bounds-relative weapons require loaded hull geometry."
+                    );
+                position =
+                    bounds.center
+                    + Vector3.Scale(ToUnityVector(hardpoint.Position), bounds.extents);
+                forward = ToUnityVector(hardpoint.Direction);
+                up = ToUnityVector(hardpoint.Up);
+            }
+            else
+            {
+                Vector3 point = ToUnityVector(hardpoint.Position);
+                Vector3 direction = ToUnityVector(hardpoint.Direction);
+                Vector3 normal = ToUnityVector(hardpoint.Up);
+                position = presentation.InverseTransformPoint(
+                    node.TransformPoint(new Vector3(-point.x, point.y, point.z))
+                );
+                forward = presentation
+                    .InverseTransformDirection(
+                        node.TransformDirection(new Vector3(-direction.x, direction.y, direction.z))
+                    )
+                    .normalized;
+                up = presentation
+                    .InverseTransformDirection(
+                        node.TransformDirection(new Vector3(-normal.x, normal.y, normal.z))
+                    )
+                    .normalized;
+            }
+            weaponMounts.Add(
+                hardpoint,
+                new TacticalCombat.Mount(
+                    new System.Numerics.Vector3(position.x, position.y, position.z),
+                    new System.Numerics.Vector3(forward.x, forward.y, forward.z),
+                    new System.Numerics.Vector3(up.x, up.y, up.z)
+                )
+            );
+        }
     }
 
     /// <summary>
@@ -527,7 +802,7 @@ public sealed class TacticalViewController : MonoBehaviour
         );
         battleCamera.fieldOfView = cameraStart.FieldOfView;
         battleCamera.nearClipPlane = 0.1f;
-        battleCamera.farClipPlane = GetRequiredFarClipPlane(cameraStart.Position);
+        battleCamera.farClipPlane = 1000f;
         battleCamera.clearFlags = CameraClearFlags.SolidColor;
         battleCamera.backgroundColor = ToUnityColor(BattleMap.Environment.BackgroundColor);
         battleCamera.allowHDR = true;
@@ -545,7 +820,11 @@ public sealed class TacticalViewController : MonoBehaviour
             );
         }
 
-        cameraController.Configure(BattleMap.PlayableBounds, ResolveCameraPivot(cameraStart));
+        cameraController.Configure(
+            BattleMap.PlayableBounds,
+            GetSceneVisibilityBounds(),
+            ResolveCameraPivot(cameraStart)
+        );
         List<Bounds> hulls = new List<Bounds>();
         if (viewer != null)
         {
@@ -582,6 +861,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <returns>Whether its hull is present in open space.</returns>
     private static bool IsVisible(CombatUnit unit) =>
         !unit.HasRetreated
+        && TacticalCombat.IsAlive(unit)
         && unit.FlightState != FighterFlightState.Docked
         && unit.FlightState != FighterFlightState.Queued
         && !(unit.FlightState == FighterFlightState.Launching && unit.FlightDelay > 0f);
@@ -719,23 +999,28 @@ public sealed class TacticalViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Computes a far clipping plane that contains every corner of the playable volume.
+    /// Computes the authored scene volume independently from the playable arena.
     /// </summary>
-    /// <param name="cameraPosition">The authored camera position.</param>
-    /// <returns>A far clipping distance enclosing the full map.</returns>
-    private float GetRequiredFarClipPlane(BattleMapVector3 cameraPosition)
+    /// <returns>Bounds containing the arena and every fixed spatial map object.</returns>
+    private Bounds GetSceneVisibilityBounds()
     {
-        BattleMapBounds bounds = BattleMap.PlayableBounds;
-        float farthestDistance = 0f;
-        foreach (float x in new[] { bounds.MinimumX, bounds.MaximumX })
-        foreach (float y in new[] { bounds.MinimumY, bounds.MaximumY })
-        foreach (float z in new[] { bounds.MinimumZ, bounds.MaximumZ })
+        BattleMapBounds playable = BattleMap.PlayableBounds;
+        Vector3 minimum = new Vector3(playable.MinimumX, playable.MinimumY, playable.MinimumZ);
+        Vector3 maximum = new Vector3(playable.MaximumX, playable.MaximumY, playable.MaximumZ);
+        Bounds bounds = new Bounds((minimum + maximum) * 0.5f, maximum - minimum);
+        foreach (BattleMapPlanet planet in BattleMap.GetPlanets())
         {
-            float distance = Vector3.Distance(ToUnityVector(cameraPosition), new Vector3(x, y, z));
-            farthestDistance = Mathf.Max(farthestDistance, distance);
+            float atmosphereDiameter = planet.Diameter * planet.AtmosphereRadiusRatio;
+            bounds.Encapsulate(
+                new Bounds(ToUnityVector(planet.Position), Vector3.one * atmosphereDiameter)
+            );
         }
+        foreach (BattleMapDebrisField debrisField in BattleMap.GetDebrisFields())
+            bounds.Encapsulate(
+                new Bounds(Vector3.zero, Vector3.one * debrisField.HideDistance * 2f)
+            );
 
-        return Mathf.Max(1000f, farthestDistance + 100f);
+        return bounds;
     }
 
     /// <summary>

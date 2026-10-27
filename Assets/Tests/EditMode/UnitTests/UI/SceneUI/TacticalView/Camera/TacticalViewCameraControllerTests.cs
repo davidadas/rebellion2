@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
@@ -25,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
                 Quaternion.LookRotation(new Vector3(0f, -100f, 500f))
             );
             controller = cameraObject.AddComponent<TacticalViewCameraController>();
-            controller.Configure(CreatePlayableBounds(), Vector3.zero);
+            controller.Configure(CreatePlayableBounds(), CreateSceneBounds(), Vector3.zero);
         }
 
         /// <summary>
@@ -38,6 +39,48 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             if (followObject)
                 UnityEngine.Object.DestroyImmediate(followObject);
             followObject = null;
+        }
+
+        /// <summary>
+        /// Checks a primary-modifier shortcut does not leak its A key into camera navigation when
+        /// the modifier is released before the letter key.
+        /// </summary>
+        /// <returns>The runtime keyboard input frame and camera assertion.</returns>
+        [UnityTest]
+        public IEnumerator Update_ControlAReleasedModifierFirst_DoesNotPanUntilAReleased()
+        {
+            UnityEngine.Object.DestroyImmediate(cameraObject);
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                Vector3 pivot = controller.Pivot;
+
+                input.Press(keyboard.leftCtrlKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                input.Release(keyboard.leftCtrlKey);
+                yield return null;
+
+                Assert.AreEqual(pivot, controller.Pivot);
+
+                input.Release(keyboard.aKey);
+                yield return null;
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                Assert.AreNotEqual(pivot, controller.Pivot);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(cameraObject);
+            }
+            yield return new ExitPlayMode();
         }
 
         [Test]
@@ -86,11 +129,42 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
         public void Pan_DistantCamera_UsesHalvedDistanceSpeed(bool fast, float expected)
         {
             cameraObject.transform.position = new Vector3(0f, 0f, -2000f);
-            controller.Configure(CreatePlayableBounds(), Vector3.zero);
+            controller.Configure(CreatePlayableBounds(), CreateSceneBounds(), Vector3.zero);
 
             controller.Pan(Vector2.up, 0.1f, fast);
 
             Assert.That(controller.Pivot.z, Is.EqualTo(expected).Within(0.001f));
+        }
+
+        /// <summary>
+        /// Checks a primary-modifier shortcut does not leak its A key into camera navigation.
+        /// </summary>
+        /// <returns>The runtime keyboard input frame and camera assertion.</returns>
+        [UnityTest]
+        public IEnumerator Update_ControlAHeld_DoesNotPanCamera()
+        {
+            UnityEngine.Object.DestroyImmediate(cameraObject);
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                Vector3 pivot = controller.Pivot;
+
+                input.Press(keyboard.leftCtrlKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                Assert.AreEqual(pivot, controller.Pivot);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(cameraObject);
+            }
+            yield return new ExitPlayMode();
         }
 
         [Test]
@@ -112,6 +186,26 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             planarOffset.y = 0f;
             Assert.That(planarOffset.normalized.z, Is.EqualTo(0f).Within(0.001f));
             Assert.That(planarOffset.normalized.x, Is.EqualTo(1f).Within(0.001f));
+        }
+
+        /// <summary>
+        /// Checks camera navigation preserves scenery authored beyond the playable arena.
+        /// </summary>
+        [Test]
+        public void Orbit_OffArenaSceneBounds_KeepsSceneryInsideFarClipPlane()
+        {
+            UnityEngine.Camera camera = cameraObject.GetComponent<UnityEngine.Camera>();
+            Bounds sceneBounds = CreateSceneBounds();
+            sceneBounds.Encapsulate(new Bounds(new Vector3(6500f, 0f, 0f), Vector3.one * 1000f));
+            controller.Configure(CreatePlayableBounds(), sceneBounds, Vector3.zero);
+
+            controller.Orbit(new Vector2(900f, 0f));
+
+            Vector3 farthest = Vector3.Max(
+                Abs(sceneBounds.min - camera.transform.position),
+                Abs(sceneBounds.max - camera.transform.position)
+            );
+            Assert.That(camera.farClipPlane, Is.GreaterThan(farthest.magnitude));
         }
 
         [TestCase(4f / 3f)]
@@ -371,6 +465,28 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
                 MinimumZ = -3000f,
                 MaximumZ = 3000f,
             };
+        }
+
+        /// <summary>
+        /// Creates visibility bounds matching the playable volume by default.
+        /// </summary>
+        /// <returns>The scene visibility volume.</returns>
+        private static Bounds CreateSceneBounds()
+        {
+            BattleMapBounds playable = CreatePlayableBounds();
+            Vector3 minimum = new Vector3(playable.MinimumX, playable.MinimumY, playable.MinimumZ);
+            Vector3 maximum = new Vector3(playable.MaximumX, playable.MaximumY, playable.MaximumZ);
+            return new Bounds((minimum + maximum) * 0.5f, maximum - minimum);
+        }
+
+        /// <summary>
+        /// Returns component magnitudes for a displacement vector.
+        /// </summary>
+        /// <param name="value">The displacement.</param>
+        /// <returns>The absolute displacement.</returns>
+        private static Vector3 Abs(Vector3 value)
+        {
+            return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
         }
     }
 }

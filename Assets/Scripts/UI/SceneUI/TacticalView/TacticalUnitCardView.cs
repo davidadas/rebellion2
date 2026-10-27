@@ -10,11 +10,12 @@ using UnityEngine.UI;
 /// <summary>
 /// One reusable roster card bound to a real combatant's portrait and durability.
 /// </summary>
-public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public sealed class TacticalUnitCardView
+    : MonoBehaviour,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerClickHandler
 {
-    [SerializeField]
-    private TMP_Text unitName;
-
     [SerializeField]
     private TMP_Text unitCount;
 
@@ -53,6 +54,7 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     private int _maximumShields = -1;
 
     public event Action<IReadOnlyList<CombatUnit>> Clicked;
+    public event Action<IReadOnlyList<CombatUnit>> DoubleClicked;
     public CombatUnit Combatant => _combatant;
     public IReadOnlyList<CombatUnit> Combatants => _combatants;
 
@@ -94,10 +96,6 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
             );
         _combatants = combatants;
         _combatant = combatants[0];
-        unitName.text =
-            _combatant.GetUnit().DisplayName
-            ?? _combatant.GetUnit().TypeID
-            ?? _combatant.SourceUnitInstanceID;
         unitCount.text = $"x{combatants.Count:00}";
         for (int i = 0; i < memberButtons.Length; i++)
             memberButtons[i].gameObject.SetActive(i < combatants.Count);
@@ -225,6 +223,16 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerExit(PointerEventData eventData) => durabilityTooltip.SetActive(false);
+
+    /// <summary>
+    /// Forwards a primary-button double click as a request to center on this card's unit.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left && eventData.clickCount == 2)
+            DoubleClicked?.Invoke(_combatants);
+    }
 
     /// <summary>
     /// Hides transient hover feedback when a pooled card is released.

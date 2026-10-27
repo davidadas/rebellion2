@@ -19,6 +19,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
     private UIWindowManager windowManager;
 
     [SerializeField]
+    private TacticalSelectionController selection;
+
+    [SerializeField]
     private Behaviour[] battleInput;
 
     private AppBootstrap _bootstrap;
@@ -60,15 +63,16 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Opens Options for an unhandled Escape, or delegates cancellation to the open menu.
+    /// Clears tactical selection for Escape, or delegates cancellation to the open menu.
     /// </summary>
     /// <returns>Whether this scene handled the cancellation request.</returns>
     public bool TryCancel()
     {
         if (_menu == null)
             return false;
-        ToggleMenu();
-        return true;
+        if (_menu.IsOpen)
+            return _menu.TryCancel();
+        return selection && selection.TryDeselect();
     }
 
     /// <summary>

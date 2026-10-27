@@ -57,6 +57,11 @@ namespace Rebellion.Game.Combat
         public BattleVector3 MoveDestination { get; set; }
 
         /// <summary>
+        /// Gets or sets the optional speed ceiling for the current move order.
+        /// </summary>
+        public float? MoveSpeedLimit { get; set; }
+
+        /// <summary>
         /// Gets or sets the strategic identity of the fighter's assigned carrier.
         /// </summary>
         public string CarrierSourceUnitInstanceID { get; set; }
@@ -73,6 +78,11 @@ namespace Rebellion.Game.Combat
         /// </summary>
         public List<string> LaunchQueue { get; set; } = new List<string>();
         public float LaunchCountdown { get; set; }
+        public string AttackTargetInstanceID { get; set; }
+        public List<WeaponBankState> WeaponBanks { get; set; } = new List<WeaponBankState>();
+        public float ShieldRechargeRemainder { get; set; }
+        public float HullDamageRemainder { get; set; }
+        public float ShieldDamageRemainder { get; set; }
 
         /// <summary>
         /// Returns the independently mutable battle copy of the strategic unit.
@@ -99,6 +109,17 @@ namespace Rebellion.Game.Combat
                 );
 
             BaseSceneNode battleCopy = (BaseSceneNode)sourceUnit.CreateCopy();
+            if (sourceUnit is CapitalShip sourceShip && battleCopy is CapitalShip battleShip)
+            {
+                foreach (
+                    Officer sourceOfficer in sourceShip.GetChildren<Officer>(includeDisabled: true)
+                )
+                {
+                    Officer battleOfficer = (Officer)sourceOfficer.CreateCopy();
+                    battleShip.AddChild(battleOfficer);
+                    battleOfficer.SetParent(battleShip);
+                }
+            }
             return new CombatUnit
             {
                 SourceUnitInstanceID = sourceUnit.InstanceID,
@@ -116,5 +137,28 @@ namespace Rebellion.Game.Combat
                 _unit = battleCopy,
             };
         }
+    }
+
+    /// <summary>
+    /// Organizes saved weapon state by its authored hardpoint group.
+    /// </summary>
+    [PersistableObject]
+    public sealed class WeaponBankState
+    {
+        public string GroupID { get; set; }
+        public List<WeaponMountState> Mounts { get; set; } = new List<WeaponMountState>();
+    }
+
+    /// <summary>
+    /// Preserves one gun's independent target, firing cadence, and articulated orientation across reloads.
+    /// </summary>
+    [PersistableObject]
+    public sealed class WeaponMountState
+    {
+        public float Cooldown { get; set; }
+        public int ShotsFired { get; set; }
+        public float Yaw { get; set; }
+        public float Pitch { get; set; }
+        public string TargetInstanceID { get; set; }
     }
 }

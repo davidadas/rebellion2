@@ -42,6 +42,11 @@ namespace Rebellion.Game.Combat
         public string PlanetInstanceID { get; set; }
         public int FlightRandomSeed { get; set; }
         public long FlightRandomIndex { get; set; }
+        public int WeaponRandomSeed { get; set; }
+        public long WeaponRandomIndex { get; set; }
+        public long NextShotID { get; set; }
+        public float WeaponTimeRemainder { get; set; }
+        public List<BattleProjectile> Projectiles { get; set; } = new List<BattleProjectile>();
 
         /// <summary>
         /// Returns the factions participating in the battle.
@@ -94,5 +99,22 @@ namespace Rebellion.Game.Combat
 
             return addedCombatants.AsReadOnly();
         }
+    }
+
+    /// <summary>
+    /// Stores an emitted shot independently of its shooter and rendered effect.
+    /// </summary>
+    [PersistableObject]
+    public sealed class BattleProjectile
+    {
+        public long ID { get; set; }
+        public string SourceInstanceID { get; set; }
+        public string TargetInstanceID { get; set; }
+        public string OwnerInstanceID { get; set; }
+        public Rebellion.Game.ShipComponents.WeaponData Weapon { get; set; }
+        public BattleVector3 Position { get; set; }
+        public BattleVector3 Direction { get; set; }
+        public float DistanceTraveled { get; set; }
+        public float RemainingEffectSeconds { get; set; }
     }
 }

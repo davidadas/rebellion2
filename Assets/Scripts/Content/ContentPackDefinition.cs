@@ -38,6 +38,10 @@ public sealed class ContentPackDefinition
     [XmlElement]
     public string MainMenuMusicPath { get; set; }
 
+    [XmlArray("SpaceCombatMusic")]
+    [XmlArrayItem("Path")]
+    public List<string> SpaceCombatMusicPaths { get; set; } = new List<string>();
+
     [XmlElement]
     public string GameConfigPath { get; set; }
 

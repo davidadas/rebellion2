@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
@@ -36,6 +37,38 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.AreEqual(100, source.CurrentHullStrength);
             Assert.AreEqual(50, source.GetComponents()[0].Health);
+        }
+
+        [Test]
+        public void Create_CapitalShipWithOfficer_CopiesOfficerWithoutOtherCargo()
+        {
+            CapitalShip source = new CapitalShip
+            {
+                InstanceID = "CAPITAL_SHIP_1",
+                OwnerInstanceID = "FACTION_1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER_1",
+                OwnerInstanceID = "FACTION_1",
+                SmallDisplayImagePath = "Pack/Officer/small-display",
+            };
+            Starfighter fighter = new Starfighter { OwnerInstanceID = "FACTION_1" };
+            source.AddChild(officer);
+            officer.SetParent(source);
+            source.AddChild(fighter);
+            fighter.SetParent(source);
+
+            CapitalShip copy = (CapitalShip)CombatUnit.Create(source).GetUnit();
+
+            Officer copiedOfficer = copy.GetChildren<Officer>().Single();
+            Assert.AreNotSame(officer, copiedOfficer);
+            Assert.AreEqual(officer.InstanceID, copiedOfficer.InstanceID);
+            Assert.AreEqual(officer.SmallDisplayImagePath, copiedOfficer.SmallDisplayImagePath);
+            Assert.AreSame(copy, copiedOfficer.GetParent());
+            Assert.IsEmpty(copy.GetChildren<Starfighter>());
         }
 
         /// <summary>
@@ -148,6 +181,7 @@ namespace Rebellion.Tests.Game.Combat
                 Y = 3f,
                 Z = 40f,
             };
+            unit.MoveSpeedLimit = 2f;
 
             CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
                 SerializationHelper.Serialize(unit)
@@ -157,6 +191,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(20f, restored.MoveDestination.X);
             Assert.AreEqual(3f, restored.MoveDestination.Y);
             Assert.AreEqual(40f, restored.MoveDestination.Z);
+            Assert.AreEqual(2f, restored.MoveSpeedLimit);
         }
 
         [Test]
