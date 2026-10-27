@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -151,6 +152,8 @@ public sealed class StrategyController
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
     private GalacticInformationDisplayView galacticInformationDisplay;
+    private CancellationTokenSource initializationCancellation;
+    private CancellationToken initializationToken;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -190,6 +193,11 @@ public sealed class StrategyController
         gameManager = manager;
         uiContext = context;
         _appBootstrap = AppBootstrap.Instance;
+        initializationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            destroyCancellationToken,
+            _appBootstrap.destroyCancellationToken
+        );
+        initializationToken = initializationCancellation.Token;
         if (_appBootstrap != null)
             _appBootstrap.LoadStarting += HandleLoadStarting;
         PreloadStrategySfx();
@@ -235,6 +243,7 @@ public sealed class StrategyController
         if (!initialized)
             throw new InvalidOperationException("StrategyController has not been initialized.");
 
+        initializationToken.ThrowIfCancellationRequested();
         Faction playerFaction = session.Game.GetPlayerFaction();
         GalaxyMap factionView = session
             .GetService<FogOfWarQueries>()
@@ -258,7 +267,7 @@ public sealed class StrategyController
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };
-        return _appBootstrap.GetContentAssets().PreloadAsync(initialContent);
+        return _appBootstrap.GetContentAssets().PreloadAsync(initialContent, initializationToken);
     }
 
     /// <summary>
@@ -273,6 +282,7 @@ public sealed class StrategyController
         if (presentationActive)
             throw new InvalidOperationException("StrategyController is already active.");
 
+        initializationToken.ThrowIfCancellationRequested();
         InitializeWindowControllers();
         InitializeInteractionControllers();
         BindWindowControllerActions();
@@ -282,14 +292,17 @@ public sealed class StrategyController
         AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
 
         RebuildSnapshot();
         if (startMusic)
             ResumeMusic();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
 
         RestoreWindows();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
         await LoadInitialContentAsync();
     }
 
@@ -365,7 +378,7 @@ public sealed class StrategyController
             () => uiContext,
             path => uiContext?.GetTexture(path),
             path => contentAssets.GetPreloadedAudio(path).length,
-            contentAssets.PreloadAsync,
+            manifest => contentAssets.PreloadAsync(manifest, initializationToken),
             audioManager.PreloadSfx,
             strategyHudController,
             galaxyMapController,
@@ -966,6 +979,7 @@ public sealed class StrategyController
     private async Task LoadInitialContentAsync()
     {
         await RenderInitialContentAsync();
+        initializationToken.ThrowIfCancellationRequested();
         RequestInitialTextures();
         SetContentReady(true);
         if (!LoadingScreenController.IsLoadInProgress)
@@ -992,13 +1006,17 @@ public sealed class StrategyController
     {
         idleBarController.Render();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
         RenderGalaxyMap();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
         RenderBookmarks();
         RenderWindows();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
         RenderHud();
         await Task.Yield();
+        initializationToken.ThrowIfCancellationRequested();
         RenderContextMenu();
         RenderOverlay();
         dirty = false;
@@ -1027,10 +1045,12 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Releases game and authored-view subscriptions owned by this screen.
+    /// Cancels pending initialization and releases game and authored-view subscriptions.
     /// </summary>
     private void OnDestroy()
     {
+        initializationCancellation?.Cancel();
+        initializationCancellation?.Dispose();
         if (_appBootstrap != null)
         {
             _appBootstrap.LoadStarting -= HandleLoadStarting;

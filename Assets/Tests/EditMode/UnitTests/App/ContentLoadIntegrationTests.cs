@@ -5,7 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
+using Rebellion.Generation;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -59,11 +61,17 @@ namespace Rebellion.Tests.App
                 )
             )
                 Object.Destroy(loading.gameObject);
-            Scene strategy = SceneManager.GetSceneByName("StrategyView");
-            if (strategy.IsValid() && strategy.isLoaded)
+            foreach (string sceneName in new[] { "StrategyView", "MainMenu" })
             {
-                SceneManager.SetActiveScene(SceneManager.CreateScene("ContentLoadTestCleanup"));
-                yield return SceneManager.UnloadSceneAsync(strategy);
+                Scene scene = SceneManager.GetSceneByName(sceneName);
+                if (scene.IsValid() && scene.isLoaded)
+                {
+                    if (SceneManager.GetActiveScene() == scene)
+                        SceneManager.SetActiveScene(
+                            SceneManager.CreateScene("ContentLoadTestCleanup")
+                        );
+                    yield return SceneManager.UnloadSceneAsync(scene);
+                }
             }
             DestroyApplication();
             yield return null;
@@ -182,6 +190,69 @@ namespace Rebellion.Tests.App
         }
 
         [UnityTest]
+        public IEnumerator StartCustomGame_MainMenuSceneLoaded_UnloadsPlanetPresentation()
+        {
+            SceneManager.sceneLoaded += DisableSceneRendering;
+            try
+            {
+                AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+                Assert.IsTrue(bootstrap.LoadScene("MainMenu"));
+                float deadline = Time.realtimeSinceStartup + 60f;
+                MainMenuView menu = null;
+                while (menu == null && Time.realtimeSinceStartup < deadline)
+                {
+                    yield return null;
+                    menu = Object.FindAnyObjectByType<MainMenuView>();
+                }
+                Assert.IsNotNull(menu, "The main menu never loaded.");
+                Canvas menuCanvas = menu.transform.root.GetComponentInChildren<Canvas>(true);
+                while (!menuCanvas.enabled && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+                Assert.IsTrue(menuCanvas.enabled, "The main menu never became interactive.");
+                GameObject planetRig = menu.transform.root.Find("PlanetRig").gameObject;
+                Assert.IsTrue(planetRig.activeInHierarchy);
+
+                ContentPack pack = bootstrap.GetContentPack();
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+                summary.GalaxySize = GameSize.Small;
+                LoadingScreenController.StartCustomGame(bootstrap, pack, summary);
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+                Button continueButton = loading
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ContinueButton");
+                deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    !continueButton.gameObject.activeInHierarchy
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+
+                Assert.IsTrue(
+                    continueButton.gameObject.activeInHierarchy,
+                    "The game never became ready."
+                );
+                Assert.IsFalse(SceneManager.GetSceneByName("MainMenu").isLoaded);
+                Assert.IsTrue(
+                    planetRig == null,
+                    "The main-menu planet rig survived the scene transition."
+                );
+                Assert.That(
+                    Object.FindObjectsByType<LoadingScreenView>(
+                        FindObjectsInactive.Include,
+                        FindObjectsSortMode.None
+                    ),
+                    Has.Length.EqualTo(1)
+                );
+            }
+            finally
+            {
+                SceneManager.sceneLoaded -= DisableSceneRendering;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator EnsureExists_ReconstructedApplication_CreatesCutscenePlayersAtEveryStage()
         {
             AppBootstrap previous = AppBootstrap.EnsureExists();
@@ -207,6 +278,62 @@ namespace Rebellion.Tests.App
             yield return null;
             AppBootstrap restored = AppBootstrap.EnsureExists(operation.Pack);
             AssertCutscenePlayback(restored);
+        }
+
+        [UnityTest]
+        public IEnumerator ActivatePresentationAsync_ApplicationDestroyedDuringActivation_CancelsPendingInitialization()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            Task preload = Task.WhenAll(
+                bootstrap.InitializeMainMenuContentAsync(),
+                bootstrap.InitializeStrategyContentAsync()
+            );
+            while (!preload.IsCompleted)
+                yield return null;
+            preload.GetAwaiter().GetResult();
+
+            ContentPack pack = bootstrap.GetContentPack();
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.GalaxySize = GameSize.Small;
+            GameRoot game = new GameBuilder(summary, pack.GameData).Build();
+            GameRuntime runtime = bootstrap.GetRuntime();
+            Rebellion.Simulation.GameSession session = runtime.StartGame(game);
+            ContentAssets assets = bootstrap.GetContentAssets();
+            GameObject root = Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab"
+                )
+            );
+            try
+            {
+                root.GetComponentInChildren<GameFlowController>(true).enabled = false;
+                DisableRendering(root);
+                StrategyController controller = root.GetComponentInChildren<StrategyController>(
+                    true
+                );
+                UIContext context = new UIContext(
+                    game,
+                    new FactionThemeLibrary(pack.GameData.FactionThemes),
+                    new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
+                    assets.GetTexture,
+                    assets.GetTextureContentBounds
+                );
+                controller.Initialize(session, runtime.GetActiveGameManager(), runtime, context);
+
+                Task activation = controller.ActivatePresentationAsync(startMusic: false);
+                DestroyApplication();
+
+                float deadline = Time.realtimeSinceStartup + 5f;
+                while (!activation.IsCompleted && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+
+                Assert.IsTrue(activation.IsCanceled, activation.Exception?.ToString());
+            }
+            finally
+            {
+                if (root != null)
+                    Object.Destroy(root);
+            }
         }
 
         /// <summary>

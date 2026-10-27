@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -30,6 +31,7 @@ public sealed class GameFlowController : MonoBehaviour
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
     private IEnumerator activeTick;
+    private CancellationToken startupCancellationToken;
     private readonly Queue<string> cutsceneQueue = new Queue<string>();
 
     /// <summary>
@@ -58,14 +60,24 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private async void Start()
     {
+        CancellationToken lifetime = destroyCancellationToken;
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            using CancellationTokenSource startupCancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    lifetime,
+                    bootstrap.destroyCancellationToken
+                );
+            startupCancellationToken = startupCancellation.Token;
+            lifetime = startupCancellationToken;
             await bootstrap.InitializeMainMenuContentAsync();
+            lifetime.ThrowIfCancellationRequested();
             if (!CanContinueStartup(bootstrap))
                 return;
 
             await bootstrap.InitializeStrategyContentAsync();
+            lifetime.ThrowIfCancellationRequested();
             if (!CanContinueStartup(bootstrap))
                 return;
 
@@ -101,6 +113,7 @@ public sealed class GameFlowController : MonoBehaviour
             else
                 await StartNewGameAsync();
         }
+        catch (Exception) when (lifetime.IsCancellationRequested) { }
         catch (Exception exception)
         {
             if (!Application.isPlaying || this == null)
@@ -222,6 +235,7 @@ public sealed class GameFlowController : MonoBehaviour
         Task initialContentReady = strategyController.PrepareInitialContentAsync();
         AppBootstrap bootstrap = AppBootstrap.Instance;
         await Task.WhenAll(intro, briefingReady, initialContentReady);
+        startupCancellationToken.ThrowIfCancellationRequested();
         if (!CanContinueStartup(bootstrap))
             return;
 
@@ -245,6 +259,7 @@ public sealed class GameFlowController : MonoBehaviour
             );
 
         game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
+        startupCancellationToken.ThrowIfCancellationRequested();
         runtime.ValidateGameContent(game);
     }
 
@@ -262,6 +277,9 @@ public sealed class GameFlowController : MonoBehaviour
             return Task.CompletedTask;
 
         TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+        startupCancellationToken.Register(() =>
+            completion.TrySetCanceled(startupCancellationToken)
+        );
         PlayFactionIntro(faction, () => completion.TrySetResult(true));
         return completion.Task;
     }
@@ -410,9 +428,11 @@ public sealed class GameFlowController : MonoBehaviour
         bool deferIntro = false
     )
     {
+        startupCancellationToken.ThrowIfCancellationRequested();
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
         AppBootstrap bootstrap = AppBootstrap.Instance;
         await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
+        startupCancellationToken.ThrowIfCancellationRequested();
         if (!CanContinueStartup(bootstrap))
             return;
 

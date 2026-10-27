@@ -29,7 +29,7 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const string _flightAudioRelativePath = "Application/Loading/Audio/shuttle-reactor.wav";
     private const string _exhaustShaderName = "Custom/LoadingShuttleExhaust";
     private const float _flightAudioVolume = 0.22f;
-    private const int _presentationLayer = 31;
+    private const int _presentationLayer = PresentationLayers.LoadingScreen;
     private const float _maximumFlightYaw = 24f;
     private const float _maximumFlightPitch = 15f;
     private const float _maximumFlightRoll = 10f;

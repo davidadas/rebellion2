@@ -365,8 +365,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 new[]
                 {
                     "GAME SETUP",
-                    "DIFFICULTY MODIFIERS",
-                    "WORLD GENERATION",
+                    "DIFFICULTY",
+                    "WORLD SETTINGS",
                     "FACTION MODIFIERS",
                     "SAVE / LOAD",
                 },
@@ -1697,6 +1697,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .transform.Find("ContentRoot/Tab4")
                 .GetComponentInChildren<TMP_Text>();
 
+            Assert.AreEqual(expected.text, actual.text);
             Assert.AreEqual(expected.color, actual.color);
             Assert.AreEqual(expected.alignment, actual.alignment);
             Assert.AreEqual(expected.fontStyle, actual.fontStyle);

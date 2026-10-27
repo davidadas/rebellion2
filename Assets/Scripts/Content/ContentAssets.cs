@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -66,8 +67,23 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// </summary>
     /// <param name="manifest">The preload manifest to load.</param>
     /// <returns>A task that completes when every declared asset is resident.</returns>
-    public async Task PreloadAsync(ContentPreloadManifest manifest)
+    public Task PreloadAsync(ContentPreloadManifest manifest)
     {
+        return PreloadAsync(manifest, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Loads declared media while allowing the requesting scene to cancel between frames.
+    /// </summary>
+    /// <param name="manifest">The preload manifest to load.</param>
+    /// <param name="cancellationToken">Cancels media requests after their owner shuts down.</param>
+    /// <returns>A task that completes when every declared asset is resident or loading is canceled.</returns>
+    public async Task PreloadAsync(
+        ContentPreloadManifest manifest,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
         if (manifest == null)
             throw new ArgumentNullException(nameof(manifest));
@@ -84,6 +100,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         int loadedTextureCount = 0;
         foreach (string path in texturePaths.Distinct(StringComparer.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _ =
                 GetTexture(path)
                 ?? throw new FileNotFoundException($"Preload texture was not found: {path}");
@@ -92,6 +109,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
                 await Task.Yield();
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         await Task.WhenAll(manifest.Audio.Distinct(StringComparer.Ordinal).Select(LoadAudioAsync));
     }
 

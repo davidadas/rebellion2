@@ -1151,7 +1151,7 @@ public static class OptionsMenuPrefabBuilder
         Button backToGameButton = CreateMenuNavigationRow(
             "BackToGame",
             footerNavigation,
-            "RETURN TO GAME",
+            "RESUME GAME",
             0,
             0,
             textDim,
@@ -1161,7 +1161,7 @@ public static class OptionsMenuPrefabBuilder
         Button mainMenuButton = CreateMenuNavigationRow(
             "MainMenu",
             footerNavigation,
-            "RETURN TO MAIN MENU",
+            "MAIN MENU",
             0,
             _navigationRowStride,
             textDim,
