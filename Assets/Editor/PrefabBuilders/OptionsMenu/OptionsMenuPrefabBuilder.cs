@@ -1111,6 +1111,8 @@ public static class OptionsMenuPrefabBuilder
         bindingKeyTemplate.text = "Key";
         bindingKeyTemplate.color = textColor;
         bindingKeyTemplate.fontSize = 10;
+        bindingKeyTemplate.textWrappingMode = TextWrappingModes.NoWrap;
+        bindingKeyTemplate.overflowMode = TextOverflowModes.Truncate;
         bindingKeyTemplate.alignment = TextAlignmentOptions.Midline;
         SetSourceRect(bindingKeyTemplate.rectTransform, 251, 3, 57, 16);
         bindingKeyTemplate.gameObject.SetActive(false);

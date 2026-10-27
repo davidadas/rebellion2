@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
@@ -571,6 +572,53 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
 
             Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
+        }
+
+        [Test]
+        public void Render_LongModifiedBindings_ConstrainsTextToBadge()
+        {
+            OptionsBindingRow[] bindings =
+            {
+                new OptionsBindingRow("Zoom", "CTRL+WHEEL DOWN", "CTRL+WHEEL UP"),
+            };
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+            Canvas.ForceUpdateCanvases();
+
+            TextMeshProUGUI primary = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "BindingPrimaryKey0");
+            TextMeshProUGUI secondary = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "BindingSecondaryKey0");
+
+            AssertRenderedTextWithinRect(primary);
+            AssertRenderedTextWithinRect(secondary);
+        }
+
+        [Test]
+        public void Render_TruncatedModifiedBinding_HoverShowsFullText()
+        {
+            const string binding = "CTRL+WHEEL DOWN";
+            OptionsBindingRow[] bindings = { new OptionsBindingRow("Zoom", binding) };
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            TextMeshProUGUI key = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "BindingPrimaryKey0");
+            OverflowTextTooltip tooltip = key.GetComponent<OverflowTextTooltip>();
+            OverflowTextTooltipTrigger trigger = _root
+                .GetComponentsInChildren<OverflowTextTooltipTrigger>(true)
+                .Single(candidate => candidate.name == "BindingPrimaryBadge0");
+
+            Assert.IsNotNull(tooltip);
+            trigger.OnPointerEnter(new PointerEventData(null));
+            tooltip.AdvanceHover(float.PositiveInfinity);
+
+            Transform tooltipRoot = key.transform.parent.Find("BindingPrimaryKey0Tooltip");
+            Assert.IsNotNull(tooltipRoot);
+            Assert.AreEqual(binding, tooltipRoot.Find("Text").GetComponent<TextMeshProUGUI>().text);
         }
 
         [Test]
@@ -1158,6 +1206,29 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<List<Image>>("_bindingBadgeImages")[0].GetComponent<Button>().onClick.Invoke();
 
             Assert.AreEqual(1, requestedRow);
+        }
+
+        /// <summary>
+        /// Verifies every visible glyph remains inside its text field.
+        /// </summary>
+        /// <param name="field">The rendered text field.</param>
+        private static void AssertRenderedTextWithinRect(TextMeshProUGUI field)
+        {
+            Assert.IsFalse(field.enableAutoSizing, field.name);
+            Assert.AreEqual(10f, field.fontSize, field.name);
+            Assert.AreEqual(TextWrappingModes.NoWrap, field.textWrappingMode, field.name);
+            Assert.AreEqual(TextOverflowModes.Truncate, field.overflowMode, field.name);
+
+            field.ForceMeshUpdate();
+            Rect bounds = field.rectTransform.rect;
+            foreach (TMP_CharacterInfo character in field.textInfo.characterInfo)
+            {
+                if (!character.isVisible)
+                    continue;
+
+                Assert.GreaterOrEqual(character.bottomLeft.x, bounds.xMin, field.name);
+                Assert.LessOrEqual(character.topRight.x, bounds.xMax, field.name);
+            }
         }
 
         /// <summary>
