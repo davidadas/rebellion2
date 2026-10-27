@@ -129,20 +129,8 @@ namespace Rebellion.Game
 
         // Scene nodes.
         [PersistableIgnore]
-        private readonly SceneNodeRegistry _sceneNodes = new();
-
-        [PersistableIgnore]
-        private SceneNodeRegistryState _restoredRegistryState;
-
-        [PersistableIgnore]
-        public IReadOnlyDictionary<string, ISceneNode> NodesByInstanceID => _sceneNodes;
-
-        [PersistableMember(Name = "SceneRegistry")]
-        private SceneNodeRegistryState PersistedSceneRegistry
-        {
-            get => _restoredRegistryState ?? _sceneNodes.CaptureState();
-            set => _restoredRegistryState = SceneNodeRegistry.CopyValidatedState(value);
-        }
+        public Dictionary<string, ISceneNode> NodesByInstanceID =
+            new Dictionary<string, ISceneNode>();
 
         // Game objects.
         [PersistableMember(Name = "Factions")]
@@ -756,7 +744,7 @@ namespace Rebellion.Game
         {
             try
             {
-                _sceneNodes.Add(node);
+                NodesByInstanceID.Add(node.InstanceID, node);
             }
             catch (ArgumentException)
             {
@@ -772,7 +760,7 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to deregister.</param>
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
-            _sceneNodes.Remove(node.InstanceID);
+            NodesByInstanceID.Remove(node.InstanceID);
         }
 
         /// <summary>
@@ -780,31 +768,11 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            _sceneNodes.Reset(_restoredRegistryState);
-            _restoredRegistryState = null;
+            NodesByInstanceID.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
 
             InitializeSceneRoot(Galaxy);
-        }
-
-        /// <summary>
-        /// Restores exact live registrations and vacant-slot continuation from a decoded graph.
-        /// Ownership and parent links remain the caller's separately captured state.
-        /// </summary>
-        /// <param name="nodes">The decoded live nodes belonging to this graph.</param>
-        public void RestoreRegisteredNodes(IEnumerable<ISceneNode> nodes)
-        {
-            if (nodes == null)
-                throw new ArgumentNullException(nameof(nodes));
-            SceneNodeRegistry restored = new();
-            restored.Reset(PersistedSceneRegistry);
-            foreach (ISceneNode node in nodes)
-                restored.Add(node);
-            _sceneNodes.Reset(restored.CaptureState());
-            foreach (ISceneNode node in restored.Values)
-                _sceneNodes.Add(node);
-            _restoredRegistryState = null;
         }
 
         /// <summary>
