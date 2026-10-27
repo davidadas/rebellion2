@@ -39,7 +39,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
-    private string _selectedPackID;
+    private int _selectedPackIndex = -1;
     private ContentFileResolver _selectedModResolver;
     private string _selectedPackError = string.Empty;
     private string _statusMessage = string.Empty;
@@ -243,7 +243,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.UserInterface.IdleBarLocation,
                 _settingsSession.Gameplay.GameLaunchSpeed,
                 BuildModRows().ToArray(),
-                GetSelectedPack()?.DisplayName ?? _selectedPackID,
+                GetSelectedPack()?.DisplayName ?? _bootstrap.GetContentPack().Definition.ID,
                 _showModsTab,
                 _settingsSession.GetGraphicsValues(),
                 _statusMessage,
@@ -315,9 +315,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <returns>The selected installed pack, or null when unavailable.</returns>
     private InstalledContentPack GetSelectedPack()
     {
-        return _availablePacks.FirstOrDefault(pack =>
-            string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
-        );
+        return _selectedPackIndex >= 0 && _selectedPackIndex < _availablePacks.Count
+            ? _availablePacks[_selectedPackIndex]
+            : null;
     }
 
     /// <summary>
@@ -329,18 +329,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_availablePacks.Count < 2 || delta == 0)
             return;
 
-        int currentIndex = -1;
-        for (int index = 0; index < _availablePacks.Count; index++)
-        {
-            if (string.Equals(_availablePacks[index].ID, _selectedPackID, StringComparison.Ordinal))
-            {
-                currentIndex = index;
-                break;
-            }
-        }
-        int nextIndex =
+        int currentIndex =
+            _selectedPackIndex >= 0 && _selectedPackIndex < _availablePacks.Count
+                ? _selectedPackIndex
+                : 0;
+        _selectedPackIndex =
             (currentIndex + Math.Sign(delta) + _availablePacks.Count) % _availablePacks.Count;
-        _selectedPackID = _availablePacks[nextIndex].ID;
         RefreshSelectedModResolver();
         MarkDirty();
     }
@@ -353,12 +347,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         InstalledContentPack selectedPack = GetSelectedPack();
         _selectedPackError = selectedPack?.ErrorMessage ?? string.Empty;
         _selectedModResolver = null;
-        if (!string.IsNullOrWhiteSpace(_selectedPackError))
+        if (selectedPack == null || !string.IsNullOrWhiteSpace(_selectedPackError))
             return;
 
         ContentPackLoader.TryDiscoverModResolver(
             _bootstrap.GetContentPack().ContentRootPath,
-            _selectedPackID,
+            selectedPack.ID,
             _selectedDisabledModIDs,
             out _selectedModResolver,
             out _selectedPackError
@@ -371,7 +365,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void ResetContentSelection()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        _selectedPackID = ResolveSavedPackID(content);
+        _selectedPackIndex = ResolveSavedPackIndex(content);
         _selectedDisabledModIDs.Clear();
         foreach (string disabledModID in content.DisabledModIDs ?? Array.Empty<string>())
             _selectedDisabledModIDs.Add(disabledModID);
@@ -379,18 +373,40 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Resolves the persisted pack selection to an available pack.
+    /// Resolves the persisted pack selection to an installed pack.
     /// </summary>
     /// <param name="content">The persisted content settings.</param>
-    /// <returns>The persisted pack ID when available; otherwise the loaded pack ID.</returns>
-    private string ResolveSavedPackID(UserContentSettings content)
+    /// <returns>The selected installed-pack index.</returns>
+    private int ResolveSavedPackIndex(UserContentSettings content)
     {
-        string savedPackID = content.ActivePackID;
-        return _availablePacks.Any(pack =>
-            string.Equals(pack.ID, savedPackID, StringComparison.Ordinal)
-        )
-            ? savedPackID
-            : _bootstrap.GetContentPack().Definition.ID;
+        int savedPackIndex = ResolvePackIndex(content.ActivePackID);
+        return savedPackIndex >= 0
+            ? savedPackIndex
+            : ResolvePackIndex(_bootstrap.GetContentPack().Definition.ID);
+    }
+
+    /// <summary>
+    /// Resolves one pack ID to a specific installed entry, preferring a readable definition over
+    /// an error entry that uses its directory name as a fallback ID.
+    /// </summary>
+    /// <param name="packID">The persisted or catalog-selected pack ID.</param>
+    /// <returns>The selected installed-pack index, or -1 when no installation matches.</returns>
+    private int ResolvePackIndex(string packID)
+    {
+        int firstMatch = -1;
+        for (int index = 0; index < _availablePacks.Count; index++)
+        {
+            InstalledContentPack pack = _availablePacks[index];
+            if (!string.Equals(pack.ID, packID, StringComparison.Ordinal))
+                continue;
+
+            if (firstMatch < 0)
+                firstMatch = index;
+            if (pack.Definition != null && string.IsNullOrWhiteSpace(pack.ErrorMessage))
+                return index;
+        }
+
+        return firstMatch;
     }
 
     /// <summary>
@@ -400,8 +416,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool IsContentSelectionDirty()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        string savedPackID = ResolveSavedPackID(content);
-        return !string.Equals(_selectedPackID, savedPackID, StringComparison.Ordinal)
+        return _selectedPackIndex != ResolveSavedPackIndex(content)
             || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
     }
 
@@ -422,7 +437,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
         }
 
-        if (_bootstrap.ReloadContent(_selectedPackID, _selectedDisabledModIDs.ToArray()))
+        InstalledContentPack selectedPack = GetSelectedPack();
+        if (
+            selectedPack != null
+            && _bootstrap.ReloadContent(selectedPack.ID, _selectedDisabledModIDs.ToArray())
+        )
             Close();
         else
             SetStatus("Content settings could not be applied.", true);
@@ -871,11 +890,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         string defaultPackID = ContentPackLoader.GetDefaultPackID(
             _bootstrap.GetContentPack().ContentRootPath
         );
-        _selectedPackID = _availablePacks.Any(pack =>
-            string.Equals(pack.ID, defaultPackID, StringComparison.Ordinal)
-        )
-            ? defaultPackID
-            : _bootstrap.GetContentPack().Definition.ID;
+        _selectedPackIndex = ResolvePackIndex(defaultPackID);
+        if (_selectedPackIndex < 0)
+            _selectedPackIndex = ResolvePackIndex(_bootstrap.GetContentPack().Definition.ID);
         _selectedDisabledModIDs.Clear();
         RefreshSelectedModResolver();
         MarkDirty();

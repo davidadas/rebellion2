@@ -316,6 +316,97 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleContentPackStep_InstallationsSharingPackID_AdvancesPastMalformedEntry()
+        {
+            string duplicatePackID = "Duplicate-" + Guid.NewGuid().ToString("N");
+            string[] packDirectories = CreatePackSelectionCollision(duplicatePackID);
+            try
+            {
+                _controller.Dispose();
+                _controller = CreateController(GetPrefab());
+                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+                Button nextPack = GetField<Button>(view, "_contentPackNextButton");
+                TextMeshProUGUI packName = GetField<TextMeshProUGUI>(
+                    view,
+                    "_contentPackValueField"
+                );
+
+                nextPack.onClick.Invoke();
+                _controller.RenderWindows();
+                Assert.AreEqual(duplicatePackID, packName.text);
+
+                nextPack.onClick.Invoke();
+                _controller.RenderWindows();
+                Assert.AreEqual("Healthy Duplicate", packName.text);
+            }
+            finally
+            {
+                foreach (string directory in packDirectories)
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void HandleContentPackStep_DuplicateDeclaredPackIDs_AdvancesBetweenInstallations()
+        {
+            string duplicatePackID = "Shared-" + Guid.NewGuid().ToString("N");
+            string[] packDirectories = CreateReadablePackDuplicates(duplicatePackID);
+            try
+            {
+                _controller.Dispose();
+                _controller = CreateController(GetPrefab());
+                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+                Button nextPack = GetField<Button>(view, "_contentPackNextButton");
+                TextMeshProUGUI packName = GetField<TextMeshProUGUI>(
+                    view,
+                    "_contentPackValueField"
+                );
+
+                nextPack.onClick.Invoke();
+                _controller.RenderWindows();
+                Assert.AreEqual("First Duplicate", packName.text);
+
+                nextPack.onClick.Invoke();
+                _controller.RenderWindows();
+                Assert.AreEqual("Second Duplicate", packName.text);
+            }
+            finally
+            {
+                foreach (string directory in packDirectories)
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void Open_SavedPackIDSharedByMalformedAndHealthyInstallations_SelectsHealthyEntry()
+        {
+            string duplicatePackID = "Duplicate-" + Guid.NewGuid().ToString("N");
+            string[] packDirectories = CreatePackSelectionCollision(duplicatePackID);
+            string previousPackID = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.Content.ActivePackID;
+            try
+            {
+                _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = duplicatePackID;
+                _controller.Dispose();
+                _controller = CreateController(GetPrefab());
+
+                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+
+                Assert.AreEqual(
+                    "Healthy Duplicate",
+                    GetField<TextMeshProUGUI>(view, "_contentPackValueField").text
+                );
+            }
+            finally
+            {
+                _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = previousPackID;
+                foreach (string directory in packDirectories)
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void HandleApply_Settings_ShowsAppliedStatus()
         {
             OptionsMenuView view = OpenAndRender();
@@ -360,10 +451,22 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "_confirmDialog"
             );
             GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+            _controller.RenderWindows();
+
+            string defaultPackID = ContentPackLoader.GetDefaultPackID(
+                _bootstrap.GetContentPack().ContentRootPath
+            );
+            string defaultPackName = ContentPackLoader
+                .DiscoverInstalledPacks(_bootstrap.GetContentPack().ContentRootPath)
+                .First(pack =>
+                    pack.Definition != null
+                    && string.Equals(pack.ID, defaultPackID, StringComparison.Ordinal)
+                )
+                .DisplayName;
 
             Assert.AreEqual(
-                ContentPackLoader.GetDefaultPackID(_bootstrap.GetContentPack().ContentRootPath),
-                GetField<string>(_controller, "_selectedPackID")
+                defaultPackName,
+                GetField<TextMeshProUGUI>(view, "_contentPackValueField").text
             );
             Assert.IsEmpty(GetField<HashSet<string>>(_controller, "_selectedDisabledModIDs"));
         }
@@ -900,6 +1003,65 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 throw new InvalidOperationException($"Missing OptionsMenuView at {_prefabPath}.");
 
             return view;
+        }
+
+        /// <summary>
+        /// Creates one malformed installation whose directory fallback collides with a healthy
+        /// pack's declared ID.
+        /// </summary>
+        /// <param name="packID">The shared discovered pack ID.</param>
+        /// <returns>The installation directories to remove after the test.</returns>
+        private string[] CreatePackSelectionCollision(string packID)
+        {
+            string packsRoot = Path.Combine(_bootstrap.GetContentPack().ContentRootPath, "Packs");
+            string malformedDirectory = Path.Combine(packsRoot, packID);
+            string healthyDirectory = Path.Combine(
+                packsRoot,
+                "ZZZ-Healthy-" + Guid.NewGuid().ToString("N")
+            );
+            Directory.CreateDirectory(malformedDirectory);
+            Directory.CreateDirectory(healthyDirectory);
+            File.WriteAllText(
+                Path.Combine(malformedDirectory, "pack.xml"),
+                $"<ContentPack><ID>{packID}</ID>"
+            );
+            File.WriteAllText(
+                Path.Combine(healthyDirectory, "pack.xml"),
+                $"<ContentPack><ID>{packID}</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Healthy Duplicate</DisplayName></ContentPack>"
+            );
+            return new[] { malformedDirectory, healthyDirectory };
+        }
+
+        /// <summary>
+        /// Creates two readable installations that declare the same pack ID.
+        /// </summary>
+        /// <param name="packID">The duplicated declared pack ID.</param>
+        /// <returns>The installation directories to remove after the test.</returns>
+        private string[] CreateReadablePackDuplicates(string packID)
+        {
+            string packsRoot = Path.Combine(_bootstrap.GetContentPack().ContentRootPath, "Packs");
+            string firstDirectory = Path.Combine(
+                packsRoot,
+                "Duplicate-A-" + Guid.NewGuid().ToString("N")
+            );
+            string secondDirectory = Path.Combine(
+                packsRoot,
+                "Duplicate-B-" + Guid.NewGuid().ToString("N")
+            );
+            Directory.CreateDirectory(firstDirectory);
+            Directory.CreateDirectory(secondDirectory);
+            File.WriteAllText(
+                Path.Combine(firstDirectory, "pack.xml"),
+                $"<ContentPack><ID>{packID}</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>First Duplicate</DisplayName></ContentPack>"
+            );
+            File.WriteAllText(
+                Path.Combine(secondDirectory, "pack.xml"),
+                $"<ContentPack><ID>{packID}</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Second Duplicate</DisplayName></ContentPack>"
+            );
+            return new[] { firstDirectory, secondDirectory };
         }
 
         /// <summary>
