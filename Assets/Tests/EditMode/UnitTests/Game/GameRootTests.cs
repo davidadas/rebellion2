@@ -69,6 +69,143 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void Galaxy_ReplacingRoot_RemovesOutgoingRegistrations()
+        {
+            string previousRootID = _game.Galaxy.InstanceID;
+            GalaxyMap replacement = new() { InstanceID = "replacement-galaxy" };
+            _game.Galaxy = replacement;
+            Assert.IsFalse(_game.NodesByInstanceID.ContainsKey(previousRootID));
+            Assert.AreSame(replacement, _game.NodesByInstanceID[replacement.InstanceID]);
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedOrder_RetainsOrderAcrossRepeatedRebuilds()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            foreach (string id in new[] { "removed", "retained" })
+                _game.AttachNode(
+                    new Regiment { InstanceID = id, OwnerInstanceID = _faction1.InstanceID },
+                    _planet
+                );
+            _game.DeleteNode(_game.GetSceneNodeByInstanceID<Regiment>("removed"));
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            restored.RebuildSceneState();
+            restored.RebuildSceneState();
+            restored.AttachNode(
+                new Regiment { InstanceID = "added", OwnerInstanceID = _faction1.InstanceID },
+                restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "added", "retained" },
+                restored.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedHierarchy_PreservesRegistrationOrderWithoutIDList()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            Planet second = new()
+            {
+                InstanceID = "second-planet",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(second, _planetSector);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "registered-first",
+                    OwnerInstanceID = _faction1.InstanceID,
+                },
+                second
+            );
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "registered-second",
+                    OwnerInstanceID = _faction1.InstanceID,
+                },
+                _planet
+            );
+            string[] expected = _game
+                .GetRegisteredSceneNodesByType<Regiment>()
+                .Select(node => node.InstanceID)
+                .ToArray();
+            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
+                SerializationHelper.Serialize(_game)
+            );
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(document.ToString());
+            restored.RebuildSceneState();
+            CollectionAssert.AreEqual(
+                expected,
+                restored.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedVacancy_PreservesFutureOrderWithoutIDList()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(
+                new Regiment { InstanceID = "removed", OwnerInstanceID = _faction1.InstanceID },
+                _planet
+            );
+            _game.AttachNode(
+                new Regiment { InstanceID = "retained", OwnerInstanceID = _faction1.InstanceID },
+                _planet
+            );
+            _game.DeleteNode(_game.GetSceneNodeByInstanceID<Regiment>("removed"));
+            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
+                SerializationHelper.Serialize(_game)
+            );
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(document.ToString());
+            restored.RebuildSceneState();
+            _game.AttachNode(
+                new Regiment { InstanceID = "added", OwnerInstanceID = _faction1.InstanceID },
+                _planet
+            );
+            restored.AttachNode(
+                new Regiment { InstanceID = "added", OwnerInstanceID = _faction1.InstanceID },
+                restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                _game.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID),
+                restored.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedNode_DoesNotWriteDuplicateRegistryIDs()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "single-record-regiment",
+                    OwnerInstanceID = _faction1.InstanceID,
+                },
+                _planet
+            );
+            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
+                SerializationHelper.Serialize(_game)
+            );
+            Assert.AreEqual(
+                1,
+                document
+                    .Descendants()
+                    .Count(element =>
+                        !element.HasElements && element.Value == "single-record-regiment"
+                    )
+            );
+        }
+
+        [Test]
         public void AttachNode_DifferentOwner_ThrowsException()
         {
             _game.AttachNode(_planetSector, _game.Galaxy);
@@ -1081,14 +1218,23 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void RebuildSceneState_LegacySaveWithoutRegistry_LoadsHierarchy()
+        public void RebuildSceneState_LegacySaveWithoutOrderMetadata_LoadsHierarchy()
         {
             _game.AttachNode(_planetSector, _game.Galaxy);
             _game.AttachNode(_planet, _planetSector);
             System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
                 SerializationHelper.Serialize(_game)
             );
-            document.Root.Element("SceneRegistry").Remove();
+            foreach (
+                System.Xml.Linq.XAttribute attribute in document
+                    .Descendants()
+                    .SelectMany(element => element.Attributes())
+                    .Where(attribute =>
+                        attribute.Name.NamespaceName == "urn:rebellion2:object-order"
+                    )
+                    .ToArray()
+            )
+                attribute.Remove();
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(document.ToString());
             restored.RebuildSceneState();
             Assert.AreEqual(
