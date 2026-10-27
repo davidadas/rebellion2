@@ -77,6 +77,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private bool _pendingRenameFocus;
     private bool _canSaveGame;
     private bool _existingSaveSelected;
+    private bool _controlsBound;
 
     /// <summary>
     /// Raised when the Save command is requested.
@@ -133,6 +134,17 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void Awake()
     {
+        BindControls();
+    }
+
+    /// <summary>
+    /// Initializes authored controls once, including when an inactive clone is rendered first.
+    /// </summary>
+    private void BindControls()
+    {
+        if (_controlsBound)
+            return;
+
         VerifyReferences();
         AlignRenameInput();
         _saveButton.onClick.AddListener(HandleSaveRequested);
@@ -140,6 +152,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _renameField.onValueChanged.AddListener(HandleRenameValueChanged);
         _renameField.onEndEdit.AddListener(HandleRenameEndEdit);
         _renameField.onSubmit.AddListener(HandleRenameSubmitted);
+        _controlsBound = true;
     }
 
     /// <summary>
@@ -155,6 +168,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void OnDestroy()
     {
+        if (!_controlsBound)
+            return;
+
         _saveButton.onClick.RemoveListener(HandleSaveRequested);
         _loadButton.onClick.RemoveListener(HandleLoadRequested);
         _renameField.onValueChanged.RemoveListener(HandleRenameValueChanged);
@@ -189,6 +205,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         bool resetScroll
     )
     {
+        BindControls();
         slots ??= Array.Empty<OptionsSaveSlot>();
         bool existingSelected =
             selected >= 0 && selected < slots.Count && !slots[selected].IsCreateNew;

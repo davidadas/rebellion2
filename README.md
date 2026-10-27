@@ -56,6 +56,9 @@ The installer verifies ownership automatically. You must own either *Star Wars: 
 > [!IMPORTANT]
 > Rebellion 2 remains in active development. Save compatibility is not guaranteed between releases.
 
+Overwriting a saved game or a Custom Game preset asks for confirmation. Select **Yes** to replace it
+or **No** to keep it.
+
 ## Project status
 
 Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
