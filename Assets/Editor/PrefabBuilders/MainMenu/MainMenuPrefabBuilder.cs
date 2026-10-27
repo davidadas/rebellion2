@@ -2128,7 +2128,7 @@ public static class MainMenuPrefabBuilder
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
 
-        const int planetLayer = 31;
+        const int planetLayer = PresentationLayers.MainMenuPlanet;
         BuildStellarFlare(pivot.transform, planetLayer);
         BuildPlanet(
             pivot.transform,
@@ -2933,7 +2933,9 @@ public static class MainMenuPrefabBuilder
         );
         light.color = color;
         light.shadows = shadows;
-        light.cullingMask = ~(1 << 31);
+        light.cullingMask = ~(
+            (1 << PresentationLayers.MainMenuPlanet) | (1 << PresentationLayers.LoadingScreen)
+        );
     }
 
     /// <summary>

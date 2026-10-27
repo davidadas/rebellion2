@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 /// <summary>
 /// Builds the command-rank submenu shared by stationed and fleet personnel views.

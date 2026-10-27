@@ -396,9 +396,7 @@ public static class MenuPrefabBuilder
         labelField.text = label;
         labelField.color = color;
         labelField.fontSize = 13;
-        labelField.enableAutoSizing = true;
-        labelField.fontSizeMin = 11;
-        labelField.fontSizeMax = 13;
+        labelField.enableAutoSizing = false;
         labelField.alignment = alignment;
         labelField.rectTransform.offsetMin = new Vector2(14f, 0f);
         labelField.rectTransform.offsetMax = new Vector2(-14f, 0f);
