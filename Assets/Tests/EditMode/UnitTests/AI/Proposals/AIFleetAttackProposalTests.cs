@@ -15,7 +15,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 using Rebellion.Tests.AI.Helpers;
 using Rebellion.Util.Random;
 

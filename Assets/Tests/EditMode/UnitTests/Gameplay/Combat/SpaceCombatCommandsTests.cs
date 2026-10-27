@@ -9,7 +9,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Gameplay

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Advances one simulation feature through the current game tick.

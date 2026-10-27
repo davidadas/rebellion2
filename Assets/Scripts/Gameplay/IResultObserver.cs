@@ -1,4 +1,4 @@
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Connects one runtime observer to the result bus.

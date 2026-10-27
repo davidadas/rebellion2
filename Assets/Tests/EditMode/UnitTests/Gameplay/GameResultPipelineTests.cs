@@ -4,9 +4,8 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 
-namespace Rebellion.Tests.Gameplay.Runtime
+namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public sealed class GameResultPipelineTests

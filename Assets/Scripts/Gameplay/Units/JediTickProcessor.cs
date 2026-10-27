@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay.Runtime;
 
 namespace Rebellion.Gameplay
 {

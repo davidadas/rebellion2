@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Delivers result batches and their queued reactions within one running game.

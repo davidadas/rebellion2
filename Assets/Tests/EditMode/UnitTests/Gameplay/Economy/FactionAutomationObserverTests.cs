@@ -11,7 +11,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Gameplay

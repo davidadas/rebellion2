@@ -10,7 +10,7 @@ using Rebellion.Gameplay.Scripting.Events;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Executes the ordered tick phases and suspends or resumes them around player combat decisions.

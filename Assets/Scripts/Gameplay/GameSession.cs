@@ -13,7 +13,7 @@ using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 using Rebellion.Util.Reflection;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Constructs and connects runtime components for the active game graph.

@@ -17,13 +17,12 @@ using Rebellion.Game.Scripting;
 using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 using Rebellion.Gameplay.Scripting.Events;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 
-namespace Rebellion.Tests.Gameplay.Runtime
+namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public sealed class GameSessionTests

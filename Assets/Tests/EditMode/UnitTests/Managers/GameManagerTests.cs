@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 
 namespace Rebellion.Tests.Managers
 {

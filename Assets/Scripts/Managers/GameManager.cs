@@ -1,6 +1,6 @@
 using System;
 using Rebellion.Game;
-using Rebellion.Gameplay.Runtime;
+using Rebellion.Gameplay;
 
 /// <summary>
 /// Maintains game speed and elapsed-time accumulation for the application frame loop.

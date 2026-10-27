@@ -8,7 +8,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Runtime;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen

@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay.Runtime;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay

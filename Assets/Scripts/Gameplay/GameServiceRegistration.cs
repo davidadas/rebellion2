@@ -8,7 +8,7 @@ using Rebellion.Gameplay.Scripting.Events;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Registers the runtime components belonging to one active game.

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
 
-namespace Rebellion.Gameplay.Runtime
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Preserves ordered gameplay reactions, presentation callbacks, and message delivery.
