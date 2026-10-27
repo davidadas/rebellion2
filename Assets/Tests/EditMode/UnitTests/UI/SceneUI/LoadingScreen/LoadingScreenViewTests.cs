@@ -1,5 +1,6 @@
 using System.Collections;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
@@ -442,12 +443,14 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             Transform modelRoot = _instance.transform.Find("ShuttleRig/ModelRoot");
             float timeout = Time.realtimeSinceStartup + 10f;
-            while (
-                modelRoot.GetComponentsInChildren<Renderer>(true).Length == 0
-                && Time.realtimeSinceStartup < timeout
-            )
+            while (!HasPosedShuttle(modelRoot) && Time.realtimeSinceStartup < timeout)
                 yield return null;
-            Assert.IsNotEmpty(modelRoot.GetComponentsInChildren<Renderer>(true));
+            Assert.IsTrue(
+                HasPosedShuttle(modelRoot),
+                "Shuttle setup did not finish before timeout."
+            );
+            if (hidden)
+                Assert.IsFalse(_instance.gameObject.activeInHierarchy);
             _instance.SetVisible(true);
             yield return null;
             Canvas.ForceUpdateCanvases();
@@ -491,6 +494,20 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.That(camera.transform.position, Is.EqualTo(cameraPosition));
             Assert.That(fillLight.position, Is.EqualTo(lightPosition));
             Assert.That(modelRoot.lossyScale, Is.EqualTo(modelScale));
+        }
+
+        /// <summary>
+        /// Detects the exhaust meshes added at the end of shuttle setup.
+        /// </summary>
+        /// <param name="modelRoot">The hierarchy containing the shuttle and its exhaust.</param>
+        /// <returns>True when all four exhaust meshes have been created.</returns>
+        private static bool HasPosedShuttle(Transform modelRoot)
+        {
+            return modelRoot
+                    .GetComponentsInChildren<Renderer>(true)
+                    .Count(renderer =>
+                        renderer.name.StartsWith("EnginePlume", System.StringComparison.Ordinal)
+                    ) == 4;
         }
     }
 }
