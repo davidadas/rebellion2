@@ -145,13 +145,6 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        activeSession.PumpCommands();
-        if (activeSession.CommandFailure != null)
-        {
-            activeGameManager.SetGameSpeed(TickSpeed.Paused);
-            return;
-        }
-
         if (activeGameManager?.TryAdvanceTickTimer(Time.deltaTime) == true)
         {
             activeTick = activeSession.Tick.ProcessTickIncrementally();

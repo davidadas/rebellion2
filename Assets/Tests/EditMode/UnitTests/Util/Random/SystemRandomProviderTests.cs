@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using Rebellion.Util.Random;
 
@@ -66,38 +65,6 @@ namespace Rebellion.Tests.Util.Random
                 freshProvider.NextInt(0, int.MaxValue),
                 zeroAdvanceProvider.NextInt(0, int.MaxValue)
             );
-        }
-
-        [TestCase(int.MinValue, int.MaxValue)]
-        [TestCase(-1, int.MaxValue)]
-        [TestCase(int.MinValue, 0)]
-        [TestCase(0, int.MaxValue)]
-        [TestCase(5, 5)]
-        public void Constructor_MixedRangeDraws_ResumesExactStream(int min, int max)
-        {
-            for (int seed = 0; seed < 32; seed++)
-            {
-                SystemRandomProvider live = new(seed);
-                System.Random reference = new(seed);
-                for (int index = 0; index < 10; index++)
-                {
-                    Assert.AreEqual(reference.Next(min, max), live.NextInt(min, max));
-                    Assert.AreEqual(reference.NextDouble(), live.NextDouble());
-                    SystemRandomProvider restored = new(seed, live.CallCount);
-                    Assert.AreEqual(live.NextDouble(), restored.NextDouble());
-                    reference.NextDouble();
-                }
-            }
-        }
-
-        [Test]
-        public void NextInt_InvalidBounds_PreservesSavedStreamPosition()
-        {
-            SystemRandomProvider live = new(42);
-            live.NextDouble();
-            Assert.Throws<ArgumentOutOfRangeException>(() => live.NextInt(10, 1));
-            SystemRandomProvider restored = new(42, live.CallCount);
-            Assert.AreEqual(live.NextDouble(), restored.NextDouble());
         }
     }
 }

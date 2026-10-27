@@ -133,7 +133,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
             };
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "faction" };
-            game.AddSceneNodeByInstanceID(planet);
+            game.NodesByInstanceID[planet.InstanceID] = planet;
             AdvisorReportWindowTheme theme = new AdvisorReportWindowTheme
             {
                 Objectives = new List<AdvisorObjectiveTheme>
@@ -209,8 +209,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             };
             Officer officer = new Officer { InstanceID = "officer", IsCaptured = true };
             game.GetFactions().Add(faction);
-            game.AddSceneNodeByInstanceID(headquarters);
-            game.AddSceneNodeByInstanceID(officer);
+            game.NodesByInstanceID[headquarters.InstanceID] = headquarters;
+            game.NodesByInstanceID[officer.InstanceID] = officer;
             AdvisorReportWindowTheme theme = new AdvisorReportWindowTheme
             {
                 Objectives = new List<AdvisorObjectiveTheme>

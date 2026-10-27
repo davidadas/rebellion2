@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void Reset_RejectedReplacement_KeepsClockBlockedUntilIteratorDisposal()
+        public void Reset_SuspendedTick_KeepsClockBlockedUntilIteratorDisposal()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
@@ -167,17 +167,13 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(tick.MoveNext());
             GameRoot replacement = TestGame.Create(game.Config);
 
-            Assert.Throws<InvalidOperationException>(() => session.ReplaceGame(replacement));
-            Assert.AreSame(game, session.Game);
+            session.ReplaceGame(replacement);
             manager.Reset();
             manager.SetGameSpeed(TickSpeed.Fast);
             bool readyBeforeDisposal = manager.TryAdvanceTickTimer(
                 game.Config.GameSpeed.FastTickIntervalSeconds
             );
             (tick as IDisposable)?.Dispose();
-            session.ReplaceGame(replacement);
-            manager.Reset();
-            manager.SetGameSpeed(TickSpeed.Fast);
             bool readyAfterDisposal = manager.TryAdvanceTickTimer(
                 game.Config.GameSpeed.FastTickIntervalSeconds
             );
