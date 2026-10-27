@@ -752,6 +752,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
             const int controlLeft = 171;
             choice = optionsMenuPrefab.CloneContentPackChoice(
+                contentAssets,
                 row.transform,
                 "Choice-" + key,
                 controlLeft,
