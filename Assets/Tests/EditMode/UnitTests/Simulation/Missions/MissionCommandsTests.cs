@@ -901,7 +901,7 @@ namespace Rebellion.Tests.Simulation
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             officer.Movement = null;
-            mission.SetExecutionTick(0);
+            mission.MaxProgress = 0;
 
             List<GameResult> results = missions.ProcessMissionTick(game);
 
@@ -1452,7 +1452,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1475,7 +1475,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1522,7 +1522,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(starfighter, capitalShip);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1567,7 +1567,7 @@ namespace Rebellion.Tests.Simulation
             decoy.SetBaseRating(SkillRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
             {
@@ -1621,7 +1621,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(starfighter, capitalShip);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1674,7 +1674,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(starfighter, capitalShip);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1728,7 +1728,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(building, planet);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -1762,7 +1762,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(building, planet);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
@@ -2109,7 +2109,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -200, 100 } });
             DisableCaptureEvasionInjury(game);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -2136,7 +2136,7 @@ namespace Rebellion.Tests.Simulation
             );
             StubMission mission = CreateMission(game, planet, officer);
             mission.Initiate(0);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
 
             officer.InjuryPoints = 1;
 
@@ -2230,7 +2230,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -200, 0 } });
             DisableCaptureEvasionInjury(game);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
 
@@ -2317,7 +2317,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2360,7 +2360,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.DetectionResolved = true;
-            mission.SetExecutionTick(0);
+            mission.MaxProgress = 0;
             game.AttachNode(mission, planet);
             game.MoveNode(first, mission);
             game.AttachNode(second, mission);
@@ -2396,7 +2396,7 @@ namespace Rebellion.Tests.Simulation
             );
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.DetectionResolved = true;
-            mission.SetExecutionTick(0);
+            mission.MaxProgress = 0;
             game.AttachNode(mission, planet);
             game.AttachNode(traitor, mission);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
@@ -2439,7 +2439,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.DetectionResolved = true;
-            mission.SetExecutionTick(0);
+            mission.MaxProgress = 0;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2479,7 +2479,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.Jedi.EncounterProbabilityOffset = 100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2533,7 +2533,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.Jedi.EncounterProbabilityOffset = 100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2575,7 +2575,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.Jedi.EncounterProbabilityOffset = 100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2617,7 +2617,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.Jedi.EncounterProbabilityOffset = 100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2648,12 +2648,12 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
 
             StubMission defendingMission = new StubMission("rebels", planet.InstanceID);
-            defendingMission.SetExecutionTick(5);
+            defendingMission.MaxProgress = 5;
             game.AttachNode(defendingMission, planet);
             game.MoveNode(defender, defendingMission);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -2826,7 +2826,7 @@ namespace Rebellion.Tests.Simulation
             remainingDecoy.MissionReturnLocationInstanceID = "empire-home";
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
@@ -2862,7 +2862,7 @@ namespace Rebellion.Tests.Simulation
             failedDecoy.SetBaseRating(SkillRating.Espionage, 0);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.SetExecutionTick(5);
+            mission.MaxProgress = 5;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
@@ -3542,7 +3542,7 @@ namespace Rebellion.Tests.Simulation
             );
             game.AttachNode(mission, planet);
             game.MoveNode(participant, mission);
-            mission.SetExecutionTick(0);
+            mission.MaxProgress = 0;
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new StubRNG(),
