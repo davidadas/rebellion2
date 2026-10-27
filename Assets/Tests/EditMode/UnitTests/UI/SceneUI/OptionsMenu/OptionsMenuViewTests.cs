@@ -888,6 +888,32 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Render_ContentPackNames_KeepFixedVerticalAlignment()
+        {
+            TextMeshProUGUI value = GetField<TextMeshProUGUI>("_contentPackValueField");
+
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "Classic Galactic Civil War"
+                )
+            );
+            value.ForceMeshUpdate();
+            float classicBaseline = value.textInfo.characterInfo[0].baseLine;
+
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "25th Anniversary (by Metasharp)"
+                )
+            );
+            value.ForceMeshUpdate();
+
+            Assert.AreEqual(TextAlignmentOptions.Capline, value.alignment);
+            Assert.AreEqual(classicBaseline, value.textInfo.characterInfo[0].baseLine, 0.001f);
+        }
+
+        [Test]
         public void ModsPage_ManyMods_RendersEveryMod()
         {
             OptionsModRow[] mods = Enumerable

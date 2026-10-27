@@ -412,17 +412,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(_selectedPackError))
         {
-            SetStatus(
-                $"{GetSelectedPack()?.DisplayName ?? _selectedPackID} could not be loaded: {_selectedPackError}",
-                true
-            );
+            SetStatus(BuildContentErrorStatus("Content pack"), true);
             return;
         }
 
         if (_selectedModResolver.ModIssues.Count > 0)
         {
-            ContentModIssue issue = _selectedModResolver.ModIssues[0];
-            SetStatus($"{issue.DisplayName} could not be loaded: {issue.Message}", true);
+            SetStatus(BuildContentErrorStatus("Mod"), true);
             return;
         }
 
@@ -430,6 +426,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             Close();
         else
             SetStatus("Content settings could not be applied.", true);
+    }
+
+    /// <summary>
+    /// Builds player-facing content failure guidance using the player log filename.
+    /// </summary>
+    /// <param name="contentType">The player-facing content type.</param>
+    /// <returns>A concise failure message containing the player log filename.</returns>
+    private static string BuildContentErrorStatus(string contentType)
+    {
+        return $"{contentType} could not be loaded. See Player.log for details.";
     }
 
     /// <summary>

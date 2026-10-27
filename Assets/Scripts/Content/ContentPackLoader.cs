@@ -11,6 +11,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -104,6 +105,7 @@ public static class ContentPackLoader
         {
             resolver = null;
             errorMessage = GetContentErrorMessage(exception);
+            GameLogger.Warning($"Content pack '{packID}' could not be inspected: {errorMessage}");
             return false;
         }
     }
@@ -922,23 +924,27 @@ public static class ContentPackLoader
             );
             if (string.IsNullOrWhiteSpace(definition.ID))
             {
-                return new InstalledContentPack(
-                    directoryName,
-                    directoryName,
-                    null,
-                    "Content pack definition is missing required field 'ID'."
+                const string message = "Content pack definition is missing required field 'ID'.";
+                GameLogger.Warning(
+                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
                 );
+                return new InstalledContentPack(directoryName, directoryName, null, message);
             }
 
             if (string.IsNullOrWhiteSpace(definition.Version))
             {
+                const string message =
+                    "Content pack definition is missing required field 'Version'.";
+                GameLogger.Warning(
+                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                );
                 return new InstalledContentPack(
                     definition.ID,
                     string.IsNullOrWhiteSpace(definition.DisplayName)
                         ? definition.ID
                         : definition.DisplayName,
                     null,
-                    "Content pack definition is missing required field 'Version'."
+                    message
                 );
             }
 
@@ -953,12 +959,11 @@ public static class ContentPackLoader
         }
         catch (Exception exception) when (IsContentDiscoveryException(exception))
         {
-            return new InstalledContentPack(
-                directoryName,
-                directoryName,
-                null,
-                GetContentErrorMessage(exception)
+            string message = GetContentErrorMessage(exception);
+            GameLogger.Warning(
+                $"Skipping invalid content pack definition '{definitionPath}': {message}"
             );
+            return new InstalledContentPack(directoryName, directoryName, null, message);
         }
     }
 

@@ -268,8 +268,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsTrue(_controller.IsOpen);
             string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
-            StringAssert.Contains("Broken Mod", status);
-            StringAssert.Contains("BasePackVersion", status);
+            Assert.AreEqual("Mod could not be loaded. See Player.log for details.", status);
         }
 
         [Test]
@@ -310,8 +309,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsTrue(_controller.IsOpen);
             string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
-            StringAssert.Contains(brokenPackName, status);
-            StringAssert.Contains("could not be loaded", status);
+            Assert.AreEqual(
+                "Content pack could not be loaded. See Player.log for details.",
+                status
+            );
         }
 
         [Test]
