@@ -27,6 +27,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ConstructionWindowController _constructionController;
         private FacilityWindowController _controller;
         private int _dirtyCount;
+        private int _dragEndCount;
+        private int _dragMoveCount;
+        private UIWindow _dragStartWindow;
         private FacilityActions _facilityActions;
         private ManufacturingTrackingActions _trackingActions;
         private GameRoot _game;
@@ -45,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void SetUp()
         {
             _dirtyCount = 0;
+            _dragEndCount = 0;
+            _dragMoveCount = 0;
+            _dragStartWindow = null;
             _game = CreateGame();
             _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
@@ -59,6 +65,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 DisplayName = "Corellian Shipyard",
                 OwnerInstanceID = _playerFactionId,
                 BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Building,
             };
             _planet.Planet.AddTestChild(_building);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
@@ -70,7 +77,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _controller = CreateController();
             _facilityActions = new FacilityActions();
             _trackingActions = new ManufacturingTrackingActions();
-            _controller.Initialize(_facilityActions, _facilityActions, _trackingActions);
+            _controller.Initialize(
+                _facilityActions,
+                _facilityActions,
+                _trackingActions,
+                (window, _) => _dragStartWindow = window,
+                _ => _dragMoveCount++,
+                _ => _dragEndCount++
+            );
         }
 
         /// <summary>
@@ -189,7 +203,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 _controller.Initialize(
                     null,
                     new FacilityActions(),
-                    new ManufacturingTrackingActions()
+                    new ManufacturingTrackingActions(),
+                    (_, _) => { },
+                    _ => { },
+                    _ => { }
                 )
             );
         }
@@ -329,6 +346,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             Assert.IsNull(_controller.GetStatusTarget(view));
             Assert.IsEmpty(_controller.GetScrapItems(view));
+        }
+
+        [Test]
+        public void InventoryItemDrag_UnderConstructionBuilding_RoutesSelectionAndDragEvents()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            Assert.IsTrue(_controller.SelectTarget(view, _building));
+            _controller.RenderWindow(view, window);
+            FacilityInventoryItemView item =
+                view.GetComponentsInChildren<FacilityInventoryItemView>(true)
+                    .Single(candidate => candidate.gameObject.activeSelf);
+            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+            Assert.IsTrue(item.TryGetDragImage(out _, out RectTransform imageTransform));
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    imageTransform.TransformPoint(imageTransform.rect.center)
+                ),
+            };
+
+            item.GetComponent<UIPointerGestureRelay>().OnPointerDown(pointer);
+            item.OnDrag(pointer);
+            item.OnEndDrag(pointer);
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _building },
+                _controller.GetContextItems(window)
+            );
+            Assert.AreSame(window, _dragStartWindow);
+            Assert.AreEqual(1, _dragMoveCount);
+            Assert.AreEqual(1, _dragEndCount);
         }
 
         [Test]

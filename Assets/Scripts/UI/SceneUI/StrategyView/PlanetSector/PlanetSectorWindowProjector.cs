@@ -512,8 +512,11 @@ internal sealed class PlanetSectorWindowProjector
         int support
     )
     {
-        if (planet?.IsPopulated() != true)
+        if (planet == null)
             return CreateHiddenBar();
+
+        if (!planet.IsPopulated())
+            return CreateControlBar(uiContext, planet);
 
         return new PlanetSectorBarRenderData(
             true,
@@ -524,6 +527,47 @@ internal sealed class PlanetSectorWindowProjector
             Color.clear,
             GetOpposingSupportColor(uiContext, planet),
             $"Popular Support {support}/100"
+        );
+    }
+
+    /// <summary>
+    /// Creates the ownership indicator shown in the support-bar position for an uninhabited planet.
+    /// </summary>
+    /// <param name="uiContext">The current strategy presentation context.</param>
+    /// <param name="planet">The represented uninhabited planet.</param>
+    /// <returns>The ownership indicator, or a hidden bar for an uncontrolled planet.</returns>
+    private static PlanetSectorBarRenderData CreateControlBar(UIContext uiContext, Planet planet)
+    {
+        string ownerFactionId = planet?.OwnerInstanceID;
+        if (string.IsNullOrEmpty(ownerFactionId))
+            return CreateHiddenBar();
+
+        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
+        bool playerControlsPlanet = string.Equals(
+            ownerFactionId,
+            playerFactionId,
+            StringComparison.Ordinal
+        );
+        string ownerName = uiContext
+            .GetFactionPresentations()
+            .FirstOrDefault(faction =>
+                string.Equals(faction.InstanceID, ownerFactionId, StringComparison.Ordinal)
+            )
+            ?.GetDisplayName();
+        if (string.IsNullOrEmpty(ownerName))
+            ownerName = ownerFactionId;
+
+        Color32 playerColor = uiContext.GetPlayerFactionTheme().GetPrimaryColor();
+        Color32 ownerColor = uiContext.GetTheme(ownerFactionId).GetPrimaryColor();
+        return new PlanetSectorBarRenderData(
+            true,
+            0,
+            0,
+            playerControlsPlanet ? 1f : 0f,
+            playerColor,
+            Color.clear,
+            playerControlsPlanet ? playerColor : ownerColor,
+            $"Controlled by {ownerName}"
         );
     }
 

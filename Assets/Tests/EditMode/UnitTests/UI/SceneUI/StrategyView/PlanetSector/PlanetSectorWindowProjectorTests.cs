@@ -791,6 +791,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1f, presentation.RawResourceBar.FillRatio);
             Assert.AreEqual(new Color32(236, 106, 46, 255), presentation.RawResourceBar.FillColor);
             Assert.AreEqual("Raw Materials 0/0", presentation.RawResourceBar.TooltipText);
+            Assert.IsTrue(presentation.SupportBar.Visible);
+            Assert.AreEqual(1f, presentation.SupportBar.FillRatio);
+            Assert.AreEqual(
+                (Color32)_uiContext.GetPlayerFactionTheme().GetPrimaryColor(),
+                presentation.SupportBar.FillColor
+            );
+            Assert.AreEqual("Controlled by Alliance", presentation.SupportBar.TooltipText);
+        }
+
+        [Test]
+        public void CreateRenderData_UninhabitedOpposingPlanet_ReturnsControlIndicator()
+        {
+            Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorPlanetRenderData presentation = _projector
+                .CreateRenderData(sector, null, PlanetIcon.None, null, PlanetIcon.None)
+                .Planets[0];
+
+            Assert.IsTrue(presentation.SupportBar.Visible);
+            Assert.AreEqual(0f, presentation.SupportBar.FillRatio);
+            Assert.AreEqual(
+                (Color32)_uiContext.GetTheme(_opposingFactionId).GetPrimaryColor(),
+                presentation.SupportBar.BackgroundColor
+            );
+            Assert.AreEqual("Controlled by Empire", presentation.SupportBar.TooltipText);
+        }
+
+        [Test]
+        public void CreateRenderData_UninhabitedUncontrolledPlanet_HidesControlIndicator()
+        {
+            Planet planet = CreatePlanet("planet", null, 10, 20);
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorPlanetRenderData presentation = _projector
+                .CreateRenderData(sector, null, PlanetIcon.None, null, PlanetIcon.None)
+                .Planets[0];
+
             Assert.IsFalse(presentation.SupportBar.Visible);
             Assert.IsEmpty(presentation.SupportBar.TooltipText);
         }

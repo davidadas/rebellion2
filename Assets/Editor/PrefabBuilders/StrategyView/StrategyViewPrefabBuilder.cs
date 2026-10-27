@@ -840,7 +840,6 @@ public static class StrategyViewPrefabBuilder
         pressedMainButtonImage.raycastTarget = false;
         pressedMainButtonImage.gameObject.SetActive(false);
 
-        IdleBarView idleBar = CreateIdleBarView(root.transform);
         List<RectTransform> resourceBreakdownPanels = new List<RectTransform>();
         List<TextMeshProUGUI> resourceBreakdownTitles = new List<TextMeshProUGUI>();
         List<TextMeshProUGUI> resourceBreakdownPrimaryFields = new List<TextMeshProUGUI>();
@@ -859,6 +858,7 @@ public static class StrategyViewPrefabBuilder
             _modelessWindowLayerName,
             windows.transform
         );
+        IdleBarView idleBar = CreateIdleBarView(windows.transform);
         RectTransform hudPopoverLayer = CreateChildLayer(_hudPopoverLayerName, windows.transform);
         RectTransform modalWindowLayer = CreateChildLayer(_modalWindowLayerName, windows.transform);
         resourceBreakdownPanels.Add(
@@ -1186,9 +1186,9 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the compact idle-bar layer beneath strategy windows.
+    /// Authors the compact idle-bar layer above modeless strategy windows and below modal UI.
     /// </summary>
-    /// <param name="parent">The strategy-view root.</param>
+    /// <param name="parent">The shared strategy-window hierarchy.</param>
     /// <returns>The authored idle-bar view.</returns>
     private static IdleBarView CreateIdleBarView(Transform parent)
     {

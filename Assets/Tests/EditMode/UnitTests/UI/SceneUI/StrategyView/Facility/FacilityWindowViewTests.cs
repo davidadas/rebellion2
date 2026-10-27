@@ -424,6 +424,66 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void InventoryItemDrag_DraggableItem_RaisesEventsAndCreatesPreview()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Mines,
+                    Array.Empty<ManufacturingLaneCardRenderData>(),
+                    new[] { new FacilityInventoryItemRenderData(_texture, true, true) }
+                )
+            );
+            int draggedCount = 0;
+            int endedCount = 0;
+            _view.InventoryItemDragged += (_, _) => draggedCount++;
+            _view.InventoryItemDragEnded += (_, _) => endedCount++;
+            FacilityInventoryItemView item = FindInventoryItems().Single();
+            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            item.OnDrag(eventData);
+            item.OnEndDrag(eventData);
+            bool created = _view.TryCreateDragPreview(
+                new[] { 0 },
+                100,
+                120,
+                out DragPreview preview
+            );
+
+            Assert.AreEqual(1, draggedCount);
+            Assert.AreEqual(1, endedCount);
+            Assert.IsTrue(created);
+            Assert.IsNotNull(preview);
+            Assert.AreSame(_texture, preview.Texture);
+            Assert.AreEqual(1, preview.Images.Count);
+        }
+
+        [Test]
+        public void TryCreateDragPreview_CompletedItem_ReturnsFalse()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Mines,
+                    Array.Empty<ManufacturingLaneCardRenderData>(),
+                    new[] { new FacilityInventoryItemRenderData(_texture, true) }
+                )
+            );
+
+            bool created = _view.TryCreateDragPreview(
+                new[] { 0 },
+                100,
+                120,
+                out DragPreview preview
+            );
+
+            Assert.IsFalse(created);
+            Assert.IsNull(preview);
+        }
+
+        [Test]
         public void PointerTargetQueries_RenderedControls_ReturnSemanticIndexes()
         {
             _view.Render(

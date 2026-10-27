@@ -7,7 +7,12 @@ using UnityEngine.UI;
 /// Renders one facility inventory item and reports pointer interaction.
 /// </summary>
 [RequireComponent(typeof(UIPointerGestureRelay))]
-public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDoubleClickTarget
+public sealed class FacilityInventoryItemView
+    : MonoBehaviour,
+        IStrategyStatusDoubleClickTarget,
+        IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler
 {
     [SerializeField]
     private RawImage hitAreaImage;
@@ -19,6 +24,7 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
     private RawImage selectionImage;
 
     private Texture defaultItemTexture;
+    private bool canDrag;
     private UIPointerGestureRelay pointerGestures;
 
     /// <summary>
@@ -40,6 +46,16 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
     /// Occurs when the control is double-clicked.
     /// </summary>
     public event Action<FacilityInventoryItemView, PointerEventData> DoubleClicked;
+
+    /// <summary>
+    /// Occurs while an item drag advances.
+    /// </summary>
+    public event Action<FacilityInventoryItemView, PointerEventData> Dragged;
+
+    /// <summary>
+    /// Occurs when an item drag ends.
+    /// </summary>
+    public event Action<FacilityInventoryItemView, PointerEventData> DragEnded;
 
     public int Index { get; private set; }
 
@@ -63,6 +79,7 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
         VerifyReferences();
         defaultItemTexture ??= itemImage.texture;
         Index = index;
+        canDrag = data.CanDrag;
         UILayout.SetSourceRect(
             transform as RectTransform,
             frame.x,
@@ -83,6 +100,66 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
             frame.height
         );
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Keeps this item as the active Unity drag source after its press created a candidate.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnBeginDrag(PointerEventData eventData) { }
+
+    /// <summary>
+    /// Reports pointer movement for an active destination-change drag.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (canDrag && eventData?.button == PointerEventData.InputButton.Left)
+            Dragged?.Invoke(this, eventData);
+    }
+
+    /// <summary>
+    /// Reports the end of an active destination-change drag.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (canDrag && eventData?.button == PointerEventData.InputButton.Left)
+            DragEnded?.Invoke(this, eventData);
+    }
+
+    /// <summary>
+    /// Reports whether a pointer press began inside the rendered building image.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    /// <returns>True when the pointer lies inside a draggable building image.</returns>
+    internal bool ContainsDragSource(PointerEventData eventData)
+    {
+        if (eventData == null || !TryGetDragImage(out _, out RectTransform imageTransform))
+            return false;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            imageTransform,
+            eventData.position,
+            eventData.pressEventCamera
+        );
+    }
+
+    /// <summary>
+    /// Gets the rendered image used for a building drag preview.
+    /// </summary>
+    /// <param name="texture">Receives the rendered building texture.</param>
+    /// <param name="imageTransform">Receives the rendered image bounds.</param>
+    /// <returns>True when the item is draggable and has a visible image.</returns>
+    internal bool TryGetDragImage(out Texture texture, out RectTransform imageTransform)
+    {
+        VerifyReferences();
+        texture = itemImage.texture;
+        imageTransform = itemImage.rectTransform;
+        return canDrag
+            && texture != null
+            && itemImage.enabled
+            && itemImage.gameObject.activeInHierarchy;
     }
 
     /// <summary>

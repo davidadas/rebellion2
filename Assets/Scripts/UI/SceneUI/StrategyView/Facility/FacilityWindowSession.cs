@@ -271,6 +271,52 @@ internal sealed class FacilityWindowSession
     }
 
     /// <summary>
+    /// Applies drag-selection rules to one inventory building.
+    /// </summary>
+    /// <param name="itemIndex">The pressed display index.</param>
+    /// <param name="itemsPerRow">The number of inventory items in each visual row.</param>
+    public void SelectBuildingForDrag(int itemIndex, int itemsPerRow = 1)
+    {
+        IReadOnlyList<Building> items = GetItems(ActiveTab);
+        if (
+            itemIndex < 0
+            || itemIndex >= items.Count
+            || string.IsNullOrEmpty(GetBuildingID(items[itemIndex]))
+        )
+            return;
+
+        HashSet<int> selectedIndexes = GetSelectedIndexes(items);
+        SelectableListSelection.SelectIndexedItemForDrag(
+            selectedIndexes,
+            itemIndex,
+            items.Count,
+            getSelectionModifiers(),
+            itemsPerRow
+        );
+        StoreSelectedBuildings(items, selectedIndexes);
+    }
+
+    /// <summary>
+    /// Gets selected inventory indexes in current display order.
+    /// </summary>
+    /// <returns>The selected inventory indexes.</returns>
+    public IReadOnlyCollection<int> GetSelectedBuildingIndexes()
+    {
+        return GetSelectedIndexes(GetItems(ActiveTab));
+    }
+
+    /// <summary>
+    /// Reports whether every selected inventory building can change its delivery destination.
+    /// </summary>
+    /// <returns>True when the selection is non-empty and every building is under construction.</returns>
+    public bool CanDragSelectedBuildings()
+    {
+        List<Building> selected = GetSelectedBuildings();
+        return selected.Count > 0
+            && selected.All(StrategyContextMenuAvailability.CanRetargetBuilding);
+    }
+
+    /// <summary>
     /// Selects a represented building while navigating to its inventory tab.
     /// </summary>
     /// <param name="tab">The building's inventory tab.</param>

@@ -69,6 +69,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void PrefabHierarchy_IdleBar_RendersAboveModelessWindowsAndBelowModalUI()
+        {
+            RectTransform modeless = GetField<RectTransform>("modelessWindowLayer");
+            RectTransform modal = GetField<RectTransform>("modalWindowLayer");
+            IdleBarView idleBar = _rootObject.GetComponentInChildren<IdleBarView>(true);
+
+            Assert.AreSame(_view.transform, idleBar.transform.parent);
+            Assert.Greater(idleBar.transform.GetSiblingIndex(), modeless.GetSiblingIndex());
+            Assert.Less(idleBar.transform.GetSiblingIndex(), modal.GetSiblingIndex());
+        }
+
+        [Test]
         public void GetSurfaceSize_AuthoredLayer_ReturnsFixedSourceDimensions()
         {
             RectTransform rect = _view.transform as RectTransform;
