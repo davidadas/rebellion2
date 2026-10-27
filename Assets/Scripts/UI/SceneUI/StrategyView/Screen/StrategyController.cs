@@ -1502,6 +1502,12 @@ public sealed class StrategyController
     /// </summary>
     private void Render()
     {
+        strategyWindowLayerView.RenderIdleBarLayer(
+            AppBootstrap
+                .Instance?.GetUserSettingsManager()
+                ?.Settings?.UserInterface?.KeepIdleBarAboveWindows
+                ?? false
+        );
         idleBarController.Render();
         RenderGalaxyMap();
         RenderBookmarks();

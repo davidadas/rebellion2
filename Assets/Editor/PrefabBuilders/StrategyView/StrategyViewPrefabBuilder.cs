@@ -956,6 +956,7 @@ public static class StrategyViewPrefabBuilder
         );
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
         AssignReference(windowsView, "modelessWindowLayer", modelessWindowLayer);
+        AssignReference(windowsView, "idleBarLayer", idleBar.transform as RectTransform);
         AssignReference(windowsView, "modalWindowLayer", modalWindowLayer);
         AssignReference(windowsView, "modalInputBlockerImage", modalInputBlocker);
         AssignReference(windowsView, "modalBackgroundDimImage", modalBackgroundDim);

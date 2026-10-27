@@ -278,6 +278,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
+            _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarAboveWindows);
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
             _session.ToggleUserInterface(UserInterfaceOption.ShowFrameRate);
             _session.SetIdleBarLocation(IdleBarLocation.BottomLeft);
@@ -287,6 +288,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsTrue(_session.UserInterface.ShowIdleBar);
             Assert.IsFalse(_session.UserInterface.KeepIdleBarOpen);
+            Assert.IsFalse(_session.UserInterface.KeepIdleBarAboveWindows);
             Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
             Assert.IsFalse(_session.UserInterface.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);

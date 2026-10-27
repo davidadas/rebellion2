@@ -570,6 +570,7 @@ public static class OptionsMenuPrefabBuilder
         {
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
+            UserInterfaceOption.KeepIdleBarAboveWindows,
             UserInterfaceOption.ShowUnitCardStats,
             UserInterfaceOption.ShowFrameRate,
         };
@@ -577,11 +578,12 @@ public static class OptionsMenuPrefabBuilder
         {
             "Show Idle Bar",
             "Keep Idle Bar Open",
+            "Keep Idle Bar Above Windows",
             "Show Unit Card Stats",
             "Show FPS Counter",
         };
-        int[] yPositions = { 70, 96, 122, 180 };
-        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 158, accent);
+        int[] yPositions = { 70, 96, 122, 148, 206 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
