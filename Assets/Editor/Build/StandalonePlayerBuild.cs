@@ -17,6 +17,7 @@ public static class StandalonePlayerBuild
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
+    private const string _enableDiagnosticsArgument = "-enableDiagnostics";
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -43,7 +44,7 @@ public static class StandalonePlayerBuild
 
         try
         {
-            string builtPlayerPath = BuildPlayer(target, outputPath);
+            string builtPlayerPath = BuildPlayer(target, outputPath, false);
             LaunchPlayer(target, builtPlayerPath, contentPath);
         }
         finally
@@ -108,7 +109,7 @@ public static class StandalonePlayerBuild
 #if UNITY_STANDALONE_OSX
             ApplyBuildArchitecture(target);
 #endif
-            BuildPlayer(target, outputPath);
+            BuildPlayer(target, outputPath, HasArgument(_enableDiagnosticsArgument));
         }
         finally
         {
@@ -156,13 +157,18 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The player artifact path.</param>
+    /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
-    private static string BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
+    private static string BuildPlayer(
+        UnityEditor.BuildTarget target,
+        string outputPath,
+        bool enableDiagnostics
+    )
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
         UIBuilderMenu.BuildRuntimeUI();
-        return BuildGeneratedPlayer(target, outputPath);
+        return BuildGeneratedPlayer(target, outputPath, enableDiagnostics);
     }
 
     /// <summary>
@@ -170,8 +176,13 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The normalized player artifact path.</param>
+    /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
-    private static string BuildGeneratedPlayer(UnityEditor.BuildTarget target, string outputPath)
+    private static string BuildGeneratedPlayer(
+        UnityEditor.BuildTarget target,
+        string outputPath,
+        bool enableDiagnostics
+    )
     {
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
@@ -191,24 +202,39 @@ public static class StandalonePlayerBuild
             options = UnityEditor.BuildOptions.None,
         };
 
-        UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
-            options
-        );
-        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+        bool originalDiagnosticsEnabled = UnityEditor
+            .EngineDiagnostics
+            .EngineDiagnosticsSettings
+            .enabled;
+        try
         {
-            throw new InvalidOperationException(
-                $"Player build failed with result {report.summary.result}."
+            UnityEditor.EngineDiagnostics.EngineDiagnosticsSettings.enabled = enableDiagnostics;
+            UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
+                options
             );
+            if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Player build failed with result {report.summary.result}."
+                );
+            }
+
+            VerifyDevelopmentContentWasNotPacked(report);
+
+            if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
+            {
+                throw new InvalidOperationException(
+                    $"Player build output not found at {outputPath}."
+                );
+            }
+
+            return outputPath;
         }
-
-        VerifyDevelopmentContentWasNotPacked(report);
-
-        if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
+        finally
         {
-            throw new InvalidOperationException($"Player build output not found at {outputPath}.");
+            UnityEditor.EngineDiagnostics.EngineDiagnosticsSettings.enabled =
+                originalDiagnosticsEnabled;
         }
-
-        return outputPath;
     }
 
     /// <summary>
@@ -350,6 +376,18 @@ public static class StandalonePlayerBuild
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Determines whether a command-line switch was supplied.
+    /// </summary>
+    /// <param name="argument">The switch to find.</param>
+    /// <returns>True when the switch is present.</returns>
+    private static bool HasArgument(string argument)
+    {
+        return Environment
+            .GetCommandLineArgs()
+            .Any(value => string.Equals(value, argument, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
