@@ -31,7 +31,7 @@ public sealed class GameRuntime
     /// <summary>
     /// Gets whether the active simulation is at a stable boundary that can be saved.
     /// </summary>
-    public bool CanSave => _activeGameSession?.Tick.IsSettled == true;
+    public bool CanSave => _activeGameSession?.CanCaptureSettledState == true;
 
     /// <summary>
     /// Creates an application runtime backed by the active content pack.

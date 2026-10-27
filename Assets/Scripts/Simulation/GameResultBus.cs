@@ -15,6 +15,8 @@ namespace Rebellion.Simulation
         private readonly List<GameResult> _pendingResults = new();
         private bool _isPublishing;
 
+        internal bool IsPublishing => _isPublishing;
+
         /// <summary>
         /// Subscribes a reaction that publishes any follow-up changes through this bus.
         /// </summary>
