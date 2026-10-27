@@ -862,6 +862,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_ResultDirect_PlayerFleetDestroyed_HidesFleetNavigation()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            SpaceCombatResult result = CreateResult(
+                scene.Planet,
+                scene.PlayerFleet,
+                scene.OpponentFleet,
+                CombatSide.Defender,
+                SpaceCombatSideOutcome.Destroyed,
+                SpaceCombatSideOutcome.Active
+            );
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Direct,
+                BattleResultCategory.CapitalShips,
+                null,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                null
+            );
+
+            StringAssert.Contains("Select the following button", data.Result.Summary);
+            Assert.AreEqual(2, data.Result.ResultDirectButtons.Count);
+            Assert.IsNotNull(data.Result.ResultDirectButtons[0]);
+            Assert.IsNull(data.Result.ResultDirectButtons[1]);
+        }
+
+        [Test]
         public void GetBombardmentSummaryImagePath_CombatSnapshots_SelectLossArtwork()
         {
             BattleAlertWindowTheme theme = new BattleAlertWindowTheme

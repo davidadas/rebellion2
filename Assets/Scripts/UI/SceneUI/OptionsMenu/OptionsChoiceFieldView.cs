@@ -58,6 +58,7 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
     /// <param name="sourceNext">The authored next button.</param>
     /// <param name="x">The destination left coordinate.</param>
     /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The destination selector width.</param>
     /// <returns>The configured cloned selector.</returns>
     public static OptionsChoiceFieldView Clone(
         Transform parent,
@@ -67,37 +68,46 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
         Button sourcePrevious,
         Button sourceNext,
         int x,
-        int y
+        int y,
+        int width
     )
     {
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
         if (sourceBadge == null)
             throw new ArgumentNullException(nameof(sourceBadge));
+        if (width <= 0)
+            throw new ArgumentOutOfRangeException(nameof(width));
 
         RectInt badgeRect = UILayout.GetSourceRect(sourceBadge.rectTransform);
         GameObject root = new GameObject(name, typeof(RectTransform));
         root.transform.SetParent(parent, false);
-        UILayout.SetSourceRect(
-            (RectTransform)root.transform,
-            x,
-            y,
-            badgeRect.width,
-            badgeRect.height
-        );
+        UILayout.SetSourceRect((RectTransform)root.transform, x, y, width, badgeRect.height);
 
         Image badge = Instantiate(sourceBadge, root.transform, false);
         badge.name = "Badge";
-        SetRelativeRect(badge.rectTransform, badgeRect, badgeRect);
+        SetProportionalRect(badge.rectTransform, badgeRect, badgeRect);
         Button previous = Instantiate(sourcePrevious, root.transform, false);
         previous.name = "Previous";
-        SetRelativeRect((RectTransform)previous.transform, badgeRect, sourcePrevious.transform);
+        SetProportionalRect(
+            (RectTransform)previous.transform,
+            badgeRect,
+            UILayout.GetSourceRect((RectTransform)sourcePrevious.transform)
+        );
         TextMeshProUGUI value = Instantiate(sourceValue, root.transform, false);
         value.name = "Value";
-        SetRelativeRect(value.rectTransform, badgeRect, sourceValue.rectTransform);
+        SetInsetRect(
+            value.rectTransform,
+            badgeRect,
+            UILayout.GetSourceRect(sourceValue.rectTransform)
+        );
         Button next = Instantiate(sourceNext, root.transform, false);
         next.name = "Next";
-        SetRelativeRect((RectTransform)next.transform, badgeRect, sourceNext.transform);
+        SetProportionalRect(
+            (RectTransform)next.transform,
+            badgeRect,
+            UILayout.GetSourceRect((RectTransform)sourceNext.transform)
+        );
 
         OverflowTextTooltip tooltip = value.GetComponent<OverflowTextTooltip>();
         tooltip.Configure(value);
@@ -154,27 +164,12 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
     private void RequestNext() => StepRequested?.Invoke(1);
 
     /// <summary>
-    /// Repositions one cloned control relative to its source badge.
-    /// </summary>
-    /// <param name="target">The cloned control.</param>
-    /// <param name="sourceBadgeRect">The source badge rectangle.</param>
-    /// <param name="source">The source control.</param>
-    private static void SetRelativeRect(
-        RectTransform target,
-        RectInt sourceBadgeRect,
-        Transform source
-    )
-    {
-        SetRelativeRect(target, sourceBadgeRect, UILayout.GetSourceRect((RectTransform)source));
-    }
-
-    /// <summary>
-    /// Repositions one cloned control rectangle relative to its source badge.
+    /// Preserves a cloned label's edge insets as its selector changes width.
     /// </summary>
     /// <param name="target">The cloned control.</param>
     /// <param name="sourceBadgeRect">The source badge rectangle.</param>
     /// <param name="sourceRect">The source control rectangle.</param>
-    private static void SetRelativeRect(
+    private static void SetInsetRect(
         RectTransform target,
         RectInt sourceBadgeRect,
         RectInt sourceRect
@@ -187,5 +182,38 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
             sourceRect.width,
             sourceRect.height
         );
+        target.anchorMax = Vector2.one;
+        target.sizeDelta = new Vector2(sourceRect.width - sourceBadgeRect.width, sourceRect.height);
+    }
+
+    /// <summary>
+    /// Preserves each button's share of the selector's width as its destination resizes.
+    /// </summary>
+    /// <param name="target">The cloned control.</param>
+    /// <param name="sourceBadgeRect">The source badge rectangle.</param>
+    /// <param name="sourceRect">The source control rectangle.</param>
+    private static void SetProportionalRect(
+        RectTransform target,
+        RectInt sourceBadgeRect,
+        RectInt sourceRect
+    )
+    {
+        UILayout.SetSourceRect(
+            target,
+            sourceRect.x - sourceBadgeRect.x,
+            sourceRect.y - sourceBadgeRect.y,
+            sourceRect.width,
+            sourceRect.height
+        );
+        target.anchorMin = new Vector2(
+            (sourceRect.x - sourceBadgeRect.x) / (float)sourceBadgeRect.width,
+            1
+        );
+        target.anchorMax = new Vector2(
+            (sourceRect.xMax - sourceBadgeRect.x) / (float)sourceBadgeRect.width,
+            1
+        );
+        target.anchoredPosition = new Vector2(0, -(sourceRect.y - sourceBadgeRect.y));
+        target.sizeDelta = new Vector2(0, sourceRect.height);
     }
 }

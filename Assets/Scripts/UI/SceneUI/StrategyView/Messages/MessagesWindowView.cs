@@ -98,6 +98,16 @@ public sealed class MessagesWindowView : MonoBehaviour
     public event Action<MessagesWindowView> MessageTargetRequested;
 
     /// <summary>
+    /// Raised when the continuing mission represented by the selected report should remain active.
+    /// </summary>
+    public event Action<MessagesWindowView> MissionContinueRequested;
+
+    /// <summary>
+    /// Raised when the continuing mission represented by the selected report should be aborted.
+    /// </summary>
+    public event Action<MessagesWindowView> MissionAbortRequested;
+
+    /// <summary>
     /// Raised when notification policy should be toggled for the active tab.
     /// </summary>
     public event Action<MessagesWindowView> NotificationToggleRequested;
@@ -220,6 +230,9 @@ public sealed class MessagesWindowView : MonoBehaviour
         indexPanel.TabRequested += HandleTabRequested;
         detailPanel.NextRequested += HandleNextRequested;
         detailPanel.PreviousRequested += HandlePreviousRequested;
+        detailPanel.MissionChoiceControlPressed += HandleControlPressed;
+        detailPanel.MissionContinueRequested += HandleMissionContinueRequested;
+        detailPanel.MissionAbortRequested += HandleMissionAbortRequested;
         initialized = true;
     }
 
@@ -256,6 +269,9 @@ public sealed class MessagesWindowView : MonoBehaviour
         {
             detailPanel.NextRequested -= HandleNextRequested;
             detailPanel.PreviousRequested -= HandlePreviousRequested;
+            detailPanel.MissionChoiceControlPressed -= HandleControlPressed;
+            detailPanel.MissionContinueRequested -= HandleMissionContinueRequested;
+            detailPanel.MissionAbortRequested -= HandleMissionAbortRequested;
         }
     }
 
@@ -322,6 +338,22 @@ public sealed class MessagesWindowView : MonoBehaviour
     private void HandlePreviousRequested()
     {
         MessagePreviousRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Emits the semantic continue-mission choice.
+    /// </summary>
+    private void HandleMissionContinueRequested()
+    {
+        MissionContinueRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Emits the semantic abort-mission choice.
+    /// </summary>
+    private void HandleMissionAbortRequested()
+    {
+        MissionAbortRequested?.Invoke(this);
     }
 
     /// <summary>

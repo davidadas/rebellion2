@@ -477,7 +477,7 @@ namespace Rebellion.Game.Missions
         /// Starts another objective attempt without repeating the arrival encounter.
         /// </summary>
         /// <param name="maxProgress">The rolled duration of the next attempt.</param>
-        internal void Repeat(int maxProgress)
+        internal virtual void Repeat(int maxProgress)
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
@@ -556,6 +556,12 @@ namespace Rebellion.Game.Missions
             _mainParticipantInstanceIds = GetMainParticipantIDs();
             _hasCapturedMainParticipantIds = true;
         }
+
+        /// <summary>
+        /// Accepts the current primary team after terminal participants are removed by the
+        /// mission lifecycle.
+        /// </summary>
+        internal void AcceptCurrentParticipantRoster() => CaptureMainParticipantIDs();
 
         /// <summary>
         /// Returns whether the required main-participant list differs from mission start.

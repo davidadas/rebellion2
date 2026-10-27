@@ -167,6 +167,86 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DiplomacyParticipantAlreadyKilled_RemovesParticipantAndMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            planet.AddVisitor("empire");
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            system.ProcessMissionTick(game);
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsEmpty(system.ProcessMissionTick(game));
+        }
+
+        [Test]
+        public void ProcessTick_DiplomacyParticipantAlreadyKilledWithSurvivor_ContinuesMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer survivor = new Officer
+            {
+                InstanceID = "survivor",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(survivor, planet);
+            planet.AddVisitor("empire");
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer, survivor },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            game.MoveNode(survivor, mission);
+            mission.Initiate(2);
+            mission.DetectionResolved = true;
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+
+            List<GameResult> results = system.ProcessMissionTick(game);
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(mission, survivor.GetParent());
+            CollectionAssert.AreEqual(
+                new IMissionParticipant[] { survivor },
+                mission.GetMainParticipants(includeDisabled: true)
+            );
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
         public void ProcessTick_ResearchBetrayal_TerminatesRepeatingMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
@@ -200,6 +280,64 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(completed.CanContinue);
             Assert.IsFalse(results.OfType<ResearchOrderedResult>().Any());
             Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
+        public void ProcessTick_RepeatingEspionage_ContinuesWithoutNewEncountersOrReturnTravel()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
+                BuildDetectionScene();
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.TickRanges.Espionage =
+                new GameConfig.MissionTickConfig();
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            DisableCaptureEvasionInjury(game);
+            MissionContext context = new MissionContext
+            {
+                Game = game,
+                MissionTypeID = EspionageMission.MissionTypeID,
+                OwnerInstanceId = "empire",
+                Location = planet,
+                MainParticipants = new List<IMissionParticipant> { spy },
+                DecoyParticipants = new List<IMissionParticipant>(),
+                IsRepeating = true,
+            };
+            Assert.IsTrue(new MissionFactory(game).TryCreateMission(context, out Mission mission));
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            mission.Initiate(0);
+            mission.DetectionResolved = true;
+            mission.PreObjectiveEncounterResolved = true;
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            MissionCompletedResult first = commands
+                .ProcessMissionTick(game)
+                .OfType<MissionCompletedResult>()
+                .Single();
+            MissionCompletedResult second = commands
+                .ProcessMissionTick(game)
+                .OfType<MissionCompletedResult>()
+                .Single();
+
+            Assert.AreEqual(MissionOutcome.Success, first.Outcome);
+            Assert.AreEqual(MissionOutcome.Success, second.Outcome);
+            Assert.IsTrue(first.CanContinue);
+            Assert.IsTrue(second.CanContinue);
+            Assert.IsTrue(mission.DetectionResolved);
+            Assert.IsTrue(mission.PreObjectiveEncounterResolved);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(mission, spy.GetParent());
+            Assert.IsNull(spy.Movement);
+            Assert.IsFalse(spy.IsCaptured);
         }
 
         [Test]
@@ -2937,7 +3075,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(spy.IsCaptured);
             Assert.Greater(spy.InjuryPoints, 0);
             Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
-            Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
+            Assert.AreSame(mission, results.OfType<OfficerKilledResult>().Single().ParentAtDeath);
         }
 
         [Test]
@@ -3411,10 +3549,11 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.ProcessMissionTick(game);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(target.IsKilled);
             Assert.IsFalse(target.IsActive());
+            Assert.AreSame(planet, results.OfType<OfficerKilledResult>().Single().ParentAtDeath);
             Assert.AreSame(
                 target,
                 game.GetSceneNodeByInstanceID<Officer>(target.InstanceID, includeDisabled: true)
@@ -3684,8 +3823,11 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Ends a repeating espionage mission when its initial departure is foiled.
+        /// </summary>
         [Test]
-        public void InitiateMission_SecondDepartureEncounterFoils_FoilsBeforeTravel()
+        public void InitiateMission_RepeatingEspionageFoiledOnDeparture_TerminatesBeforeTravel()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -3706,6 +3848,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(origin, sector);
             game.AttachNode(target, sector);
+            target.AddVisitor("empire");
 
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             game.AttachNode(officer, origin);
@@ -3733,8 +3876,6 @@ namespace Rebellion.Tests.Simulation
                 },
                 originShip
             );
-            Regiment sabotageTarget = CreateCompletedRegiment("target-regiment", "rebels");
-            game.AttachNode(sabotageTarget, target);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             DisableCaptureEvasionInjury(game);
@@ -3754,12 +3895,7 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = new List<GameResult>();
             system.ResultsProduced += results.AddRange;
             bool initiated = system.InitiateMission(
-                CreateContext(
-                    SabotageMission.MissionTypeID,
-                    officer,
-                    target,
-                    selectedTarget: sabotageTarget
-                )
+                CreateContext(EspionageMission.MissionTypeID, officer, target, isRepeating: true)
             );
 
             Assert.IsTrue(initiated);
@@ -3773,6 +3909,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<MissionCompletedResult>()
                 .Single(result => result.Outcome == MissionOutcome.Foiled);
             Assert.AreEqual(completed.MissionInstanceID, capture.MissionInstanceID);
+            Assert.IsFalse(completed.CanContinue);
         }
 
         [Test]
@@ -4174,6 +4311,59 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(aborted);
             Assert.AreEqual(planet, officer.GetParent());
             Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
+        public void AbortMissions_ActiveMissionSelection_AbortsEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer secondOfficer = new Officer { InstanceID = "o2", OwnerInstanceID = "empire" };
+            game.AttachNode(secondOfficer, planet);
+            StubMission firstMission = CreateMission(game, planet, officer);
+            StubMission secondMission = CreateMission(game, planet, secondOfficer);
+            game.MoveNode(officer, firstMission);
+            game.MoveNode(secondOfficer, secondMission);
+            firstMission.Initiate(1);
+            secondMission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(
+                new[] { firstMission.InstanceID, secondMission.InstanceID }
+            );
+
+            Assert.IsTrue(aborted);
+            Assert.AreEqual(planet, officer.GetParent());
+            Assert.AreEqual(planet, secondOfficer.GetParent());
+            Assert.IsNull(firstMission.GetParent());
+            Assert.IsNull(secondMission.GetParent());
+        }
+
+        [Test]
+        public void AbortMissions_SelectionContainsMissingMission_PreservesEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(new[] { mission.InstanceID, "missing" });
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(planet, mission.GetParent());
+            Assert.AreEqual(mission, officer.GetParent());
         }
 
         [Test]
@@ -5032,6 +5222,7 @@ namespace Rebellion.Tests.Simulation
         /// <param name="targetOfficer">The target officer.</param>
         /// <param name="discipline">The discipline.</param>
         /// <param name="selectedTarget">The selected target.</param>
+        /// <param name="isRepeating">Whether the mission repeats its objective.</param>
         /// <returns>The created request.</returns>
         private static MissionContext CreateContext(
             string missionTypeId,
@@ -5039,7 +5230,8 @@ namespace Rebellion.Tests.Simulation
             ISceneNode target,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            ISceneNode selectedTarget = null
+            ISceneNode selectedTarget = null,
+            bool isRepeating = false
         )
         {
             return CreateContext(
@@ -5049,7 +5241,8 @@ namespace Rebellion.Tests.Simulation
                 target,
                 targetOfficer,
                 discipline,
-                selectedTarget
+                selectedTarget,
+                isRepeating
             );
         }
 
@@ -5063,6 +5256,7 @@ namespace Rebellion.Tests.Simulation
         /// <param name="targetOfficer">The target officer.</param>
         /// <param name="discipline">The discipline.</param>
         /// <param name="selectedTarget">The selected target.</param>
+        /// <param name="isRepeating">Whether the mission repeats its objective.</param>
         /// <returns>The created request.</returns>
         private static MissionContext CreateContext(
             string missionTypeId,
@@ -5071,7 +5265,8 @@ namespace Rebellion.Tests.Simulation
             ISceneNode target,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            ISceneNode selectedTarget = null
+            ISceneNode selectedTarget = null,
+            bool isRepeating = false
         )
         {
             return new MissionContext
@@ -5082,6 +5277,7 @@ namespace Rebellion.Tests.Simulation
                 SelectedTarget = targetOfficer ?? selectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
+                IsRepeating = isRepeating,
             };
         }
 

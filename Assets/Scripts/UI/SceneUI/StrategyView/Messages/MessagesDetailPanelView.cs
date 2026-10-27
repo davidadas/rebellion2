@@ -9,6 +9,11 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializable
 {
+    private const int _missionChoiceLinesX = 24;
+    private const int _missionChoiceLinesY = 242;
+    private const int _missionChoiceLinesWidth = 322;
+    private const int _missionChoiceLinesHeight = 70;
+
     private readonly List<TextMeshProUGUI> detailLineTextFields = new List<TextMeshProUGUI>();
     private readonly List<string> renderedDetailLines = new List<string>();
 
@@ -81,8 +86,42 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     [SerializeField]
     private int linesContentPadding;
 
+    [SerializeField]
+    private RawImage missionContinueButtonImage;
+
+    [SerializeField]
+    private RawImagePressVisual missionContinueButtonPressVisual;
+
+    [SerializeField]
+    private Button missionContinueButton;
+
+    [SerializeField]
+    private Texture2D missionContinueButtonUpTexture;
+
+    [SerializeField]
+    private Texture2D missionContinueButtonDownTexture;
+
+    [SerializeField]
+    private RawImage missionAbortButtonImage;
+
+    [SerializeField]
+    private RawImagePressVisual missionAbortButtonPressVisual;
+
+    [SerializeField]
+    private Button missionAbortButton;
+
+    [SerializeField]
+    private Texture2D missionAbortButtonUpTexture;
+
+    [SerializeField]
+    private Texture2D missionAbortButtonDownTexture;
+
     private RectInt cardTemplateRect;
     private bool initialized;
+    private RectInt linesScrollAreaTemplateRect;
+    private RectInt linesViewportTemplateRect;
+    private RectInt linesScrollbarTemplateRect;
+    private RectInt lineTextTemplateRect;
     private bool renderedAnyDetailLines;
     private string renderedMessageId = string.Empty;
     private RectInt overlayTemplateRect;
@@ -96,6 +135,21 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     /// Raised when the previous message is requested.
     /// </summary>
     public event Action PreviousRequested;
+
+    /// <summary>
+    /// Raised when the continuing mission should remain active.
+    /// </summary>
+    public event Action MissionContinueRequested;
+
+    /// <summary>
+    /// Raised when the continuing mission should be aborted.
+    /// </summary>
+    public event Action MissionAbortRequested;
+
+    /// <summary>
+    /// Raised when a mission-choice control is pressed.
+    /// </summary>
+    public event Action MissionChoiceControlPressed;
 
     /// <summary>
     /// Restores every content-sourced state texture from installation content.
@@ -135,6 +189,22 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_disabled"
         );
+        missionContinueButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_mission_continue_button_up"
+        );
+        missionContinueButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_mission_continue_button_pressed"
+        );
+        missionAbortButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_mission_abort_button_up"
+        );
+        missionAbortButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_mission_abort_button_pressed"
+        );
         VerifyReferences();
     }
 
@@ -173,6 +243,25 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             previousButtonDownTexture,
             previousButtonDisabledTexture
         );
+        SetNavigationButton(
+            missionContinueButtonImage,
+            missionContinueButtonPressVisual,
+            missionContinueButton,
+            false,
+            missionContinueButtonUpTexture,
+            missionContinueButtonDownTexture,
+            null
+        );
+        SetNavigationButton(
+            missionAbortButtonImage,
+            missionAbortButtonPressVisual,
+            missionAbortButton,
+            false,
+            missionAbortButtonUpTexture,
+            missionAbortButtonDownTexture,
+            null
+        );
+        RenderMissionContinuationChoice(data.MissionContinuationChoiceVisible);
         RenderLines(data.MessageId, UILayout.WrapText(lineTextTemplate, data.Text, GetWrapWidth()));
         gameObject.SetActive(true);
     }
@@ -249,6 +338,10 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             nextButton.onClick.RemoveListener(RequestNext);
         if (previousButton != null)
             previousButton.onClick.RemoveListener(RequestPrevious);
+        if (missionContinueButton != null)
+            missionContinueButton.onClick.RemoveListener(RequestMissionContinue);
+        if (missionAbortButton != null)
+            missionAbortButton.onClick.RemoveListener(RequestMissionAbort);
     }
 
     /// <summary>
@@ -262,8 +355,18 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         VerifyReferences(false);
         cardTemplateRect = UILayout.GetSourceRect(cardImage.rectTransform);
         overlayTemplateRect = UILayout.GetSourceRect(overlayImage.rectTransform);
+        linesScrollAreaTemplateRect = UILayout.GetSourceRect(
+            linesScrollArea.transform as RectTransform
+        );
+        linesViewportTemplateRect = UILayout.GetSourceRect(linesScrollArea.ViewportRoot);
+        linesScrollbarTemplateRect = UILayout.GetSourceRect(
+            linesScrollArea.GetComponentInChildren<Scrollbar>(true).transform as RectTransform
+        );
+        lineTextTemplateRect = UILayout.GetSourceRect(lineTextTemplate.rectTransform);
         nextButton.onClick.AddListener(RequestNext);
         previousButton.onClick.AddListener(RequestPrevious);
+        missionContinueButton.onClick.AddListener(RequestMissionContinue);
+        missionAbortButton.onClick.AddListener(RequestMissionAbort);
         lineTextTemplate.gameObject.SetActive(false);
         initialized = true;
     }
@@ -282,6 +385,86 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     private void RequestPrevious()
     {
         PreviousRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Raises the semantic continue-mission choice.
+    /// </summary>
+    private void RequestMissionContinue()
+    {
+        MissionChoiceControlPressed?.Invoke();
+        MissionContinueRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Raises the semantic abort-mission choice.
+    /// </summary>
+    private void RequestMissionAbort()
+    {
+        MissionChoiceControlPressed?.Invoke();
+        MissionAbortRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Applies the continuing-mission choice visibility and reserves its detail-body width.
+    /// </summary>
+    /// <param name="visible">Whether the choice controls are available.</param>
+    private void RenderMissionContinuationChoice(bool visible)
+    {
+        missionContinueButton.gameObject.SetActive(visible);
+        missionAbortButton.gameObject.SetActive(visible);
+
+        RectInt scrollAreaRect = linesScrollAreaTemplateRect;
+        RectInt viewportRect = linesViewportTemplateRect;
+        RectInt scrollbarRect = linesScrollbarTemplateRect;
+        RectInt lineRect = lineTextTemplateRect;
+        if (visible)
+        {
+            scrollAreaRect = new RectInt(
+                _missionChoiceLinesX,
+                _missionChoiceLinesY,
+                _missionChoiceLinesWidth,
+                _missionChoiceLinesHeight
+            );
+            int viewportWidth = Mathf.Max(
+                1,
+                scrollAreaRect.width - linesScrollbarTemplateRect.width
+            );
+            viewportRect = new RectInt(0, 0, viewportWidth, scrollAreaRect.height);
+            scrollbarRect = new RectInt(
+                viewportWidth,
+                0,
+                linesScrollbarTemplateRect.width,
+                scrollAreaRect.height
+            );
+            lineRect = new RectInt(
+                lineTextTemplateRect.x,
+                lineTextTemplateRect.y,
+                viewportWidth,
+                lineTextTemplateRect.height
+            );
+        }
+
+        UILayout.SetSourceRect(
+            linesScrollArea.transform as RectTransform,
+            scrollAreaRect.x,
+            scrollAreaRect.y,
+            scrollAreaRect.width,
+            scrollAreaRect.height
+        );
+        linesScrollArea.SetLayout(
+            new Vector2(viewportRect.x, viewportRect.y),
+            new Vector2(viewportRect.width, viewportRect.height),
+            new Vector2(scrollbarRect.x, scrollbarRect.y),
+            new Vector2(scrollbarRect.width, scrollbarRect.height)
+        );
+        UILayout.SetSourceRect(
+            lineTextTemplate.rectTransform,
+            lineRect.x,
+            lineRect.y,
+            lineRect.width,
+            lineRect.height
+        );
     }
 
     /// <summary>
@@ -447,5 +630,26 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             throw new MissingReferenceException($"{name}/PreviousButton is missing.");
         if (linesScrollArea == null || lineTextTemplate == null)
             throw new MissingReferenceException($"{name}/DetailLines are missing.");
+        if (
+            missionContinueButtonImage == null
+            || missionContinueButtonPressVisual == null
+            || missionContinueButton == null
+            || missionAbortButtonImage == null
+            || missionAbortButtonPressVisual == null
+            || missionAbortButton == null
+        )
+            throw new MissingReferenceException($"{name}/MissionContinuationChoice is missing.");
+        if (
+            verifyContent
+            && (
+                missionContinueButtonUpTexture == null
+                || missionContinueButtonDownTexture == null
+                || missionAbortButtonUpTexture == null
+                || missionAbortButtonDownTexture == null
+            )
+        )
+            throw new MissingReferenceException(
+                $"{name}/MissionContinuationChoiceTextures are missing."
+            );
     }
 }

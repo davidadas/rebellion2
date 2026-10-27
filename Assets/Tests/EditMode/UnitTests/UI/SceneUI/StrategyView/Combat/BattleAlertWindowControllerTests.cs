@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private GameObject _rootObject;
         private int _stopMusicCount;
         private UIContext _uiContext;
+        private Planet _retreatPlanet;
         private Planet _visiblePlanet;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
@@ -70,6 +71,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerCanRetreat = true,
             };
             _visiblePlanet = planet;
+            _retreatPlanet = new Planet
+            {
+                InstanceID = "retreat-planet",
+                DisplayName = "Bortras",
+                OwnerInstanceID = _playerFactionId,
+                IsColonized = true,
+            };
+            _game.AttachNode(_retreatPlanet, planet.GetParent());
             _resolveResult = new SpaceCombatResult
             {
                 Planet = planet,
@@ -80,6 +89,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Winner = CombatSide.Defender,
                 AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
                 DefenderOutcome = SpaceCombatSideOutcome.Active,
+                AttackerRetreatPlanetInstanceID = _retreatPlanet.InstanceID,
             };
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
@@ -386,7 +396,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void OpenFleet_ResultPlanetVisible_OpensVisiblePlanet()
+        public void OpenFleet_PlayerFleetWithdrawn_OpensRetreatPlanet()
         {
             _pending = null;
             _controller.OpenResult(_resolveResult);
@@ -394,14 +404,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             view.RequestOpenFleet();
 
-            Assert.AreSame(_visiblePlanet, _actions.OpenedFleet);
+            Assert.AreSame(_retreatPlanet, _actions.OpenedFleet);
         }
 
         [Test]
-        public void OpenFleet_ResultPlanetHidden_DoesNotOpenPlanet()
+        public void OpenFleet_RetreatPlanetHidden_DoesNotOpenPlanet()
         {
             _pending = null;
-            _visiblePlanet = null;
+            _retreatPlanet = null;
             _controller.OpenResult(_resolveResult);
             BattleAlertWindowView view = _controller.FindWindow();
 
@@ -498,7 +508,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 () => _resolveResult,
                 () => _resolveResult,
                 () => _uiContext,
-                instanceId => _visiblePlanet?.InstanceID == instanceId ? _visiblePlanet : null,
+                instanceId =>
+                    _retreatPlanet?.InstanceID == instanceId ? _retreatPlanet
+                    : _visiblePlanet?.InstanceID == instanceId ? _visiblePlanet
+                    : null,
                 path => _playedSfx.Add(path),
                 path => _playedTracks.Add(path),
                 () => _stopMusicCount++,

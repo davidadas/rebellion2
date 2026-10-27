@@ -671,6 +671,110 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_officer.IsRetired);
         }
 
+        [Test]
+        public void OpenMissionAbortConfirmWindow_AllMissionsRemainWorking_AbortsCompleteSelection()
+        {
+            Planet origin = _specialForces.GetParentOfType<Planet>();
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "second-officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(secondOfficer, origin);
+            DiplomacyMission firstMission = CreateWorkingMission("first-mission", _officer);
+            DiplomacyMission secondMission = CreateWorkingMission("second-mission", secondOfficer);
+
+            _controller.OpenMissionAbortConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { firstMission, secondMission }
+            );
+            ConfirmOpenDialog();
+
+            Assert.IsNull(firstMission.GetParent());
+            Assert.IsNull(secondMission.GetParent());
+            Assert.AreSame(origin, _officer.GetParent());
+            Assert.AreSame(origin, secondOfficer.GetParent());
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryAbortMission_WorkingPlayerMission_AbortsWithoutSourceWindow()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            DiplomacyMission mission = CreateWorkingMission("mission", _officer);
+
+            bool aborted = _controller.TryAbortMission(mission.InstanceID);
+
+            Assert.IsTrue(aborted);
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(origin, _officer.GetParent());
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryAbortMission_MissingMission_ReturnsFalseWithoutCallbacks()
+        {
+            bool aborted = _controller.TryAbortMission("missing");
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(0, _rebuildCount);
+            Assert.AreEqual(0, _dirtyCount);
+        }
+
+        [Test]
+        public void OpenMissionAbortConfirmWindow_MissionStartsWaitingBeforeConfirmation_PreservesCompleteSelection()
+        {
+            Planet origin = _specialForces.GetParentOfType<Planet>();
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "second-officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(secondOfficer, origin);
+            DiplomacyMission firstMission = CreateWorkingMission("first-mission", _officer);
+            DiplomacyMission secondMission = CreateWorkingMission("second-mission", secondOfficer);
+            _controller.OpenMissionAbortConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { firstMission, secondMission }
+            );
+            secondOfficer.Movement = new MovementState { TransitTicks = 10 };
+
+            ConfirmOpenDialog();
+
+            Assert.AreSame(origin, firstMission.GetParent());
+            Assert.AreSame(origin, secondMission.GetParent());
+            Assert.AreSame(firstMission, _officer.GetParent());
+            Assert.AreSame(secondMission, secondOfficer.GetParent());
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _rebuildCount);
+            Assert.AreEqual(0, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Creates one attached working mission for a selected officer.
+        /// </summary>
+        /// <param name="instanceId">The mission instance identifier.</param>
+        /// <param name="participant">The mission participant.</param>
+        /// <returns>The attached working mission.</returns>
+        private DiplomacyMission CreateWorkingMission(string instanceId, Officer participant)
+        {
+            Planet planet = participant.GetParentOfType<Planet>();
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = _playerFactionId,
+                LocationInstanceID = planet.InstanceID,
+            };
+            _game.AttachNode(mission, planet);
+            _game.MoveNode(participant, mission);
+            mission.Initiate(1);
+            return mission;
+        }
+
         /// <summary>
         /// Creates game.
         /// </summary>

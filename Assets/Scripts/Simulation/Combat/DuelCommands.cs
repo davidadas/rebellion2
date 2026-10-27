@@ -271,19 +271,19 @@ namespace Rebellion.Simulation
             );
             if (!injured.IsMain && RollPercent(_game.Config.Assassination.KillProbability))
             {
-                new PersonnelCommands(new PersonnelQueries(_game)).KillOfficer(injured);
-                reactions.Add(
-                    Stamp(
-                        new OfficerKilledResult
-                        {
-                            TargetOfficer = injured,
-                            Assassin = beneficiary,
-                            Context = injured.GetParentOfType<Planet>(),
-                            Tick = _game.CurrentTick,
-                        },
-                        sourceEventInstanceID
-                    )
+                OfficerKilledResult killed = Stamp(
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = injured,
+                        ParentAtDeath = injured.GetParent(),
+                        Assassin = beneficiary,
+                        Context = injured.GetParentOfType<Planet>(),
+                        Tick = _game.CurrentTick,
+                    },
+                    sourceEventInstanceID
                 );
+                new PersonnelCommands(new PersonnelQueries(_game)).KillOfficer(injured);
+                reactions.Add(killed);
             }
         }
 

@@ -58,36 +58,46 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
-    /// Subscribes the controller to the authored selector and retained legend views.
+    /// Subscribes the controller to a selector view that may be created on first use.
     /// </summary>
-    /// <param name="nextDisplayView">The authored selector view.</param>
-    /// <param name="nextLegendView">The authored retained legend view.</param>
-    public void BindViews(
-        GalacticInformationDisplayView nextDisplayView,
-        GalacticInformationLegendView nextLegendView
-    )
+    /// <param name="nextDisplayView">The selector view to bind.</param>
+    public void BindDisplayView(GalacticInformationDisplayView nextDisplayView)
     {
         if (nextDisplayView == null)
             throw new ArgumentNullException(nameof(nextDisplayView));
+
+        EnsureInitialized();
+        if (ReferenceEquals(displayView, nextDisplayView))
+            return;
+
+        UnsubscribeDisplayView();
+        displayView = nextDisplayView;
+        SubscribeDisplayView();
+        RenderDisplay();
+    }
+
+    /// <summary>
+    /// Subscribes the controller to the retained legend view.
+    /// </summary>
+    /// <param name="nextLegendView">The legend view to bind.</param>
+    public void BindLegendView(GalacticInformationLegendView nextLegendView)
+    {
         if (nextLegendView == null)
             throw new ArgumentNullException(nameof(nextLegendView));
 
         EnsureInitialized();
-        if (
-            ReferenceEquals(displayView, nextDisplayView)
-            && ReferenceEquals(legendView, nextLegendView)
-        )
-        {
+        if (ReferenceEquals(legendView, nextLegendView))
             return;
+
+        if (legendView != null)
+        {
+            legendView.CloseRequested -= HandleLegendCloseRequested;
+            legendView.Destroyed -= HandleLegendViewDestroyed;
         }
 
-        ReleaseViews();
-        displayView = nextDisplayView;
         legendView = nextLegendView;
-        BindDisplayView();
         legendView.CloseRequested += HandleLegendCloseRequested;
         legendView.Destroyed += HandleLegendViewDestroyed;
-        RenderDisplay();
         legendView.Hide();
     }
 
@@ -316,7 +326,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
         if (!ReferenceEquals(displayView, destroyedView))
             return;
 
-        UnbindDisplayView();
+        UnsubscribeDisplayView();
         displayView = null;
         open = false;
         ResetTransientState();
@@ -378,7 +388,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
     /// <summary>
     /// Subscribes every semantic selector event exactly once.
     /// </summary>
-    private void BindDisplayView()
+    private void SubscribeDisplayView()
     {
         displayView.CategoryRequested += HandleCategoryRequested;
         displayView.Destroyed += HandleDisplayViewDestroyed;
@@ -396,7 +406,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
     /// <summary>
     /// Releases every semantic selector subscription.
     /// </summary>
-    private void UnbindDisplayView()
+    private void UnsubscribeDisplayView()
     {
         if (displayView == null)
             return;
@@ -412,24 +422,6 @@ public sealed class GalacticInformationDisplayController : ICancelable
         displayView.FilterExited -= HandleFilterExited;
         displayView.FilterPressed -= HandleFilterPressed;
         displayView.FilterSelected -= HandleFilterSelected;
-    }
-
-    /// <summary>
-    /// Releases subscriptions from the currently bound selector and legend views.
-    /// </summary>
-    private void ReleaseViews()
-    {
-        UnbindDisplayView();
-        if (legendView != null)
-        {
-            legendView.CloseRequested -= HandleLegendCloseRequested;
-            legendView.Destroyed -= HandleLegendViewDestroyed;
-        }
-
-        displayView = null;
-        legendView = null;
-        open = false;
-        ResetTransientState();
     }
 
     /// <summary>

@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
             typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
+            typeof(FactionAutomationObserver),
         };
 
         /// <summary>
@@ -36,12 +37,14 @@ namespace Rebellion.Simulation
         /// <param name="gameData">The content catalog used by game services.</param>
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
+        /// <param name="results">The bus delivering completed game changes.</param>
         /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,
             GameDataCatalog gameData,
             IRandomNumberProvider random,
-            MessageFactory messageFactory
+            MessageFactory messageFactory,
+            GameResultBus results
         )
         {
             if (game == null)
@@ -52,12 +55,15 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(random));
             if (messageFactory == null)
                 throw new ArgumentNullException(nameof(messageFactory));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
             services.AddSingletonInstance(gameData);
             services.AddSingletonInstance(random);
             services.AddSingletonInstance(messageFactory);
+            services.AddSingletonInstance(results);
             services.AddSingleton<UnitFactory>(locator =>
             {
                 GameDataCatalog content = locator.GetService<GameDataCatalog>();
@@ -82,6 +88,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<PersonnelCommands>();
             services.AddSingleton<DuelCommands>();
             services.AddSingleton<MovementQueries>();
+            services.AddSingleton<BlockadeTransitionResolver>();
             services.AddSingleton<MovementCommands>();
             services.AddSingleton<HeadquartersQueries>();
             services.AddSingleton<HeadquartersCommands>();
@@ -138,7 +145,8 @@ namespace Rebellion.Simulation
                 locator.GetService<PlanetaryControlCommands>(),
                 locator.GetService<DuelCommands>(),
                 locator.GetService<MessageCommands>(),
-                locator.GetService<MissionResolver>()
+                locator.GetService<MissionResolver>(),
+                locator.GetService<BlockadeTransitionResolver>()
             ));
 
             return services.BuildServiceLocator();

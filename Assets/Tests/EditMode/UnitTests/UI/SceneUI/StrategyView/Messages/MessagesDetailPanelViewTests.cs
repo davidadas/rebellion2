@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
@@ -157,6 +158,114 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Render_ContinuingMissionChoice_ShowsControlsAndReservesBodyWidth()
+        {
+            ScrollAreaView scrollArea = FindComponent<ScrollAreaView>("DetailLinesScrollArea");
+            RectInt authoredRect = UILayout.GetSourceRect(scrollArea.transform as RectTransform);
+            RectInt authoredViewportRect = UILayout.GetSourceRect(scrollArea.ViewportRoot);
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            RectInt authoredScrollbarRect = UILayout.GetSourceRect(
+                scrollbar.transform as RectTransform
+            );
+            TextMeshProUGUI lineTemplate = FindText("DetailLineTextTemplate");
+            RectInt authoredLineRect = UILayout.GetSourceRect(lineTemplate.rectTransform);
+
+            _view.Render(CreateDetail("Message", false, false, true));
+
+            Assert.IsTrue(FindObject("MissionContinueButton").activeSelf);
+            Assert.IsTrue(FindObject("MissionAbortButton").activeSelf);
+            Assert.AreEqual(
+                new RectInt(355, 244, 51, 35),
+                UILayout.GetSourceRect(
+                    FindComponent<RawImage>("MissionContinueButton").rectTransform
+                )
+            );
+            Assert.AreEqual(
+                new RectInt(355, 281, 51, 35),
+                UILayout.GetSourceRect(FindComponent<RawImage>("MissionAbortButton").rectTransform)
+            );
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_continue_button_up",
+                FindComponent<RawImage>("MissionContinueButton").texture.name
+            );
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_abort_button_up",
+                FindComponent<RawImage>("MissionAbortButton").texture.name
+            );
+            Assert.AreEqual(
+                new RectInt(24, 242, 322, 70),
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(0, 0, 309, 70),
+                UILayout.GetSourceRect(scrollArea.ViewportRoot)
+            );
+            Assert.AreEqual(
+                new RectInt(309, 0, 13, 70),
+                UILayout.GetSourceRect(scrollbar.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(0, 0, 309, authoredLineRect.height),
+                UILayout.GetSourceRect(lineTemplate.rectTransform)
+            );
+
+            _view.Render(CreateDetail("Message", false, false));
+
+            Assert.IsFalse(FindObject("MissionContinueButton").activeSelf);
+            Assert.IsFalse(FindObject("MissionAbortButton").activeSelf);
+            Assert.AreEqual(
+                authoredRect,
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
+            );
+            Assert.AreEqual(authoredViewportRect, UILayout.GetSourceRect(scrollArea.ViewportRoot));
+            Assert.AreEqual(
+                authoredScrollbarRect,
+                UILayout.GetSourceRect(scrollbar.transform as RectTransform)
+            );
+            Assert.AreEqual(authoredLineRect, UILayout.GetSourceRect(lineTemplate.rectTransform));
+        }
+
+        [Test]
+        public void Render_ContinuingMissionChoice_BindsPressedArtwork()
+        {
+            _view.Render(CreateDetail("Message", false, false, true));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            FindComponent<RawImagePressVisual>("MissionContinueButton").OnPointerDown(eventData);
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_continue_button_pressed",
+                FindComponent<RawImage>("MissionContinueButton").texture.name
+            );
+
+            FindComponent<RawImagePressVisual>("MissionAbortButton").OnPointerDown(eventData);
+            Assert.AreEqual(
+                "ui_strategyview_messages_window_mission_abort_button_pressed",
+                FindComponent<RawImage>("MissionAbortButton").texture.name
+            );
+        }
+
+        [Test]
+        public void MissionChoiceButtons_Click_RaiseControlAndSemanticRequests()
+        {
+            int controlCount = 0;
+            int continueCount = 0;
+            int abortCount = 0;
+            _view.MissionChoiceControlPressed += () => controlCount++;
+            _view.MissionContinueRequested += () => continueCount++;
+            _view.MissionAbortRequested += () => abortCount++;
+
+            FindComponent<Button>("MissionContinueButton").onClick.Invoke();
+            FindComponent<Button>("MissionAbortButton").onClick.Invoke();
+
+            Assert.AreEqual(2, controlCount);
+            Assert.AreEqual(1, continueCount);
+            Assert.AreEqual(1, abortCount);
+        }
+
+        [Test]
         public void Hide_VisiblePanel_DeactivatesPanel()
         {
             _view.Render(CreateDetail("Message", false, false));
@@ -188,11 +297,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// <param name="text">The text.</param>
         /// <param name="previousDisabled">Whether previous disabled.</param>
         /// <param name="nextDisabled">Whether next disabled.</param>
+        /// <param name="missionContinuationChoiceVisible">Whether mission continuation controls are visible.</param>
         /// <returns>The created detail.</returns>
         private MessagesDetailPanelRenderData CreateDetail(
             string text,
             bool previousDisabled,
-            bool nextDisabled
+            bool nextDisabled,
+            bool missionContinuationChoiceVisible = false
         )
         {
             return new MessagesDetailPanelRenderData(
@@ -203,7 +314,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 _overlayTexture,
                 _iconTexture,
                 previousDisabled,
-                nextDisabled
+                nextDisabled,
+                missionContinuationChoiceVisible
             );
         }
 

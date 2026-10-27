@@ -97,10 +97,28 @@ namespace Rebellion.Simulation
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
 
-            if (mission.IsWaitingForParticipants())
-                return new List<GameResult>();
-
             List<GameResult> results = new List<GameResult>();
+            List<Officer> killedParticipants = null;
+            foreach (IMissionParticipant participant in mission.GetMainParticipants(true))
+            {
+                if (participant is Officer { IsKilled: true } officer)
+                    (killedParticipants ??= new List<Officer>()).Add(officer);
+            }
+            foreach (IMissionParticipant participant in mission.GetDecoyParticipants(true))
+            {
+                if (participant is Officer { IsKilled: true } officer)
+                    (killedParticipants ??= new List<Officer>()).Add(officer);
+            }
+            if (killedParticipants != null)
+            {
+                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
+            }
+
+            if (mission.IsWaitingForParticipants())
+                return results;
+
             MissionCompletionReason? abortReason = mission.GetAbortReason(game);
             if (abortReason.HasValue)
             {

@@ -68,7 +68,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_ResourceFacilityRemoval_CommitsMaintenanceHeadroomCost()
+        public void Execute_ResourceFacilityRemoval_RefreshesMaintenanceHeadroom()
         {
             AITurnContext context = CreateContext(
                 unfinishedDestinationBuilding: false,
@@ -84,7 +84,8 @@ namespace Rebellion.Tests.AI.Proposals
                 .Single();
             int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
 
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             Assert.Greater(proposal.MaintenanceHeadroomCost, 0);
             Assert.AreEqual(

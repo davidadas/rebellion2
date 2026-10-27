@@ -427,14 +427,17 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Opens the completed battle's fleet pane before closing the result window.
+    /// Opens the completed battle's surviving fleet pane before closing the result window.
     /// </summary>
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleOpenFleetRequested(BattleAlertWindowView view)
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = findVisiblePlanet(session.Result.PlanetInstanceID);
+            string planetInstanceId = session.Result.GetFleetPlanetInstanceID(GetPlayerFactionID());
+            Planet planet = string.IsNullOrEmpty(planetInstanceId)
+                ? null
+                : findVisiblePlanet(planetInstanceId);
             if (planet == null)
             {
                 CloseWindow(view);

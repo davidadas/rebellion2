@@ -117,8 +117,6 @@ namespace Rebellion.AI.Proposals
             {
                 if (!TryRemoveBuilding(context))
                     return;
-
-                context.CommitMaintenanceCost(MaintenanceHeadroomCost);
             }
 
             if (!context.HeadquartersQueries.CanRelocate(Headquarters, Destination))

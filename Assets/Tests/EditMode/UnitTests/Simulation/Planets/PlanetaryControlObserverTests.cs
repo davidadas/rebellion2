@@ -137,6 +137,44 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_ClampedBombardmentPenalty_DoesNotReconcileUnchangedSupport()
+        {
+            _targetPlanet.IsDestroyed = true;
+            _empirePlanet.SetFullPopularSupport(_rebels.InstanceID);
+            string ownerBefore = _empirePlanet.OwnerInstanceID;
+
+            List<GameResult> results = _observer.HandleResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = _targetPlanet,
+                        PlanetDestroyed = true,
+                        AttackingFaction = _empire,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
+            Assert.AreEqual(ownerBefore, _empirePlanet.OwnerInstanceID);
+            Assert.AreEqual(100, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+        }
+
+        [Test]
+        public void HandleResults_DestroyedPlanetGarrisonChange_DoesNotAssignController()
+        {
+            _targetPlanet.SetFullPopularSupport(_rebels.InstanceID);
+            _targetPlanet.IsDestroyed = true;
+
+            List<GameResult> results = _observer.HandleResults(
+                new[] { new PlanetGarrisonChangedResult { Planet = _targetPlanet } }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsNull(_targetPlanet.OwnerInstanceID);
+        }
+
+        [Test]
         public void HandleResults_CoreSinglePointSupportShift_AppliesShiftAndReconcilesOwnership()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;

@@ -73,6 +73,7 @@ namespace Rebellion.Simulation
             message.NavigationSecondaryTargetInstanceID =
                 content.NavigationSecondaryTargetInstanceID;
             message.MissionInstanceID = content.MissionInstanceID;
+            message.MissionContinuationPending = content.MissionContinuationPending;
             return message;
         }
 
@@ -356,12 +357,15 @@ namespace Rebellion.Simulation
                     bodyTemplate: reporter == null ? definition?.UnattributedBody : null
                 ),
                 target,
-                GetMissionNavigationTarget(result),
+                GetMissionNavigationTarget(result, game),
                 result.Mission
             );
 
             if (message != null && result.CanContinue)
+            {
                 message.Message.MissionInstanceID = result.MissionInstanceID;
+                message.Message.MissionContinuationPending = true;
+            }
 
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
@@ -1346,9 +1350,26 @@ namespace Rebellion.Simulation
         /// Resolves the scene node opened from a completed mission message.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
-        /// <returns>The first participant scene node or the mission itself.</returns>
-        private static ISceneNode GetMissionNavigationTarget(MissionCompletedResult result)
+        /// <param name="game">The game state used to resolve mission-specific targets.</param>
+        /// <returns>The mission-specific target, first participant, or mission itself.</returns>
+        private static ISceneNode GetMissionNavigationTarget(
+            MissionCompletedResult result,
+            GameRoot game
+        )
         {
+            if (
+                result?.Outcome == MissionOutcome.Success
+                && result.Mission is RecruitmentMission recruitment
+                && !string.IsNullOrEmpty(recruitment.RecruitedOfficerInstanceID)
+            )
+            {
+                Officer recruitedOfficer = game?.GetSceneNodeByInstanceID<Officer>(
+                    recruitment.RecruitedOfficerInstanceID
+                );
+                if (recruitedOfficer != null)
+                    return recruitedOfficer;
+            }
+
             return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
                     .OfType<ISceneNode>()
                     .FirstOrDefault()
@@ -2552,9 +2573,7 @@ namespace Rebellion.Simulation
             {
                 if (result?.AttackingFaction == null || result.Planet == null)
                     continue;
-                Faction defender =
-                    result.OwnershipChange?.PreviousOwner
-                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                Faction defender = GetCombatFaction(game, GetBombardmentDefenderID(result));
                 AddCombatDelivery(
                     deliveries,
                     result.AttackingFaction,
@@ -2870,9 +2889,17 @@ namespace Rebellion.Simulation
         /// <param name="result">The result.</param>
         /// <returns>The requested bombardment ownership.</returns>
         private static MessagePlanetOwnership GetBombardmentOwnership(BombardmentResult result) =>
-            result?.OwnershipChange != null
-                ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
-                : Ownership(result?.Planet?.OwnerInstanceID);
+            Ownership(GetBombardmentDefenderID(result));
+
+        /// <summary>
+        /// Resolves the defending owner captured before bombardment changed planetary control.
+        /// </summary>
+        /// <param name="result">The bombardment whose defending faction is required.</param>
+        /// <returns>The captured defender ID, with ownership-state fallbacks for older results.</returns>
+        private static string GetBombardmentDefenderID(BombardmentResult result) =>
+            !string.IsNullOrEmpty(result?.DefenderOwnerInstanceID) ? result.DefenderOwnerInstanceID
+            : result?.OwnershipChange != null ? result.OwnershipChange.PreviousOwner?.InstanceID
+            : result?.Planet?.OwnerInstanceID;
 
         /// <summary>
         /// Gets assault ownership.
@@ -3580,7 +3607,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Adds ownership messages.
+        /// Adds political ownership messages for colonized planets.
         /// </summary>
         /// <param name="results">The results.</param>
         /// <param name="game">The game.</param>
@@ -3593,6 +3620,9 @@ namespace Rebellion.Simulation
         {
             foreach (PlanetOwnershipChangedResult result in results)
             {
+                if (result.Planet?.IsColonized != true)
+                    continue;
+
                 if (
                     result.NewOwner != null
                     && result.Reason != PlanetOwnershipChangeReason.PopularSupport

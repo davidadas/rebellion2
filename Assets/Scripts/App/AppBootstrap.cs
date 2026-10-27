@@ -56,9 +56,9 @@ public sealed class AppBootstrap : MonoBehaviour
     internal bool IsSceneTransitionInProgress => _sceneLoader?.IsLoading == true;
 
     /// <summary>
-    /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
+    /// Ensures AppBootstrap exists. Creates a minimal bootstrap when a runtime scene has none.
     /// Only creates the root GameObject - normal Awake() handles initialization.
-    /// IMPORTANT: Only call this at scene entry points (GameFlowController, etc), not from random systems.
+    /// IMPORTANT: Only call this at runtime scene entry points, not from random systems.
     /// </summary>
     /// <returns>The existing or newly created AppBootstrap instance.</returns>
     public static AppBootstrap EnsureExists()
@@ -81,6 +81,11 @@ public sealed class AppBootstrap : MonoBehaviour
                 );
             return Instance;
         }
+
+        if (!Application.isPlaying)
+            throw new InvalidOperationException(
+                "AppBootstrap can only be created while the application is playing."
+            );
 
         GameObject obj = new GameObject("AppBootstrap (Auto)");
         obj.SetActive(false);

@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Simulation
         {
             Building order = CreateManufacturingScenario();
             int progressNotifications = 0;
-            _tick.TickProgressed += () => progressNotifications++;
+            _tick.TickProgressed += _ => progressNotifications++;
             IEnumerator tick = _tick.ProcessTickIncrementally();
 
             Assert.IsTrue(tick.MoveNext());
@@ -84,6 +84,25 @@ namespace Rebellion.Tests.Simulation
 
             while (tick.MoveNext()) { }
             Assert.IsTrue(_tick.IsSettled);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_ManufacturingProgress_IdentifiesProducingPlanet()
+        {
+            CreateManufacturingScenario();
+            Planet observedProducer = null;
+            _tick.TickProgressed += producer => observedProducer = producer;
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.IsTrue(tick.MoveNext());
+
+                Assert.AreSame(_game.GetSceneNodeByInstanceID<Planet>("PLANET"), observedProducer);
+            }
+            finally
+            {
+                (tick as IDisposable)?.Dispose();
+            }
         }
 
         [Test]

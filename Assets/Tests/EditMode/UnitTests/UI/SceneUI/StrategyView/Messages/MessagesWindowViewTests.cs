@@ -209,6 +209,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void MissionChoiceButtons_Click_RaiseParentControlAndSemanticRequests()
+        {
+            int controlCount = 0;
+            int continueCount = 0;
+            int abortCount = 0;
+            _view.ControlPressed += () => controlCount++;
+            _view.MissionContinueRequested += _ => continueCount++;
+            _view.MissionAbortRequested += _ => abortCount++;
+
+            FindComponent<Button>("MissionContinueButton").onClick.Invoke();
+            FindComponent<Button>("MissionAbortButton").onClick.Invoke();
+
+            Assert.AreEqual(2, controlCount);
+            Assert.AreEqual(1, continueCount);
+            Assert.AreEqual(1, abortCount);
+        }
+
+        [Test]
         public void Awake_InitializedView_DoesNotDuplicateChildBindings()
         {
             int closeCount = 0;

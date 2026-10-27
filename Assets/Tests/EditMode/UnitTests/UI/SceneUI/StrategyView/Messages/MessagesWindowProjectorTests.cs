@@ -286,7 +286,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 true,
                 true,
                 1,
-                2
+                2,
+                true
             );
 
             Assert.IsTrue(data.DetailVisible);
@@ -302,7 +303,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
             Assert.AreEqual(second.InstanceID, data.DetailPanel.MessageId);
             Assert.AreEqual("Second", data.DetailPanel.Header);
-            Assert.AreEqual("Second body", data.DetailPanel.Text);
+            Assert.AreEqual(
+                "Second body  Do you wish the mission to continue?",
+                data.DetailPanel.Text
+            );
             Assert.AreSame(_uiContext.GetTexture(_imagePath), data.DetailPanel.CardTexture);
             Assert.AreSame(_uiContext.GetTexture(_imagePath), data.DetailPanel.OverlayTexture);
             Assert.AreSame(
@@ -311,6 +315,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
             Assert.IsFalse(data.DetailPanel.PreviousDisabled);
             Assert.IsFalse(data.DetailPanel.NextDisabled);
+            Assert.IsTrue(data.DetailPanel.MissionContinuationChoiceVisible);
         }
 
         [Test]

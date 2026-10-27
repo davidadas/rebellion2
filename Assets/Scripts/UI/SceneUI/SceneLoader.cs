@@ -68,28 +68,37 @@ public sealed class SceneLoader : MonoBehaviour
             yield break;
         }
 
-        AsyncOperation operation;
+        ThreadPriority previousLoadingPriority = Application.backgroundLoadingPriority;
+        Application.backgroundLoadingPriority = ThreadPriority.Low;
         try
         {
-            operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-        }
-        catch (Exception exception)
-        {
-            ReportFailure(exception, loadFailed);
-            yield break;
-        }
+            AsyncOperation operation;
+            try
+            {
+                operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+            }
+            catch (Exception exception)
+            {
+                ReportFailure(exception, loadFailed);
+                yield break;
+            }
 
-        if (operation == null)
-        {
-            ReportFailure(
-                new InvalidOperationException($"Scene was not found: {sceneName}"),
-                loadFailed
-            );
-            yield break;
-        }
+            if (operation == null)
+            {
+                ReportFailure(
+                    new InvalidOperationException($"Scene was not found: {sceneName}"),
+                    loadFailed
+                );
+                yield break;
+            }
 
-        yield return operation;
-        _loadCoroutine = null;
+            yield return operation;
+        }
+        finally
+        {
+            Application.backgroundLoadingPriority = previousLoadingPriority;
+            _loadCoroutine = null;
+        }
     }
 
     /// <summary>

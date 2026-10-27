@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -41,10 +42,79 @@ namespace Rebellion.Game.Galaxy
         [PersistableMember(Name = "Planets")]
         private List<Planet> _planets = new List<Planet>();
 
+        private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
+        private string _projectedSectorSuppressionOwnerInstanceID;
+        private int? _projectedSectorSuppressionDivisor;
+
+        /// <summary>
+        /// Returns the strongest operational, stationary suppression divisor owned by a faction.
+        /// </summary>
+        /// <param name="ownerInstanceID">The faction whose suppression sources are evaluated.</param>
+        /// <returns>The strongest divisor, or one when the faction has no active source.</returns>
+        internal int GetSectorSuppressionDivisor(string ownerInstanceID)
+        {
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return 1;
+            if (_projectedSectorSuppressionDivisor.HasValue)
+                return ownerInstanceID == _projectedSectorSuppressionOwnerInstanceID
+                    ? _projectedSectorSuppressionDivisor.Value
+                    : 1;
+
+            int divisor = 1;
+            foreach (CapitalShip ship in _suppressionSources)
+            {
+                if (ship.OwnerInstanceID == ownerInstanceID && IsActiveSuppressionSource(ship))
+                    divisor = System.Math.Max(divisor, ship.SectorSuppression);
+            }
+            return divisor;
+        }
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public PlanetSector() { }
+
+        /// <summary>
+        /// Captures owner-scoped sector suppression for a view with partial descendants.
+        /// </summary>
+        /// <param name="ownerInstanceID">The faction whose suppression was observed.</param>
+        /// <param name="divisor">The observed suppression divisor.</param>
+        internal void SetProjectedSectorSuppression(string ownerInstanceID, int divisor)
+        {
+            _projectedSectorSuppressionOwnerInstanceID = ownerInstanceID;
+            _projectedSectorSuppressionDivisor = divisor;
+        }
+
+        /// <summary>
+        /// Determines whether a registered ship currently provides sector suppression.
+        /// </summary>
+        /// <param name="ship">The registered suppression source.</param>
+        /// <returns>True when the ship is complete, stationary, and active.</returns>
+        private static bool IsActiveSuppressionSource(CapitalShip ship)
+        {
+            return ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.GetParentOfType<Fleet>()?.Movement == null
+                && ship.IsActive();
+        }
+
+        /// <summary>
+        /// Registers a suppression source whose ancestor chain includes this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void RegisterSuppressionSource(CapitalShip ship)
+        {
+            _suppressionSources.Add(ship);
+        }
+
+        /// <summary>
+        /// Removes a ship that no longer supplies suppression-source presence in this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void UnregisterSuppressionSource(CapitalShip ship)
+        {
+            _suppressionSources.Remove(ship);
+        }
 
         /// <summary>
         /// Creates an empty planet-sector copy.

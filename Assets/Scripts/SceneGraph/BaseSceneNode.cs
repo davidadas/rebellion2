@@ -73,6 +73,16 @@ namespace Rebellion.SceneGraph
             ParentNode = newParent;
             LastParentInstanceID = ParentInstanceID;
             ParentInstanceID = newParent?.InstanceID;
+            OnHierarchyChanged();
+        }
+
+        /// <summary>
+        /// Notifies this subtree after its ancestor chain changes.
+        /// </summary>
+        protected virtual void OnHierarchyChanged()
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+                ((BaseSceneNode)child).OnHierarchyChanged();
         }
 
         /// <summary>

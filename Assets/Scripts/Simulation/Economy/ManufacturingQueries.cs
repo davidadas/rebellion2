@@ -213,9 +213,10 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            return producer != null
+            return producer?.IsDestroyed == false
                 && template != null
                 && destination != null
+                && destination is not Planet { IsDestroyed: true }
                 && count > 0
                 && !string.IsNullOrEmpty(ownerInstanceId)
                 && string.Equals(
@@ -808,10 +809,12 @@ namespace Rebellion.Simulation
             if (maintenanceCost <= 0 || ManufacturingRules.IsResourceFacility(item))
                 return true;
 
-            int projectedHeadroom =
-                ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction)
-                - faction.GetTotalProjectedMaintenanceCost();
-            return projectedHeadroom + releasedMaintenance - maintenanceCost * count >= 0;
+            long projectedHeadroom =
+                (long)ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction)
+                - faction.GetTotalProjectedMaintenanceCost()
+                + releasedMaintenance;
+            long requiredMaintenance = (long)maintenanceCost * count;
+            return projectedHeadroom >= requiredMaintenance;
         }
     }
 }

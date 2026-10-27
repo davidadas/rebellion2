@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultItems>false</EnableDefaultItems>
-    <UnityVersion>6000.4.0f1</UnityVersion>
+    <UnityVersion>6000.4.12f1</UnityVersion>
     <DefineConstants>UNITY_EDITOR</DefineConstants>
     <NoWarn>0169;0649;1701;1702;1591</NoWarn>
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>

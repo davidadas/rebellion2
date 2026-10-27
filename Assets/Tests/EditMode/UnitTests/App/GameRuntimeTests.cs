@@ -89,6 +89,42 @@ namespace Rebellion.Tests.App
             Assert.AreSame(manager, _runtime.GetActiveGameManager());
         }
 
+        /// <summary>
+        /// Verifies that missing ship suppression values use content while explicit values survive loading.
+        /// </summary>
+        /// <param name="savedDivisor">The saved value, or null for a legacy unit without this property.</param>
+        /// <param name="expected">The restored ship divisor.</param>
+        [TestCase(null, 2)]
+        [TestCase(0, 0)]
+        [TestCase(3, 3)]
+        public void StartLoadedGame_SectorSuppression_RestoresOnlyMissingValues(
+            int? savedDivisor,
+            int expected
+        )
+        {
+            GameRoot game = CreateGame();
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            Fleet fleet = new Fleet { InstanceID = "fleet" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "retained-ship",
+                TypeID = "CSEM015",
+                CanDestroyPlanets = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            if (savedDivisor.HasValue)
+                ship.SectorSuppression = savedDivisor.Value;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(expected, ship.SectorSuppression);
+        }
+
         [Test]
         public void StartLoadedGame_LegacyFactionSettings_RestoresActiveContentSettings()
         {
@@ -120,7 +156,7 @@ namespace Rebellion.Tests.App
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
             );
-            game.Summary.GenerationConfigOverride = config;
+            game.Summary.CustomSettings = new CustomGameSettings { GenerationConfig = config };
 
             GameSession session = _runtime.StartGame(game);
 
@@ -129,6 +165,55 @@ namespace Rebellion.Tests.App
                 .Single(faction => faction.InstanceID == template.InstanceID);
             Assert.AreEqual(configured.GarrisonEfficiency, loaded.Settings.GarrisonEfficiency);
             Assert.AreNotSame(configured, loaded.Settings);
+        }
+
+        [Test]
+        public void StartLoadedGame_CustomGarrisonRules_RestoresRuntimeConfiguration()
+        {
+            int authoredThreshold = _contentPack.GameData.GameConfig.AI.Garrison.SupportThreshold;
+            GameRoot game = CreateGame();
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                GarrisonRules = new GarrisonRuleSettings
+                {
+                    SupportThreshold = 70,
+                    SupportDeficitPerRegiment = 5,
+                    UprisingMultiplier = 3,
+                },
+            };
+
+            GameSession session = _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(70, session.Game.Config.AI.Garrison.SupportThreshold);
+            Assert.AreEqual(5, session.Game.Config.AI.Garrison.GarrisonDivisor);
+            Assert.AreEqual(3, session.Game.Config.AI.Garrison.UprisingMultiplier);
+            Assert.AreEqual(
+                authoredThreshold,
+                _contentPack.GameData.GameConfig.AI.Garrison.SupportThreshold
+            );
+        }
+
+        [Test]
+        public void StartLoadedGame_CustomMovementRules_RestoresRuntimeConfiguration()
+        {
+            double authoredDivisor = _contentPack.GameData.GameConfig.Movement.DistanceDivisor;
+            GameRoot game = CreateGame();
+            game.Summary.CustomSettings = new CustomGameSettings
+            {
+                MovementRules = new MovementRuleSettings { TravelSpeedPercent = 150 },
+            };
+
+            GameSession session = _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(
+                authoredDivisor * 1.5d,
+                session.Game.Config.Movement.DistanceDivisor,
+                0.0001d
+            );
+            Assert.AreEqual(
+                authoredDivisor,
+                _contentPack.GameData.GameConfig.Movement.DistanceDivisor
+            );
         }
 
         [Test]

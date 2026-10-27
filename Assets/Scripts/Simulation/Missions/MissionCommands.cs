@@ -134,15 +134,41 @@ namespace Rebellion.Simulation
         /// <returns>True when the mission was found and aborted.</returns>
         public bool AbortMission(string missionInstanceID)
         {
-            if (string.IsNullOrEmpty(missionInstanceID))
+            return AbortMissions(new[] { missionInstanceID });
+        }
+
+        /// <summary>
+        /// Aborts a complete mission selection after resolving every persistent identity.
+        /// </summary>
+        /// <param name="missionInstanceIDs">The instance IDs of the missions to abort.</param>
+        /// <returns>True when every mission was found and aborted.</returns>
+        public bool AbortMissions(IReadOnlyList<string> missionInstanceIDs)
+        {
+            if (missionInstanceIDs == null || missionInstanceIDs.Count == 0)
                 return false;
 
-            Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
-            if (mission == null)
+            List<Mission> missions = new List<Mission>();
+            HashSet<string> resolvedInstanceIDs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string missionInstanceID in missionInstanceIDs)
+            {
+                if (string.IsNullOrEmpty(missionInstanceID))
+                    return false;
+                if (!resolvedInstanceIDs.Add(missionInstanceID))
+                    continue;
+
+                Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
+                if (mission == null)
+                    return false;
+
+                missions.Add(mission);
+            }
+
+            if (missions.Count == 0)
                 return false;
 
             List<GameResult> results = new List<GameResult>();
-            _resolver.InterruptMission(mission, results);
+            foreach (Mission mission in missions)
+                _resolver.InterruptMission(mission, results);
             ResultsProduced?.Invoke(results);
             return true;
         }

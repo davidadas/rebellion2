@@ -19,6 +19,86 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(typeof(Building))]
+        [TestCase(typeof(Regiment))]
+        [TestCase(typeof(SpecialForces))]
+        [TestCase(typeof(Starfighter))]
+        public void ProcessTick_SurfaceDestinationDestroyedDuringTransit_ReroutesWithoutArrival(
+            Type unitType
+        )
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            IManufacturable unit = (IManufacturable)Activator.CreateInstance(unitType);
+            unit.InstanceID = "incoming-unit";
+            unit.SetOwnerInstanceID("empire");
+            unit.ManufacturingStatus = ManufacturingStatus.Delivering;
+            if (unit is Building building)
+                building.BuildingType = BuildingType.Headquarters;
+            if (unit is Starfighter fighter)
+                fighter.Hyperdrive = 1;
+            game.AttachNode(unit, destination);
+            unit.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(origin, unit.GetParent());
+            Assert.IsNotNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Delivering, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
+            Assert.IsEmpty(results.OfType<UnitArrivedResult>());
+
+            unit.Movement.TicksElapsed = unit.Movement.TransitTicks - 1;
+            IReadOnlyList<GameResult> arrival = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(arrival.OfType<GameObjectEnrouteResult>().Any());
+            Assert.AreSame(origin, arrival.OfType<UnitArrivedResult>().Single().Destination);
+            Assert.IsNull(unit.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, unit.ManufacturingStatus);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsFalse(destination.IsHeadquarters);
+        }
+
+        [Test]
+        public void ProcessTick_OrbitalDestinationDestroyedDuringTransit_CompletesFleetArrival()
+        {
+            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("incoming-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            game.AttachNode(CreateMovableCapitalShip("incoming-ship"), fleet);
+            fleet.Movement = new MovementState
+            {
+                OriginPosition = origin.GetPosition(),
+                TransitTicks = 1,
+            };
+            destination.IsDestroyed = true;
+            game.NeutralizeDestroyedPlanet(destination);
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any(result => result.Unit == fleet));
+            Assert.IsFalse(destination.IsColonized);
+        }
+
         [Test]
         public void RequestMove_SingleUnit_QueuesResultsUntilMovementPass()
         {
@@ -2595,6 +2675,45 @@ namespace Rebellion.Tests.Simulation
                 .OfType<PlanetOwnershipChangedResult>()
                 .Single();
             CollectionAssert.Contains(ownershipChange.BlockadedFactionInstanceIDs, "rebels");
+        }
+
+        [Test]
+        public void TryRequestMove_RegimentToShipAboveNeutralUncolonizedPlanet_DoesNotClaimPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            Fleet fleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(ship, fleet);
+            IReadOnlyList<GameResult> results = null;
+            movement.ResultsProduced += producedResults => results = producedResults;
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { regiment }, ship, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(ship, regiment.GetParent());
+            Assert.IsNotNull(regiment.Movement);
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
         }
 
         [Test]

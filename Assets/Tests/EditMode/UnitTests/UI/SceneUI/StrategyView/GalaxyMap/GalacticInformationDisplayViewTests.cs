@@ -11,7 +11,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
     [TestFixture]
     public class GalacticInformationDisplayViewTests
     {
-        private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+        private const string _prefabPath =
+            "Assets/Prefabs/UI/StrategyView/GalacticInformationDisplay.prefab";
 
         private GameObject _rootObject;
         private Texture2D _texture;
@@ -24,7 +25,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         public void SetUp()
         {
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            _view = _rootObject.GetComponentInChildren<GalacticInformationDisplayView>(true);
+            _view = _rootObject.GetComponent<GalacticInformationDisplayView>();
             _texture = new Texture2D(45, 45);
             foreach (
                 GalacticInformationFrameView frame in _view.GetComponentsInChildren<GalacticInformationFrameView>(

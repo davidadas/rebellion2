@@ -228,6 +228,37 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Refreshes open manufacturing cards only for the player's producing planet.
+    /// </summary>
+    /// <param name="producer">The planet whose manufacturing queue advanced.</param>
+    public void RenderManufacturingProgress(Planet producer)
+    {
+        string playerFactionId = GetPlayerFactionID();
+        if (
+            producer == null
+            || string.IsNullOrEmpty(playerFactionId)
+            || producer.OwnerInstanceID != playerFactionId
+        )
+            return;
+
+        windowManager.ForEachWindow<FacilityWindowView>(
+            (window, view) =>
+            {
+                if (
+                    TryGetSession(view, out FacilityWindowSession session)
+                    && session.ActiveTab == FacilityWindowTab.Manufacturing
+                    && session.Planet?.Planet?.InstanceID == producer.InstanceID
+                    && session.Planet.OwnerFactionId == playerFactionId
+                )
+                {
+                    session.RefreshManufacturingQueue(producer);
+                    RenderWindow(view, window);
+                }
+            }
+        );
+    }
+
+    /// <summary>
     /// Gets the planet represented by one facility view.
     /// </summary>
     /// <param name="view">The facility view.</param>

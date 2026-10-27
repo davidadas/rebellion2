@@ -55,6 +55,57 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
+    /// Instantiates a shared scroll control and delegates its internal geometry to its view.
+    /// </summary>
+    /// <param name="prefabPath">The canonical control or a themed variant.</param>
+    /// <param name="parent">The owning feature's transform.</param>
+    /// <param name="name">The instance name.</param>
+    /// <param name="bounds">The root rectangle in source units.</param>
+    /// <param name="viewportBounds">The viewport rectangle relative to the root.</param>
+    /// <param name="scrollbarBounds">The scrollbar rectangle relative to the root.</param>
+    /// <param name="contentRoot">The container receiving feature content.</param>
+    /// <returns>The configured shared control.</returns>
+    internal static ScrollAreaView CreateScrollAreaView(
+        string prefabPath,
+        Transform parent,
+        string name,
+        RectInt bounds,
+        RectInt viewportBounds,
+        RectInt scrollbarBounds,
+        out RectTransform contentRoot
+    )
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (prefab == null)
+            throw new MissingReferenceException(prefabPath);
+
+        GameObject root = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        root.name = name;
+        root.SetActive(false);
+        ScrollAreaView view = root.GetComponent<ScrollAreaView>();
+        if (view == null)
+            throw new MissingReferenceException($"{prefabPath}/ScrollAreaView is missing.");
+
+        SetSourceRect(
+            root.GetComponent<RectTransform>(),
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height
+        );
+        view.enabled = true;
+        view.SetLayout(
+            viewportBounds.position,
+            viewportBounds.size,
+            scrollbarBounds.position,
+            scrollbarBounds.size
+        );
+        contentRoot = view.ContentRoot;
+        root.SetActive(true);
+        return view;
+    }
+
+    /// <summary>
     /// Authors the canonical scroll-area hierarchy and serialized control references.
     /// </summary>
     /// <returns>The saved scroll-area prefab root.</returns>

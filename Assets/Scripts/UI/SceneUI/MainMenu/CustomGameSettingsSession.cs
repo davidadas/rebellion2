@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 
 /// <summary>
@@ -25,9 +27,10 @@ internal sealed class CustomGameSettingsSession
         internal string Column;
         internal int Minimum;
         internal int Maximum;
-        internal Func<GameGenerationConfig, int> Read;
-        internal Action<GameGenerationConfig, int> Write;
-        internal Func<GameGenerationConfig, int, bool> IsValid;
+        internal Func<int> Read;
+        internal Func<int> ReadDefault;
+        internal Action<int> Write;
+        internal Func<int, bool> IsValid;
     }
 
     private readonly List<(
@@ -46,11 +49,17 @@ internal sealed class CustomGameSettingsSession
     private readonly Dictionary<string, double> aiDraft = new();
     private readonly HashSet<string> aiCustomized = new();
     private readonly List<GenerationEntry> generationEntries = new();
+    private readonly GameEventCategory[] eventCategories;
     private readonly GameSummary summaryDefaults;
     private readonly GameSummary summaryDraft;
     private readonly ContentPack activePack;
     private readonly GameGenerationConfig generationDefaults;
     private readonly GameGenerationConfig generationDraft;
+    private readonly FacilityGenerationChanceEditor facilityChanceEditor;
+    private readonly GarrisonRuleSettings garrisonDefaults;
+    private readonly GarrisonRuleSettings garrisonDraft;
+    private readonly MovementRuleSettings movementDefaults;
+    private readonly MovementRuleSettings movementDraft;
     private string currentDifficultySection;
     private string currentGenerationSection;
 
@@ -69,6 +78,8 @@ internal sealed class CustomGameSettingsSession
 
     internal IReadOnlyList<GenerationEntry> GenerationEntries => generationEntries;
 
+    internal IReadOnlyList<GameEventCategory> EventCategories => eventCategories;
+
     internal ContentPack Pack => activePack;
 
     internal GameSummary Draft => summaryDraft;
@@ -86,6 +97,7 @@ internal sealed class CustomGameSettingsSession
 
         summaryDefaults = GameLaunchContext.CreateDefaultSummary(pack);
         summaryDraft = summary.GetDeepCopy();
+        summaryDefaults.Seed = summaryDraft.Seed;
         summaryDraft.StartingFactionIDs = summaryDefaults.StartingFactionIDs.ToArray();
         summaryDraft.PackID = summaryDefaults.PackID;
         summaryDraft.PackVersion = summaryDefaults.PackVersion;
@@ -96,17 +108,36 @@ internal sealed class CustomGameSettingsSession
             summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
         generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
         generationDraft =
-            summaryDraft.GenerationConfigOverride?.GetDeepCopy()
+            summaryDraft.CustomSettings?.GenerationConfig?.GetDeepCopy()
             ?? pack.GameData.GenerationConfig.GetDeepCopy();
+        facilityChanceEditor = new FacilityGenerationChanceEditor(pack.GameData.Buildings);
+        garrisonDefaults = CreateGarrisonRules(pack.GameData.GameConfig.AI.Garrison);
+        garrisonDraft =
+            summaryDraft.CustomSettings?.GarrisonRules?.GetDeepCopy()
+            ?? garrisonDefaults.GetDeepCopy();
+        movementDefaults = new MovementRuleSettings { TravelSpeedPercent = 100 };
+        movementDraft =
+            summaryDraft.CustomSettings?.MovementRules?.GetDeepCopy()
+            ?? movementDefaults.GetDeepCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
+        eventCategories = pack
+            .GameData.GameEvents.Where(gameEvent =>
+                gameEvent != null && gameEvent.Category != GameEventCategory.None
+            )
+            .Select(gameEvent => gameEvent.Category)
+            .Distinct()
+            .OrderBy(category => category)
+            .ToArray();
 
         DifficultyModifiers playerDefaults = new DifficultyModifiers();
         DifficultyModifiers aiDefaults = ResolveAIDefaults(pack, summaryDraft.Difficulty);
-        DifficultyModifiers playerValues = summaryDraft.PlayerDifficultyModifiers ?? playerDefaults;
-        DifficultyModifiers aiValues = summaryDraft.AIDifficultyModifiers ?? aiDefaults;
+        DifficultyModifiers playerValues =
+            summaryDraft.CustomSettings?.PlayerDifficultyModifiers ?? playerDefaults;
+        DifficultyModifiers aiValues =
+            summaryDraft.CustomSettings?.AIDifficultyModifiers ?? aiDefaults;
         AddDifficultyEntries(playerDefaults, aiDefaults, playerValues, aiValues);
-        if (summaryDraft.AIDifficultyModifiers != null)
+        if (summaryDraft.CustomSettings?.AIDifficultyModifiers != null)
         {
             foreach (var entry in difficultyEntries)
             {
@@ -125,6 +156,18 @@ internal sealed class CustomGameSettingsSession
     /// <param name="ai">Whether to read the AI column.</param>
     /// <returns>The current draft value.</returns>
     internal double GetDifficultyValue(string key, bool ai) => (ai ? aiDraft : playerDraft)[key];
+
+    /// <summary>
+    /// Returns whether one difficulty value matches its active profile default.
+    /// </summary>
+    /// <param name="key">The stable modifier key.</param>
+    /// <param name="ai">Whether to inspect the AI column.</param>
+    /// <returns>True when the current value matches its default.</returns>
+    internal bool IsDifficultyValueDefault(string key, bool ai)
+    {
+        var entry = difficultyEntries.Single(candidate => candidate.Key == key);
+        return GetDifficultyValue(key, ai) == (ai ? entry.AIDefault : entry.PlayerDefault);
+    }
 
     /// <summary>
     /// Applies a validated difficulty value from menu text.
@@ -188,11 +231,11 @@ internal sealed class CustomGameSettingsSession
             !int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
             || value < entry.Minimum
             || value > entry.Maximum
-            || (entry.IsValid != null && !entry.IsValid(generationDraft, value))
+            || (entry.IsValid != null && !entry.IsValid(value))
         )
             return false;
 
-        entry.Write(generationDraft, value);
+        entry.Write(value);
         return true;
     }
 
@@ -201,14 +244,21 @@ internal sealed class CustomGameSettingsSession
     /// </summary>
     /// <param name="entry">The setting to read.</param>
     /// <returns>The current value.</returns>
-    internal int GetGenerationValue(GenerationEntry entry) => entry.Read(generationDraft);
+    internal int GetGenerationValue(GenerationEntry entry) => entry.Read();
+
+    /// <summary>
+    /// Returns whether one generation value matches the active content default.
+    /// </summary>
+    /// <param name="entry">The setting to inspect.</param>
+    /// <returns>True when the current value matches its default.</returns>
+    internal bool IsGenerationValueDefault(GenerationEntry entry) =>
+        entry.Read() == entry.ReadDefault();
 
     /// <summary>
     /// Restores one generation value from active content.
     /// </summary>
     /// <param name="entry">The setting to restore.</param>
-    internal void ResetGenerationValue(GenerationEntry entry) =>
-        entry.Write(generationDraft, entry.Read(generationDefaults));
+    internal void ResetGenerationValue(GenerationEntry entry) => entry.Write(entry.ReadDefault());
 
     /// <summary>
     /// Applies a manually entered deterministic game seed.
@@ -275,13 +325,34 @@ internal sealed class CustomGameSettingsSession
         summaryDraft.VictoryCondition = condition;
 
     /// <summary>
-    /// Selects a resource profile and rebuilds applicable generation settings.
+    /// Returns whether a classified event category is enabled in the draft campaign.
     /// </summary>
-    /// <param name="availability">The selected resource availability.</param>
-    internal void SetResourceAvailability(GameResourceAvailability availability)
+    /// <param name="category">The category to inspect.</param>
+    /// <returns>True when the category is enabled.</returns>
+    internal bool IsEventCategoryEnabled(GameEventCategory category) =>
+        generationDraft.IsEventCategoryEnabled(category);
+
+    /// <summary>
+    /// Enables or disables one classified event category in the draft campaign.
+    /// </summary>
+    /// <param name="category">The category to update.</param>
+    /// <param name="enabled">Whether the category should be enabled.</param>
+    internal void SetEventCategoryEnabled(GameEventCategory category, bool enabled)
     {
-        summaryDraft.ResourceAvailability = availability;
-        BuildGenerationEntries(activePack, summaryDraft);
+        if (category == GameEventCategory.None)
+            return;
+
+        HashSet<GameEventCategory> disabled = new HashSet<GameEventCategory>(
+            (generationDraft.DisabledEventCategories ?? new List<GameEventCategory>()).Where(
+                candidate => candidate != GameEventCategory.None
+            )
+        );
+        if (enabled)
+            disabled.Remove(category);
+        else
+            disabled.Add(category);
+
+        generationDraft.DisabledEventCategories = disabled.OrderBy(candidate => candidate).ToList();
     }
 
     /// <summary>
@@ -297,6 +368,9 @@ internal sealed class CustomGameSettingsSession
             summaryDraft.GalaxySize = summaryDefaults.GalaxySize;
             summaryDraft.VictoryCondition = summaryDefaults.VictoryCondition;
             summaryDraft.ResourceAvailability = summaryDefaults.ResourceAvailability;
+            generationDraft.DisabledEventCategories =
+                generationDefaults.DisabledEventCategories?.ToList()
+                ?? new List<GameEventCategory>();
             summaryDraft.Seed = summaryDefaults.Seed;
             UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
             BuildGenerationEntries(activePack, summaryDraft);
@@ -317,7 +391,7 @@ internal sealed class CustomGameSettingsSession
         foreach (
             GenerationEntry entry in generationEntries.Where(entry => entry.Category == category)
         )
-            entry.Write(generationDraft, entry.Read(generationDefaults));
+            entry.Write(entry.ReadDefault());
     }
 
     /// <summary>
@@ -327,9 +401,14 @@ internal sealed class CustomGameSettingsSession
     internal GameSummary CreateSummarySnapshot()
     {
         GameSummary snapshot = summaryDraft.GetDeepCopy();
-        snapshot.PlayerDifficultyModifiers = CreateModifiers(playerDraft);
-        snapshot.AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft);
-        snapshot.GenerationConfigOverride = generationDraft.GetDeepCopy();
+        snapshot.CustomSettings = new CustomGameSettings
+        {
+            PlayerDifficultyModifiers = CreateModifiers(playerDraft),
+            AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft),
+            GenerationConfig = generationDraft.GetDeepCopy(),
+            GarrisonRules = garrisonDraft.GetDeepCopy(),
+            MovementRules = movementDraft.GetDeepCopy(),
+        };
         return snapshot;
     }
 
@@ -564,21 +643,23 @@ internal sealed class CustomGameSettingsSession
     private void BuildGenerationEntries(ContentPack pack, GameSummary summary)
     {
         generationEntries.Clear();
-        currentGenerationSection = "STARTING RESEARCH";
+        currentGenerationSection = "FACTION STARTING CONDITIONS";
         AddStartingResearchEntries(pack.GameData.Factions);
-        currentGenerationSection = "STARTING OFFICERS";
         AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
-        currentGenerationSection = "STARTING FORCES";
         AddStartingForceEntries(pack.GameData.Factions, summary.GalaxySize);
-        currentGenerationSection = "CORE WORLD CONTROL";
+        AddStartingUnitBonusEntries(pack.GameData.Factions, summary);
         AddGalaxyClassificationEntries(pack, summary);
         AddResourceEntries(summary.ResourceAvailability);
         currentGenerationSection = "STARTING PLANET SUPPORT";
         AddPlanetSupportEntries();
-        currentGenerationSection = "MINE GENERATION";
+        currentGenerationSection = "STARTING FACILITIES";
         AddFacilityEntries();
-        currentGenerationSection = "GARRISONS AND SUPPORT";
+        currentGenerationSection = "STARTING GARRISONS AND SUPPORT";
         AddUnitAndBalanceEntries();
+        currentGenerationSection = "LIVE GARRISON REQUIREMENTS";
+        AddGarrisonRuleEntries();
+        currentGenerationSection = "MOVEMENT";
+        AddMovementRuleEntries();
         AddFactionModifierEntries(pack.GameData.Factions);
     }
 
@@ -602,7 +683,7 @@ internal sealed class CustomGameSettingsSession
         AddFactionModifierRow(
             factions,
             "resource-processing",
-            "Processing per Facility",
+            "Maintenance per Pair",
             "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 to 500.",
             1,
             _maximumResourceProcessingPointsPerFacility,
@@ -611,16 +692,6 @@ internal sealed class CustomGameSettingsSession
         );
 
         currentGenerationSection = "UPRISINGS";
-        AddFactionModifierRow(
-            factions,
-            "garrison-efficiency",
-            "Garrison Efficiency",
-            "Troops needed to garrison core worlds. Higher requires fewer troops. Range: 1 or higher.",
-            1,
-            int.MaxValue,
-            settings => settings.GarrisonEfficiency,
-            (settings, value) => settings.GarrisonEfficiency = value
-        );
         AddFactionModifierRow(
             factions,
             "uprising-resistance",
@@ -852,6 +923,92 @@ internal sealed class CustomGameSettingsSession
     }
 
     /// <summary>
+    /// Adds the AI-only category budgets already consumed by starting-unit generation.
+    /// </summary>
+    /// <param name="factions">The active faction templates in display order.</param>
+    /// <param name="summary">The selected difficulty, galaxy size, and player faction.</param>
+    private void AddStartingUnitBonusEntries(IReadOnlyList<Faction> factions, GameSummary summary)
+    {
+        AddStartingUnitBonusRow(
+            factions,
+            summary,
+            StartingUnitBudgetCategory.Starfighter,
+            "starting-starfighter-bonus",
+            "AI Starfighter Bonus %",
+            "Additional share of spare maintenance capacity used only for AI starfighters. This stacks with Extra Starting Forces. Range: 0% to 100%."
+        );
+        AddStartingUnitBonusRow(
+            factions,
+            summary,
+            StartingUnitBudgetCategory.Regiment,
+            "starting-regiment-bonus",
+            "AI Regiment Bonus %",
+            "Additional share of spare maintenance capacity used only for AI regiments. This stacks with Extra Starting Forces. Range: 0% to 100%."
+        );
+    }
+
+    /// <summary>
+    /// Adds one category-specific starting-unit budget for every AI-controlled faction.
+    /// </summary>
+    /// <param name="factions">The active faction templates in display order.</param>
+    /// <param name="summary">The selected difficulty, galaxy size, and player faction.</param>
+    /// <param name="category">Unit category eligible for the additional budget.</param>
+    /// <param name="rowKey">Stable identity shared by the row's faction cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddStartingUnitBonusRow(
+        IReadOnlyList<Faction> factions,
+        GameSummary summary,
+        StartingUnitBudgetCategory category,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        foreach (
+            Faction faction in factions.Where(faction =>
+                faction.InstanceID != summary.PlayerFactionID
+            )
+        )
+        {
+            string factionID = faction.InstanceID;
+            if (
+                generationDefaults.UnitDeployment.FactionBudgets.All(budget =>
+                    budget.FactionID != factionID
+                )
+            )
+                continue;
+
+            AddGenerationTableCell(
+                rowKey,
+                factionID.ToLowerInvariant() + "-" + rowKey,
+                label,
+                description,
+                faction.GetDisplayName(),
+                0,
+                100,
+                config =>
+                    StartingUnitBudgetEditor.ReadAIOnlyBonus(
+                        config,
+                        factionID,
+                        summary.Difficulty,
+                        category,
+                        summary.GalaxySize
+                    ),
+                (config, value) =>
+                    StartingUnitBudgetEditor.WriteAIOnlyBonus(
+                        config,
+                        factionID,
+                        summary.Difficulty,
+                        category,
+                        summary.GalaxySize,
+                        value
+                    )
+            );
+        }
+    }
+
+    /// <summary>
     /// Adds base and conditional core-planet ownership percentages for every faction.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
@@ -965,8 +1122,7 @@ internal sealed class CustomGameSettingsSession
 
         PlanetResourceProfile profile = generationDefaults.PlanetResources.Profiles[index];
         string key = profile.Availability.ToString().ToLowerInvariant();
-        string availabilityLabel = profile.Availability.ToString().ToUpperInvariant();
-        currentGenerationSection = "PLANET ENERGY (" + availabilityLabel + ")";
+        currentGenerationSection = "PLANET ENERGY";
         AddResourceDiceColumn(
             index,
             key,
@@ -985,7 +1141,7 @@ internal sealed class CustomGameSettingsSession
             "Rim",
             candidate => candidate.RimEnergy
         );
-        currentGenerationSection = "RAW MATERIALS (" + availabilityLabel + ")";
+        currentGenerationSection = "RAW MATERIALS";
         AddResourceDiceColumn(
             index,
             key,
@@ -1004,7 +1160,7 @@ internal sealed class CustomGameSettingsSession
             "Rim",
             candidate => candidate.RimRawMaterials
         );
-        currentGenerationSection = "PLANET RESOURCE LIMITS (" + availabilityLabel + ")";
+        currentGenerationSection = "PLANET RESOURCE LIMITS";
         AddGenerationTableCell(
             key + "-resource-minimum",
             key + "-energy-min",
@@ -1176,7 +1332,7 @@ internal sealed class CustomGameSettingsSession
         AddGenerationTableCell(
             "mine-chance-per-resource",
             "core-mine-multiplier",
-            "Mine Chance per Unused Resource %",
+            "Mine Chance per Resource %",
             "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Core",
             0,
@@ -1187,13 +1343,93 @@ internal sealed class CustomGameSettingsSession
         AddGenerationTableCell(
             "mine-chance-per-resource",
             "rim-mine-multiplier",
-            "Mine Chance per Unused Resource %",
+            "Mine Chance per Resource %",
             "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Rim",
             0,
             int.MaxValue,
             config => config.FacilityGeneration.RimMineMultiplier,
             (config, value) => config.FacilityGeneration.RimMineMultiplier = value
+        );
+
+        AddFacilityChanceEntries(
+            BuildingType.Refinery,
+            "starting-refinery-chance",
+            "Refinery Chance %",
+            "Chance that a non-mine starting facility roll places a refinery. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.Shipyard,
+            "starting-shipyard-chance",
+            "Shipyard Chance %",
+            "Chance that a non-mine starting facility roll places a shipyard. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.TrainingFacility,
+            "starting-training-facility-chance",
+            "Training Facility Chance %",
+            "Chance that a non-mine starting facility roll places a training facility. Increasing it uses otherwise empty outcomes."
+        );
+        AddFacilityChanceEntries(
+            BuildingType.ConstructionFacility,
+            "starting-construction-yard-chance",
+            "Construction Yard Chance %",
+            "Chance that a non-mine starting facility roll places a construction yard. Increasing it uses otherwise empty outcomes."
+        );
+    }
+
+    /// <summary>
+    /// Adds core and rim chance controls for one starting-facility category.
+    /// </summary>
+    /// <param name="buildingType">Facility category to expose.</param>
+    /// <param name="rowKey">Stable identity shared by the regional cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddFacilityChanceEntries(
+        BuildingType buildingType,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        AddFacilityChanceEntry(true, "core", "Core", buildingType, rowKey, label, description);
+        AddFacilityChanceEntry(false, "rim", "Rim", buildingType, rowKey, label, description);
+    }
+
+    /// <summary>
+    /// Adds one regional chance control when the active facility table supports that category.
+    /// </summary>
+    /// <param name="core">Whether the control edits the core-region table.</param>
+    /// <param name="regionKey">Stable key for the selected region.</param>
+    /// <param name="regionLabel">Visible label for the selected region.</param>
+    /// <param name="buildingType">Facility category to expose.</param>
+    /// <param name="rowKey">Stable identity shared by the regional cells.</param>
+    /// <param name="label">Visible setting label.</param>
+    /// <param name="description">Visible setting description.</param>
+    private void AddFacilityChanceEntry(
+        bool core,
+        string regionKey,
+        string regionLabel,
+        BuildingType buildingType,
+        string rowKey,
+        string label,
+        string description
+    )
+    {
+        if (!facilityChanceEditor.CanEdit(generationDefaults, core, buildingType))
+            return;
+
+        AddGenerationTableCell(
+            rowKey,
+            regionKey + "-" + rowKey,
+            label,
+            description,
+            regionLabel,
+            0,
+            100,
+            config => facilityChanceEditor.GetChance(config, core, buildingType),
+            (config, value) => facilityChanceEditor.TrySetChance(config, core, buildingType, value),
+            (config, value) => facilityChanceEditor.CanSetChance(config, core, buildingType, value)
         );
     }
 
@@ -1205,7 +1441,7 @@ internal sealed class CustomGameSettingsSession
         AddGeneration(
             NewGameSettingsCategory.WorldGeneration,
             "uprising-prevention-threshold",
-            "Garrison Support Threshold %",
+            "Starting Garrison Support Threshold %",
             "Planets below this owner support start with garrison troops. Range: 0% to 100%.",
             0,
             100,
@@ -1215,7 +1451,7 @@ internal sealed class CustomGameSettingsSession
         AddGeneration(
             NewGameSettingsCategory.WorldGeneration,
             "support-deficit-per-garrison",
-            "Support Deficit per Garrison Unit",
+            "Starting Support Deficit per Garrison Unit",
             "One starting garrison troop is added for each amount of missing owner support. Range: 1 or higher.",
             1,
             int.MaxValue,
@@ -1241,6 +1477,102 @@ internal sealed class CustomGameSettingsSession
             int.MaxValue,
             config => config.Balance.MaxMilitaryPresenceBoost,
             (config, value) => config.Balance.MaxMilitaryPresenceBoost = value
+        );
+    }
+
+    /// <summary>
+    /// Adds live support-based garrison requirement controls.
+    /// </summary>
+    private void AddGarrisonRuleEntries()
+    {
+        AddGarrisonRule(
+            "garrison-support-threshold",
+            "Garrison Support Threshold %",
+            "Owned planets at or above this support require no garrison. Range: 0% to 100%.",
+            0,
+            100,
+            rules => rules.SupportThreshold,
+            (rules, value) => rules.SupportThreshold = value
+        );
+        AddGarrisonRule(
+            "garrison-support-deficit-per-regiment",
+            "Support Deficit per Required Regiment",
+            "One regiment is required for each amount of support below the threshold. Higher values require fewer regiments. Range: 1 or higher.",
+            1,
+            int.MaxValue,
+            rules => rules.SupportDeficitPerRegiment,
+            (rules, value) => rules.SupportDeficitPerRegiment = value
+        );
+        AddGarrisonRule(
+            "garrison-uprising-multiplier",
+            "Uprising Garrison Multiplier",
+            "Multiplies the required garrison while a planet is in uprising. Range: 1 or higher.",
+            1,
+            int.MaxValue,
+            rules => rules.UprisingMultiplier,
+            (rules, value) => rules.UprisingMultiplier = value
+        );
+    }
+
+    /// <summary>
+    /// Adds the campaign-wide strategic travel-speed control.
+    /// </summary>
+    private void AddMovementRuleEntries()
+    {
+        generationEntries.Add(
+            new GenerationEntry
+            {
+                Category = NewGameSettingsCategory.WorldGeneration,
+                Section = currentGenerationSection,
+                RowKey = "travel-speed",
+                Key = "travel-speed",
+                Label = "Travel Speed %",
+                Description =
+                    "Speed of travel between planets. Higher values shorten travel time. Range: 1% or higher.",
+                Minimum = 1,
+                Maximum = int.MaxValue,
+                Read = () => movementDraft.TravelSpeedPercent,
+                ReadDefault = () => movementDefaults.TravelSpeedPercent,
+                Write = value => movementDraft.TravelSpeedPercent = value,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Registers one validated live garrison rule.
+    /// </summary>
+    /// <param name="key">The stable setting identity.</param>
+    /// <param name="label">The visible value name.</param>
+    /// <param name="description">The visible behavior description.</param>
+    /// <param name="minimum">The inclusive minimum value.</param>
+    /// <param name="maximum">The inclusive maximum value.</param>
+    /// <param name="read">Reads a value from garrison settings.</param>
+    /// <param name="write">Writes a value to garrison settings.</param>
+    private void AddGarrisonRule(
+        string key,
+        string label,
+        string description,
+        int minimum,
+        int maximum,
+        Func<GarrisonRuleSettings, int> read,
+        Action<GarrisonRuleSettings, int> write
+    )
+    {
+        generationEntries.Add(
+            new GenerationEntry
+            {
+                Category = NewGameSettingsCategory.WorldGeneration,
+                Section = currentGenerationSection,
+                RowKey = key,
+                Key = key,
+                Label = label,
+                Description = description,
+                Minimum = minimum,
+                Maximum = maximum,
+                Read = () => read(garrisonDraft),
+                ReadDefault = () => read(garrisonDefaults),
+                Write = value => write(garrisonDraft, value),
+            }
         );
     }
 
@@ -1279,9 +1611,10 @@ internal sealed class CustomGameSettingsSession
                 Description = description,
                 Minimum = minimum,
                 Maximum = maximum,
-                Read = read,
-                Write = write,
-                IsValid = isValid,
+                Read = () => read(generationDraft),
+                ReadDefault = () => read(generationDefaults),
+                Write = value => write(generationDraft, value),
+                IsValid = isValid == null ? null : value => isValid(generationDraft, value),
             }
         );
     }
@@ -1324,9 +1657,10 @@ internal sealed class CustomGameSettingsSession
                 Column = column,
                 Minimum = minimum,
                 Maximum = maximum,
-                Read = read,
-                Write = write,
-                IsValid = isValid,
+                Read = () => read(generationDraft),
+                ReadDefault = () => read(generationDefaults),
+                Write = value => write(generationDraft, value),
+                IsValid = isValid == null ? null : value => isValid(generationDraft, value),
             }
         );
     }
@@ -1367,10 +1701,29 @@ internal sealed class CustomGameSettingsSession
                 Column = column,
                 Minimum = minimum,
                 Maximum = maximum,
-                Read = read,
-                Write = write,
+                Read = () => read(generationDraft),
+                ReadDefault = () => read(generationDefaults),
+                Write = value => write(generationDraft, value),
             }
         );
+    }
+
+    /// <summary>
+    /// Copies the campaign-editable garrison rules from runtime configuration.
+    /// </summary>
+    /// <param name="config">The active runtime garrison configuration.</param>
+    /// <returns>A detached set of editable campaign rules.</returns>
+    private static GarrisonRuleSettings CreateGarrisonRules(GameConfig.GarrisonConfig config)
+    {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+
+        return new GarrisonRuleSettings
+        {
+            SupportThreshold = config.SupportThreshold,
+            SupportDeficitPerRegiment = config.GarrisonDivisor,
+            UprisingMultiplier = config.UprisingMultiplier,
+        };
     }
 
     /// <summary>

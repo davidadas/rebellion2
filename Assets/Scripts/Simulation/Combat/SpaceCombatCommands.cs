@@ -30,6 +30,7 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
         private readonly MovementCommands _movement;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly SpaceCombatAutoResolver _autoResolver;
         private readonly SpaceCombatWithdrawalResolver _withdrawalResolver;
         private SpaceCombatDecision _pendingDecision;
@@ -59,10 +60,12 @@ namespace Rebellion.Simulation
         /// <param name="game">Active game state.</param>
         /// <param name="movement">Movement operations used for retreats and evacuation.</param>
         /// <param name="queries">Encounter and retreat eligibility queries.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
-            SpaceCombatQueries queries
+            SpaceCombatQueries queries,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -73,6 +76,8 @@ namespace Rebellion.Simulation
             );
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _withdrawalResolver = new SpaceCombatWithdrawalResolver(game, _queries);
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -922,7 +927,12 @@ namespace Rebellion.Simulation
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
-            BlockadeTransitions.AddChangedResult(_game, result.Planet, wasBlockaded, events);
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                result.Planet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                events.Add(blockade);
             CompleteFleetWithdrawal(attackerWithdrawalPlan, events);
             CompleteFleetWithdrawal(defenderWithdrawalPlan, events);
 

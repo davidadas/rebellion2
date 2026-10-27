@@ -82,7 +82,7 @@ public sealed class StrategyController
     private GalaxyMapView galaxyMap;
 
     [SerializeField]
-    private GalacticInformationDisplayView galacticInformationDisplay;
+    private GalacticInformationDisplayView galacticInformationDisplayPrefab;
 
     [SerializeField]
     private GalacticInformationLegendView galacticInformationLegend;
@@ -106,6 +106,7 @@ public sealed class StrategyController
         InputAction action,
         Action<InputAction.CallbackContext> callback
     )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
+    private InputActionMap _strategyInputActionMap;
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
@@ -149,6 +150,7 @@ public sealed class StrategyController
     private OptionsMenuController _optionsMenuController;
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
+    private GalacticInformationDisplayView galacticInformationDisplay;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -197,7 +199,7 @@ public sealed class StrategyController
         runtime.GameReplaced += HandleGameReplaced;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
-        session.Tick.TickProgressed += RefreshStrategyState;
+        session.Tick.TickProgressed += HandleManufacturingProgress;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
         session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
         session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
@@ -240,12 +242,19 @@ public sealed class StrategyController
         ContentPreloadManifest strategyPreload = _appBootstrap
             .GetContentPack()
             .GetPreloadManifest("strategy");
+        FactionTheme playerFactionTheme = uiContext.GetPlayerFactionTheme();
         ContentPreloadManifest initialContent = new ContentPreloadManifest
         {
             TexturesPerFrame = strategyPreload.TexturesPerFrame,
             Textures = StrategyHudController
-                .GetTexturePaths(uiContext.GetPlayerFactionTheme())
-                .Concat(IdleBarProjector.GetTexturePaths(factionView, playerFaction.InstanceID))
+                .GetTexturePaths(playerFactionTheme)
+                .Concat(
+                    IdleBarProjector.GetTexturePaths(
+                        factionView,
+                        playerFaction.InstanceID,
+                        playerFactionTheme
+                    )
+                )
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };
@@ -369,10 +378,7 @@ public sealed class StrategyController
         galacticInformationDisplayController.RestoreFilter(GetSavedGalacticInformationFilter());
         galacticInformationDisplayController.FilterChanged += SaveGalacticInformationFilter;
         galacticInformationDisplayController.Initialize(this);
-        galacticInformationDisplayController.BindViews(
-            galacticInformationDisplay,
-            galacticInformationLegend
-        );
+        galacticInformationDisplayController.BindLegendView(galacticInformationLegend);
     }
 
     /// <summary>
@@ -1034,11 +1040,11 @@ public sealed class StrategyController
         if (saveGameManager != null)
             saveGameManager.Saving -= CaptureChangedWindows;
         SetBriefingInteractionEnabled(true);
+        _optionsMenuController?.Dispose();
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
         idleBarController?.Dispose();
-        _optionsMenuController?.Dispose();
         if (_appInputController != null)
         {
             _appInputController.OptionsMenuRequested -= HandleToggleOptions;
@@ -1050,7 +1056,7 @@ public sealed class StrategyController
             runtime.GameReplaced -= HandleGameReplaced;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
-            session.Tick.TickProgressed -= RefreshStrategyState;
+            session.Tick.TickProgressed -= HandleManufacturingProgress;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
             session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
             session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
@@ -1375,16 +1381,16 @@ public sealed class StrategyController
     /// </summary>
     private void ValidateGalacticInformationLayer()
     {
-        if (galacticInformationDisplay == null)
+        if (galacticInformationDisplayPrefab == null)
             throw new MissingReferenceException(
-                "GalacticInformationDisplay is missing GalacticInformationDisplayView."
+                "GalacticInformationDisplay prefab is missing GalacticInformationDisplayView."
             );
         if (galacticInformationLegend == null)
             throw new MissingReferenceException(
                 "GalacticInformationLegend is missing GalacticInformationLegendView."
             );
 
-        RequireRectTransform(galacticInformationDisplay, "GalacticInformationDisplay");
+        RequireRectTransform(galacticInformationDisplayPrefab, "GalacticInformationDisplay prefab");
         RequireRectTransform(galacticInformationLegend, "GalacticInformationLegend");
     }
 
@@ -2199,7 +2205,7 @@ public sealed class StrategyController
     {
         session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
         session?.GetService<NamingCommands>()?.ProcessFaction(faction);
-        dirty = true;
+        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2299,17 +2305,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens status information for one selected fleet item.
     /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The selected items.</param>
-    void IFleetWindowActions.OpenFleetStatusWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
+    /// <param name="target">The selected status target.</param>
+    void IFleetWindowActions.OpenFleetStatusWindow(StrategyStatusTarget target)
     {
-        List<ISceneNode> sourceItems = CopySceneNodes(items);
-        GalaxyMapPlanet planet = GetWindowPlanet(sourceWindow);
-        if (planet != null && sourceItems.Count == 1)
-            TryOpenStatusWindow(new StrategyStatusTarget(planet, sourceItems[0]));
+        TryOpenStatusWindow(target);
     }
 
     /// <summary>
@@ -2455,37 +2454,10 @@ public sealed class StrategyController
         string missionInstanceId
     )
     {
-        GameRoot game = session.Game;
-        Mission mission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
-        if (mission?.IsWaitingForParticipants() != false)
-            return;
-
-        confirmDialogWindowController.OpenMissionAbort(
-            mission,
-            () =>
-            {
-                Mission liveMission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
-                if (liveMission == null)
-                    return;
-
-                Officer speaker = liveMission
-                    .GetMainParticipants()
-                    .Concat(liveMission.GetDecoyParticipants())
-                    .OfType<Officer>()
-                    .FirstOrDefault(officer =>
-                        officer.HasVoicePath(OfficerVoiceLineType.MissionAbort)
-                    );
-                string voicePath = speaker?.GetVoicePath(
-                    OfficerVoiceLineType.MissionAbort,
-                    game.Random
-                );
-                if (!session.GetService<MissionCommands>().AbortMission(missionInstanceId))
-                    return;
-
-                if (!string.IsNullOrEmpty(voicePath))
-                    PlayStrategySfx(voicePath);
-                RefreshStrategyState();
-            }
+        Mission mission = session.Game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
+        windowCommandController.OpenMissionAbortConfirmWindow(
+            sourceWindow,
+            mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission }
         );
     }
 
@@ -2519,6 +2491,16 @@ public sealed class StrategyController
     )
     {
         return OpenMessageTarget(targetInstanceId, secondaryTargetInstanceId, locationInstanceId);
+    }
+
+    /// <summary>
+    /// Aborts the active mission represented by a continuing mission report.
+    /// </summary>
+    /// <param name="missionInstanceId">The active mission identifier.</param>
+    /// <returns>True when the mission was aborted.</returns>
+    bool IMessagesWindowActions.TryAbortMission(string missionInstanceId)
+    {
+        return windowCommandController.TryAbortMission(missionInstanceId);
     }
 
     /// <summary>
@@ -3138,6 +3120,15 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Refreshes only the producing planet's open manufacturing presentation.
+    /// </summary>
+    /// <param name="producer">The planet whose manufacturing queue advanced.</param>
+    private void HandleManufacturingProgress(Planet producer)
+    {
+        facilityWindowController.RenderManufacturingProgress(producer);
+    }
+
+    /// <summary>
     /// Rebuilds authoritative strategy state and invalidates presentation.
     /// </summary>
     private void RefreshStrategyState()
@@ -3235,7 +3226,29 @@ public sealed class StrategyController
         targetingController?.Cancel();
         contextMenuController?.Cancel();
         strategyContextMenu?.Reset();
+        EnsureGalacticInformationDisplay();
         galacticInformationDisplayController?.Show();
+    }
+
+    /// <summary>
+    /// Creates and binds the selector hierarchy when the player first opens it.
+    /// </summary>
+    private void EnsureGalacticInformationDisplay()
+    {
+        if (galacticInformationDisplay != null)
+            return;
+
+        galacticInformationDisplay = Instantiate(
+            galacticInformationDisplayPrefab,
+            transform,
+            false
+        );
+        galacticInformationDisplay.name = galacticInformationDisplayPrefab.name;
+        ContentBindings.Apply(
+            galacticInformationDisplay.gameObject,
+            _appBootstrap.GetContentAssets()
+        );
+        galacticInformationDisplayController.BindDisplayView(galacticInformationDisplay);
     }
 
     /// <summary>
@@ -3447,6 +3460,19 @@ public sealed class StrategyController
             );
             width = strategyContextMenu.Layout.DefenseMenuWidth;
         }
+        else if (target is Fleet fleet)
+        {
+            request = fleetWindowController.CreateContextMenuForFleet(
+                strategyPlanet,
+                fleet,
+                sourceX,
+                sourceY
+            );
+            width = FleetWindowController.GetContextMenuWidth(
+                request.Commands,
+                strategyContextMenu.Layout
+            );
+        }
         else if (target is Planet)
         {
             request = planetSectorWindowController.CreatePlanetContextMenu(
@@ -3576,7 +3602,8 @@ public sealed class StrategyController
         if (asset == null)
             return;
 
-        asset.FindActionMap("Strategy")?.Enable();
+        _strategyInputActionMap = asset.FindActionMap("Strategy");
+        _strategyInputActionMap?.Enable();
 
         for (int slot = 0; slot < 12; slot++)
         {
@@ -3836,6 +3863,8 @@ public sealed class StrategyController
         )
             action.performed -= callback;
         _boundInputActions.Clear();
+        _strategyInputActionMap?.Disable();
+        _strategyInputActionMap = null;
     }
 
     /// <summary>

@@ -15,6 +15,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => new StrategyMissionChoice(null));
         }
 
+        /// <summary>
+        /// Uses the same mission identity and artwork for normal and repeat entries.
+        /// </summary>
+        /// <param name="isRepeating">Whether to request the repeat entry.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Constructor_EspionageOption_PreservesIdentityAndSelectsRepeat(bool isRepeating)
+        {
+            MissionOption option = new MissionOption(
+                EspionageMission.MissionTypeID,
+                "Espionage",
+                SkillRating.Espionage,
+                MissionTargetKind.Planet,
+                SkillRating.Espionage,
+                canRepeat: true
+            );
+
+            StrategyMissionChoice choice = new StrategyMissionChoice(option, isRepeating);
+
+            Assert.AreEqual(EspionageMission.MissionTypeID, choice.MissionTypeID);
+            Assert.AreEqual(MissionIconKeys.Espionage, choice.IconKey);
+            Assert.AreEqual(isRepeating ? "Espionage (Repeat)" : "Espionage", choice.Name);
+            Assert.AreEqual(isRepeating, choice.IsRepeating);
+        }
+
         [Test]
         public void Constructor_ResearchOption_PreservesMissionPresentation()
         {

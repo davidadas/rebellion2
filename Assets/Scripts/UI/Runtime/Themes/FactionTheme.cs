@@ -28,6 +28,8 @@ public class FactionTheme
 
     public string HeadquartersDestroyedCutscenePath { get; set; }
 
+    public List<PlanetDestructionCutscene> PlanetDestructionCutscenes { get; set; } = new();
+
     public TacticalHUDLayout TacticalHUDLayout { get; set; }
 
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }
@@ -88,3 +90,16 @@ public class FactionTheme
 /// </summary>
 [PersistableObject]
 public sealed class FactionThemes : List<FactionTheme> { }
+
+/// <summary>
+/// Maps one planet-destroying ship type to its presentation movie.
+/// </summary>
+[PersistableObject(Name = "Cutscene")]
+public sealed class PlanetDestructionCutscene
+{
+    [PersistableAttribute]
+    public string ShipTypeID { get; set; }
+
+    [PersistableAttribute]
+    public string Path { get; set; }
+}

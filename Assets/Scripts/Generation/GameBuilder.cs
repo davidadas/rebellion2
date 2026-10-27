@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -46,7 +47,7 @@ namespace Rebellion.Generation
             IRandomNumberProvider randomProvider
         )
         {
-            _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+            _summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _randomProvider =
                 randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
@@ -105,8 +106,10 @@ namespace Rebellion.Generation
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
             GameGenerationConfig generationConfig =
-                _summary.GenerationConfigOverride?.GetDeepCopy()
+                _summary.CustomSettings?.GenerationConfig?.GetDeepCopy()
                 ?? _gameData.GenerationConfig.GetDeepCopy();
+            GameConfig gameConfig = _gameData.GameConfig.GetDeepCopy();
+            _summary.CustomSettings?.ApplyRuntimeRules(gameConfig);
             Faction[] factions = _gameData.Factions.GetDeepCopy();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
@@ -114,7 +117,7 @@ namespace Rebellion.Generation
             {
                 Summary = _summary,
                 Config = generationConfig,
-                GameConfig = _gameData.GameConfig.GetDeepCopy(),
+                GameConfig = gameConfig,
                 Rng = _randomProvider,
 
                 Sectors = sectors,
@@ -125,8 +128,76 @@ namespace Rebellion.Generation
                 Regiments = CopyTemplates(_gameData.Regiments),
                 SpecialForces = CopyTemplates(_gameData.SpecialForces),
                 Officers = CopyTemplates(_gameData.Officers),
-                Events = _gameData.GameEvents.GetDeepCopy(),
+                Events = FilterEvents(_gameData.GameEvents, generationConfig).GetDeepCopy(),
             };
+        }
+
+        /// <summary>
+        /// Excludes disabled event categories and any retained events whose authored
+        /// prerequisite chain includes an excluded event.
+        /// </summary>
+        /// <param name="events">The authored event definitions.</param>
+        /// <param name="generationConfig">The resolved generation settings.</param>
+        /// <returns>The event definitions available to the generated campaign.</returns>
+        private static GameEvent[] FilterEvents(
+            IReadOnlyCollection<GameEvent> events,
+            GameGenerationConfig generationConfig
+        )
+        {
+            HashSet<string> authoredEventIDs = new HashSet<string>(
+                events.Select(gameEvent => gameEvent.InstanceID),
+                StringComparer.Ordinal
+            );
+            List<GameEvent> retained = events
+                .Where(gameEvent => generationConfig.IsEventCategoryEnabled(gameEvent.Category))
+                .ToList();
+            HashSet<string> retainedEventIDs = new HashSet<string>(
+                retained.Select(gameEvent => gameEvent.InstanceID),
+                StringComparer.Ordinal
+            );
+
+            bool removedDependency;
+            do
+            {
+                GameEvent[] dependents = retained
+                    .Where(gameEvent =>
+                        GetEventDependencies(gameEvent)
+                            .Any(dependencyID =>
+                                authoredEventIDs.Contains(dependencyID)
+                                && !retainedEventIDs.Contains(dependencyID)
+                            )
+                    )
+                    .ToArray();
+                removedDependency = dependents.Length > 0;
+                foreach (GameEvent dependent in dependents)
+                {
+                    retained.Remove(dependent);
+                    retainedEventIDs.Remove(dependent.InstanceID);
+                }
+            } while (removedDependency);
+
+            return retained.ToArray();
+        }
+
+        /// <summary>
+        /// Enumerates the event identifiers required by one authored schedule.
+        /// </summary>
+        /// <param name="gameEvent">The event whose schedule is inspected.</param>
+        /// <returns>The schedule's prerequisite event identifiers.</returns>
+        private static IEnumerable<string> GetEventDependencies(GameEvent gameEvent)
+        {
+            if (gameEvent.Schedule?.After != null)
+            {
+                yield return gameEvent.Schedule.After.EventInstanceID;
+                yield break;
+            }
+
+            AfterEvents dependencies = gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny;
+            if (dependencies == null)
+                yield break;
+
+            foreach (EventDependency dependency in dependencies.Events)
+                yield return dependency.EventInstanceID;
         }
 
         /// <summary>

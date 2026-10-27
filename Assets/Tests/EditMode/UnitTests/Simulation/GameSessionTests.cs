@@ -70,6 +70,154 @@ namespace Rebellion.Tests.Simulation
             _session.Dispose();
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessResults_PlanetDestructionDestroysHeadquarters_PublishesLossAndVictory(
+            bool mobileHeadquarters
+        )
+        {
+            Faction attacker = new Faction { InstanceID = "attacker" };
+            _game.GetFactions().Add(attacker);
+            _faction.Settings.Headquarters = new HeadquartersSettings
+            {
+                IsMobile = mobileHeadquarters,
+                FacilityTypeID = "headquarters",
+            };
+            _faction.HQInstanceID = _planet.InstanceID;
+            _planet.IsHeadquarters = true;
+            _planet.EnergyCapacity = 2;
+            Building headquarters = null;
+            if (mobileHeadquarters)
+            {
+                headquarters = new Building
+                {
+                    InstanceID = "headquarters",
+                    TypeID = "headquarters",
+                    OwnerInstanceID = _faction.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                _game.AttachNode(headquarters, _planet);
+            }
+            Fleet fleet = EntityFactory.CreateFleet("destroyer-fleet", attacker.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "destroyer",
+                    OwnerInstanceID = attacker.InstanceID,
+                    CanDestroyPlanets = true,
+                    CurrentHullStrength = 100,
+                    MaxHullStrength = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
+            HeadquartersLostResult loss = null;
+            VictoryResult victory = null;
+            _session.Pipeline.HeadquartersLost += result => loss = result;
+            _session.Pipeline.VictoryDeclared += result => victory = result;
+
+            BombardmentResult bombardment = _session
+                .GetService<BombardmentCommands>()
+                .TryExecute(new[] { fleet }, _planet, BombardmentType.DestroyPlanet);
+
+            Assert.IsTrue(bombardment.PlanetDestroyed);
+            Assert.IsInstanceOf<HeadquartersDestroyedResult>(loss);
+            Assert.AreSame(loss, bombardment.Events.OfType<HeadquartersDestroyedResult>().Single());
+            Assert.AreSame(headquarters, ((HeadquartersDestroyedResult)loss).Headquarters);
+            Assert.AreSame(_faction, loss.Defender);
+            Assert.AreSame(attacker, loss.Attacker);
+            Assert.AreSame(attacker, victory.Winner);
+            Assert.AreSame(_faction, victory.Loser);
+            Assert.IsNull(_faction.HQInstanceID);
+            PlanetSector sector = _planet.GetParentOfType<PlanetSector>();
+            foreach (Faction faction in new[] { _faction, attacker })
+            {
+                PlanetSnapshot snapshot = faction.Fog.Snapshots[sector.InstanceID].Planets[
+                    _planet.InstanceID
+                ];
+                Assert.IsTrue(snapshot.IsDestroyed);
+                Assert.IsFalse(snapshot.IsColonized);
+                Assert.IsNull(snapshot.OwnerInstanceID);
+            }
+        }
+
+        [Test]
+        public void Constructor_LoadedDestroyedProducer_ClearsLocalAndRemoteOrdersBeforeTick()
+        {
+            string saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion-destroyed-production-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                _planet.EnergyCapacity = 5;
+                Planet remote = new Planet
+                {
+                    InstanceID = "remote-destination",
+                    OwnerInstanceID = _faction.InstanceID,
+                    IsColonized = true,
+                };
+                _game.AttachNode(remote, _planet.GetParent());
+                Building localOrder = new Building
+                {
+                    InstanceID = "local-order",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ProducerOwnerID = _faction.InstanceID,
+                    ProducerPlanetID = _planet.InstanceID,
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 7,
+                };
+                Regiment remoteOrder = new Regiment
+                {
+                    InstanceID = "remote-order",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ProducerOwnerID = _faction.InstanceID,
+                    ProducerPlanetID = _planet.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 11,
+                };
+                _game.AttachNode(localOrder, _planet);
+                _game.AttachNode(remoteOrder, remote);
+                _planet.IsDestroyed = true;
+                Assert.AreEqual(18, _faction.GetTotalProjectedMaintenanceCost());
+                SaveGameManager saves = new SaveGameManager(saveDirectoryPath);
+                saves.SaveGameData(_game, "destroyed-production");
+                GameRoot loaded = saves.LoadGameData("destroyed-production");
+                using GameSession session = new GameSession(
+                    loaded,
+                    TestGameData.Create(_game.Config)
+                );
+                Planet producer = loaded.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
+                Faction owner = loaded.GetFactionByOwnerInstanceID(_faction.InstanceID);
+
+                Assert.IsNull(producer.OwnerInstanceID);
+                Assert.IsEmpty(producer.GetManufacturingQueue());
+                Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(localOrder.InstanceID));
+                Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(remoteOrder.InstanceID));
+                Assert.Zero(owner.GetTotalProjectedMaintenanceCost());
+
+                new ManufacturingTickProcessor(
+                    session.GetService<ManufacturingCommands>(),
+                    session.GetService<MovementCommands>()
+                ).ProcessTick(loaded);
+
+                Assert.IsEmpty(producer.GetManufacturingQueue());
+                Assert.Zero(owner.GetTotalProjectedMaintenanceCost());
+                Assert.IsFalse(producer.IsColonized);
+                Assert.IsTrue(
+                    loaded.GetSceneNodeByInstanceID<Planet>(remote.InstanceID).IsColonized
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(saveDirectoryPath))
+                    Directory.Delete(saveDirectoryPath, recursive: true);
+            }
+        }
+
         [Test]
         public void Constructor_NullContent_ThrowsArgumentNullException()
         {

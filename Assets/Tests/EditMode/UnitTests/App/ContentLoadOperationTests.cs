@@ -338,13 +338,16 @@ namespace Rebellion.Tests.App
             ContentPack selected = TestContent.Pack;
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
             summary.Difficulty = GameDifficulty.Hard;
-            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
+            summary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = selected.GameData.GenerationConfig.GetDeepCopy(),
+            };
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();
 
             operation.PrepareCustomGame(selected, summary);
             summary.Difficulty = GameDifficulty.Easy;
-            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+            summary.CustomSettings.GenerationConfig.FacilityGeneration.CoreMineMultiplier = 999;
 
             Assert.AreSame(selected, operation.Pack);
             Assert.IsTrue(operation.RequiresContentRestart);
@@ -355,7 +358,8 @@ namespace Rebellion.Tests.App
                 999,
                 operation
                     .CustomGameSummary
-                    .GenerationConfigOverride
+                    .CustomSettings
+                    .GenerationConfig
                     .FacilityGeneration
                     .CoreMineMultiplier
             );
