@@ -385,6 +385,27 @@ The dependent event restores him at that same location.
 </GameEvent>
 ```
 
+## Reserve an officer for AI
+
+This event prevents AI from assigning Palpatine to missions while he is directly on Empire-owned
+Coruscant. The reservation renews each tick.
+
+```xml
+<GameEvent>
+  <InstanceID>MOD_RESERVE_EMPEROR</InstanceID>
+  <Schedule>
+    <Every Ticks="1"/>
+  </Schedule>
+  <Conditionals>
+    <HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+    <IsOwned PlanetInstanceID="CORUSCANT" FactionInstanceID="FNEMP1"/>
+  </Conditionals>
+  <Actions>
+    <ReserveOfficer OfficerInstanceID="EMPEROR_PALPATINE"/>
+  </Actions>
+</GameEvent>
+```
+
 ---
 
 <p align="center"><a href="Actions.md">← Actions</a> · <a href="Index.md">Event guide</a> · <a href="Testing.md">Testing →</a></p>

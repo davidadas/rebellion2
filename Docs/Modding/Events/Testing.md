@@ -29,6 +29,7 @@ If an event does not run:
 Finally, save and reload after the event has run. Verify recurring schedules, activation counts,
 event variables, retained units, display changes, and multi-stage chains still behave correctly.
 Event `InstanceID` values and variable keys are persisted, so changing them can invalidate existing event state.
+Existing saves retain their event definitions; editing the pack XML does not update those saved events.
 
 ---
 
