@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
@@ -593,6 +594,31 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             AssertRenderedTextWithinRect(primary);
             AssertRenderedTextWithinRect(secondary);
+        }
+
+        [Test]
+        public void Render_TruncatedModifiedBinding_HoverShowsFullText()
+        {
+            const string binding = "CTRL+WHEEL DOWN";
+            OptionsBindingRow[] bindings = { new OptionsBindingRow("Zoom", binding) };
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Controls, bindings: bindings));
+
+            TextMeshProUGUI key = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "BindingPrimaryKey0");
+            OverflowTextTooltip tooltip = key.GetComponent<OverflowTextTooltip>();
+            OverflowTextTooltipTrigger trigger = _root
+                .GetComponentsInChildren<OverflowTextTooltipTrigger>(true)
+                .Single(candidate => candidate.name == "BindingPrimaryBadge0");
+
+            Assert.IsNotNull(tooltip);
+            trigger.OnPointerEnter(new PointerEventData(null));
+            tooltip.AdvanceHover(float.PositiveInfinity);
+
+            Transform tooltipRoot = key.transform.parent.Find("BindingPrimaryKey0Tooltip");
+            Assert.IsNotNull(tooltipRoot);
+            Assert.AreEqual(binding, tooltipRoot.Find("Text").GetComponent<TextMeshProUGUI>().text);
         }
 
         [Test]
