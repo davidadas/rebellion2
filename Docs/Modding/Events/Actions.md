@@ -491,6 +491,56 @@ Reactivate a returning unit before placing or sending it.
 
 ## Officers
 
+### ReserveOfficer
+
+Withholds an officer from AI mission assignments, including use as a decoy, for the current
+simulation tick. This affects AI choices only; it does not prevent player orders, change
+movement or mission state, or move the officer to another location.
+
+- `OfficerInstanceID` **[Required]:** The owned officer to reserve.
+
+```xml
+<ReserveOfficer OfficerInstanceID="EMPEROR_PALPATINE"/>
+```
+
+The action emits an `OfficerReservedForAIResult` with the current owner, officer, tick, and
+source event. The result bus delivers it to `AIDirector`, which filters its available personnel
+and seeds the existing selection reservations. Mission execution also checks the reservation,
+including requests received after planning. Duplicate requests have the same effect as one.
+Requests for another tick or a previous owner are ignored. The receiver is detached when the
+game session is replaced or closed.
+
+Use a recurring event before the AI phase to renew the reservation. Each request applies only
+to its recorded tick; a one-shot event does not reserve an officer indefinitely. Reservations
+are runtime-only and are rebuilt by events on the next tick after loading.
+
+For example, the following event keeps Palpatine unassigned while directly stationed on
+Empire-owned Coruscant. A mission on Coruscant would also remove him from that direct parent,
+so local missions are withheld too. This rule does not bring him back if he is elsewhere.
+
+```xml
+<GameEvent>
+  <InstanceID>RESERVE_EMPEROR</InstanceID>
+  <Schedule>
+    <Every Ticks="1"/>
+  </Schedule>
+  <Conditionals>
+    <HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+    <IsOwned PlanetInstanceID="CORUSCANT" FactionInstanceID="FNEMP1"/>
+  </Conditionals>
+  <Actions>
+    <ReserveOfficer OfficerInstanceID="EMPEROR_PALPATINE"/>
+  </Actions>
+</GameEvent>
+```
+
+The same action may instead be included in an existing event's successful `If` branch, beside
+other effects that share its conditions. Scheduled events run before AI in the normal tick
+pipeline. This action cannot undo an assignment that has already executed, and it does not
+cancel an existing mission. Event definitions and their activation history retain their usual
+save behavior; only the derived AI reservation is transient. Existing saves retain their event
+definitions, so changing the pack XML does not insert this action into an older saved event.
+
 ### SetCaptureStatus
 
 Captures or releases one or more officers. Capturing an officer immediately interrupts any mission

@@ -11,6 +11,15 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Results
 {
+    /// <summary>
+    /// Records an event request to withhold an officer from AI assignments for one tick.
+    /// </summary>
+    public sealed class OfficerReservedForAIResult : GameResult
+    {
+        public string OfficerInstanceID { get; set; }
+        public string FactionInstanceID { get; set; }
+    }
+
     #region Enums
 
     public enum MissionOutcome

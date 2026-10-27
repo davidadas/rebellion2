@@ -128,7 +128,14 @@ namespace Rebellion.AI.Selectors
             if (context?.SelectedProposals == null || context.Assessment == null)
                 return;
 
-            List<AIProposal> selected = context.SelectedProposals.ToList();
+            List<AIProposal> selected = context
+                .SelectedProposals.Where(proposal =>
+                    proposal is not AIMissionProposal mission
+                    || !mission
+                        .Participants.OfType<Officer>()
+                        .Any(context.Assessment.IsOfficerReserved)
+                )
+                .ToList();
             HashSet<IMissionParticipant> claimedParticipants = selected
                 .OfType<AIMissionProposal>()
                 .SelectMany(proposal => proposal.Participants)
@@ -136,6 +143,10 @@ namespace Rebellion.AI.Selectors
             List<IMissionParticipant> decoys = context
                 .Assessment.AvailableMissionParticipants.Where(participant =>
                     !claimedParticipants.Contains(participant)
+                    && (
+                        participant is not Officer officer
+                        || !context.Assessment.IsOfficerReserved(officer)
+                    )
                     && IsAvailableDecoy(context, participant)
                 )
                 .ToList();

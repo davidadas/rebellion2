@@ -50,6 +50,9 @@ namespace Rebellion.Simulation
                 case ChangeOfficerRatingAction definition:
                     Execute(definition, context);
                     break;
+                case ReserveOfficerAction definition:
+                    Execute(definition, context);
+                    break;
                 case ApplyOfficerTraitAction definition:
                     Execute(definition, context);
                     break;
@@ -543,6 +546,30 @@ namespace Rebellion.Simulation
                 officer.SetBaseRating(action.Rating, checked(baseValue + adjustment));
             }
             context.Record(results);
+        }
+
+        /// <summary>
+        /// Emits a tick-scoped AI reservation without changing the officer's gameplay state.
+        /// </summary>
+        /// <param name="action">The officer reservation to request.</param>
+        /// <param name="context">The current event activation.</param>
+        private static void Execute(ReserveOfficerAction action, GameActionContext context)
+        {
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
+                action.OfficerInstanceID,
+                includeDisabled: true
+            );
+            if (officer == null || string.IsNullOrWhiteSpace(officer.OwnerInstanceID))
+                throw new InvalidOperationException("ReserveOfficer requires an owned officer.");
+
+            context.Record(
+                new OfficerReservedForAIResult
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    FactionInstanceID = officer.OwnerInstanceID,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

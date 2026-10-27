@@ -167,6 +167,16 @@ namespace Rebellion.Game.Events
 
     #region OfficerActions
     /// <summary>
+    /// Requests that AI leave one officer unassigned during the current tick.
+    /// </summary>
+    [PersistableObject(Name = "ReserveOfficer")]
+    public sealed class ReserveOfficerAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+    }
+
+    /// <summary>
     /// Sets one officer's captivity state and emits the standard state-change result.
     /// </summary>
     [PersistableObject(Name = "SetCaptureStatus")]
