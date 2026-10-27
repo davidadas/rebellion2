@@ -179,8 +179,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         string[] captions =
         {
             "GAME SETUP",
-            "DIFFICULTY MODIFIERS",
-            "WORLD GENERATION",
+            "DIFFICULTY",
+            "WORLD SETTINGS",
             "FACTION MODIFIERS",
             "SAVE / LOAD",
         };

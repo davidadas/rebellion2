@@ -223,18 +223,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void FooterNavigation_LongMainMenuLabel_FitsSharedNavigationRow()
+        public void FooterNavigation_MainMenuLabel_MatchesTabTypography()
         {
             TextMeshProUGUI label = GetField<Button>("_mainMenuButton")
                 .GetComponentInChildren<TextMeshProUGUI>();
+            TextMeshProUGUI tabLabel = GetField<Button[]>("_tabButtons")[0]
+                .GetComponentInChildren<TextMeshProUGUI>();
 
-            Canvas.ForceUpdateCanvases();
-            label.ForceMeshUpdate();
-
-            Assert.IsTrue(label.enableAutoSizing);
-            Assert.AreEqual(11f, label.fontSizeMin);
-            Assert.AreEqual(13f, label.fontSizeMax);
-            Assert.LessOrEqual(label.textBounds.size.x, label.rectTransform.rect.width);
+            Assert.AreEqual(tabLabel.fontSize, label.fontSize);
+            Assert.LessOrEqual(
+                label
+                    .GetPreferredValues(label.text, float.PositiveInfinity, float.PositiveInfinity)
+                    .x,
+                label.rectTransform.rect.width
+            );
         }
 
         [Test]
@@ -420,7 +422,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GeneratedLabels_Default_UseGalaxyViewAndReturnWording()
+        public void GeneratedLabels_Default_UseGalaxyViewAndShortNavigationCaptions()
         {
             TextMeshProUGUI[] fields = _root.GetComponentsInChildren<TextMeshProUGUI>(true);
             string[] labels = fields.Select(field => field.text).ToArray();
@@ -429,8 +431,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             CollectionAssert.Contains(labels, "Show Idle Bar");
             CollectionAssert.Contains(labels, "Keep Idle Bar Open");
             CollectionAssert.Contains(labels, "Idle Bar Location");
-            CollectionAssert.Contains(labels, "RETURN TO GAME");
-            CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
+            CollectionAssert.Contains(labels, "RESUME GAME");
+            CollectionAssert.Contains(labels, "MAIN MENU");
 
             Assert.IsFalse(fields.Any(field => field.text == "IDLE BAR"));
         }
