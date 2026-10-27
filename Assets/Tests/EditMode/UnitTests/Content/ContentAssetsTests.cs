@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -141,6 +142,32 @@ namespace Rebellion.Tests.Content
             File.Delete(Path.Combine(_contentRoot, "Application", "Textures", "test.png"));
 
             Assert.IsNotNull(assets.GetTexture(_textureAddress));
+        }
+
+        [Test]
+        public async Task PreloadAsync_CanceledBetweenFrames_CancelsBeforeDisposedAssetAccessAsync()
+        {
+            using ContentAssets assets = CreateAssets();
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Textures = { _textureAddress, "Application/Textures/missing" },
+            };
+
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+            cancellation.Cancel();
+            assets.Dispose();
+
+            try
+            {
+                await preload;
+                Assert.Fail("The abandoned preload should have been canceled.");
+            }
+            catch (OperationCanceledException)
+            {
+                Assert.IsTrue(preload.IsCanceled);
+            }
         }
 
         [Test]

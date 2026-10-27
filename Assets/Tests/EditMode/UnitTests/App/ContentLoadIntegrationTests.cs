@@ -2,10 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
+using Rebellion.Generation;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -207,6 +210,92 @@ namespace Rebellion.Tests.App
             yield return null;
             AppBootstrap restored = AppBootstrap.EnsureExists(operation.Pack);
             AssertCutscenePlayback(restored);
+        }
+
+        [UnityTest]
+        public IEnumerator ActivatePresentationAsync_ApplicationDestroyedDuringActivation_CancelsPendingInitialization()
+        {
+            yield return AssertActivationCanceled(destroyApplication: true);
+        }
+
+        [UnityTest]
+        public IEnumerator ActivatePresentationAsync_SceneDestroyedDuringActivation_CancelsPendingInitialization()
+        {
+            yield return AssertActivationCanceled(destroyApplication: false);
+        }
+
+        /// <summary>
+        /// Verifies that a caller-owned scene lifetime cancels pending strategy activation.
+        /// </summary>
+        /// <param name="destroyApplication">Whether to destroy the application or the strategy scene root.</param>
+        /// <returns>The cancellation regression sequence.</returns>
+        private IEnumerator AssertActivationCanceled(bool destroyApplication)
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            Task preload = Task.WhenAll(
+                bootstrap.InitializeMainMenuContentAsync(),
+                bootstrap.InitializeStrategyContentAsync()
+            );
+            while (!preload.IsCompleted)
+                yield return null;
+            preload.GetAwaiter().GetResult();
+
+            ContentPack pack = bootstrap.GetContentPack();
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.GalaxySize = GameSize.Small;
+            GameRoot game = new GameBuilder(summary, pack.GameData).Build();
+            GameRuntime runtime = bootstrap.GetRuntime();
+            Rebellion.Simulation.GameSession session = runtime.StartGame(game);
+            ContentAssets assets = bootstrap.GetContentAssets();
+            GameObject root = Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab"
+                )
+            );
+            try
+            {
+                root.GetComponentInChildren<GameFlowController>(true).enabled = false;
+                DisableRendering(root);
+                StrategyController controller = root.GetComponentInChildren<StrategyController>(
+                    true
+                );
+                UIContext context = new UIContext(
+                    game,
+                    new FactionThemeLibrary(pack.GameData.FactionThemes),
+                    new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
+                    assets.GetTexture,
+                    assets.GetTextureContentBounds
+                );
+                using CancellationTokenSource cancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(
+                        controller.destroyCancellationToken,
+                        bootstrap.destroyCancellationToken
+                    );
+                controller.Initialize(
+                    session,
+                    runtime.GetActiveGameManager(),
+                    runtime,
+                    context,
+                    cancellation.Token
+                );
+
+                Task activation = controller.ActivatePresentationAsync(startMusic: false);
+                if (destroyApplication)
+                    DestroyApplication();
+                else
+                    Object.Destroy(root);
+
+                float deadline = Time.realtimeSinceStartup + 5f;
+                while (!activation.IsCompleted && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+
+                Assert.IsTrue(activation.IsCanceled, activation.Exception?.ToString());
+            }
+            finally
+            {
+                if (root != null)
+                    Object.Destroy(root);
+            }
         }
 
         /// <summary>
