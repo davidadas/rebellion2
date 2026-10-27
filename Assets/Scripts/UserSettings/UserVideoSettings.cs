@@ -64,7 +64,7 @@ public sealed class UserVideoSettings
     public const int DefaultQualityLevel = 5;
     public int ResolutionWidth;
     public int ResolutionHeight;
-    public int FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
+    public int FullScreenMode = (int)UnityFullScreenMode.FullScreenWindow;
     public int QualityLevel = DefaultQualityLevel;
     public bool GraphicsPresetCustomized;
     public int AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
@@ -94,8 +94,13 @@ public sealed class UserVideoSettings
             ResolutionWidth = 0;
             ResolutionHeight = 0;
         }
-        if (!Enum.IsDefined(typeof(UnityFullScreenMode), FullScreenMode))
-            FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
+        if (
+            FullScreenMode != (int)UnityFullScreenMode.FullScreenWindow
+            && FullScreenMode != (int)UnityFullScreenMode.Windowed
+        )
+        {
+            FullScreenMode = (int)UnityFullScreenMode.FullScreenWindow;
+        }
         QualityLevel = Math.Clamp(QualityLevel, 0, DefaultQualityLevel);
         if (!Enum.IsDefined(typeof(UserAntiAliasingMode), AntiAliasingMode))
             AntiAliasingMode = (int)UserAntiAliasingMode.Off;
