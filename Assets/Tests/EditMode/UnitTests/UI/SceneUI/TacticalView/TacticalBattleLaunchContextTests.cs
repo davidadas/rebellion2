@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -54,8 +54,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     expected,
                     participant
                         .GetCombatants()
-                        .Select(combatant => combatant.GetUnit())
-                        .OfType<CapitalShip>()
+                        .Select(combatant => combatant.Data)
+                        .Where(ship => ship.Kind == CombatUnitKind.CapitalShip)
                         .Select(ship => ship.TypeID)
                 );
             }
@@ -73,7 +73,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .GetParticipants()
                     .SelectMany(participant => participant.GetCombatants())
                     .Any(combatant =>
-                        combatant.GetUnit() is CapitalShip { CanDestroyPlanets: true }
+                        TestContent.Data.CapitalShips.Any(template =>
+                            template.CanDestroyPlanets && template.TypeID == combatant.Data.TypeID
+                        )
                     )
             );
         }
@@ -97,22 +99,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .ToArray();
                 CombatUnit[] squadrons = participant
                     .GetCombatants()
-                    .Where(combatant => combatant.GetUnit() is Starfighter)
+                    .Where(combatant => combatant.Data.Kind == CombatUnitKind.Starfighter)
                     .ToArray();
                 CollectionAssert.AreEquivalent(
                     expected.Select(ship => ship.TypeID),
-                    squadrons.Select(combatant => combatant.GetUnit().TypeID).Distinct()
+                    squadrons.Select(combatant => combatant.Data.TypeID).Distinct()
                 );
                 foreach (Starfighter template in expected)
                 {
                     CombatUnit[] copies = squadrons
-                        .Where(combatant => combatant.GetUnit().TypeID == template.TypeID)
+                        .Where(combatant => combatant.Data.TypeID == template.TypeID)
                         .ToArray();
                     Assert.That(
-                        copies.Select(combatant => (Starfighter)combatant.GetUnit()),
-                        Has.All.Matches<Starfighter>(fighter =>
-                            fighter.CurrentSquadronSize == template.CurrentSquadronSize
-                            && fighter.MaxSquadronSize == template.MaxSquadronSize
+                        copies,
+                        Has.All.Matches<CombatUnit>(fighter =>
+                            fighter.Condition.CurrentSquadronSize == template.CurrentSquadronSize
+                            && fighter.Data.MaxSquadronSize == template.MaxSquadronSize
                         )
                     );
                 }
@@ -132,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 CombatUnit[] combatants = participant.GetCombatants().ToArray();
                 foreach (
                     CombatUnit carrier in combatants.Where(combatant =>
-                        combatant.GetUnit() is CapitalShip ship
+                        combatant.Data is { Kind: CombatUnitKind.CapitalShip } ship
                         && ship.GetStarfighterCapacity() > 0
                         && ship.GetComponents()
                             .OfType<Rebellion.Game.ShipComponents.StarfighterBay>()
@@ -140,11 +142,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     )
                 )
                 {
-                    CapitalShip ship = (CapitalShip)carrier.GetUnit();
+                    CombatUnitData ship = carrier.Data;
                     Assert.That(
                         combatants.Count(combatant =>
-                            combatant.GetUnit() is Starfighter
-                            && combatant.CarrierSourceUnitInstanceID == carrier.SourceUnitInstanceID
+                            combatant.Data.Kind == CombatUnitKind.Starfighter
+                            && combatant.Flight.CarrierSourceUnitInstanceID
+                                == carrier.SourceUnitInstanceID
                         ),
                         Is.EqualTo(ship.GetStarfighterCapacity())
                     );
@@ -175,9 +178,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     participant
                         .GetCombatants()
                         .Count(combatant =>
-                            combatant.GetUnit().TypeID == template.TypeID
-                            && string.IsNullOrWhiteSpace(combatant.CarrierSourceUnitInstanceID)
-                            && combatant.FlightState == FighterFlightState.Deployed
+                            combatant.Data.TypeID == template.TypeID
+                            && string.IsNullOrWhiteSpace(
+                                combatant.Flight.CarrierSourceUnitInstanceID
+                            )
+                            && combatant.Flight.Phase == FighterFlightState.Deployed
                         ),
                     Is.EqualTo(1)
                 );
@@ -195,15 +200,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 .First();
             foreach (CombatUnit fighter in participant.GetCombatants())
             {
-                if (string.IsNullOrWhiteSpace(fighter.CarrierSourceUnitInstanceID))
+                if (string.IsNullOrWhiteSpace(fighter.Flight.CarrierSourceUnitInstanceID))
                     continue;
-                Assert.That(fighter.FlightState, Is.EqualTo(FighterFlightState.Docked));
+                Assert.That(fighter.Flight.Phase, Is.EqualTo(FighterFlightState.Docked));
                 Assert.That(
                     participant
                         .GetCombatants()
                         .Any(unit =>
-                            unit.GetUnit() is CapitalShip
-                            && unit.SourceUnitInstanceID == fighter.CarrierSourceUnitInstanceID
+                            unit.Data.Kind == CombatUnitKind.CapitalShip
+                            && unit.SourceUnitInstanceID
+                                == fighter.Flight.CarrierSourceUnitInstanceID
                         ),
                     Is.True
                 );
@@ -222,14 +228,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 CombatUnit[] carried = participant
                     .GetCombatants()
                     .Where(combatant =>
-                        !string.IsNullOrWhiteSpace(combatant.CarrierSourceUnitInstanceID)
+                        !string.IsNullOrWhiteSpace(combatant.Flight.CarrierSourceUnitInstanceID)
                     )
                     .ToArray();
                 Assert.That(carried, Is.Not.Empty);
                 Assert.That(
                     carried,
                     Has.All.Matches<CombatUnit>(combatant =>
-                        combatant.FlightState == FighterFlightState.Deployed
+                        combatant.Flight.Phase == FighterFlightState.Deployed
                     )
                 );
             }
@@ -275,11 +281,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .ToArray();
                 Officer[] actual = participant
                     .GetCombatants()
-                    .SelectMany(combatant =>
-                        combatant.GetUnit() is CapitalShip ship
-                            ? ship.GetChildren<Officer>(includeDisabled: true)
-                            : Array.Empty<Officer>()
-                    )
+                    .Where(combatant => combatant.Data.Kind == CombatUnitKind.CapitalShip)
+                    .SelectMany(combatant => combatant.Officers)
                     .ToArray();
 
                 CollectionAssert.AreEquivalent(
@@ -288,7 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 );
                 Assert.That(
                     actual,
-                    Has.All.Matches<Officer>(officer => officer.ParentNode is CapitalShip)
+                    Has.All.Matches<Officer>(officer =>
+                        officer.OwnerInstanceID == participant.FactionInstanceID
+                    )
                 );
                 Assert.That(
                     actual.Select(officer => officer.ParentNode).Distinct().Count(),

@@ -2,9 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Assigns formation-preserving destinations and advances saved battle positions without presentation dependencies.
@@ -78,8 +77,8 @@ namespace Rebellion.Simulation.Tactical
             );
             foreach (CombatUnit unit in ordered)
             {
-                unit.MoveDestination = FromVector(ToVector(unit.Position) + offset);
-                unit.MoveSpeedLimit = speedLimit;
+                unit.MoveOrder.Destination = FromVector(ToVector(unit.Position) + offset);
+                unit.MoveOrder.SpeedLimit = speedLimit;
             }
             return true;
         }
@@ -102,8 +101,8 @@ namespace Rebellion.Simulation.Tactical
                 throw new ArgumentNullException(nameof(selection));
             foreach (CombatUnit unit in GetControlledUnits(battle, selection, factionInstanceID))
             {
-                unit.MoveDestination = null;
-                unit.MoveSpeedLimit = null;
+                unit.MoveOrder.Destination = null;
+                unit.MoveOrder.SpeedLimit = null;
             }
         }
 
@@ -121,28 +120,28 @@ namespace Rebellion.Simulation.Tactical
             if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(deltaTime));
             if (
-                unit.MoveDestination == null
+                unit.MoveOrder.Destination == null
                 || unit.HasRetreated
                 || deltaTime == 0f
                 || (
-                    unit.FlightState != FighterFlightState.Deployed
-                    && unit.FlightState != FighterFlightState.Returning
+                    unit.Flight.Phase != FighterFlightState.Deployed
+                    && unit.Flight.Phase != FighterFlightState.Returning
                 )
             )
                 return;
             float speed = GetSpeed(unit);
-            if (unit.MoveSpeedLimit.HasValue)
-                speed = Math.Min(speed, Math.Max(0f, unit.MoveSpeedLimit.Value));
+            if (unit.MoveOrder.SpeedLimit.HasValue)
+                speed = Math.Min(speed, Math.Max(0f, unit.MoveOrder.SpeedLimit.Value));
             if (speed <= 0f)
                 return;
             Vector3 position = ToVector(unit.Position);
-            Vector3 destination = ToVector(unit.MoveDestination);
+            Vector3 destination = ToVector(unit.MoveOrder.Destination);
             Vector3 displacement = destination - position;
             float distance = displacement.Length();
             if (distance == 0f)
             {
-                unit.MoveDestination = null;
-                unit.MoveSpeedLimit = null;
+                unit.MoveOrder.Destination = null;
+                unit.MoveOrder.SpeedLimit = null;
                 return;
             }
             Vector3 forward = displacement / distance;
@@ -165,10 +164,9 @@ namespace Rebellion.Simulation.Tactical
             Vector3 tangent = Vector3.Normalize(
                 Vector3.Cross(Vector3.Normalize(axis), currentForward)
             );
-            float turnRadiansPerSpeedPoint =
-                unit.GetUnit() is CapitalShip
-                    ? _turnRadiansPerSpeedPoint * _capitalShipTurnSpeedMultiplier
-                    : _turnRadiansPerSpeedPoint;
+            float turnRadiansPerSpeedPoint = unit.Data is { Kind: CombatUnitKind.CapitalShip }
+                ? _turnRadiansPerSpeedPoint * _capitalShipTurnSpeedMultiplier
+                : _turnRadiansPerSpeedPoint;
             float radius = 1f / turnRadiansPerSpeedPoint;
             (double angle, double length) = GetTurnArc(
                 displacement,
@@ -252,8 +250,8 @@ namespace Rebellion.Simulation.Tactical
             if (travel >= distance)
             {
                 SetVector(unit.Position, destination);
-                unit.MoveDestination = null;
-                unit.MoveSpeedLimit = null;
+                unit.MoveOrder.Destination = null;
+                unit.MoveOrder.SpeedLimit = null;
             }
             else
                 SetVector(unit.Position, position + displacement / distance * (float)travel);
@@ -265,17 +263,7 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="unit">The persistent battle unit.</param>
         /// <returns>The available movement speed, or zero when the unit cannot move.</returns>
         public static float GetSpeed(CombatUnit unit) =>
-            unit.GetUnit() switch
-            {
-                CapitalShip ship when ship.MaxHullStrength > 0 && ship.CurrentHullStrength <= 0 =>
-                    0f,
-                Starfighter fighter
-                    when fighter.CurrentSquadronSize <= 0
-                        || (fighter.MaxHullStrength > 0 && fighter.CurrentHullStrength <= 0) => 0f,
-                CapitalShip ship => ship.GetSublightSpeed(),
-                Starfighter fighter => fighter.GetSublightSpeed(),
-                _ => 0f,
-            };
+            unit.IsAlive ? unit.Data.GetSublightSpeed() : 0f;
 
         /// <summary>
         /// Resolves selected non-retreated members through the battle's participant ownership boundary.
@@ -307,7 +295,7 @@ namespace Rebellion.Simulation.Tactical
                 foreach (CombatUnit unit in participant.GetCombatants())
                     if (
                         !unit.HasRetreated
-                        && unit.FlightState == FighterFlightState.Deployed
+                        && unit.Flight.Phase == FighterFlightState.Deployed
                         && selected.Remove(unit)
                     )
                         units.Add(unit);

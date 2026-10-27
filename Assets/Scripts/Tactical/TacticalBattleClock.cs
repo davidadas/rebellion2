@@ -1,6 +1,6 @@
 using System;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Identifies the player-selected rate at which a tactical battle advances.

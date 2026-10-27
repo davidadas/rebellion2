@@ -6,10 +6,10 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEngine;
 
-namespace Rebellion.Tests.Simulation.Tactical
+namespace Rebellion.Tests.Tactical
 {
     [TestFixture]
     public sealed class FleetDeploymentPlannerTests
@@ -41,17 +41,17 @@ namespace Rebellion.Tests.Simulation.Tactical
             FleetDeploymentPlanner.Deploy(battle, map);
 
             CombatUnit[] capitals = GetCombatants(battle)
-                .Where(unit => unit.GetUnit() is CapitalShip)
+                .Where(unit => unit.Data.Kind == CombatUnitKind.CapitalShip)
                 .ToArray();
             CombatUnit[] fighters = GetCombatants(battle)
-                .Where(unit => unit.GetUnit() is Starfighter)
+                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
                 .ToArray();
             Vector3 forward = ToVector(capitals[0].Forward);
             float capitalFront = capitals.Max(unit =>
-                Vector3.Dot(ToVector(unit.Position), forward) + unit.GetUnit().ModelSize.Depth / 2f
+                Vector3.Dot(ToVector(unit.Position), forward) + unit.Data.ModelSize.Depth / 2f
             );
             float fighterRear = fighters.Min(unit =>
-                Vector3.Dot(ToVector(unit.Position), forward) - unit.GetUnit().ModelSize.Depth / 2f
+                Vector3.Dot(ToVector(unit.Position), forward) - unit.Data.ModelSize.Depth / 2f
             );
             Assert.That(fighterRear - capitalFront, Is.GreaterThanOrEqualTo(18f));
         }
@@ -64,10 +64,10 @@ namespace Rebellion.Tests.Simulation.Tactical
             FleetDeploymentPlanner.Deploy(battle, CreateMap());
 
             CombatUnit[] capitals = GetCombatants(battle)
-                .Where(unit => unit.GetUnit() is CapitalShip)
+                .Where(unit => unit.Data.Kind == CombatUnitKind.CapitalShip)
                 .ToArray();
             CombatUnit[] fighters = GetCombatants(battle)
-                .Where(unit => unit.GetUnit() is Starfighter)
+                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
                 .ToArray();
             float capitalDepth = capitals[0].Position.Z;
             float fighterDepth = fighters[0].Position.Z;
@@ -103,7 +103,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             ActiveBattle battle = CreateBattle(2, 4, 12);
             FleetDeploymentPlanner.Deploy(battle, CreateMap());
             Bounds[] groups = GetCombatants(battle)
-                .Where(unit => unit.GetUnit() is Starfighter)
+                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
                 .GroupBy(unit => unit.SourceUnitInstanceID)
                 .Select(group => GetGroupBounds(group))
                 .ToArray();
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         public void Deploy_MissingDimensions_RejectsInsteadOfInventingSize()
         {
             ActiveBattle battle = CreateBattle(1, 0, 0);
-            GetCombatants(battle).Single().GetUnit().ModelSize = null;
+            GetCombatants(battle).Single().Data.ModelSize = null;
 
             Assert.Throws<ArgumentException>(() =>
                 FleetDeploymentPlanner.Deploy(battle, CreateMap())
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         {
             ActiveBattle battle = CreateBattle(2, 0, 0);
             CombatUnit unit = GetCombatants(battle).Last();
-            unit.GetUnit().ModelSize.Width = width;
+            unit.Data.ModelSize.Width = width;
             BattleVector3 initial = unit.Position;
 
             Assert.Throws<ArgumentException>(() =>
@@ -377,7 +377,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         /// <returns>The world-aligned hull envelope.</returns>
         private static Bounds GetHull(CombatUnit unit)
         {
-            ModelDimensions size = unit.GetUnit().ModelSize;
+            ModelDimensions size = unit.Data.ModelSize;
             Quaternion rotation = Quaternion.LookRotation(ToVector(unit.Forward));
             Vector3 right = rotation * Vector3.right * size.Width;
             Vector3 up = rotation * Vector3.up * size.Height;
@@ -428,13 +428,13 @@ namespace Rebellion.Tests.Simulation.Tactical
                 Quaternion inverse = Quaternion.Inverse(
                     Quaternion.LookRotation(ToVector(units[first].Forward))
                 );
-                ModelDimensions size = units[first].GetUnit().ModelSize;
+                ModelDimensions size = units[first].Data.ModelSize;
                 for (int second = first + 1; second < units.Count; second++)
                 {
                     Vector3 delta =
                         inverse
                         * (ToVector(units[second].Position) - ToVector(units[first].Position));
-                    ModelDimensions other = units[second].GetUnit().ModelSize;
+                    ModelDimensions other = units[second].Data.ModelSize;
                     Assert.IsTrue(
                         Mathf.Abs(delta.x) >= (size.Width + other.Width) / 2f - 0.001f
                             || Mathf.Abs(delta.y) >= (size.Height + other.Height) / 2f - 0.001f

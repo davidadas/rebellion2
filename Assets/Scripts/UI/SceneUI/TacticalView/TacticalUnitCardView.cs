@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -137,26 +136,13 @@ public sealed class TacticalUnitCardView
         for (int i = 0; i < _combatants.Count; i++)
         {
             CombatUnit combatant = _combatants[i];
-            int memberHull;
-            int memberMaximumHull;
-            int memberMaximumShields;
-            if (combatant.GetUnit() is CapitalShip ship)
-            {
-                memberHull = ship.CurrentHullStrength;
-                memberMaximumHull = ship.MaxHullStrength;
-                memberMaximumShields = ship.MaxShieldStrength;
-            }
-            else
-            {
-                Starfighter fighter = (Starfighter)combatant.GetUnit();
-                memberHull = fighter.CurrentHullStrength;
-                memberMaximumHull = fighter.MaxHullStrength;
-                memberMaximumShields = fighter.ShieldStrength;
-            }
+            int memberHull = combatant.Condition.CurrentHullStrength;
+            int memberMaximumHull = combatant.Data.MaxHullStrength;
+            int memberMaximumShields = combatant.Data.MaxShieldStrength;
             hull += memberHull;
             maximumHull += memberMaximumHull;
             maximumShields += memberMaximumShields;
-            shields += combatant.CurrentShieldStrength;
+            shields += combatant.Condition.CurrentShieldStrength;
             float memberHullFraction =
                 memberMaximumHull > 0 ? Mathf.Clamp01((float)memberHull / memberMaximumHull) : 0f;
             hullFraction += memberHullFraction;
@@ -167,9 +153,10 @@ public sealed class TacticalUnitCardView
                     memberHullFraction
                 );
             shieldFraction +=
-                memberMaximumShields > 0 && combatant.CurrentShieldStrength.HasValue
+                memberMaximumShields > 0 && combatant.Condition.CurrentShieldStrength.HasValue
                     ? Mathf.Clamp01(
-                        (float)combatant.CurrentShieldStrength.Value / memberMaximumShields
+                        (float)combatant.Condition.CurrentShieldStrength.Value
+                            / memberMaximumShields
                     )
                     : 0f;
         }

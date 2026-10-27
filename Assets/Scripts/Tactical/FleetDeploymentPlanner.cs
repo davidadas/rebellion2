@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Places a new battle's fleets inside their assigned map regions before presentation begins.
@@ -139,8 +138,11 @@ namespace Rebellion.Simulation.Tactical
             );
             foreach (CombatUnit combatant in participant.GetCombatants())
             {
-                BaseSceneNode unit = combatant?.GetUnit();
-                if (unit is not CapitalShip && unit is not Starfighter)
+                CombatUnitData unit = combatant?.Data;
+                if (
+                    unit == null
+                    || unit.Kind is not (CombatUnitKind.CapitalShip or CombatUnitKind.Starfighter)
+                )
                     throw new ArgumentException(
                         "Deployment requires capital ships or fighters.",
                         nameof(participant)
@@ -163,7 +165,7 @@ namespace Rebellion.Simulation.Tactical
                     _maximumClearance
                 );
                 Ship ship = new Ship(combatant, size + new Vector3(clearance * 2f));
-                if (unit is CapitalShip)
+                if (unit.Kind == CombatUnitKind.CapitalShip)
                     capitals.Add(new Group(combatant.InstanceID, new List<Ship> { ship }));
                 else
                 {

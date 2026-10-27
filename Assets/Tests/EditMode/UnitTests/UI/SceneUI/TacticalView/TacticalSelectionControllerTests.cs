@@ -5,7 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -78,10 +78,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
                 CombatUnit enemy = AddHull(new Vector3(0f, 10f, 0f));
                 CombatUnit carried = AddHull(new Vector3(0f, -10f, 0f));
-                left.GetUnit().OwnerInstanceID = "PLAYER";
-                right.GetUnit().OwnerInstanceID = "PLAYER";
-                enemy.GetUnit().OwnerInstanceID = "ENEMY";
-                carried.GetUnit().OwnerInstanceID = "PLAYER";
+                left.Data.OwnerInstanceID = "PLAYER";
+                right.Data.OwnerInstanceID = "PLAYER";
+                enemy.Data.OwnerInstanceID = "ENEMY";
+                carried.Data.OwnerInstanceID = "PLAYER";
                 _presentations[carried].gameObject.SetActive(false);
                 _controller.Initialize(_camera, _presentations, "PLAYER");
 
@@ -194,14 +194,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void SelectAt_VisibleShipInsideLargerProjectedEnvelope_SelectsVisibleShip()
         {
             CombatUnit foreground = AddHull(Vector3.zero);
-            foreground.GetUnit().ModelSize = new ModelDimensions
+            foreground.Data.ModelSize = new ModelDimensions
             {
                 Width = 30f,
                 Height = 20f,
                 Depth = 10f,
             };
             CombatUnit visible = AddHull(new Vector3(8f, 0f, 20f));
-            visible.GetUnit().ModelSize = new ModelDimensions
+            visible.Data.ModelSize = new ModelDimensions
             {
                 Width = 4f,
                 Height = 4f,
@@ -254,7 +254,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void SelectAt_EnemyHull_DoesNotSelectCombatant()
         {
             CombatUnit combatant = AddHull(Vector3.zero);
-            combatant.GetUnit().OwnerInstanceID = "ENEMY";
+            combatant.Data.OwnerInstanceID = "ENEMY";
             _controller.Initialize(_camera, _presentations, "PLAYER");
 
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void SelectAt_RotatedLongHull_UsesItsOrientedEnvelope()
         {
             CombatUnit combatant = AddHull(Vector3.zero);
-            combatant.GetUnit().ModelSize = new ModelDimensions
+            combatant.Data.ModelSize = new ModelDimensions
             {
                 Width = 2f,
                 Height = 2f,
@@ -633,7 +633,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
                 CombatUnit unit = AddHull(Vector3.zero);
-                unit.GetUnit().OwnerInstanceID = "PLAYER";
+                unit.Data.OwnerInstanceID = "PLAYER";
                 _controller.Initialize(_camera, _presentations, "PLAYER");
                 _camera
                     .GetComponent<TacticalViewCameraController>()
@@ -699,8 +699,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
                 CombatUnit friendly = AddHull(new Vector3(-10f, 0f, 0f));
                 CombatUnit enemy = AddHull(new Vector3(10f, 0f, 0f));
-                friendly.GetUnit().OwnerInstanceID = "PLAYER";
-                enemy.GetUnit().OwnerInstanceID = "ENEMY";
+                friendly.Data.OwnerInstanceID = "PLAYER";
+                enemy.Data.OwnerInstanceID = "ENEMY";
                 _controller.Initialize(_camera, _presentations, "PLAYER");
                 _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[friendly].position));
                 InputSystem.QueueStateEvent(
@@ -812,8 +812,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         {
             CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
             CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-            left.GetUnit().OwnerInstanceID = "PLAYER";
-            right.GetUnit().OwnerInstanceID = "PLAYER";
+            left.Data.OwnerInstanceID = "PLAYER";
+            right.Data.OwnerInstanceID = "PLAYER";
             _controller.Initialize(_camera, _presentations, "PLAYER");
             _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[left].position));
             _controller.AssignControlGroup(0);
@@ -828,7 +828,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void AssignControlGroup_EnemyInspection_DoesNotCreateCommandGroup()
         {
             CombatUnit enemy = AddHull(Vector3.zero);
-            enemy.GetUnit().OwnerInstanceID = "ENEMY";
+            enemy.Data.OwnerInstanceID = "ENEMY";
             _controller.Initialize(_camera, _presentations, "PLAYER");
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
@@ -1006,9 +1006,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
             CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
             CombatUnit other = AddHull(new Vector3(0f, 10f, 0f));
-            left.GetUnit().TypeID = "CRUISER";
-            right.GetUnit().TypeID = "CRUISER";
-            other.GetUnit().TypeID = "DESTROYER";
+            left.Data.TypeID = "CRUISER";
+            right.Data.TypeID = "CRUISER";
+            other.Data.TypeID = "DESTROYER";
             _controller.Initialize(_camera, _presentations);
             _controller.SelectWithin(_camera.pixelRect);
             TacticalUnitCardView group = null;
@@ -1039,8 +1039,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             SetUp();
             CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
             CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-            left.GetUnit().TypeID = "CRUISER";
-            right.GetUnit().TypeID = "CRUISER";
+            left.Data.TypeID = "CRUISER";
+            right.Data.TypeID = "CRUISER";
             _controller.Initialize(_camera, _presentations);
             _controller.SelectWithin(_camera.pixelRect);
             TacticalUnitCardView group = _instance.GetComponentInChildren<TacticalUnitCardView>();

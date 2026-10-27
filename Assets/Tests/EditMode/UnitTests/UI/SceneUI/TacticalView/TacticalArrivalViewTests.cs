@@ -212,7 +212,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         {
             CombatUnit first = AddUnit();
             CombatUnit second = AddUnit();
-            second.GetUnit().OwnerInstanceID = "OTHER_FACTION";
+            second.Data.OwnerInstanceID = "OTHER_FACTION";
 
             _view = CreateView();
 
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Z = 20f,
             };
             unit.Forward = new BattleVector3 { Z = forwardZ };
-            unit.GetUnit().ModelSize = new ModelDimensions
+            unit.Data.ModelSize = new ModelDimensions
             {
                 Width = 4f,
                 Height = 2f,

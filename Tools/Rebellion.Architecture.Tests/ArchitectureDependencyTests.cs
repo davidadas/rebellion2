@@ -39,7 +39,7 @@ namespace Rebellion.Architecture.Tests
         {
             IArchRule rule = Types()
                 .That()
-                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Simulation)(?:\\.|$)")
+                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Simulation|Tactical)(?:\\.|$)")
                 .Should()
                 .NotDependOnAny(
                     Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")

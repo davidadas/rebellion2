@@ -111,10 +111,10 @@ namespace Rebellion.Game.Combat
         public string SourceInstanceID { get; set; }
         public string TargetInstanceID { get; set; }
         public string OwnerInstanceID { get; set; }
-        public Rebellion.Game.ShipComponents.WeaponData Weapon { get; set; }
+        public Rebellion.Game.ShipComponents.ProjectileData Projectile { get; set; }
+        public float Range { get; set; }
         public BattleVector3 Position { get; set; }
         public BattleVector3 Direction { get; set; }
         public float DistanceTraveled { get; set; }
-        public float RemainingEffectSeconds { get; set; }
     }
 }

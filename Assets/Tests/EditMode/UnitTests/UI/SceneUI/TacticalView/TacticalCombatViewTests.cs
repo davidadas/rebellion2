@@ -4,7 +4,7 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -58,15 +58,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         Weapon = new WeaponData
                         {
                             WeaponType = HardpointWeaponType.LaserCannon,
-                            Damage = 10f,
                             Range = 20f,
                             FireIntervalSeconds = 1f,
-                            ProjectileSpeed = 10f,
-                            ProjectileLength = 1f,
-                            ProjectileWidth = 0.1f,
-                            Red = 0.18f,
-                            Green = 1f,
-                            Blue = 0.3f,
+                            Projectile = new ProjectileData
+                            {
+                                Damage = 10f,
+                                Speed = 10f,
+                                Length = 1f,
+                                Width = 0.1f,
+                                ColorHex = "#2EFF4D",
+                            },
                         },
                     }
                 );
@@ -155,9 +156,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 );
                 Assert.That(
                     line.sharedMaterial.GetColor("_Color"),
-                    Is.EqualTo(new Color(0.18f, 1f, 0.3f))
+                    Is.EqualTo((Color)new Color32(46, 255, 77, 255))
                 );
             }
+        }
+
+        [Test]
+        public void Advance_Hitscan_RendersAndExpiresBeamWithoutSavedProjectile()
+        {
+            CombatUnit shooter = _battle.GetParticipants()[0].GetCombatants()[0];
+            ProjectileData projectile = shooter
+                .Data.GetHardpointGroups()[0]
+                .GetHardpoints()[0]
+                .Weapon.Projectile;
+            projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;
+            projectile.EffectDurationSeconds = 0.2f;
+
+            _combat.Advance(1f / 64f);
+            _view.Advance(1f / 64f, false);
+
+            Assert.IsEmpty(_battle.Projectiles);
+            Assert.IsNotEmpty(_scene.GetComponentsInChildren<LineRenderer>());
+            _view.Advance(1f, false);
+            _view.Advance(1f / 64f, false);
+            Assert.IsEmpty(_scene.GetComponentsInChildren<LineRenderer>());
         }
 
         /// <summary>

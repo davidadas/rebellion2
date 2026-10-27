@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -87,12 +86,13 @@ public sealed class TacticalArrivalView : IDisposable
             {
                 if (
                     presentation.Key.HasRetreated
-                    || presentation.Key.FlightState != FighterFlightState.Deployed
-                    || presentation.Key.GetUnit() is Starfighter { Hyperdrive: <= 0 }
+                    || presentation.Key.Flight.Phase != FighterFlightState.Deployed
+                    || presentation.Key.Data
+                        is { Kind: CombatUnitKind.Starfighter, Hyperdrive: <= 0 }
                 )
                     continue;
                 Transform root = presentation.Value;
-                ModelDimensions size = presentation.Key.GetUnit().ModelSize;
+                ModelDimensions size = presentation.Key.Data.ModelSize;
                 float selectionRadius = Mathf.Max(
                     0.65f,
                     Mathf.Max(size.Width, Mathf.Max(size.Height, size.Depth)) * 0.63f

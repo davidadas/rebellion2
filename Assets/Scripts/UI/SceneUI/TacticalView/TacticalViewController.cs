@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 
@@ -45,13 +44,11 @@ public sealed class TacticalViewController : MonoBehaviour
     private CancellationTokenSource modelLoading;
     private readonly Dictionary<CombatUnit, Transform> combatantPresentations =
         new Dictionary<CombatUnit, Transform>();
-    private readonly TacticalBattleClock battleClock = new TacticalBattleClock();
+    private readonly TacticalBattleSession battleSession = new TacticalBattleSession();
     private TacticalSelectionController selectionController;
     private string viewerFactionInstanceID;
     private TacticalArrivalView arrivals;
-    private TacticalCarrierOperations carrierOperations;
     private TacticalFlightAudio flightAudio;
-    private TacticalCombat combat;
     private TacticalCombatView combatView;
     private readonly Dictionary<Hardpoint, TacticalCombat.Mount> weaponMounts =
         new Dictionary<Hardpoint, TacticalCombat.Mount>();
@@ -85,12 +82,12 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <summary>
     /// Gets the selected tactical-battle speed.
     /// </summary>
-    public TacticalBattleSpeed BattleSpeed => battleClock.Speed;
+    public TacticalBattleSpeed BattleSpeed => battleSession.Clock.Speed;
 
     /// <summary>
     /// Gets the multiplier currently applied to tactical-battle time.
     /// </summary>
-    public float BattleTimeScale => battleClock.TimeScale;
+    public float BattleTimeScale => battleSession.Clock.TimeScale;
 
     /// <summary>
     /// Verifies the authored tactical-scene references.
@@ -112,7 +109,7 @@ public sealed class TacticalViewController : MonoBehaviour
         if (GetComponent<TacticalSelectionController>() == null)
             throw new MissingComponentException($"{name} is missing its selection controller.");
         timeControls.SpeedRequested += HandleBattleSpeedRequested;
-        timeControls.Render(battleClock.Speed);
+        timeControls.Render(battleSession.Clock.Speed);
     }
 
     /// <summary>
@@ -122,8 +119,8 @@ public sealed class TacticalViewController : MonoBehaviour
     {
         flightAudio?.Advance(Time.unscaledDeltaTime);
         bool paused =
-            battleClock.IsPaused || GetComponent<TacticalMenuController>()?.IsOpen == true;
-        float battleDeltaTime = battleClock.ScaleDeltaTime(Time.unscaledDeltaTime);
+            battleSession.Clock.IsPaused || GetComponent<TacticalMenuController>()?.IsOpen == true;
+        float battleDeltaTime = battleSession.Clock.ScaleDeltaTime(Time.unscaledDeltaTime);
         if (arrivals?.Advance(battleDeltaTime, paused) == false)
         {
             arrivals.Dispose();
@@ -135,7 +132,7 @@ public sealed class TacticalViewController : MonoBehaviour
             return;
         }
         if (arrivals == null)
-            combat?.Advance(battleDeltaTime, AdvanceSimulation);
+            battleSession.Advance(battleDeltaTime);
         combatView?.Advance(battleDeltaTime, false);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
         {
@@ -158,24 +155,9 @@ public sealed class TacticalViewController : MonoBehaviour
     private void OnApplicationFocus(bool hasFocus)
     {
         if (hasFocus)
-            battleClock.Resume();
+            battleSession.Clock.Resume();
         else
-            battleClock.Suspend();
-    }
-
-    /// <summary>
-    /// Advances movement and carrier traffic on the combat simulation's fixed clock.
-    /// </summary>
-    /// <param name="deltaTime">The fixed tactical step in seconds.</param>
-    private void AdvanceSimulation(float deltaTime)
-    {
-        foreach (CombatUnit unit in combatantPresentations.Keys)
-            if (
-                (unit.GetUnit() is CapitalShip || unit.FlightState == FighterFlightState.Deployed)
-                && arrivals?.IsArriving(unit) != true
-            )
-                TacticalMovement.Advance(unit, deltaTime);
-        carrierOperations?.Advance(deltaTime);
+            battleSession.Clock.Suspend();
     }
 
     /// <summary>
@@ -203,7 +185,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="matchSpeed">Whether selected units should travel at their slowest shared speed.</param>
     private void RequestMove(Vector2 screenPosition, bool matchSpeed)
     {
-        carrierOperations?.CancelRecovery(
+        battleSession.Carriers?.CancelRecovery(
             selectionController.SelectedCombatants,
             viewerFactionInstanceID
         );
@@ -215,7 +197,7 @@ public sealed class TacticalViewController : MonoBehaviour
             if (
                 unit.HasRetreated
                 || !string.Equals(
-                    unit.GetUnit().OwnerInstanceID,
+                    unit.Data.OwnerInstanceID,
                     viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -251,7 +233,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void RequestStop()
     {
-        carrierOperations?.CancelRecovery(
+        battleSession.Carriers?.CancelRecovery(
             selectionController.SelectedCombatants,
             viewerFactionInstanceID
         );
@@ -274,17 +256,21 @@ public sealed class TacticalViewController : MonoBehaviour
         if (
             target == null
             || string.Equals(
-                target.GetUnit().OwnerInstanceID,
+                target.Data.OwnerInstanceID,
                 viewerFactionInstanceID,
                 StringComparison.Ordinal
             )
         )
             return;
-        carrierOperations?.CancelRecovery(
+        battleSession.Carriers?.CancelRecovery(
             selectionController.SelectedCombatants,
             viewerFactionInstanceID
         );
-        combat?.Attack(selectionController.SelectedCombatants, viewerFactionInstanceID, target);
+        battleSession.Combat?.Attack(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID,
+            target
+        );
         TacticalMovement.MoveTo(
             ActiveBattle,
             BattleMap.PlayableBounds,
@@ -308,32 +294,38 @@ public sealed class TacticalViewController : MonoBehaviour
         foreach (CombatUnit unit in selectionController.SelectedCombatants)
             if (
                 string.Equals(
-                    unit.GetUnit().OwnerInstanceID,
+                    unit.Data.OwnerInstanceID,
                     viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
             )
-                unit.AttackTargetInstanceID = null;
+                unit.Weapons.AttackTargetInstanceID = null;
     }
 
     /// <summary>
     /// Queues the selected friendly carrier's cargo or selected docked squadrons for departure.
     /// </summary>
     private void RequestLaunch() =>
-        carrierOperations.Launch(selectionController.SelectedCombatants, viewerFactionInstanceID);
+        battleSession.Carriers.Launch(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
 
     /// <summary>
     /// Recalls fighters belonging to the selected friendly carriers or squadrons.
     /// </summary>
     private void RequestRecall() =>
-        carrierOperations.Recall(selectionController.SelectedCombatants, viewerFactionInstanceID);
+        battleSession.Carriers.Recall(
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
 
     /// <summary>
     /// Sends the complete fighter selection to the eligible carrier chosen under the pointer.
     /// </summary>
     /// <param name="carrier">The targeted friendly carrier.</param>
     private void RequestDockAt(CombatUnit carrier) =>
-        carrierOperations.DockAt(
+        battleSession.Carriers.DockAt(
             selectionController.SelectedCombatants,
             carrier,
             viewerFactionInstanceID
@@ -412,7 +404,7 @@ public sealed class TacticalViewController : MonoBehaviour
             );
             combatView = new TacticalCombatView(
                 activeBattle,
-                combat,
+                battleSession.Combat,
                 battleRoot,
                 battleCamera,
                 bootstrap.GetAudioManager(),
@@ -421,7 +413,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 combatantPresentations,
                 shieldTemplate
             );
-            carrierOperations.SquadronLaunched += flightAudio.PlayLaunch;
+            battleSession.Carriers.SquadronLaunched += flightAudio.PlayLaunch;
             GetComponentInChildren<TacticalSelectionView>()
                 .ApplyTheme(theme.BattleHud, bootstrap.GetContentAssets());
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
@@ -515,9 +507,9 @@ public sealed class TacticalViewController : MonoBehaviour
                 )
             )
                 throw new InvalidOperationException(
-                    $"Tactical unit '{presentation.Key.GetUnit().TypeID}' has no loaded model geometry."
+                    $"Tactical unit '{presentation.Key.Data.TypeID}' has no loaded model geometry."
                 );
-            presentation.Key.GetUnit().ModelSize = new ModelDimensions
+            presentation.Key.Data.ModelSize = new ModelDimensions
             {
                 Width = bounds.size.x,
                 Height = bounds.size.y,
@@ -526,8 +518,7 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         if (deployFleet)
             FleetDeploymentPlanner.Deploy(activeBattle, battleMap);
-        carrierOperations = new TacticalCarrierOperations(activeBattle, carrierPaths);
-        combat = new TacticalCombat(activeBattle, weaponMounts);
+        battleSession.Initialize(activeBattle, weaponMounts, carrierPaths);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
         {
             presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
@@ -560,7 +551,7 @@ public sealed class TacticalViewController : MonoBehaviour
         selectionController.RecallRequested += RequestRecall;
         selectionController.DockRequested += RequestRecall;
         selectionController.DockAtRequested += RequestDockAt;
-        selectionController.BindCarrierOperations(carrierOperations);
+        selectionController.BindCarrierOperations(battleSession.Carriers);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
             combatantPresentations.Add(presentation.Key, presentation.Value);
         GetComponentInChildren<TacticalSelectionView>()
@@ -572,7 +563,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 GetComponent<TacticalSelectionController>().SelectedCombatants
             );
         GetComponentInChildren<TacticalSelectionView>()
-            .BindCarrierOperations(carrierOperations, this.viewerFactionInstanceID);
+            .BindCarrierOperations(battleSession.Carriers, this.viewerFactionInstanceID);
     }
 
     /// <summary>
@@ -602,7 +593,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="speed">The requested tactical-battle speed.</param>
     private void HandleBattleSpeedRequested(TacticalBattleSpeed speed)
     {
-        battleClock.SetSpeed(speed);
+        battleSession.Clock.SetSpeed(speed);
         timeControls.Render(speed);
     }
 
@@ -621,13 +612,13 @@ public sealed class TacticalViewController : MonoBehaviour
         CancellationToken cancellationToken
     )
     {
-        float scale = combatant.GetUnit().ModelScale;
+        float scale = combatant.Data.ModelScale;
         if (!(scale > 0f) || float.IsInfinity(scale))
             throw new InvalidOperationException(
                 "Tactical model scale must be finite and positive."
             );
         ContentModelInstance instance = await models.InstantiateAsync(
-            combatant.GetUnit().ModelPath,
+            combatant.Data.ModelPath,
             presentation,
             cancellationToken
         );
@@ -639,7 +630,7 @@ public sealed class TacticalViewController : MonoBehaviour
         modelInstances.Add(instance);
         instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
         ResolveWeaponMounts(combatant, presentation, instance.ModelRoot);
-        if (combatant.GetUnit() is CapitalShip carrier)
+        if (combatant.Data is { Kind: CombatUnitKind.CapitalShip } carrier)
         {
             List<System.Numerics.Vector3[]> paths = new();
             foreach (StarfighterBay bay in carrier.GetComponents().OfType<StarfighterBay>())
@@ -676,13 +667,12 @@ public sealed class TacticalViewController : MonoBehaviour
     {
         combatView?.Dispose();
         combatView = null;
-        combat = null;
         weaponMounts.Clear();
-        if (carrierOperations != null && flightAudio != null)
-            carrierOperations.SquadronLaunched -= flightAudio.PlayLaunch;
+        if (battleSession.Carriers != null && flightAudio != null)
+            battleSession.Carriers.SquadronLaunched -= flightAudio.PlayLaunch;
         flightAudio?.Dispose();
         flightAudio = null;
-        carrierOperations = null;
+        battleSession.Clear();
         carrierPaths.Clear();
         arrivals?.Dispose();
         arrivals = null;
@@ -712,7 +702,7 @@ public sealed class TacticalViewController : MonoBehaviour
                     : modelRoot.Find(hardpoint.ModelNodePath);
             if (!node)
                 throw new InvalidOperationException(
-                    $"Unknown weapon model node '{hardpoint.ModelNodePath}' on '{unit.GetUnit().TypeID}'."
+                    $"Unknown weapon model node '{hardpoint.ModelNodePath}' on '{unit.Data.TypeID}'."
                 );
             Vector3 position;
             Vector3 forward;
@@ -832,7 +822,7 @@ public sealed class TacticalViewController : MonoBehaviour
             {
                 if (!IsVisible(combatant))
                     continue;
-                ModelDimensions size = combatant.GetUnit().ModelSize;
+                ModelDimensions size = combatant.Data.ModelSize;
                 Quaternion rotation = Quaternion.LookRotation(
                     ToUnityVector(combatant.Forward).normalized
                 );
@@ -862,9 +852,9 @@ public sealed class TacticalViewController : MonoBehaviour
     private static bool IsVisible(CombatUnit unit) =>
         !unit.HasRetreated
         && TacticalCombat.IsAlive(unit)
-        && unit.FlightState != FighterFlightState.Docked
-        && unit.FlightState != FighterFlightState.Queued
-        && !(unit.FlightState == FighterFlightState.Launching && unit.FlightDelay > 0f);
+        && unit.Flight.Phase != FighterFlightState.Docked
+        && unit.Flight.Phase != FighterFlightState.Queued
+        && !(unit.Flight.Phase == FighterFlightState.Launching && unit.Flight.FlightDelay > 0f);
 
     /// <summary>
     /// Resolves the orbit pivot where the authored starting view crosses the participant's battle plane.
@@ -963,7 +953,7 @@ public sealed class TacticalViewController : MonoBehaviour
         if (combatant == null)
             throw new InvalidOperationException("A battle participant contains a null combatant.");
 
-        BaseSceneNode unit = combatant.GetUnit();
+        CombatUnitData unit = combatant.Data;
         if (unit == null)
             throw new InvalidOperationException("A combatant does not contain a battle unit.");
 

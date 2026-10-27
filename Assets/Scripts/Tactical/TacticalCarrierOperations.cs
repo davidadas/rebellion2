@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Owns carrier launch requests, clearance-spaced departures, and recovery on the battle clock.
@@ -45,7 +44,7 @@ namespace Rebellion.Simulation.Tactical
             );
             foreach (BattleParticipant participant in battle.GetParticipants())
             foreach (CombatUnit unit in participant.GetCombatants())
-                if (unit.GetUnit() is CapitalShip)
+                if (unit.Data is { Kind: CombatUnitKind.CapitalShip })
                 {
                     Carrier carrier = new Carrier(
                         unit,
@@ -60,13 +59,16 @@ namespace Rebellion.Simulation.Tactical
             foreach (CombatUnit fighter in participant.GetCombatants())
             {
                 if (
-                    fighter.GetUnit() is not Starfighter
-                    || string.IsNullOrEmpty(fighter.CarrierSourceUnitInstanceID)
+                    fighter.Data is not { Kind: CombatUnitKind.Starfighter }
+                    || string.IsNullOrEmpty(fighter.Flight.CarrierSourceUnitInstanceID)
                 )
                     continue;
                 if (
-                    !index.TryGetValue(fighter.CarrierSourceUnitInstanceID, out Carrier carrier)
-                    || carrier.Unit.GetUnit().OwnerInstanceID != fighter.GetUnit().OwnerInstanceID
+                    !index.TryGetValue(
+                        fighter.Flight.CarrierSourceUnitInstanceID,
+                        out Carrier carrier
+                    )
+                    || carrier.Unit.Data.OwnerInstanceID != fighter.Data.OwnerInstanceID
                 )
                     throw new ArgumentException(
                         "A carried fighter requires its own faction's carrier in the battle.",
@@ -76,25 +78,28 @@ namespace Rebellion.Simulation.Tactical
                 _assignments.Add(fighter, carrier);
                 if (
                     carrier.Bays.Length > 0
-                    && (fighter.FlightBayIndex < 0 || fighter.FlightBayIndex >= carrier.Bays.Length)
+                    && (
+                        fighter.Flight.FlightBayIndex < 0
+                        || fighter.Flight.FlightBayIndex >= carrier.Bays.Length
+                    )
                 )
                     throw new ArgumentException(
                         "A carried fighter references an unavailable bay.",
                         nameof(battle)
                     );
                 carrier.Squadrons.Add(fighter.SourceUnitInstanceID, fighter);
-                if (fighter.LaunchFormationOffset == null && carrier.Bays.Length > 0)
-                    fighter.FlightBayIndex = (carrier.Cargo.Count - 1) % carrier.Bays.Length;
-                fighter.LaunchFormationOffset ??= FromVector(
+                if (fighter.Flight.LaunchFormationOffset == null && carrier.Bays.Length > 0)
+                    fighter.Flight.FlightBayIndex = (carrier.Cargo.Count - 1) % carrier.Bays.Length;
+                fighter.Flight.LaunchFormationOffset ??= FromVector(
                     ToLocal(
                         carrier.Unit,
                         ToVector(fighter.Position) - ToVector(carrier.Unit.Position)
                     )
                 );
-                if (fighter.FlightState == FighterFlightState.Docked && carrier.Bays.Length > 0)
+                if (fighter.Flight.Phase == FighterFlightState.Docked && carrier.Bays.Length > 0)
                     SetVector(
                         fighter.Position,
-                        ToWorld(carrier.Unit, carrier.Bays[fighter.FlightBayIndex].Path[0])
+                        ToWorld(carrier.Unit, carrier.Bays[fighter.Flight.FlightBayIndex].Path[0])
                     );
             }
         }
@@ -132,9 +137,9 @@ namespace Rebellion.Simulation.Tactical
             foreach (CombatUnit unit in selection)
             {
                 if (
-                    unit.GetUnit() is not Starfighter
+                    unit.Data is not { Kind: CombatUnitKind.Starfighter }
                     || !IsControlled(unit, owner)
-                    || unit.FlightState != FighterFlightState.Deployed
+                    || unit.Flight.Phase != FighterFlightState.Deployed
                 )
                     return false;
                 if (!_assignments.TryGetValue(unit, out Carrier assigned) || assigned != carrier)
@@ -184,16 +189,16 @@ namespace Rebellion.Simulation.Tactical
                     _assignments.TryGetValue(unit, out Carrier assigned)
                     && assigned.Bays.Length > 0
                     && IsAlive(assigned.Unit)
-                    && unit.FlightState == FighterFlightState.Docked
-                    && ((Starfighter)unit.GetUnit()).GetSublightSpeed() > 0f
+                    && unit.Flight.Phase == FighterFlightState.Docked
+                    && unit.Data.GetSublightSpeed() > 0f
                 )
                     return true;
                 if (_carriers.TryGetValue(unit, out Carrier carrier) && carrier.Bays.Length > 0)
                     foreach (CombatUnit fighter in carrier.Cargo)
                         if (
                             IsAlive(fighter)
-                            && fighter.FlightState == FighterFlightState.Docked
-                            && ((Starfighter)fighter.GetUnit()).GetSublightSpeed() > 0f
+                            && fighter.Flight.Phase == FighterFlightState.Docked
+                            && fighter.Data.GetSublightSpeed() > 0f
                         )
                             return true;
             }
@@ -235,21 +240,21 @@ namespace Rebellion.Simulation.Tactical
                     _assignments.TryGetValue(unit, out Carrier assigned)
                     && assigned.Bays.Length > 0
                     && IsAlive(assigned.Unit)
-                    && unit.FlightState != FighterFlightState.Docked
-                    && unit.FlightState != FighterFlightState.Returning
-                    && unit.FlightState != FighterFlightState.Docking
-                    && !unit.RecallRequested
+                    && unit.Flight.Phase != FighterFlightState.Docked
+                    && unit.Flight.Phase != FighterFlightState.Returning
+                    && unit.Flight.Phase != FighterFlightState.Docking
+                    && !unit.Flight.RecallRequested
                 )
                     return true;
                 if (_carriers.TryGetValue(unit, out Carrier carrier) && carrier.Bays.Length > 0)
                     foreach (CombatUnit fighter in carrier.Cargo)
                         if (
                             IsAlive(fighter)
-                            && !fighter.RecallRequested
+                            && !fighter.Flight.RecallRequested
                             && (
-                                fighter.FlightState == FighterFlightState.Deployed
-                                || fighter.FlightState == FighterFlightState.Queued
-                                || fighter.FlightState == FighterFlightState.Launching
+                                fighter.Flight.Phase == FighterFlightState.Deployed
+                                || fighter.Flight.Phase == FighterFlightState.Queued
+                                || fighter.Flight.Phase == FighterFlightState.Launching
                             )
                         )
                             return true;
@@ -291,18 +296,18 @@ namespace Rebellion.Simulation.Tactical
             {
                 if (
                     !IsControlled(fighter, owner)
-                    || fighter.GetUnit() is not Starfighter
-                    || fighter.FlightState
+                    || fighter.Data is not { Kind: CombatUnitKind.Starfighter }
+                    || fighter.Flight.Phase
                         is not (FighterFlightState.Returning or FighterFlightState.Docking)
                 )
                     continue;
-                fighter.FlightState = FighterFlightState.Deployed;
-                fighter.RecallRequested = false;
-                fighter.FlightWaypointIndex = 0;
-                fighter.FlightSegmentDistance = 0f;
-                fighter.FlightDelay = 0f;
-                fighter.MoveDestination = null;
-                fighter.MoveSpeedLimit = null;
+                fighter.Flight.Phase = FighterFlightState.Deployed;
+                fighter.Flight.RecallRequested = false;
+                fighter.Flight.FlightWaypointIndex = 0;
+                fighter.Flight.FlightSegmentDistance = 0f;
+                fighter.Flight.FlightDelay = 0f;
+                fighter.MoveOrder.Destination = null;
+                fighter.MoveOrder.SpeedLimit = null;
                 changed = true;
             }
             if (changed)
@@ -334,32 +339,32 @@ namespace Rebellion.Simulation.Tactical
                 {
                     if (!IsAlive(fighter))
                         continue;
-                    Bay bay = carrier.Bays[fighter.FlightBayIndex];
-                    if (fighter.FlightState == FighterFlightState.Launching)
+                    Bay bay = carrier.Bays[fighter.Flight.FlightBayIndex];
+                    if (fighter.Flight.Phase == FighterFlightState.Launching)
                     {
                         AdvancePath(carrier, fighter, bay.Path, deltaTime, false);
-                        if (fighter.FlightState == FighterFlightState.Launching)
+                        if (fighter.Flight.Phase == FighterFlightState.Launching)
                             bay.Outbound++;
                     }
-                    else if (fighter.FlightState == FighterFlightState.Docking)
+                    else if (fighter.Flight.Phase == FighterFlightState.Docking)
                     {
                         AdvancePath(carrier, fighter, bay.Path, deltaTime, true);
-                        bay.Inbound |= fighter.FlightState == FighterFlightState.Docking;
+                        bay.Inbound |= fighter.Flight.Phase == FighterFlightState.Docking;
                     }
-                    if (fighter.FlightState == FighterFlightState.Returning)
+                    if (fighter.Flight.Phase == FighterFlightState.Returning)
                         bay.Returning.Add(fighter);
                     else if (
-                        fighter.FlightState == FighterFlightState.Docked
-                        || fighter.FlightState == FighterFlightState.Queued
+                        fighter.Flight.Phase == FighterFlightState.Docked
+                        || fighter.Flight.Phase == FighterFlightState.Queued
                     )
                         SetVector(fighter.Position, ToWorld(carrier.Unit, bay.Path[0]));
                 }
                 foreach (Bay bay in carrier.Bays)
                     AdvanceRecovery(carrier, bay, deltaTime);
-                if (carrier.Unit.LaunchQueue.Count == 0)
+                if (carrier.Unit.Carrier.LaunchQueue.Count == 0)
                     continue;
-                carrier.Unit.LaunchCountdown -= deltaTime;
-                if (carrier.Unit.LaunchCountdown > 0f)
+                carrier.Unit.Carrier.LaunchCountdown -= deltaTime;
+                if (carrier.Unit.Carrier.LaunchCountdown > 0f)
                     continue;
                 bool recovering = false;
                 foreach (Bay bay in carrier.Bays)
@@ -380,17 +385,17 @@ namespace Rebellion.Simulation.Tactical
             if (
                 carrier.Bays.Length == 0
                 || !IsAlive(carrier.Unit)
-                || carrier.Unit.LaunchQueue.Contains(squadron.SourceUnitInstanceID)
+                || carrier.Unit.Carrier.LaunchQueue.Contains(squadron.SourceUnitInstanceID)
                 || !IsAlive(squadron)
-                || squadron.FlightState != FighterFlightState.Docked
-                || ((Starfighter)squadron.GetUnit()).GetSublightSpeed() <= 0f
+                || squadron.Flight.Phase != FighterFlightState.Docked
+                || squadron.Data.GetSublightSpeed() <= 0f
             )
                 return;
-            squadron.FlightState = FighterFlightState.Queued;
-            squadron.RecallRequested = false;
-            if (carrier.Unit.LaunchQueue.Count == 0)
-                carrier.Unit.LaunchCountdown = NextLaunchDelay();
-            carrier.Unit.LaunchQueue.Add(squadron.SourceUnitInstanceID);
+            squadron.Flight.Phase = FighterFlightState.Queued;
+            squadron.Flight.RecallRequested = false;
+            if (carrier.Unit.Carrier.LaunchQueue.Count == 0)
+                carrier.Unit.Carrier.LaunchCountdown = NextLaunchDelay();
+            carrier.Unit.Carrier.LaunchQueue.Add(squadron.SourceUnitInstanceID);
             Revision++;
         }
 
@@ -403,25 +408,25 @@ namespace Rebellion.Simulation.Tactical
             foreach (CombatUnit departing in carrier.Cargo)
                 if (
                     IsAlive(departing)
-                    && departing.FlightState == FighterFlightState.Launching
-                    && ((Starfighter)departing.GetUnit()).GetSublightSpeed() <= 0f
+                    && departing.Flight.Phase == FighterFlightState.Launching
+                    && departing.Data.GetSublightSpeed() <= 0f
                 )
                     return;
-            string id = carrier.Unit.LaunchQueue[0];
-            carrier.Unit.LaunchQueue.RemoveAt(0);
+            string id = carrier.Unit.Carrier.LaunchQueue[0];
+            carrier.Unit.Carrier.LaunchQueue.RemoveAt(0);
             if (
                 carrier.Squadrons.TryGetValue(id, out CombatUnit fighter)
                 && IsAlive(fighter)
-                && fighter.FlightState == FighterFlightState.Queued
+                && fighter.Flight.Phase == FighterFlightState.Queued
             )
             {
-                int bayIndex = fighter.FlightBayIndex;
+                int bayIndex = fighter.Flight.FlightBayIndex;
                 Bay bay = carrier.Bays[bayIndex];
                 float delay = 0f;
-                float followingSpeed = ((Starfighter)fighter.GetUnit()).GetSublightSpeed();
+                float followingSpeed = fighter.Data.GetSublightSpeed();
                 if (followingSpeed <= 0f)
                 {
-                    fighter.FlightState = FighterFlightState.Docked;
+                    fighter.Flight.Phase = FighterFlightState.Docked;
                 }
                 else
                 {
@@ -429,31 +434,31 @@ namespace Rebellion.Simulation.Tactical
                         if (
                             preceding != fighter
                             && IsAlive(preceding)
-                            && preceding.FlightState == FighterFlightState.Launching
-                            && preceding.FlightBayIndex == bayIndex
+                            && preceding.Flight.Phase == FighterFlightState.Launching
+                            && preceding.Flight.FlightBayIndex == bayIndex
                         )
                         {
-                            float speed = ((Starfighter)preceding.GetUnit()).GetSublightSpeed();
+                            float speed = preceding.Data.GetSublightSpeed();
                             float spacing = GetRadius(preceding) + GetRadius(fighter);
                             float progress = GetPathDistance(preceding, bay.Path);
                             delay = Math.Max(
                                 delay,
-                                preceding.FlightDelay + (spacing - progress) / speed
+                                preceding.Flight.FlightDelay + (spacing - progress) / speed
                             );
                             delay = Math.Max(
                                 delay,
-                                preceding.FlightDelay
+                                preceding.Flight.FlightDelay
                                     + (bay.Length - progress) / speed
                                     - Math.Max(0f, bay.Length - spacing) / followingSpeed
                             );
                         }
-                    fighter.FlightBayIndex = bayIndex;
-                    fighter.FlightWaypointIndex = 0;
-                    fighter.FlightSegmentDistance = 0f;
-                    fighter.FlightDelay = delay;
-                    fighter.FlightState = FighterFlightState.Launching;
-                    fighter.MoveDestination = null;
-                    fighter.MoveSpeedLimit = null;
+                    fighter.Flight.FlightBayIndex = bayIndex;
+                    fighter.Flight.FlightWaypointIndex = 0;
+                    fighter.Flight.FlightSegmentDistance = 0f;
+                    fighter.Flight.FlightDelay = delay;
+                    fighter.Flight.Phase = FighterFlightState.Launching;
+                    fighter.MoveOrder.Destination = null;
+                    fighter.MoveOrder.SpeedLimit = null;
                     SetVector(fighter.Position, ToWorld(carrier.Unit, bay.Path[0]));
                     SetVector(
                         fighter.Forward,
@@ -463,8 +468,8 @@ namespace Rebellion.Simulation.Tactical
                 }
             }
             Revision++;
-            if (carrier.Unit.LaunchQueue.Count > 0)
-                carrier.Unit.LaunchCountdown = NextLaunchDelay();
+            if (carrier.Unit.Carrier.LaunchQueue.Count > 0)
+                carrier.Unit.Carrier.LaunchCountdown = NextLaunchDelay();
         }
 
         /// <summary>
@@ -477,23 +482,26 @@ namespace Rebellion.Simulation.Tactical
             if (!IsAlive(carrier.Unit) || !IsAlive(fighter) || carrier.Bays.Length == 0)
                 return;
             if (
-                fighter.FlightState == FighterFlightState.Queued
-                || (fighter.FlightState == FighterFlightState.Launching && fighter.FlightDelay > 0f)
+                fighter.Flight.Phase == FighterFlightState.Queued
+                || (
+                    fighter.Flight.Phase == FighterFlightState.Launching
+                    && fighter.Flight.FlightDelay > 0f
+                )
             )
-                fighter.FlightState = FighterFlightState.Docked;
-            else if (fighter.FlightState == FighterFlightState.Launching)
-                fighter.RecallRequested = true;
-            else if (fighter.FlightState == FighterFlightState.Deployed)
-                fighter.FlightState = FighterFlightState.Returning;
+                fighter.Flight.Phase = FighterFlightState.Docked;
+            else if (fighter.Flight.Phase == FighterFlightState.Launching)
+                fighter.Flight.RecallRequested = true;
+            else if (fighter.Flight.Phase == FighterFlightState.Deployed)
+                fighter.Flight.Phase = FighterFlightState.Returning;
             else
                 return;
-            fighter.MoveDestination = null;
-            fighter.MoveSpeedLimit = null;
-            if (fighter.FlightState == FighterFlightState.Docked)
+            fighter.MoveOrder.Destination = null;
+            fighter.MoveOrder.SpeedLimit = null;
+            if (fighter.Flight.Phase == FighterFlightState.Docked)
             {
-                fighter.RecallRequested = false;
-                fighter.FlightDelay = 0f;
-                carrier.Unit.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
+                fighter.Flight.RecallRequested = false;
+                fighter.Flight.FlightDelay = 0f;
+                carrier.Unit.Carrier.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
             }
             Revision++;
         }
@@ -510,12 +518,12 @@ namespace Rebellion.Simulation.Tactical
             {
                 source.Cargo.Remove(fighter);
                 source.Squadrons.Remove(fighter.SourceUnitInstanceID);
-                source.Unit.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
+                source.Unit.Carrier.LaunchQueue.Remove(fighter.SourceUnitInstanceID);
             }
 
-            fighter.CarrierSourceUnitInstanceID = destination.Unit.SourceUnitInstanceID;
-            fighter.FlightBayIndex = destination.Cargo.Count % destination.Bays.Length;
-            fighter.LaunchFormationOffset = FromVector(
+            fighter.Flight.CarrierSourceUnitInstanceID = destination.Unit.SourceUnitInstanceID;
+            fighter.Flight.FlightBayIndex = destination.Cargo.Count % destination.Bays.Length;
+            fighter.Flight.LaunchFormationOffset = FromVector(
                 ToLocal(
                     destination.Unit,
                     ToVector(fighter.Position) - ToVector(destination.Unit.Position)
@@ -537,10 +545,7 @@ namespace Rebellion.Simulation.Tactical
             foreach (CombatUnit fighter in carrier.Cargo)
                 if (IsAlive(fighter))
                     occupied++;
-            return Math.Max(
-                0,
-                ((CapitalShip)carrier.Unit.GetUnit()).GetStarfighterCapacity() - occupied
-            );
+            return Math.Max(0, carrier.Unit.Data.GetStarfighterCapacity() - occupied);
         }
 
         /// <summary>
@@ -560,22 +565,22 @@ namespace Rebellion.Simulation.Tactical
                 if (index > 0)
                     offset += GetRadius(bay.Returning[index - 1]) + GetRadius(fighter);
                 Vector3 target = ToWorld(carrier.Unit, approach + outward * offset);
-                fighter.MoveDestination ??= new BattleVector3();
-                fighter.MoveSpeedLimit = null;
-                SetVector(fighter.MoveDestination, target);
+                fighter.MoveOrder.Destination ??= new BattleVector3();
+                fighter.MoveOrder.SpeedLimit = null;
+                SetVector(fighter.MoveOrder.Destination, target);
                 TacticalMovement.Advance(fighter, deltaTime);
                 if (
                     index != 0
                     || bay.Outbound > 0
                     || bay.Inbound
-                    || fighter.MoveDestination != null
+                    || fighter.MoveOrder.Destination != null
                 )
                     continue;
-                fighter.FlightState = FighterFlightState.Docking;
-                fighter.FlightWaypointIndex = bay.Path.Length - 1;
-                fighter.FlightSegmentDistance = 0f;
-                fighter.FlightDelay = 0f;
-                fighter.RecallRequested = false;
+                fighter.Flight.Phase = FighterFlightState.Docking;
+                fighter.Flight.FlightWaypointIndex = bay.Path.Length - 1;
+                fighter.Flight.FlightSegmentDistance = 0f;
+                fighter.Flight.FlightDelay = 0f;
+                fighter.Flight.RecallRequested = false;
                 bay.Inbound = true;
                 Revision++;
             }
@@ -597,52 +602,52 @@ namespace Rebellion.Simulation.Tactical
             bool inbound
         )
         {
-            if (fighter.FlightDelay > 0f)
+            if (fighter.Flight.FlightDelay > 0f)
             {
-                float waiting = Math.Min(deltaTime, fighter.FlightDelay);
-                fighter.FlightDelay -= waiting;
+                float waiting = Math.Min(deltaTime, fighter.Flight.FlightDelay);
+                fighter.Flight.FlightDelay -= waiting;
                 deltaTime -= waiting;
             }
-            float travel = ((Starfighter)fighter.GetUnit()).GetSublightSpeed() * deltaTime;
+            float travel = fighter.Data.GetSublightSpeed() * deltaTime;
             int step = inbound ? -1 : 1;
             while (true)
             {
-                int next = fighter.FlightWaypointIndex + step;
-                Vector3 segment = path[next] - path[fighter.FlightWaypointIndex];
+                int next = fighter.Flight.FlightWaypointIndex + step;
+                Vector3 segment = path[next] - path[fighter.Flight.FlightWaypointIndex];
                 float length = segment.Length();
-                float remaining = length - fighter.FlightSegmentDistance;
+                float remaining = length - fighter.Flight.FlightSegmentDistance;
                 if (travel < remaining)
                 {
-                    fighter.FlightSegmentDistance += travel;
+                    fighter.Flight.FlightSegmentDistance += travel;
                     SetVector(
                         fighter.Position,
                         ToWorld(
                             carrier.Unit,
-                            path[fighter.FlightWaypointIndex]
-                                + segment * (fighter.FlightSegmentDistance / length)
+                            path[fighter.Flight.FlightWaypointIndex]
+                                + segment * (fighter.Flight.FlightSegmentDistance / length)
                         )
                     );
                     SetVector(fighter.Forward, ToDirection(carrier.Unit, segment / length));
                     return;
                 }
                 travel -= remaining;
-                fighter.FlightWaypointIndex = next;
-                fighter.FlightSegmentDistance = 0f;
+                fighter.Flight.FlightWaypointIndex = next;
+                fighter.Flight.FlightSegmentDistance = 0f;
                 SetVector(fighter.Position, ToWorld(carrier.Unit, path[next]));
                 SetVector(fighter.Forward, ToDirection(carrier.Unit, segment / length));
                 if (next != (inbound ? 0 : path.Length - 1))
                     continue;
-                fighter.FlightState =
+                fighter.Flight.Phase =
                     inbound ? FighterFlightState.Docked
-                    : fighter.RecallRequested ? FighterFlightState.Returning
+                    : fighter.Flight.RecallRequested ? FighterFlightState.Returning
                     : FighterFlightState.Deployed;
-                fighter.MoveDestination =
-                    inbound || fighter.RecallRequested
+                fighter.MoveOrder.Destination =
+                    inbound || fighter.Flight.RecallRequested
                         ? null
                         : FromVector(
-                            ToWorld(carrier.Unit, ToVector(fighter.LaunchFormationOffset))
+                            ToWorld(carrier.Unit, ToVector(fighter.Flight.LaunchFormationOffset))
                         );
-                fighter.MoveSpeedLimit = null;
+                fighter.MoveOrder.SpeedLimit = null;
                 Revision++;
                 return;
             }
@@ -668,8 +673,8 @@ namespace Rebellion.Simulation.Tactical
         /// <returns>The distance from the start of the route.</returns>
         private static float GetPathDistance(CombatUnit fighter, Vector3[] path)
         {
-            float distance = fighter.FlightSegmentDistance;
-            for (int index = 0; index < fighter.FlightWaypointIndex; index++)
+            float distance = fighter.Flight.FlightSegmentDistance;
+            for (int index = 0; index < fighter.Flight.FlightWaypointIndex; index++)
                 distance += Vector3.Distance(path[index], path[index + 1]);
             return distance;
         }
@@ -681,7 +686,7 @@ namespace Rebellion.Simulation.Tactical
         /// <returns>The radius of its enclosing sphere.</returns>
         private static float GetRadius(CombatUnit fighter)
         {
-            var size = fighter.GetUnit().ModelSize;
+            var size = fighter.Data.ModelSize;
             return new Vector3(size.Width, size.Height, size.Depth).Length() * 0.5f;
         }
 
@@ -692,24 +697,14 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether this player controls a living unit.</returns>
         private static bool IsControlled(CombatUnit unit, string owner) =>
-            !string.IsNullOrEmpty(owner)
-            && unit.GetUnit().OwnerInstanceID == owner
-            && IsAlive(unit);
+            !string.IsNullOrEmpty(owner) && unit.Data.OwnerInstanceID == owner && IsAlive(unit);
 
         /// <summary>
         /// Checks withdrawal and recorded fighter or hull losses.
         /// </summary>
         /// <param name="unit">The battle unit.</param>
         /// <returns>Whether the unit remains available for carrier operations.</returns>
-        private static bool IsAlive(CombatUnit unit) =>
-            !unit.HasRetreated
-            && unit.GetUnit() switch
-            {
-                CapitalShip ship => ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0,
-                Starfighter fighter => fighter.CurrentSquadronSize > 0
-                    && (fighter.MaxHullStrength <= 0 || fighter.CurrentHullStrength > 0),
-                _ => false,
-            };
+        private static bool IsAlive(CombatUnit unit) => !unit.HasRetreated && unit.IsAlive;
 
         /// <summary>
         /// Rotates a carrier-local direction into the battle's world axes without introducing roll.

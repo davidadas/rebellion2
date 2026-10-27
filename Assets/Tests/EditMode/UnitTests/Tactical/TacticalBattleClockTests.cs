@@ -1,8 +1,8 @@
 using System;
 using NUnit.Framework;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 
-namespace Rebellion.Tests.Simulation.Tactical
+namespace Rebellion.Tests.Tactical
 {
     [TestFixture]
     public sealed class TacticalBattleClockTests

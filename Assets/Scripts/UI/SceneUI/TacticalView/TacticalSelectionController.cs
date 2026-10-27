@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -315,7 +315,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
                 || !root
                 || (
                     !root.gameObject.activeInHierarchy
-                    && _selected[i].FlightState == FighterFlightState.Deployed
+                    && _selected[i].Flight.Phase == FighterFlightState.Deployed
                 )
                 || _selected[i].HasRetreated
             )
@@ -342,7 +342,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
                 || !pair.Value.gameObject.activeInHierarchy
                 || pair.Key.HasRetreated
                 || !string.Equals(
-                    pair.Key.GetUnit().OwnerInstanceID,
+                    pair.Key.Data.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -390,7 +390,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             if (
                 !unit.HasRetreated
                 && string.Equals(
-                    unit.GetUnit().OwnerInstanceID,
+                    unit.Data.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -501,8 +501,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
         foreach (CombatUnit unit in _selected)
             if (
                 IsControlled(unit)
-                && unit.AttackTargetInstanceID != null
-                && _combatantsByID.TryGetValue(unit.AttackTargetInstanceID, out CombatUnit target)
+                && unit.Weapons.AttackTargetInstanceID != null
+                && _combatantsByID.TryGetValue(
+                    unit.Weapons.AttackTargetInstanceID,
+                    out CombatUnit target
+                )
                 && !target.HasRetreated
                 && _targetSeen.Add(target)
             )
@@ -654,7 +657,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         && (
             string.IsNullOrWhiteSpace(_viewerFactionInstanceID)
             || string.Equals(
-                combatant.GetUnit().OwnerInstanceID,
+                combatant.Data.OwnerInstanceID,
                 _viewerFactionInstanceID,
                 StringComparison.Ordinal
             )
@@ -671,9 +674,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         foreach (CombatUnit selected in _selected)
             if (
                 !selected.HasRetreated
-                && selected.FlightState == FighterFlightState.Deployed
+                && selected.Flight.Phase == FighterFlightState.Deployed
                 && string.Equals(
-                    selected.GetUnit().OwnerInstanceID,
+                    selected.Data.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -685,7 +688,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         return hasFriendlySelection
             && target != null
             && !string.Equals(
-                target.GetUnit().OwnerInstanceID,
+                target.Data.OwnerInstanceID,
                 _viewerFactionInstanceID,
                 StringComparison.Ordinal
             );
@@ -730,7 +733,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             Transform root = presentation.Value;
             if (!root || !root.gameObject.activeInHierarchy || presentation.Key.HasRetreated)
                 continue;
-            ModelDimensions size = presentation.Key.GetUnit().ModelSize;
+            ModelDimensions size = presentation.Key.Data.ModelSize;
             Bounds bounds = new Bounds(
                 Vector3.zero,
                 new Vector3(size.Width, size.Height, size.Depth)

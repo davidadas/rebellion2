@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;

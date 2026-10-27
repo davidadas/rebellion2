@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Advances data-authored weapon banks, swept projectile contacts, and shield recovery.
@@ -29,7 +28,7 @@ namespace Rebellion.Simulation.Tactical
         private readonly List<TargetCandidate> _rankedTargets = new();
         private float _cellSize = 1f;
 
-        public event Action<BattleProjectile> ShotFired;
+        public event Action<BattleProjectile, WeaponData> ShotFired;
         public event Action<BattleProjectile, CombatUnit, bool> ShotHit;
         public event Action<CombatUnit> UnitDestroyed;
 
@@ -50,7 +49,7 @@ namespace Rebellion.Simulation.Tactical
                 UnitEntry entry = new UnitEntry(unit);
                 _units.Add(entry);
                 _byID.Add(unit.InstanceID, entry);
-                ModelDimensions size = unit.GetUnit().ModelSize;
+                ModelDimensions size = unit.Data.ModelSize;
                 _cellSize = Math.Max(
                     _cellSize,
                     Math.Max(size.Width, Math.Max(size.Height, size.Depth))
@@ -62,11 +61,13 @@ namespace Rebellion.Simulation.Tactical
                             "Weapon groups require an ID and at least one mount.",
                             nameof(battle)
                         );
-                    WeaponBankState state = unit.WeaponBanks.Find(bank => bank.GroupID == group.ID);
+                    WeaponBankState state = unit.Weapons.Banks.Find(bank =>
+                        bank.GroupID == group.ID
+                    );
                     if (state == null)
                     {
                         state = new WeaponBankState { GroupID = group.ID };
-                        unit.WeaponBanks.Add(state);
+                        unit.Weapons.Banks.Add(state);
                     }
                     if (state.Mounts.Count == 0)
                         foreach (Hardpoint hardpoint in group.GetHardpoints())
@@ -102,14 +103,7 @@ namespace Rebellion.Simulation.Tactical
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>Whether the unit is alive.</returns>
-        public static bool IsAlive(CombatUnit unit) =>
-            unit?.GetUnit() switch
-            {
-                CapitalShip ship => ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0,
-                Starfighter fighter => fighter.CurrentSquadronSize > 0
-                    && (fighter.MaxHullStrength <= 0 || fighter.CurrentHullStrength > 0),
-                _ => false,
-            };
+        public static bool IsAlive(CombatUnit unit) => unit?.IsAlive == true;
 
         /// <summary>
         /// Assigns an explicit enemy target only to deployed ships controlled by the ordering faction.
@@ -125,16 +119,16 @@ namespace Rebellion.Simulation.Tactical
                 target == null
                 || !_byID.ContainsKey(target.InstanceID)
                 || !IsAvailable(target)
-                || target.GetUnit().OwnerInstanceID == owner
+                || target.Data.OwnerInstanceID == owner
             )
                 return;
             foreach (CombatUnit unit in selection)
                 if (
                     _byID.ContainsKey(unit.InstanceID)
                     && IsAvailable(unit)
-                    && unit.GetUnit().OwnerInstanceID == owner
+                    && unit.Data.OwnerInstanceID == owner
                 )
-                    unit.AttackTargetInstanceID = target.InstanceID;
+                    unit.Weapons.AttackTargetInstanceID = target.InstanceID;
         }
 
         /// <summary>
@@ -175,30 +169,29 @@ namespace Rebellion.Simulation.Tactical
             float shields = GetCurrentShields(target);
             float absorbed = Math.Min(shields, damage);
             float remaining = shields - absorbed;
-            target.CurrentShieldStrength = (int)Math.Ceiling(remaining);
-            target.ShieldDamageRemainder = target.CurrentShieldStrength.Value - remaining;
+            target.Condition.CurrentShieldStrength = (int)Math.Ceiling(remaining);
+            target.Condition.ShieldDamageRemainder =
+                target.Condition.CurrentShieldStrength.Value - remaining;
             damage -= absorbed;
             if (damage <= 0f)
                 return;
-            target.HullDamageRemainder += damage;
-            int wholeDamage = (int)Math.Floor(target.HullDamageRemainder);
-            target.HullDamageRemainder -= wholeDamage;
-            if (target.GetUnit() is CapitalShip ship)
-                ship.CurrentHullStrength = Math.Max(0, ship.CurrentHullStrength - wholeDamage);
-            else if (target.GetUnit() is Starfighter fighter)
-            {
-                fighter.CurrentHullStrength = Math.Max(
-                    0,
-                    fighter.CurrentHullStrength - wholeDamage
-                );
-                if (fighter.CurrentHullStrength == 0)
-                    fighter.CurrentSquadronSize = 0;
-            }
+            target.Condition.HullDamageRemainder += damage;
+            int wholeDamage = (int)Math.Floor(target.Condition.HullDamageRemainder);
+            target.Condition.HullDamageRemainder -= wholeDamage;
+            target.Condition.CurrentHullStrength = Math.Max(
+                0,
+                target.Condition.CurrentHullStrength - wholeDamage
+            );
+            if (
+                target.Data.Kind == CombatUnitKind.Starfighter
+                && target.Condition.CurrentHullStrength == 0
+            )
+                target.Condition.CurrentSquadronSize = 0;
             if (!IsAlive(target))
             {
-                target.CurrentShieldStrength = 0;
-                target.MoveDestination = null;
-                target.AttackTargetInstanceID = null;
+                target.Condition.CurrentShieldStrength = 0;
+                target.MoveOrder.Destination = null;
+                target.Weapons.AttackTargetInstanceID = null;
                 UnitDestroyed?.Invoke(target);
             }
         }
@@ -210,26 +203,26 @@ namespace Rebellion.Simulation.Tactical
         private static void RechargeShields(CombatUnit unit)
         {
             if (
-                unit.GetUnit() is not CapitalShip ship
+                unit.Data is not { Kind: CombatUnitKind.CapitalShip } ship
                 || ship.MaxHullStrength <= 0
                 || ship.MaxShieldStrength <= 0
             )
                 return;
             float recharge =
                 Math.Max(0, ship.ShieldRechargeRate)
-                * ((float)ship.CurrentHullStrength / ship.MaxHullStrength)
+                * ((float)unit.Condition.CurrentHullStrength / ship.MaxHullStrength)
                 * _stepSeconds;
-            unit.ShieldRechargeRemainder += recharge;
-            int restored = (int)unit.ShieldRechargeRemainder;
-            unit.ShieldRechargeRemainder -= restored;
-            unit.CurrentShieldStrength = Math.Min(
+            unit.Condition.ShieldRechargeRemainder += recharge;
+            int restored = (int)unit.Condition.ShieldRechargeRemainder;
+            unit.Condition.ShieldRechargeRemainder -= restored;
+            unit.Condition.CurrentShieldStrength = Math.Min(
                 ship.MaxShieldStrength,
-                (unit.CurrentShieldStrength ?? ship.MaxShieldStrength) + restored
+                (unit.Condition.CurrentShieldStrength ?? ship.MaxShieldStrength) + restored
             );
-            if (unit.CurrentShieldStrength == ship.MaxShieldStrength)
+            if (unit.Condition.CurrentShieldStrength == ship.MaxShieldStrength)
             {
-                unit.ShieldDamageRemainder = 0f;
-                unit.ShieldRechargeRemainder = 0f;
+                unit.Condition.ShieldDamageRemainder = 0f;
+                unit.Condition.ShieldRechargeRemainder = 0f;
             }
         }
 
@@ -262,7 +255,7 @@ namespace Rebellion.Simulation.Tactical
                 );
                 if (target == null)
                     continue;
-                Vector3 aim = PredictAim(origin, target.Unit, hardpoint.Weapon.ProjectileSpeed);
+                Vector3 aim = PredictAim(origin, target.Unit, hardpoint.Weapon.Projectile.Speed);
                 Vector3 localAimDirection = Vector3.Transform(
                     aim - origin,
                     entry.InverseOrientation
@@ -325,14 +318,14 @@ namespace Rebellion.Simulation.Tactical
         )
         {
             CombatUnit shooter = source.Unit;
-            string explicitID = shooter.AttackTargetInstanceID;
+            string explicitID = shooter.Weapons.AttackTargetInstanceID;
             UnitEntry ordered = null;
             if (
                 explicitID != null
                 && (!_byID.TryGetValue(explicitID, out ordered) || !IsAvailable(ordered.Unit))
             )
             {
-                shooter.AttackTargetInstanceID = null;
+                shooter.Weapons.AttackTargetInstanceID = null;
                 ordered = null;
             }
             if (
@@ -410,7 +403,7 @@ namespace Rebellion.Simulation.Tactical
             if (
                 target == null
                 || !IsAvailable(target.Unit)
-                || target.Unit.GetUnit().OwnerInstanceID == source.Unit.GetUnit().OwnerInstanceID
+                || target.Unit.Data.OwnerInstanceID == source.Unit.Data.OwnerInstanceID
             )
                 return false;
             Vector3 direction = target.Position - origin;
@@ -479,7 +472,7 @@ namespace Rebellion.Simulation.Tactical
         /// </summary>
         /// <param name="source">The shooting ship.</param>
         /// <param name="target">The chosen hostile target.</param>
-        /// <param name="weapon">The shot's immutable weapon snapshot.</param>
+        /// <param name="weapon">The firing definition supplying projectile properties and launch audio.</param>
         /// <param name="origin">The battle-space muzzle.</param>
         /// <param name="aim">The predicted aim point.</param>
         private void Emit(
@@ -495,15 +488,16 @@ namespace Rebellion.Simulation.Tactical
                 ID = ++_battle.NextShotID,
                 SourceInstanceID = source.InstanceID,
                 TargetInstanceID = target.InstanceID,
-                OwnerInstanceID = source.GetUnit().OwnerInstanceID,
-                Weapon = weapon.CreateCopy(),
+                OwnerInstanceID = source.Data.OwnerInstanceID,
+                Projectile = weapon.Projectile.CreateCopy(),
+                Range = weapon.Range,
                 Position = FromVector(origin),
                 Direction = FromVector(Vector3.Normalize(aim - origin)),
-                RemainingEffectSeconds = weapon.EffectDurationSeconds,
             };
-            _battle.Projectiles.Add(shot);
-            ShotFired?.Invoke(shot);
-            if (weapon.DeliveryMode == WeaponDeliveryMode.Hitscan)
+            if (weapon.Projectile.DeliveryMode == WeaponDeliveryMode.Projectile)
+                _battle.Projectiles.Add(shot);
+            ShotFired?.Invoke(shot, weapon);
+            if (weapon.Projectile.DeliveryMode == WeaponDeliveryMode.Hitscan)
             {
                 UnitEntry hit = FindContact(
                     origin,
@@ -529,17 +523,10 @@ namespace Rebellion.Simulation.Tactical
             for (int index = _battle.Projectiles.Count - 1; index >= 0; index--)
             {
                 BattleProjectile shot = _battle.Projectiles[index];
-                if (shot.Weapon.DeliveryMode == WeaponDeliveryMode.Hitscan)
-                {
-                    shot.RemainingEffectSeconds -= _stepSeconds;
-                    if (shot.RemainingEffectSeconds <= 0f)
-                        _battle.Projectiles.RemoveAt(index);
-                    continue;
-                }
                 Vector3 origin = ToVector(shot.Position);
                 float travel = Math.Min(
-                    shot.Weapon.ProjectileSpeed * _stepSeconds,
-                    shot.Weapon.Range - shot.DistanceTraveled
+                    shot.Projectile.Speed * _stepSeconds,
+                    shot.Range - shot.DistanceTraveled
                 );
                 Vector3 end = origin + ToVector(shot.Direction) * travel;
                 _byID.TryGetValue(shot.SourceInstanceID, out UnitEntry shooter);
@@ -554,7 +541,7 @@ namespace Rebellion.Simulation.Tactical
                 {
                     shot.Position = FromVector(end);
                     shot.DistanceTraveled += travel;
-                    if (shot.DistanceTraveled >= shot.Weapon.Range)
+                    if (shot.DistanceTraveled >= shot.Range)
                         _battle.Projectiles.RemoveAt(index);
                 }
             }
@@ -567,8 +554,8 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="target">The first hull encountered.</param>
         private void Hit(BattleProjectile shot, CombatUnit target)
         {
-            float damage = shot.Weapon.Damage;
-            if (target.GetUnit().OwnerInstanceID == shot.OwnerInstanceID)
+            float damage = shot.Projectile.Damage;
+            if (target.Data.OwnerInstanceID == shot.OwnerInstanceID)
                 damage *= 0.5f;
             bool absorbedByShield = GetCurrentShields(target) > 0f;
             ApplyDamage(target, damage);
@@ -712,8 +699,7 @@ namespace Rebellion.Simulation.Tactical
                 if (
                     candidate != source
                     && IsAvailable(candidate.Unit)
-                    && candidate.Unit.GetUnit().OwnerInstanceID
-                        != source.Unit.GetUnit().OwnerInstanceID
+                    && candidate.Unit.Data.OwnerInstanceID != source.Unit.Data.OwnerInstanceID
                 )
                 {
                     source.TargetCandidates.Add(
@@ -741,7 +727,7 @@ namespace Rebellion.Simulation.Tactical
             {
                 if (!IsAvailable(entry.Unit))
                     continue;
-                ModelDimensions size = entry.Unit.GetUnit().ModelSize;
+                ModelDimensions size = entry.Unit.Data.ModelSize;
                 entry.Position = ToVector(entry.Unit.Position);
                 entry.Orientation = Orientation(entry.Unit);
                 entry.InverseOrientation = Quaternion.Inverse(entry.Orientation);
@@ -806,7 +792,7 @@ namespace Rebellion.Simulation.Tactical
         private static Vector3 PredictAim(Vector3 origin, CombatUnit target, float speed)
         {
             Vector3 position = ToVector(target.Position);
-            if (speed <= 0f || target.MoveDestination == null)
+            if (speed <= 0f || target.MoveOrder.Destination == null)
                 return position;
             float targetSpeed = TacticalMovement.GetSpeed(target);
             Vector3 velocity = Vector3.Normalize(ToVector(target.Forward)) * targetSpeed;
@@ -851,19 +837,20 @@ namespace Rebellion.Simulation.Tactical
             WeaponData weapon = hardpoint?.Weapon;
             if (
                 weapon == null
-                || !float.IsFinite(weapon.Damage)
-                || weapon.Damage <= 0f
+                || weapon.Projectile == null
+                || !float.IsFinite(weapon.Projectile.Damage)
+                || weapon.Projectile.Damage <= 0f
                 || weapon.WeaponType is HardpointWeaponType.None or HardpointWeaponType.TractorBeam
-                || !Enum.IsDefined(typeof(WeaponDeliveryMode), weapon.DeliveryMode)
+                || !Enum.IsDefined(typeof(WeaponDeliveryMode), weapon.Projectile.DeliveryMode)
                 || !float.IsFinite(weapon.Range)
                 || weapon.Range <= 0f
                 || !float.IsFinite(weapon.FireIntervalSeconds)
                 || weapon.FireIntervalSeconds <= 0f
                 || weapon.ShotsPerVolley <= 0
-                || !float.IsFinite(weapon.ProjectileSpeed)
+                || !float.IsFinite(weapon.Projectile.Speed)
                 || (
-                    weapon.DeliveryMode == WeaponDeliveryMode.Projectile
-                    && weapon.ProjectileSpeed <= 0f
+                    weapon.Projectile.DeliveryMode == WeaponDeliveryMode.Projectile
+                    && weapon.Projectile.Speed <= 0f
                 )
                 || weapon.MinimumRechargeSeconds < 0f
                 || !float.IsFinite(weapon.MinimumRechargeSeconds)
@@ -885,9 +872,7 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="unit">The battle member.</param>
         /// <returns>The authored weapon groups.</returns>
         public static IReadOnlyList<HardpointGroup> GetGroups(CombatUnit unit) =>
-            unit.GetUnit() is CapitalShip ship
-                ? ship.GetHardpointGroups()
-                : ((Starfighter)unit.GetUnit()).GetHardpointGroups();
+            unit.Data.GetHardpointGroups();
 
         /// <summary>
         /// Reports whether a hull is present in open battle space and can participate in encounters.
@@ -897,9 +882,9 @@ namespace Rebellion.Simulation.Tactical
         private static bool IsAvailable(CombatUnit unit) =>
             !unit.HasRetreated
             && IsAlive(unit)
-            && unit.FlightState != FighterFlightState.Docked
-            && unit.FlightState != FighterFlightState.Queued
-            && !(unit.FlightState == FighterFlightState.Launching && unit.FlightDelay > 0f);
+            && unit.Flight.Phase != FighterFlightState.Docked
+            && unit.Flight.Phase != FighterFlightState.Queued
+            && !(unit.Flight.Phase == FighterFlightState.Launching && unit.Flight.FlightDelay > 0f);
 
         /// <summary>
         /// Returns the authored maximum shield strength.
@@ -907,12 +892,7 @@ namespace Rebellion.Simulation.Tactical
         /// <param name="unit">The battle member.</param>
         /// <returns>The non-negative shield capacity.</returns>
         public static int GetMaximumShields(CombatUnit unit) =>
-            Math.Max(
-                0,
-                unit.GetUnit() is CapitalShip ship
-                    ? ship.MaxShieldStrength
-                    : ((Starfighter)unit.GetUnit()).ShieldStrength
-            );
+            Math.Max(0, unit.Data.MaxShieldStrength);
 
         /// <summary>
         /// Returns the battle member's current fractional shield strength.
@@ -922,7 +902,8 @@ namespace Rebellion.Simulation.Tactical
         private static float GetCurrentShields(CombatUnit unit) =>
             Math.Max(
                 0f,
-                (unit.CurrentShieldStrength ?? GetMaximumShields(unit)) - unit.ShieldDamageRemainder
+                (unit.Condition.CurrentShieldStrength ?? GetMaximumShields(unit))
+                    - unit.Condition.ShieldDamageRemainder
             );
 
         /// <summary>

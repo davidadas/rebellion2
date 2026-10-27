@@ -240,9 +240,9 @@ public static class TacticalBattleLaunchContext
     {
         foreach (CombatUnit combatant in participant.GetCombatants())
             if (
-                combatant.GetUnit() is Starfighter
-                && !string.IsNullOrWhiteSpace(combatant.CarrierSourceUnitInstanceID)
+                combatant.Data is { Kind: CombatUnitKind.Starfighter }
+                && !string.IsNullOrWhiteSpace(combatant.Flight.CarrierSourceUnitInstanceID)
             )
-                combatant.FlightState = FighterFlightState.Deployed;
+                combatant.Flight.Phase = FighterFlightState.Deployed;
     }
 }

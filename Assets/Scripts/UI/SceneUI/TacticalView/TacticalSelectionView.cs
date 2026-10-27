@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -338,7 +338,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
         && presentations.TryGetValue(unit, out Transform root)
         && root
         && root.gameObject.activeInHierarchy
-        && RenderFrame(frame, root, unit.GetUnit().ModelSize, camera);
+        && RenderFrame(frame, root, unit.Data.ModelSize, camera);
 
     /// <summary>
     /// Applies a faction's authored dock palette.
@@ -443,10 +443,16 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 launchButton.interactable = launch;
             if (recallButton)
                 recallButton.interactable =
-                    recall && _selectionSnapshot.Exists(unit => unit.GetUnit() is CapitalShip);
+                    recall
+                    && _selectionSnapshot.Exists(unit =>
+                        unit.Data is { Kind: CombatUnitKind.CapitalShip }
+                    );
             if (dockButton)
                 dockButton.interactable =
-                    recall && _selectionSnapshot.Exists(unit => unit.GetUnit() is Starfighter);
+                    recall
+                    && _selectionSnapshot.Exists(unit =>
+                        unit.Data is { Kind: CombatUnitKind.Starfighter }
+                    );
         }
         while (_cards.Count < _groups.Count)
         {
@@ -489,7 +495,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 && presentations.TryGetValue(selected[i], out Transform root)
                 && root
                 && root.gameObject.activeInHierarchy
-                && RenderFrame(_frames[i], root, selected[i].GetUnit().ModelSize, camera);
+                && RenderFrame(_frames[i], root, selected[i].Data.ModelSize, camera);
             _frames[i].gameObject.SetActive(frameVisible);
             if (frameVisible)
                 RenderDurability(selected[i], _frameHullFills[i], _frameShieldFills[i]);
@@ -526,23 +532,19 @@ public sealed class TacticalSelectionView : MonoBehaviour
         RectTransform shieldFill
     )
     {
-        BaseSceneNode unit = combatant.GetUnit();
-        int hull = unit is CapitalShip ship
-            ? ship.CurrentHullStrength
-            : ((Starfighter)unit).CurrentHullStrength;
-        int maximumHull = unit is CapitalShip capital
-            ? capital.MaxHullStrength
-            : ((Starfighter)unit).MaxHullStrength;
-        int maximumShields = unit is CapitalShip shielded
-            ? shielded.MaxShieldStrength
-            : ((Starfighter)unit).ShieldStrength;
+        CombatUnitData unit = combatant.Data;
+        int hull = combatant.Condition.CurrentHullStrength;
+        int maximumHull = unit.MaxHullStrength;
+        int maximumShields = unit.MaxShieldStrength;
         hullFill.anchorMax = new Vector2(
             maximumHull > 0 ? Mathf.Clamp01((float)hull / maximumHull) : 0f,
             1f
         );
         shieldFill.anchorMax = new Vector2(
-            maximumShields > 0 && combatant.CurrentShieldStrength.HasValue
-                ? Mathf.Clamp01((float)combatant.CurrentShieldStrength.Value / maximumShields)
+            maximumShields > 0 && combatant.Condition.CurrentShieldStrength.HasValue
+                ? Mathf.Clamp01(
+                    (float)combatant.Condition.CurrentShieldStrength.Value / maximumShields
+                )
                 : 0f,
             1f
         );
@@ -571,20 +573,17 @@ public sealed class TacticalSelectionView : MonoBehaviour
         {
             if (_rosterSeen.Add(combatant))
                 _roster.Add(combatant);
-            if (
-                _carrierOperations != null
-                && combatant.GetUnit().OwnerInstanceID == _orderingFaction
-            )
+            if (_carrierOperations != null && combatant.Data.OwnerInstanceID == _orderingFaction)
                 foreach (CombatUnit carried in _carrierOperations.GetManifest(combatant))
                     if (
                         _roster.Count < visibleCapacity
                         && !carried.HasRetreated
                         && (
-                            carried.FlightState == FighterFlightState.Docked
-                            || carried.FlightState == FighterFlightState.Queued
+                            carried.Flight.Phase == FighterFlightState.Docked
+                            || carried.Flight.Phase == FighterFlightState.Queued
                             || (
-                                carried.FlightState == FighterFlightState.Launching
-                                && carried.FlightDelay > 0f
+                                carried.Flight.Phase == FighterFlightState.Launching
+                                && carried.Flight.FlightDelay > 0f
                             )
                         )
                         && _rosterSeen.Add(carried)
@@ -594,7 +593,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
         _roster.Sort(CompareRosterUnits);
         foreach (CombatUnit combatant in _roster)
         {
-            BaseSceneNode unit = combatant.GetUnit();
+            CombatUnitData unit = combatant.Data;
             // Missing type identifiers cannot establish that two units share a definition.
             if (string.IsNullOrWhiteSpace(unit.TypeID))
             {
@@ -620,14 +619,14 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <returns>A stable roster sort comparison.</returns>
     private static int CompareRosterUnits(CombatUnit left, CombatUnit right)
     {
-        int kind = (left.GetUnit() is CapitalShip ? 1 : 0).CompareTo(
-            right.GetUnit() is CapitalShip ? 1 : 0
+        int kind = (left.Data is { Kind: CombatUnitKind.CapitalShip } ? 1 : 0).CompareTo(
+            right.Data is { Kind: CombatUnitKind.CapitalShip } ? 1 : 0
         );
         if (kind != 0)
             return kind;
         int name = string.Compare(
-            left.GetUnit().DisplayName ?? left.GetUnit().TypeID,
-            right.GetUnit().DisplayName ?? right.GetUnit().TypeID,
+            left.Data.DisplayName ?? left.Data.TypeID,
+            right.Data.DisplayName ?? right.Data.TypeID,
             StringComparison.Ordinal
         );
         return name != 0
@@ -661,7 +660,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <returns>The configured display portrait, or null when none exists.</returns>
     private Texture2D GetPortrait(CombatUnit combatant)
     {
-        string path = combatant.GetUnit().GetDisplayImagePath();
+        string path = combatant.Data.GetDisplayImagePath();
         return _assets != null && !string.IsNullOrWhiteSpace(path)
             ? _assets.GetTexture(path)
             : null;
@@ -798,11 +797,11 @@ public sealed class TacticalSelectionView : MonoBehaviour
         foreach (KeyValuePair<CombatUnit, Transform> presentation in _battlePresentations)
         {
             if (
-                presentation.Key.GetUnit() is not CapitalShip ship
+                presentation.Key.Data is not { Kind: CombatUnitKind.CapitalShip } ship
                 || !string.Equals(ship.OwnerInstanceID, _viewerFaction, StringComparison.Ordinal)
             )
                 continue;
-            IReadOnlyList<Officer> officers = ship.GetChildren<Officer>(includeDisabled: true);
+            IReadOnlyList<Officer> officers = presentation.Key.Officers;
             for (int index = 0; index < officers.Count; index++)
             {
                 string path = string.IsNullOrWhiteSpace(officers[index].SmallDisplayImagePath)
@@ -860,7 +859,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 && !marker.Combatant.HasRetreated
                 && TryGetProjectedHull(
                     marker.Presentation,
-                    marker.Combatant.GetUnit().ModelSize,
+                    marker.Combatant.Data.ModelSize,
                     _battleCamera,
                     out minimum,
                     out maximum

@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Tests.Simulation.Tactical
+namespace Rebellion.Tests.Tactical
 {
     [TestFixture]
     public sealed class TacticalCombatTests
@@ -66,7 +67,7 @@ namespace Rebellion.Tests.Simulation.Tactical
 
             Assert.That(_battle.NextShotID, Is.EqualTo(1));
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[0].TargetInstanceID,
+                _attacker.Weapons.Banks[0].Mounts[0].TargetInstanceID,
                 Is.EqualTo(_defender.InstanceID)
             );
         }
@@ -112,11 +113,11 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_MovingShooterInRange_FiresWithoutStopping()
         {
-            ((CapitalShip)_attacker.GetUnit()).SublightSpeed = 2;
-            _attacker.MoveDestination = new BattleVector3 { Z = 100f };
+            _attacker.Data.SublightSpeed = 2;
+            _attacker.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             CreateCombat(_battle)
                 .Advance(1f / 64f, deltaTime => TacticalMovement.Advance(_attacker, deltaTime));
-            Assert.That(_attacker.MoveDestination, Is.Not.Null);
+            Assert.That(_attacker.MoveOrder.Destination, Is.Not.Null);
             Assert.That(_battle.NextShotID, Is.EqualTo(1));
         }
 
@@ -130,18 +131,18 @@ namespace Rebellion.Tests.Simulation.Tactical
             _defender.Position.Z = 100f;
             CombatUnit nearby = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
             nearby.Position.Z = 10f;
-            ((CapitalShip)_attacker.GetUnit()).SublightSpeed = 2;
-            _attacker.MoveDestination = new BattleVector3 { Z = 100f };
+            _attacker.Data.SublightSpeed = 2;
+            _attacker.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             TacticalCombat combat = CreateCombat(_battle);
             combat.Attack(new[] { _attacker }, "OWNER", _defender);
 
             combat.Advance(1f / 64f, deltaTime => TacticalMovement.Advance(_attacker, deltaTime));
 
-            Assert.That(_attacker.AttackTargetInstanceID, Is.EqualTo(_defender.InstanceID));
-            Assert.That(_attacker.MoveDestination, Is.Not.Null);
+            Assert.That(_attacker.Weapons.AttackTargetInstanceID, Is.EqualTo(_defender.InstanceID));
+            Assert.That(_attacker.MoveOrder.Destination, Is.Not.Null);
             Assert.That(_battle.Projectiles[0].TargetInstanceID, Is.EqualTo(nearby.InstanceID));
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[0].TargetInstanceID,
+                _attacker.Weapons.Banks[0].Mounts[0].TargetInstanceID,
                 Is.EqualTo(nearby.InstanceID)
             );
         }
@@ -167,11 +168,11 @@ namespace Rebellion.Tests.Simulation.Tactical
             CreateCombat(_battle).Advance(1f / 64f);
 
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[0].TargetInstanceID,
+                _attacker.Weapons.Banks[0].Mounts[0].TargetInstanceID,
                 Is.EqualTo(_defender.InstanceID)
             );
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[1].TargetInstanceID,
+                _attacker.Weapons.Banks[0].Mounts[1].TargetInstanceID,
                 Is.EqualTo(second.InstanceID)
             );
         }
@@ -192,7 +193,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             combat.Advance(1f / 64f);
 
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[0].TargetInstanceID,
+                _attacker.Weapons.Banks[0].Mounts[0].TargetInstanceID,
                 Is.EqualTo(_defender.InstanceID)
             );
         }
@@ -220,12 +221,12 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_ApproachingTargetInRange_FiresAtPredictedPosition()
         {
-            ((CapitalShip)_defender.GetUnit()).SublightSpeed = 3;
+            _defender.Data.SublightSpeed = 3;
             _defender.Forward = new BattleVector3 { Z = -1f };
-            _defender.MoveDestination = new BattleVector3 { Z = -100f };
+            _defender.MoveOrder.Destination = new BattleVector3 { Z = -100f };
             CreateCombat(_battle)
                 .Advance(1f / 64f, deltaTime => TacticalMovement.Advance(_defender, deltaTime));
-            Assert.That(_defender.MoveDestination, Is.Not.Null);
+            Assert.That(_defender.MoveOrder.Destination, Is.Not.Null);
             Assert.That(_battle.NextShotID, Is.EqualTo(1));
         }
 
@@ -236,7 +237,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         public void Advance_ProjectileInFlight_DoesNotDamageBeforeContact()
         {
             CreateCombat(_battle).Advance(0.5f);
-            Assert.That(((CapitalShip)_defender.GetUnit()).CurrentHullStrength, Is.EqualTo(100));
+            Assert.That(_defender.Condition.CurrentHullStrength, Is.EqualTo(100));
             Assert.That(
                 _battle.Projectiles[0].DistanceTraveled,
                 Is.EqualTo(10f * (0.5f - 1f / 64f)).Within(0.0001f)
@@ -249,9 +250,9 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_FastProjectile_SweepsThroughThinTarget()
         {
-            Mount().Weapon.ProjectileSpeed = 10000f;
+            Mount().Weapon.Projectile.Speed = 10000f;
             CreateCombat(_battle).Advance(2f / 64f);
-            Assert.That(((CapitalShip)_defender.GetUnit()).CurrentHullStrength, Is.EqualTo(90));
+            Assert.That(_defender.Condition.CurrentHullStrength, Is.EqualTo(90));
         }
 
         /// <summary>
@@ -260,14 +261,14 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_ShieldedTarget_AppliesOnlyOverflowToHull()
         {
-            _defender.CurrentShieldStrength = 6;
-            Mount().Weapon.DeliveryMode = WeaponDeliveryMode.Hitscan;
+            _defender.Condition.CurrentShieldStrength = 6;
+            Mount().Weapon.Projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;
             bool? absorbedByShield = null;
             TacticalCombat combat = CreateCombat(_battle);
             combat.ShotHit += (_, _, absorbed) => absorbedByShield = absorbed;
             combat.Advance(1f / 64f);
-            Assert.That(_defender.CurrentShieldStrength, Is.Zero);
-            Assert.That(((CapitalShip)_defender.GetUnit()).CurrentHullStrength, Is.EqualTo(96));
+            Assert.That(_defender.Condition.CurrentShieldStrength, Is.Zero);
+            Assert.That(_defender.Condition.CurrentHullStrength, Is.EqualTo(96));
             Assert.That(absorbedByShield, Is.True);
         }
 
@@ -277,11 +278,11 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_FractionalDamage_AccumulatesAcrossShots()
         {
-            Mount().Weapon.Damage = 0.25f;
-            Mount().Weapon.DeliveryMode = WeaponDeliveryMode.Hitscan;
+            Mount().Weapon.Projectile.Damage = 0.25f;
+            Mount().Weapon.Projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;
             Mount().Weapon.FireIntervalSeconds = 1f / 64f;
             CreateCombat(_battle).Advance(8f / 64f);
-            Assert.That(((CapitalShip)_defender.GetUnit()).CurrentHullStrength, Is.EqualTo(99));
+            Assert.That(_defender.Condition.CurrentHullStrength, Is.EqualTo(99));
         }
 
         /// <summary>
@@ -306,8 +307,8 @@ namespace Rebellion.Tests.Simulation.Tactical
             TacticalCombat.GetGroups(_attacker)[0].GetHardpoints().Add(second);
             CreateCombat(_battle).Advance(0.5f);
             Assert.That(_battle.NextShotID, Is.EqualTo(3));
-            Assert.That(_attacker.WeaponBanks[0].Mounts[0].Cooldown, Is.GreaterThan(1.5f));
-            Assert.That(_attacker.WeaponBanks[0].Mounts[1].Cooldown, Is.LessThan(0.25f));
+            Assert.That(_attacker.Weapons.Banks[0].Mounts[0].Cooldown, Is.GreaterThan(1.5f));
+            Assert.That(_attacker.Weapons.Banks[0].Mounts[1].Cooldown, Is.LessThan(0.25f));
         }
 
         /// <summary>
@@ -321,7 +322,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             TacticalCombat.GetGroups(_attacker)[0].GetHardpoints().Add(second);
             CreateCombat(_battle).Advance(0.5f);
             Assert.That(_battle.NextShotID, Is.EqualTo(1));
-            Assert.That(_attacker.WeaponBanks[0].Mounts[1].ShotsFired, Is.Zero);
+            Assert.That(_attacker.Weapons.Banks[0].Mounts[1].ShotsFired, Is.Zero);
         }
 
         /// <summary>
@@ -337,7 +338,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             weapon.MaximumRechargeSeconds = 1f;
             CreateCombat(_battle).Advance(0.5f);
             Assert.That(_battle.NextShotID, Is.EqualTo(2));
-            Assert.That(_attacker.WeaponBanks[0].Mounts[0].Cooldown, Is.GreaterThan(1.5f));
+            Assert.That(_attacker.Weapons.Banks[0].Mounts[0].Cooldown, Is.GreaterThan(1.5f));
         }
 
         /// <summary>
@@ -356,7 +357,7 @@ namespace Rebellion.Tests.Simulation.Tactical
             Assert.That(_battle.NextShotID, Is.EqualTo(1));
             Assert.That(weapon.FireIntervalSeconds, Is.EqualTo(0.125f));
             Assert.That(
-                _attacker.WeaponBanks[0].Mounts[0].Cooldown,
+                _attacker.Weapons.Banks[0].Mounts[0].Cooldown,
                 Is.EqualTo(0.125f).Within(0.0001f)
             );
 
@@ -394,7 +395,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_DockedTarget_DoesNotFire()
         {
-            _defender.FlightState = FighterFlightState.Docked;
+            _defender.Flight.Phase = FighterFlightState.Docked;
             CreateCombat(_battle).Advance(1f);
             Assert.That(_battle.NextShotID, Is.Zero);
         }
@@ -405,14 +406,14 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_DestroyedShooter_DoesNotFireOrRecharge()
         {
-            CapitalShip ship = (CapitalShip)_attacker.GetUnit();
-            ship.CurrentHullStrength = 0;
+            CombatUnitData ship = _attacker.Data;
+            _attacker.Condition.CurrentHullStrength = 0;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 10;
-            _attacker.CurrentShieldStrength = 0;
+            _attacker.Condition.CurrentShieldStrength = 0;
             CreateCombat(_battle).Advance(1f);
             Assert.That(_battle.NextShotID, Is.Zero);
-            Assert.That(_attacker.CurrentShieldStrength, Is.Zero);
+            Assert.That(_attacker.Condition.CurrentShieldStrength, Is.Zero);
         }
 
         /// <summary>
@@ -421,14 +422,14 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_DamagedHull_ScalesShieldRecharge()
         {
-            CapitalShip ship = (CapitalShip)_attacker.GetUnit();
-            ship.CurrentHullStrength = 50;
+            CombatUnitData ship = _attacker.Data;
+            _attacker.Condition.CurrentHullStrength = 50;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 10;
-            _attacker.CurrentShieldStrength = 0;
+            _attacker.Condition.CurrentShieldStrength = 0;
             _defender.HasRetreated = true;
             CreateCombat(_battle).Advance(1f);
-            Assert.That(_attacker.CurrentShieldStrength, Is.EqualTo(5));
+            Assert.That(_attacker.Condition.CurrentShieldStrength, Is.EqualTo(5));
         }
 
         /// <summary>
@@ -437,13 +438,13 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_FullShields_DoesNotOvercharge()
         {
-            CapitalShip ship = (CapitalShip)_attacker.GetUnit();
+            CombatUnitData ship = _attacker.Data;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 100;
-            _attacker.CurrentShieldStrength = 19;
+            _attacker.Condition.CurrentShieldStrength = 19;
             _defender.HasRetreated = true;
             CreateCombat(_battle).Advance(1f);
-            Assert.That(_attacker.CurrentShieldStrength, Is.EqualTo(20));
+            Assert.That(_attacker.Condition.CurrentShieldStrength, Is.EqualTo(20));
         }
 
         /// <summary>
@@ -452,8 +453,8 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_LethalHit_ReportsDestructionOnce()
         {
-            Mount().Weapon.DeliveryMode = WeaponDeliveryMode.Hitscan;
-            Mount().Weapon.Damage = 1000f;
+            Mount().Weapon.Projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;
+            Mount().Weapon.Projectile.Damage = 1000f;
             int destroyed = 0;
             TacticalCombat combat = CreateCombat(_battle);
             combat.UnitDestroyed += _ => destroyed++;
@@ -469,7 +470,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         public void Attack_EnemySelection_DoesNotChangeEnemyOrders()
         {
             CreateCombat(_battle).Attack(new[] { _defender }, "OWNER", _attacker);
-            Assert.That(_defender.AttackTargetInstanceID, Is.Null);
+            Assert.That(_defender.Weapons.AttackTargetInstanceID, Is.Null);
         }
 
         /// <summary>
@@ -479,7 +480,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         public void Attack_FriendlySelection_StoresHostileTarget()
         {
             CreateCombat(_battle).Attack(new[] { _attacker }, "OWNER", _defender);
-            Assert.That(_attacker.AttackTargetInstanceID, Is.EqualTo(_defender.InstanceID));
+            Assert.That(_attacker.Weapons.AttackTargetInstanceID, Is.EqualTo(_defender.InstanceID));
         }
 
         /// <summary>
@@ -488,7 +489,7 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Constructor_ZeroProjectileSpeed_RejectsInvalidWeapon()
         {
-            Mount().Weapon.ProjectileSpeed = 0f;
+            Mount().Weapon.Projectile.Speed = 0f;
             Assert.Throws<ArgumentException>(() => CreateCombat(_battle));
         }
 
@@ -511,7 +512,7 @@ namespace Rebellion.Tests.Simulation.Tactical
                 SerializationHelper.Serialize(_battle)
             );
             combat.Advance(2f);
-            CreateCombat(resumed).Advance(2f);
+            CreateCombat(resumed, _battle).Advance(2f);
             Assert.That(
                 SerializationHelper.Serialize(resumed),
                 Is.EqualTo(SerializationHelper.Serialize(_battle))
@@ -528,7 +529,7 @@ namespace Rebellion.Tests.Simulation.Tactical
                 SerializationHelper.Serialize(_battle)
             );
             CreateCombat(_battle).Advance(2f);
-            TacticalCombat combat = CreateCombat(other);
+            TacticalCombat combat = CreateCombat(other, _battle);
             for (int index = 0; index < 128; index++)
                 combat.Advance(1f / 64f);
             Assert.That(
@@ -545,11 +546,34 @@ namespace Rebellion.Tests.Simulation.Tactical
         {
             TacticalCombat combat = CreateCombat(_battle);
             combat.Advance(1f / 64f);
-            Mount().Weapon.ProjectileSpeed = 10000f;
-            Mount().Weapon.Damage = 1000f;
+            Mount().Weapon.Projectile.Speed = 10000f;
+            Mount().Weapon.Projectile.Damage = 1000f;
             Mount().Health = 0;
             combat.Advance(1f);
-            Assert.That(((CapitalShip)_defender.GetUnit()).CurrentHullStrength, Is.EqualTo(90));
+            Assert.That(_defender.Condition.CurrentHullStrength, Is.EqualTo(90));
+        }
+
+        [Test]
+        public void Advance_Hitscan_ResolvesDamageWithoutSavingPresentationEffects()
+        {
+            Mount().Weapon.Projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;
+            Mount().Weapon.Projectile.EffectDurationSeconds = 0.2f;
+            BattleProjectile emitted = null;
+            WeaponData firingWeapon = null;
+            TacticalCombat combat = CreateCombat(_battle);
+            combat.ShotFired += (shot, weapon) =>
+            {
+                emitted = shot;
+                firingWeapon = weapon;
+            };
+
+            combat.Advance(1f / 64f);
+
+            Assert.AreEqual(90, _defender.Condition.CurrentHullStrength);
+            Assert.IsEmpty(_battle.Projectiles);
+            Assert.IsNotNull(emitted);
+            Assert.AreSame(Mount().Weapon, firingWeapon);
+            Assert.AreNotSame(firingWeapon.Projectile, emitted.Projectile);
         }
 
         /// <summary>
@@ -562,9 +586,26 @@ namespace Rebellion.Tests.Simulation.Tactical
         /// Resolves test-owned local mounts without any Unity scene dependency.
         /// </summary>
         /// <param name="battle">The tested battle.</param>
+        /// <param name="geometrySource">The measured geometry to restore after deserialization.</param>
         /// <returns>The authoritative combat simulation.</returns>
-        private static TacticalCombat CreateCombat(ActiveBattle battle)
+        private static TacticalCombat CreateCombat(
+            ActiveBattle battle,
+            ActiveBattle geometrySource = null
+        )
         {
+            if (geometrySource != null)
+            {
+                Dictionary<string, ModelDimensions> geometry = geometrySource
+                    .GetParticipants()
+                    .SelectMany(participant => participant.GetCombatants())
+                    .ToDictionary(unit => unit.InstanceID, unit => unit.Data.ModelSize);
+                foreach (
+                    CombatUnit unit in battle
+                        .GetParticipants()
+                        .SelectMany(participant => participant.GetCombatants())
+                )
+                    unit.Data.ModelSize = geometry[unit.InstanceID].CreateCopy();
+            }
             Dictionary<Hardpoint, TacticalCombat.Mount> mounts = new();
             foreach (BattleParticipant participant in battle.GetParticipants())
             foreach (CombatUnit unit in participant.GetCombatants())
@@ -593,12 +634,15 @@ namespace Rebellion.Tests.Simulation.Tactical
                 Weapon = new WeaponData
                 {
                     WeaponType = HardpointWeaponType.LaserCannon,
-                    DeliveryMode = WeaponDeliveryMode.Projectile,
-                    Damage = 10f,
                     Range = 20f,
                     FireIntervalSeconds = 1f,
-                    ProjectileSpeed = 10f,
-                    EffectDurationSeconds = 0.2f,
+                    Projectile = new ProjectileData
+                    {
+                        DeliveryMode = WeaponDeliveryMode.Projectile,
+                        Damage = 10f,
+                        Speed = 10f,
+                        EffectDurationSeconds = 0.2f,
+                    },
                 },
             };
 

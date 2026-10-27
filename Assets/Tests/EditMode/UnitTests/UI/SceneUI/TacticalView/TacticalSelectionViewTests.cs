@@ -5,7 +5,8 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
+using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -79,7 +80,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_SelectedShip_ShowsCurrentDurabilityWithoutTinyNameLabel()
         {
-            _combatant.CurrentShieldStrength = 20;
+            _combatant.Condition.CurrentShieldStrength = 20;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -100,8 +101,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void Render_ChangedBattleStats_RefreshesExistingSelection()
         {
             _view.Render(_combatant, _presentation, _camera);
-            ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength = 30;
-            _combatant.CurrentShieldStrength = 0;
+            _combatant.Condition.CurrentHullStrength = 30;
+            _combatant.Condition.CurrentShieldStrength = 0;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -131,7 +132,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     },
                 }
             );
-            fighter.CurrentShieldStrength = 3;
+            fighter.Condition.CurrentShieldStrength = 3;
 
             _view.Render(fighter, _presentation, _camera);
 
@@ -187,7 +188,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_NoShieldCapacity_ShowsNoShields()
         {
-            ((CapitalShip)_combatant.GetUnit()).MaxShieldStrength = 0;
+            _combatant.Data.MaxShieldStrength = 0;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -201,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_UnrecordedShields_DistinguishesUnknownFromDepleted()
         {
-            _combatant.CurrentShieldStrength = null;
+            _combatant.Condition.CurrentShieldStrength = null;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -221,15 +222,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             float fraction
         )
         {
-            ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength = value;
-            _combatant.CurrentShieldStrength = value;
+            _combatant.Condition.CurrentHullStrength = value;
+            _combatant.Condition.CurrentShieldStrength = value;
 
             _view.Render(_combatant, _presentation, _camera);
 
             Assert.AreEqual(fraction, FindFill("HullBar").anchorMax.x);
             Assert.AreEqual(fraction, FindFill("ShieldBar").anchorMax.x);
-            Assert.AreEqual(value, ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength);
-            Assert.AreEqual(value, _combatant.CurrentShieldStrength);
+            Assert.AreEqual(value, _combatant.Condition.CurrentHullStrength);
+            Assert.AreEqual(value, _combatant.Condition.CurrentShieldStrength);
         }
 
         /// <summary>
@@ -343,7 +344,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderContacts_HoveredHostile_UsesProjectedShipDurabilityFrame()
         {
-            _combatant.CurrentShieldStrength = 20;
+            _combatant.Condition.CurrentShieldStrength = 20;
             Dictionary<CombatUnit, Transform> presentations = new Dictionary<CombatUnit, Transform>
             {
                 [_combatant] = _presentation,
@@ -370,8 +371,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             RectTransform well = (RectTransform)_view.transform.Find("BattleDock/RosterHousing");
             Canvas.ForceUpdateCanvases();
             float width = well.rect.width;
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            CombatUnit third = CombatUnit.Create(_combatant.GetUnit());
+            CombatUnit second = CopyCombatant(_combatant);
+            CombatUnit third = CopyCombatant(_combatant);
             Dictionary<CombatUnit, Transform> roots = new Dictionary<CombatUnit, Transform>
             {
                 [_combatant] = _presentation,
@@ -606,7 +607,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         {
             CombatUnit[] selected = Enumerable
                 .Range(0, 40)
-                .Select(_ => CombatUnit.Create(_combatant.GetUnit()))
+                .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
 
             _view.RenderSelection(selected, null, null);
@@ -632,11 +633,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_SameShipType_GroupsMembersAndAveragesBars()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            ((CapitalShip)second.GetUnit()).CurrentHullStrength = 25;
-            second.CurrentShieldStrength = 0;
-            _combatant.CurrentShieldStrength = 50;
+            _combatant.Data.TypeID = "CRUISER";
+            CombatUnit second = CopyCombatant(_combatant);
+            second.Condition.CurrentHullStrength = 25;
+            second.Condition.CurrentShieldStrength = 0;
+            _combatant.Condition.CurrentShieldStrength = 50;
 
             _view.RenderSelection(new[] { _combatant, second }, null, null);
 
@@ -654,8 +655,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_ChangedGroupMembers_RebindsCardAndUpdatesCount()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
+            _combatant.Data.TypeID = "CRUISER";
+            CombatUnit second = CopyCombatant(_combatant);
             _view.RenderSelection(new[] { _combatant, second }, null, null);
             TacticalUnitCardView card = FindCard();
 
@@ -672,10 +673,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_OpposingOwners_DoesNotMergeCards()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            _combatant.GetUnit().OwnerInstanceID = "FNEMP1";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            second.GetUnit().OwnerInstanceID = "FNALL1";
+            _combatant.Data.TypeID = "CRUISER";
+            _combatant.Data.OwnerInstanceID = "FNEMP1";
+            CombatUnit second = CopyCombatant(_combatant);
+            second.Data.OwnerInstanceID = "FNALL1";
 
             _view.RenderSelection(new[] { _combatant, second }, null, null);
 
@@ -744,9 +745,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
 
             TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
             Assert.AreEqual(2, cards.Length);
-            Assert.That(cards[0].Combatant.GetUnit(), Is.TypeOf<Starfighter>());
+            Assert.That(cards[0].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.Starfighter));
             Assert.AreEqual(40, cards[0].Combatants.Count);
-            Assert.That(cards[1].Combatant.GetUnit(), Is.TypeOf<CapitalShip>());
+            Assert.That(cards[1].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.CapitalShip));
             Assert.AreEqual(20, cards[1].Combatants.Count);
         }
 
@@ -757,7 +758,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_UnsortedUnchangedSelection_DoesNotRebindTypeCards()
         {
-            _combatant.GetUnit().TypeID = "CAPITAL";
+            _combatant.Data.TypeID = "CAPITAL";
             CombatUnit fighter = CombatUnit.Create(
                 new Starfighter { TypeID = "FIGHTER", DisplayName = "Fighter" }
             );
@@ -803,7 +804,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         {
             CombatUnit[] selected = Enumerable
                 .Range(0, 4)
-                .Select(_ => CombatUnit.Create(_combatant.GetUnit()))
+                .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
 
             _view.RenderSelection(selected, null, null);
@@ -884,10 +885,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _view.RenderSelection(new[] { carrier }, null, null);
             TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
             Assert.That(cards.Length, Is.EqualTo(2));
-            Assert.That(cards[0].Combatant.GetUnit(), Is.TypeOf<Starfighter>());
-            Assert.That(cards[1].Combatant.GetUnit(), Is.TypeOf<CapitalShip>());
+            Assert.That(cards[0].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.Starfighter));
+            Assert.That(cards[1].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.CapitalShip));
             Assert.That(
-                cards.Single(card => card.Combatant.GetUnit() is Starfighter).Combatants.Count,
+                cards
+                    .Single(card => card.Combatant.Data.Kind == CombatUnitKind.Starfighter)
+                    .Combatants.Count,
                 Is.EqualTo(1)
             );
             Assert.IsTrue(_view.LaunchButton.interactable);
@@ -929,6 +932,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// <returns>The authored text component.</returns>
         private TMP_Text FindLabel(string name) =>
             FindCard().GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == name);
+
+        /// <summary>
+        /// Creates an independent roster member while restoring its fixture-owned geometry.
+        /// </summary>
+        /// <param name="source">The combatant supplying the fixture state.</param>
+        /// <returns>The independently identified combatant.</returns>
+        private static CombatUnit CopyCombatant(CombatUnit source)
+        {
+            CombatUnit copy = SerializationHelper.Deserialize<CombatUnit>(
+                SerializationHelper.Serialize(source)
+            );
+            copy.InstanceID = Guid.NewGuid().ToString("N");
+            copy.Data.ModelSize = source.Data.ModelSize?.CreateCopy();
+            return copy;
+        }
 
         /// <summary>
         /// Returns one authored durability fill without accessing private view state.

@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1, addedCombatants.Count);
             Assert.AreEqual("FACTION_1", participant.FactionInstanceID);
             Assert.AreSame(addedCombatants[0], participant.GetCombatants()[0]);
-            Assert.AreNotSame(source, addedCombatants[0].GetUnit());
+            Assert.AreNotSame(source, addedCombatants[0].Data);
         }
 
         /// <summary>
@@ -55,9 +55,9 @@ namespace Rebellion.Tests.Game.Combat
             foreach (CombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
-                Starfighter fighter = combatUnit.GetUnit() as Starfighter;
+                CombatUnitData fighter = combatUnit.Data;
                 Assert.IsNotNull(fighter);
-                Assert.AreEqual(3, fighter.CurrentSquadronSize);
+                Assert.AreEqual(3, combatUnit.Condition.CurrentSquadronSize);
                 Assert.AreEqual(12, fighter.MaxSquadronSize);
             }
         }
@@ -193,11 +193,11 @@ namespace Rebellion.Tests.Game.Combat
                 .GetParticipants()
                 .Single(participant => participant.FactionInstanceID == "FACTION_1")
                 .GetCombatants()[0];
-            CapitalShip restoredShip = restoredCombatUnit.GetUnit() as CapitalShip;
+            CombatUnitData restoredShip = restoredCombatUnit.Data;
 
             Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitInstanceID);
             Assert.IsNotNull(restoredShip);
-            Assert.AreEqual(75, restoredShip.CurrentHullStrength);
+            Assert.AreEqual(75, restoredCombatUnit.Condition.CurrentHullStrength);
             Assert.AreEqual(10f, restoredCombatUnit.Position.X);
             Assert.AreEqual(20f, restoredCombatUnit.Position.Y);
             Assert.AreEqual(30f, restoredCombatUnit.Position.Z);
@@ -206,9 +206,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0f, restoredCombatUnit.Forward.Z);
             Assert.AreEqual(source.ModelPath, restoredShip.ModelPath);
             Assert.AreEqual(2.5f, restoredShip.ModelScale);
-            Assert.AreEqual(100f, restoredShip.ModelSize.Width);
-            Assert.AreEqual(40f, restoredShip.ModelSize.Height);
-            Assert.AreEqual(250f, restoredShip.ModelSize.Depth);
+            Assert.IsNull(restoredShip.ModelSize);
             Assert.AreEqual(2, restored.GetParticipants().Count);
             Assert.AreEqual(
                 "defender",

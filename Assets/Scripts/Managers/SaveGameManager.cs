@@ -479,7 +479,7 @@ public class SaveGameManager
             FileAccess.Read,
             FileShare.Read
         );
-        return (GameRoot)serializer.Deserialize(fileStream);
+        return SaveGameMigration.Deserialize(fileStream, serializer);
     }
 
     /// <summary>

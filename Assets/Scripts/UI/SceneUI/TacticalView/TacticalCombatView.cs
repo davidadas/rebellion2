@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -28,6 +28,7 @@ public sealed class TacticalCombatView : IDisposable
     private readonly List<long> _finished = new();
     private readonly HashSet<long> _live = new();
     private readonly List<Flash> _flashes = new();
+    private readonly List<Beam> _beams = new();
     private readonly Dictionary<CombatUnit, ITacticalShieldEffect> _shields = new();
     private readonly List<GameObject> _shieldObjects = new();
     private readonly AudioSource[] _fireSources = new AudioSource[4];
@@ -56,7 +57,7 @@ public sealed class TacticalCombatView : IDisposable
         {
             foreach (string path in hardpoint.Weapon.FireSoundPaths)
                 paths.Add(path);
-            foreach (string path in hardpoint.Weapon.ImpactSoundPaths)
+            foreach (string path in hardpoint.Weapon.Projectile.ImpactSoundPaths)
                 paths.Add(path);
         }
         Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>(
@@ -138,33 +139,17 @@ public sealed class TacticalCombatView : IDisposable
         _time += deltaTime;
         _live.Clear();
         foreach (BattleProjectile shot in _battle.Projectiles)
+            RenderShot(shot);
+        for (int index = _beams.Count - 1; index >= 0; index--)
         {
-            _live.Add(shot.ID);
-            if (!_shots.TryGetValue(shot.ID, out LineRenderer line))
+            Beam beam = _beams[index];
+            if (beam.RemainingSeconds <= 0f)
             {
-                line = Acquire(shot.Weapon);
-                _shots.Add(shot.ID, line);
+                _beams.RemoveAt(index);
+                continue;
             }
-            Vector3 head = ToVector(shot.Position);
-            Vector3 direction = ToVector(shot.Direction);
-            float unitsPerPixel = GetWorldUnitsPerPixel(_space.TransformPoint(head));
-            float width = Mathf.Max(shot.Weapon.ProjectileWidth, unitsPerPixel * 2.5f) * 4.2f;
-            line.startWidth = width;
-            line.endWidth = width;
-            if (shot.Weapon.DeliveryMode == WeaponDeliveryMode.Hitscan)
-            {
-                line.SetPosition(0, head);
-                line.SetPosition(1, head + direction * shot.DistanceTraveled);
-            }
-            else
-            {
-                float length = Mathf.Min(
-                    shot.DistanceTraveled,
-                    Mathf.Max(shot.Weapon.ProjectileLength, unitsPerPixel * 18f)
-                );
-                line.SetPosition(0, head - direction * length);
-                line.SetPosition(1, head);
-            }
+            RenderShot(beam.Shot);
+            beam.RemainingSeconds -= deltaTime;
         }
         _finished.Clear();
         foreach (long id in _shots.Keys)
@@ -193,20 +178,59 @@ public sealed class TacticalCombatView : IDisposable
     }
 
     /// <summary>
+    /// Presents a physical projectile or a transient resolved beam through the same renderer pool.
+    /// </summary>
+    /// <param name="shot">The shot supplying its pose and frozen appearance.</param>
+    private void RenderShot(BattleProjectile shot)
+    {
+        _live.Add(shot.ID);
+        if (!_shots.TryGetValue(shot.ID, out LineRenderer line))
+        {
+            line = Acquire(shot.Projectile);
+            _shots.Add(shot.ID, line);
+        }
+        Vector3 head = ToVector(shot.Position);
+        Vector3 direction = ToVector(shot.Direction);
+        float unitsPerPixel = GetWorldUnitsPerPixel(_space.TransformPoint(head));
+        float width = Mathf.Max(shot.Projectile.Width, unitsPerPixel * 2.5f) * 4.2f;
+        line.startWidth = width;
+        line.endWidth = width;
+        if (shot.Projectile.DeliveryMode == WeaponDeliveryMode.Hitscan)
+        {
+            line.SetPosition(0, head);
+            line.SetPosition(1, head + direction * shot.DistanceTraveled);
+        }
+        else
+        {
+            float length = Mathf.Min(
+                shot.DistanceTraveled,
+                Mathf.Max(shot.Projectile.Length, unitsPerPixel * 18f)
+            );
+            line.SetPosition(0, head - direction * length);
+            line.SetPosition(1, head);
+        }
+    }
+
+    /// <summary>
     /// Creates a pooled muzzle flash and requests a data-selected firing cue.
     /// </summary>
-    /// <param name="shot">The emitted simulation shot.</param>
-    private void OnShotFired(BattleProjectile shot)
+    /// <param name="shot">The emitted shot.</param>
+    /// <param name="weapon">The firing weapon supplying its launch audio.</param>
+    private void OnShotFired(BattleProjectile shot, WeaponData weapon)
     {
+        if (shot.Projectile.DeliveryMode == WeaponDeliveryMode.Hitscan)
+            _beams.Add(
+                new Beam { Shot = shot, RemainingSeconds = shot.Projectile.EffectDurationSeconds }
+            );
         CreateFlash(
             shot,
             ToVector(shot.Position),
             0.14f,
-            Mathf.Max(0.34f, shot.Weapon.ProjectileWidth * 4f)
+            Mathf.Max(0.34f, shot.Projectile.Width * 4f)
         );
         Play(
             _fireSources,
-            shot.Weapon.FireSoundPaths,
+            weapon.FireSoundPaths,
             ToVector(shot.Position),
             ref _nextFireSound,
             0.12f
@@ -222,7 +246,7 @@ public sealed class TacticalCombatView : IDisposable
     private void OnShotHit(BattleProjectile shot, CombatUnit target, bool absorbedByShield)
     {
         Vector3 position = ToVector(shot.Position);
-        if (shot.Weapon.DeliveryMode == WeaponDeliveryMode.Hitscan)
+        if (shot.Projectile.DeliveryMode == WeaponDeliveryMode.Hitscan)
             position += ToVector(shot.Direction) * shot.DistanceTraveled;
         if (absorbedByShield && _shields.TryGetValue(target, out ITacticalShieldEffect shield))
         {
@@ -230,11 +254,17 @@ public sealed class TacticalCombatView : IDisposable
             Vector3 normal = -_space.TransformDirection(ToVector(shot.Direction)).normalized;
             float unitsPerPixel = GetWorldUnitsPerPixel(worldPosition);
             float projectileVisualWidth =
-                Mathf.Max(shot.Weapon.ProjectileWidth, unitsPerPixel * 2.5f) * 4.2f;
+                Mathf.Max(shot.Projectile.Width, unitsPerPixel * 2.5f) * 4.2f;
             shield.ShowHit(worldPosition, normal, projectileVisualWidth * 1.5f, 1f);
         }
         CreateFlash(shot, position, 0.18f, 0.8f);
-        Play(_impactSources, shot.Weapon.ImpactSoundPaths, position, ref _nextImpactSound, 0.16f);
+        Play(
+            _impactSources,
+            shot.Projectile.ImpactSoundPaths,
+            position,
+            ref _nextImpactSound,
+            0.16f
+        );
     }
 
     /// <summary>
@@ -259,7 +289,7 @@ public sealed class TacticalCombatView : IDisposable
             );
             instance.name = "Shield";
             instance.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-            ModelDimensions size = unit.GetUnit().ModelSize;
+            ModelDimensions size = unit.Data.ModelSize;
             instance.transform.localScale =
                 new Vector3(size.Width, size.Height, size.Depth) * _shieldEnvelopeScale;
             ITacticalShieldEffect effect = GetShieldEffect(instance);
@@ -293,7 +323,7 @@ public sealed class TacticalCombatView : IDisposable
     /// <param name="unit">The battle member.</param>
     /// <returns>Whether its current or initial shield strength is positive.</returns>
     private static bool HasShieldStrength(CombatUnit unit) =>
-        (unit.CurrentShieldStrength ?? TacticalCombat.GetMaximumShields(unit)) > 0;
+        (unit.Condition.CurrentShieldStrength ?? TacticalCombat.GetMaximumShields(unit)) > 0;
 
     /// <summary>
     /// Converts one screen pixel to world units at a presented position.
@@ -323,7 +353,7 @@ public sealed class TacticalCombatView : IDisposable
         float diameter
     )
     {
-        LineRenderer line = Acquire(shot.Weapon);
+        LineRenderer line = Acquire(shot.Projectile);
         Vector3 right = _space.InverseTransformDirection(_camera.transform.right) * diameter * 0.5f;
         line.SetPosition(0, position - right);
         line.SetPosition(1, position + right);
@@ -335,9 +365,9 @@ public sealed class TacticalCombatView : IDisposable
     /// <summary>
     /// Reuses a disabled renderer or creates one when peak simultaneous effects grow.
     /// </summary>
-    /// <param name="weapon">The authored effect appearance.</param>
+    /// <param name="projectile">The authored effect appearance.</param>
     /// <returns>A scene-owned renderer with a shared color material.</returns>
-    private LineRenderer Acquire(WeaponData weapon)
+    private LineRenderer Acquire(ProjectileData projectile)
     {
         LineRenderer line;
         if (_pool.Count > 0)
@@ -354,7 +384,7 @@ public sealed class TacticalCombatView : IDisposable
             line.shadowCastingMode = ShadowCastingMode.Off;
             line.receiveShadows = false;
         }
-        Color color = new Color(weapon.Red, weapon.Green, weapon.Blue);
+        Color color = ParseProjectileColor(projectile.ColorHex);
         if (!_materials.TryGetValue(color, out Material material))
         {
             material = new Material(_shader);
@@ -366,6 +396,21 @@ public sealed class TacticalCombatView : IDisposable
         line.endColor = Color.white;
         line.gameObject.SetActive(true);
         return line;
+    }
+
+    /// <summary>
+    /// Converts one authored projectile color into its Unity presentation value.
+    /// </summary>
+    /// <param name="colorHex">The HTML hexadecimal color.</param>
+    /// <returns>The configured projectile color.</returns>
+    private static Color ParseProjectileColor(string colorHex)
+    {
+        if (!ColorUtility.TryParseHtmlString(colorHex, out Color color))
+            throw new ArgumentException(
+                $"Invalid projectile color '{colorHex}'.",
+                nameof(colorHex)
+            );
+        return color;
     }
 
     /// <summary>
@@ -466,6 +511,7 @@ public sealed class TacticalCombatView : IDisposable
         foreach (GameObject shield in _shieldObjects)
             if (shield)
                 DestroyOwned(shield);
+        _beams.Clear();
         _shieldObjects.Clear();
         _shields.Clear();
         DestroyOwned(_root);
@@ -490,6 +536,12 @@ public sealed class TacticalCombatView : IDisposable
     /// <param name="value">The simulation coordinate.</param>
     /// <returns>The corresponding Unity vector.</returns>
     private static Vector3 ToVector(BattleVector3 value) => new Vector3(value.X, value.Y, value.Z);
+
+    private sealed class Beam
+    {
+        public BattleProjectile Shot;
+        public float RemainingSeconds;
+    }
 
     private sealed class Flash
     {

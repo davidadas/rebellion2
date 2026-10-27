@@ -9,7 +9,7 @@ namespace Rebellion.Game
     [PersistableObject]
     public sealed class GameMetadata
     {
-        public const int CurrentSaveVersion = 1;
+        public const int CurrentSaveVersion = 2;
 
         [PersistableMember(Name = nameof(SaveDisplayName))]
         private string _saveDisplayName;

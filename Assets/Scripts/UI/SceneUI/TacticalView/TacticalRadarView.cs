@@ -89,7 +89,7 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
             bool selected = _selectedContacts.Contains(pair.Key);
             Color tint =
                 selected ? Color.white
-                : pair.Key.GetUnit().OwnerInstanceID == _viewer ? _friendly
+                : pair.Key.Data.OwnerInstanceID == _viewer ? _friendly
                 : new Color(0.9f, 0.22f, 0.14f);
             float size = selected ? 3f : 2f;
             TacticalHudGraphic.Triangle(
