@@ -401,71 +401,23 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
-        {
-            int count = _saveGameManager.SaveSlotCount;
-
-            Assert.AreEqual(6, count);
-        }
-
-        [Test]
-        public void IsValidSaveSlot_BoundaryValues_ValidatesBounds()
-        {
-            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(-1));
-            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(0));
-            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(5));
-            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(6));
-        }
-
-        [Test]
-        public void GetSaveSlotFileName_ValidSlots_ReturnsCanonicalNames()
-        {
-            Assert.AreEqual("save_slot_1", _saveGameManager.GetSaveSlotFileName(0));
-            Assert.AreEqual("save_slot_6", _saveGameManager.GetSaveSlotFileName(5));
-        }
-
-        [Test]
-        public void GetSaveSlotFileName_InvalidSlot_ThrowsArgumentOutOfRangeException()
-        {
-            TestDelegate getName = () => _saveGameManager.GetSaveSlotFileName(-1);
-
-            Assert.Throws<ArgumentOutOfRangeException>(getName);
-        }
-
-        [Test]
-        public void GetSaveSlotDisplayName_ValidSlots_ReturnsCanonicalNames()
-        {
-            Assert.AreEqual("Save Slot 1", _saveGameManager.GetSaveSlotDisplayName(0));
-            Assert.AreEqual("Save Slot 6", _saveGameManager.GetSaveSlotDisplayName(5));
-        }
-
-        [Test]
-        public void GetSaveSlotDisplayName_InvalidSlot_ThrowsArgumentOutOfRangeException()
-        {
-            TestDelegate getName = () => _saveGameManager.GetSaveSlotDisplayName(6);
-
-            Assert.Throws<ArgumentOutOfRangeException>(getName);
-        }
-
-        [Test]
-        public void SaveSlotGameData_CustomDisplayName_StoresDisplayName()
+        public void SaveGameData_CustomDisplayName_StoresDisplayName()
         {
             SaveGameManager manager = _saveGameManager;
-            _saveFileName = manager.GetSaveSlotFileName(0);
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
                 Galaxy = new GalaxyMap(),
             };
 
-            manager.SaveSlotGameData(game, 0, "Coruscant Campaign");
+            manager.SaveGameData(game, _saveFileName, "Coruscant Campaign");
             GameRoot loadedGame = manager.LoadGameData(_saveFileName);
 
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
         }
 
         [Test]
-        public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
+        public void SaveGameData_ValidGame_WritesMetadataSidecar()
         {
             GameRoot game = new GameRoot
             {
@@ -478,12 +430,11 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            _saveGameManager.SaveSlotGameData(game, 0, "Core Worlds");
+            _saveGameManager.SaveGameData(game, _saveFileName, "Core Worlds");
 
-            string fileName = _saveGameManager.GetSaveSlotFileName(0);
-            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(fileName)));
-            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
-            Assert.AreEqual(fileName, entry.FileName);
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(_saveFileName)));
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(_saveFileName, entry.FileName);
             Assert.AreEqual("Core Worlds", entry.Metadata.SaveDisplayName);
             Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
             Assert.AreEqual(GameDifficulty.Hard, entry.Metadata.Difficulty);
@@ -603,52 +554,37 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void GetSaveSlotEntries_SaveWithoutSidecar_RecreatesSidecar()
+        public void GetSavedGames_SaveWithoutSidecar_RecreatesSidecar()
         {
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
                 Galaxy = new GalaxyMap(),
             };
-            _saveGameManager.SaveSlotGameData(game, 1, "Recovered Slot");
-            string fileName = _saveGameManager.GetSaveSlotFileName(1);
-            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
+            _saveGameManager.SaveGameData(game, _saveFileName, "Recovered Slot");
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(_saveFileName);
             File.Delete(metadataPath);
 
-            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
 
             Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
             Assert.IsTrue(File.Exists(metadataPath));
         }
 
         [Test]
-        public void GetSaveSlotEntries_UnrelatedSave_IgnoresSave()
+        public void GetSavedGames_CorruptSidecar_ReadsMainSave()
         {
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
                 Galaxy = new GalaxyMap(),
             };
-            _saveGameManager.SaveGameData(game, "simulation_seed_1");
-
-            Assert.IsEmpty(_saveGameManager.GetSaveSlotEntries());
-        }
-
-        [Test]
-        public void GetSaveSlotEntries_CorruptSidecar_ReadsMainSave()
-        {
-            GameRoot game = new GameRoot
-            {
-                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                Galaxy = new GalaxyMap(),
-            };
-            _saveGameManager.SaveSlotGameData(game, 2, "Recovered Slot");
-            string fileName = _saveGameManager.GetSaveSlotFileName(2);
-            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
+            _saveGameManager.SaveGameData(game, _saveFileName, "Recovered Slot");
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(_saveFileName);
             File.WriteAllText(metadataPath, "<Metadata>");
             File.SetLastWriteTimeUtc(metadataPath, DateTime.UtcNow.AddMinutes(1));
 
-            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
 
             Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
         }

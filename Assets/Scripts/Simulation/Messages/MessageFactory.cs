@@ -242,31 +242,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Creates the emperor seat-of-power message.
-        /// </summary>
-        /// <param name="faction">The faction that owns the emperor.</param>
-        /// <param name="officer">The officer returning to the seat of power.</param>
-        /// <returns>The seat-of-power message, or null when no matching definition exists.</returns>
-        private MessageDelivery CreateEmperorSeatOfPower(Faction faction, Officer officer)
-        {
-            return WithAdvisorSubject(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.EmperorSeatOfPower),
-                        faction,
-                        new Dictionary<string, string>(),
-                        overlayImagePath: GetMessageImagePath(officer),
-                        officerVoicePath: null
-                    ),
-                    GetOfficerPlanet(officer),
-                    officer
-                ),
-                AdvisorSubjectNotification.Report,
-                officer
-            );
-        }
-
-        /// <summary>
         /// Creates the mission report for the acting faction.
         /// </summary>
         /// <param name="faction">The faction that launched the mission.</param>
@@ -4241,17 +4216,6 @@ namespace Rebellion.Simulation
         private static bool Matches(string selector, string value) =>
             string.IsNullOrWhiteSpace(selector)
             || string.Equals(selector, value, StringComparison.Ordinal);
-
-        /// <summary>
-        /// Gets strategic faction.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="instanceID">The instance id.</param>
-        /// <returns>The requested strategic faction.</returns>
-        private static Faction GetStrategicFaction(GameRoot game, string instanceID) =>
-            string.IsNullOrEmpty(instanceID)
-                ? null
-                : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);
 
         /// <summary>
         /// Resolves authored text against the selected subjects and location without delivering it.

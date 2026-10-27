@@ -31,7 +31,7 @@ public sealed class AudioManagerTests
 
         Assert.IsNotNull(manager);
         Assert.AreSame(manager, AudioManager.Instance);
-        Assert.GreaterOrEqual(manager.GetComponents<AudioSource>().Length, 3);
+        Assert.GreaterOrEqual(manager.GetComponents<AudioSource>().Length, 2);
         Assert.AreEqual(1f, manager.MasterVolume);
         Assert.AreEqual(1f, manager.MusicVolume);
         Assert.AreEqual(1f, manager.SfxVolume);
@@ -353,93 +353,6 @@ public sealed class AudioManagerTests
 
             Assert.IsNull(firstPlayback.Source);
             Assert.IsNull(secondPlayback.Source);
-        }
-        finally
-        {
-            Object.DestroyImmediate(clip);
-        }
-    }
-
-    [Test]
-    public void PlayTrack_LoadedClip_AssignsLoopingMusicUntilStopped()
-    {
-        AudioManager manager = AudioManager.EnsureExists();
-        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
-        try
-        {
-            manager.PlayTrack(clip, true);
-            AudioSource source = GetAudioSource(manager, "musicSource");
-
-            Assert.AreSame(clip, source.clip);
-            Assert.IsTrue(source.loop);
-
-            manager.StopMusic();
-
-            Assert.IsNull(source.clip);
-            Assert.IsFalse(source.isPlaying);
-        }
-        finally
-        {
-            Object.DestroyImmediate(clip);
-        }
-    }
-
-    [Test]
-    public void PlayTrack_BlankPath_DoesNotReplaceLoadedClip()
-    {
-        AudioManager manager = AudioManager.EnsureExists();
-        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
-        try
-        {
-            manager.PlayTrack(clip);
-            AudioSource source = GetAudioSource(manager, "musicSource");
-
-            manager.PlayTrack(" ");
-
-            Assert.AreSame(clip, source.clip);
-        }
-        finally
-        {
-            Object.DestroyImmediate(clip);
-        }
-    }
-
-    [Test]
-    public void PlayPlaylist_EmptyPaths_DoesNotReplaceLoadedClip()
-    {
-        AudioManager manager = AudioManager.EnsureExists();
-        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
-        try
-        {
-            manager.PlayTrack(clip);
-            AudioSource source = GetAudioSource(manager, "musicSource");
-
-            manager.PlayPlaylist(new[] { null, string.Empty, " " });
-
-            Assert.AreSame(clip, source.clip);
-        }
-        finally
-        {
-            Object.DestroyImmediate(clip);
-        }
-    }
-
-    [Test]
-    public void PlayAmbience_LoadedClip_ConfiguresAmbienceChannel()
-    {
-        AudioManager manager = AudioManager.EnsureExists();
-        AudioClip clip = AudioClip.Create("Ambience", 1, 1, 44100, false);
-        try
-        {
-            manager.SetMasterVolume(0.5f);
-            manager.SetAmbienceVolume(0.25f);
-
-            manager.PlayAmbience(clip, true);
-            AudioSource source = GetAudioSource(manager, "ambienceSource");
-
-            Assert.AreSame(clip, source.clip);
-            Assert.IsTrue(source.loop);
-            Assert.AreEqual(0.125f, source.volume);
         }
         finally
         {

@@ -379,11 +379,9 @@ public static class MainMenuPrefabBuilder
         audioManagerObject.transform.localPosition = new Vector3(0f, 0f, -10f);
         AudioSource musicSource = NewAudioSource(audioManagerObject);
         AudioSource sfxSource = NewAudioSource(audioManagerObject);
-        AudioSource ambienceSource = NewAudioSource(audioManagerObject);
         AudioManager audioManager = audioManagerObject.AddComponent<AudioManager>();
         AssignReference(audioManager, "musicSource", musicSource);
         AssignReference(audioManager, "sfxSource", sfxSource);
-        AssignReference(audioManager, "ambienceSource", ambienceSource);
     }
 
     /// <summary>
