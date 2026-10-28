@@ -66,7 +66,7 @@ namespace Rebellion.Gameplay
             _movementRandom = random ?? game.Random;
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
-                personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+                personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
@@ -687,7 +687,7 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
+                _fleetSystem.RemoveEmptyFleet(createdDestinationFleet);
                 return false;
             }
 
@@ -699,10 +699,10 @@ namespace Rebellion.Gameplay
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                    FleetLifecycle.RemoveEmptyFleet(_game, sourceFleet);
+                    _fleetSystem.RemoveEmptyFleet(sourceFleet);
             }
 
-            FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
+            _fleetSystem.RemoveEmptyFleet(createdDestinationFleet);
             return accepted;
         }
 

@@ -2221,7 +2221,7 @@ public sealed class StrategyController
     /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
-        session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
+        session?.GetService<AdvisorAutomationCommands>()?.ProcessFaction(faction);
         session?.GetService<NamingCommands>()?.ProcessFaction(faction);
         RefreshStrategyState();
     }
@@ -2362,7 +2362,7 @@ public sealed class StrategyController
             return false;
 
         return session
-                ?.GetService<OfficerCommandCommands>()
+                ?.GetService<PersonnelCommands>()
                 ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
     }
 
