@@ -299,10 +299,76 @@ namespace Rebellion.AI
                 fleet,
                 planet,
                 projected,
-                additionalBombardmentStrength
+                additionalBombardmentStrength,
+                demand.ShieldStrength
             )
                 ? (demand.OccupationRegimentCount, 0)
                 : (demand.RegimentCount, demand.RegimentStrength);
+        }
+
+        /// <summary>
+        /// Returns whether ready bombardment can damage military targets at the assessed arrival.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The known attack target.</param>
+        /// <returns>True when bombardment exceeds the expected shields and has military targets.</returns>
+        internal bool CanBombardAttackTarget(Fleet fleet, Planet planet)
+        {
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            int shieldStrength = Math.Max(
+                demand?.ShieldStrength ?? 0,
+                Assessment.GetBombardmentShieldStrength(planet)
+            );
+            return fleet != null
+                && planet != null
+                && Assessment.GetFleetBombardmentStrength(fleet) > shieldStrength
+                && (Assessment.HasBombardmentTargets(planet) || shieldStrength > 0);
+        }
+
+        /// <summary>
+        /// Separates fleet launch readiness from the regiments needed to complete the attack.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <returns>Whether the fleet and its regiments satisfy their launch requirements.</returns>
+        internal (bool FleetReady, bool RegimentsReady) GetAttackReadiness(
+            Fleet fleet,
+            Planet planet
+        )
+        {
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (
+                fleet == null
+                || demand == null
+                || !Assessment.HasCurrentHeadquartersAttackIntel(planet)
+                || !StrategicPlan.CanFleetDepart(fleet)
+                || !fleet.HasOperationalCapitalShips()
+            )
+                return default;
+
+            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            var required = GetAttackRegimentRequirements(planet, fleet);
+            if (
+                combat <= 0
+                || combat < demand.CombatStrength
+                || Assessment.GetReadyFleetRegimentCapacity(fleet) < required.Count
+                || Assessment.GetFleetBombardmentStrength(fleet) < demand.BombardmentStrength
+            )
+                return default;
+
+            bool canBombard = CanBombardAttackTarget(fleet, planet);
+            if (!canBombard && demand.IsAssaultBlockedByShields)
+                return default;
+
+            bool regimentsReady =
+                Assessment.GetReadyFleetRegimentCount(fleet) >= required.Count
+                && Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= required.Strength
+                && (
+                    canBombard
+                    || Assessment.GetPlanetaryAssaultSuccessPercent(fleet, planet)
+                        >= Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
+                );
+            return (true, regimentsReady);
         }
 
         /// <summary>

@@ -170,9 +170,7 @@ namespace Rebellion.AI.Scorers
             bool hasGroundDefenders =
                 context.Assessment.GetDefendingRegimentCount(proposal.TargetPlanet) > 0;
             double groundRequirement =
-                hasGroundDefenders
-                && beforeBombardment
-                    <= context.Assessment.GetBombardmentShieldStrength(proposal.TargetPlanet)
+                hasGroundDefenders && beforeBombardment <= demand.ShieldStrength
                     ? demand.RegimentStrength
                     : 0;
             double improvement =
@@ -264,10 +262,7 @@ namespace Rebellion.AI.Scorers
         {
             bool hasGroundDefenders =
                 context.Assessment.GetDefendingRegimentCount(demand.TargetPlanet) > 0;
-            bool canBombard =
-                hasGroundDefenders
-                && bombardment
-                    > context.Assessment.GetBombardmentShieldStrength(demand.TargetPlanet);
+            bool canBombard = hasGroundDefenders && bombardment > demand.ShieldStrength;
             int requiredCount = canBombard ? demand.OccupationRegimentCount : demand.RegimentCount;
             return new[]
             {
@@ -655,7 +650,7 @@ namespace Rebellion.AI.Scorers
             );
             score.Add(
                 IsExposedSectorBombardmentTarget(context, targetPlanet)
-                && context.Assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
+                && context.CanBombardAttackTarget(fleet, targetPlanet)
                     ? 1
                     : 0,
                 utility.ExposedBombardment
@@ -867,48 +862,91 @@ namespace Rebellion.AI.Scorers
             AIAssessment assessment = context.Assessment;
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
+            if (
+                !context.MovementQueries.TryGetSelectionTransitTicks(
+                    new[] { regiment },
+                    proposal.TargetFleet,
+                    context.Faction.InstanceID,
+                    out int transitTicks
+                )
+            )
+                return 0;
+
+            var readiness = context.GetAttackReadiness(proposal.TargetFleet, proposal.TargetPlanet);
+            bool waitingForRegiments = readiness.FleetReady && !readiness.RegimentsReady;
             int requiredCount = context
-                .GetAttackRegimentRequirements(proposal.TargetPlanet, proposal.TargetFleet, true)
+                .GetAttackRegimentRequirements(
+                    proposal.TargetPlanet,
+                    proposal.TargetFleet,
+                    !waitingForRegiments
+                )
                 .Count;
             int requiredStrength = context
-                .GetAttackRegimentRequirements(proposal.TargetPlanet, proposal.TargetFleet, true)
+                .GetAttackRegimentRequirements(
+                    proposal.TargetPlanet,
+                    proposal.TargetFleet,
+                    !waitingForRegiments
+                )
                 .Strength;
+            var arriving = assessment.GetFleetRegimentCapabilitiesAtArrival(
+                proposal.TargetFleet,
+                transitTicks
+            );
+            int currentCount = waitingForRegiments
+                ? arriving.Count
+                : assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet);
+            int currentStrength = waitingForRegiments
+                ? arriving.Strength
+                : assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet);
             double countGain =
-                GetFulfillmentRatio(
-                    assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet) + 1,
-                    requiredCount
-                )
-                - GetFulfillmentRatio(
-                    assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet),
-                    requiredCount
-                );
+                GetFulfillmentRatio(currentCount + 1, requiredCount)
+                - GetFulfillmentRatio(currentCount, requiredCount);
             double strengthGain =
-                GetFulfillmentRatio(
-                    assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet)
-                        + regiment.AttackRating,
-                    requiredStrength
-                )
-                - GetFulfillmentRatio(
-                    assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet),
-                    requiredStrength
-                );
+                GetFulfillmentRatio(currentStrength + regiment.AttackRating, requiredStrength)
+                - GetFulfillmentRatio(currentStrength, requiredStrength);
             double readinessGain = AIUtility.Fulfillment(
                 Math.Max(0, countGain) + Math.Max(0, strengthGain),
                 1
             );
-            Planet receivingPlanet = assessment.GetFleetPlanet(proposal.TargetFleet);
-            double travelEfficiency = ScoreTravelEfficiency(
-                assessment,
-                proposal.SourceContainer as Planet,
-                receivingPlanet
-            );
+            if (readinessGain <= 0)
+                return 0;
+
             AIUtilityScore score = new AIUtilityScore();
             score.Add(readinessGain, utility.Readiness);
+            score.Add(waitingForRegiments ? 1 : 0, utility.Ready);
             score.Add(
                 ScoreStrategicTargetValue(assessment, proposal.TargetPlanet),
                 utility.StrategicValue
             );
-            score.Add(travelEfficiency, utility.TravelEfficiency);
+            if (waitingForRegiments)
+                score.AddCost(
+                    AIUtility.Fulfillment(transitTicks, utility.TravelTime),
+                    utility.TravelTime
+                );
+            else
+                score.Add(
+                    ScoreTravelEfficiency(
+                        assessment,
+                        proposal.SourceContainer as Planet
+                            ?? proposal.SourceContainer.GetParentOfType<Planet>(),
+                        assessment.GetFleetPlanet(proposal.TargetFleet)
+                    ),
+                    utility.TravelEfficiency
+                );
+            if (proposal.SourceContainer is Planet source)
+            {
+                int sourceCount = assessment.GetActiveGarrisonCount(
+                    source,
+                    context.Faction.InstanceID
+                );
+                score.AddCost(
+                    GetFulfillmentRatio(
+                        context.StrategicPlan.GetPlanetaryGarrisonTarget(source),
+                        sourceCount
+                    ),
+                    utility.OpportunityCost
+                );
+            }
             return GetSelectionValue(score);
         }
 

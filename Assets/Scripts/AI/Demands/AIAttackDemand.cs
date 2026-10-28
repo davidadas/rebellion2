@@ -17,6 +17,7 @@ namespace Rebellion.AI.Demands
         public int RegimentCount { get; }
         public int OccupationRegimentCount { get; }
         public int BombardmentStrength { get; }
+        public int ShieldStrength { get; }
         public bool IsAssaultBlockedByShields { get; }
 
         /// <summary>
@@ -33,6 +34,7 @@ namespace Rebellion.AI.Demands
         /// <param name="occupationRegimentCount">The regiment count required after defenders are removed.</param>
         /// <param name="bombardmentStrength">The bombardment strength required to penetrate shields.</param>
         /// <param name="isAssaultBlockedByShields">Whether shields currently block a ground assault.</param>
+        /// <param name="shieldStrength">The shield strength expected when the fleet attacks.</param>
         public AIAttackDemand(
             Planet targetPlanet,
             int combatStrength,
@@ -44,7 +46,8 @@ namespace Rebellion.AI.Demands
             int regimentCount,
             int occupationRegimentCount,
             int bombardmentStrength,
-            bool isAssaultBlockedByShields
+            bool isAssaultBlockedByShields,
+            int shieldStrength = 0
         )
         {
             TargetPlanet = targetPlanet;
@@ -58,6 +61,7 @@ namespace Rebellion.AI.Demands
             OccupationRegimentCount = occupationRegimentCount;
             BombardmentStrength = bombardmentStrength;
             IsAssaultBlockedByShields = isAssaultBlockedByShields;
+            ShieldStrength = shieldStrength;
         }
     }
 }

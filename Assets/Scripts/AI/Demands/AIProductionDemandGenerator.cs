@@ -1092,9 +1092,10 @@ namespace Rebellion.AI.Demands
             IReadOnlyList<Fleet> fleets
         )
         {
+            Dictionary<Planet, int> availablePlanetRegiments = new();
             foreach (Fleet fleet in fleets)
             {
-                AddFleetRegimentDemand(context, demands, fleet);
+                AddFleetRegimentDemand(context, demands, fleet, availablePlanetRegiments);
             }
         }
 
@@ -1478,10 +1479,12 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="availablePlanetRegiments">Unallocated planetary supply shared by assembling fleets this turn.</param>
         private void AddFleetRegimentDemand(
             AITurnContext context,
             List<AIProductionDemand> demands,
-            Fleet fleet
+            Fleet fleet,
+            IDictionary<Planet, int> availablePlanetRegiments = null
         )
         {
             int targetCount = Math.Min(
@@ -1489,22 +1492,66 @@ namespace Rebellion.AI.Demands
                 GetDesiredRegimentCount(context, fleet)
             );
             int deficit = targetCount - fleet.GetCurrentRegimentCount();
+            Planet assemblyPlanet =
+                availablePlanetRegiments == null ? null : GetRegimentAssemblyPlanet(context, fleet);
+            if (assemblyPlanet != null && deficit > 0)
+            {
+                if (!availablePlanetRegiments.TryGetValue(assemblyPlanet, out int availableCount))
+                    availableCount = Math.Max(
+                        0,
+                        context
+                            .Assessment.GetPlanetRegiments(assemblyPlanet)
+                            .Count(regiment =>
+                                regiment.GetOwnerInstanceID() == context.Faction.InstanceID
+                            ) - context.StrategicPlan.GetPlanetaryGarrisonTarget(assemblyPlanet)
+                    );
+                int allocatedCount = Math.Min(deficit, availableCount);
+                availablePlanetRegiments[assemblyPlanet] = availableCount - allocatedCount;
+                deficit -= allocatedCount;
+            }
             if (deficit <= 0)
                 return;
 
             demands.Add(
-                CreateFleetDemand(
-                    context,
+                new AIProductionDemand(
+                    AIProductionDemand.CreateId(
+                        context.Faction.InstanceID,
+                        AIProductionDemandKind.FleetRegiment,
+                        fleet.InstanceID
+                    ),
                     AIProductionDemandKind.FleetRegiment,
                     ManufacturingType.Troop,
+                    BuildingType.None,
                     fleet,
                     deficit,
-                    targetCount,
-                    fleet.RoleType == FleetRoleType.Colonization
+                    targetCount: targetCount,
+                    baseDemandPercent: fleet.RoleType == FleetRoleType.Colonization
                         ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
-                        : context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent
+                        : context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent,
+                    deliveryDestination: fleet.FindShipForRegiment() == null ? assemblyPlanet : null
                 )
             );
+        }
+
+        /// <summary>
+        /// Returns the owned assembly planet whose spare troops can supply an attack fleet.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="fleet">The fleet being supplied.</param>
+        /// <returns>The safe assembly planet, or null when planetary supply is unavailable.</returns>
+        private Planet GetRegimentAssemblyPlanet(AITurnContext context, Fleet fleet)
+        {
+            if (
+                fleet?.RoleType != FleetRoleType.Battle
+                || !CanReinforceFleet(context, fleet)
+                || context.Assessment.GetAttackTargetPlanet(fleet) == null
+            )
+                return null;
+
+            Planet planet = context.Assessment.GetFleetPlanet(fleet);
+            return context.Assessment.IsOwnedPlanet(planet) && IsUsablePlanet(planet)
+                ? planet
+                : null;
         }
 
         /// <summary>
@@ -1636,35 +1683,34 @@ namespace Rebellion.AI.Demands
                 );
             }
 
-            int capacity = fleet.GetRegimentCapacity();
-            int fillTarget = IntegerMath.ScaleByPercentRoundedUp(
-                capacity,
-                context.Game.Config.AI.Infrastructure.AssaultRegimentLoadPercent
-            );
             Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
-            if (targetPlanet != null)
-                fillTarget = Math.Max(
-                    fillTarget,
-                    GetProjectedRegimentCount(context, fleet, targetPlanet)
+            if (targetPlanet == null)
+                return IntegerMath.ScaleByPercentRoundedUp(
+                    fleet.GetRegimentCapacity(),
+                    context.Game.Config.AI.Infrastructure.AssaultRegimentLoadPercent
                 );
 
+            var required = context.GetAttackRegimentRequirements(
+                targetPlanet,
+                fleet,
+                projected: true
+            );
+            int fillTarget = required.Count;
             if (
-                targetPlanet != null
-                && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    < GetProjectedRegimentStrength(context, fleet, targetPlanet)
+                context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
+                < required.Strength
             )
             {
                 int currentCount = fleet.GetCurrentRegimentCount();
                 int currentStrength = context.Assessment.GetProjectedFleetRegimentAttackStrength(
                     fleet
                 );
-                int requiredStrength = GetProjectedRegimentStrength(context, fleet, targetPlanet);
                 int estimatedStrengthPerRegiment = Math.Max(
                     1,
-                    currentCount > 0 ? currentStrength / currentCount : requiredStrength
+                    currentCount > 0 ? currentStrength / currentCount : required.Strength
                 );
                 int strengthDeficitCount = IntegerMath.DivideRoundedUp(
-                    requiredStrength - currentStrength,
+                    required.Strength - currentStrength,
                     estimatedStrengthPerRegiment
                 );
                 fillTarget = Math.Max(fillTarget, currentCount + strengthDeficitCount);

@@ -41,6 +41,15 @@ namespace Rebellion.AI.Demands
                                 )
                         )
                     || demand
+                        .TargetPlanet.GetAllBuildings()
+                        .Any(building =>
+                            building.IsPlanetaryShieldGenerator()
+                            && (
+                                building.ManufacturingStatus != ManufacturingStatus.Complete
+                                || building.Movement != null
+                            )
+                        )
+                    || demand
                         .TargetPlanet.GetAllStarfighters()
                         .Any(fighter => fighter.Movement != null);
                 if (!hasInbound)
@@ -95,6 +104,13 @@ namespace Rebellion.AI.Demands
                 Math.Max(config.MinimumAttackStrength, orbital),
                 GetIntelReservePercent(context, demand.TargetPlanet)
             );
+            var shields = context.Assessment.GetPlanetaryShieldsAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks,
+                context.MovementQueries
+            );
+            bool blockedByShields =
+                shields.Count >= context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
             return new AIAttackDemand(
                 demand.TargetPlanet,
                 combat,
@@ -114,8 +130,9 @@ namespace Rebellion.AI.Demands
                 demand.RegimentStrength,
                 demand.RegimentCount,
                 demand.OccupationRegimentCount,
-                demand.BombardmentStrength,
-                demand.IsAssaultBlockedByShields
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength
             );
         }
 
@@ -162,10 +179,13 @@ namespace Rebellion.AI.Demands
         {
             GameConfig config = context.Game.Config;
             AIAssessment assessment = context.Assessment;
-            bool blockedByShields = PlanetaryAssaultResolver.IsBlockedByShields(
+            var shields = assessment.GetPlanetaryShieldsAtArrival(
                 planet,
-                config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                0,
+                context.MovementQueries
             );
+            bool blockedByShields =
+                shields.Count >= config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
             int occupationCount = GetOccupationRegimentCount(context, planet);
             int defendingCount = assessment.GetDefendingRegimentCount(planet);
             int combatCount = defendingCount == 0 ? 0 : defendingCount + 1;
@@ -191,8 +211,9 @@ namespace Rebellion.AI.Demands
                 ),
                 combatCount + occupationCount,
                 occupationCount,
-                blockedByShields ? assessment.GetBombardmentShieldStrength(planet) + 1 : 0,
-                blockedByShields
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength
             );
         }
 
@@ -304,7 +325,7 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
-        /// Calculates the regiment count needed to hold a captured planet.
+        /// Calculates the regiment count needed to hold a captured planet with no friendly support.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The target planet.</param>
@@ -320,7 +341,8 @@ namespace Rebellion.AI.Demands
             int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 faction,
-                config.AI.Garrison
+                config.AI.Garrison,
+                popularSupport: 0
             );
             int landingCapacity = config.Combat.PlanetaryAssault.CaptureGarrisonCount;
             return Math.Max(minimum, Math.Min(stabilityRequirement, landingCapacity));

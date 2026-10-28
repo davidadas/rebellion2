@@ -79,7 +79,15 @@ namespace Rebellion.AI.Demands
         public Building BuildingToReplace { get; }
 
         // Destination.
+        /// <summary>
+        /// Gets the container whose requirement this demand fulfills.
+        /// </summary>
         public ContainerNode Destination { get; }
+
+        /// <summary>
+        /// Gets the production delivery container, which may hold reinforcements before boarding.
+        /// </summary>
+        public ContainerNode DeliveryDestination { get; }
         public Planet DestinationPlanet => Destination as Planet;
         public Fleet DestinationFleet => Destination as Fleet;
 
@@ -135,7 +143,7 @@ namespace Rebellion.AI.Demands
         /// <param name="kind">Demand kind.</param>
         /// <param name="manufacturingType">Manufacturing type required for the demand.</param>
         /// <param name="buildingType">Building type required for building demands.</param>
-        /// <param name="destination">Container receiving the produced item.</param>
+        /// <param name="destination">Container whose requirement the produced item fulfills.</param>
         /// <param name="quantityNeeded">Amount of demand still needed.</param>
         /// <param name="productTypeId">Exact product type required by the demand.</param>
         /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
@@ -160,6 +168,7 @@ namespace Rebellion.AI.Demands
         /// <param name="combatStrengthDeficit">Unmet durability-adjusted combat strength.</param>
         /// <param name="isEmergencyDefense">Whether a known hostile fleet requires immediate static defense.</param>
         /// <param name="existingOrder">The queued order whose continuation is being evaluated.</param>
+        /// <param name="deliveryDestination">The container receiving production before final fleet assignment, or null for direct delivery.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -189,7 +198,8 @@ namespace Rebellion.AI.Demands
             int infrastructureHubIndex = -1,
             int combatStrengthDeficit = 0,
             bool isEmergencyDefense = false,
-            IManufacturable existingOrder = null
+            IManufacturable existingOrder = null,
+            ContainerNode deliveryDestination = null
         )
         {
             Id = id;
@@ -197,6 +207,7 @@ namespace Rebellion.AI.Demands
             ManufacturingType = manufacturingType;
             BuildingType = buildingType;
             Destination = destination;
+            DeliveryDestination = deliveryDestination ?? destination;
             QuantityNeeded = quantityNeeded;
             DeficitCount = deficitCount > 0 ? deficitCount : quantityNeeded;
             TargetCount = targetCount;
@@ -259,7 +270,8 @@ namespace Rebellion.AI.Demands
                 InfrastructureHubIndex,
                 CombatStrengthDeficit,
                 IsEmergencyDefense,
-                ExistingOrder
+                ExistingOrder,
+                DeliveryDestination
             );
         }
 
@@ -376,7 +388,8 @@ namespace Rebellion.AI.Demands
                 infrastructureHubIndex: InfrastructureHubIndex,
                 combatStrengthDeficit: remaining[AIFleetCapability.CombatStrength],
                 isEmergencyDefense: IsEmergencyDefense,
-                existingOrder: ExistingOrder
+                existingOrder: ExistingOrder,
+                deliveryDestination: DeliveryDestination
             );
         }
 

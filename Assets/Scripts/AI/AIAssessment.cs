@@ -29,6 +29,11 @@ namespace Rebellion.AI
             (int Combat, int CapitalFirepower, int FighterFirepower, int Fighters)
         > _arrivalOrbitalCapabilities = new();
 
+        private readonly Dictionary<
+            string,
+            IReadOnlyList<(int? Ticks, int Strength)>
+        > _shieldArrivals = new(StringComparer.Ordinal);
+
         private readonly GameRoot _game;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
@@ -436,6 +441,113 @@ namespace Rebellion.AI
             var result = (combat, capitalFirepower, fighterFirepower, fighters);
             _arrivalOrbitalCapabilities.Add(key, result);
             return result;
+        }
+
+        /// <summary>
+        /// Estimates the known planetary shields operational when an attacking fleet arrives.
+        /// Known shields without a completion estimate are included conservatively.
+        /// </summary>
+        /// <param name="planet">The faction-visible destination.</param>
+        /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
+        /// <param name="movement">The movement queries used to estimate delivery time.</param>
+        /// <returns>The expected operational shield count and combined strength.</returns>
+        public (int Count, int Strength) GetPlanetaryShieldsAtArrival(
+            Planet planet,
+            int arrivalTicks,
+            MovementQueries movement
+        )
+        {
+            if (planet == null)
+                return default;
+
+            if (!_shieldArrivals.TryGetValue(planet.InstanceID, out var arrivals))
+            {
+                List<(int? Ticks, int Strength)> estimates = new();
+                foreach (Building building in GetPlanetBuildings(planet))
+                {
+                    if (
+                        !building.IsPlanetaryShieldGenerator()
+                        || building.GetOwnerInstanceID() != planet.GetOwnerInstanceID()
+                    )
+                        continue;
+
+                    int? ticks = EstimateShieldArrivalTicks(planet, building, movement);
+                    estimates.Add((ticks, building.ShieldStrength));
+                }
+                arrivals = estimates;
+                _shieldArrivals.Add(planet.InstanceID, arrivals);
+            }
+
+            int count = 0;
+            long strength = 0;
+            foreach (var arrival in arrivals)
+            {
+                if (arrival.Ticks.HasValue && arrival.Ticks.Value > Math.Max(0, arrivalTicks))
+                    continue;
+                count++;
+                strength += arrival.Strength;
+            }
+            return (count, (int)Math.Min(int.MaxValue, strength));
+        }
+
+        /// <summary>
+        /// Estimates one observed shield's remaining construction and delivery time.
+        /// </summary>
+        /// <param name="destination">The shield's known destination.</param>
+        /// <param name="building">The observed shield.</param>
+        /// <param name="movement">The delivery-time queries.</param>
+        /// <returns>Remaining ticks, or null when the observed production state is insufficient.</returns>
+        private int? EstimateShieldArrivalTicks(
+            Planet destination,
+            Building building,
+            MovementQueries movement
+        )
+        {
+            if (building.ManufacturingStatus != ManufacturingStatus.Building)
+            {
+                if (building.Movement == null)
+                    return 0;
+                int age = building.Movement.IsObservation
+                    ? building.Movement.ObservedAtTick.HasValue
+                        ? Math.Max(0, _game.CurrentTick - building.Movement.ObservedAtTick.Value)
+                        : GetPlanetIntelAge(destination)
+                    : 0;
+                return Math.Max(
+                    0,
+                    building.Movement.TicksRemaining() - (age == int.MaxValue ? 0 : age)
+                );
+            }
+
+            Planet producer = GetKnownPlanet(building.ProducerPlanetID);
+            if (
+                producer == null
+                || movement == null
+                || producer.GetOwnerInstanceID() != building.GetOwnerInstanceID()
+            )
+                return null;
+            int? production = ManufacturingQueries.EstimateCompletionTicks(producer, building);
+            int intelAge = GetPlanetIntelAge(producer);
+            if (!production.HasValue)
+            {
+                production = ManufacturingQueries.EstimateManufacturingTicks(
+                    producer,
+                    building.GetManufacturingType(),
+                    Math.Max(0, building.ConstructionCost - building.ManufacturingProgress)
+                );
+                intelAge = GetPlanetIntelAge(destination);
+            }
+            double rate = ManufacturingQueries.GetProductionCycleIncrement(_game, producer);
+            if (!production.HasValue || production == int.MaxValue || rate <= 0)
+                return null;
+            int travel =
+                producer.InstanceID == destination.InstanceID
+                    ? 0
+                    : movement.CalculateTransitTicks(building, producer, destination);
+            double remaining =
+                Math.Ceiling(production.Value / rate)
+                + travel
+                - (intelAge == int.MaxValue ? 0 : intelAge);
+            return (int)Math.Clamp(remaining, 0, int.MaxValue);
         }
 
         /// <summary>
@@ -3313,6 +3425,58 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Counts completed regiments already aboard or arriving within the supplied time.
+        /// </summary>
+        /// <param name="fleet">The fleet receiving reinforcements.</param>
+        /// <param name="arrivalTicks">The number of ticks until another reinforcement arrives.</param>
+        /// <returns>The regiment count and attack strength available by that time.</returns>
+        public (int Count, int Strength) GetFleetRegimentCapabilitiesAtArrival(
+            Fleet fleet,
+            int arrivalTicks
+        )
+        {
+            if (fleet == null || _game?.Config == null)
+                return default;
+
+            int horizon = Math.Max(0, arrivalTicks);
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                fleet.GetOfficers(),
+                OfficerRank.General,
+                fleet.GetOwnerInstanceID(),
+                _game.Config.Combat.PlanetaryAssault
+            );
+            int count = 0;
+            int strength = 0;
+            foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+            {
+                if (
+                    !IsReadyCapitalShip(ship)
+                    && (
+                        ship.ManufacturingStatus == ManufacturingStatus.Building
+                        || ship.Movement == null
+                        || ship.Movement.TicksRemaining() > horizon
+                    )
+                )
+                    continue;
+                foreach (Regiment regiment in ship.GetChildren<Regiment>())
+                {
+                    if (
+                        !IsReadyRegiment(regiment)
+                        && (
+                            regiment.ManufacturingStatus == ManufacturingStatus.Building
+                            || regiment.Movement == null
+                            || regiment.Movement.TicksRemaining() > horizon
+                        )
+                    )
+                        continue;
+                    count++;
+                    strength += regiment.AttackRating + leadershipBonus;
+                }
+            }
+            return (count, strength);
+        }
+
+        /// <summary>
         /// Returns loaded ready regiments on a capital ship.
         /// </summary>
         /// <param name="capitalShip">The capital ship to inspect.</param>
@@ -3431,12 +3595,14 @@ namespace Rebellion.AI
         /// <param name="targetPlanet">The known target planet.</param>
         /// <param name="projected">Whether to include units already committed to the fleet.</param>
         /// <param name="additionalBombardmentStrength">The contribution from proposed additional ships.</param>
+        /// <param name="shieldStrength">Optional shield strength expected when the fleet attacks.</param>
         /// <returns>True when defenders are present and bombardment exceeds their shields.</returns>
         public bool CanBombardDefenders(
             Fleet fleet,
             Planet targetPlanet,
             bool projected,
-            int additionalBombardmentStrength = 0
+            int additionalBombardmentStrength = 0,
+            int? shieldStrength = null
         )
         {
             if (
@@ -3449,7 +3615,7 @@ namespace Rebellion.AI
                 ? GetProjectedFleetBombardmentStrength(fleet)
                 : GetFleetBombardmentStrength(fleet);
             long total = (long)current + Math.Max(0, additionalBombardmentStrength);
-            return total > GetBombardmentShieldStrength(targetPlanet);
+            return total > (shieldStrength ?? GetBombardmentShieldStrength(targetPlanet));
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -319,47 +318,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the fleet is ready to launch.</returns>
         internal bool CanLaunch(AITurnContext context)
         {
-            return context.Assessment.HasCurrentHeadquartersAttackIntel(TargetPlanet)
-                && context.StrategicPlan.CanFleetDepart(Fleet)
-                && IsReadyToAttack(context, TargetPlanet);
-        }
-
-        /// <summary>
-        /// Returns whether the fleet satisfies every live attack capability.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when the fleet is ready to attack.</returns>
-        private bool IsReadyToAttack(AITurnContext context, Planet targetPlanet)
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
-            if (demand == null)
-                return false;
-            int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
-                Fleet
-            );
-            int requiredRegiments = context
-                .GetAttackRegimentRequirements(targetPlanet, Fleet)
-                .Count;
-            return Fleet?.HasOperationalCapitalShips() == true
-                && availableCombat > 0
-                && availableCombat >= demand.CombatStrength
-                && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= context.GetAttackRegimentRequirements(targetPlanet, Fleet).Strength
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    >= demand.BombardmentStrength
-                && (
-                    context.Assessment.CanBombardMilitaryTargets(Fleet, targetPlanet)
-                    || context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, targetPlanet)
-                        >= context
-                            .Game
-                            .Config
-                            .AI
-                            .FleetDeployment
-                            .MinimumPlanetaryAssaultSuccessPercent
-                );
+            var readiness = context.GetAttackReadiness(Fleet, TargetPlanet);
+            return readiness.FleetReady && readiness.RegimentsReady;
         }
 
         /// <summary>

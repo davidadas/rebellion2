@@ -584,16 +584,19 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="faction">The faction whose garrison requirement is evaluated.</param>
         /// <param name="config">The configured support threshold, divisor, and uprising multiplier.</param>
+        /// <param name="popularSupport">The assumed support percentage, or null to use current support.</param>
         /// <returns>The required regiment count.</returns>
-        internal int GetGarrisonRequirement(Faction faction, GameConfig.GarrisonConfig config)
+        internal int GetGarrisonRequirement(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int? popularSupport = null
+        )
         {
-            int popularSupport = GetPopularSupport(faction.InstanceID);
-            if (popularSupport >= config.SupportThreshold)
+            int support = popularSupport ?? GetPopularSupport(faction.InstanceID);
+            if (support >= config.SupportThreshold)
                 return 0;
             int garrison = (int)
-                Math.Ceiling(
-                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
-                );
+                Math.Ceiling((config.SupportThreshold - support) / (double)config.GarrisonDivisor);
             PlanetSector sector = GetParentOfType<PlanetSector>();
             garrison /= sector?.GetSectorSuppressionDivisor(faction.InstanceID) ?? 1;
             if (IsInUprising)

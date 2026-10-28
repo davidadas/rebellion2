@@ -728,12 +728,14 @@ namespace Rebellion.Simulation
         /// <param name="type">The manufacturing category to inspect.</param>
         /// <param name="requiredProgress">The remaining production progress.</param>
         /// <returns>The estimated production ticks, or null when no progress can be made.</returns>
-        private static int? EstimateManufacturingTicks(
+        public static int? EstimateManufacturingTicks(
             Planet producer,
             ManufacturingType type,
             long requiredProgress
         )
         {
+            if (producer == null || type == ManufacturingType.None)
+                return null;
             if (requiredProgress <= 0)
                 return 0;
 

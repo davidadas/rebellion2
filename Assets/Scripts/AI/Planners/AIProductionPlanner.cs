@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
@@ -77,12 +78,7 @@ namespace Rebellion.AI.Planners
         private readonly Dictionary<(string PlanetId, string TypeId), bool> _hullBuildEligibility =
             new();
         private readonly Dictionary<
-            (
-                string ProducerPlanetId,
-                string DestinationFleetId,
-                string ProductTypeId,
-                int Quantity
-            ),
+            (string ProducerPlanetId, string DestinationId, string ProductTypeId, int Quantity),
             int
         > _reinforcementArrivalTicks = new();
 
@@ -2432,7 +2428,7 @@ namespace Rebellion.AI.Planners
                 return GetReinforcementArrivalTicks(
                     context,
                     producer,
-                    demand.DestinationFleet,
+                    demand.DeliveryDestination,
                     product,
                     movable,
                     quantity
@@ -2443,11 +2439,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Estimates when a manufactured reinforcement will reach its destination fleet.
+        /// Estimates when a manufactured reinforcement will reach its delivery container.
         /// </summary>
         /// <param name="context">The active AI turn.</param>
         /// <param name="producer">The planet manufacturing the reinforcement.</param>
-        /// <param name="destinationFleet">The fleet receiving the reinforcement.</param>
+        /// <param name="destination">The container receiving the reinforcement.</param>
         /// <param name="product">The manufactured product.</param>
         /// <param name="movable">The product movement characteristics.</param>
         /// <param name="quantity">The appended product quantity.</param>
@@ -2455,26 +2451,21 @@ namespace Rebellion.AI.Planners
         private int GetReinforcementArrivalTicks(
             AITurnContext context,
             Planet producer,
-            Fleet destinationFleet,
+            ContainerNode destination,
             IManufacturable product,
             IMovable movable,
             int quantity
         )
         {
-            if (producer == null || destinationFleet == null || product == null || movable == null)
+            if (producer == null || destination == null || product == null || movable == null)
                 return int.MaxValue;
 
             (
                 string ProducerPlanetId,
-                string DestinationFleetId,
+                string DestinationId,
                 string ProductTypeId,
                 int Quantity
-            ) key = (
-                producer.InstanceID,
-                destinationFleet.InstanceID,
-                product.GetTypeID(),
-                quantity
-            );
+            ) key = (producer.InstanceID, destination.InstanceID, product.GetTypeID(), quantity);
             if (_reinforcementArrivalTicks.TryGetValue(key, out int cachedTicks))
                 return cachedTicks;
 
@@ -2488,7 +2479,7 @@ namespace Rebellion.AI.Planners
                 !context.MovementQueries.TryEstimateManufacturedTransitTicks(
                     movable,
                     producer,
-                    destinationFleet,
+                    destination,
                     out int transitTicks,
                     context.Faction.InstanceID
                 )
@@ -2507,16 +2498,11 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Stores and returns one reinforcement-arrival estimate.
         /// </summary>
-        /// <param name="key">The producer, fleet, product, and quantity identity.</param>
+        /// <param name="key">The producer, destination, product, and quantity identity.</param>
         /// <param name="ticks">The estimated arrival duration.</param>
         /// <returns>The supplied duration.</returns>
         private int CacheReinforcementArrival(
-            (
-                string ProducerPlanetId,
-                string DestinationFleetId,
-                string ProductTypeId,
-                int Quantity
-            ) key,
+            (string ProducerPlanetId, string DestinationId, string ProductTypeId, int Quantity) key,
             int ticks
         )
         {
@@ -2575,7 +2561,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The destination planet, or null.</returns>
         private Planet GetDestinationPlanet(AITurnContext context, AIProductionDemand demand)
         {
-            if (demand?.Destination is Planet planet)
+            if (demand?.DeliveryDestination is Planet planet)
                 return planet;
 
             if (demand?.Destination is Fleet fleet)

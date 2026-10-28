@@ -42,7 +42,7 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         public int ManufacturingCount => GetManufacturingCount();
 
-        public ContainerNode Destination => Demand?.Destination;
+        public ContainerNode Destination => Demand?.DeliveryDestination;
 
         /// <summary>
         /// Gets the current order that this action continues or replaces.
@@ -834,10 +834,19 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the regiment can be manufactured.</returns>
         private bool CanManufactureRegiment(AITurnContext context)
         {
-            return Destination is Fleet destinationFleet
-                && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
-                && Product.GetReference() is Regiment
-                && destinationFleet.FindShipForRegiment() != null;
+            Fleet fleet = Demand.DestinationFleet;
+            if (
+                fleet == null
+                || fleet.GetOwnerInstanceID() != context.Faction.InstanceID
+                || Product.GetReference() is not Regiment
+            )
+                return false;
+
+            return Destination is Planet planet
+                ? CanManufacturePlanetRegiment(context)
+                    && context.StrategicPlan.CanReinforce(fleet)
+                    && fleet.GetParentOfType<Planet>() == planet
+                : fleet.FindShipForRegiment() != null;
         }
 
         /// <summary>

@@ -1202,8 +1202,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds regiment transfers from a safe owned planet to an attack fleet that can capture
-        /// its target once its ground force is complete.
+        /// Offers the best safe regiment transfer, prioritizing fleets waiting on their ground force.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The proposal list to update.</param>
@@ -1212,46 +1211,83 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            Fleet targetFleet = context
-                .Assessment.AttackOrderedFleets.Where(fleet =>
-                    CanReceivePlanetRegimentTransfer(context, fleet)
+            List<Regiment> spareRegiments = context
+                .Assessment.OwnedPlanets.SelectMany(planet =>
+                    GetAvailablePlanetRegiments(context, planet)
                 )
-                .OrderByDescending(fleet =>
-                    context.CountCurrentAttackCapabilities(
-                        fleet,
-                        GetReinforcementTargetPlanet(context, fleet)
+                .ToList();
+            if (spareRegiments.Count == 0)
+                return;
+
+            foreach (
+                Fleet targetFleet in context
+                    .Assessment.AttackOrderedFleets.Where(fleet =>
+                        CanReceivePlanetRegimentTransfer(context, fleet)
                     )
-                )
-                .ThenBy(fleet => fleet.InstanceID)
-                .FirstOrDefault();
-            if (targetFleet == null)
-                return;
-
-            Planet receivingPlanet = context.Assessment.GetFleetPlanet(targetFleet);
-            Planet targetPlanet = GetReinforcementTargetPlanet(context, targetFleet);
-            Planet sourcePlanet = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    GetAvailablePlanetRegimentCount(context, planet) > 0
-                )
-                .OrderByDescending(context.Assessment.GetFactionPopularSupport)
-                .ThenBy(context.Assessment.GetDefensiveSupportRisk)
-                .ThenBy(planet => planet.GetRawDistanceTo(receivingPlanet))
-                .ThenBy(planet => planet.InstanceID)
-                .FirstOrDefault();
-            if (sourcePlanet == null)
-                return;
-
-            foreach (Regiment regiment in GetAvailablePlanetRegiments(context, sourcePlanet))
+                    .OrderByDescending(fleet =>
+                        context
+                            .GetAttackReadiness(fleet, GetReinforcementTargetPlanet(context, fleet))
+                            .FleetReady
+                    )
+                    .ThenByDescending(fleet =>
+                        context.CountCurrentAttackCapabilities(
+                            fleet,
+                            GetReinforcementTargetPlanet(context, fleet)
+                        )
+                    )
+                    .ThenBy(fleet => fleet.InstanceID)
+            )
             {
-                proposals.Add(
-                    new AITransferUnitProposal(
+                Planet targetPlanet = GetReinforcementTargetPlanet(context, targetFleet);
+                AITransferUnitProposal best = null;
+                double bestScore = 0;
+                int bestTransitTicks = int.MaxValue;
+                foreach (Regiment regiment in spareRegiments)
+                {
+                    Planet sourcePlanet = regiment.GetParentOfType<Planet>();
+                    AITransferUnitProposal proposal = new(
                         sourcePlanet,
                         targetFleet,
                         regiment,
                         targetFleet,
                         targetPlanet
+                    );
+                    if (
+                        !proposal.CanSelect(context)
+                        || !context.MovementQueries.TryGetSelectionTransitTicks(
+                            new[] { regiment },
+                            targetFleet,
+                            context.Faction.InstanceID,
+                            out int transitTicks
+                        )
                     )
-                );
+                        continue;
+
+                    double score = _scorer.Score(context, proposal);
+                    if (
+                        score > bestScore
+                        || score == bestScore
+                            && score > 0
+                            && (
+                                transitTicks < bestTransitTicks
+                                || transitTicks == bestTransitTicks
+                                    && string.CompareOrdinal(
+                                        proposal.GetSortKey(),
+                                        best?.GetSortKey()
+                                    ) < 0
+                            )
+                    )
+                    {
+                        best = proposal;
+                        bestScore = score;
+                        bestTransitTicks = transitTicks;
+                    }
+                }
+                if (best != null)
+                {
+                    proposals.Add(best);
+                    return;
+                }
             }
         }
 
@@ -1280,8 +1316,9 @@ namespace Rebellion.AI.Planners
                 currentCount < requiredCount
                 || context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
                     < context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Strength;
-            return needsRegiments
-                && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount;
+            var readiness = context.GetAttackReadiness(fleet, targetPlanet);
+            return (needsRegiments || readiness.FleetReady && !readiness.RegimentsReady)
+                && fleet.FindShipForRegiment() != null;
         }
 
         /// <summary>
@@ -1292,11 +1329,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The regiments available for transfer.</returns>
         private int GetAvailablePlanetRegimentCount(AITurnContext context, Planet planet)
         {
-            if (
-                planet == null
-                || context.Assessment.IsPriorityDefensePlanet(planet)
-                || context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0
-            )
+            if (planet == null || context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0)
                 return 0;
 
             int readyRegimentCount = context
@@ -1767,7 +1800,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet can make immediate progress.</returns>
         private static bool CanAdvance(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            if (context.Assessment.CanBombardMilitaryTargets(fleet, targetPlanet))
+            if (context.CanBombardAttackTarget(fleet, targetPlanet))
                 return true;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
