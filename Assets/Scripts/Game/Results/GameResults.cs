@@ -40,6 +40,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Requests that the owning AI leave an officer available for the remainder of this tick.
+    /// </summary>
+    public sealed class OfficerReservedForAIResult : GameResult
+    {
+        public string OfficerInstanceID { get; set; }
+        public string FactionInstanceID { get; set; }
+    }
+
+    /// <summary>
     /// Identifies the gameplay path that destroyed a unit.
     /// </summary>
     public enum UnitDestructionReason

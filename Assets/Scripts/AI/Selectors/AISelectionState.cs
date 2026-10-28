@@ -11,6 +11,23 @@ namespace Rebellion.AI.Selectors
         private readonly HashSet<AISelectionReservation> _reservations = new();
 
         /// <summary>
+        /// Creates assignment reservations, including officers withheld by current script requests.
+        /// </summary>
+        /// <param name="reservedOfficerIDs">Officers unavailable for the current faction turn.</param>
+        internal AISelectionState(IEnumerable<string> reservedOfficerIDs = null)
+        {
+            foreach (string officerID in reservedOfficerIDs ?? Enumerable.Empty<string>())
+            {
+                _reservations.Add(
+                    new AISelectionReservation(AISelectionReservationKind.MissionActor, officerID)
+                );
+                _reservations.Add(
+                    new AISelectionReservation(AISelectionReservationKind.UnitTransfer, officerID)
+                );
+            }
+        }
+
+        /// <summary>
         /// Returns whether all requested resources remain available.
         /// </summary>
         /// <param name="reservations">Resources requested by one proposal.</param>

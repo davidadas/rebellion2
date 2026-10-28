@@ -692,7 +692,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="traitID">The trait identifier to find.</param>
         /// <returns>True when the trait is active; otherwise false.</returns>
-        internal bool HasActiveTrait(string traitID)
+        private bool HasActiveTrait(string traitID)
         {
             if (
                 Traits?.Any(authoredTraitID =>

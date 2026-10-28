@@ -11,7 +11,7 @@ Requests and results produced by event actions retain the source event's `Instan
 activate other result-triggered events, but they do not generate automatic strategy messages.
 Use `SendMessage` when the event should communicate with a player.
 
-Every action belongs inside an event's `Actions` collection:
+Actions belong inside an event's or trait definition's `Actions` collection:
 
 ```xml
 <Actions>
@@ -654,6 +654,23 @@ Requests normal duel resolution between two active officers.
 
 The duel produces a result consumed by the typed [`DuelCompleted`](Triggers.md#duelcompleted) trigger.
 
+### ReserveOfficer
+
+Requests that the AI leave one owned officer unassigned for the current game tick.
+
+**Required options**
+
+- `OfficerInstanceID` **[Required]:** The officer to withhold from AI assignment.
+
+```xml
+<ReserveOfficer OfficerInstanceID="EMPEROR_PALPATINE"/>
+```
+
+The action emits an `OfficerReservedForAIResult` through the existing result pipeline. The AI
+checks current owner and tick, filters mission candidates, reserves the officer during selection,
+and rechecks all mission participants before execution. Requests expire on the next tick unless a
+script renews them. Existing missions and player-issued orders are unaffected.
+
 ### ApplyOfficerTrait
 
 Grants a content-defined officer trait from the current script source. Repeating the same grant
@@ -667,17 +684,20 @@ from one source does not duplicate it.
 
 ```xml
 <ApplyOfficerTrait TraitID="training">
-  <Officers><SelectBinding Binding="$officer"/></Officers>
+  <Officers><SelectOfficers InstanceID="EMPEROR_PALPATINE" IncludeInactive="true"/></Officers>
 </ApplyOfficerTrait>
 ```
 
-The current event or trait behavior owns the grant. Other sources and authored officer traits
-remain independent. A newly granted trait can supply [trait behaviors](Traits.md).
+The current event or trait definition owns the grant. Other sources and authored officer traits
+remain independent. A newly granted trait can supply [trait scripts](Traits.md).
+An authored selector that matches no officers makes no changes; a missing explicitly named officer
+or an omitted officer source is an error.
 
 ### RemoveOfficerTrait
 
 Removes only the matching grant owned by the current script source. It does not remove authored
-traits or grants owned by another script.
+traits or grants owned by another script. An authored selector that matches no officers makes no
+changes; a missing explicitly named officer or an omitted officer source is an error.
 
 **Required options**
 
@@ -687,7 +707,7 @@ traits or grants owned by another script.
 
 ```xml
 <RemoveOfficerTrait TraitID="training">
-  <Officers><SelectBinding Binding="$officer"/></Officers>
+  <Officers><SelectOfficers InstanceID="EMPEROR_PALPATINE" IncludeInactive="true"/></Officers>
 </RemoveOfficerTrait>
 ```
 

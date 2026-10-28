@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
@@ -16,8 +17,13 @@ namespace Rebellion.AI
     /// <summary>
     /// Coordinates the AI turn phases for each faction.
     /// </summary>
-    public sealed class AIDirector
+    public sealed class AIDirector : IDisposable
     {
+        private readonly Dictionary<string, HashSet<string>> _officerReservations = new(
+            StringComparer.Ordinal
+        );
+        private readonly IDisposable _officerReservationSubscription;
+        private int _officerReservationTick = -1;
         private readonly GameRoot _game;
         private readonly FogOfWarQueries _fogOfWar;
         private readonly IRandomNumberProvider _random;
@@ -65,7 +71,7 @@ namespace Rebellion.AI
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
-        /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
+        /// <param name="results">Result bus receiving script reservations and invalidating incremental execution state.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -80,6 +86,9 @@ namespace Rebellion.AI
         )
         {
             _game = game;
+            _officerReservationSubscription = results?.Subscribe<OfficerReservedForAIResult>(
+                HandleOfficerReservations
+            );
             _fogOfWar = game == null ? null : new FogOfWarQueries(game);
             _random = random;
             _missions = missions;
@@ -118,6 +127,11 @@ namespace Rebellion.AI
                 new AIExecutionPhase(results),
             };
         }
+
+        /// <summary>
+        /// Detaches the reservation receiver when this game session is replaced or closed.
+        /// </summary>
+        public void Dispose() => _officerReservationSubscription?.Dispose();
 
         /// <summary>
         /// Processes AI turns for every eligible AI-controlled faction.
@@ -184,7 +198,12 @@ namespace Rebellion.AI
             AITurnContext context;
             try
             {
-                AIAssessment assessment = new AIAssessment(_game, faction, factionView);
+                AIAssessment assessment = new AIAssessment(
+                    _game,
+                    faction,
+                    factionView,
+                    GetOfficerReservations(faction.InstanceID)
+                );
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
                 context = new AITurnContext(
                     _game,
@@ -232,6 +251,51 @@ namespace Rebellion.AI
 
             foreach (GameResult result in context.Results)
                 results.Add(result);
+        }
+
+        /// <summary>
+        /// Records only reservation requests issued for the current tick and current owner.
+        /// </summary>
+        /// <param name="results">The script requests delivered by the result bus.</param>
+        private void HandleOfficerReservations(IReadOnlyList<OfficerReservedForAIResult> results)
+        {
+            foreach (OfficerReservedForAIResult result in results)
+            {
+                if (
+                    result.Tick != _game.CurrentTick
+                    || string.IsNullOrWhiteSpace(result.FactionInstanceID)
+                    || string.IsNullOrWhiteSpace(result.OfficerInstanceID)
+                    || _game
+                        .GetSceneNodeByInstanceID<Officer>(
+                            result.OfficerInstanceID,
+                            includeDisabled: true
+                        )
+                        ?.OwnerInstanceID != result.FactionInstanceID
+                )
+                    continue;
+
+                GetOfficerReservations(result.FactionInstanceID).Add(result.OfficerInstanceID);
+            }
+        }
+
+        /// <summary>
+        /// Returns this tick's reservations, discarding all requests from an earlier tick.
+        /// </summary>
+        /// <param name="factionID">The faction whose officers are reserved.</param>
+        /// <returns>The live set shared with the faction's current assessment.</returns>
+        private HashSet<string> GetOfficerReservations(string factionID)
+        {
+            if (_officerReservationTick != _game.CurrentTick)
+            {
+                _officerReservations.Clear();
+                _officerReservationTick = _game.CurrentTick;
+            }
+            if (!_officerReservations.TryGetValue(factionID, out HashSet<string> reservations))
+            {
+                reservations = new HashSet<string>(StringComparer.Ordinal);
+                _officerReservations.Add(factionID, reservations);
+            }
+            return reservations;
         }
     }
 }

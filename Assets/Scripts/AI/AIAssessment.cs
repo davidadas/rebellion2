@@ -255,6 +255,8 @@ namespace Rebellion.AI
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
 
+        internal IReadOnlyCollection<string> ReservedOfficerIDs { get; }
+
         public IReadOnlyList<SpecialForces> OwnedSpecialForces { get; }
 
         internal IReadOnlyList<Mission> ActiveMissions { get; }
@@ -281,8 +283,15 @@ namespace Rebellion.AI
         /// <param name="game">The game being assessed.</param>
         /// <param name="faction">The faction being assessed.</param>
         /// <param name="factionView">The faction-visible galaxy state.</param>
-        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
+        /// <param name="reservedOfficerIDs">Live officer reservations for this faction's current AI tick.</param>
+        public AIAssessment(
+            GameRoot game,
+            Faction faction,
+            GalaxyMap factionView,
+            IReadOnlyCollection<string> reservedOfficerIDs = null
+        )
         {
+            ReservedOfficerIDs = reservedOfficerIDs ?? Array.Empty<string>();
             _game = game;
             _faction = faction;
             _factionView = factionView;
@@ -408,6 +417,18 @@ namespace Rebellion.AI
             }
             EngagementOrderedFleets = BuildEngagementOrderedFleets();
             ColonizationOrderedFleets = BuildColonizationOrderedFleets();
+        }
+
+        /// <summary>
+        /// Returns whether a script has withheld an owned officer from this tick's AI assignments.
+        /// </summary>
+        /// <param name="officer">The officer being considered for an assignment.</param>
+        /// <returns>True when the current faction has reserved the officer.</returns>
+        public bool IsOfficerReserved(Officer officer)
+        {
+            return officer != null
+                && officer.OwnerInstanceID == _faction?.InstanceID
+                && ReservedOfficerIDs.Contains(officer.InstanceID);
         }
 
         /// <summary>
@@ -2818,7 +2839,12 @@ namespace Rebellion.AI
             if (_faction == null)
                 return new List<IMissionParticipant>();
 
-            return _faction.GetAvailableMissionParticipants();
+            return _faction
+                .GetAvailableMissionParticipants()
+                .Where(participant =>
+                    participant is not Officer officer || !IsOfficerReserved(officer)
+                )
+                .ToList();
         }
 
         /// <summary>

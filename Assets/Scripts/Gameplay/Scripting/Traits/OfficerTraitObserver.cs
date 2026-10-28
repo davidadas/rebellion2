@@ -5,7 +5,7 @@ using Rebellion.Game.Results;
 namespace Rebellion.Gameplay.Scripting.Traits
 {
     /// <summary>
-    /// Connects trait-owned result reactions to the session's existing result pipeline.
+    /// Connects trait-definition result reactions to the session's existing result pipeline.
     /// </summary>
     public sealed class OfficerTraitObserver : IResultObserver, IDisposable
     {
@@ -40,7 +40,7 @@ namespace Rebellion.Gameplay.Scripting.Traits
         public void Dispose() => _subscription?.Dispose();
 
         /// <summary>
-        /// Activates authored behaviors that match the incoming result wave.
+        /// Activates authored trait scripts that match the incoming result wave.
         /// </summary>
         /// <param name="results">The completed gameplay results.</param>
         /// <returns>The resulting trait reactions.</returns>

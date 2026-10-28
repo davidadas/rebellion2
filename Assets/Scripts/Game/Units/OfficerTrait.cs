@@ -19,26 +19,6 @@ namespace Rebellion.Game.Units
 
         public bool SharesPersonnelTravelTimeModifier { get; set; }
 
-        [PersistableCollectionItem(Name = "Behavior")]
-        public List<OfficerTraitBehavior> Behaviors { get; set; } =
-            new List<OfficerTraitBehavior>();
-    }
-
-    /// <summary>
-    /// Defines an ordered script activated by a trait holder's tick or a matching game result.
-    /// </summary>
-    [PersistableObject(Name = "Behavior")]
-    public sealed class OfficerTraitBehavior
-    {
-        [PersistableAttribute]
-        public string ID { get; set; }
-
-        [PersistableAttribute]
-        public bool EveryTick { get; set; }
-
-        [PersistableAttribute]
-        public bool IncludeInactive { get; set; }
-
         public List<GameTrigger> Triggers { get; set; } = new List<GameTrigger>();
         public List<GameBinding> Bindings { get; set; } = new List<GameBinding>();
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();

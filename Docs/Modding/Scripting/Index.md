@@ -8,6 +8,6 @@ Game scripts select game objects, bind values, test conditions, match simulation
 - [Triggers](Triggers.md) match simulation results and expose their arguments.
 - [Actions](Actions.md) apply ordered changes.
 
-[Game events](Events/Index.md) combine these scripting components with schedules and persistent activation history. [Officer traits](Traits.md) attach optional tick and result-driven scripts to their holders without event schedules or activation history.
+[Game events](Events/Index.md) combine these scripting components with schedules and persistent activation history. [Officer traits](Traits.md) combine passive modifiers with optional tick and result-driven definition scripts without event schedules or activation history.
 
 Shared XML types are defined in `Content/Application/Schemas/game-scripting.xsd`. The event schema includes those types and defines event schedules and the `GameEvents` document.

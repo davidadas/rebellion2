@@ -35,7 +35,9 @@ namespace Rebellion.AI.Phases
             if (context?.Proposals == null)
                 return selectedProposals;
 
-            AISelectionState selectionState = new AISelectionState();
+            AISelectionState selectionState = new AISelectionState(
+                context.Assessment?.ReservedOfficerIDs
+            );
             AIFleetSelector fleetSelector = new AIFleetSelector(selectionState);
             AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
             AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
