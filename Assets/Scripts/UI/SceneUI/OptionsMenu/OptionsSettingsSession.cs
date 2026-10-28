@@ -9,7 +9,6 @@ internal sealed class OptionsSettingsSession
 {
     private static readonly int[] _fullScreenModes =
     {
-        (int)FullScreenMode.ExclusiveFullScreen,
         (int)FullScreenMode.FullScreenWindow,
         (int)FullScreenMode.Windowed,
     };
@@ -168,7 +167,7 @@ internal sealed class OptionsSettingsSession
             case OptionsMenuTab.Graphics:
                 Video.ResolutionWidth = 0;
                 Video.ResolutionHeight = 0;
-                Video.FullScreenMode = (int)FullScreenMode.ExclusiveFullScreen;
+                Video.FullScreenMode = (int)FullScreenMode.FullScreenWindow;
                 Video.RestoreGraphicsDefaults();
                 Video.RestoreTacticalDefaults();
                 RebuildResolutions();
@@ -683,11 +682,9 @@ internal sealed class OptionsSettingsSession
     {
         return (FullScreenMode)mode switch
         {
-            FullScreenMode.ExclusiveFullScreen => "Fullscreen",
             FullScreenMode.FullScreenWindow => "Borderless",
-            FullScreenMode.MaximizedWindow => "Maximized",
             FullScreenMode.Windowed => "Windowed",
-            _ => "Fullscreen",
+            _ => "Borderless",
         };
     }
 

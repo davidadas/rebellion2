@@ -311,6 +311,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyAlwaysOpen = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.KeepIdleBarOpen;
+            bool initiallyAboveWindows = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.KeepIdleBarAboveWindows;
             bool initiallyShowingStats = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowUnitCardStats;
@@ -326,6 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView pinRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarOpen
+            );
+            OptionsToggleRowView layerRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarAboveWindows
             );
             OptionsToggleRowView statsRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
@@ -344,6 +350,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyAlwaysOpen,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarOpen
+            );
+
+            GetField<Button>(layerRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyAboveWindows,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarAboveWindows
             );
 
             GetField<Button>(statsRow, "_button").onClick.Invoke();
@@ -543,6 +555,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .onClick.Invoke();
             _controller.RenderWindows();
             GetField<Button>(saveList, "_saveButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
 
             Assert.AreEqual("existing_save", _loadedFileName);
@@ -552,6 +569,87 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Existing Save",
                 _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
             );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleSaveRequested_ExistingSave_WaitsForConfirmation(bool submitName)
+        {
+            OptionsMenuView view = RequestExistingSaveOverwrite(submitName);
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            StringAssert.Contains(
+                "Overwrite \"Existing Save\"?",
+                confirmation.GetComponentInChildren<TextMeshProUGUI>().text
+            );
+            Assert.AreEqual(7, _saveGameManager.GetSavedGames().Single().Metadata.CurrentTick);
+            Assert.AreEqual(
+                "Existing Save",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleConfirmAccepted_SaveOverwrite_WritesRequestedSave(bool submitName)
+        {
+            OptionsMenuView view = RequestExistingSaveOverwrite(submitName);
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+
+            SaveGameEntry saved = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual("existing_save", saved.FileName);
+            Assert.AreEqual(42, saved.Metadata.CurrentTick);
+            Assert.AreEqual(
+                submitName ? "Updated Save" : "Existing Save",
+                saved.Metadata.SaveDisplayName
+            );
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleConfirmDeclined_SaveOverwrite_PreservesStoredGame(bool submitName)
+        {
+            OptionsMenuView view = RequestExistingSaveOverwrite(submitName);
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            string path = _saveGameManager.GetSaveFilePath("existing_save");
+            byte[] before = File.ReadAllBytes(path);
+
+            GetField<Button>(confirmation, "cancelButton").onClick.Invoke();
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+            Assert.AreEqual(7, _saveGameManager.GetSavedGames().Single().Metadata.CurrentTick);
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void TryCancel_SaveOverwrite_DismissesWithoutWriting()
+        {
+            OptionsMenuView view = RequestExistingSaveOverwrite(false);
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+
+            Assert.IsTrue(_controller.TryCancel());
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+
+            Assert.IsTrue(_controller.IsOpen);
+            Assert.IsFalse(confirmation.gameObject.activeSelf);
+            Assert.AreEqual(7, _saveGameManager.GetSavedGames().Single().Metadata.CurrentTick);
         }
 
         [Test]
@@ -614,6 +712,30 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 "Created Save",
                 _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
+        }
+
+        [Test]
+        public void HandleSaveRequested_ConsecutiveNewSaves_KeepsBothSaves()
+        {
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            TMP_InputField rename = GetField<TMP_InputField>(saveList, "_renameField");
+
+            foreach (string name in new[] { "First Save", "Second Save" })
+            {
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "SlotRow0")
+                    .onClick.Invoke();
+                rename.text = name;
+                GetField<Button>(saveList, "_saveButton").onClick.Invoke();
+                _controller.RenderWindows();
+            }
+
+            CollectionAssert.AreEquivalent(
+                new[] { "First Save", "Second Save" },
+                _saveGameManager.GetSavedGames().Select(entry => entry.Metadata.SaveDisplayName)
             );
         }
 
@@ -711,9 +833,37 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Creates controller.
+        /// Opens an existing save and requests its replacement through the authored controls.
         /// </summary>
-        /// <param name="prefab">The prefab.</param>
+        /// <param name="submitName">Whether to submit an edited name with Return.</param>
+        /// <returns>The open Options view.</returns>
+        private OptionsMenuView RequestExistingSaveOverwrite(bool submitName)
+        {
+            GameRoot game = CreateGame();
+            _bootstrap.GetRuntime().StartGame(game);
+            game.CurrentTick = 7;
+            _saveGameManager.SaveGameData(game, "existing_save", "Existing Save");
+            game.CurrentTick = 42;
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            Button row = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow1");
+            row.onClick.Invoke();
+            _controller.RenderWindows();
+            if (submitName)
+            {
+                row.onClick.Invoke();
+                GetField<TMP_InputField>(saveList, "_renameField").onSubmit.Invoke("Updated Save");
+            }
+            else
+                GetField<Button>(saveList, "_saveButton").onClick.Invoke();
+            return view;
+        }
+
+        /// <summary>
+        /// Creates a controller using the test's isolated save directory.
+        /// </summary>
+        /// <param name="prefab">The Options prefab.</param>
         /// <param name="showModsTab">Whether the controller exposes content management.</param>
         /// <returns>The created controller.</returns>
         private OptionsMenuController CreateController(

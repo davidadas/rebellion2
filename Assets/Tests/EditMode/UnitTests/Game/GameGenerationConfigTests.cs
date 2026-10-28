@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
+using Rebellion.Game.Scripting.Events;
 
 namespace Rebellion.Tests.Game
 {

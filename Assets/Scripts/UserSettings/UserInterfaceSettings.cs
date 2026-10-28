@@ -9,6 +9,7 @@ public enum UserInterfaceOption
     KeepIdleBarOpen,
     ShowUnitCardStats,
     ShowFrameRate,
+    KeepIdleBarAboveWindows,
 }
 
 /// <summary>
@@ -32,6 +33,7 @@ public sealed class UserInterfaceSettings
     public bool KeepIdleBarOpen;
     public bool ShowUnitCardStats;
     public bool ShowFrameRate;
+    public bool KeepIdleBarAboveWindows;
     public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
 
     /// <summary>
@@ -56,6 +58,7 @@ public sealed class UserInterfaceSettings
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
             UserInterfaceOption.ShowFrameRate => ShowFrameRate,
+            UserInterfaceOption.KeepIdleBarAboveWindows => KeepIdleBarAboveWindows,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -81,6 +84,9 @@ public sealed class UserInterfaceSettings
             case UserInterfaceOption.ShowFrameRate:
                 ShowFrameRate = enabled;
                 break;
+            case UserInterfaceOption.KeepIdleBarAboveWindows:
+                KeepIdleBarAboveWindows = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
@@ -95,6 +101,7 @@ public sealed class UserInterfaceSettings
         KeepIdleBarOpen = false;
         ShowUnitCardStats = false;
         ShowFrameRate = false;
+        KeepIdleBarAboveWindows = false;
         IdleBarLocation = global::IdleBarLocation.TopRight;
     }
 }

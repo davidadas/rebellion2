@@ -292,18 +292,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void CanDragItem_MovableUnitAndBuilding_ReturnsExpectedEligibility()
+        public void CanDragItem_MovableUnitAndBuildings_ReturnsExpectedEligibility()
         {
             Regiment regiment = new Regiment { ManufacturingStatus = ManufacturingStatus.Complete };
-            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+            Building unfinishedBuilding = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Building completedBuilding = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
 
             bool regimentCanDrag = DefenseWindowSession.CanDragItem(regiment);
-            bool buildingCanDrag = DefenseWindowSession.CanDragItem(building);
+            bool unfinishedBuildingCanDrag = DefenseWindowSession.CanDragItem(unfinishedBuilding);
+            bool completedBuildingCanDrag = DefenseWindowSession.CanDragItem(completedBuilding);
             bool nullCanDrag = DefenseWindowSession.CanDragItem(null);
 
             Assert.IsTrue(regimentCanDrag);
-            Assert.IsFalse(buildingCanDrag);
+            Assert.IsTrue(unfinishedBuildingCanDrag);
+            Assert.IsFalse(completedBuildingCanDrag);
             Assert.IsFalse(nullCanDrag);
+        }
+
+        [TestCase(BuildingType.Defense, DefenseWindowTab.Shields)]
+        [TestCase(BuildingType.Weapon, DefenseWindowTab.Batteries)]
+        public void CanDragSelectedItems_UnderConstructionDefenseBuilding_ReturnsTrue(
+            BuildingType buildingType,
+            DefenseWindowTab tab
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = "building",
+                BuildingType = buildingType,
+                ShieldStrength = buildingType == BuildingType.Defense ? 1 : 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SelectTab(tab);
+
+            _session.SelectItemForDrag(0);
+
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedItemIndexes);
+            Assert.IsTrue(_session.CanDragSelectedItems());
         }
 
         [Test]

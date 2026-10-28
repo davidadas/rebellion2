@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
+using Rebellion.Game.Scripting.Events;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -59,11 +59,17 @@ namespace Rebellion.Tests.App
                 )
             )
                 Object.Destroy(loading.gameObject);
-            Scene strategy = SceneManager.GetSceneByName("StrategyView");
-            if (strategy.IsValid() && strategy.isLoaded)
+            foreach (string sceneName in new[] { "StrategyView", "MainMenu" })
             {
-                SceneManager.SetActiveScene(SceneManager.CreateScene("ContentLoadTestCleanup"));
-                yield return SceneManager.UnloadSceneAsync(strategy);
+                Scene scene = SceneManager.GetSceneByName(sceneName);
+                if (scene.IsValid() && scene.isLoaded)
+                {
+                    if (SceneManager.GetActiveScene() == scene)
+                        SceneManager.SetActiveScene(
+                            SceneManager.CreateScene("ContentLoadTestCleanup")
+                        );
+                    yield return SceneManager.UnloadSceneAsync(scene);
+                }
             }
             DestroyApplication();
             yield return null;
@@ -182,6 +188,69 @@ namespace Rebellion.Tests.App
         }
 
         [UnityTest]
+        public IEnumerator StartCustomGame_MainMenuSceneLoaded_UnloadsPlanetPresentation()
+        {
+            SceneManager.sceneLoaded += DisableSceneRendering;
+            try
+            {
+                AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+                Assert.IsTrue(bootstrap.LoadScene("MainMenu"));
+                float deadline = Time.realtimeSinceStartup + 60f;
+                MainMenuView menu = null;
+                while (menu == null && Time.realtimeSinceStartup < deadline)
+                {
+                    yield return null;
+                    menu = Object.FindAnyObjectByType<MainMenuView>();
+                }
+                Assert.IsNotNull(menu, "The main menu never loaded.");
+                Canvas menuCanvas = menu.transform.root.GetComponentInChildren<Canvas>(true);
+                while (!menuCanvas.enabled && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+                Assert.IsTrue(menuCanvas.enabled, "The main menu never became interactive.");
+                GameObject planetRig = menu.transform.root.Find("PlanetRig").gameObject;
+                Assert.IsTrue(planetRig.activeInHierarchy);
+
+                ContentPack pack = bootstrap.GetContentPack();
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+                summary.GalaxySize = GameSize.Small;
+                LoadingScreenController.StartCustomGame(bootstrap, pack, summary);
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+                Button continueButton = loading
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ContinueButton");
+                deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    !continueButton.gameObject.activeInHierarchy
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+
+                Assert.IsTrue(
+                    continueButton.gameObject.activeInHierarchy,
+                    "The game never became ready."
+                );
+                Assert.IsFalse(SceneManager.GetSceneByName("MainMenu").isLoaded);
+                Assert.IsTrue(
+                    planetRig == null,
+                    "The main-menu planet rig survived the scene transition."
+                );
+                Assert.That(
+                    Object.FindObjectsByType<LoadingScreenView>(
+                        FindObjectsInactive.Include,
+                        FindObjectsSortMode.None
+                    ),
+                    Has.Length.EqualTo(1)
+                );
+            }
+            finally
+            {
+                SceneManager.sceneLoaded -= DisableSceneRendering;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator EnsureExists_ReconstructedApplication_CreatesCutscenePlayersAtEveryStage()
         {
             AppBootstrap previous = AppBootstrap.EnsureExists();
@@ -207,6 +276,39 @@ namespace Rebellion.Tests.App
             yield return null;
             AppBootstrap restored = AppBootstrap.EnsureExists(operation.Pack);
             AssertCutscenePlayback(restored);
+        }
+
+        [UnityTest]
+        public IEnumerator CutscenePlayback_SkippedVideo_ReleasesPlayerBeforeStartingNextVideo()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
+                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
+            );
+            Assert.IsNotNull(clip);
+            CutsceneManager manager = bootstrap.GetCutsceneManager();
+            CutscenePlayer firstPlayer = null;
+            bool firstPlayerReleasedBeforeCompletion = false;
+            manager.Play(
+                clip,
+                () =>
+                {
+                    firstPlayerReleasedBeforeCompletion = firstPlayer == null;
+                    manager.Play(clip, null);
+                }
+            );
+            firstPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(firstPlayer);
+
+            firstPlayer.Skip();
+
+            Assert.IsFalse(firstPlayerReleasedBeforeCompletion);
+            yield return null;
+
+            Assert.IsTrue(firstPlayerReleasedBeforeCompletion);
+            CutscenePlayer secondPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(secondPlayer);
+            Assert.AreNotSame(firstPlayer, secondPlayer);
         }
 
         /// <summary>

@@ -8,17 +8,17 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 using UnityEngine;
@@ -505,11 +505,13 @@ public static class TestGameData
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="officerTraits">The officer trait definitions.</param>
+    /// <param name="officers">The content-authored officer templates.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
-        OfficerTraitDefinition[] officerTraits = null
+        OfficerTraitDefinition[] officerTraits = null,
+        Officer[] officers = null
     )
     {
         return new GameDataCatalog(
@@ -522,7 +524,7 @@ public static class TestGameData
             Array.Empty<Starfighter>(),
             Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
-            Array.Empty<Officer>(),
+            officers ?? Array.Empty<Officer>(),
             Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),

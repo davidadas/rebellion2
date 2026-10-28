@@ -955,7 +955,11 @@ public sealed class PlanetSectorWindowController
     {
         if (hit?.GalaxyMapPlanet == null)
             return null;
-        if (hit.Icon == PlanetIcon.Fleet && fleetTarget != null && TargetsFleetContainer(request))
+        if (
+            hit.Icon == PlanetIcon.Fleet
+            && fleetTarget != null
+            && IsManufacturingDestinationRequest(request)
+        )
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
@@ -1235,18 +1239,14 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Determines whether a targeting action treats a fleet overlay as its first fleet container.
+    /// Determines whether a request assigns a manufacturing lane to a fleet container.
     /// </summary>
     /// <param name="request">The active targeting request.</param>
-    /// <returns>True when the request accepts a fleet container.</returns>
-    private static bool TargetsFleetContainer(TargetingRequest request)
+    /// <returns>True when the request selects a manufacturing destination.</returns>
+    private static bool IsManufacturingDestinationRequest(TargetingRequest request)
     {
-        return request?.Source is IStrategyTargetingSource source
-            && source.Action
-                is StrategyMenuAction.Destination
-                    or StrategyMenuAction.Move
-                    or StrategyMenuAction.MoveConfirm
-                    or StrategyMenuAction.WaypointMove;
+        return request?.Source
+            is IStrategyTargetingSource { Action: StrategyMenuAction.Destination };
     }
 
     /// <summary>

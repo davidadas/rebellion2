@@ -1,7 +1,9 @@
 using System.Collections;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -29,27 +31,29 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
 
             Assert.IsNotNull(prefab);
-            Canvas canvas = prefab.GetComponent<Canvas>();
+            Canvas canvas = prefab.GetComponentInChildren<Canvas>();
             Assert.IsNotNull(canvas);
             Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvas.renderMode);
             Assert.AreEqual(short.MaxValue, canvas.sortingOrder);
             Assert.IsNotNull(
                 prefab
-                    .transform.Find("Background/HyperspaceField")
+                    .transform.Find("Canvas/Background/HyperspaceField")
                     .GetComponent<HyperspaceStarfieldGraphic>()
             );
-            Assert.IsNotNull(prefab.transform.Find("Background").GetComponent<CanvasGroup>());
-            Transform fadeOverlay = prefab.transform.Find("FadeOverlay");
+            Assert.IsNotNull(
+                prefab.transform.Find("Canvas/Background").GetComponent<CanvasGroup>()
+            );
+            Transform fadeOverlay = prefab.transform.Find("Canvas/FadeOverlay");
             Assert.IsNotNull(fadeOverlay.GetComponent<Image>());
             Assert.IsNotNull(fadeOverlay.GetComponent<CanvasGroup>());
-            Transform shuttleViewport = prefab.transform.Find("Background/ShuttleViewport");
+            Transform shuttleViewport = prefab.transform.Find("Canvas/Background/ShuttleViewport");
             RawImage shuttleViewportImage = shuttleViewport.GetComponent<RawImage>();
             Assert.IsNotNull(shuttleViewportImage);
             Assert.IsFalse(shuttleViewportImage.raycastTarget);
-            Transform commandShade = prefab.transform.Find("Background/BottomCommandShade");
+            Transform commandShade = prefab.transform.Find("Canvas/Background/BottomCommandShade");
             Assert.Less(commandShade.GetSiblingIndex(), shuttleViewport.GetSiblingIndex());
-            Assert.IsNull(prefab.transform.Find("Background/LoadingHud"));
-            Transform continueButton = prefab.transform.Find("Background/ContinueButton");
+            Assert.IsNull(prefab.transform.Find("Canvas/Background/LoadingHud"));
+            Transform continueButton = prefab.transform.Find("Canvas/Background/ContinueButton");
             Assert.IsNotNull(continueButton);
             Assert.IsNotNull(continueButton.GetComponent<Button>());
             Assert.IsFalse(continueButton.gameObject.activeSelf);
@@ -62,11 +66,11 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.IsNotNull(
                 prefab.transform.Find("ShuttleRig/CameraOrbit/Camera").GetComponent<Camera>()
             );
-            Assert.IsNull(prefab.transform.Find("Background/TransitLabel"));
-            Assert.IsNull(prefab.transform.Find("Background/DetailTextField"));
-            Assert.IsNotNull(prefab.transform.Find("Background/FailureDetailTextField"));
+            Assert.IsNull(prefab.transform.Find("Canvas/Background/TransitLabel"));
+            Assert.IsNull(prefab.transform.Find("Canvas/Background/DetailTextField"));
+            Assert.IsNotNull(prefab.transform.Find("Canvas/Background/FailureDetailTextField"));
 
-            Transform status = prefab.transform.Find("Background/StatusTextField");
+            Transform status = prefab.transform.Find("Canvas/Background/StatusTextField");
             Assert.IsNotNull(status);
             Assert.AreEqual("LOADING, PLEASE WAIT...", status.GetComponent<TextMeshProUGUI>().text);
         }
@@ -79,8 +83,50 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
                 .transform.Find("ShuttleRig/CameraOrbit/Camera")
                 .GetComponent<Camera>();
 
-            Assert.AreEqual(new Vector3(0f, 0.08f, -6.5f), camera.transform.localPosition);
+            Assert.AreEqual(new Vector3(0f, 0.08f, -6.4f), camera.transform.localPosition);
             Assert.AreEqual(32f, camera.fieldOfView);
+        }
+
+        [Test]
+        public void GeneratedPrefab_MainMenuPlanetsPresent_ExcludesThemFromShuttleCamera()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab"
+            );
+            Camera camera = prefab
+                .transform.Find("ShuttleRig/CameraOrbit/Camera")
+                .GetComponent<Camera>();
+
+            foreach (
+                Renderer renderer in menu
+                    .transform.Find("PlanetRig")
+                    .GetComponentsInChildren<Renderer>(true)
+            )
+                Assert.That(
+                    camera.cullingMask & (1 << renderer.gameObject.layer),
+                    Is.Zero,
+                    renderer.name
+                );
+        }
+
+        [Test]
+        public void GeneratedPrefab_MainMenuLightingPresent_ExcludesLightsFromOtherPresentation()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab"
+            );
+            Camera shuttleCamera = prefab
+                .transform.Find("ShuttleRig/CameraOrbit/Camera")
+                .GetComponent<Camera>();
+            Camera planetCamera = menu.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
+
+            foreach (Light light in menu.GetComponentsInChildren<Light>(true))
+                if (light.type == LightType.Directional)
+                    Assert.That(light.cullingMask & shuttleCamera.cullingMask, Is.Zero, light.name);
+            foreach (Light light in prefab.GetComponentsInChildren<Light>(true))
+                Assert.That(light.cullingMask & planetCamera.cullingMask, Is.Zero, light.name);
         }
 
         [Test]
@@ -89,9 +135,11 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             CanvasGroup presentation = _instance
-                .transform.Find("Background")
+                .transform.Find("Canvas/Background")
                 .GetComponent<CanvasGroup>();
-            CanvasGroup fade = _instance.transform.Find("FadeOverlay").GetComponent<CanvasGroup>();
+            CanvasGroup fade = _instance
+                .transform.Find("Canvas/FadeOverlay")
+                .GetComponent<CanvasGroup>();
 
             _instance.PrepareEntrance();
 
@@ -117,7 +165,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             TextMeshProUGUI status = _instance
-                .transform.Find("Background/StatusTextField")
+                .transform.Find("Canvas/Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
 
             _instance.ShowLoadFailure("Required content is unavailable.");
@@ -126,7 +174,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.AreEqual(
                 "Required content is unavailable.",
                 _instance
-                    .transform.Find("Background/FailureDetailTextField")
+                    .transform.Find("Canvas/Background/FailureDetailTextField")
                     .GetComponent<TextMeshProUGUI>()
                     .text
             );
@@ -135,7 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             Assert.AreEqual("LOADING, PLEASE WAIT...", status.text);
             Assert.IsFalse(
-                _instance.transform.Find("Background/FailureDetailTextField").gameObject.activeSelf
+                _instance
+                    .transform.Find("Canvas/Background/FailureDetailTextField")
+                    .gameObject.activeSelf
             );
         }
 
@@ -145,15 +195,17 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             Button continueButton = _instance
-                .transform.Find("Background/ContinueButton")
+                .transform.Find("Canvas/Background/ContinueButton")
                 .GetComponent<Button>();
             Assert.IsTrue(continueButton.targetGraphic.raycastTarget);
             TextMeshProUGUI status = _instance
-                .transform.Find("Background/StatusTextField")
+                .transform.Find("Canvas/Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
             TextMeshProUGUI continueLabel =
                 continueButton.GetComponentInChildren<TextMeshProUGUI>();
-            CanvasGroup fade = _instance.transform.Find("FadeOverlay").GetComponent<CanvasGroup>();
+            CanvasGroup fade = _instance
+                .transform.Find("Canvas/FadeOverlay")
+                .GetComponent<CanvasGroup>();
 
             _instance.ShowReady();
 
@@ -181,13 +233,13 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             TextMeshProUGUI status = _instance
-                .transform.Find("Background/StatusTextField")
+                .transform.Find("Canvas/Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
             TextMeshProUGUI detail = _instance
-                .transform.Find("Background/FailureDetailTextField")
+                .transform.Find("Canvas/Background/FailureDetailTextField")
                 .GetComponent<TextMeshProUGUI>();
             Button continueButton = _instance
-                .transform.Find("Background/ContinueButton")
+                .transform.Find("Canvas/Background/ContinueButton")
                 .GetComponent<Button>();
 
             _instance.ShowTerminalFailure("Replacement services could not be created.");
@@ -208,7 +260,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             Button continueButton = _instance
-                .transform.Find("Background/ContinueButton")
+                .transform.Find("Canvas/Background/ContinueButton")
                 .GetComponent<Button>();
             bool requested = false;
             _instance.ContinueRequested += () => requested = true;
@@ -226,10 +278,10 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             Button continueButton = _instance
-                .transform.Find("Background/ContinueButton")
+                .transform.Find("Canvas/Background/ContinueButton")
                 .GetComponent<Button>();
             TextMeshProUGUI status = _instance
-                .transform.Find("Background/StatusTextField")
+                .transform.Find("Canvas/Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
 
             _instance.ShowReady();
@@ -245,7 +297,9 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
             _instance = Object.Instantiate(prefab);
             _instance.ShowReady();
-            Transform continueTransform = _instance.transform.Find("Background/ContinueButton");
+            Transform continueTransform = _instance.transform.Find(
+                "Canvas/Background/ContinueButton"
+            );
             LoadingContinueButtonFeedback feedback =
                 continueTransform.GetComponent<LoadingContinueButtonFeedback>();
             Image frame = continueTransform.Find("Frame").GetComponent<Image>();
@@ -300,6 +354,49 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
         }
 
         [UnityTest]
+        public IEnumerator Initialize_MainMenuPlanetCameraPresent_ExcludesShuttleAndExhaust()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            _instance.Initialize(Path.Combine(Application.dataPath, "Content"));
+            Transform modelRoot = _instance.transform.Find("ShuttleRig/ModelRoot");
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (
+                modelRoot.GetComponentsInChildren<Renderer>(true).Length == 0
+                && Time.realtimeSinceStartup < deadline
+            )
+                yield return null;
+            Renderer[] renderers = modelRoot.GetComponentsInChildren<Renderer>(true);
+            Assert.IsNotEmpty(renderers);
+            GameObject menu = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab"
+            );
+            Camera planetCamera = menu.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
+            Camera shuttleCamera = _instance
+                .transform.Find("ShuttleRig/CameraOrbit/Camera")
+                .GetComponent<Camera>();
+
+            foreach (Renderer renderer in renderers)
+            {
+                int layerMask = 1 << renderer.gameObject.layer;
+                Assert.That(shuttleCamera.cullingMask & layerMask, Is.Not.Zero, renderer.name);
+                Assert.That(planetCamera.cullingMask & layerMask, Is.Zero, renderer.name);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Initialize_HiddenPresentation_NormalizesCompleteModel()
+        {
+            yield return VerifyModelFraming(true, 1f);
+        }
+
+        [UnityTest]
+        public IEnumerator Initialize_ScaledCanvas_PreservesCameraDistanceAndModelSize()
+        {
+            yield return VerifyModelFraming(false, 2f);
+        }
+
+        [UnityTest]
         public IEnumerator Initialize_ApplicationFlightAudioExists_LoadsLoopingReactor()
         {
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
@@ -323,6 +420,94 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.IsNotNull(flightAudio.clip);
             Assert.AreEqual("shuttle-reactor", flightAudio.clip.name);
             Assert.IsTrue(flightAudio.loop);
+        }
+
+        /// <summary>
+        /// Verifies that loading and resizing the UI preserve the shuttle's physical framing.
+        /// </summary>
+        /// <param name="hidden">Whether the model loads while its presentation is hidden.</param>
+        /// <param name="canvasScale">The initial UI scale to apply before loading.</param>
+        /// <returns>The asynchronous framing verification sequence.</returns>
+        private IEnumerator VerifyModelFraming(bool hidden, float canvasScale)
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            CanvasScaler scaler = _instance.GetComponentInChildren<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            scaler.scaleFactor = canvasScale;
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            if (hidden)
+                _instance.SetVisible(false);
+            _instance.Initialize(Path.Combine(Application.dataPath, "Content"));
+
+            Transform modelRoot = _instance.transform.Find("ShuttleRig/ModelRoot");
+            float timeout = Time.realtimeSinceStartup + 10f;
+            while (!HasPosedShuttle(modelRoot) && Time.realtimeSinceStartup < timeout)
+                yield return null;
+            Assert.IsTrue(
+                HasPosedShuttle(modelRoot),
+                "Shuttle setup did not finish before timeout."
+            );
+            if (hidden)
+                Assert.IsFalse(_instance.gameObject.activeInHierarchy);
+            _instance.SetVisible(true);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            Bounds bounds = default;
+            bool found = false;
+            foreach (Renderer renderer in modelRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.name.StartsWith("EnginePlume", System.StringComparison.Ordinal))
+                    continue;
+                if (found)
+                    bounds.Encapsulate(renderer.bounds);
+                else
+                    bounds = renderer.bounds;
+                found = true;
+            }
+            Camera camera = _instance
+                .transform.Find("ShuttleRig/CameraOrbit/Camera")
+                .GetComponent<Camera>();
+            float cameraDepth = camera
+                .transform.InverseTransformDirection(bounds.center - camera.transform.position)
+                .z;
+            float largestDimension = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            TestContext.WriteLine(
+                $"Hidden={hidden}; canvas={canvasScale}; rigScale={modelRoot.lossyScale}; bounds={bounds.size}; cameraDepth={cameraDepth}; modelScale={modelRoot.GetChild(0).localScale}"
+            );
+            Assert.That(largestDimension, Is.EqualTo(2.05f).Within(0.03f));
+            Assert.That(cameraDepth, Is.EqualTo(6.4f).Within(0.03f));
+            Transform rig = modelRoot.parent;
+            Transform fillLight = rig.Find("FillLight");
+            float fillDistance = Vector3.Distance(fillLight.position, rig.position);
+            Assert.That(fillDistance, Is.EqualTo(Mathf.Sqrt(13.5f)).Within(0.01f));
+
+            Vector3 cameraPosition = camera.transform.position;
+            Vector3 lightPosition = fillLight.position;
+            Vector3 modelScale = modelRoot.lossyScale;
+            scaler.scaleFactor = 3f;
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            Assert.That(camera.transform.position, Is.EqualTo(cameraPosition));
+            Assert.That(fillLight.position, Is.EqualTo(lightPosition));
+            Assert.That(modelRoot.lossyScale, Is.EqualTo(modelScale));
+        }
+
+        /// <summary>
+        /// Detects the exhaust meshes added at the end of shuttle setup.
+        /// </summary>
+        /// <param name="modelRoot">The hierarchy containing the shuttle and its exhaust.</param>
+        /// <returns>True when all four exhaust meshes have been created.</returns>
+        private static bool HasPosedShuttle(Transform modelRoot)
+        {
+            return modelRoot
+                    .GetComponentsInChildren<Renderer>(true)
+                    .Count(renderer =>
+                        renderer.name.StartsWith("EnginePlume", System.StringComparison.Ordinal)
+                    ) == 4;
         }
     }
 }

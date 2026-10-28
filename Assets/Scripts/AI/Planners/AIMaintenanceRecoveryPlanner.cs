@@ -6,7 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Mathematics;
 using Candidate = Rebellion.AI.Proposals.AIMaintenanceRecoveryProposal.Candidate;
 using Requirement = Rebellion.AI.Proposals.AIMaintenanceRecoveryProposal.Requirement;

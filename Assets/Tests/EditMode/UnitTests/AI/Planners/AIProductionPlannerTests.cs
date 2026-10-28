@@ -1327,7 +1327,7 @@ namespace Rebellion.Tests.AI.Planners
                         capitalFirepowerDeficit: combatStrength
                             ? 0
                             : 3
-                                * Rebellion.Simulation.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                                * Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                                     template
                                 )
                     ),
@@ -4421,7 +4421,7 @@ namespace Rebellion.Tests.AI.Planners
                     BuildingType.None,
                     fleet,
                     1,
-                    capitalFirepowerDeficit: Rebellion.Simulation.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                    capitalFirepowerDeficit: Rebellion.Gameplay.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
                         largeHull
                     ),
                     baseDemandPercent: 100

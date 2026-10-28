@@ -12,8 +12,9 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI
@@ -730,6 +731,107 @@ namespace Rebellion.Tests.AI
             );
 
             Assert.AreEqual(87.5, odds.FoilProbability, 0.001);
+        }
+
+        [TestCase("planet", "empire", true)]
+        [TestCase("elsewhere", "empire", false)]
+        [TestCase("planet", "rebels", false)]
+        public void Constructor_HoldPositionConditions_FilterOnlyMatchingOfficer(
+            string requiredParent,
+            string requiredOwner,
+            bool held
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", owner.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", owner.InstanceID);
+            Officer other = EntityFactory.CreateOfficer("other", owner.InstanceID);
+            game.AttachNode(officer, planet);
+            game.AttachNode(other, planet);
+            Dictionary<string, OfficerAIBehavior> behaviors = new()
+            {
+                [officer.InstanceID] = new OfficerAIBehavior
+                {
+                    Conditionals = new List<GameConditional>
+                    {
+                        new HasParentConditional
+                        {
+                            UnitInstanceID = officer.InstanceID,
+                            ParentInstanceID = requiredParent,
+                        },
+                        new IsOwnedConditional
+                        {
+                            PlanetInstanceID = planet.InstanceID,
+                            FactionInstanceID = requiredOwner,
+                        },
+                    },
+                },
+            };
+
+            AIAssessment assessment = new(game, owner, game.Galaxy, behaviors);
+
+            Assert.AreEqual(held, assessment.IsOfficerHoldingPosition(officer));
+            Assert.AreEqual(!held, assessment.AvailableMissionParticipants.Contains(officer));
+            CollectionAssert.Contains(assessment.AvailableMissionParticipants, other);
+        }
+
+        [Test]
+        public void Constructor_HoldConditionsStopMatching_ReleasesOfficerOnNextAssessment()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", owner.InstanceID);
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                owner.InstanceID
+            );
+            Officer officer = EntityFactory.CreateOfficer("officer", owner.InstanceID);
+            game.AttachNode(officer, origin);
+            Dictionary<string, OfficerAIBehavior> behaviors = new()
+            {
+                [officer.InstanceID] = new OfficerAIBehavior
+                {
+                    Conditionals = new List<GameConditional>
+                    {
+                        new HasParentConditional
+                        {
+                            UnitInstanceID = officer.InstanceID,
+                            ParentInstanceID = origin.InstanceID,
+                        },
+                    },
+                },
+            };
+            Assert.IsTrue(
+                new AIAssessment(game, owner, game.Galaxy, behaviors).IsOfficerHoldingPosition(
+                    officer
+                )
+            );
+            game.MoveNode(officer, destination);
+
+            AIAssessment next = new(game, owner, game.Galaxy, behaviors);
+
+            CollectionAssert.Contains(next.AvailableMissionParticipants, officer);
+        }
+
+        [Test]
+        public void Constructor_HoldBehaviorForAnotherFaction_DoesNotClaimForeignOfficer()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", enemy.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", enemy.InstanceID);
+            game.AttachNode(officer, planet);
+            Dictionary<string, OfficerAIBehavior> behaviors = new()
+            {
+                [officer.InstanceID] = new OfficerAIBehavior(),
+            };
+
+            AIAssessment assessment = new(game, owner, game.Galaxy, behaviors);
+
+            Assert.IsFalse(assessment.IsOfficerHoldingPosition(officer));
         }
 
         [Test]

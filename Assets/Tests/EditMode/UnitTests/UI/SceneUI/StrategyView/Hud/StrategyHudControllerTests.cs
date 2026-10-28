@@ -6,7 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud

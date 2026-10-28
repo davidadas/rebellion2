@@ -11,7 +11,7 @@ using UnityEngine.UI;
 public static class LoadingScreenPrefabBuilder
 {
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
-    private const int _presentationLayer = 31;
+    private const int _presentationLayer = PresentationLayers.LoadingScreen;
     private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
     private const float _builtInPunctualLightIntensityToHdrp = 600f / (4f * Mathf.PI);
     private static readonly Color _shuttleAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
@@ -21,23 +21,26 @@ public static class LoadingScreenPrefabBuilder
     /// </summary>
     public static void Rebuild()
     {
-        GameObject root = new GameObject(
-            "LoadingScreen",
+        GameObject root = new GameObject("LoadingScreen", typeof(LoadingScreenView));
+        HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
+        HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _shuttleAmbientColor);
+
+        // Keep the world-space camera, model, and lights outside the scaled UI canvas.
+        GameObject canvasObject = new GameObject(
+            "Canvas",
             typeof(RectTransform),
             typeof(Canvas),
             typeof(CanvasScaler),
-            typeof(GraphicRaycaster),
-            typeof(LoadingScreenView)
+            typeof(GraphicRaycaster)
         );
-        HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
-        HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _shuttleAmbientColor);
-        FillParent(root.GetComponent<RectTransform>());
+        canvasObject.transform.SetParent(root.transform, false);
+        FillParent(canvasObject.GetComponent<RectTransform>());
 
-        Canvas canvas = root.GetComponent<Canvas>();
+        Canvas canvas = canvasObject.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = short.MaxValue;
 
-        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
@@ -53,7 +56,7 @@ public static class LoadingScreenPrefabBuilder
         displayCamera.allowHDR = false;
         displayCamera.allowMSAA = false;
 
-        GameObject backgroundObject = CreateRectObject("Background", root.transform);
+        GameObject backgroundObject = CreateRectObject("Background", canvasObject.transform);
         backgroundObject.AddComponent<CanvasRenderer>();
         Image background = backgroundObject.AddComponent<Image>();
         background.color = new Color(0.005f, 0.012f, 0.022f, 1f);
@@ -168,7 +171,7 @@ public static class LoadingScreenPrefabBuilder
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(cameraOrbitObject.transform, false);
-        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -6.5f);
+        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -6.4f);
         Camera shuttleCamera = cameraObject.GetComponent<Camera>();
         shuttleCamera.clearFlags = CameraClearFlags.SolidColor;
         shuttleCamera.backgroundColor = Color.clear;
@@ -180,7 +183,7 @@ public static class LoadingScreenPrefabBuilder
         shuttleCamera.allowMSAA = false;
         HdrpRenderTargetBuilder.ConfigureCamera(shuttleCamera, includeFlatAmbientLighting: true);
 
-        GameObject fadeOverlayObject = CreateRectObject("FadeOverlay", root.transform);
+        GameObject fadeOverlayObject = CreateRectObject("FadeOverlay", canvasObject.transform);
         Image fadeOverlay = fadeOverlayObject.AddComponent<Image>();
         fadeOverlay.color = Color.black;
         fadeOverlay.raycastTarget = true;

@@ -10,8 +10,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -780,7 +780,14 @@ public sealed class StrategyController
     private void BindWindowControllerActions()
     {
         constructionWindowController.Initialize(this);
-        facilityWindowController.Initialize(this, windowCommandController, idleBarController);
+        facilityWindowController.Initialize(
+            this,
+            windowCommandController,
+            idleBarController,
+            inputController.StartItemDrag,
+            inputController.OnDrag,
+            inputController.CompleteItemDrag
+        );
         fleetWindowController.Initialize(
             this,
             windowCommandController,
@@ -1339,8 +1346,13 @@ public sealed class StrategyController
         RequireRectTransform(idleBar, "IdleBar");
         if (idleBar.GetComponent<UIWindow>() != null)
             throw new MissingReferenceException("IdleBar must not use a strategy-window shell.");
-        if (idleBar.transform.parent != transform)
-            throw new MissingReferenceException("IdleBar must be a direct strategy-view layer.");
+        if (
+            strategyWindowLayerView == null
+            || idleBar.transform.parent != strategyWindowLayerView.transform
+        )
+            throw new MissingReferenceException(
+                "IdleBar must belong to the strategy-window hierarchy."
+            );
     }
 
     /// <summary>
@@ -1506,6 +1518,12 @@ public sealed class StrategyController
     /// </summary>
     private void RenderWindows()
     {
+        strategyWindowLayerView.RenderIdleBarLayer(
+            AppBootstrap
+                .Instance?.GetUserSettingsManager()
+                ?.Settings?.UserInterface?.KeepIdleBarAboveWindows
+                ?? false
+        );
         RenderWindowContent();
     }
 
@@ -2970,6 +2988,8 @@ public sealed class StrategyController
     /// <returns>The selected scene nodes in presentation order.</returns>
     private IReadOnlyList<ISceneNode> GetContextItems(UIWindow window)
     {
+        if (strategyWindowManager.TryGetWindowView(window, out FacilityWindowView _))
+            return facilityWindowController.GetContextItems(window);
         if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView _))
             return fleetWindowController.GetContextItems(window);
         if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView _))
@@ -3001,6 +3021,13 @@ public sealed class StrategyController
     )
     {
         preview = null;
+        if (strategyWindowManager.TryGetWindowView(window, out FacilityWindowView _))
+            return facilityWindowController.TryGetDragPreview(
+                window,
+                sourceX,
+                sourceY,
+                out preview
+            );
         if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView _))
             return fleetWindowController.TryGetDragPreview(window, sourceX, sourceY, out preview);
         if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView _))

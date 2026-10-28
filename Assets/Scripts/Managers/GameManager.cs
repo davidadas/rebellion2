@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using Rebellion.Game;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 /// <summary>
 /// Maintains game speed and elapsed-time accumulation for the application frame loop.

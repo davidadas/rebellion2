@@ -6,8 +6,8 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Gameplay;
 using Rebellion.Generation;
-using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using UnityEngine;
 

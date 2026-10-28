@@ -31,12 +31,12 @@ TagManager:
   - 
   - 
   - 
-  - 
+  - LoadingPresentation
   - RuntimeGraphicsVolume
   - 
   - 
   - RenderTargetVolume
-  - 
+  - MainMenuPlanet
   m_SortingLayers:
   - name: Default
     uniqueID: 0

@@ -71,15 +71,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void PrefabProperties_IdleBar_IsTopLevelNonWindowFeature()
+        public void PrefabProperties_IdleBar_IsWindowOverlayWithoutWindowShell()
         {
-            Transform windows = _view.transform.parent.Find("Windows");
-
-            Assert.AreEqual("StrategyView", _view.transform.parent.name);
+            Assert.AreEqual("Windows", _view.transform.parent.name);
             Assert.IsFalse(_view.gameObject.activeSelf);
             Assert.IsNull(_view.GetComponent<UIWindow>());
-            Assert.IsNotNull(windows);
-            Assert.Less(_view.transform.GetSiblingIndex(), windows.GetSiblingIndex());
         }
 
         [Test]
