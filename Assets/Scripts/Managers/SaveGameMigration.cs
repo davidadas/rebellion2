@@ -15,7 +15,7 @@ using Rebellion.Util.Serialization;
 internal static class SaveGameMigration
 {
     /// <summary>
-    /// Reads current saves directly and upgrades the first save format's weapon and battle-unit records.
+    /// Reads current saves directly and upgrades older weapon and space-unit records.
     /// </summary>
     /// <param name="stream">The seekable saved-game stream.</param>
     /// <param name="serializer">The configured game-root deserializer.</param>
@@ -25,14 +25,18 @@ internal static class SaveGameMigration
         long position = stream.Position;
         int version = ReadVersion(stream);
         stream.Position = position;
-        if (version >= 2)
+        if (version >= GameMetadata.CurrentSaveVersion)
             return (GameRoot)serializer.Deserialize(stream);
 
         XmlDocument document = new XmlDocument();
         document.Load(stream);
-        UpgradeWeapons(document);
-        UpgradeProjectiles(document);
-        UpgradeCombatants(document);
+        if (version < 2)
+        {
+            UpgradeWeapons(document);
+            UpgradeProjectiles(document);
+            UpgradeCombatants(document);
+        }
+        UpgradeSpaceCombatants(document);
         XmlNode versionNode = document.SelectSingleNode("/Game/Metadata/SaveVersion");
         if (versionNode != null)
             versionNode.InnerText = GameMetadata.CurrentSaveVersion.ToString(
@@ -173,7 +177,7 @@ internal static class SaveGameMigration
             Type type = ship.Name == "CapitalShip" ? typeof(CapitalShip) : typeof(Starfighter);
             BaseSceneNode source = (BaseSceneNode)
                 new GameSerializer(type).Deserialize(shipDocument);
-            CombatUnit combatant = CombatUnit.Create(source);
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(source);
             combatant.InstanceID = oldUnit["InstanceID"]?.InnerText ?? combatant.InstanceID;
             combatant.SourceUnitInstanceID =
                 oldUnit["SourceUnitInstanceID"]?.InnerText ?? source.InstanceID;
@@ -181,7 +185,7 @@ internal static class SaveGameMigration
             XmlDocument upgraded = new XmlDocument();
             using (StringWriter output = new StringWriter(CultureInfo.InvariantCulture))
             {
-                new GameSerializer(typeof(CombatUnit)).Serialize(output, combatant);
+                new GameSerializer(typeof(SpaceCombatUnit)).Serialize(output, combatant);
                 upgraded.LoadXml(output.ToString());
             }
             XmlElement replacement = (XmlElement)
@@ -224,6 +228,38 @@ internal static class SaveGameMigration
             foreach (string name in new[] { "LaunchQueue", "LaunchCountdown" })
                 CopyValue(oldUnit, replacement["Carrier"], name, name);
             oldUnit.ParentNode.ReplaceChild(replacement, oldUnit);
+        }
+    }
+
+    /// <summary>
+    /// Moves version 2 unit capabilities onto the space unit and preserves its grouped mutable state.
+    /// </summary>
+    /// <param name="document">The saved-game document being upgraded.</param>
+    private static void UpgradeSpaceCombatants(XmlDocument document)
+    {
+        foreach (
+            XmlElement unit in document
+                .GetElementsByTagName("CombatUnit")
+                .Cast<XmlElement>()
+                .ToArray()
+        )
+        {
+            XmlElement data = unit["Data"];
+            if (data != null)
+            {
+                foreach (XmlElement field in data.ChildNodes.OfType<XmlElement>().ToArray())
+                {
+                    XmlElement existing = unit[field.Name];
+                    if (existing != null)
+                        unit.RemoveChild(existing);
+                    unit.AppendChild(field);
+                }
+                unit.RemoveChild(data);
+            }
+            XmlElement replacement = document.CreateElement(nameof(SpaceCombatUnit));
+            while (unit.HasChildNodes)
+                replacement.AppendChild(unit.FirstChild);
+            unit.ParentNode.ReplaceChild(replacement, unit);
         }
     }
 

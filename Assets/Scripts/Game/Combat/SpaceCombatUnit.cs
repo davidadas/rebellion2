@@ -1,11 +1,22 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Combat
 {
+    /// <summary>
+    /// Identifies the ship capabilities represented by a space battle member.
+    /// </summary>
+    public enum SpaceCombatUnitKind
+    {
+        None,
+        CapitalShip,
+        Starfighter,
+    }
+
     /// <summary>
     /// Describes a fighter's carrier deployment phase independently of its rendered model.
     /// </summary>
@@ -34,11 +45,34 @@ namespace Rebellion.Game.Combat
     /// A combat-specific record of one strategic ship participating in an active battle.
     /// </summary>
     [PersistableObject]
-    public sealed class CombatUnit : BaseGameEntity
+    public sealed class SpaceCombatUnit : BaseGameEntity
     {
         public string SourceUnitInstanceID { get; set; }
         public bool HasRetreated { get; set; }
-        public CombatUnitData Data { get; set; } = new CombatUnitData();
+        public SpaceCombatUnitKind Kind { get; set; }
+        public string OwnerInstanceID { get; set; }
+        public string ModelPath { get; set; }
+        public float ModelScale { get; set; } = 1f;
+        public int MaxHullStrength { get; set; }
+        public int MaxShieldStrength { get; set; }
+        public int ShieldRechargeRate { get; set; }
+        public int SublightSpeed { get; set; }
+        public int Hyperdrive { get; set; }
+        public int StarfighterCapacity { get; set; }
+        public int MaxSquadronSize { get; set; }
+
+        /// <summary>
+        /// Gets or sets geometry measured from the loaded model and rebuilt when a battle is loaded.
+        /// </summary>
+        [PersistableIgnore]
+        public ModelDimensions ModelSize { get; set; }
+
+        [PersistableMember(Name = "Components")]
+        private List<ShipComponent> _components = new List<ShipComponent>();
+
+        [PersistableMember(Name = "HardpointGroups")]
+        private List<HardpointGroup> _hardpointGroups = new List<HardpointGroup>();
+
         public CombatUnitCondition Condition { get; set; } = new CombatUnitCondition();
         public BattleVector3 Position { get; set; } = new BattleVector3();
         public BattleVector3 Forward { get; set; } = new BattleVector3 { Z = 1f };
@@ -53,12 +87,12 @@ namespace Rebellion.Game.Combat
         /// </summary>
         [PersistableIgnore]
         public bool IsAlive =>
-            Data.Kind switch
+            Kind switch
             {
-                CombatUnitKind.CapitalShip => Data.MaxHullStrength <= 0
+                SpaceCombatUnitKind.CapitalShip => MaxHullStrength <= 0
                     || Condition.CurrentHullStrength > 0,
-                CombatUnitKind.Starfighter => Condition.CurrentSquadronSize > 0
-                    && (Data.MaxHullStrength <= 0 || Condition.CurrentHullStrength > 0),
+                SpaceCombatUnitKind.Starfighter => Condition.CurrentSquadronSize > 0
+                    && (MaxHullStrength <= 0 || Condition.CurrentHullStrength > 0),
                 _ => false,
             };
 
@@ -67,7 +101,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="sourceUnit">The strategic ship entering battle.</param>
         /// <returns>The battle member with its original strategic identity.</returns>
-        public static CombatUnit Create(BaseSceneNode sourceUnit)
+        public static SpaceCombatUnit Create(BaseSceneNode sourceUnit)
         {
             if (sourceUnit == null)
                 throw new ArgumentNullException(nameof(sourceUnit));
@@ -76,20 +110,42 @@ namespace Rebellion.Game.Combat
                     "Only capital ships and starfighters can enter a space battle.",
                     nameof(sourceUnit)
                 );
-            CombatUnitData data = CombatUnitData.Create(sourceUnit);
-            CombatUnit combatant = new CombatUnit
+            CapitalShip ship = sourceUnit as CapitalShip;
+            Starfighter fighter = sourceUnit as Starfighter;
+            SpaceCombatUnit combatant = new SpaceCombatUnit
             {
                 SourceUnitInstanceID = sourceUnit.InstanceID,
-                Data = data,
+                Kind =
+                    ship != null
+                        ? SpaceCombatUnitKind.CapitalShip
+                        : SpaceCombatUnitKind.Starfighter,
+                TypeID = sourceUnit.TypeID,
+                OwnerInstanceID = sourceUnit.OwnerInstanceID,
+                DisplayName = sourceUnit.DisplayName,
+                DisplayImagePath = sourceUnit.DisplayImagePath,
+                ModelPath = sourceUnit.ModelPath,
+                ModelScale = sourceUnit.ModelScale,
+                ModelSize = sourceUnit.ModelSize?.CreateCopy(),
+                MaxHullStrength = ship != null ? ship.MaxHullStrength : fighter.MaxHullStrength,
+                MaxShieldStrength = ship != null ? ship.MaxShieldStrength : fighter.ShieldStrength,
+                ShieldRechargeRate = ship != null ? ship.ShieldRechargeRate : 0,
+                SublightSpeed = ship != null ? ship.SublightSpeed : fighter.SublightSpeed,
+                Hyperdrive = ship != null ? ship.Hyperdrive : fighter.Hyperdrive,
+                StarfighterCapacity = ship != null ? ship.StarfighterCapacity : 0,
+                MaxSquadronSize = fighter != null ? fighter.MaxSquadronSize : 0,
+                _components = (
+                    ship != null ? ship.GetComponents() : fighter.GetComponents()
+                ).ConvertAll(component => component?.CreateCopy()),
+                _hardpointGroups = (
+                    ship != null ? ship.GetHardpointGroups() : fighter.GetHardpointGroups()
+                ).ConvertAll(group => group?.CreateCopy()),
                 Condition = new CombatUnitCondition
                 {
-                    CurrentHullStrength = sourceUnit is CapitalShip ship
-                        ? ship.CurrentHullStrength
-                        : ((Starfighter)sourceUnit).CurrentHullStrength,
-                    CurrentShieldStrength = data.MaxShieldStrength,
-                    CurrentSquadronSize = sourceUnit is Starfighter fighter
-                        ? fighter.CurrentSquadronSize
-                        : 0,
+                    CurrentHullStrength =
+                        ship != null ? ship.CurrentHullStrength : fighter.CurrentHullStrength,
+                    CurrentShieldStrength =
+                        ship != null ? ship.MaxShieldStrength : fighter.ShieldStrength,
+                    CurrentSquadronSize = fighter != null ? fighter.CurrentSquadronSize : 0,
                 },
                 Flight = new CombatFlightState
                 {
@@ -108,6 +164,30 @@ namespace Rebellion.Game.Combat
                     combatant.Officers.Add((Officer)officer.CreateCopy());
             return combatant;
         }
+
+        /// <summary>
+        /// Returns the non-negative configured sublight speed.
+        /// </summary>
+        /// <returns>The ship's sublight speed.</returns>
+        public int GetSublightSpeed() => Math.Max(0, SublightSpeed);
+
+        /// <summary>
+        /// Returns the configured carrier capacity.
+        /// </summary>
+        /// <returns>The maximum number of carried squadrons.</returns>
+        public int GetStarfighterCapacity() => StarfighterCapacity;
+
+        /// <summary>
+        /// Returns independently mutable battle components.
+        /// </summary>
+        /// <returns>The installed components.</returns>
+        public List<ShipComponent> GetComponents() => _components;
+
+        /// <summary>
+        /// Returns independently owned battle weapon mounts.
+        /// </summary>
+        /// <returns>The installed hardpoint groups.</returns>
+        public List<HardpointGroup> GetHardpointGroups() => _hardpointGroups;
     }
 
     /// <summary>

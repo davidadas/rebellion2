@@ -44,18 +44,18 @@ public sealed class TacticalUnitCardView
 
     [SerializeField]
     private GameObject durabilityTooltip;
-    private CombatUnit _combatant;
-    private IReadOnlyList<CombatUnit> _combatants = Array.Empty<CombatUnit>();
-    private readonly CombatUnit[] _single = new CombatUnit[1];
+    private SpaceCombatUnit _combatant;
+    private IReadOnlyList<SpaceCombatUnit> _combatants = Array.Empty<SpaceCombatUnit>();
+    private readonly SpaceCombatUnit[] _single = new SpaceCombatUnit[1];
     private int _hull = int.MinValue;
     private int _maximumHull;
     private int? _shields;
     private int _maximumShields = -1;
 
-    public event Action<IReadOnlyList<CombatUnit>> Clicked;
-    public event Action<IReadOnlyList<CombatUnit>> DoubleClicked;
-    public CombatUnit Combatant => _combatant;
-    public IReadOnlyList<CombatUnit> Combatants => _combatants;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> Clicked;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> DoubleClicked;
+    public SpaceCombatUnit Combatant => _combatant;
+    public IReadOnlyList<SpaceCombatUnit> Combatants => _combatants;
 
     /// <summary>
     /// Connects the authored roster button.
@@ -75,7 +75,7 @@ public sealed class TacticalUnitCardView
     /// </summary>
     /// <param name="combatant">The combatant represented by the card.</param>
     /// <param name="texture">The combatant's resolved portrait, when available.</param>
-    public void Bind(CombatUnit combatant, Texture2D texture)
+    public void Bind(SpaceCombatUnit combatant, Texture2D texture)
     {
         _single[0] = combatant ?? throw new ArgumentNullException(nameof(combatant));
         BindGroup(_single, texture);
@@ -86,7 +86,7 @@ public sealed class TacticalUnitCardView
     /// </summary>
     /// <param name="combatants">The nonempty group owned by the selection view.</param>
     /// <param name="texture">The group's resolved portrait.</param>
-    public void BindGroup(IReadOnlyList<CombatUnit> combatants, Texture2D texture)
+    public void BindGroup(IReadOnlyList<SpaceCombatUnit> combatants, Texture2D texture)
     {
         if (combatants == null || combatants.Count == 0)
             throw new ArgumentException(
@@ -113,7 +113,7 @@ public sealed class TacticalUnitCardView
     public void Unbind()
     {
         _combatant = null;
-        _combatants = Array.Empty<CombatUnit>();
+        _combatants = Array.Empty<SpaceCombatUnit>();
         _single[0] = null;
         portrait.texture = null;
         portrait.enabled = false;
@@ -135,10 +135,10 @@ public sealed class TacticalUnitCardView
         float shieldFraction = 0f;
         for (int i = 0; i < _combatants.Count; i++)
         {
-            CombatUnit combatant = _combatants[i];
+            SpaceCombatUnit combatant = _combatants[i];
             int memberHull = combatant.Condition.CurrentHullStrength;
-            int memberMaximumHull = combatant.Data.MaxHullStrength;
-            int memberMaximumShields = combatant.Data.MaxShieldStrength;
+            int memberMaximumHull = combatant.MaxHullStrength;
+            int memberMaximumShields = combatant.MaxShieldStrength;
             hull += memberHull;
             maximumHull += memberMaximumHull;
             maximumShields += memberMaximumShields;

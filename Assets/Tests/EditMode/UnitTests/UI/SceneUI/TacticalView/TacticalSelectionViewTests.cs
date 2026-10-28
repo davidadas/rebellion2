@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private TacticalSelectionView _view;
         private UnityEngine.Camera _camera;
         private Transform _presentation;
-        private CombatUnit _combatant;
+        private SpaceCombatUnit _combatant;
         private Texture2D _texture;
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             GameObject hull = new GameObject("Hull");
             hull.transform.SetParent(_instance.transform, false);
             _presentation = hull.transform;
-            _combatant = CombatUnit.Create(
+            _combatant = SpaceCombatUnit.Create(
                 new CapitalShip
                 {
                     DisplayName = "Test Cruiser",
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_ConfiguredFighter_UsesPerFighterHullAndBattleShields()
         {
-            CombatUnit fighter = CombatUnit.Create(
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
                 new Starfighter
                 {
                     MaxHullStrength = 20,
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_UnconfiguredFighterHull_DoesNotShowInventedHealth()
         {
-            CombatUnit fighter = CombatUnit.Create(
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
                 new Starfighter
                 {
                     ModelSize = new ModelDimensions
@@ -188,7 +188,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_NoShieldCapacity_ShowsNoShields()
         {
-            _combatant.Data.MaxShieldStrength = 0;
+            _combatant.MaxShieldStrength = 0;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -345,12 +345,20 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void RenderContacts_HoveredHostile_UsesProjectedShipDurabilityFrame()
         {
             _combatant.Condition.CurrentShieldStrength = 20;
-            Dictionary<CombatUnit, Transform> presentations = new Dictionary<CombatUnit, Transform>
+            Dictionary<SpaceCombatUnit, Transform> presentations = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
             {
                 [_combatant] = _presentation,
             };
 
-            _view.RenderContacts(Array.Empty<CombatUnit>(), _combatant, presentations, _camera);
+            _view.RenderContacts(
+                Array.Empty<SpaceCombatUnit>(),
+                _combatant,
+                presentations,
+                _camera
+            );
 
             Transform frame = _view.transform.Find("HoverFrame");
             Assert.IsTrue(frame.gameObject.activeSelf);
@@ -371,9 +379,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             RectTransform well = (RectTransform)_view.transform.Find("BattleDock/RosterHousing");
             Canvas.ForceUpdateCanvases();
             float width = well.rect.width;
-            CombatUnit second = CopyCombatant(_combatant);
-            CombatUnit third = CopyCombatant(_combatant);
-            Dictionary<CombatUnit, Transform> roots = new Dictionary<CombatUnit, Transform>
+            SpaceCombatUnit second = CopyCombatant(_combatant);
+            SpaceCombatUnit third = CopyCombatant(_combatant);
+            Dictionary<SpaceCombatUnit, Transform> roots = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
             {
                 [_combatant] = _presentation,
                 [second] = _presentation,
@@ -532,9 +543,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             source.AddChild(officer);
             officer.SetParent(source);
-            CombatUnit combatant = CombatUnit.Create(source);
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(source);
             _texture = new Texture2D(4, 2);
-            Dictionary<CombatUnit, Transform> presentations = new Dictionary<CombatUnit, Transform>
+            Dictionary<SpaceCombatUnit, Transform> presentations = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
             {
                 [combatant] = _presentation,
             };
@@ -551,19 +565,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 },
                 _camera,
                 "PLAYER",
-                Array.Empty<CombatUnit>()
+                Array.Empty<SpaceCombatUnit>()
             );
             UnityEngine.Object.DestroyImmediate(
                 _view.transform.Find("OfficerMarkerTemplate").GetComponent<Button>()
             );
-            CombatUnit clicked = null;
+            SpaceCombatUnit clicked = null;
             _view.OfficerMarkerClicked += combatant => clicked = combatant;
             _view.ApplyTheme(
                 new BattleHudTheme { ContactColorHex = "#FF00FF" },
                 new FixedTextureAssetSource(_texture)
             );
 
-            _view.RenderSelection(Array.Empty<CombatUnit>(), presentations, _camera);
+            _view.RenderSelection(Array.Empty<SpaceCombatUnit>(), presentations, _camera);
 
             Transform markerRoot = _view.transform.Find("OfficerMarker OFFICER");
             RawImage marker = markerRoot
@@ -605,7 +619,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_LargeSelection_ScrollContentEnclosesLastCard()
         {
-            CombatUnit[] selected = Enumerable
+            SpaceCombatUnit[] selected = Enumerable
                 .Range(0, 40)
                 .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
@@ -633,8 +647,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_SameShipType_GroupsMembersAndAveragesBars()
         {
-            _combatant.Data.TypeID = "CRUISER";
-            CombatUnit second = CopyCombatant(_combatant);
+            _combatant.TypeID = "CRUISER";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
             second.Condition.CurrentHullStrength = 25;
             second.Condition.CurrentShieldStrength = 0;
             _combatant.Condition.CurrentShieldStrength = 50;
@@ -655,8 +669,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_ChangedGroupMembers_RebindsCardAndUpdatesCount()
         {
-            _combatant.Data.TypeID = "CRUISER";
-            CombatUnit second = CopyCombatant(_combatant);
+            _combatant.TypeID = "CRUISER";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
             _view.RenderSelection(new[] { _combatant, second }, null, null);
             TacticalUnitCardView card = FindCard();
 
@@ -673,10 +687,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_OpposingOwners_DoesNotMergeCards()
         {
-            _combatant.Data.TypeID = "CRUISER";
-            _combatant.Data.OwnerInstanceID = "FNEMP1";
-            CombatUnit second = CopyCombatant(_combatant);
-            second.Data.OwnerInstanceID = "FNALL1";
+            _combatant.TypeID = "CRUISER";
+            _combatant.OwnerInstanceID = "FNEMP1";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
+            second.OwnerInstanceID = "FNALL1";
 
             _view.RenderSelection(new[] { _combatant, second }, null, null);
 
@@ -694,9 +708,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 TypeID = "FIGHTER",
                 InstanceID = "SQUADRON1",
             };
-            CombatUnit first = CombatUnit.Create(definition);
+            SpaceCombatUnit first = SpaceCombatUnit.Create(definition);
             definition.InstanceID = "SQUADRON2";
-            CombatUnit second = CombatUnit.Create(definition);
+            SpaceCombatUnit second = SpaceCombatUnit.Create(definition);
 
             _view.RenderSelection(new[] { first, second }, null, null);
 
@@ -724,20 +738,20 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 DisplayName = "Capital",
                 OwnerInstanceID = "PLAYER",
             };
-            CombatUnit[] fighters = Enumerable
+            SpaceCombatUnit[] fighters = Enumerable
                 .Range(0, 40)
                 .Select(index =>
                 {
                     fighter.InstanceID = $"FIGHTER-{index}";
-                    return CombatUnit.Create(fighter);
+                    return SpaceCombatUnit.Create(fighter);
                 })
                 .ToArray();
-            CombatUnit[] capitals = Enumerable
+            SpaceCombatUnit[] capitals = Enumerable
                 .Range(0, 20)
                 .Select(index =>
                 {
                     capital.InstanceID = $"CAPITAL-{index}";
-                    return CombatUnit.Create(capital);
+                    return SpaceCombatUnit.Create(capital);
                 })
                 .ToArray();
 
@@ -745,9 +759,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
 
             TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
             Assert.AreEqual(2, cards.Length);
-            Assert.That(cards[0].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.Starfighter));
+            Assert.That(cards[0].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.Starfighter));
             Assert.AreEqual(40, cards[0].Combatants.Count);
-            Assert.That(cards[1].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.CapitalShip));
+            Assert.That(cards[1].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.CapitalShip));
             Assert.AreEqual(20, cards[1].Combatants.Count);
         }
 
@@ -758,11 +772,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_UnsortedUnchangedSelection_DoesNotRebindTypeCards()
         {
-            _combatant.Data.TypeID = "CAPITAL";
-            CombatUnit fighter = CombatUnit.Create(
+            _combatant.TypeID = "CAPITAL";
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
                 new Starfighter { TypeID = "FIGHTER", DisplayName = "Fighter" }
             );
-            CombatUnit[] selected = { _combatant, fighter };
+            SpaceCombatUnit[] selected = { _combatant, fighter };
             _view.RenderSelection(selected, null, null);
             TMP_Text[] stableLabels = _view
                 .GetComponentsInChildren<TacticalUnitCardView>()
@@ -802,7 +816,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_FourCards_UsesTwoRows()
         {
-            CombatUnit[] selected = Enumerable
+            SpaceCombatUnit[] selected = Enumerable
                 .Range(0, 4)
                 .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
@@ -869,11 +883,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             source.AddChild(squadron);
             squadron.SetParent(source);
-            CombatUnit carrier = battle.AddCombatants(source)[0];
+            SpaceCombatUnit carrier = battle.AddCombatants(source)[0];
             battle.AddCombatants(squadron);
             TacticalCarrierOperations operations = new TacticalCarrierOperations(
                 battle,
-                new Dictionary<CombatUnit, System.Numerics.Vector3[][]>
+                new Dictionary<SpaceCombatUnit, System.Numerics.Vector3[][]>
                 {
                     [carrier] = new[]
                     {
@@ -885,11 +899,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _view.RenderSelection(new[] { carrier }, null, null);
             TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
             Assert.That(cards.Length, Is.EqualTo(2));
-            Assert.That(cards[0].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.Starfighter));
-            Assert.That(cards[1].Combatant.Data.Kind, Is.EqualTo(CombatUnitKind.CapitalShip));
+            Assert.That(cards[0].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.Starfighter));
+            Assert.That(cards[1].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.CapitalShip));
             Assert.That(
                 cards
-                    .Single(card => card.Combatant.Data.Kind == CombatUnitKind.Starfighter)
+                    .Single(card => card.Combatant.Kind == SpaceCombatUnitKind.Starfighter)
                     .Combatants.Count,
                 Is.EqualTo(1)
             );
@@ -938,13 +952,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// </summary>
         /// <param name="source">The combatant supplying the fixture state.</param>
         /// <returns>The independently identified combatant.</returns>
-        private static CombatUnit CopyCombatant(CombatUnit source)
+        private static SpaceCombatUnit CopyCombatant(SpaceCombatUnit source)
         {
-            CombatUnit copy = SerializationHelper.Deserialize<CombatUnit>(
+            SpaceCombatUnit copy = SerializationHelper.Deserialize<SpaceCombatUnit>(
                 SerializationHelper.Serialize(source)
             );
             copy.InstanceID = Guid.NewGuid().ToString("N");
-            copy.Data.ModelSize = source.Data.ModelSize?.CreateCopy();
+            copy.ModelSize = source.ModelSize?.CreateCopy();
             return copy;
         }
 

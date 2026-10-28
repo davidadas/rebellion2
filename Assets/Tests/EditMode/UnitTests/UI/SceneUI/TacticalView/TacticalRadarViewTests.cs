@@ -51,11 +51,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Vector3.zero
             );
             _radar.Bind(
-                new Dictionary<CombatUnit, Transform>(),
+                new Dictionary<SpaceCombatUnit, Transform>(),
                 bounds,
                 camera,
                 "VIEWER",
-                new CombatUnit[0]
+                new SpaceCombatUnit[0]
             );
             Canvas.ForceUpdateCanvases();
         }
@@ -149,11 +149,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 MaximumZ = 100f,
             };
             _radar.Bind(
-                new Dictionary<CombatUnit, Transform>(),
+                new Dictionary<SpaceCombatUnit, Transform>(),
                 bounds,
                 _navigation.GetComponent<UnityEngine.Camera>(),
                 "VIEWER",
-                new CombatUnit[0]
+                new SpaceCombatUnit[0]
             );
             Rect r = _radar.rectTransform.rect;
             Vector2 screen = RectTransformUtility.WorldToScreenPoint(

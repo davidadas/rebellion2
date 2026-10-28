@@ -12,7 +12,7 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalBattleSession
     {
-        private CombatUnit[] _units = Array.Empty<CombatUnit>();
+        private SpaceCombatUnit[] _units = Array.Empty<SpaceCombatUnit>();
 
         public TacticalBattleClock Clock { get; } = new TacticalBattleClock();
         public ActiveBattle Battle { get; private set; }
@@ -28,7 +28,7 @@ namespace Rebellion.Tactical
         public void Initialize(
             ActiveBattle battle,
             IReadOnlyDictionary<Hardpoint, TacticalCombat.Mount> mounts,
-            IReadOnlyDictionary<CombatUnit, Vector3[][]> carrierPaths
+            IReadOnlyDictionary<SpaceCombatUnit, Vector3[][]> carrierPaths
         )
         {
             if (battle == null)
@@ -38,7 +38,7 @@ namespace Rebellion.Tactical
                 carrierPaths
             );
             TacticalCombat combat = new TacticalCombat(battle, mounts);
-            CombatUnit[] units = battle
+            SpaceCombatUnit[] units = battle
                 .GetParticipants()
                 .SelectMany(participant => participant.GetCombatants())
                 .ToArray();
@@ -65,7 +65,7 @@ namespace Rebellion.Tactical
             Battle = null;
             Combat = null;
             Carriers = null;
-            _units = Array.Empty<CombatUnit>();
+            _units = Array.Empty<SpaceCombatUnit>();
         }
 
         /// <summary>
@@ -74,9 +74,9 @@ namespace Rebellion.Tactical
         /// <param name="deltaTime">One fixed battle step.</param>
         private void AdvanceMovement(float deltaTime)
         {
-            foreach (CombatUnit unit in _units)
+            foreach (SpaceCombatUnit unit in _units)
                 if (
-                    unit.Data is { Kind: CombatUnitKind.CapitalShip }
+                    unit is { Kind: SpaceCombatUnitKind.CapitalShip }
                     || unit.Flight.Phase == FighterFlightState.Deployed
                 )
                     TacticalMovement.Advance(unit, deltaTime);

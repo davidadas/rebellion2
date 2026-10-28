@@ -16,8 +16,8 @@ namespace Rebellion.Tests.Tactical
     public sealed class TacticalCombatTests
     {
         private ActiveBattle _battle;
-        private CombatUnit _attacker;
-        private CombatUnit _defender;
+        private SpaceCombatUnit _attacker;
+        private SpaceCombatUnit _defender;
 
         /// <summary>
         /// Creates two independent opposing hulls and one explicitly authored weapon bank.
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_MovingShooterInRange_FiresWithoutStopping()
         {
-            _attacker.Data.SublightSpeed = 2;
+            _attacker.SublightSpeed = 2;
             _attacker.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             CreateCombat(_battle)
                 .Advance(1f / 64f, deltaTime => TacticalMovement.Advance(_attacker, deltaTime));
@@ -129,9 +129,9 @@ namespace Rebellion.Tests.Tactical
         public void Advance_ExplicitTargetOutsideRange_FiresAtNearbyEnemyWhileMoving()
         {
             _defender.Position.Z = 100f;
-            CombatUnit nearby = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
+            SpaceCombatUnit nearby = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
             nearby.Position.Z = 10f;
-            _attacker.Data.SublightSpeed = 2;
+            _attacker.SublightSpeed = 2;
             _attacker.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             TacticalCombat combat = CreateCombat(_battle);
             combat.Attack(new[] { _attacker }, "OWNER", _defender);
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Tactical
             right.Position.X = 5f;
             TacticalCombat.GetGroups(_attacker)[0].GetHardpoints().Add(right);
             _defender.Position = new BattleVector3 { X = -5f, Z = 10f };
-            CombatUnit second = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
+            SpaceCombatUnit second = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
             second.Position = new BattleVector3 { X = 5f, Z = 10f };
 
             CreateCombat(_battle).Advance(1f / 64f);
@@ -184,7 +184,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_AutomaticTargetRemainsEngageable_RetainsMountTarget()
         {
             Mount().FiringArcDegrees = 360f;
-            CombatUnit second = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
+            SpaceCombatUnit second = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
             second.Position = new BattleVector3 { X = 5f, Z = 15f };
             TacticalCombat combat = CreateCombat(_battle);
             combat.Advance(1f / 64f);
@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_ExplicitTargetInsideEnvelope_PrefersOrderedTargetOverNearerEnemy()
         {
             _defender.Position.Z = 20f;
-            CombatUnit nearby = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
+            SpaceCombatUnit nearby = _battle.AddCombatants(CreateShip("C", "ENEMY"))[0];
             nearby.Position = new BattleVector3 { X = 2f, Z = 10f };
             TacticalCombat combat = CreateCombat(_battle);
             combat.Attack(new[] { _attacker }, "OWNER", _defender);
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_ApproachingTargetInRange_FiresAtPredictedPosition()
         {
-            _defender.Data.SublightSpeed = 3;
+            _defender.SublightSpeed = 3;
             _defender.Forward = new BattleVector3 { Z = -1f };
             _defender.MoveOrder.Destination = new BattleVector3 { Z = -100f };
             CreateCombat(_battle)
@@ -383,7 +383,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FriendlyHullBlocksTarget_DoesNotFire()
         {
-            CombatUnit blocker = _battle.AddCombatants(CreateShip("C", "OWNER"))[0];
+            SpaceCombatUnit blocker = _battle.AddCombatants(CreateShip("C", "OWNER"))[0];
             blocker.Position.Z = 5f;
             CreateCombat(_battle).Advance(1f);
             Assert.That(_battle.NextShotID, Is.Zero);
@@ -406,7 +406,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DestroyedShooter_DoesNotFireOrRecharge()
         {
-            CombatUnitData ship = _attacker.Data;
+            SpaceCombatUnit ship = _attacker;
             _attacker.Condition.CurrentHullStrength = 0;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 10;
@@ -422,7 +422,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DamagedHull_ScalesShieldRecharge()
         {
-            CombatUnitData ship = _attacker.Data;
+            SpaceCombatUnit ship = _attacker;
             _attacker.Condition.CurrentHullStrength = 50;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 10;
@@ -438,7 +438,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FullShields_DoesNotOvercharge()
         {
-            CombatUnitData ship = _attacker.Data;
+            SpaceCombatUnit ship = _attacker;
             ship.MaxShieldStrength = 20;
             ship.ShieldRechargeRate = 100;
             _attacker.Condition.CurrentShieldStrength = 19;
@@ -598,17 +598,17 @@ namespace Rebellion.Tests.Tactical
                 Dictionary<string, ModelDimensions> geometry = geometrySource
                     .GetParticipants()
                     .SelectMany(participant => participant.GetCombatants())
-                    .ToDictionary(unit => unit.InstanceID, unit => unit.Data.ModelSize);
+                    .ToDictionary(unit => unit.InstanceID, unit => unit.ModelSize);
                 foreach (
-                    CombatUnit unit in battle
+                    SpaceCombatUnit unit in battle
                         .GetParticipants()
                         .SelectMany(participant => participant.GetCombatants())
                 )
-                    unit.Data.ModelSize = geometry[unit.InstanceID].CreateCopy();
+                    unit.ModelSize = geometry[unit.InstanceID].CreateCopy();
             }
             Dictionary<Hardpoint, TacticalCombat.Mount> mounts = new();
             foreach (BattleParticipant participant in battle.GetParticipants())
-            foreach (CombatUnit unit in participant.GetCombatants())
+            foreach (SpaceCombatUnit unit in participant.GetCombatants())
             foreach (HardpointGroup group in TacticalCombat.GetGroups(unit))
             foreach (Hardpoint point in group.GetHardpoints())
                 mounts.Add(

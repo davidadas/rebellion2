@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
@@ -9,7 +10,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Tests.Game.Combat
 {
     [TestFixture]
-    public sealed class CombatUnitTests
+    public sealed class SpaceCombatUnitTests
     {
         [Test]
         public void Create_CapitalShip_CreatesIndependentBattleCopy()
@@ -22,8 +23,8 @@ namespace Rebellion.Tests.Game.Combat
             };
             source.GetComponents().Add(new Engine { Health = 50 });
 
-            CombatUnit combatUnit = CombatUnit.Create(source);
-            CombatUnitData copy = combatUnit.Data;
+            SpaceCombatUnit combatUnit = SpaceCombatUnit.Create(source);
+            SpaceCombatUnit copy = combatUnit;
 
             Assert.IsNotNull(copy);
             Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
@@ -60,7 +61,7 @@ namespace Rebellion.Tests.Game.Combat
             source.AddChild(fighter);
             fighter.SetParent(source);
 
-            CombatUnit copy = CombatUnit.Create(source);
+            SpaceCombatUnit copy = SpaceCombatUnit.Create(source);
 
             Officer copiedOfficer = copy.Officers.Single();
             Assert.AreNotSame(officer, copiedOfficer);
@@ -84,8 +85,8 @@ namespace Rebellion.Tests.Game.Combat
                 CurrentSquadronSize = 12,
             };
 
-            CombatUnit combatUnit = CombatUnit.Create(source);
-            CombatUnitData copy = combatUnit.Data;
+            SpaceCombatUnit combatUnit = SpaceCombatUnit.Create(source);
+            SpaceCombatUnit copy = combatUnit;
 
             Assert.IsNotNull(copy);
             Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
@@ -101,7 +102,9 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Create_CapitalShip_StartsShieldsAtConfiguredMaximum()
         {
-            CombatUnit combatant = CombatUnit.Create(new CapitalShip { MaxShieldStrength = 200 });
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
+                new CapitalShip { MaxShieldStrength = 200 }
+            );
 
             Assert.AreEqual(200, combatant.Condition.CurrentShieldStrength);
         }
@@ -110,7 +113,9 @@ namespace Rebellion.Tests.Game.Combat
         [TestCase(5)]
         public void Create_Starfighter_StartsShieldsAtConfiguredStrength(int strength)
         {
-            CombatUnit combatant = CombatUnit.Create(new Starfighter { ShieldStrength = strength });
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
+                new Starfighter { ShieldStrength = strength }
+            );
 
             Assert.AreEqual(strength, combatant.Condition.CurrentShieldStrength);
         }
@@ -124,9 +129,9 @@ namespace Rebellion.Tests.Game.Combat
                 CurrentHullStrength = 35,
             };
 
-            CombatUnit copy = CombatUnit.Create(source);
+            SpaceCombatUnit copy = SpaceCombatUnit.Create(source);
 
-            Assert.AreEqual(100, copy.Data.MaxHullStrength);
+            Assert.AreEqual(100, copy.MaxHullStrength);
             Assert.AreEqual(35, copy.Condition.CurrentHullStrength);
         }
 
@@ -135,19 +140,19 @@ namespace Rebellion.Tests.Game.Combat
         {
             Starfighter source = new Starfighter { MaxHullStrength = 20, CurrentHullStrength = 12 };
 
-            CombatUnit copy = CombatUnit.Create(source);
+            SpaceCombatUnit copy = SpaceCombatUnit.Create(source);
             copy.Condition.CurrentHullStrength = 3;
 
-            Assert.AreEqual(20, copy.Data.MaxHullStrength);
+            Assert.AreEqual(20, copy.MaxHullStrength);
             Assert.AreEqual(12, source.CurrentHullStrength);
         }
 
         [Test]
         public void Create_UnconfiguredFighter_DoesNotInventHullStrength()
         {
-            CombatUnit copy = CombatUnit.Create(new Starfighter());
+            SpaceCombatUnit copy = SpaceCombatUnit.Create(new Starfighter());
 
-            Assert.AreEqual(0, copy.Data.MaxHullStrength);
+            Assert.AreEqual(0, copy.MaxHullStrength);
             Assert.AreEqual(0, copy.Condition.CurrentHullStrength);
         }
 
@@ -156,10 +161,12 @@ namespace Rebellion.Tests.Game.Combat
         [TestCase(37)]
         public void Serialize_ShieldState_PreservesRecordedValue(int? remainingShields)
         {
-            CombatUnit combatant = CombatUnit.Create(new CapitalShip { MaxShieldStrength = 100 });
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
+                new CapitalShip { MaxShieldStrength = 100 }
+            );
             combatant.Condition.CurrentShieldStrength = remainingShields;
 
-            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
+            SpaceCombatUnit restored = SerializationHelper.Deserialize<SpaceCombatUnit>(
                 SerializationHelper.Serialize(combatant)
             );
 
@@ -172,7 +179,7 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Serialize_MoveDestination_PreservesPendingOrder()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.Position.X = 5f;
             unit.MoveOrder.Destination = new BattleVector3
             {
@@ -182,7 +189,7 @@ namespace Rebellion.Tests.Game.Combat
             };
             unit.MoveOrder.SpeedLimit = 2f;
 
-            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
+            SpaceCombatUnit restored = SerializationHelper.Deserialize<SpaceCombatUnit>(
                 SerializationHelper.Serialize(unit)
             );
 
@@ -196,27 +203,29 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Serialize_FighterHull_PreservesCurrentAndMaximum()
         {
-            CombatUnit combatant = CombatUnit.Create(
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
                 new Starfighter { MaxHullStrength = 20, CurrentHullStrength = 12 }
             );
 
-            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
+            SpaceCombatUnit restored = SerializationHelper.Deserialize<SpaceCombatUnit>(
                 SerializationHelper.Serialize(combatant)
             );
-            Assert.AreEqual(20, restored.Data.MaxHullStrength);
+            Assert.AreEqual(20, restored.MaxHullStrength);
             Assert.AreEqual(12, restored.Condition.CurrentHullStrength);
         }
 
         [Test]
         public void Deserialize_UnrecordedShields_DoesNotRefillBattleShields()
         {
-            CombatUnit combatant = CombatUnit.Create(new CapitalShip { MaxShieldStrength = 100 });
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
+                new CapitalShip { MaxShieldStrength = 100 }
+            );
             string xml = SerializationHelper
                 .Serialize(combatant)
                 .Replace("<CurrentShieldStrength>100</CurrentShieldStrength>", string.Empty);
             StringAssert.DoesNotContain("CurrentShieldStrength", xml);
 
-            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
+            SpaceCombatUnit restored = SerializationHelper.Deserialize<SpaceCombatUnit>(xml);
 
             Assert.IsNull(restored.Condition.CurrentShieldStrength);
         }
@@ -230,7 +239,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip carrier = new CapitalShip { InstanceID = "CARRIER" };
             Starfighter fighter = new Starfighter();
             fighter.SetParent(carrier);
-            CombatUnit combatant = CombatUnit.Create(fighter);
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(fighter);
             Assert.That(combatant.Flight.CarrierSourceUnitInstanceID, Is.EqualTo("CARRIER"));
             Assert.That(combatant.Flight.Phase, Is.EqualTo(FighterFlightState.Docked));
             Assert.AreSame(carrier, fighter.ParentNode);
@@ -246,7 +255,7 @@ namespace Rebellion.Tests.Game.Combat
                 MaxHullStrength = 100,
                 CurrentHullStrength = 35,
             };
-            CombatUnit combatant = CombatUnit.Create(source);
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(source);
 
             string xml = SerializationHelper.Serialize(combatant);
 
@@ -259,8 +268,8 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Serialize_MeasuredGeometry_RebuildsOutsideSavedState()
         {
-            CombatUnit combatant = CombatUnit.Create(new CapitalShip());
-            combatant.Data.ModelSize = new Rebellion.SceneGraph.ModelDimensions
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(new CapitalShip());
+            combatant.ModelSize = new Rebellion.SceneGraph.ModelDimensions
             {
                 Width = 10f,
                 Height = 3f,
@@ -268,22 +277,75 @@ namespace Rebellion.Tests.Game.Combat
             };
 
             string xml = SerializationHelper.Serialize(combatant);
-            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
+            SpaceCombatUnit restored = SerializationHelper.Deserialize<SpaceCombatUnit>(xml);
 
             StringAssert.DoesNotContain("ModelSize", xml);
-            Assert.IsNull(restored.Data.ModelSize);
+            Assert.IsNull(restored.ModelSize);
+        }
+
+        [Test]
+        public void Serialize_ShipCapabilities_StoresFieldsDirectlyOnSpaceUnit()
+        {
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
+                new CapitalShip
+                {
+                    TypeID = "CRUISER",
+                    OwnerInstanceID = "OWNER",
+                    DisplayName = "Cruiser",
+                    DisplayImagePath = "cruiser.png",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 35,
+                    SublightSpeed = 4,
+                }
+            );
+
+            XmlDocument document = new XmlDocument();
+            document.LoadXml(SerializationHelper.Serialize(combatant));
+
+            Assert.AreEqual("SpaceCombatUnit", document.DocumentElement.Name);
+            Assert.IsNull(document.SelectSingleNode("/SpaceCombatUnit/Data"));
+            Assert.AreEqual(
+                "CRUISER",
+                document.SelectSingleNode("/SpaceCombatUnit/TypeID").InnerText
+            );
+            Assert.AreEqual(
+                "OWNER",
+                document.SelectSingleNode("/SpaceCombatUnit/OwnerInstanceID").InnerText
+            );
+            Assert.AreEqual(
+                "Cruiser",
+                document.SelectSingleNode("/SpaceCombatUnit/DisplayName").InnerText
+            );
+            Assert.AreEqual(
+                "cruiser.png",
+                document.SelectSingleNode("/SpaceCombatUnit/DisplayImagePath").InnerText
+            );
+            Assert.AreEqual(
+                "100",
+                document.SelectSingleNode("/SpaceCombatUnit/MaxHullStrength").InnerText
+            );
+            Assert.AreEqual(
+                "4",
+                document.SelectSingleNode("/SpaceCombatUnit/SublightSpeed").InnerText
+            );
+            Assert.AreEqual(
+                "35",
+                document
+                    .SelectSingleNode("/SpaceCombatUnit/Condition/CurrentHullStrength")
+                    .InnerText
+            );
         }
 
         [Test]
         public void Create_NullUnit_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => CombatUnit.Create(null));
+            Assert.Throws<ArgumentNullException>(() => SpaceCombatUnit.Create(null));
         }
 
         [Test]
         public void Create_UnsupportedUnit_ThrowsArgumentException()
         {
-            Assert.Throws<ArgumentException>(() => CombatUnit.Create(new Regiment()));
+            Assert.Throws<ArgumentException>(() => SpaceCombatUnit.Create(new Regiment()));
         }
     }
 }

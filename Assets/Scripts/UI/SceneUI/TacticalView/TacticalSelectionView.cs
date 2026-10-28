@@ -106,21 +106,21 @@ public sealed class TacticalSelectionView : MonoBehaviour
     private readonly List<RectTransform> _frameHullFills = new List<RectTransform>();
     private readonly List<RectTransform> _frameShieldFills = new List<RectTransform>();
     private readonly List<TacticalUnitCardView> _cards = new List<TacticalUnitCardView>();
-    private readonly List<CombatUnit> _singleSelection = new List<CombatUnit>(1);
-    private readonly Dictionary<CombatUnit, Transform> _singlePresentation =
-        new Dictionary<CombatUnit, Transform>();
+    private readonly List<SpaceCombatUnit> _singleSelection = new List<SpaceCombatUnit>(1);
+    private readonly Dictionary<SpaceCombatUnit, Transform> _singlePresentation =
+        new Dictionary<SpaceCombatUnit, Transform>();
     private IContentAssetSource _assets;
-    private readonly List<CombatUnit> _selectionSnapshot = new List<CombatUnit>();
-    private readonly List<List<CombatUnit>> _groups = new List<List<CombatUnit>>();
-    private readonly List<CombatUnit> _roster = new List<CombatUnit>();
-    private readonly HashSet<CombatUnit> _rosterSeen = new HashSet<CombatUnit>();
+    private readonly List<SpaceCombatUnit> _selectionSnapshot = new List<SpaceCombatUnit>();
+    private readonly List<List<SpaceCombatUnit>> _groups = new List<List<SpaceCombatUnit>>();
+    private readonly List<SpaceCombatUnit> _roster = new List<SpaceCombatUnit>();
+    private readonly HashSet<SpaceCombatUnit> _rosterSeen = new HashSet<SpaceCombatUnit>();
     private TacticalCarrierOperations _carrierOperations;
     private string _orderingFaction;
     private int _flightRevision = -1;
     private UnityAction[] _controlGroupActions;
     private bool _ownsCursorVisibility;
     private bool _previousCursorVisibility;
-    private IReadOnlyDictionary<CombatUnit, Transform> _battlePresentations;
+    private IReadOnlyDictionary<SpaceCombatUnit, Transform> _battlePresentations;
     private Camera _battleCamera;
     private string _viewerFaction;
     private readonly List<OfficerMarker> _officerMarkers = new List<OfficerMarker>();
@@ -135,10 +135,10 @@ public sealed class TacticalSelectionView : MonoBehaviour
     public TacticalCommandButton DockButton => dockButton;
     public TacticalCommandButton FollowButton => followButton;
 
-    public event Action<IReadOnlyList<CombatUnit>> CardClicked;
-    public event Action<IReadOnlyList<CombatUnit>> CardDoubleClicked;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> CardClicked;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> CardDoubleClicked;
     public event Action<int> ControlGroupClicked;
-    public event Action<CombatUnit> OfficerMarkerClicked;
+    public event Action<SpaceCombatUnit> OfficerMarkerClicked;
 
     /// <summary>
     /// Connects the authored control-group buttons to the shared selection owner.
@@ -276,9 +276,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="presentations">The loaded presentation index.</param>
     /// <param name="camera">The battle camera.</param>
     public void RenderContacts(
-        IReadOnlyList<CombatUnit> targets,
-        CombatUnit hovered,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyList<SpaceCombatUnit> targets,
+        SpaceCombatUnit hovered,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         Camera camera
     )
     {
@@ -326,8 +326,8 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <returns>Whether the contact can be shown on screen.</returns>
     private static bool RenderContactFrame(
         RectTransform frame,
-        CombatUnit unit,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        SpaceCombatUnit unit,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         Camera camera
     ) =>
         frame
@@ -338,7 +338,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
         && presentations.TryGetValue(unit, out Transform root)
         && root
         && root.gameObject.activeInHierarchy
-        && RenderFrame(frame, root, unit.Data.ModelSize, camera);
+        && RenderFrame(frame, root, unit.ModelSize, camera);
 
     /// <summary>
     /// Applies a faction's authored dock palette.
@@ -375,11 +375,11 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="viewer">The viewing faction identifier.</param>
     /// <param name="selected">The live selection collection.</param>
     public void BindBattle(
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         BattleMapBounds bounds,
         Camera camera,
         string viewer,
-        IReadOnlyList<CombatUnit> selected
+        IReadOnlyList<SpaceCombatUnit> selected
     )
     {
         _battlePresentations = presentations;
@@ -395,7 +395,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="combatant">The selected unit, or null.</param>
     /// <param name="presentation">The model root, or null.</param>
     /// <param name="camera">The battle camera.</param>
-    public void Render(CombatUnit combatant, Transform presentation, Camera camera)
+    public void Render(SpaceCombatUnit combatant, Transform presentation, Camera camera)
     {
         _singleSelection.Clear();
         _singlePresentation.Clear();
@@ -414,8 +414,8 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="presentations">The loaded presentation index.</param>
     /// <param name="camera">The battle camera.</param>
     public void RenderSelection(
-        IReadOnlyList<CombatUnit> selected,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyList<SpaceCombatUnit> selected,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         Camera camera
     )
     {
@@ -431,12 +431,12 @@ public sealed class TacticalSelectionView : MonoBehaviour
             RebuildGroups(selected);
             bool launch =
                 _carrierOperations?.CanLaunch(
-                    selected ?? Array.Empty<CombatUnit>(),
+                    selected ?? Array.Empty<SpaceCombatUnit>(),
                     _orderingFaction
                 ) == true;
             bool recall =
                 _carrierOperations?.CanRecall(
-                    selected ?? Array.Empty<CombatUnit>(),
+                    selected ?? Array.Empty<SpaceCombatUnit>(),
                     _orderingFaction
                 ) == true;
             if (launchButton)
@@ -445,13 +445,13 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 recallButton.interactable =
                     recall
                     && _selectionSnapshot.Exists(unit =>
-                        unit.Data is { Kind: CombatUnitKind.CapitalShip }
+                        unit is { Kind: SpaceCombatUnitKind.CapitalShip }
                     );
             if (dockButton)
                 dockButton.interactable =
                     recall
                     && _selectionSnapshot.Exists(unit =>
-                        unit.Data is { Kind: CombatUnitKind.Starfighter }
+                        unit is { Kind: SpaceCombatUnitKind.Starfighter }
                     );
         }
         while (_cards.Count < _groups.Count)
@@ -495,7 +495,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 && presentations.TryGetValue(selected[i], out Transform root)
                 && root
                 && root.gameObject.activeInHierarchy
-                && RenderFrame(_frames[i], root, selected[i].Data.ModelSize, camera);
+                && RenderFrame(_frames[i], root, selected[i].ModelSize, camera);
             _frames[i].gameObject.SetActive(frameVisible);
             if (frameVisible)
                 RenderDurability(selected[i], _frameHullFills[i], _frameShieldFills[i]);
@@ -527,12 +527,12 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="hullFill">The hull bar fill.</param>
     /// <param name="shieldFill">The shield bar fill.</param>
     private static void RenderDurability(
-        CombatUnit combatant,
+        SpaceCombatUnit combatant,
         RectTransform hullFill,
         RectTransform shieldFill
     )
     {
-        CombatUnitData unit = combatant.Data;
+        SpaceCombatUnit unit = combatant;
         int hull = combatant.Condition.CurrentHullStrength;
         int maximumHull = unit.MaxHullStrength;
         int maximumShields = unit.MaxShieldStrength;
@@ -555,26 +555,26 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// represented combatant for group commands.
     /// </summary>
     /// <param name="selected">The selection owner's ordered battle units.</param>
-    private void RebuildGroups(IReadOnlyList<CombatUnit> selected)
+    private void RebuildGroups(IReadOnlyList<SpaceCombatUnit> selected)
     {
         _selectionSnapshot.Clear();
         _groups.Clear();
         _roster.Clear();
         _rosterSeen.Clear();
-        Dictionary<(string Owner, string Type), List<CombatUnit>> index =
-            new Dictionary<(string, string), List<CombatUnit>>();
+        Dictionary<(string Owner, string Type), List<SpaceCombatUnit>> index =
+            new Dictionary<(string, string), List<SpaceCombatUnit>>();
         if (selected == null)
             return;
         _selectionSnapshot.AddRange(selected);
-        List<CombatUnit> ordered = new List<CombatUnit>(selected);
+        List<SpaceCombatUnit> ordered = new List<SpaceCombatUnit>(selected);
         ordered.Sort(CompareRosterUnits);
         int visibleCapacity = GetVisibleRosterCapacity();
-        foreach (CombatUnit combatant in ordered)
+        foreach (SpaceCombatUnit combatant in ordered)
         {
             if (_rosterSeen.Add(combatant))
                 _roster.Add(combatant);
-            if (_carrierOperations != null && combatant.Data.OwnerInstanceID == _orderingFaction)
-                foreach (CombatUnit carried in _carrierOperations.GetManifest(combatant))
+            if (_carrierOperations != null && combatant.OwnerInstanceID == _orderingFaction)
+                foreach (SpaceCombatUnit carried in _carrierOperations.GetManifest(combatant))
                     if (
                         _roster.Count < visibleCapacity
                         && !carried.HasRetreated
@@ -591,19 +591,19 @@ public sealed class TacticalSelectionView : MonoBehaviour
                         _roster.Add(carried);
         }
         _roster.Sort(CompareRosterUnits);
-        foreach (CombatUnit combatant in _roster)
+        foreach (SpaceCombatUnit combatant in _roster)
         {
-            CombatUnitData unit = combatant.Data;
+            SpaceCombatUnit unit = combatant;
             // Missing type identifiers cannot establish that two units share a definition.
             if (string.IsNullOrWhiteSpace(unit.TypeID))
             {
-                _groups.Add(new List<CombatUnit> { combatant });
+                _groups.Add(new List<SpaceCombatUnit> { combatant });
                 continue;
             }
             var key = (unit.OwnerInstanceID, unit.TypeID);
-            if (!index.TryGetValue(key, out List<CombatUnit> group))
+            if (!index.TryGetValue(key, out List<SpaceCombatUnit> group))
             {
-                group = new List<CombatUnit>();
+                group = new List<SpaceCombatUnit>();
                 index.Add(key, group);
                 _groups.Add(group);
             }
@@ -617,16 +617,16 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// <param name="left">The first combatant.</param>
     /// <param name="right">The second combatant.</param>
     /// <returns>A stable roster sort comparison.</returns>
-    private static int CompareRosterUnits(CombatUnit left, CombatUnit right)
+    private static int CompareRosterUnits(SpaceCombatUnit left, SpaceCombatUnit right)
     {
-        int kind = (left.Data is { Kind: CombatUnitKind.CapitalShip } ? 1 : 0).CompareTo(
-            right.Data is { Kind: CombatUnitKind.CapitalShip } ? 1 : 0
+        int kind = (left is { Kind: SpaceCombatUnitKind.CapitalShip } ? 1 : 0).CompareTo(
+            right is { Kind: SpaceCombatUnitKind.CapitalShip } ? 1 : 0
         );
         if (kind != 0)
             return kind;
         int name = string.Compare(
-            left.Data.DisplayName ?? left.Data.TypeID,
-            right.Data.DisplayName ?? right.Data.TypeID,
+            left.DisplayName ?? left.TypeID,
+            right.DisplayName ?? right.TypeID,
             StringComparison.Ordinal
         );
         return name != 0
@@ -658,9 +658,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// </summary>
     /// <param name="combatant">The represented unit.</param>
     /// <returns>The configured display portrait, or null when none exists.</returns>
-    private Texture2D GetPortrait(CombatUnit combatant)
+    private Texture2D GetPortrait(SpaceCombatUnit combatant)
     {
-        string path = combatant.Data.GetDisplayImagePath();
+        string path = combatant.GetDisplayImagePath();
         return _assets != null && !string.IsNullOrWhiteSpace(path)
             ? _assets.GetTexture(path)
             : null;
@@ -670,14 +670,14 @@ public sealed class TacticalSelectionView : MonoBehaviour
     /// Forwards an authored roster button to the selection controller.
     /// </summary>
     /// <param name="combatants">The clicked card's members.</param>
-    private void HandleCardClicked(IReadOnlyList<CombatUnit> combatants) =>
+    private void HandleCardClicked(IReadOnlyList<SpaceCombatUnit> combatants) =>
         CardClicked?.Invoke(combatants);
 
     /// <summary>
     /// Forwards a roster double click to the tactical camera owner.
     /// </summary>
     /// <param name="combatants">The double-clicked card's members.</param>
-    private void HandleCardDoubleClicked(IReadOnlyList<CombatUnit> combatants) =>
+    private void HandleCardDoubleClicked(IReadOnlyList<SpaceCombatUnit> combatants) =>
         CardDoubleClicked?.Invoke(combatants);
 
     /// <summary>
@@ -794,10 +794,10 @@ public sealed class TacticalSelectionView : MonoBehaviour
         )
             return;
 
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in _battlePresentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in _battlePresentations)
         {
             if (
-                presentation.Key.Data is not { Kind: CombatUnitKind.CapitalShip } ship
+                presentation.Key is not { Kind: SpaceCombatUnitKind.CapitalShip } ship
                 || !string.Equals(ship.OwnerInstanceID, _viewerFaction, StringComparison.Ordinal)
             )
                 continue;
@@ -822,7 +822,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                     $"OfficerMarker {officers[index].InstanceID ?? officers[index].DisplayName}";
                 image.texture = texture;
                 image.uvRect = GetCenteredSquareUv(texture);
-                CombatUnit markedCombatant = presentation.Key;
+                SpaceCombatUnit markedCombatant = presentation.Key;
                 Image frame = root.GetComponent<Image>();
                 frame.raycastTarget = true;
                 Button button =
@@ -859,7 +859,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 && !marker.Combatant.HasRetreated
                 && TryGetProjectedHull(
                     marker.Presentation,
-                    marker.Combatant.Data.ModelSize,
+                    marker.Combatant.ModelSize,
                     _battleCamera,
                     out minimum,
                     out maximum
@@ -942,7 +942,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
 
     private sealed class OfficerMarker
     {
-        public readonly CombatUnit Combatant;
+        public readonly SpaceCombatUnit Combatant;
         public readonly Transform Presentation;
         public readonly RectTransform Root;
         public readonly int Index;
@@ -957,7 +957,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
         /// <param name="index">The portrait's zero-based row index.</param>
         /// <param name="count">The total portraits displayed for this ship.</param>
         public OfficerMarker(
-            CombatUnit combatant,
+            SpaceCombatUnit combatant,
             Transform presentation,
             RectTransform root,
             int index,

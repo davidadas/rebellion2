@@ -72,12 +72,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     }
                 );
             shooter.GetHardpointGroups().Add(group);
-            CombatUnit source = _battle.AddCombatants(shooter)[0];
+            SpaceCombatUnit source = _battle.AddCombatants(shooter)[0];
             CapitalShip target = (CapitalShip)shooter.CreateCopy();
             target.InstanceID = "target";
             target.OwnerInstanceID = "SECOND";
             target.GetHardpointGroups().Clear();
-            CombatUnit targetCombatant = _battle.AddCombatants(target)[0];
+            SpaceCombatUnit targetCombatant = _battle.AddCombatants(target)[0];
             targetCombatant.Position.Z = 10f;
             Hardpoint point = TacticalCombat.GetGroups(source)[0].GetHardpoints()[0];
             _combat = new TacticalCombat(
@@ -102,7 +102,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 _audio,
                 new Dictionary<string, AudioClip>(),
                 AssetDatabase.LoadAssetAtPath<Shader>("Assets/Shaders/TacticalLaserBolt.shader"),
-                new Dictionary<CombatUnit, Transform>
+                new Dictionary<SpaceCombatUnit, Transform>
                 {
                     [source] = _scene.transform,
                     [targetCombatant] = _scene.transform,
@@ -164,9 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Advance_Hitscan_RendersAndExpiresBeamWithoutSavedProjectile()
         {
-            CombatUnit shooter = _battle.GetParticipants()[0].GetCombatants()[0];
+            SpaceCombatUnit shooter = _battle.GetParticipants()[0].GetCombatants()[0];
             ProjectileData projectile = shooter
-                .Data.GetHardpointGroups()[0]
+                .GetHardpointGroups()[0]
                 .GetHardpoints()[0]
                 .Weapon.Projectile;
             projectile.DeliveryMode = WeaponDeliveryMode.Hitscan;

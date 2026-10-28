@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_MovingRoster_AdvancesMovementAndGunTimerTogether()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit unit = battle.GetParticipants()[0].GetCombatants()[0];
+            SpaceCombatUnit unit = battle.GetParticipants()[0].GetCombatants()[0];
             TacticalBattleSession session = CreateSession(battle);
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             unit.Weapons.Banks[0].Mounts[0].Cooldown = 1f;
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_SaveReload_MatchesUninterruptedMovementAndCombat()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit unit = battle.GetParticipants()[0].GetCombatants()[0];
+            SpaceCombatUnit unit = battle.GetParticipants()[0].GetCombatants()[0];
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             TacticalBattleSession uninterrupted = CreateSession(battle);
             uninterrupted.Advance(0.337f);
@@ -43,13 +43,13 @@ namespace Rebellion.Tests.Tactical
             Dictionary<string, ModelDimensions> geometry = battle
                 .GetParticipants()
                 .SelectMany(participant => participant.GetCombatants())
-                .ToDictionary(member => member.InstanceID, member => member.Data.ModelSize);
+                .ToDictionary(member => member.InstanceID, member => member.ModelSize);
             foreach (
-                CombatUnit member in restored
+                SpaceCombatUnit member in restored
                     .GetParticipants()
                     .SelectMany(participant => participant.GetCombatants())
             )
-                member.Data.ModelSize = geometry[member.InstanceID].CreateCopy();
+                member.ModelSize = geometry[member.InstanceID].CreateCopy();
             TacticalBattleSession resumed = CreateSession(restored);
 
             uninterrupted.Advance(2f);
@@ -136,18 +136,18 @@ namespace Rebellion.Tests.Tactical
         {
             Dictionary<Hardpoint, TacticalCombat.Mount> mounts = new();
             foreach (
-                CombatUnit member in battle
+                SpaceCombatUnit member in battle
                     .GetParticipants()
                     .SelectMany(participant => participant.GetCombatants())
             )
-            foreach (HardpointGroup group in member.Data.GetHardpointGroups())
+            foreach (HardpointGroup group in member.GetHardpointGroups())
             foreach (Hardpoint point in group.GetHardpoints())
                 mounts.Add(
                     point,
                     new TacticalCombat.Mount(Vector3.Zero, Vector3.UnitZ, Vector3.UnitY)
                 );
             TacticalBattleSession session = new TacticalBattleSession();
-            session.Initialize(battle, mounts, new Dictionary<CombatUnit, Vector3[][]>());
+            session.Initialize(battle, mounts, new Dictionary<SpaceCombatUnit, Vector3[][]>());
             return session;
         }
     }

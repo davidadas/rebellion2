@@ -26,11 +26,11 @@ Record confirmed implementation issues here. Keep entries open until the fix and
 
 - [x] **Clarify ownership within the saved battle unit.**
 
-  `CombatUnitData` captures combat capabilities without strategic production or travel fields.
+  `SpaceCombatUnit` directly owns combat capabilities without strategic production or travel fields.
   `CombatUnitCondition` is the sole owner of current hull, shields, squadron strength, and
   fractional damage/recharge. Movement, weapons, fighter flight, and carrier queues have
-  separate saved state records in `CombatUnit.cs`. Source-unit identity is retained.
-  Save format 2 migrates the previous ship-copy representation and pending orders on load.
+  separate saved state records in `SpaceCombatUnit.cs`. Source-unit identity is retained.
+  Save format 3 migrates both previous ship-copy and nested-data representations and pending orders on load.
 
 - [x] **Establish a distinct home and runtime owner for tactical gameplay.**
 

@@ -26,7 +26,7 @@ namespace Rebellion.Tactical
         public static bool MoveTo(
             ActiveBattle battle,
             BattleMapBounds bounds,
-            IReadOnlyList<CombatUnit> selection,
+            IReadOnlyList<SpaceCombatUnit> selection,
             string factionInstanceID,
             BattleVector3 destination,
             bool matchSpeed = false
@@ -47,21 +47,25 @@ namespace Rebellion.Tactical
                     nameof(destination)
                 );
 
-            List<CombatUnit> ordered = GetControlledUnits(battle, selection, factionInstanceID);
+            List<SpaceCombatUnit> ordered = GetControlledUnits(
+                battle,
+                selection,
+                factionInstanceID
+            );
             if (ordered.Count == 0)
                 return false;
             float? speedLimit = null;
             if (matchSpeed)
             {
                 float slowest = float.PositiveInfinity;
-                foreach (CombatUnit unit in ordered)
+                foreach (SpaceCombatUnit unit in ordered)
                     slowest = Math.Min(slowest, GetSpeed(unit));
                 speedLimit = slowest;
             }
             Vector3 center = Vector3.Zero;
             Vector3 minimum = new Vector3(float.PositiveInfinity);
             Vector3 maximum = new Vector3(float.NegativeInfinity);
-            foreach (CombatUnit unit in ordered)
+            foreach (SpaceCombatUnit unit in ordered)
             {
                 Vector3 position = ToVector(unit.Position);
                 center += position;
@@ -75,7 +79,7 @@ namespace Rebellion.Tactical
                 ClampOffset(offset.Y, bounds.MinimumY - minimum.Y, bounds.MaximumY - maximum.Y),
                 ClampOffset(offset.Z, bounds.MinimumZ - minimum.Z, bounds.MaximumZ - maximum.Z)
             );
-            foreach (CombatUnit unit in ordered)
+            foreach (SpaceCombatUnit unit in ordered)
             {
                 unit.MoveOrder.Destination = FromVector(ToVector(unit.Position) + offset);
                 unit.MoveOrder.SpeedLimit = speedLimit;
@@ -91,7 +95,7 @@ namespace Rebellion.Tactical
         /// <param name="factionInstanceID">The faction issuing the order.</param>
         public static void Stop(
             ActiveBattle battle,
-            IReadOnlyList<CombatUnit> selection,
+            IReadOnlyList<SpaceCombatUnit> selection,
             string factionInstanceID
         )
         {
@@ -99,7 +103,9 @@ namespace Rebellion.Tactical
                 throw new ArgumentNullException(nameof(battle));
             if (selection == null)
                 throw new ArgumentNullException(nameof(selection));
-            foreach (CombatUnit unit in GetControlledUnits(battle, selection, factionInstanceID))
+            foreach (
+                SpaceCombatUnit unit in GetControlledUnits(battle, selection, factionInstanceID)
+            )
             {
                 unit.MoveOrder.Destination = null;
                 unit.MoveOrder.SpeedLimit = null;
@@ -113,7 +119,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The persistent battle unit.</param>
         /// <param name="deltaTime">The non-negative elapsed battle time in seconds.</param>
-        public static void Advance(CombatUnit unit, float deltaTime)
+        public static void Advance(SpaceCombatUnit unit, float deltaTime)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -164,7 +170,7 @@ namespace Rebellion.Tactical
             Vector3 tangent = Vector3.Normalize(
                 Vector3.Cross(Vector3.Normalize(axis), currentForward)
             );
-            float turnRadiansPerSpeedPoint = unit.Data is { Kind: CombatUnitKind.CapitalShip }
+            float turnRadiansPerSpeedPoint = unit is { Kind: SpaceCombatUnitKind.CapitalShip }
                 ? _turnRadiansPerSpeedPoint * _capitalShipTurnSpeedMultiplier
                 : _turnRadiansPerSpeedPoint;
             float radius = 1f / turnRadiansPerSpeedPoint;
@@ -237,7 +243,7 @@ namespace Rebellion.Tactical
         /// <param name="destination">The requested destination.</param>
         /// <param name="travel">The available travel distance.</param>
         private static void MoveStraight(
-            CombatUnit unit,
+            SpaceCombatUnit unit,
             Vector3 position,
             Vector3 destination,
             double travel
@@ -262,8 +268,8 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The persistent battle unit.</param>
         /// <returns>The available movement speed, or zero when the unit cannot move.</returns>
-        public static float GetSpeed(CombatUnit unit) =>
-            unit.IsAlive ? unit.Data.GetSublightSpeed() : 0f;
+        public static float GetSpeed(SpaceCombatUnit unit) =>
+            unit.IsAlive ? unit.GetSublightSpeed() : 0f;
 
         /// <summary>
         /// Resolves selected non-retreated members through the battle's participant ownership boundary.
@@ -272,14 +278,14 @@ namespace Rebellion.Tactical
         /// <param name="selection">The requested selection.</param>
         /// <param name="factionInstanceID">The issuing faction identifier.</param>
         /// <returns>The unique controlled battle units.</returns>
-        private static List<CombatUnit> GetControlledUnits(
+        private static List<SpaceCombatUnit> GetControlledUnits(
             ActiveBattle battle,
-            IReadOnlyList<CombatUnit> selection,
+            IReadOnlyList<SpaceCombatUnit> selection,
             string factionInstanceID
         )
         {
-            HashSet<CombatUnit> selected = new HashSet<CombatUnit>(selection);
-            List<CombatUnit> units = new List<CombatUnit>();
+            HashSet<SpaceCombatUnit> selected = new HashSet<SpaceCombatUnit>(selection);
+            List<SpaceCombatUnit> units = new List<SpaceCombatUnit>();
             if (string.IsNullOrWhiteSpace(factionInstanceID))
                 return units;
             foreach (BattleParticipant participant in battle.GetParticipants())
@@ -292,7 +298,7 @@ namespace Rebellion.Tactical
                     )
                 )
                     continue;
-                foreach (CombatUnit unit in participant.GetCombatants())
+                foreach (SpaceCombatUnit unit in participant.GetCombatants())
                     if (
                         !unit.HasRetreated
                         && unit.Flight.Phase == FighterFlightState.Deployed

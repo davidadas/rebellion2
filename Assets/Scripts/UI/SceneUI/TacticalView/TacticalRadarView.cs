@@ -10,14 +10,14 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasRenderer))]
 public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, IDragHandler
 {
-    private IReadOnlyDictionary<CombatUnit, Transform> _presentations;
-    private IReadOnlyList<CombatUnit> _selected;
+    private IReadOnlyDictionary<SpaceCombatUnit, Transform> _presentations;
+    private IReadOnlyList<SpaceCombatUnit> _selected;
     private BattleMapBounds _bounds;
     private string _viewer;
     private Camera _camera;
     private float _nextRefresh;
     private Color _friendly = new Color(0.55f, 0.85f, 0.72f);
-    private readonly HashSet<CombatUnit> _selectedContacts = new HashSet<CombatUnit>();
+    private readonly HashSet<SpaceCombatUnit> _selectedContacts = new HashSet<SpaceCombatUnit>();
 
     /// <summary>
     /// Binds contacts to this battle's already loaded presentation index.
@@ -28,11 +28,11 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
     /// <param name="viewer">The viewing participant's faction identifier.</param>
     /// <param name="selected">The selection owner's live read-only list.</param>
     public void Bind(
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         BattleMapBounds bounds,
         Camera camera,
         string viewer,
-        IReadOnlyList<CombatUnit> selected
+        IReadOnlyList<SpaceCombatUnit> selected
     )
     {
         _presentations = presentations;
@@ -81,7 +81,7 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         if (_selected != null)
             for (int i = 0; i < _selected.Count; i++)
                 _selectedContacts.Add(_selected[i]);
-        foreach (KeyValuePair<CombatUnit, Transform> pair in _presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> pair in _presentations)
         {
             if (!pair.Value || !pair.Value.gameObject.activeInHierarchy || pair.Key.HasRetreated)
                 continue;
@@ -89,7 +89,7 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
             bool selected = _selectedContacts.Contains(pair.Key);
             Color tint =
                 selected ? Color.white
-                : pair.Key.Data.OwnerInstanceID == _viewer ? _friendly
+                : pair.Key.OwnerInstanceID == _viewer ? _friendly
                 : new Color(0.9f, 0.22f, 0.14f);
             float size = selected ? 3f : 2f;
             TacticalHudGraphic.Triangle(

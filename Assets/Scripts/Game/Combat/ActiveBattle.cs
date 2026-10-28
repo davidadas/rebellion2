@@ -13,7 +13,7 @@ namespace Rebellion.Game.Combat
     public sealed class BattleParticipant
     {
         [PersistableMember(Name = "Combatants")]
-        private List<CombatUnit> _combatants = new List<CombatUnit>();
+        private List<SpaceCombatUnit> _combatants = new List<SpaceCombatUnit>();
 
         public string FactionInstanceID { get; set; }
         public string BattleMapSlotID { get; set; }
@@ -22,7 +22,7 @@ namespace Rebellion.Game.Combat
         /// Returns the battle units controlled by this participant.
         /// </summary>
         /// <returns>The participant's combatants.</returns>
-        public List<CombatUnit> GetCombatants()
+        public List<SpaceCombatUnit> GetCombatants()
         {
             return _combatants;
         }
@@ -63,7 +63,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="sourceUnit">The strategic unit entering the battle.</param>
         /// <returns>The battle copies.</returns>
-        public IReadOnlyList<CombatUnit> AddCombatants(BaseSceneNode sourceUnit)
+        public IReadOnlyList<SpaceCombatUnit> AddCombatants(BaseSceneNode sourceUnit)
         {
             if (sourceUnit == null)
                 throw new ArgumentNullException(nameof(sourceUnit));
@@ -77,11 +77,11 @@ namespace Rebellion.Game.Combat
                     "Capital ships and starfighters can only enter space battles."
                 );
 
-            List<CombatUnit> addedCombatants = new List<CombatUnit>(1);
+            List<SpaceCombatUnit> addedCombatants = new List<SpaceCombatUnit>(1);
             if (sourceUnit is Starfighter { CurrentSquadronSize: <= 0 })
                 return addedCombatants.AsReadOnly();
 
-            addedCombatants.Add(CombatUnit.Create(sourceUnit));
+            addedCombatants.Add(SpaceCombatUnit.Create(sourceUnit));
 
             BattleParticipant participant = _participants.Find(candidate =>
                 candidate.FactionInstanceID == sourceUnit.OwnerInstanceID

@@ -23,13 +23,13 @@ namespace Rebellion.Tests.Game.Combat
             };
             ActiveBattle battle = CreateBattle();
 
-            IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            IReadOnlyList<SpaceCombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(1, addedCombatants.Count);
             Assert.AreEqual("FACTION_1", participant.FactionInstanceID);
             Assert.AreSame(addedCombatants[0], participant.GetCombatants()[0]);
-            Assert.AreNotSame(source, addedCombatants[0].Data);
+            Assert.AreNotSame(source, addedCombatants[0]);
         }
 
         /// <summary>
@@ -47,15 +47,15 @@ namespace Rebellion.Tests.Game.Combat
             };
             ActiveBattle battle = CreateBattle();
 
-            IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            IReadOnlyList<SpaceCombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(1, addedCombatants.Count);
             Assert.AreEqual(1, participant.GetCombatants().Count);
-            foreach (CombatUnit combatUnit in addedCombatants)
+            foreach (SpaceCombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
-                CombatUnitData fighter = combatUnit.Data;
+                SpaceCombatUnit fighter = combatUnit;
                 Assert.IsNotNull(fighter);
                 Assert.AreEqual(3, combatUnit.Condition.CurrentSquadronSize);
                 Assert.AreEqual(12, fighter.MaxSquadronSize);
@@ -173,7 +173,7 @@ namespace Rebellion.Tests.Game.Combat
                         BattleMapSlotID = "defender",
                     }
                 );
-            CombatUnit combatUnit = battle.AddCombatants(source)[0];
+            SpaceCombatUnit combatUnit = battle.AddCombatants(source)[0];
             combatUnit.Position = new BattleVector3
             {
                 X = 10f,
@@ -189,11 +189,11 @@ namespace Rebellion.Tests.Game.Combat
 
             string xml = SerializationHelper.Serialize(battle);
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
-            CombatUnit restoredCombatUnit = restored
+            SpaceCombatUnit restoredCombatUnit = restored
                 .GetParticipants()
                 .Single(participant => participant.FactionInstanceID == "FACTION_1")
                 .GetCombatants()[0];
-            CombatUnitData restoredShip = restoredCombatUnit.Data;
+            SpaceCombatUnit restoredShip = restoredCombatUnit;
 
             Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitInstanceID);
             Assert.IsNotNull(restoredShip);

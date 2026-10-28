@@ -29,8 +29,8 @@ namespace Rebellion.Tactical
         private float _cellSize = 1f;
 
         public event Action<BattleProjectile, WeaponData> ShotFired;
-        public event Action<BattleProjectile, CombatUnit, bool> ShotHit;
-        public event Action<CombatUnit> UnitDestroyed;
+        public event Action<BattleProjectile, SpaceCombatUnit, bool> ShotHit;
+        public event Action<SpaceCombatUnit> UnitDestroyed;
 
         /// <summary>
         /// Indexes battle members and resolved model-local mounts once, preserving saved bank state.
@@ -44,12 +44,12 @@ namespace Rebellion.Tactical
                 throw new ArgumentNullException(nameof(mounts));
             _random = new SystemRandomProvider(battle.WeaponRandomSeed, battle.WeaponRandomIndex);
             foreach (BattleParticipant participant in battle.GetParticipants())
-            foreach (CombatUnit unit in participant.GetCombatants())
+            foreach (SpaceCombatUnit unit in participant.GetCombatants())
             {
                 UnitEntry entry = new UnitEntry(unit);
                 _units.Add(entry);
                 _byID.Add(unit.InstanceID, entry);
-                ModelDimensions size = unit.Data.ModelSize;
+                ModelDimensions size = unit.ModelSize;
                 _cellSize = Math.Max(
                     _cellSize,
                     Math.Max(size.Width, Math.Max(size.Height, size.Depth))
@@ -103,7 +103,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>Whether the unit is alive.</returns>
-        public static bool IsAlive(CombatUnit unit) => unit?.IsAlive == true;
+        public static bool IsAlive(SpaceCombatUnit unit) => unit?.IsAlive == true;
 
         /// <summary>
         /// Assigns an explicit enemy target only to deployed ships controlled by the ordering faction.
@@ -111,7 +111,11 @@ namespace Rebellion.Tactical
         /// <param name="selection">The ordered ships.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <param name="target">The desired hostile target.</param>
-        public void Attack(IReadOnlyList<CombatUnit> selection, string owner, CombatUnit target)
+        public void Attack(
+            IReadOnlyList<SpaceCombatUnit> selection,
+            string owner,
+            SpaceCombatUnit target
+        )
         {
             if (selection == null)
                 throw new ArgumentNullException(nameof(selection));
@@ -119,14 +123,14 @@ namespace Rebellion.Tactical
                 target == null
                 || !_byID.ContainsKey(target.InstanceID)
                 || !IsAvailable(target)
-                || target.Data.OwnerInstanceID == owner
+                || target.OwnerInstanceID == owner
             )
                 return;
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
                 if (
                     _byID.ContainsKey(unit.InstanceID)
                     && IsAvailable(unit)
-                    && unit.Data.OwnerInstanceID == owner
+                    && unit.OwnerInstanceID == owner
                 )
                     unit.Weapons.AttackTargetInstanceID = target.InstanceID;
         }
@@ -164,7 +168,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The damaged battle member.</param>
         /// <param name="damage">Non-negative incoming damage.</param>
-        private void ApplyDamage(CombatUnit target, float damage)
+        private void ApplyDamage(SpaceCombatUnit target, float damage)
         {
             float shields = GetCurrentShields(target);
             float absorbed = Math.Min(shields, damage);
@@ -183,7 +187,7 @@ namespace Rebellion.Tactical
                 target.Condition.CurrentHullStrength - wholeDamage
             );
             if (
-                target.Data.Kind == CombatUnitKind.Starfighter
+                target.Kind == SpaceCombatUnitKind.Starfighter
                 && target.Condition.CurrentHullStrength == 0
             )
                 target.Condition.CurrentSquadronSize = 0;
@@ -200,10 +204,10 @@ namespace Rebellion.Tactical
         /// Recharges living capital-ship shields by their configured rate and remaining hull fraction.
         /// </summary>
         /// <param name="unit">The battle member receiving recovery.</param>
-        private static void RechargeShields(CombatUnit unit)
+        private static void RechargeShields(SpaceCombatUnit unit)
         {
             if (
-                unit.Data is not { Kind: CombatUnitKind.CapitalShip } ship
+                unit is not { Kind: SpaceCombatUnitKind.CapitalShip } ship
                 || ship.MaxHullStrength <= 0
                 || ship.MaxShieldStrength <= 0
             )
@@ -317,7 +321,7 @@ namespace Rebellion.Tactical
             float rangeSquared
         )
         {
-            CombatUnit shooter = source.Unit;
+            SpaceCombatUnit shooter = source.Unit;
             string explicitID = shooter.Weapons.AttackTargetInstanceID;
             UnitEntry ordered = null;
             if (
@@ -403,7 +407,7 @@ namespace Rebellion.Tactical
             if (
                 target == null
                 || !IsAvailable(target.Unit)
-                || target.Unit.Data.OwnerInstanceID == source.Unit.Data.OwnerInstanceID
+                || target.Unit.OwnerInstanceID == source.Unit.OwnerInstanceID
             )
                 return false;
             Vector3 direction = target.Position - origin;
@@ -476,8 +480,8 @@ namespace Rebellion.Tactical
         /// <param name="origin">The battle-space muzzle.</param>
         /// <param name="aim">The predicted aim point.</param>
         private void Emit(
-            CombatUnit source,
-            CombatUnit target,
+            SpaceCombatUnit source,
+            SpaceCombatUnit target,
             WeaponData weapon,
             Vector3 origin,
             Vector3 aim
@@ -488,7 +492,7 @@ namespace Rebellion.Tactical
                 ID = ++_battle.NextShotID,
                 SourceInstanceID = source.InstanceID,
                 TargetInstanceID = target.InstanceID,
-                OwnerInstanceID = source.Data.OwnerInstanceID,
+                OwnerInstanceID = source.OwnerInstanceID,
                 Projectile = weapon.Projectile.CreateCopy(),
                 Range = weapon.Range,
                 Position = FromVector(origin),
@@ -552,10 +556,10 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="shot">The contacting shot.</param>
         /// <param name="target">The first hull encountered.</param>
-        private void Hit(BattleProjectile shot, CombatUnit target)
+        private void Hit(BattleProjectile shot, SpaceCombatUnit target)
         {
             float damage = shot.Projectile.Damage;
-            if (target.Data.OwnerInstanceID == shot.OwnerInstanceID)
+            if (target.OwnerInstanceID == shot.OwnerInstanceID)
                 damage *= 0.5f;
             bool absorbedByShield = GetCurrentShields(target) > 0f;
             ApplyDamage(target, damage);
@@ -573,7 +577,7 @@ namespace Rebellion.Tactical
         private UnitEntry FindContact(
             Vector3 start,
             Vector3 end,
-            CombatUnit source,
+            SpaceCombatUnit source,
             out Vector3 contact
         )
         {
@@ -582,7 +586,7 @@ namespace Rebellion.Tactical
             float nearestFraction = float.PositiveInfinity;
             foreach (UnitEntry entry in _candidates)
             {
-                CombatUnit unit = entry.Unit;
+                SpaceCombatUnit unit = entry.Unit;
                 if (unit == source || !IsAvailable(unit))
                     continue;
                 if (!MayIntersectSphere(start, end, entry.Position, entry.RadiusSquared))
@@ -699,7 +703,7 @@ namespace Rebellion.Tactical
                 if (
                     candidate != source
                     && IsAvailable(candidate.Unit)
-                    && candidate.Unit.Data.OwnerInstanceID != source.Unit.Data.OwnerInstanceID
+                    && candidate.Unit.OwnerInstanceID != source.Unit.OwnerInstanceID
                 )
                 {
                     source.TargetCandidates.Add(
@@ -727,7 +731,7 @@ namespace Rebellion.Tactical
             {
                 if (!IsAvailable(entry.Unit))
                     continue;
-                ModelDimensions size = entry.Unit.Data.ModelSize;
+                ModelDimensions size = entry.Unit.ModelSize;
                 entry.Position = ToVector(entry.Unit.Position);
                 entry.Orientation = Orientation(entry.Unit);
                 entry.InverseOrientation = Quaternion.Inverse(entry.Orientation);
@@ -789,7 +793,7 @@ namespace Rebellion.Tactical
         /// <param name="target">The moving target.</param>
         /// <param name="speed">The authored projectile speed.</param>
         /// <returns>The intercept point, or the current target position when interception is impossible.</returns>
-        private static Vector3 PredictAim(Vector3 origin, CombatUnit target, float speed)
+        private static Vector3 PredictAim(Vector3 origin, SpaceCombatUnit target, float speed)
         {
             Vector3 position = ToVector(target.Position);
             if (speed <= 0f || target.MoveOrder.Destination == null)
@@ -871,15 +875,15 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>The authored weapon groups.</returns>
-        public static IReadOnlyList<HardpointGroup> GetGroups(CombatUnit unit) =>
-            unit.Data.GetHardpointGroups();
+        public static IReadOnlyList<HardpointGroup> GetGroups(SpaceCombatUnit unit) =>
+            unit.GetHardpointGroups();
 
         /// <summary>
         /// Reports whether a hull is present in open battle space and can participate in encounters.
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>Whether the unit can shoot or receive a hit.</returns>
-        private static bool IsAvailable(CombatUnit unit) =>
+        private static bool IsAvailable(SpaceCombatUnit unit) =>
             !unit.HasRetreated
             && IsAlive(unit)
             && unit.Flight.Phase != FighterFlightState.Docked
@@ -891,15 +895,15 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>The non-negative shield capacity.</returns>
-        public static int GetMaximumShields(CombatUnit unit) =>
-            Math.Max(0, unit.Data.MaxShieldStrength);
+        public static int GetMaximumShields(SpaceCombatUnit unit) =>
+            Math.Max(0, unit.MaxShieldStrength);
 
         /// <summary>
         /// Returns the battle member's current fractional shield strength.
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>The non-negative shield strength before the next hit.</returns>
-        private static float GetCurrentShields(CombatUnit unit) =>
+        private static float GetCurrentShields(SpaceCombatUnit unit) =>
             Math.Max(
                 0f,
                 (unit.Condition.CurrentShieldStrength ?? GetMaximumShields(unit))
@@ -911,7 +915,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The battle member.</param>
         /// <returns>The ship-local to battle-space rotation.</returns>
-        private static Quaternion Orientation(CombatUnit unit)
+        private static Quaternion Orientation(SpaceCombatUnit unit)
         {
             Vector3 forward = Vector3.Normalize(ToVector(unit.Forward));
             Vector3 reference = Math.Abs(forward.Y) > 0.999f ? Vector3.UnitZ : Vector3.UnitY;
@@ -1097,7 +1101,7 @@ namespace Rebellion.Tactical
 
         private sealed class UnitEntry
         {
-            public CombatUnit Unit { get; }
+            public SpaceCombatUnit Unit { get; }
             public List<Bank> Banks { get; } = new List<Bank>();
             public List<AcquisitionCandidate> TargetCandidates { get; } =
                 new List<AcquisitionCandidate>();
@@ -1112,7 +1116,7 @@ namespace Rebellion.Tactical
             /// Indexes one battle member without copying its mutable state.
             /// </summary>
             /// <param name="unit">The battle member.</param>
-            public UnitEntry(CombatUnit unit) => Unit = unit;
+            public UnitEntry(SpaceCombatUnit unit) => Unit = unit;
         }
 
         private sealed class Bank

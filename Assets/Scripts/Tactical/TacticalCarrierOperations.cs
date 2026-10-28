@@ -13,12 +13,12 @@ namespace Rebellion.Tactical
     {
         private readonly ActiveBattle _battle;
         private readonly IRandomNumberProvider _random;
-        private readonly Dictionary<CombatUnit, Carrier> _carriers =
-            new Dictionary<CombatUnit, Carrier>();
-        private readonly Dictionary<CombatUnit, Carrier> _assignments =
-            new Dictionary<CombatUnit, Carrier>();
+        private readonly Dictionary<SpaceCombatUnit, Carrier> _carriers =
+            new Dictionary<SpaceCombatUnit, Carrier>();
+        private readonly Dictionary<SpaceCombatUnit, Carrier> _assignments =
+            new Dictionary<SpaceCombatUnit, Carrier>();
 
-        public event Action<CombatUnit> SquadronLaunched;
+        public event Action<SpaceCombatUnit> SquadronLaunched;
         public int Revision { get; private set; }
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace Rebellion.Tactical
         /// <param name="random">An optional deterministic random source for controlled simulations.</param>
         public TacticalCarrierOperations(
             ActiveBattle battle,
-            IReadOnlyDictionary<CombatUnit, Vector3[][]> paths,
+            IReadOnlyDictionary<SpaceCombatUnit, Vector3[][]> paths,
             IRandomNumberProvider random = null
         )
         {
@@ -43,8 +43,8 @@ namespace Rebellion.Tactical
                 StringComparer.Ordinal
             );
             foreach (BattleParticipant participant in battle.GetParticipants())
-            foreach (CombatUnit unit in participant.GetCombatants())
-                if (unit.Data is { Kind: CombatUnitKind.CapitalShip })
+            foreach (SpaceCombatUnit unit in participant.GetCombatants())
+                if (unit is { Kind: SpaceCombatUnitKind.CapitalShip })
                 {
                     Carrier carrier = new Carrier(
                         unit,
@@ -56,10 +56,10 @@ namespace Rebellion.Tactical
                     index.Add(unit.SourceUnitInstanceID, carrier);
                 }
             foreach (BattleParticipant participant in battle.GetParticipants())
-            foreach (CombatUnit fighter in participant.GetCombatants())
+            foreach (SpaceCombatUnit fighter in participant.GetCombatants())
             {
                 if (
-                    fighter.Data is not { Kind: CombatUnitKind.Starfighter }
+                    fighter is not { Kind: SpaceCombatUnitKind.Starfighter }
                     || string.IsNullOrEmpty(fighter.Flight.CarrierSourceUnitInstanceID)
                 )
                     continue;
@@ -68,7 +68,7 @@ namespace Rebellion.Tactical
                         fighter.Flight.CarrierSourceUnitInstanceID,
                         out Carrier carrier
                     )
-                    || carrier.Unit.Data.OwnerInstanceID != fighter.Data.OwnerInstanceID
+                    || carrier.Unit.OwnerInstanceID != fighter.OwnerInstanceID
                 )
                     throw new ArgumentException(
                         "A carried fighter requires its own faction's carrier in the battle.",
@@ -109,10 +109,10 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="carrier">The inspected battle unit.</param>
         /// <returns>The assigned fighters, or an empty manifest for another kind of unit.</returns>
-        public IReadOnlyList<CombatUnit> GetManifest(CombatUnit carrier) =>
+        public IReadOnlyList<SpaceCombatUnit> GetManifest(SpaceCombatUnit carrier) =>
             _carriers.TryGetValue(carrier, out Carrier state)
                 ? state.Manifest
-                : Array.Empty<CombatUnit>();
+                : Array.Empty<SpaceCombatUnit>();
 
         /// <summary>
         /// Reports whether every selected squadron can recover aboard one visible friendly carrier.
@@ -121,7 +121,11 @@ namespace Rebellion.Tactical
         /// <param name="target">The carrier under the pointer.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether the complete selection can accept the targeted recovery order.</returns>
-        public bool CanDockAt(IReadOnlyList<CombatUnit> selection, CombatUnit target, string owner)
+        public bool CanDockAt(
+            IReadOnlyList<SpaceCombatUnit> selection,
+            SpaceCombatUnit target,
+            string owner
+        )
         {
             if (
                 selection == null
@@ -134,10 +138,10 @@ namespace Rebellion.Tactical
                 return false;
 
             int requiredSlots = 0;
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
             {
                 if (
-                    unit.Data is not { Kind: CombatUnitKind.Starfighter }
+                    unit is not { Kind: SpaceCombatUnitKind.Starfighter }
                     || !IsControlled(unit, owner)
                     || unit.Flight.Phase != FighterFlightState.Deployed
                 )
@@ -156,13 +160,17 @@ namespace Rebellion.Tactical
         /// <param name="target">The friendly carrier receiving them.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether the complete docking order was accepted.</returns>
-        public bool DockAt(IReadOnlyList<CombatUnit> selection, CombatUnit target, string owner)
+        public bool DockAt(
+            IReadOnlyList<SpaceCombatUnit> selection,
+            SpaceCombatUnit target,
+            string owner
+        )
         {
             if (!CanDockAt(selection, target, owner))
                 return false;
 
             Carrier targetCarrier = _carriers[target];
-            foreach (CombatUnit fighter in selection)
+            foreach (SpaceCombatUnit fighter in selection)
             {
                 if (!_assignments.TryGetValue(fighter, out Carrier assigned))
                     assigned = null;
@@ -179,9 +187,9 @@ namespace Rebellion.Tactical
         /// <param name="selection">The live player selection.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether a launch command has an eligible recipient.</returns>
-        public bool CanLaunch(IReadOnlyList<CombatUnit> selection, string owner)
+        public bool CanLaunch(IReadOnlyList<SpaceCombatUnit> selection, string owner)
         {
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
             {
                 if (!IsControlled(unit, owner))
                     continue;
@@ -190,15 +198,15 @@ namespace Rebellion.Tactical
                     && assigned.Bays.Length > 0
                     && IsAlive(assigned.Unit)
                     && unit.Flight.Phase == FighterFlightState.Docked
-                    && unit.Data.GetSublightSpeed() > 0f
+                    && unit.GetSublightSpeed() > 0f
                 )
                     return true;
                 if (_carriers.TryGetValue(unit, out Carrier carrier) && carrier.Bays.Length > 0)
-                    foreach (CombatUnit fighter in carrier.Cargo)
+                    foreach (SpaceCombatUnit fighter in carrier.Cargo)
                         if (
                             IsAlive(fighter)
                             && fighter.Flight.Phase == FighterFlightState.Docked
-                            && fighter.Data.GetSublightSpeed() > 0f
+                            && fighter.GetSublightSpeed() > 0f
                         )
                             return true;
             }
@@ -210,14 +218,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="selection">The carriers or carried squadrons receiving the order.</param>
         /// <param name="owner">The ordering faction.</param>
-        public void Launch(IReadOnlyList<CombatUnit> selection, string owner)
+        public void Launch(IReadOnlyList<SpaceCombatUnit> selection, string owner)
         {
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
             {
                 if (!IsControlled(unit, owner))
                     continue;
                 if (_carriers.TryGetValue(unit, out Carrier carrier))
-                    foreach (CombatUnit squadron in carrier.Cargo)
+                    foreach (SpaceCombatUnit squadron in carrier.Cargo)
                         QueueSquadron(carrier, squadron);
                 else if (_assignments.TryGetValue(unit, out Carrier assigned))
                     QueueSquadron(assigned, unit);
@@ -230,9 +238,9 @@ namespace Rebellion.Tactical
         /// <param name="selection">The inspected selection.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether a recovery command has an eligible recipient.</returns>
-        public bool CanRecall(IReadOnlyList<CombatUnit> selection, string owner)
+        public bool CanRecall(IReadOnlyList<SpaceCombatUnit> selection, string owner)
         {
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
             {
                 if (!IsControlled(unit, owner))
                     continue;
@@ -247,7 +255,7 @@ namespace Rebellion.Tactical
                 )
                     return true;
                 if (_carriers.TryGetValue(unit, out Carrier carrier) && carrier.Bays.Length > 0)
-                    foreach (CombatUnit fighter in carrier.Cargo)
+                    foreach (SpaceCombatUnit fighter in carrier.Cargo)
                         if (
                             IsAlive(fighter)
                             && !fighter.Flight.RecallRequested
@@ -267,14 +275,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="selection">The selected carriers or fighters.</param>
         /// <param name="owner">The ordering faction.</param>
-        public void Recall(IReadOnlyList<CombatUnit> selection, string owner)
+        public void Recall(IReadOnlyList<SpaceCombatUnit> selection, string owner)
         {
-            foreach (CombatUnit unit in selection)
+            foreach (SpaceCombatUnit unit in selection)
             {
                 if (!IsControlled(unit, owner))
                     continue;
                 if (_carriers.TryGetValue(unit, out Carrier carrier))
-                    foreach (CombatUnit fighter in carrier.Cargo)
+                    foreach (SpaceCombatUnit fighter in carrier.Cargo)
                         RecallFighter(carrier, fighter);
                 else if (_assignments.TryGetValue(unit, out Carrier assigned))
                     RecallFighter(assigned, unit);
@@ -287,16 +295,16 @@ namespace Rebellion.Tactical
         /// <param name="selection">The selected battle units.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether any recovery state changed.</returns>
-        public bool CancelRecovery(IReadOnlyList<CombatUnit> selection, string owner)
+        public bool CancelRecovery(IReadOnlyList<SpaceCombatUnit> selection, string owner)
         {
             if (selection == null)
                 throw new ArgumentNullException(nameof(selection));
             bool changed = false;
-            foreach (CombatUnit fighter in selection)
+            foreach (SpaceCombatUnit fighter in selection)
             {
                 if (
                     !IsControlled(fighter, owner)
-                    || fighter.Data is not { Kind: CombatUnitKind.Starfighter }
+                    || fighter is not { Kind: SpaceCombatUnitKind.Starfighter }
                     || fighter.Flight.Phase
                         is not (FighterFlightState.Returning or FighterFlightState.Docking)
                 )
@@ -335,7 +343,7 @@ namespace Rebellion.Tactical
                     bay.Outbound = 0;
                     bay.Inbound = false;
                 }
-                foreach (CombatUnit fighter in carrier.Cargo)
+                foreach (SpaceCombatUnit fighter in carrier.Cargo)
                 {
                     if (!IsAlive(fighter))
                         continue;
@@ -380,7 +388,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="carrier">The assigned carrier.</param>
         /// <param name="squadron">The squadron's single battle unit.</param>
-        private void QueueSquadron(Carrier carrier, CombatUnit squadron)
+        private void QueueSquadron(Carrier carrier, SpaceCombatUnit squadron)
         {
             if (
                 carrier.Bays.Length == 0
@@ -388,7 +396,7 @@ namespace Rebellion.Tactical
                 || carrier.Unit.Carrier.LaunchQueue.Contains(squadron.SourceUnitInstanceID)
                 || !IsAlive(squadron)
                 || squadron.Flight.Phase != FighterFlightState.Docked
-                || squadron.Data.GetSublightSpeed() <= 0f
+                || squadron.GetSublightSpeed() <= 0f
             )
                 return;
             squadron.Flight.Phase = FighterFlightState.Queued;
@@ -405,17 +413,17 @@ namespace Rebellion.Tactical
         /// <param name="carrier">The carrier whose queue is due.</param>
         private void ReleaseSquadron(Carrier carrier)
         {
-            foreach (CombatUnit departing in carrier.Cargo)
+            foreach (SpaceCombatUnit departing in carrier.Cargo)
                 if (
                     IsAlive(departing)
                     && departing.Flight.Phase == FighterFlightState.Launching
-                    && departing.Data.GetSublightSpeed() <= 0f
+                    && departing.GetSublightSpeed() <= 0f
                 )
                     return;
             string id = carrier.Unit.Carrier.LaunchQueue[0];
             carrier.Unit.Carrier.LaunchQueue.RemoveAt(0);
             if (
-                carrier.Squadrons.TryGetValue(id, out CombatUnit fighter)
+                carrier.Squadrons.TryGetValue(id, out SpaceCombatUnit fighter)
                 && IsAlive(fighter)
                 && fighter.Flight.Phase == FighterFlightState.Queued
             )
@@ -423,14 +431,14 @@ namespace Rebellion.Tactical
                 int bayIndex = fighter.Flight.FlightBayIndex;
                 Bay bay = carrier.Bays[bayIndex];
                 float delay = 0f;
-                float followingSpeed = fighter.Data.GetSublightSpeed();
+                float followingSpeed = fighter.GetSublightSpeed();
                 if (followingSpeed <= 0f)
                 {
                     fighter.Flight.Phase = FighterFlightState.Docked;
                 }
                 else
                 {
-                    foreach (CombatUnit preceding in carrier.Cargo)
+                    foreach (SpaceCombatUnit preceding in carrier.Cargo)
                         if (
                             preceding != fighter
                             && IsAlive(preceding)
@@ -438,7 +446,7 @@ namespace Rebellion.Tactical
                             && preceding.Flight.FlightBayIndex == bayIndex
                         )
                         {
-                            float speed = preceding.Data.GetSublightSpeed();
+                            float speed = preceding.GetSublightSpeed();
                             float spacing = GetRadius(preceding) + GetRadius(fighter);
                             float progress = GetPathDistance(preceding, bay.Path);
                             delay = Math.Max(
@@ -477,7 +485,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="carrier">The assigned carrier.</param>
         /// <param name="fighter">The fighter receiving recall.</param>
-        private void RecallFighter(Carrier carrier, CombatUnit fighter)
+        private void RecallFighter(Carrier carrier, SpaceCombatUnit fighter)
         {
             if (!IsAlive(carrier.Unit) || !IsAlive(fighter) || carrier.Bays.Length == 0)
                 return;
@@ -512,7 +520,7 @@ namespace Rebellion.Tactical
         /// <param name="fighter">The deployed squadron changing carriers.</param>
         /// <param name="source">Its previous carrier, when assigned.</param>
         /// <param name="destination">The carrier receiving the squadron.</param>
-        private void Reassign(CombatUnit fighter, Carrier source, Carrier destination)
+        private void Reassign(SpaceCombatUnit fighter, Carrier source, Carrier destination)
         {
             if (source != null)
             {
@@ -542,10 +550,10 @@ namespace Rebellion.Tactical
         private static int GetAvailableCapacity(Carrier carrier)
         {
             int occupied = 0;
-            foreach (CombatUnit fighter in carrier.Cargo)
+            foreach (SpaceCombatUnit fighter in carrier.Cargo)
                 if (IsAlive(fighter))
                     occupied++;
-            return Math.Max(0, carrier.Unit.Data.GetStarfighterCapacity() - occupied);
+            return Math.Max(0, carrier.Unit.GetStarfighterCapacity() - occupied);
         }
 
         /// <summary>
@@ -561,7 +569,7 @@ namespace Rebellion.Tactical
             float offset = 0f;
             for (int index = 0; index < bay.Returning.Count; index++)
             {
-                CombatUnit fighter = bay.Returning[index];
+                SpaceCombatUnit fighter = bay.Returning[index];
                 if (index > 0)
                     offset += GetRadius(bay.Returning[index - 1]) + GetRadius(fighter);
                 Vector3 target = ToWorld(carrier.Unit, approach + outward * offset);
@@ -596,7 +604,7 @@ namespace Rebellion.Tactical
         /// <param name="inbound">Whether to traverse the route in reverse.</param>
         private void AdvancePath(
             Carrier carrier,
-            CombatUnit fighter,
+            SpaceCombatUnit fighter,
             Vector3[] path,
             float deltaTime,
             bool inbound
@@ -608,7 +616,7 @@ namespace Rebellion.Tactical
                 fighter.Flight.FlightDelay -= waiting;
                 deltaTime -= waiting;
             }
-            float travel = fighter.Data.GetSublightSpeed() * deltaTime;
+            float travel = fighter.GetSublightSpeed() * deltaTime;
             int step = inbound ? -1 : 1;
             while (true)
             {
@@ -671,7 +679,7 @@ namespace Rebellion.Tactical
         /// <param name="fighter">The departing fighter.</param>
         /// <param name="path">Its carrier-local route.</param>
         /// <returns>The distance from the start of the route.</returns>
-        private static float GetPathDistance(CombatUnit fighter, Vector3[] path)
+        private static float GetPathDistance(SpaceCombatUnit fighter, Vector3[] path)
         {
             float distance = fighter.Flight.FlightSegmentDistance;
             for (int index = 0; index < fighter.Flight.FlightWaypointIndex; index++)
@@ -684,9 +692,9 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The measured fighter.</param>
         /// <returns>The radius of its enclosing sphere.</returns>
-        private static float GetRadius(CombatUnit fighter)
+        private static float GetRadius(SpaceCombatUnit fighter)
         {
-            var size = fighter.Data.ModelSize;
+            var size = fighter.ModelSize;
             return new Vector3(size.Width, size.Height, size.Depth).Length() * 0.5f;
         }
 
@@ -696,15 +704,15 @@ namespace Rebellion.Tactical
         /// <param name="unit">The requested unit.</param>
         /// <param name="owner">The ordering faction.</param>
         /// <returns>Whether this player controls a living unit.</returns>
-        private static bool IsControlled(CombatUnit unit, string owner) =>
-            !string.IsNullOrEmpty(owner) && unit.Data.OwnerInstanceID == owner && IsAlive(unit);
+        private static bool IsControlled(SpaceCombatUnit unit, string owner) =>
+            !string.IsNullOrEmpty(owner) && unit.OwnerInstanceID == owner && IsAlive(unit);
 
         /// <summary>
         /// Checks withdrawal and recorded fighter or hull losses.
         /// </summary>
         /// <param name="unit">The battle unit.</param>
         /// <returns>Whether the unit remains available for carrier operations.</returns>
-        private static bool IsAlive(CombatUnit unit) => !unit.HasRetreated && unit.IsAlive;
+        private static bool IsAlive(SpaceCombatUnit unit) => !unit.HasRetreated && unit.IsAlive;
 
         /// <summary>
         /// Rotates a carrier-local direction into the battle's world axes without introducing roll.
@@ -712,7 +720,7 @@ namespace Rebellion.Tactical
         /// <param name="carrier">The carrier's saved pose.</param>
         /// <param name="local">The carrier-local direction.</param>
         /// <returns>The world-space direction.</returns>
-        private static Vector3 ToDirection(CombatUnit carrier, Vector3 local)
+        private static Vector3 ToDirection(SpaceCombatUnit carrier, Vector3 local)
         {
             Vector3 forward = Vector3.Normalize(ToVector(carrier.Forward));
             Vector3 right = Vector3.Cross(Vector3.UnitY, forward);
@@ -729,7 +737,7 @@ namespace Rebellion.Tactical
         /// <param name="carrier">The carrier's saved pose.</param>
         /// <param name="world">The world-axis displacement.</param>
         /// <returns>The carrier-local displacement.</returns>
-        private static Vector3 ToLocal(CombatUnit carrier, Vector3 world) =>
+        private static Vector3 ToLocal(SpaceCombatUnit carrier, Vector3 world) =>
             new Vector3(
                 Vector3.Dot(world, ToDirection(carrier, Vector3.UnitX)),
                 Vector3.Dot(world, ToDirection(carrier, Vector3.UnitY)),
@@ -742,7 +750,7 @@ namespace Rebellion.Tactical
         /// <param name="carrier">The carrier's saved pose.</param>
         /// <param name="local">The carrier-local point.</param>
         /// <returns>The world-space point.</returns>
-        private static Vector3 ToWorld(CombatUnit carrier, Vector3 local) =>
+        private static Vector3 ToWorld(SpaceCombatUnit carrier, Vector3 local) =>
             ToVector(carrier.Position) + ToDirection(carrier, local);
 
         /// <summary>
@@ -780,12 +788,12 @@ namespace Rebellion.Tactical
 
         private sealed class Carrier
         {
-            public readonly CombatUnit Unit;
-            public readonly List<CombatUnit> Cargo = new List<CombatUnit>();
-            public readonly IReadOnlyList<CombatUnit> Manifest;
-            public readonly Dictionary<string, CombatUnit> Squadrons = new Dictionary<
+            public readonly SpaceCombatUnit Unit;
+            public readonly List<SpaceCombatUnit> Cargo = new List<SpaceCombatUnit>();
+            public readonly IReadOnlyList<SpaceCombatUnit> Manifest;
+            public readonly Dictionary<string, SpaceCombatUnit> Squadrons = new Dictionary<
                 string,
-                CombatUnit
+                SpaceCombatUnit
             >(StringComparer.Ordinal);
             public readonly Bay[] Bays;
 
@@ -794,7 +802,7 @@ namespace Rebellion.Tactical
             /// </summary>
             /// <param name="unit">The carrier combatant.</param>
             /// <param name="paths">Its measured carrier-local bay routes.</param>
-            public Carrier(CombatUnit unit, Vector3[][] paths)
+            public Carrier(SpaceCombatUnit unit, Vector3[][] paths)
             {
                 Unit = unit;
                 Manifest = Cargo.AsReadOnly();
@@ -808,7 +816,7 @@ namespace Rebellion.Tactical
         {
             public readonly Vector3[] Path;
             public readonly float Length;
-            public readonly List<CombatUnit> Returning = new List<CombatUnit>();
+            public readonly List<SpaceCombatUnit> Returning = new List<SpaceCombatUnit>();
             public int Outbound;
             public bool Inbound;
 

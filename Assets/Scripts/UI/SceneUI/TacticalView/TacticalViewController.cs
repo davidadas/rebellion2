@@ -42,8 +42,8 @@ public sealed class TacticalViewController : MonoBehaviour
 
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
     private CancellationTokenSource modelLoading;
-    private readonly Dictionary<CombatUnit, Transform> combatantPresentations =
-        new Dictionary<CombatUnit, Transform>();
+    private readonly Dictionary<SpaceCombatUnit, Transform> combatantPresentations =
+        new Dictionary<SpaceCombatUnit, Transform>();
     private readonly TacticalBattleSession battleSession = new TacticalBattleSession();
     private TacticalSelectionController selectionController;
     private string viewerFactionInstanceID;
@@ -52,7 +52,7 @@ public sealed class TacticalViewController : MonoBehaviour
     private TacticalCombatView combatView;
     private readonly Dictionary<Hardpoint, TacticalCombat.Mount> weaponMounts =
         new Dictionary<Hardpoint, TacticalCombat.Mount>();
-    private readonly Dictionary<CombatUnit, System.Numerics.Vector3[][]> carrierPaths = new();
+    private readonly Dictionary<SpaceCombatUnit, System.Numerics.Vector3[][]> carrierPaths = new();
 
     /// <summary>
     /// Gets the active battle presented by this scene.
@@ -134,9 +134,9 @@ public sealed class TacticalViewController : MonoBehaviour
         if (arrivals == null)
             battleSession.Advance(battleDeltaTime);
         combatView?.Advance(battleDeltaTime, false);
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in combatantPresentations)
         {
-            CombatUnit unit = presentation.Key;
+            SpaceCombatUnit unit = presentation.Key;
             Transform root = presentation.Value;
             if (arrivals?.IsArriving(unit) == true)
                 continue;
@@ -192,12 +192,12 @@ public sealed class TacticalViewController : MonoBehaviour
         ClearSelectedAttackTargets();
         float height = 0f;
         int count = 0;
-        foreach (CombatUnit unit in selectionController.SelectedCombatants)
+        foreach (SpaceCombatUnit unit in selectionController.SelectedCombatants)
         {
             if (
                 unit.HasRetreated
                 || !string.Equals(
-                    unit.Data.OwnerInstanceID,
+                    unit.OwnerInstanceID,
                     viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -252,11 +252,11 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="moveTogether">Whether the selection should approach at its slowest member's speed.</param>
     private void RequestAttack(Vector2 screenPosition, bool moveTogether)
     {
-        CombatUnit target = selectionController.PickAt(screenPosition);
+        SpaceCombatUnit target = selectionController.PickAt(screenPosition);
         if (
             target == null
             || string.Equals(
-                target.Data.OwnerInstanceID,
+                target.OwnerInstanceID,
                 viewerFactionInstanceID,
                 StringComparison.Ordinal
             )
@@ -291,10 +291,10 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ClearSelectedAttackTargets()
     {
-        foreach (CombatUnit unit in selectionController.SelectedCombatants)
+        foreach (SpaceCombatUnit unit in selectionController.SelectedCombatants)
             if (
                 string.Equals(
-                    unit.Data.OwnerInstanceID,
+                    unit.OwnerInstanceID,
                     viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -324,7 +324,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// Sends the complete fighter selection to the eligible carrier chosen under the pointer.
     /// </summary>
     /// <param name="carrier">The targeted friendly carrier.</param>
-    private void RequestDockAt(CombatUnit carrier) =>
+    private void RequestDockAt(SpaceCombatUnit carrier) =>
         battleSession.Carriers.DockAt(
             selectionController.SelectedCombatants,
             carrier,
@@ -481,7 +481,7 @@ public sealed class TacticalViewController : MonoBehaviour
         ActiveBattle = activeBattle;
         BattleMap = battleMap;
         mapRoot.GetComponent<TacticalMapRenderer>().Render(battleMap, battleCamera);
-        Dictionary<CombatUnit, Transform> presentations = RenderCombatants();
+        Dictionary<SpaceCombatUnit, Transform> presentations = RenderCombatants();
         battleRoot.gameObject.SetActive(false);
         await Task.WhenAll(
             presentations
@@ -497,7 +497,7 @@ public sealed class TacticalViewController : MonoBehaviour
         );
         if (this == null)
             return;
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in presentations)
         {
             if (
                 !ContentModelInstance.TryGetBounds(
@@ -507,9 +507,9 @@ public sealed class TacticalViewController : MonoBehaviour
                 )
             )
                 throw new InvalidOperationException(
-                    $"Tactical unit '{presentation.Key.Data.TypeID}' has no loaded model geometry."
+                    $"Tactical unit '{presentation.Key.TypeID}' has no loaded model geometry."
                 );
-            presentation.Key.Data.ModelSize = new ModelDimensions
+            presentation.Key.ModelSize = new ModelDimensions
             {
                 Width = bounds.size.x,
                 Height = bounds.size.y,
@@ -519,7 +519,7 @@ public sealed class TacticalViewController : MonoBehaviour
         if (deployFleet)
             FleetDeploymentPlanner.Deploy(activeBattle, battleMap);
         battleSession.Initialize(activeBattle, weaponMounts, carrierPaths);
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in presentations)
         {
             presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
             presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
@@ -552,7 +552,7 @@ public sealed class TacticalViewController : MonoBehaviour
         selectionController.DockRequested += RequestRecall;
         selectionController.DockAtRequested += RequestDockAt;
         selectionController.BindCarrierOperations(battleSession.Carriers);
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in presentations)
             combatantPresentations.Add(presentation.Key, presentation.Value);
         GetComponentInChildren<TacticalSelectionView>()
             .BindBattle(
@@ -606,19 +606,19 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="cancellationToken">Cancels loading when the scene is closed or rebound.</param>
     /// <returns>A task completing when the model has been posed.</returns>
     private async Task LoadCombatantModelAsync(
-        CombatUnit combatant,
+        SpaceCombatUnit combatant,
         Transform presentation,
         ContentModelCache models,
         CancellationToken cancellationToken
     )
     {
-        float scale = combatant.Data.ModelScale;
+        float scale = combatant.ModelScale;
         if (!(scale > 0f) || float.IsInfinity(scale))
             throw new InvalidOperationException(
                 "Tactical model scale must be finite and positive."
             );
         ContentModelInstance instance = await models.InstantiateAsync(
-            combatant.Data.ModelPath,
+            combatant.ModelPath,
             presentation,
             cancellationToken
         );
@@ -630,7 +630,7 @@ public sealed class TacticalViewController : MonoBehaviour
         modelInstances.Add(instance);
         instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
         ResolveWeaponMounts(combatant, presentation, instance.ModelRoot);
-        if (combatant.Data is { Kind: CombatUnitKind.CapitalShip } carrier)
+        if (combatant is { Kind: SpaceCombatUnitKind.CapitalShip } carrier)
         {
             List<System.Numerics.Vector3[]> paths = new();
             foreach (StarfighterBay bay in carrier.GetComponents().OfType<StarfighterBay>())
@@ -691,7 +691,11 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="unit">The mounted battle hull.</param>
     /// <param name="presentation">The centered hull presentation.</param>
     /// <param name="modelRoot">The loaded model root.</param>
-    private void ResolveWeaponMounts(CombatUnit unit, Transform presentation, Transform modelRoot)
+    private void ResolveWeaponMounts(
+        SpaceCombatUnit unit,
+        Transform presentation,
+        Transform modelRoot
+    )
     {
         foreach (HardpointGroup group in TacticalCombat.GetGroups(unit))
         foreach (Hardpoint hardpoint in group.GetHardpoints())
@@ -702,7 +706,7 @@ public sealed class TacticalViewController : MonoBehaviour
                     : modelRoot.Find(hardpoint.ModelNodePath);
             if (!node)
                 throw new InvalidOperationException(
-                    $"Unknown weapon model node '{hardpoint.ModelNodePath}' on '{unit.Data.TypeID}'."
+                    $"Unknown weapon model node '{hardpoint.ModelNodePath}' on '{unit.TypeID}'."
                 );
             Vector3 position;
             Vector3 forward;
@@ -818,11 +822,11 @@ public sealed class TacticalViewController : MonoBehaviour
         List<Bounds> hulls = new List<Bounds>();
         if (viewer != null)
         {
-            foreach (CombatUnit combatant in viewer.GetCombatants())
+            foreach (SpaceCombatUnit combatant in viewer.GetCombatants())
             {
                 if (!IsVisible(combatant))
                     continue;
-                ModelDimensions size = combatant.Data.ModelSize;
+                ModelDimensions size = combatant.ModelSize;
                 Quaternion rotation = Quaternion.LookRotation(
                     ToUnityVector(combatant.Forward).normalized
                 );
@@ -849,7 +853,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     /// <param name="unit">The combatant to present.</param>
     /// <returns>Whether its hull is present in open space.</returns>
-    private static bool IsVisible(CombatUnit unit) =>
+    private static bool IsVisible(SpaceCombatUnit unit) =>
         !unit.HasRetreated
         && TacticalCombat.IsAlive(unit)
         && unit.Flight.Phase != FighterFlightState.Docked
@@ -923,17 +927,18 @@ public sealed class TacticalViewController : MonoBehaviour
     /// Rebuilds the unit-presentation hierarchy from the active battle snapshot.
     /// </summary>
     /// <returns>The presentation root for each combatant, used after its model finishes loading.</returns>
-    private Dictionary<CombatUnit, Transform> RenderCombatants()
+    private Dictionary<SpaceCombatUnit, Transform> RenderCombatants()
     {
         ClearBattleRoot();
-        Dictionary<CombatUnit, Transform> presentations = new Dictionary<CombatUnit, Transform>();
+        Dictionary<SpaceCombatUnit, Transform> presentations =
+            new Dictionary<SpaceCombatUnit, Transform>();
         foreach (BattleParticipant participant in ActiveBattle.GetParticipants())
         {
             GameObject participantObject = new GameObject(
                 $"Participant {participant.FactionInstanceID}"
             );
             participantObject.transform.SetParent(battleRoot, false);
-            foreach (CombatUnit combatant in participant.GetCombatants())
+            foreach (SpaceCombatUnit combatant in participant.GetCombatants())
                 presentations.Add(
                     combatant,
                     RenderCombatant(combatant, participantObject.transform)
@@ -948,17 +953,17 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <param name="combatant">The battle unit to present.</param>
     /// <param name="participantRoot">The owning participant's presentation root.</param>
     /// <returns>The combatant's presentation root.</returns>
-    private Transform RenderCombatant(CombatUnit combatant, Transform participantRoot)
+    private Transform RenderCombatant(SpaceCombatUnit combatant, Transform participantRoot)
     {
         if (combatant == null)
             throw new InvalidOperationException("A battle participant contains a null combatant.");
 
-        CombatUnitData unit = combatant.Data;
+        SpaceCombatUnit unit = combatant;
         if (unit == null)
             throw new InvalidOperationException("A combatant does not contain a battle unit.");
 
         string unitName =
-            unit.DisplayName ?? unit.TypeID ?? combatant.SourceUnitInstanceID ?? "CombatUnit";
+            unit.DisplayName ?? unit.TypeID ?? combatant.SourceUnitInstanceID ?? "SpaceCombatUnit";
         GameObject unitObject = new GameObject(unitName);
         unitObject.transform.SetParent(participantRoot, false);
         unitObject.transform.localPosition = ToUnityVector(combatant.Position);

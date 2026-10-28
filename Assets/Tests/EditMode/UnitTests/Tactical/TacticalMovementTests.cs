@@ -26,7 +26,9 @@ namespace Rebellion.Tests.Tactical
             float expected
         )
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = speed });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(
+                new CapitalShip { SublightSpeed = speed }
+            );
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
 
             TacticalMovement.Advance(unit, elapsed);
@@ -41,7 +43,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_SynchronizedOrder_UsesOrderSpeedLimit()
         {
             CapitalShip ship = new CapitalShip { SublightSpeed = 10 };
-            CombatUnit unit = CombatUnit.Create(ship);
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(ship);
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             unit.MoveOrder.SpeedLimit = 4f;
 
@@ -57,7 +59,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_Fighter_UsesFighterSpeed()
         {
-            CombatUnit unit = CombatUnit.Create(
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(
                 new Starfighter
                 {
                     SublightSpeed = 11,
@@ -80,7 +82,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_PassesDestination_StopsWithoutOvershoot()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 10 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 10 });
             unit.Forward = new BattleVector3 { X = 0.6f, Z = 0.8f };
             unit.MoveOrder.Destination = new BattleVector3 { X = 3f, Z = 4f };
 
@@ -97,8 +99,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DifferentFrameDurations_TravelsSameDistance()
         {
-            CombatUnit first = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
-            CombatUnit second = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit first = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit second = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             first.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             second.MoveOrder.Destination = new BattleVector3 { Z = 100f };
 
@@ -127,8 +129,8 @@ namespace Rebellion.Tests.Tactical
             float expectedDegrees
         )
         {
-            CombatUnit unit = fighter
-                ? CombatUnit.Create(
+            SpaceCombatUnit unit = fighter
+                ? SpaceCombatUnit.Create(
                     new Starfighter
                     {
                         SublightSpeed = speed,
@@ -136,7 +138,7 @@ namespace Rebellion.Tests.Tactical
                         MaxSquadronSize = 12,
                     }
                 )
-                : CombatUnit.Create(new CapitalShip { SublightSpeed = speed });
+                : SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = speed });
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
 
             TacticalMovement.Advance(unit, elapsed);
@@ -159,7 +161,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_ReachesTangentDuringFrame_CompletesArcThenMovesStraight()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             float radius = 36f / (float)Math.PI;
             unit.MoveOrder.Destination = new BattleVector3 { X = radius + 10f, Z = radius };
 
@@ -176,7 +178,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DestinationBehind_TurnsWithoutSnappingOrTilting()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { Z = -100f };
 
             TacticalMovement.Advance(unit, 2.25f);
@@ -193,7 +195,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_VerticalReversal_PreservesFiniteUnitHeading()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.Forward = new BattleVector3 { Y = 1f };
             unit.MoveOrder.Destination = new BattleVector3 { Y = -100f };
 
@@ -210,8 +212,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_TurningAcrossDifferentFrames_PreservesHeadingAndDistance()
         {
-            CombatUnit first = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
-            CombatUnit second = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit first = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit second = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             first.MoveOrder.Destination = new BattleVector3 { X = 100f };
             second.MoveOrder.Destination = new BattleVector3 { X = 100f };
 
@@ -232,7 +234,7 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_DuringTurn_PreservesHeadingForNextTurn()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit unit = AddShip(battle, "FRIEND", 0f);
+            SpaceCombatUnit unit = AddShip(battle, "FRIEND", 0f);
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
             TacticalMovement.Advance(unit, 1f);
             float previousX = unit.Forward.X;
@@ -266,7 +268,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(3f, 4f)]
         public void Advance_NearbyDestination_ReachesPointWithoutOrbiting(float side, float ahead)
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { X = side, Z = ahead };
 
             for (int frame = 0; frame < 600 && unit.MoveOrder.Destination != null; frame++)
@@ -283,7 +285,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_CloseDestinationWithInsufficientTurnTime_KeepsMovingAlongArc()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { X = 1f };
 
             TacticalMovement.Advance(unit, 1f);
@@ -300,7 +302,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_SmallTurningStep_MovesAlongForwardArc()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
 
             TacticalMovement.Advance(unit, 0.01f);
@@ -316,10 +318,10 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_SpeedChangesDuringTurn_UsesCurrentAngularRate()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
             TacticalMovement.Advance(unit, 1f);
-            unit.Data.SublightSpeed = 2;
+            unit.SublightSpeed = 2;
 
             TacticalMovement.Advance(unit, 1f);
 
@@ -333,7 +335,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_ZeroSpeed_DoesNotTurn()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 0 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 0 });
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
 
             TacticalMovement.Advance(unit, 1f);
@@ -349,7 +351,7 @@ namespace Rebellion.Tests.Tactical
         public void Stop_DuringTurn_PreservesCurrentHeading()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit unit = AddShip(battle, "FRIEND", 0f);
+            SpaceCombatUnit unit = AddShip(battle, "FRIEND", 0f);
             unit.MoveOrder.Destination = new BattleVector3 { X = 100f };
             TacticalMovement.Advance(unit, 1f);
             float previousX = unit.Forward.X;
@@ -368,15 +370,15 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_SpeedChanges_UsesCurrentSpeedWithoutReplacingOrder()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
             TacticalMovement.Advance(unit, 1f);
-            unit.Data.SublightSpeed = 0;
+            unit.SublightSpeed = 0;
             TacticalMovement.Advance(unit, 1f);
             Assert.AreEqual(4f, unit.Position.Z);
             Assert.IsNotNull(unit.MoveOrder.Destination);
 
-            unit.Data.SublightSpeed = 2;
+            unit.SublightSpeed = 2;
             TacticalMovement.Advance(unit, 1f);
 
             Assert.AreEqual(6f, unit.Position.Z);
@@ -388,7 +390,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_RetreatedUnit_DoesNotMove()
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
             unit.HasRetreated = true;
             unit.MoveOrder.Destination = new BattleVector3 { Z = 100f };
 
@@ -403,7 +405,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DestroyedUnit_DoesNotMove()
         {
-            CombatUnit unit = CombatUnit.Create(
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(
                 new CapitalShip
                 {
                     SublightSpeed = 4,
@@ -427,7 +429,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(float.PositiveInfinity)]
         public void Advance_InvalidElapsedTime_ThrowsArgumentOutOfRangeException(float elapsed)
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip());
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(new CapitalShip());
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 TacticalMovement.Advance(unit, elapsed)
@@ -441,8 +443,8 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_Formation_PreservesRelativeDestinations()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit first = AddShip(battle, "FRIEND", -10f);
-            CombatUnit second = AddShip(battle, "FRIEND", 10f);
+            SpaceCombatUnit first = AddShip(battle, "FRIEND", -10f);
+            SpaceCombatUnit second = AddShip(battle, "FRIEND", 10f);
 
             TacticalMovement.MoveTo(
                 battle,
@@ -465,8 +467,8 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_MatchingSpeed_AssignsSlowestSpeedLimitToFormation()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit slow = AddShip(battle, "FRIEND", -10f, 4);
-            CombatUnit fast = AddShip(battle, "FRIEND", 10f, 9);
+            SpaceCombatUnit slow = AddShip(battle, "FRIEND", -10f, 4);
+            SpaceCombatUnit fast = AddShip(battle, "FRIEND", 10f, 9);
 
             TacticalMovement.MoveTo(
                 battle,
@@ -488,7 +490,7 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_NormalOrder_ClearsPreviousSpeedLimit()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit unit = AddShip(battle, "FRIEND", 0f, 9);
+            SpaceCombatUnit unit = AddShip(battle, "FRIEND", 0f, 9);
             unit.MoveOrder.SpeedLimit = 4f;
 
             TacticalMovement.MoveTo(
@@ -509,8 +511,8 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_OutsideMap_ClampsFormationTranslation()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit first = AddShip(battle, "FRIEND", -10f);
-            CombatUnit second = AddShip(battle, "FRIEND", 10f);
+            SpaceCombatUnit first = AddShip(battle, "FRIEND", -10f);
+            SpaceCombatUnit second = AddShip(battle, "FRIEND", 10f);
 
             TacticalMovement.MoveTo(
                 battle,
@@ -531,9 +533,11 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_MixedSelection_OrdersOnlyOwnedBattleMembers()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit friendly = AddShip(battle, "FRIEND", 0f);
-            CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
-            CombatUnit outsider = CombatUnit.Create(new CapitalShip { OwnerInstanceID = "FRIEND" });
+            SpaceCombatUnit friendly = AddShip(battle, "FRIEND", 0f);
+            SpaceCombatUnit hostile = AddShip(battle, "ENEMY", 0f);
+            SpaceCombatUnit outsider = SpaceCombatUnit.Create(
+                new CapitalShip { OwnerInstanceID = "FRIEND" }
+            );
 
             bool accepted = TacticalMovement.MoveTo(
                 battle,
@@ -556,7 +560,7 @@ namespace Rebellion.Tests.Tactical
         public void MoveTo_NoControlledDeployedUnits_ReturnsFalse()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
+            SpaceCombatUnit hostile = AddShip(battle, "ENEMY", 0f);
 
             bool accepted = TacticalMovement.MoveTo(
                 battle,
@@ -577,8 +581,8 @@ namespace Rebellion.Tests.Tactical
         public void Stop_MixedSelection_CancelsOnlyFriendlyOrders()
         {
             ActiveBattle battle = CreateBattle();
-            CombatUnit friendly = AddShip(battle, "FRIEND", 0f);
-            CombatUnit hostile = AddShip(battle, "ENEMY", 0f);
+            SpaceCombatUnit friendly = AddShip(battle, "FRIEND", 0f);
+            SpaceCombatUnit hostile = AddShip(battle, "ENEMY", 0f);
             friendly.MoveOrder.Destination = new BattleVector3 { Z = 30f };
             friendly.MoveOrder.SpeedLimit = 2f;
             hostile.MoveOrder.Destination = new BattleVector3 { Z = 30f };
@@ -606,9 +610,14 @@ namespace Rebellion.Tests.Tactical
         /// <param name="x">The initial horizontal coordinate.</param>
         /// <param name="speed">The ship's configured sublight speed.</param>
         /// <returns>The newly added battle copy.</returns>
-        private static CombatUnit AddShip(ActiveBattle battle, string owner, float x, int speed = 4)
+        private static SpaceCombatUnit AddShip(
+            ActiveBattle battle,
+            string owner,
+            float x,
+            int speed = 4
+        )
         {
-            CombatUnit unit = battle
+            SpaceCombatUnit unit = battle
                 .AddCombatants(new CapitalShip { OwnerInstanceID = owner, SublightSpeed = speed })
                 .Single();
             unit.Position.X = x;

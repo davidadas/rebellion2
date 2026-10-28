@@ -17,8 +17,8 @@ namespace Rebellion.Tests.Tactical
     {
         private ActiveBattle _battle;
         private CapitalShip _sourceCarrier;
-        private CombatUnit _carrier;
-        private CombatUnit[] _fighters;
+        private SpaceCombatUnit _carrier;
+        private SpaceCombatUnit[] _fighters;
         private TacticalCarrierOperations _operations;
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Tactical
         {
             _operations = new TacticalCarrierOperations(
                 _battle,
-                new Dictionary<CombatUnit, Vector3[][]>()
+                new Dictionary<SpaceCombatUnit, Vector3[][]>()
             );
             Assert.IsFalse(_operations.CanLaunch(new[] { _carrier }, "OWNER"));
             _operations.Launch(new[] { _carrier }, "OWNER");
@@ -112,8 +112,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Launch_ImmobileSquadron_StaysDocked()
         {
-            foreach (CombatUnit fighter in _fighters)
-                fighter.Data.SublightSpeed = 0;
+            foreach (SpaceCombatUnit fighter in _fighters)
+                fighter.SublightSpeed = 0;
             Assert.IsFalse(_operations.CanLaunch(new[] { _carrier }, "OWNER"));
             _operations.Launch(new[] { _carrier }, "OWNER");
             Assert.That(_carrier.Carrier.LaunchQueue, Is.Empty);
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.Tactical
             FighterFlightState flightState
         )
         {
-            CombatUnit fighter = _fighters[0];
+            SpaceCombatUnit fighter = _fighters[0];
             fighter.Flight.Phase = flightState;
             fighter.Flight.RecallRequested = true;
             fighter.MoveOrder.Destination = new BattleVector3 { X = 4f };
@@ -237,10 +237,10 @@ namespace Rebellion.Tests.Tactical
                 OwnerInstanceID = "OWNER",
                 StarfighterCapacity = 1,
             };
-            CombatUnit target = _battle.AddCombatants(targetSource)[0];
+            SpaceCombatUnit target = _battle.AddCombatants(targetSource)[0];
             _operations = new TacticalCarrierOperations(
                 _battle,
-                new Dictionary<CombatUnit, Vector3[][]>
+                new Dictionary<SpaceCombatUnit, Vector3[][]>
                 {
                     [_carrier] = CreateBayPath(),
                     [target] = CreateBayPath(),
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.Tactical
                 OwnerInstanceID = "OWNER",
                 StarfighterCapacity = 1,
             };
-            CombatUnit target = _battle.AddCombatants(targetSource)[0];
+            SpaceCombatUnit target = _battle.AddCombatants(targetSource)[0];
             Starfighter occupyingSquadron = new Starfighter
             {
                 InstanceID = "OCCUPANT",
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Tactical
             _battle.AddCombatants(occupyingSquadron);
             _operations = new TacticalCarrierOperations(
                 _battle,
-                new Dictionary<CombatUnit, Vector3[][]>
+                new Dictionary<SpaceCombatUnit, Vector3[][]>
                 {
                     [_carrier] = CreateBayPath(),
                     [target] = CreateBayPath(),
@@ -305,10 +305,10 @@ namespace Rebellion.Tests.Tactical
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
                 SerializationHelper.Serialize(_battle)
             );
-            CombatUnit carrier = restored
+            SpaceCombatUnit carrier = restored
                 .GetParticipants()[0]
                 .GetCombatants()
-                .Single(unit => unit.Data.Kind == CombatUnitKind.CapitalShip);
+                .Single(unit => unit.Kind == SpaceCombatUnitKind.CapitalShip);
             TacticalCarrierOperations operations = CreateOperations(
                 restored,
                 carrier,
@@ -319,7 +319,7 @@ namespace Rebellion.Tests.Tactical
                 restored
                     .GetParticipants()[0]
                     .GetCombatants()
-                    .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
+                    .Where(unit => unit.Kind == SpaceCombatUnitKind.Starfighter)
                     .Select(unit => unit.Flight.Phase),
                 Has.All.EqualTo(FighterFlightState.Launching)
             );
@@ -334,7 +334,7 @@ namespace Rebellion.Tests.Tactical
             Assert.Throws<ArgumentException>(() =>
                 new TacticalCarrierOperations(
                     _battle,
-                    new Dictionary<CombatUnit, Vector3[][]>
+                    new Dictionary<SpaceCombatUnit, Vector3[][]>
                     {
                         [_carrier] = new[] { new[] { Vector3.Zero, Vector3.Zero } },
                     }
@@ -348,12 +348,12 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FasterFollowingSquadron_PreservesBayClearance()
         {
-            CombatUnit[] following = AddSquadron("FOLLOWING");
-            foreach (CombatUnit fighter in following)
-                fighter.Data.SublightSpeed = 20;
+            SpaceCombatUnit[] following = AddSquadron("FOLLOWING");
+            foreach (SpaceCombatUnit fighter in following)
+                fighter.SublightSpeed = 20;
             _operations = new TacticalCarrierOperations(
                 _battle,
-                new Dictionary<CombatUnit, Vector3[][]>
+                new Dictionary<SpaceCombatUnit, Vector3[][]>
                 {
                     [_carrier] = new[] { new[] { Vector3.Zero, new Vector3(0f, 0f, 200f) } },
                 },
@@ -403,7 +403,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_MultipleSquadrons_ReleasesOnePerInterval()
         {
-            CombatUnit next = AddSquadron("NEXT").Single();
+            SpaceCombatUnit next = AddSquadron("NEXT").Single();
             _operations = CreateOperations(_battle, _carrier, new IntervalRandom(0));
             _operations.Launch(new[] { _carrier }, "OWNER");
             _operations.Advance(5f);
@@ -419,7 +419,7 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="id">The strategic squadron identity.</param>
         /// <returns>The squadron's single tactical representation.</returns>
-        private CombatUnit[] AddSquadron(string id)
+        private SpaceCombatUnit[] AddSquadron(string id)
         {
             Starfighter squadron = new Starfighter
             {
@@ -449,12 +449,12 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The indexed operations owner.</returns>
         private static TacticalCarrierOperations CreateOperations(
             ActiveBattle battle,
-            CombatUnit carrier,
+            SpaceCombatUnit carrier,
             IRandomNumberProvider random
         ) =>
             new TacticalCarrierOperations(
                 battle,
-                new Dictionary<CombatUnit, Vector3[][]> { [carrier] = CreateBayPath() },
+                new Dictionary<SpaceCombatUnit, Vector3[][]> { [carrier] = CreateBayPath() },
                 random
             );
 

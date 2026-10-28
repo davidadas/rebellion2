@@ -19,28 +19,28 @@ public sealed class TacticalSelectionController : MonoBehaviour
 
     private readonly List<RaycastResult> _interfaceHits = new List<RaycastResult>();
     private Camera _camera;
-    private IReadOnlyDictionary<CombatUnit, Transform> _presentations;
+    private IReadOnlyDictionary<SpaceCombatUnit, Transform> _presentations;
     private PointerEventData _pointer;
     private EventSystem _pointerEventSystem;
-    private readonly List<CombatUnit> _selected = new List<CombatUnit>();
-    private IReadOnlyList<CombatUnit> _readOnlySelection;
+    private readonly List<SpaceCombatUnit> _selected = new List<SpaceCombatUnit>();
+    private IReadOnlyList<SpaceCombatUnit> _readOnlySelection;
     private Vector2 _pressPosition;
     private bool _selecting;
     private bool _choosingDestination;
     private bool _choosingAttack;
     private TacticalViewCameraController _cameraInput;
     private string _viewerFactionInstanceID;
-    private readonly List<CombatUnit>[] _controlGroups = CreateControlGroups();
+    private readonly List<SpaceCombatUnit>[] _controlGroups = CreateControlGroups();
     private readonly int[] _controlGroupCounts = new int[ControlGroupCount];
     private int _activeControlGroup = -1;
     private TacticalCarrierOperations _carrierOperations;
-    private readonly Dictionary<string, CombatUnit> _combatantsByID = new Dictionary<
+    private readonly Dictionary<string, SpaceCombatUnit> _combatantsByID = new Dictionary<
         string,
-        CombatUnit
+        SpaceCombatUnit
     >(StringComparer.Ordinal);
-    private readonly List<CombatUnit> _attackTargets = new List<CombatUnit>();
-    private readonly HashSet<CombatUnit> _targetSeen = new HashSet<CombatUnit>();
-    private CombatUnit _hovered;
+    private readonly List<SpaceCombatUnit> _attackTargets = new List<SpaceCombatUnit>();
+    private readonly HashSet<SpaceCombatUnit> _targetSeen = new HashSet<SpaceCombatUnit>();
+    private SpaceCombatUnit _hovered;
 
     public event Action<Vector2> MoveRequested;
     public event Action<Vector2> MoveTogetherRequested;
@@ -49,18 +49,18 @@ public sealed class TacticalSelectionController : MonoBehaviour
     public event Action LaunchRequested;
     public event Action RecallRequested;
     public event Action DockRequested;
-    public event Action<CombatUnit> DockAtRequested;
+    public event Action<SpaceCombatUnit> DockAtRequested;
 
     /// <summary>
     /// Gets the ordered transient selection without allowing callers to modify it.
     /// </summary>
-    public IReadOnlyList<CombatUnit> SelectedCombatants =>
+    public IReadOnlyList<SpaceCombatUnit> SelectedCombatants =>
         _readOnlySelection ??= _selected.AsReadOnly();
 
     /// <summary>
     /// Gets the inspected unit, regardless of its owning faction.
     /// </summary>
-    public CombatUnit SelectedCombatant => _selected.Count > 0 ? _selected[0] : null;
+    public SpaceCombatUnit SelectedCombatant => _selected.Count > 0 ? _selected[0] : null;
 
     /// <summary>
     /// Clears the current tactical selection and any transient selection command.
@@ -119,7 +119,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <param name="viewerFactionInstanceID">The faction controlled by the local player.</param>
     public void Initialize(
         Camera camera,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         string viewerFactionInstanceID = null
     )
     {
@@ -134,7 +134,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         _camera = camera;
         _presentations = presentations;
         _viewerFactionInstanceID = viewerFactionInstanceID;
-        foreach (CombatUnit combatant in presentations.Keys)
+        foreach (SpaceCombatUnit combatant in presentations.Keys)
             _combatantsByID[combatant.InstanceID] = combatant;
         _cameraInput = camera.GetComponent<TacticalViewCameraController>();
         if (_cameraInput)
@@ -161,7 +161,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             return;
         if (!_camera.pixelRect.Contains(screenPosition))
             return;
-        TryGetCombatantAt(screenPosition, out CombatUnit nearest);
+        TryGetCombatantAt(screenPosition, out SpaceCombatUnit nearest);
 
         if (!additive)
             _selected.Clear();
@@ -193,7 +193,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         _targetSeen.Clear();
         _hovered = null;
         _activeControlGroup = -1;
-        foreach (List<CombatUnit> group in _controlGroups)
+        foreach (List<SpaceCombatUnit> group in _controlGroups)
             group.Clear();
         Array.Clear(_controlGroupCounts, 0, _controlGroupCounts.Length);
         _presentations = null;
@@ -225,7 +225,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             return;
         if (!additive)
             _selected.Clear();
-        foreach (KeyValuePair<CombatUnit, Transform> pair in _presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> pair in _presentations)
         {
             if (
                 !pair.Value
@@ -262,7 +262,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         {
             Vector2 point = mouse.position.ReadValue();
             _hovered =
-                TryGetCombatantAt(point, out CombatUnit hovered) && !IsControlled(hovered)
+                TryGetCombatantAt(point, out SpaceCombatUnit hovered) && !IsControlled(hovered)
                     ? hovered
                     : null;
             TacticalPointerMode pointerMode = GetPointerMode(point);
@@ -335,14 +335,14 @@ public sealed class TacticalSelectionController : MonoBehaviour
             return;
 
         _selected.Clear();
-        foreach (KeyValuePair<CombatUnit, Transform> pair in _presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> pair in _presentations)
         {
             if (
                 !pair.Value
                 || !pair.Value.gameObject.activeInHierarchy
                 || pair.Key.HasRetreated
                 || !string.Equals(
-                    pair.Key.Data.OwnerInstanceID,
+                    pair.Key.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -384,13 +384,13 @@ public sealed class TacticalSelectionController : MonoBehaviour
     public void AssignControlGroup(int groupIndex)
     {
         ValidateControlGroupIndex(groupIndex);
-        List<CombatUnit> group = _controlGroups[groupIndex];
+        List<SpaceCombatUnit> group = _controlGroups[groupIndex];
         group.Clear();
-        foreach (CombatUnit unit in _selected)
+        foreach (SpaceCombatUnit unit in _selected)
             if (
                 !unit.HasRetreated
                 && string.Equals(
-                    unit.Data.OwnerInstanceID,
+                    unit.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -408,7 +408,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     {
         ValidateControlGroupIndex(groupIndex);
         PruneControlGroups();
-        List<CombatUnit> group = _controlGroups[groupIndex];
+        List<SpaceCombatUnit> group = _controlGroups[groupIndex];
         if (group.Count == 0)
             return;
         _selected.Clear();
@@ -498,13 +498,13 @@ public sealed class TacticalSelectionController : MonoBehaviour
         );
         _attackTargets.Clear();
         _targetSeen.Clear();
-        foreach (CombatUnit unit in _selected)
+        foreach (SpaceCombatUnit unit in _selected)
             if (
                 IsControlled(unit)
                 && unit.Weapons.AttackTargetInstanceID != null
                 && _combatantsByID.TryGetValue(
                     unit.Weapons.AttackTargetInstanceID,
-                    out CombatUnit target
+                    out SpaceCombatUnit target
                 )
                 && !target.HasRetreated
                 && _targetSeen.Add(target)
@@ -614,7 +614,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             _choosingAttack = false;
             return;
         }
-        if (!moveTogether && TryGetDockTarget(screenPosition, out CombatUnit carrier))
+        if (!moveTogether && TryGetDockTarget(screenPosition, out SpaceCombatUnit carrier))
         {
             DockAtRequested?.Invoke(carrier);
             return;
@@ -632,7 +632,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <returns>The available action beneath the pointer.</returns>
     private TacticalPointerMode GetPointerMode(Vector2 screenPosition)
     {
-        if (!TryGetCombatantAt(screenPosition, out CombatUnit target))
+        if (!TryGetCombatantAt(screenPosition, out SpaceCombatUnit target))
             return TacticalPointerMode.None;
         if (_carrierOperations?.CanDockAt(_selected, target, _viewerFactionInstanceID) == true)
             return TacticalPointerMode.Dock;
@@ -645,19 +645,19 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <param name="screenPosition">The pointer position in screen pixels.</param>
     /// <returns>Whether an attack order can consume the pointer action.</returns>
     private bool CanAttackTargetAt(Vector2 screenPosition) =>
-        TryGetCombatantAt(screenPosition, out CombatUnit target) && CanAttackTarget(target);
+        TryGetCombatantAt(screenPosition, out SpaceCombatUnit target) && CanAttackTarget(target);
 
     /// <summary>
     /// Reports whether a combatant belongs to the locally controlled faction.
     /// </summary>
     /// <param name="combatant">The combatant to test.</param>
     /// <returns>Whether it can join the local selection.</returns>
-    private bool IsControlled(CombatUnit combatant) =>
+    private bool IsControlled(SpaceCombatUnit combatant) =>
         combatant?.HasRetreated == false
         && (
             string.IsNullOrWhiteSpace(_viewerFactionInstanceID)
             || string.Equals(
-                combatant.Data.OwnerInstanceID,
+                combatant.OwnerInstanceID,
                 _viewerFactionInstanceID,
                 StringComparison.Ordinal
             )
@@ -668,15 +668,15 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// </summary>
     /// <param name="target">The visible combatant beneath the pointer.</param>
     /// <returns>Whether the combatant should receive attack-target feedback.</returns>
-    private bool CanAttackTarget(CombatUnit target)
+    private bool CanAttackTarget(SpaceCombatUnit target)
     {
         bool hasFriendlySelection = false;
-        foreach (CombatUnit selected in _selected)
+        foreach (SpaceCombatUnit selected in _selected)
             if (
                 !selected.HasRetreated
                 && selected.Flight.Phase == FighterFlightState.Deployed
                 && string.Equals(
-                    selected.Data.OwnerInstanceID,
+                    selected.OwnerInstanceID,
                     _viewerFactionInstanceID,
                     StringComparison.Ordinal
                 )
@@ -688,7 +688,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         return hasFriendlySelection
             && target != null
             && !string.Equals(
-                target.Data.OwnerInstanceID,
+                target.OwnerInstanceID,
                 _viewerFactionInstanceID,
                 StringComparison.Ordinal
             );
@@ -700,7 +700,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <param name="screenPosition">The pointer position in screen pixels.</param>
     /// <param name="carrier">The eligible carrier when found.</param>
     /// <returns>Whether targeted docking is currently available.</returns>
-    private bool TryGetDockTarget(Vector2 screenPosition, out CombatUnit carrier)
+    private bool TryGetDockTarget(Vector2 screenPosition, out SpaceCombatUnit carrier)
     {
         carrier = null;
         return _carrierOperations != null
@@ -714,7 +714,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <param name="screenPosition">The pointer position in screen pixels.</param>
     /// <param name="combatant">The nearest visible combatant when found.</param>
     /// <returns>Whether a combatant was hit.</returns>
-    private bool TryGetCombatantAt(Vector2 screenPosition, out CombatUnit combatant)
+    private bool TryGetCombatantAt(Vector2 screenPosition, out SpaceCombatUnit combatant)
     {
         combatant = null;
         if (
@@ -728,12 +728,12 @@ public sealed class TacticalSelectionController : MonoBehaviour
         Ray worldRay = _camera.ScreenPointToRay(screenPosition);
         float nearestScreenDistance = float.PositiveInfinity;
         float nearestWorldDistance = float.PositiveInfinity;
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in _presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in _presentations)
         {
             Transform root = presentation.Value;
             if (!root || !root.gameObject.activeInHierarchy || presentation.Key.HasRetreated)
                 continue;
-            ModelDimensions size = presentation.Key.Data.ModelSize;
+            ModelDimensions size = presentation.Key.ModelSize;
             Bounds bounds = new Bounds(
                 Vector3.zero,
                 new Vector3(size.Width, size.Height, size.Depth)
@@ -771,8 +771,8 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// </summary>
     /// <param name="screenPosition">The pointer position in screen pixels.</param>
     /// <returns>The nearest visible combatant, or null.</returns>
-    public CombatUnit PickAt(Vector2 screenPosition) =>
-        TryGetCombatantAt(screenPosition, out CombatUnit combatant) ? combatant : null;
+    public SpaceCombatUnit PickAt(Vector2 screenPosition) =>
+        TryGetCombatantAt(screenPosition, out SpaceCombatUnit combatant) ? combatant : null;
 
     /// <summary>
     /// Cancels destination placement and requests cancellation of the selected ships' move orders.
@@ -816,14 +816,14 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// Inspects a roster group, or toggles its members when an additive modifier is held.
     /// </summary>
     /// <param name="combatants">The clicked card's combatants.</param>
-    private void SelectCard(IReadOnlyList<CombatUnit> combatants)
+    private void SelectCard(IReadOnlyList<SpaceCombatUnit> combatants)
     {
         if (_presentations == null || combatants.Count == 0)
             return;
         bool additive = IsAdditiveSelectionModifierPressed(Keyboard.current);
         if (!additive)
             _selected.Clear();
-        foreach (CombatUnit combatant in combatants)
+        foreach (SpaceCombatUnit combatant in combatants)
             if (
                 IsControlled(combatant)
                 && _presentations.ContainsKey(combatant)
@@ -838,7 +838,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// Selects the friendly ship represented by an officer portrait marker.
     /// </summary>
     /// <param name="combatant">The ship represented by the clicked portrait.</param>
-    private void SelectOfficerMarker(CombatUnit combatant)
+    private void SelectOfficerMarker(SpaceCombatUnit combatant)
     {
         if (
             _presentations == null
@@ -859,11 +859,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// Centers the tactical camera on the first visible member of a double-clicked roster card.
     /// </summary>
     /// <param name="combatants">The card's represented battle units.</param>
-    private void CenterOnCard(IReadOnlyList<CombatUnit> combatants)
+    private void CenterOnCard(IReadOnlyList<SpaceCombatUnit> combatants)
     {
         if (!_cameraInput || !_cameraInput.IsConfigured || _presentations == null)
             return;
-        foreach (CombatUnit combatant in combatants)
+        foreach (SpaceCombatUnit combatant in combatants)
             if (
                 !combatant.HasRetreated
                 && _presentations.TryGetValue(combatant, out Transform target)
@@ -884,7 +884,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     {
         for (int groupIndex = 0; groupIndex < _controlGroups.Length; groupIndex++)
         {
-            List<CombatUnit> group = _controlGroups[groupIndex];
+            List<SpaceCombatUnit> group = _controlGroups[groupIndex];
             for (int memberIndex = group.Count - 1; memberIndex >= 0; memberIndex--)
                 if (
                     group[memberIndex].HasRetreated
@@ -911,11 +911,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// Creates the fixed numbered-group storage owned by one tactical selection controller.
     /// </summary>
     /// <returns>Nine independently mutable control groups.</returns>
-    private static List<CombatUnit>[] CreateControlGroups()
+    private static List<SpaceCombatUnit>[] CreateControlGroups()
     {
-        List<CombatUnit>[] groups = new List<CombatUnit>[ControlGroupCount];
+        List<SpaceCombatUnit>[] groups = new List<SpaceCombatUnit>[ControlGroupCount];
         for (int index = 0; index < groups.Length; index++)
-            groups[index] = new List<CombatUnit>();
+            groups[index] = new List<SpaceCombatUnit>();
         return groups;
     }
 

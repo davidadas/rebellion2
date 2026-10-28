@@ -238,9 +238,9 @@ public static class TacticalBattleLaunchContext
     /// <param name="participant">The opposing preview participant.</param>
     private static void DeployCarrierWing(BattleParticipant participant)
     {
-        foreach (CombatUnit combatant in participant.GetCombatants())
+        foreach (SpaceCombatUnit combatant in participant.GetCombatants())
             if (
-                combatant.Data is { Kind: CombatUnitKind.Starfighter }
+                combatant is { Kind: SpaceCombatUnitKind.Starfighter }
                 && !string.IsNullOrWhiteSpace(combatant.Flight.CarrierSourceUnitInstanceID)
             )
                 combatant.Flight.Phase = FighterFlightState.Deployed;

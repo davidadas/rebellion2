@@ -43,11 +43,13 @@ namespace Rebellion.Tests.Managers
                 </CombatUnit>"
                 )
             );
-            CombatUnit unit = restored.GetActiveBattle().GetParticipants()[0].GetCombatants()[0];
+            SpaceCombatUnit unit = restored.GetActiveBattle().GetParticipants()[0].GetCombatants()[
+                0
+            ];
 
             Assert.AreEqual("BATTLE_SHIP", unit.InstanceID);
             Assert.AreEqual("SOURCE", unit.SourceUnitInstanceID);
-            Assert.AreEqual(CombatUnitKind.CapitalShip, unit.Data.Kind);
+            Assert.AreEqual(SpaceCombatUnitKind.CapitalShip, unit.Kind);
             Assert.AreEqual(35, unit.Condition.CurrentHullStrength);
             Assert.AreEqual(17, unit.Condition.CurrentShieldStrength);
             Assert.AreEqual(0.25f, unit.Condition.ShieldDamageRemainder);
@@ -86,9 +88,11 @@ namespace Rebellion.Tests.Managers
                 </CombatUnit>"
                 )
             );
-            CombatUnit unit = restored.GetActiveBattle().GetParticipants()[0].GetCombatants()[0];
+            SpaceCombatUnit unit = restored.GetActiveBattle().GetParticipants()[0].GetCombatants()[
+                0
+            ];
 
-            Assert.AreEqual(CombatUnitKind.Starfighter, unit.Data.Kind);
+            Assert.AreEqual(SpaceCombatUnitKind.Starfighter, unit.Kind);
             Assert.AreEqual(12, unit.Condition.CurrentHullStrength);
             Assert.AreEqual(5, unit.Condition.CurrentSquadronSize);
             Assert.IsNull(unit.Condition.CurrentShieldStrength);
@@ -165,13 +169,73 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(restored.GetActiveBattle().Projectiles);
         }
 
+        [Test]
+        public void Deserialize_VersionTwoUnit_PreservesCapabilitiesAndPendingState()
+        {
+            string xml = CreateLegacySave(
+                @"<CombatUnit>
+                  <InstanceID>BATTLE_SHIP</InstanceID><SourceUnitInstanceID>SOURCE</SourceUnitInstanceID>
+                  <TypeID>UNUSED_OUTER_TYPE</TypeID><DisplayName>Unused outer name</DisplayName>
+                  <Data>
+                    <Kind>CapitalShip</Kind><TypeID>CRUISER</TypeID><OwnerInstanceID>OWNER</OwnerInstanceID>
+                    <DisplayName>Cruiser</DisplayName><DisplayImagePath>cruiser.png</DisplayImagePath>
+                    <ModelPath>cruiser.glb</ModelPath><ModelScale>2.5</ModelScale>
+                    <MaxHullStrength>100</MaxHullStrength><MaxShieldStrength>50</MaxShieldStrength>
+                    <SublightSpeed>4</SublightSpeed><Hyperdrive>1</Hyperdrive><StarfighterCapacity>3</StarfighterCapacity>
+                    <Components><Engine><Health>55</Health></Engine></Components>
+                  </Data>
+                  <Condition><CurrentHullStrength>35</CurrentHullStrength><CurrentShieldStrength>17</CurrentShieldStrength>
+                    <ShieldDamageRemainder>0.25</ShieldDamageRemainder><HullDamageRemainder>0.5</HullDamageRemainder>
+                  </Condition>
+                  <MoveOrder><Destination><X>3</X><Y>4</Y><Z>5</Z></Destination><SpeedLimit>2</SpeedLimit></MoveOrder>
+                  <Weapons><AttackTargetInstanceID>TARGET</AttackTargetInstanceID><Banks><WeaponBankState>
+                    <GroupID>gun</GroupID><Mounts><WeaponMountState><Cooldown>0.375</Cooldown><ShotsFired>2</ShotsFired></WeaponMountState></Mounts>
+                  </WeaponBankState></Banks></Weapons>
+                  <Carrier><LaunchQueue><string>FIGHTER</string></LaunchQueue><LaunchCountdown>1.5</LaunchCountdown></Carrier>
+                </CombatUnit>",
+                2
+            );
+
+            SpaceCombatUnit unit = Restore(xml)
+                .GetActiveBattle()
+                .GetParticipants()[0]
+                .GetCombatants()[0];
+
+            Assert.AreEqual("BATTLE_SHIP", unit.InstanceID);
+            Assert.AreEqual("SOURCE", unit.SourceUnitInstanceID);
+            Assert.AreEqual(SpaceCombatUnitKind.CapitalShip, unit.Kind);
+            Assert.AreEqual("CRUISER", unit.TypeID);
+            Assert.AreEqual("Cruiser", unit.DisplayName);
+            Assert.AreEqual("cruiser.png", unit.DisplayImagePath);
+            Assert.AreEqual("cruiser.glb", unit.ModelPath);
+            Assert.AreEqual(2.5f, unit.ModelScale);
+            Assert.AreEqual(100, unit.MaxHullStrength);
+            Assert.AreEqual(50, unit.MaxShieldStrength);
+            Assert.AreEqual(4, unit.GetSublightSpeed());
+            Assert.AreEqual(1, unit.Hyperdrive);
+            Assert.AreEqual(3, unit.GetStarfighterCapacity());
+            Assert.AreEqual(55, unit.GetComponents()[0].Health);
+            Assert.AreEqual(35, unit.Condition.CurrentHullStrength);
+            Assert.AreEqual(17, unit.Condition.CurrentShieldStrength);
+            Assert.AreEqual(0.25f, unit.Condition.ShieldDamageRemainder);
+            Assert.AreEqual(0.5f, unit.Condition.HullDamageRemainder);
+            Assert.AreEqual(5f, unit.MoveOrder.Destination.Z);
+            Assert.AreEqual(2f, unit.MoveOrder.SpeedLimit);
+            Assert.AreEqual("TARGET", unit.Weapons.AttackTargetInstanceID);
+            Assert.AreEqual(0.375f, unit.Weapons.Banks[0].Mounts[0].Cooldown);
+            Assert.AreEqual(2, unit.Weapons.Banks[0].Mounts[0].ShotsFired);
+            CollectionAssert.AreEqual(new[] { "FIGHTER" }, unit.Carrier.LaunchQueue);
+            Assert.AreEqual(1.5f, unit.Carrier.LaunchCountdown);
+        }
+
         /// <summary>
-        /// Wraps a recorded combatant in the first saved battle format.
+        /// Wraps a recorded combatant in an older saved battle format.
         /// </summary>
         /// <param name="combatant">The recorded combatant XML.</param>
+        /// <param name="saveVersion">The saved format containing the combatant.</param>
         /// <returns>The complete saved-game XML.</returns>
-        private static string CreateLegacySave(string combatant) =>
-            "<Game><Metadata><SaveVersion>1</SaveVersion></Metadata><ActiveBattle>"
+        private static string CreateLegacySave(string combatant, int saveVersion = 1) =>
+            $"<Game><Metadata><SaveVersion>{saveVersion}</SaveVersion></Metadata><ActiveBattle>"
             + "<Participants><BattleParticipant><FactionInstanceID>OWNER</FactionInstanceID><Combatants>"
             + combatant
             + "</Combatants></BattleParticipant></Participants></ActiveBattle></Game>";

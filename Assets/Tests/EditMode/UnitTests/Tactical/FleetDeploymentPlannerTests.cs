@@ -40,18 +40,18 @@ namespace Rebellion.Tests.Tactical
 
             FleetDeploymentPlanner.Deploy(battle, map);
 
-            CombatUnit[] capitals = GetCombatants(battle)
-                .Where(unit => unit.Data.Kind == CombatUnitKind.CapitalShip)
+            SpaceCombatUnit[] capitals = GetCombatants(battle)
+                .Where(unit => unit.Kind == SpaceCombatUnitKind.CapitalShip)
                 .ToArray();
-            CombatUnit[] fighters = GetCombatants(battle)
-                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
+            SpaceCombatUnit[] fighters = GetCombatants(battle)
+                .Where(unit => unit.Kind == SpaceCombatUnitKind.Starfighter)
                 .ToArray();
             Vector3 forward = ToVector(capitals[0].Forward);
             float capitalFront = capitals.Max(unit =>
-                Vector3.Dot(ToVector(unit.Position), forward) + unit.Data.ModelSize.Depth / 2f
+                Vector3.Dot(ToVector(unit.Position), forward) + unit.ModelSize.Depth / 2f
             );
             float fighterRear = fighters.Min(unit =>
-                Vector3.Dot(ToVector(unit.Position), forward) - unit.Data.ModelSize.Depth / 2f
+                Vector3.Dot(ToVector(unit.Position), forward) - unit.ModelSize.Depth / 2f
             );
             Assert.That(fighterRear - capitalFront, Is.GreaterThanOrEqualTo(18f));
         }
@@ -63,11 +63,11 @@ namespace Rebellion.Tests.Tactical
 
             FleetDeploymentPlanner.Deploy(battle, CreateMap());
 
-            CombatUnit[] capitals = GetCombatants(battle)
-                .Where(unit => unit.Data.Kind == CombatUnitKind.CapitalShip)
+            SpaceCombatUnit[] capitals = GetCombatants(battle)
+                .Where(unit => unit.Kind == SpaceCombatUnitKind.CapitalShip)
                 .ToArray();
-            CombatUnit[] fighters = GetCombatants(battle)
-                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
+            SpaceCombatUnit[] fighters = GetCombatants(battle)
+                .Where(unit => unit.Kind == SpaceCombatUnitKind.Starfighter)
                 .ToArray();
             float capitalDepth = capitals[0].Position.Z;
             float fighterDepth = fighters[0].Position.Z;
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Tactical
 
             FleetDeploymentPlanner.Deploy(battle, map);
 
-            foreach (CombatUnit unit in GetCombatants(battle))
+            foreach (SpaceCombatUnit unit in GetCombatants(battle))
                 Assert.That(ToVector(unit.Position), Is.EqualTo(expected[unit.InstanceID]));
         }
 
@@ -103,7 +103,7 @@ namespace Rebellion.Tests.Tactical
             ActiveBattle battle = CreateBattle(2, 4, 12);
             FleetDeploymentPlanner.Deploy(battle, CreateMap());
             Bounds[] groups = GetCombatants(battle)
-                .Where(unit => unit.Data.Kind == CombatUnitKind.Starfighter)
+                .Where(unit => unit.Kind == SpaceCombatUnitKind.Starfighter)
                 .GroupBy(unit => unit.SourceUnitInstanceID)
                 .Select(group => GetGroupBounds(group))
                 .ToArray();
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Tactical
         public void Deploy_MissingDimensions_RejectsInsteadOfInventingSize()
         {
             ActiveBattle battle = CreateBattle(1, 0, 0);
-            GetCombatants(battle).Single().Data.ModelSize = null;
+            GetCombatants(battle).Single().ModelSize = null;
 
             Assert.Throws<ArgumentException>(() =>
                 FleetDeploymentPlanner.Deploy(battle, CreateMap())
@@ -164,8 +164,8 @@ namespace Rebellion.Tests.Tactical
         public void Deploy_InvalidDimensions_RejectsWithoutMutation(float width)
         {
             ActiveBattle battle = CreateBattle(2, 0, 0);
-            CombatUnit unit = GetCombatants(battle).Last();
-            unit.Data.ModelSize.Width = width;
+            SpaceCombatUnit unit = GetCombatants(battle).Last();
+            unit.ModelSize.Width = width;
             BattleVector3 initial = unit.Position;
 
             Assert.Throws<ArgumentException>(() =>
@@ -316,7 +316,7 @@ namespace Rebellion.Tests.Tactical
                 );
             battle.GetParticipants().Single().BattleMapSlotID = "fleet";
             int identity = 0;
-            foreach (CombatUnit unit in GetCombatants(battle))
+            foreach (SpaceCombatUnit unit in GetCombatants(battle))
                 unit.InstanceID = $"COMBATANT-{identity++:D5}";
             return battle;
         }
@@ -367,7 +367,7 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="battle">The source battle.</param>
         /// <returns>The combatants.</returns>
-        private static IEnumerable<CombatUnit> GetCombatants(ActiveBattle battle) =>
+        private static IEnumerable<SpaceCombatUnit> GetCombatants(ActiveBattle battle) =>
             battle.GetParticipants().SelectMany(participant => participant.GetCombatants());
 
         /// <summary>
@@ -375,9 +375,9 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="unit">The deployed combatant.</param>
         /// <returns>The world-aligned hull envelope.</returns>
-        private static Bounds GetHull(CombatUnit unit)
+        private static Bounds GetHull(SpaceCombatUnit unit)
         {
-            ModelDimensions size = unit.Data.ModelSize;
+            ModelDimensions size = unit.ModelSize;
             Quaternion rotation = Quaternion.LookRotation(ToVector(unit.Forward));
             Vector3 right = rotation * Vector3.right * size.Width;
             Vector3 up = rotation * Vector3.up * size.Height;
@@ -395,10 +395,10 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="units">The squadron members.</param>
         /// <returns>The combined envelope.</returns>
-        private static Bounds GetGroupBounds(IEnumerable<CombatUnit> units)
+        private static Bounds GetGroupBounds(IEnumerable<SpaceCombatUnit> units)
         {
             Bounds result = GetHull(units.First());
-            foreach (CombatUnit unit in units.Skip(1))
+            foreach (SpaceCombatUnit unit in units.Skip(1))
                 result.Encapsulate(GetHull(unit));
             return result;
         }
@@ -413,7 +413,7 @@ namespace Rebellion.Tests.Tactical
             BattleMapBounds region
         )
         {
-            List<CombatUnit> units = participant.GetCombatants();
+            List<SpaceCombatUnit> units = participant.GetCombatants();
             Vector3 min = new Vector3(region.MinimumX, region.MinimumY, region.MinimumZ);
             Vector3 max = new Vector3(region.MaximumX, region.MaximumY, region.MaximumZ);
             for (int first = 0; first < units.Count; first++)
@@ -428,13 +428,13 @@ namespace Rebellion.Tests.Tactical
                 Quaternion inverse = Quaternion.Inverse(
                     Quaternion.LookRotation(ToVector(units[first].Forward))
                 );
-                ModelDimensions size = units[first].Data.ModelSize;
+                ModelDimensions size = units[first].ModelSize;
                 for (int second = first + 1; second < units.Count; second++)
                 {
                     Vector3 delta =
                         inverse
                         * (ToVector(units[second].Position) - ToVector(units[first].Position));
-                    ModelDimensions other = units[second].Data.ModelSize;
+                    ModelDimensions other = units[second].ModelSize;
                     Assert.IsTrue(
                         Mathf.Abs(delta.x) >= (size.Width + other.Width) / 2f - 0.001f
                             || Mathf.Abs(delta.y) >= (size.Height + other.Height) / 2f - 0.001f

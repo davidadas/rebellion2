@@ -29,7 +29,7 @@ public sealed class TacticalCombatView : IDisposable
     private readonly HashSet<long> _live = new();
     private readonly List<Flash> _flashes = new();
     private readonly List<Beam> _beams = new();
-    private readonly Dictionary<CombatUnit, ITacticalShieldEffect> _shields = new();
+    private readonly Dictionary<SpaceCombatUnit, ITacticalShieldEffect> _shields = new();
     private readonly List<GameObject> _shieldObjects = new();
     private readonly AudioSource[] _fireSources = new AudioSource[4];
     private readonly AudioSource[] _impactSources = new AudioSource[3];
@@ -51,7 +51,7 @@ public sealed class TacticalCombatView : IDisposable
     {
         HashSet<string> paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (BattleParticipant participant in battle.GetParticipants())
-        foreach (CombatUnit unit in participant.GetCombatants())
+        foreach (SpaceCombatUnit unit in participant.GetCombatants())
         foreach (HardpointGroup group in TacticalCombat.GetGroups(unit))
         foreach (Hardpoint hardpoint in group.GetHardpoints())
         {
@@ -93,7 +93,7 @@ public sealed class TacticalCombatView : IDisposable
         AudioManager audio,
         Dictionary<string, AudioClip> clips,
         Shader shader,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         GameObject shieldTemplate
     )
     {
@@ -126,7 +126,7 @@ public sealed class TacticalCombatView : IDisposable
     {
         if (!_root)
             return;
-        foreach (KeyValuePair<CombatUnit, ITacticalShieldEffect> shield in _shields)
+        foreach (KeyValuePair<SpaceCombatUnit, ITacticalShieldEffect> shield in _shields)
             shield.Value.SetActive(
                 TacticalCombat.IsAlive(shield.Key) && HasShieldStrength(shield.Key)
             );
@@ -243,7 +243,7 @@ public sealed class TacticalCombatView : IDisposable
     /// <param name="shot">The contacting shot.</param>
     /// <param name="target">The contacted battle hull.</param>
     /// <param name="absorbedByShield">Whether the contact reached an active shield.</param>
-    private void OnShotHit(BattleProjectile shot, CombatUnit target, bool absorbedByShield)
+    private void OnShotHit(BattleProjectile shot, SpaceCombatUnit target, bool absorbedByShield)
     {
         Vector3 position = ToVector(shot.Position);
         if (shot.Projectile.DeliveryMode == WeaponDeliveryMode.Hitscan)
@@ -273,13 +273,13 @@ public sealed class TacticalCombatView : IDisposable
     /// <param name="presentations">The loaded combatant presentation index.</param>
     /// <param name="template">The inactive authored shield template.</param>
     private void CreateShields(
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         GameObject template
     )
     {
-        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in presentations)
         {
-            CombatUnit unit = presentation.Key;
+            SpaceCombatUnit unit = presentation.Key;
             if (TacticalCombat.GetMaximumShields(unit) <= 0)
                 continue;
             GameObject instance = UnityEngine.Object.Instantiate(
@@ -289,7 +289,7 @@ public sealed class TacticalCombatView : IDisposable
             );
             instance.name = "Shield";
             instance.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-            ModelDimensions size = unit.Data.ModelSize;
+            ModelDimensions size = unit.ModelSize;
             instance.transform.localScale =
                 new Vector3(size.Width, size.Height, size.Depth) * _shieldEnvelopeScale;
             ITacticalShieldEffect effect = GetShieldEffect(instance);
@@ -322,7 +322,7 @@ public sealed class TacticalCombatView : IDisposable
     /// </summary>
     /// <param name="unit">The battle member.</param>
     /// <returns>Whether its current or initial shield strength is positive.</returns>
-    private static bool HasShieldStrength(CombatUnit unit) =>
+    private static bool HasShieldStrength(SpaceCombatUnit unit) =>
         (unit.Condition.CurrentShieldStrength ?? TacticalCombat.GetMaximumShields(unit)) > 0;
 
     /// <summary>

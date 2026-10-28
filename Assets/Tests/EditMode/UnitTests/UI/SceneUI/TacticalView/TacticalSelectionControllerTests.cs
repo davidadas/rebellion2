@@ -23,7 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private GameObject _instance;
         private TacticalSelectionController _controller;
         private UnityEngine.Camera _camera;
-        private Dictionary<CombatUnit, Transform> _presentations;
+        private Dictionary<SpaceCombatUnit, Transform> _presentations;
 
         /// <summary>
         /// Creates an isolated generated tactical root and simple measured hulls.
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
             _camera.nearClipPlane = 0.1f;
             _camera.farClipPlane = 1000f;
-            _presentations = new Dictionary<CombatUnit, Transform>();
+            _presentations = new Dictionary<SpaceCombatUnit, Transform>();
         }
 
         /// <summary>
@@ -74,14 +74,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-                CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-                CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-                CombatUnit enemy = AddHull(new Vector3(0f, 10f, 0f));
-                CombatUnit carried = AddHull(new Vector3(0f, -10f, 0f));
-                left.Data.OwnerInstanceID = "PLAYER";
-                right.Data.OwnerInstanceID = "PLAYER";
-                enemy.Data.OwnerInstanceID = "ENEMY";
-                carried.Data.OwnerInstanceID = "PLAYER";
+                SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+                SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+                SpaceCombatUnit enemy = AddHull(new Vector3(0f, 10f, 0f));
+                SpaceCombatUnit carried = AddHull(new Vector3(0f, -10f, 0f));
+                left.OwnerInstanceID = "PLAYER";
+                right.OwnerInstanceID = "PLAYER";
+                enemy.OwnerInstanceID = "ENEMY";
+                carried.OwnerInstanceID = "PLAYER";
                 _presentations[carried].gameObject.SetActive(false);
                 _controller.Initialize(_camera, _presentations, "PLAYER");
 
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_HullCenter_SelectsCombatantAndShowsOverlay()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             _controller.Initialize(_camera, _presentations);
 
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
@@ -178,7 +178,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void SelectAt_OverlappingHulls_SelectsNearestRegardlessOfEnumerationOrder()
         {
             AddHull(new Vector3(0f, 0f, 20f));
-            CombatUnit nearest = AddHull(Vector3.zero);
+            SpaceCombatUnit nearest = AddHull(Vector3.zero);
             _controller.Initialize(_camera, _presentations);
 
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
@@ -193,15 +193,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_VisibleShipInsideLargerProjectedEnvelope_SelectsVisibleShip()
         {
-            CombatUnit foreground = AddHull(Vector3.zero);
-            foreground.Data.ModelSize = new ModelDimensions
+            SpaceCombatUnit foreground = AddHull(Vector3.zero);
+            foreground.ModelSize = new ModelDimensions
             {
                 Width = 30f,
                 Height = 20f,
                 Depth = 10f,
             };
-            CombatUnit visible = AddHull(new Vector3(8f, 0f, 20f));
-            visible.Data.ModelSize = new ModelDimensions
+            SpaceCombatUnit visible = AddHull(new Vector3(8f, 0f, 20f));
+            visible.ModelSize = new ModelDimensions
             {
                 Width = 4f,
                 Height = 4f,
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_OutsideCameraViewport_PreservesSelection()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             _controller.Initialize(_camera, _presentations);
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
@@ -253,8 +253,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_EnemyHull_DoesNotSelectCombatant()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
-            combatant.Data.OwnerInstanceID = "ENEMY";
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
+            combatant.OwnerInstanceID = "ENEMY";
             _controller.Initialize(_camera, _presentations, "PLAYER");
 
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
@@ -268,8 +268,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_RotatedLongHull_UsesItsOrientedEnvelope()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
-            combatant.Data.ModelSize = new ModelDimensions
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
+            combatant.ModelSize = new ModelDimensions
             {
                 Width = 2f,
                 Height = 2f,
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_InactiveHull_DoesNotSelectHull()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             _presentations[combatant].gameObject.SetActive(false);
             _controller.Initialize(_camera, _presentations);
 
@@ -320,7 +320,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_DestroyedHull_DoesNotSelectHull()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             UnityEngine.Object.DestroyImmediate(_presentations[combatant].gameObject);
             _controller.Initialize(_camera, _presentations);
 
@@ -339,7 +339,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             _controller.Initialize(_camera, _presentations);
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
             Assert.AreSame(combatant, _controller.SelectedCombatant);
@@ -370,7 +370,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _controller.Initialize(_camera, _presentations);
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
-            _controller.Initialize(_camera, new Dictionary<CombatUnit, Transform>());
+            _controller.Initialize(_camera, new Dictionary<SpaceCombatUnit, Transform>());
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
             Assert.IsNull(_controller.SelectedCombatant);
@@ -407,7 +407,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                CombatUnit combatant = AddHull(Vector3.zero);
+                SpaceCombatUnit combatant = AddHull(Vector3.zero);
                 _controller.Initialize(_camera, _presentations);
                 Vector2 point = _camera.WorldToScreenPoint(Vector3.zero);
                 InputSystem.QueueStateEvent(
@@ -445,8 +445,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-                CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+                SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+                SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
                 _controller.Initialize(_camera, _presentations);
 
                 foreach (var modifier in new[] { keyboard.leftCtrlKey, keyboard.leftMetaKey })
@@ -632,8 +632,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                CombatUnit unit = AddHull(Vector3.zero);
-                unit.Data.OwnerInstanceID = "PLAYER";
+                SpaceCombatUnit unit = AddHull(Vector3.zero);
+                unit.OwnerInstanceID = "PLAYER";
                 _controller.Initialize(_camera, _presentations, "PLAYER");
                 _camera
                     .GetComponent<TacticalViewCameraController>()
@@ -697,10 +697,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                CombatUnit friendly = AddHull(new Vector3(-10f, 0f, 0f));
-                CombatUnit enemy = AddHull(new Vector3(10f, 0f, 0f));
-                friendly.Data.OwnerInstanceID = "PLAYER";
-                enemy.Data.OwnerInstanceID = "ENEMY";
+                SpaceCombatUnit friendly = AddHull(new Vector3(-10f, 0f, 0f));
+                SpaceCombatUnit enemy = AddHull(new Vector3(10f, 0f, 0f));
+                friendly.OwnerInstanceID = "PLAYER";
+                enemy.OwnerInstanceID = "ENEMY";
                 _controller.Initialize(_camera, _presentations, "PLAYER");
                 _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[friendly].position));
                 InputSystem.QueueStateEvent(
@@ -741,7 +741,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                CombatUnit unit = AddHull(Vector3.zero);
+                SpaceCombatUnit unit = AddHull(Vector3.zero);
                 _controller.Initialize(_camera, _presentations);
                 Vector2 point = _camera.WorldToScreenPoint(Vector3.zero);
                 _controller.SelectAt(point);
@@ -780,8 +780,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_AdditiveClicks_SelectsTwoAndTogglesOneOff()
         {
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
             _controller.Initialize(_camera, _presentations);
             _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[left].position));
             _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[right].position), true);
@@ -798,8 +798,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectWithin_VisibleHullCenters_SelectsAllInsideRectangle()
         {
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
             _controller.Initialize(_camera, _presentations);
 
             _controller.SelectWithin(_camera.pixelRect);
@@ -810,10 +810,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectControlGroup_AssignedFriendlySelection_RestoresItsLiveMembers()
         {
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-            left.Data.OwnerInstanceID = "PLAYER";
-            right.Data.OwnerInstanceID = "PLAYER";
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            left.OwnerInstanceID = "PLAYER";
+            right.OwnerInstanceID = "PLAYER";
             _controller.Initialize(_camera, _presentations, "PLAYER");
             _controller.SelectAt(_camera.WorldToScreenPoint(_presentations[left].position));
             _controller.AssignControlGroup(0);
@@ -827,8 +827,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void AssignControlGroup_EnemyInspection_DoesNotCreateCommandGroup()
         {
-            CombatUnit enemy = AddHull(Vector3.zero);
-            enemy.Data.OwnerInstanceID = "ENEMY";
+            SpaceCombatUnit enemy = AddHull(Vector3.zero);
+            enemy.OwnerInstanceID = "ENEMY";
             _controller.Initialize(_camera, _presentations, "PLAYER");
             _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
 
@@ -880,13 +880,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         Depth = 3f,
                     },
                 };
-                CombatUnit carrier = battle.AddCombatants(carrierSource)[0];
-                CombatUnit fighter = battle.AddCombatants(fighterSource)[0];
+                SpaceCombatUnit carrier = battle.AddCombatants(carrierSource)[0];
+                SpaceCombatUnit fighter = battle.AddCombatants(fighterSource)[0];
                 AddPresentation(fighter, new Vector3(-10f, 0f, 0f));
                 AddPresentation(carrier, new Vector3(10f, 0f, 0f));
                 TacticalCarrierOperations operations = new TacticalCarrierOperations(
                     battle,
-                    new Dictionary<CombatUnit, System.Numerics.Vector3[][]>
+                    new Dictionary<SpaceCombatUnit, System.Numerics.Vector3[][]>
                     {
                         [carrier] = new[]
                         {
@@ -912,7 +912,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         new Bounds(Vector3.zero, Vector3.one * 2000f),
                         Vector3.zero
                     );
-                CombatUnit target = null;
+                SpaceCombatUnit target = null;
                 int moves = 0;
                 _controller.DockAtRequested += value => target = value;
                 _controller.MoveRequested += _ => moves++;
@@ -942,7 +942,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void SelectAt_RetreatedHull_DoesNotSelectHull()
         {
-            CombatUnit combatant = AddHull(Vector3.zero);
+            SpaceCombatUnit combatant = AddHull(Vector3.zero);
             combatant.HasRetreated = true;
             _controller.Initialize(_camera, _presentations);
 
@@ -961,8 +961,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
             _controller.Initialize(_camera, _presentations);
             _controller.SelectWithin(_camera.pixelRect);
             Assert.IsNotNull(_instance);
@@ -1003,12 +1003,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-            CombatUnit other = AddHull(new Vector3(0f, 10f, 0f));
-            left.Data.TypeID = "CRUISER";
-            right.Data.TypeID = "CRUISER";
-            other.Data.TypeID = "DESTROYER";
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            SpaceCombatUnit other = AddHull(new Vector3(0f, 10f, 0f));
+            left.TypeID = "CRUISER";
+            right.TypeID = "CRUISER";
+            other.TypeID = "DESTROYER";
             _controller.Initialize(_camera, _presentations);
             _controller.SelectWithin(_camera.pixelRect);
             TacticalUnitCardView group = null;
@@ -1037,15 +1037,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
-            CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
-            left.Data.TypeID = "CRUISER";
-            right.Data.TypeID = "CRUISER";
+            SpaceCombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+            SpaceCombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+            left.TypeID = "CRUISER";
+            right.TypeID = "CRUISER";
             _controller.Initialize(_camera, _presentations);
             _controller.SelectWithin(_camera.pixelRect);
             TacticalUnitCardView group = _instance.GetComponentInChildren<TacticalUnitCardView>();
             Assert.AreEqual(2, group.Combatants.Count);
-            CombatUnit secondMember = group.Combatants[1];
+            SpaceCombatUnit secondMember = group.Combatants[1];
 
             group.transform.Find("Member2").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
 
@@ -1064,7 +1064,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit unit = AddHull(new Vector3(30f, 5f, 20f));
+            SpaceCombatUnit unit = AddHull(new Vector3(30f, 5f, 20f));
             TacticalViewCameraController cameraInput =
                 _camera.GetComponent<TacticalViewCameraController>();
             cameraInput.Configure(
@@ -1109,7 +1109,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             PreparePlayMode();
             yield return new EnterPlayMode();
             SetUp();
-            CombatUnit unit = AddHull(Vector3.zero);
+            SpaceCombatUnit unit = AddHull(Vector3.zero);
             TacticalViewCameraController cameraInput =
                 _camera.GetComponent<TacticalViewCameraController>();
             cameraInput.Configure(
@@ -1206,9 +1206,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// </summary>
         /// <param name="position">The hull position.</param>
         /// <returns>The combatant paired with the new root.</returns>
-        private CombatUnit AddHull(Vector3 position)
+        private SpaceCombatUnit AddHull(Vector3 position)
         {
-            CombatUnit combatant = CombatUnit.Create(
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(
                 new CapitalShip
                 {
                     DisplayName = "Test Cruiser",
@@ -1232,7 +1232,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// </summary>
         /// <param name="combatant">The battle unit to present.</param>
         /// <param name="position">The hull position.</param>
-        private void AddPresentation(CombatUnit combatant, Vector3 position)
+        private void AddPresentation(SpaceCombatUnit combatant, Vector3 position)
         {
             GameObject root = new GameObject("Test Hull");
             root.transform.SetParent(_instance.transform, false);

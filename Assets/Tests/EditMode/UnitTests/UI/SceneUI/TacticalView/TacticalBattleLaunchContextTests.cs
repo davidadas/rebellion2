@@ -54,8 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     expected,
                     participant
                         .GetCombatants()
-                        .Select(combatant => combatant.Data)
-                        .Where(ship => ship.Kind == CombatUnitKind.CapitalShip)
+                        .Where(ship => ship.Kind == SpaceCombatUnitKind.CapitalShip)
                         .Select(ship => ship.TypeID)
                 );
             }
@@ -74,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .SelectMany(participant => participant.GetCombatants())
                     .Any(combatant =>
                         TestContent.Data.CapitalShips.Any(template =>
-                            template.CanDestroyPlanets && template.TypeID == combatant.Data.TypeID
+                            template.CanDestroyPlanets && template.TypeID == combatant.TypeID
                         )
                     )
             );
@@ -97,24 +96,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                         && !string.IsNullOrWhiteSpace(ship.ModelPath)
                     )
                     .ToArray();
-                CombatUnit[] squadrons = participant
+                SpaceCombatUnit[] squadrons = participant
                     .GetCombatants()
-                    .Where(combatant => combatant.Data.Kind == CombatUnitKind.Starfighter)
+                    .Where(combatant => combatant.Kind == SpaceCombatUnitKind.Starfighter)
                     .ToArray();
                 CollectionAssert.AreEquivalent(
                     expected.Select(ship => ship.TypeID),
-                    squadrons.Select(combatant => combatant.Data.TypeID).Distinct()
+                    squadrons.Select(combatant => combatant.TypeID).Distinct()
                 );
                 foreach (Starfighter template in expected)
                 {
-                    CombatUnit[] copies = squadrons
-                        .Where(combatant => combatant.Data.TypeID == template.TypeID)
+                    SpaceCombatUnit[] copies = squadrons
+                        .Where(combatant => combatant.TypeID == template.TypeID)
                         .ToArray();
                     Assert.That(
                         copies,
-                        Has.All.Matches<CombatUnit>(fighter =>
+                        Has.All.Matches<SpaceCombatUnit>(fighter =>
                             fighter.Condition.CurrentSquadronSize == template.CurrentSquadronSize
-                            && fighter.Data.MaxSquadronSize == template.MaxSquadronSize
+                            && fighter.MaxSquadronSize == template.MaxSquadronSize
                         )
                     );
                 }
@@ -131,10 +130,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 BattleParticipant participant in TacticalBattleLaunchContext.ActiveBattle.GetParticipants()
             )
             {
-                CombatUnit[] combatants = participant.GetCombatants().ToArray();
+                SpaceCombatUnit[] combatants = participant.GetCombatants().ToArray();
                 foreach (
-                    CombatUnit carrier in combatants.Where(combatant =>
-                        combatant.Data is { Kind: CombatUnitKind.CapitalShip } ship
+                    SpaceCombatUnit carrier in combatants.Where(combatant =>
+                        combatant is { Kind: SpaceCombatUnitKind.CapitalShip } ship
                         && ship.GetStarfighterCapacity() > 0
                         && ship.GetComponents()
                             .OfType<Rebellion.Game.ShipComponents.StarfighterBay>()
@@ -142,10 +141,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     )
                 )
                 {
-                    CombatUnitData ship = carrier.Data;
+                    SpaceCombatUnit ship = carrier;
                     Assert.That(
                         combatants.Count(combatant =>
-                            combatant.Data.Kind == CombatUnitKind.Starfighter
+                            combatant.Kind == SpaceCombatUnitKind.Starfighter
                             && combatant.Flight.CarrierSourceUnitInstanceID
                                 == carrier.SourceUnitInstanceID
                         ),
@@ -178,7 +177,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     participant
                         .GetCombatants()
                         .Count(combatant =>
-                            combatant.Data.TypeID == template.TypeID
+                            combatant.TypeID == template.TypeID
                             && string.IsNullOrWhiteSpace(
                                 combatant.Flight.CarrierSourceUnitInstanceID
                             )
@@ -198,7 +197,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             BattleParticipant participant = TacticalBattleLaunchContext
                 .ActiveBattle.GetParticipants()
                 .First();
-            foreach (CombatUnit fighter in participant.GetCombatants())
+            foreach (SpaceCombatUnit fighter in participant.GetCombatants())
             {
                 if (string.IsNullOrWhiteSpace(fighter.Flight.CarrierSourceUnitInstanceID))
                     continue;
@@ -207,7 +206,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     participant
                         .GetCombatants()
                         .Any(unit =>
-                            unit.Data.Kind == CombatUnitKind.CapitalShip
+                            unit.Kind == SpaceCombatUnitKind.CapitalShip
                             && unit.SourceUnitInstanceID
                                 == fighter.Flight.CarrierSourceUnitInstanceID
                         ),
@@ -225,7 +224,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .Skip(1)
             )
             {
-                CombatUnit[] carried = participant
+                SpaceCombatUnit[] carried = participant
                     .GetCombatants()
                     .Where(combatant =>
                         !string.IsNullOrWhiteSpace(combatant.Flight.CarrierSourceUnitInstanceID)
@@ -234,7 +233,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Assert.That(carried, Is.Not.Empty);
                 Assert.That(
                     carried,
-                    Has.All.Matches<CombatUnit>(combatant =>
+                    Has.All.Matches<SpaceCombatUnit>(combatant =>
                         combatant.Flight.Phase == FighterFlightState.Deployed
                     )
                 );
@@ -256,7 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 BattleParticipant participant = battle.GetParticipants()[index];
                 BattleMapDeploymentRegion region = map.GetDeploymentRegions()[index];
                 Assert.AreEqual(region.ParticipantSlotID, participant.BattleMapSlotID);
-                foreach (CombatUnit combatant in participant.GetCombatants())
+                foreach (SpaceCombatUnit combatant in participant.GetCombatants())
                 {
                     Assert.AreEqual(0f, combatant.Position.X);
                     Assert.AreEqual(0f, combatant.Position.Y);
@@ -281,7 +280,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     .ToArray();
                 Officer[] actual = participant
                     .GetCombatants()
-                    .Where(combatant => combatant.Data.Kind == CombatUnitKind.CapitalShip)
+                    .Where(combatant => combatant.Kind == SpaceCombatUnitKind.CapitalShip)
                     .SelectMany(combatant => combatant.Officers)
                     .ToArray();
 

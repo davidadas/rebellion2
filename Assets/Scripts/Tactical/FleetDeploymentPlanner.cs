@@ -119,7 +119,7 @@ namespace Rebellion.Tactical
             Vector3 right = Vector3.Transform(Vector3.UnitX, rotation);
             Vector3 up = Vector3.Transform(Vector3.UnitY, rotation);
             Vector3 forward = Vector3.Transform(Vector3.UnitZ, rotation);
-            // CombatUnit stores a heading, not roll. Match the renderer's heading-based orientation.
+            // SpaceCombatUnit stores a heading, not roll. Match the renderer's heading-based orientation.
             Vector3 localSize = new Vector3(
                 Vector3.Dot(Vector3.Abs(right), worldSize),
                 Vector3.Dot(Vector3.Abs(up), worldSize),
@@ -136,12 +136,13 @@ namespace Rebellion.Tactical
             Dictionary<string, Group> squadrons = new Dictionary<string, Group>(
                 StringComparer.Ordinal
             );
-            foreach (CombatUnit combatant in participant.GetCombatants())
+            foreach (SpaceCombatUnit combatant in participant.GetCombatants())
             {
-                CombatUnitData unit = combatant?.Data;
+                SpaceCombatUnit unit = combatant;
                 if (
                     unit == null
-                    || unit.Kind is not (CombatUnitKind.CapitalShip or CombatUnitKind.Starfighter)
+                    || unit.Kind
+                        is not (SpaceCombatUnitKind.CapitalShip or SpaceCombatUnitKind.Starfighter)
                 )
                     throw new ArgumentException(
                         "Deployment requires capital ships or fighters.",
@@ -165,7 +166,7 @@ namespace Rebellion.Tactical
                     _maximumClearance
                 );
                 Ship ship = new Ship(combatant, size + new Vector3(clearance * 2f));
-                if (unit.Kind == CombatUnitKind.CapitalShip)
+                if (unit.Kind == SpaceCombatUnitKind.CapitalShip)
                     capitals.Add(new Group(combatant.InstanceID, new List<Ship> { ship }));
                 else
                 {
@@ -648,7 +649,7 @@ namespace Rebellion.Tactical
 
         private readonly struct Ship
         {
-            internal readonly CombatUnit Combatant;
+            internal readonly SpaceCombatUnit Combatant;
             internal readonly Vector3 Size;
 
             /// <summary>
@@ -656,7 +657,7 @@ namespace Rebellion.Tactical
             /// </summary>
             /// <param name="combatant">The persistent combatant.</param>
             /// <param name="size">The hull dimensions with clearance.</param>
-            internal Ship(CombatUnit combatant, Vector3 size)
+            internal Ship(SpaceCombatUnit combatant, Vector3 size)
             {
                 Combatant = combatant;
                 Size = size;
@@ -733,7 +734,7 @@ namespace Rebellion.Tactical
 
         private readonly struct Placement
         {
-            internal readonly CombatUnit Combatant;
+            internal readonly SpaceCombatUnit Combatant;
             internal readonly Vector3 Position;
             internal readonly Vector3 Right;
             internal readonly Vector3 Up;
@@ -751,7 +752,7 @@ namespace Rebellion.Tactical
             /// <param name="forward">The world heading.</param>
             /// <param name="extent">The occupied local extent.</param>
             internal Placement(
-                CombatUnit combatant,
+                SpaceCombatUnit combatant,
                 Vector3 position,
                 Vector3 right,
                 Vector3 up,
