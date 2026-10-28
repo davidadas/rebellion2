@@ -275,6 +275,16 @@ internal static class StrategyBombardmentMenuBuilder
 public static class StrategyContextMenuAvailability
 {
     /// <summary>
+    /// Determines whether a building can change its delivery destination.
+    /// </summary>
+    /// <param name="building">The building to inspect.</param>
+    /// <returns><see langword="true"/> when the building is still under construction.</returns>
+    public static bool CanRetargetBuilding(Building building)
+    {
+        return building?.ManufacturingStatus == ManufacturingStatus.Building;
+    }
+
+    /// <summary>
     /// Determines whether every selected mission is owned by the player and actively working.
     /// </summary>
     /// <param name="items">The selected mission scene nodes.</param>

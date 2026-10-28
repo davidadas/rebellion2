@@ -237,6 +237,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsEmpty(data.ManufacturingCards);
             Assert.AreEqual(3, data.InventoryItems.Count);
             Assert.IsTrue(data.InventoryItems[0].Selected);
+            Assert.IsFalse(data.InventoryItems[0].CanDrag);
             Assert.IsFalse(data.InventoryItems[1].Selected);
             Assert.IsFalse(data.InventoryItems[2].Selected);
             Assert.IsNotNull(data.InventoryItems[0].Texture);
@@ -299,6 +300,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
 
             Assert.AreSame(_constructionTexture, data.InventoryItems[0].Texture);
+            Assert.IsTrue(data.InventoryItems[0].CanDrag);
         }
 
         [Test]

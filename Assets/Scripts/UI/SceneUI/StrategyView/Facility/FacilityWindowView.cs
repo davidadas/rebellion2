@@ -92,6 +92,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     private readonly List<UnityAction> tabButtonListeners = new List<UnityAction>();
 
     private bool eventsBound;
+    private int currentWindowX;
+    private int currentWindowY;
     private int inventoryColumnCount;
     private int inventoryColumnStride;
     private RectInt inventoryItemTemplateRect;
@@ -110,6 +112,16 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     /// Occurs when the inventory item is double-clicked.
     /// </summary>
     public event Action<FacilityWindowView, int, PointerEventData> InventoryItemDoubleClicked;
+
+    /// <summary>
+    /// Occurs while an inventory-item drag advances.
+    /// </summary>
+    public event Action<FacilityWindowView, PointerEventData> InventoryItemDragged;
+
+    /// <summary>
+    /// Occurs when an inventory-item drag ends.
+    /// </summary>
+    public event Action<FacilityWindowView, PointerEventData> InventoryItemDragEnded;
 
     /// <summary>
     /// Occurs when the inventory item is pressed.
@@ -216,6 +228,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        currentWindowX = data.X;
+        currentWindowY = data.Y;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetInteractiveImageTexture(titleImage, data.TitleTexture);
         UILayout.SetTextContent(captionTextField, data.Caption);
@@ -274,6 +288,73 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
 
         index = -1;
         return false;
+    }
+
+    /// <summary>
+    /// Reports whether one inventory item's building image contains a pointer press.
+    /// </summary>
+    /// <param name="itemIndex">The rendered inventory index.</param>
+    /// <param name="eventData">The pointer event.</param>
+    /// <returns>True when the pointer lies inside a draggable building image.</returns>
+    public bool InventoryItemContainsDragSource(int itemIndex, PointerEventData eventData)
+    {
+        return itemIndex >= 0
+            && itemIndex < inventoryItemViews.Count
+            && inventoryItemViews[itemIndex].ContainsDragSource(eventData);
+    }
+
+    /// <summary>
+    /// Creates a drag preview from selected inventory building images.
+    /// </summary>
+    /// <param name="selectedItemIndexes">The selected inventory indexes.</param>
+    /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
+    /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
+    /// <param name="preview">Receives the drag preview.</param>
+    /// <returns>True when every selected item supplies a drawable image.</returns>
+    public bool TryCreateDragPreview(
+        IReadOnlyCollection<int> selectedItemIndexes,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        if (selectedItemIndexes == null || selectedItemIndexes.Count == 0)
+            return false;
+
+        RectInt inventoryRect = UILayout.GetSourceRect(inventoryRoot);
+        List<int> orderedIndexes = new List<int>(selectedItemIndexes);
+        orderedIndexes.Sort();
+        List<DragPreviewImage> images = new List<DragPreviewImage>(orderedIndexes.Count);
+        foreach (int itemIndex in orderedIndexes)
+        {
+            if (
+                itemIndex < 0
+                || itemIndex >= inventoryItemViews.Count
+                || !inventoryItemViews[itemIndex]
+                    .TryGetDragImage(out Texture texture, out RectTransform imageTransform)
+            )
+                return false;
+
+            RectInt itemRect = UILayout.GetSourceRect(
+                inventoryItemViews[itemIndex].transform as RectTransform
+            );
+            RectInt imageRect = UILayout.GetSourceRect(imageTransform);
+            images.Add(
+                new DragPreviewImage(
+                    texture,
+                    new RectInt(
+                        currentWindowX + inventoryRect.x + itemRect.x + imageRect.x,
+                        currentWindowY + inventoryRect.y + itemRect.y + imageRect.y,
+                        imageRect.width,
+                        imageRect.height
+                    )
+                )
+            );
+        }
+
+        preview = UILayout.CreateDragPreview(images, sourceX, sourceY);
+        return preview != null;
     }
 
     /// <summary>
@@ -360,6 +441,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
             item.Released -= HandleInventoryItemReleased;
             item.Dropped -= HandleInventoryItemReleased;
             item.DoubleClicked -= HandleInventoryItemDoubleClicked;
+            item.Dragged -= HandleInventoryItemDragged;
+            item.DragEnded -= HandleInventoryItemDragEnded;
         }
 
         eventsBound = false;
@@ -433,6 +516,34 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     {
         if (item != null && eventData != null)
             InventoryItemDoubleClicked?.Invoke(this, item.Index, eventData);
+    }
+
+    /// <summary>
+    /// Forwards inventory-item drag movement.
+    /// </summary>
+    /// <param name="item">The dragged inventory item.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleInventoryItemDragged(
+        FacilityInventoryItemView item,
+        PointerEventData eventData
+    )
+    {
+        if (item != null && eventData != null)
+            InventoryItemDragged?.Invoke(this, eventData);
+    }
+
+    /// <summary>
+    /// Forwards the end of an inventory-item drag.
+    /// </summary>
+    /// <param name="item">The dragged inventory item.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleInventoryItemDragEnded(
+        FacilityInventoryItemView item,
+        PointerEventData eventData
+    )
+    {
+        if (item != null && eventData != null)
+            InventoryItemDragEnded?.Invoke(this, eventData);
     }
 
     /// <summary>
@@ -607,6 +718,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
             view.Released += HandleInventoryItemReleased;
             view.Dropped += HandleInventoryItemReleased;
             view.DoubleClicked += HandleInventoryItemDoubleClicked;
+            view.Dragged += HandleInventoryItemDragged;
+            view.DragEnded += HandleInventoryItemDragEnded;
             inventoryItemViews.Add(view);
         }
 
