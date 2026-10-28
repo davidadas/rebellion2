@@ -25,9 +25,6 @@ namespace Rebellion.Gameplay.Scripting
         {
             switch (action)
             {
-                case ReserveOfficerAction definition:
-                    Execute(definition, context);
-                    break;
                 case SetEventVariableAction definition:
                     Execute(definition, context);
                     break;
@@ -420,30 +417,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Emits a current-tick AI reservation without changing player movement or mission rules.
-        /// </summary>
-        /// <param name="action">The officer reservation to request.</param>
-        /// <param name="context">The current script activation.</param>
-        private static void Execute(ReserveOfficerAction action, GameActionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
-                action.OfficerInstanceID,
-                includeDisabled: true
-            );
-            if (officer == null || string.IsNullOrWhiteSpace(officer.OwnerInstanceID))
-                throw new InvalidOperationException("ReserveOfficer requires an owned officer.");
-            context.Record(
-                new OfficerReservedForAIResult
-                {
-                    OfficerInstanceID = officer.InstanceID,
-                    FactionInstanceID = officer.OwnerInstanceID,
-                    Tick = context.Game.CurrentTick,
-                }
-            );
-        }
-
-        /// <summary>
-        /// Grants one script-owned trait to every selected officer.
+        /// Grants one event-owned trait to every selected officer.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -455,8 +429,7 @@ namespace Rebellion.Gameplay.Scripting
                     nameof(ApplyOfficerTraitAction),
                     action.OfficerInstanceID,
                     action.Selectors,
-                    context,
-                    allowEmptySelection: true
+                    context
                 )
             )
             {
@@ -465,7 +438,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Removes one script-owned trait from every selected officer.
+        /// Removes one event-owned trait from every selected officer.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -477,8 +450,7 @@ namespace Rebellion.Gameplay.Scripting
                     nameof(RemoveOfficerTraitAction),
                     action.OfficerInstanceID,
                     action.Selectors,
-                    context,
-                    allowEmptySelection: true
+                    context
                 )
             )
             {
@@ -487,11 +459,11 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Returns the active script identifier that owns a dynamic trait assignment.
+        /// Returns the active event identifier that owns a dynamic trait assignment.
         /// </summary>
         /// <param name="context">The current action execution context.</param>
         /// <param name="actionName">The action name used in diagnostics.</param>
-        /// <returns>The stable script source identifier.</returns>
+        /// <returns>The stable event source identifier.</returns>
         private static string RequireTraitSource(GameActionContext context, string actionName)
         {
             string sourceID = context.Evaluation?.SourceID;
@@ -526,14 +498,12 @@ namespace Rebellion.Gameplay.Scripting
         /// <param name="officerInstanceID">The optional explicitly named officer.</param>
         /// <param name="selectors">The additional authored selectors.</param>
         /// <param name="context">The current action execution context.</param>
-        /// <param name="allowEmptySelection">Whether an authored selector may match no officers.</param>
         /// <returns>The distinct resolved officers.</returns>
         private static List<Officer> ResolveOfficers(
             string actionName,
             string officerInstanceID,
             IEnumerable<GameSelector> selectors,
-            GameActionContext context,
-            bool allowEmptySelection = false
+            GameActionContext context
         )
         {
             GameRoot game = context.Game;
@@ -556,7 +526,7 @@ namespace Rebellion.Gameplay.Scripting
             }
 
             List<ISceneNode> nodes = selected.Distinct().ToList();
-            if (nodes.Count == 0 && !(allowEmptySelection && selectors?.Any() == true))
+            if (nodes.Count == 0)
                 throw new InvalidOperationException(
                     $"{actionName} requires an officer or a matching selector."
                 );

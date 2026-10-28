@@ -167,16 +167,6 @@ namespace Rebellion.Game.Scripting
 
     #region OfficerActions
     /// <summary>
-    /// Requests that AI leave one officer unassigned for the current tick.
-    /// </summary>
-    [PersistableObject(Name = "ReserveOfficer")]
-    public sealed class ReserveOfficerAction : GameAction
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-    }
-
-    /// <summary>
     /// Sets one officer's captivity state and emits the standard state-change result.
     /// </summary>
     [PersistableObject(Name = "SetCaptureStatus")]
@@ -248,7 +238,7 @@ namespace Rebellion.Game.Scripting
     }
 
     /// <summary>
-    /// Removes one script-owned trait from explicitly named or selected officers.
+    /// Removes one event-owned trait from explicitly named or selected officers.
     /// </summary>
     [PersistableObject(Name = "RemoveOfficerTrait")]
     public sealed class RemoveOfficerTraitAction : GameAction

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
@@ -14,8 +13,6 @@ namespace Rebellion.Gameplay
         private readonly List<Subscription> _subscribers = new();
         private readonly List<Subscription> _observers = new();
         private readonly List<GameResult> _pendingResults = new();
-        private readonly ConditionalWeakTable<GameResult, HashSet<object>> _reactionOrigins = new();
-        private HashSet<object> _currentReactionOrigins;
         private bool _isPublishing;
 
         /// <summary>
@@ -70,10 +67,7 @@ namespace Rebellion.Gameplay
             if (observer == null)
                 throw new ArgumentNullException(nameof(observer));
 
-            Subscription subscription = new Subscription(
-                results => Deliver(observer, results),
-                _observers
-            );
+            Subscription subscription = new Subscription(observer, _observers);
             _observers.Add(subscription);
             return subscription;
         }
@@ -99,7 +93,6 @@ namespace Rebellion.Gameplay
         {
             List<GameResult> incomingResults =
                 results?.Where(result => result != null).ToList() ?? new List<GameResult>();
-            TrackReactionResults(incomingResults, _currentReactionOrigins);
             _pendingResults.AddRange(incomingResults);
             if (_isPublishing)
                 return new List<GameResult>();
@@ -135,92 +128,13 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Executes a reaction source once within its own causal chain without limiting independent results.
-        /// </summary>
-        /// <param name="source">The identity of the reaction operation.</param>
-        /// <param name="cause">The triggering result, or null for an independently scheduled operation.</param>
-        /// <param name="reaction">The operation producing follow-up facts.</param>
-        /// <returns>The resulting facts, or an empty list for a self-caused reaction.</returns>
-        internal List<GameResult> RunReaction(
-            object source,
-            GameResult cause,
-            Func<List<GameResult>> reaction
-        )
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-            if (reaction == null)
-                throw new ArgumentNullException(nameof(reaction));
-            HashSet<object> inherited = null;
-            if (cause != null)
-                _reactionOrigins.TryGetValue(cause, out inherited);
-            if (inherited?.Contains(source) == true)
-                return new List<GameResult>();
-            HashSet<object> previous = _currentReactionOrigins;
-            _currentReactionOrigins = inherited == null ? new() : new(inherited);
-            _currentReactionOrigins.Add(source);
-            try
-            {
-                List<GameResult> results = reaction() ?? new List<GameResult>();
-                TrackReactionResults(results, _currentReactionOrigins);
-                return results;
-            }
-            finally
-            {
-                _currentReactionOrigins = previous;
-            }
-        }
-
-        /// <summary>
-        /// Preserves the origins of a callback's input wave during synchronous follow-up publication.
-        /// </summary>
-        /// <typeparam name="T">The delivered result type.</typeparam>
-        /// <param name="callback">The existing subscriber or observer.</param>
-        /// <param name="results">The exact typed input batch delivered to that callback.</param>
-        private void Deliver<T>(Action<IReadOnlyList<T>> callback, IReadOnlyList<T> results)
-            where T : GameResult
-        {
-            HashSet<object> previous = _currentReactionOrigins;
-            _currentReactionOrigins = null;
-            foreach (T result in results)
-            {
-                if (!_reactionOrigins.TryGetValue(result, out HashSet<object> origins))
-                    continue;
-                _currentReactionOrigins ??= new();
-                _currentReactionOrigins.UnionWith(origins);
-            }
-            try
-            {
-                callback(results);
-            }
-            finally
-            {
-                _currentReactionOrigins = previous;
-            }
-        }
-
-        /// <summary>
-        /// Associates new facts with their reaction origins while retaining more precise existing attribution.
-        /// </summary>
-        /// <param name="results">The facts returned or published by a reaction.</param>
-        /// <param name="origins">The reaction sources already present in the causal chain.</param>
-        private void TrackReactionResults(IEnumerable<GameResult> results, HashSet<object> origins)
-        {
-            if (origins == null)
-                return;
-            foreach (GameResult result in results)
-                if (result != null && !_reactionOrigins.TryGetValue(result, out _))
-                    _reactionOrigins.Add(result, new HashSet<object>(origins));
-        }
-
-        /// <summary>
         /// Registers a type-filtered callback in the selected delivery phase.
         /// </summary>
         /// <typeparam name="T">The result type accepted by the callback.</typeparam>
         /// <param name="callback">The callback invoked for nonempty matching batches.</param>
         /// <param name="subscriptions">The ordered reaction or observer subscriptions.</param>
         /// <returns>The disposable registration.</returns>
-        private IDisposable Register<T>(
+        private static IDisposable Register<T>(
             Action<IReadOnlyList<T>> callback,
             List<Subscription> subscriptions
         )
@@ -234,7 +148,7 @@ namespace Rebellion.Gameplay
                 {
                     List<T> matchingResults = results.OfType<T>().ToList();
                     if (matchingResults.Count > 0)
-                        Deliver(callback, matchingResults);
+                        callback(matchingResults);
                 },
                 subscriptions
             );

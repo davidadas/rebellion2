@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -6,12 +7,10 @@ using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.AI.Selectors;
-using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -65,80 +64,49 @@ namespace Rebellion.Tests.AI.Proposals
 
         [TestCase(false)]
         [TestCase(true)]
-        public void CanSelect_ReservationAddedForParticipant_ReturnsFalse(bool reserveDecoy)
+        public void CanSelect_HeldMainParticipantOrDecoy_RejectsMission(bool holdDecoy)
         {
-            (GameRoot game, Planet _, Planet target, Officer main, FogOfWarCommands _) =
-                MissionSceneBuilder.Build();
+            var (game, _, target, main, _) = MissionSceneBuilder.Build();
             Faction owner = game.GetFactions()
-                .Find(faction => faction.InstanceID == main.OwnerInstanceID);
+                .Single(faction => faction.InstanceID == main.OwnerInstanceID);
             Officer decoy = EntityFactory.CreateOfficer("decoy", owner.InstanceID);
             game.AttachNode(decoy, main.GetParent());
             target.AddVisitor(owner.InstanceID);
-            HashSet<string> reserved = new();
-            AITurnContext context = CreateContext(game, owner, reserved);
             AIMissionProposal proposal = new(
                 new[] { main },
                 MissionTypeIDs.Espionage,
                 target,
                 decoyParticipants: new[] { decoy }
             );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, owner);
             Assert.IsTrue(proposal.CanSelect(context));
-            reserved.Add(reserveDecoy ? decoy.InstanceID : main.InstanceID);
-
-            bool canSelect = proposal.CanSelect(context);
-
-            Assert.IsFalse(canSelect);
-        }
-
-        [Test]
-        public void CanExecute_ReservationAddedAfterSelection_ReturnsFalse()
-        {
-            (GameRoot game, Planet _, Planet target, Officer officer, FogOfWarCommands _) =
-                MissionSceneBuilder.Build();
-            Faction owner = game.GetFactions()
-                .Find(faction => faction.InstanceID == officer.OwnerInstanceID);
-            target.AddVisitor(owner.InstanceID);
-            HashSet<string> reserved = new();
-            AITurnContext context = CreateContext(game, owner, reserved);
-            AIMissionProposal proposal = new(new[] { officer }, MissionTypeIDs.Espionage, target);
             Assert.IsTrue(proposal.CanExecute(context));
-            reserved.Add(officer.InstanceID);
-
-            bool canExecute = proposal.CanExecute(context);
-
-            Assert.IsFalse(canExecute);
-        }
-
-        /// <summary>
-        /// Creates real mission services with a live synthetic reservation set.
-        /// </summary>
-        /// <param name="game">The fixture graph.</param>
-        /// <param name="owner">The faction considering the mission.</param>
-        /// <param name="reserved">The current AI reservation identities.</param>
-        /// <returns>The AI context whose proposals recheck reservations.</returns>
-        private static AITurnContext CreateContext(
-            GameRoot game,
-            Faction owner,
-            HashSet<string> reserved
-        )
-        {
-            AITurnContext services = AITestSceneBuilder.CreateContext(game, owner);
-            AIAssessment assessment = new(game, owner, services.FactionView, reserved);
-            return new AITurnContext(
+            Officer held = holdDecoy ? decoy : main;
+            AIAssessment assessment = new(
                 game,
                 owner,
-                services.Missions,
-                services.Movement,
-                services.Manufacturing,
-                services.Bombardment,
-                services.PlanetaryAssault,
-                services.Random,
+                game.Galaxy,
+                new Dictionary<string, OfficerAIBehavior>
+                {
+                    [held.InstanceID] = new OfficerAIBehavior(),
+                }
+            );
+            AITurnContext heldContext = new(
+                game,
+                owner,
+                context.Missions,
+                context.Movement,
+                context.Manufacturing,
+                context.Bombardment,
+                context.PlanetaryAssault,
+                context.Random,
                 assessment,
                 new AIStrategicPlan(game, assessment),
-                services.FactionView,
-                services.Maintenance,
-                services.Headquarters
+                context.FactionView
             );
+
+            Assert.IsFalse(proposal.CanSelect(heldContext));
+            Assert.IsFalse(proposal.CanExecute(heldContext));
         }
     }
 }

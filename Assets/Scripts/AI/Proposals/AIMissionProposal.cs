@@ -110,7 +110,7 @@ namespace Rebellion.AI.Proposals
             return IsStillValid()
                 && !Participants
                     .OfType<Officer>()
-                    .Any(officer => context?.Assessment?.IsOfficerReserved(officer) == true);
+                    .Any(officer => context?.Assessment?.IsOfficerHoldingPosition(officer) == true);
         }
 
         /// <summary>

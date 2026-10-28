@@ -26,8 +26,6 @@ public static class ContentPackLoader
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
     private const string _generationConfigSchemaRelativePath =
         "Application/Schemas/generation-config.xsd";
-    private const string _gameScriptingSchemaRelativePath =
-        "Application/Schemas/game-scripting.xsd";
     private const string _gameEventsSchemaRelativePath = "Application/Schemas/game-events.xsd";
     private const string _messageDefinitionsSchemaRelativePath =
         "Application/Schemas/message-definitions.xsd";
@@ -429,8 +427,7 @@ public static class ContentPackLoader
             : DeserializeGameData<OfficerTraitDefinition[]>(
                 fileResolver,
                 pack.OfficerTraitsPath,
-                "OfficerTraits",
-                RequireFile(fileResolver, _gameScriptingSchemaRelativePath)
+                "OfficerTraits"
             );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,

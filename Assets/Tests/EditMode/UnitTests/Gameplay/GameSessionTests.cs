@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -143,63 +142,6 @@ namespace Rebellion.Tests.Gameplay
                 Assert.IsFalse(snapshot.IsColonized);
                 Assert.IsNull(snapshot.OwnerInstanceID);
             }
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Tick_TraitReservation_IsPublishedBeforeFactionAssessment(bool reload)
-        {
-            Officer officer = EntityFactory.CreateOfficer("reserved-officer", _faction.InstanceID);
-            _game.AttachNode(officer, _planet);
-            _game
-                .GetPlayers()
-                .Add(
-                    new Player
-                    {
-                        PlayerID = "ai-player",
-                        FactionID = _faction.InstanceID,
-                        ControllerType = PlayerControllerType.AI,
-                    }
-                );
-            _game.Config.AI.TickInterval = 1;
-            OfficerTraitDefinition trait = new()
-            {
-                ID = "reservation",
-                Actions = new List<GameAction>
-                {
-                    new ReserveOfficerAction { OfficerInstanceID = officer.InstanceID },
-                },
-            };
-            _session.Dispose();
-            _session = new GameSession(
-                _game,
-                TestGameData.Create(_game.Config, officerTraits: new[] { trait })
-            );
-            if (reload)
-            {
-                _session.ReplaceGame(
-                    SerializationHelper.Deserialize<GameRoot>(SerializationHelper.Serialize(_game))
-                );
-                _game = _session.Game;
-            }
-            bool requestPublished = false;
-            bool assessedAfterReservation = false;
-            _session.Pipeline.ResultsResolved += results =>
-                requestPublished |= results
-                    .OfType<OfficerReservedForAIResult>()
-                    .Any(result =>
-                        result.OfficerInstanceID == officer.InstanceID
-                        && result.Tick == _game.CurrentTick
-                    );
-            _session.GetService<AIDirector>().FactionTurnStepStarted += (_, phase) =>
-            {
-                if (phase == "Assessment")
-                    assessedAfterReservation = requestPublished;
-            };
-
-            _session.Tick.ProcessTick();
-
-            Assert.IsTrue(assessedAfterReservation);
         }
 
         [Test]

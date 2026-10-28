@@ -505,11 +505,13 @@ public static class TestGameData
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="officerTraits">The officer trait definitions.</param>
+    /// <param name="officers">The content-authored officer templates.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
-        OfficerTraitDefinition[] officerTraits = null
+        OfficerTraitDefinition[] officerTraits = null,
+        Officer[] officers = null
     )
     {
         return new GameDataCatalog(
@@ -522,7 +524,7 @@ public static class TestGameData
             Array.Empty<Starfighter>(),
             Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
-            Array.Empty<Officer>(),
+            officers ?? Array.Empty<Officer>(),
             Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),

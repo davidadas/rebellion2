@@ -66,7 +66,6 @@ content under `Assets/Content/` was not embedded in the player.
 | `Game/Scripting/Events` | Event definitions, schedules, and saved activation history. |
 | `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
 | `Gameplay/Scripting/Events` | Event validation, activation, and campaign tick/result integration. |
-| `Gameplay/Scripting/Traits` | Trait-owned script validation and tick/result activation. |
 | `Gameplay` (root) | Session construction, service registration, tick scheduling, and result delivery. |
 
 Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.

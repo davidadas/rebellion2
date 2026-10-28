@@ -997,66 +997,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.Leadership));
         }
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public void Execute_TraitSelectorMatchesNoOfficers_PerformsNoChanges(bool apply)
-        {
-            GameAction action = CreateTraitAction(apply);
-            if (action is ApplyOfficerTraitAction grant)
-                grant.Selectors.Add(new SelectOfficers());
-            else
-                ((RemoveOfficerTraitAction)action).Selectors.Add(new SelectOfficers());
-            GameActionContext context = CreateTraitContext();
-
-            Assert.DoesNotThrow(() =>
-                new GameActionCommands(_game, _game.Random).Execute(action, context)
-            );
-            Assert.IsEmpty(context.Results);
-        }
-
-        [TestCase(true)]
-        [TestCase(false)]
-        public void Execute_TraitActionHasNoOfficerSource_RejectsAction(bool apply)
-        {
-            GameAction action = CreateTraitAction(apply);
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new GameActionCommands(_game, _game.Random).Execute(action, CreateTraitContext())
-            );
-        }
-
-        [TestCase(true)]
-        [TestCase(false)]
-        public void Execute_TraitActionNamesMissingOfficer_RejectsAction(bool apply)
-        {
-            GameAction action = CreateTraitAction(apply);
-            if (action is ApplyOfficerTraitAction grant)
-                grant.OfficerInstanceID = "missing";
-            else
-                ((RemoveOfficerTraitAction)action).OfficerInstanceID = "missing";
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new GameActionCommands(_game, _game.Random).Execute(action, CreateTraitContext())
-            );
-        }
-
-        /// <summary>
-        /// Creates either operation for the shared trait-targeting contract.
-        /// </summary>
-        /// <param name="apply">Whether to grant rather than remove the trait.</param>
-        /// <returns>The trait action with no authored targets.</returns>
-        private static GameAction CreateTraitAction(bool apply) =>
-            apply
-                ? new ApplyOfficerTraitAction { TraitID = "bonus" }
-                : new RemoveOfficerTraitAction { TraitID = "bonus" };
-
-        /// <summary>
-        /// Creates a generic script source for trait action execution.
-        /// </summary>
-        /// <returns>The current action context.</returns>
-        private GameActionContext CreateTraitContext() =>
-            new(_game, _game.Random, new GameEvaluationContext("trait/source"));
-
         /// <summary>
         /// Builds game.
         /// </summary>

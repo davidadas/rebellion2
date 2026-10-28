@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay.Scripting.Events;
-using Rebellion.Gameplay.Scripting.Traits;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 
@@ -37,7 +36,6 @@ namespace Rebellion.Gameplay
         private ITickProcessor _factionAutomation;
         private FogOfWarObserver _fogOfWarObserver;
         private ITickProcessor _gameEvents;
-        private ITickProcessor _officerTraits;
         private GameRoot _game;
         private ITickProcessor _jedi;
         private ITickProcessor _maintenance;
@@ -124,9 +122,6 @@ namespace Rebellion.Gameplay
             _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
             _missions = new MissionTickProcessor(services.GetService<MissionResolver>());
             _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
-            _officerTraits = new OfficerTraitTickProcessor(
-                services.GetService<OfficerTraitCommands>()
-            );
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();
             _planetaryControl = new PlanetaryControlTickProcessor(
@@ -276,7 +271,6 @@ namespace Rebellion.Gameplay
         {
             ProcessMissionPhase();
             ProcessResults(_gameEvents.ProcessTick(_game));
-            ProcessResults(_officerTraits.ProcessTick(_game));
             _naming.ProcessTick(_game);
             List<GameResult> aiResults = new List<GameResult>();
             foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))
