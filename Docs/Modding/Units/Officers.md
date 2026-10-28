@@ -87,6 +87,33 @@ shift by themselves.
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
 
+## AI behavior
+
+An officer entry may contain one optional `AIBehavior`. The supported type is `HoldPosition`.
+Its `Conditionals` use the existing [condition syntax](../Scripting/Conditionals.md).
+
+```xml
+<AIBehavior Type="HoldPosition">
+  <Conditionals>
+    <HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+    <IsOwned PlanetInstanceID="CORUSCANT" FactionInstanceID="FNEMP1"/>
+  </Conditionals>
+</AIBehavior>
+```
+
+When every condition matches, the AI excludes the officer from new mission assignments, including
+decoy roles and mission-related relocation. An empty condition list holds the officer unconditionally.
+Conditions are evaluated once when assessing the faction's next AI turn. If they stop matching, the
+next assessment makes the officer available for normal assignment again.
+
+The behavior uses the active content catalog, including after loading an existing campaign. Neither
+the configuration nor the evaluated hold decision is written into saved officers. Omitted behavior
+preserves normal AI assignment.
+
+This setting controls new AI assignments. It does not cancel existing missions, prevent player
+orders, block forced displacement, or stop a carrier containing the officer from moving.
+Gameplay bonuses continue to use their existing definitions and events.
+
 ## Voice sets
 
 Each voice category contains zero or more extensionless asset paths. The game may choose among
