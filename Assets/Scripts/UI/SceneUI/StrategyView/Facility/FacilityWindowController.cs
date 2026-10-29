@@ -6,9 +6,7 @@ using Rebellion.App;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
