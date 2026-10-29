@@ -849,12 +849,12 @@ namespace Rebellion.Tests.AI
         }
 
         [TestCase(0, ManufacturingStatus.Complete, false, false)]
-        [TestCase(1, ManufacturingStatus.Complete, false, false)]
+        [TestCase(1, ManufacturingStatus.Complete, false, true)]
         [TestCase(2, ManufacturingStatus.Complete, false, true)]
         [TestCase(2, ManufacturingStatus.Building, false, false)]
         [TestCase(2, ManufacturingStatus.Delivering, false, false)]
         [TestCase(2, ManufacturingStatus.Complete, true, false)]
-        public void CanFleetDepart_PoliticalRisk_RequiresStationaryCompletedGarrisonReserve(
+        public void CanFleetDepart_PoliticalRisk_RequiresStationaryCompletedStabilityGarrison(
             int count,
             ManufacturingStatus status,
             bool inTransit,

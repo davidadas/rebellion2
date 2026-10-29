@@ -200,7 +200,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithFacilityBatch_QueuesExactlyCalculatedQuantity()
+        public void Execute_WithMultiUnitFacilityDemand_QueuesOneBuilding()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
@@ -265,13 +265,13 @@ namespace Rebellion.Tests.AI.Proposals
             List<IManufacturable> queue = planet.GetManufacturingQueue()[
                 ManufacturingType.Building
             ];
-            Assert.AreEqual(3, proposal.GetMaintenanceCost());
-            Assert.AreEqual(3, queue.Count);
-            Assert.AreEqual(3, queue.OfType<Building>().Count());
+            Assert.AreEqual(1, proposal.GetMaintenanceCost());
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(1, queue.OfType<Building>().Count());
             Assert.IsTrue(
                 queue.All(item => item.GetManufacturingStatus() == ManufacturingStatus.Building)
             );
-            Assert.AreEqual(3, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
+            Assert.AreEqual(1, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
         }
 
         /// <summary>
@@ -550,7 +550,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithEmergencyShieldBatch_QueuesCompleteShieldNetwork()
+        public void Execute_WithEmergencyShieldDemand_QueuesOneShield()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -596,12 +596,12 @@ namespace Rebellion.Tests.AI.Proposals
             List<IManufacturable> queue = planet.GetManufacturingQueue()[
                 ManufacturingType.Building
             ];
-            Assert.AreEqual(2, queue.Count);
-            Assert.AreEqual(2, planet.GetTotalBuildingTypeCount(BuildingType.Defense));
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(1, planet.GetTotalBuildingTypeCount(BuildingType.Defense));
         }
 
         [Test]
-        public void Execute_WithGarrisonBatch_QueuesCalculatedRegimentCount()
+        public void Execute_WithMultiUnitGarrisonDemand_QueuesOneRegiment()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -643,8 +643,8 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Troop];
-            Assert.AreEqual(6, queue.Count);
-            Assert.AreEqual(6, planet.GetAllRegiments().Count);
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(1, planet.GetAllRegiments().Count);
         }
 
         [Test]
@@ -764,7 +764,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithDistributedStarfighterBatch_QueuesExactQuantity()
+        public void Execute_WithDistributedStarfighterDemand_QueuesOneSquadron()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -818,13 +818,13 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
-            Assert.AreEqual(3, queue.Count);
-            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
-            Assert.AreEqual(3, fleet.GetCurrentStarfighterCount());
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(1, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(1, fleet.GetCurrentStarfighterCount());
         }
 
         [Test]
-        public void Execute_WithPlanetaryStarfighterBatch_QueuesExactQuantityAtPlanet()
+        public void Execute_WithPlanetaryStarfighterDemand_QueuesOneSquadronAtPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -865,9 +865,9 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
-            Assert.AreEqual(3, queue.Count);
-            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
-            Assert.AreEqual(3, planet.GetStarfighterCount());
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(1, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(1, planet.GetStarfighterCount());
             Assert.IsTrue(planet.GetAllStarfighters().All(item => item.GetParent() == planet));
         }
 
@@ -1327,7 +1327,7 @@ namespace Rebellion.Tests.AI.Proposals
 
         [TestCase(true)]
         [TestCase(false)]
-        public void Execute_DefenseDemand_UsesSingleRoutineOrderOrEmergencyBatch(bool emergency)
+        public void Execute_DefenseDemand_QueuesOneShieldRegardlessOfUrgency(bool emergency)
         {
             var (game, faction, producer, destination, shield) = CreateDefenseConstructionScene();
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
@@ -1357,7 +1357,7 @@ namespace Rebellion.Tests.AI.Proposals
             List<IManufacturable> queue = producer.GetManufacturingQueue()[
                 ManufacturingType.Building
             ];
-            Assert.AreEqual(emergency ? 2 : 1, queue.Count);
+            Assert.AreEqual(1, queue.Count);
             Assert.IsTrue(queue.All(item => item.ManufacturingProgress == 0));
         }
 

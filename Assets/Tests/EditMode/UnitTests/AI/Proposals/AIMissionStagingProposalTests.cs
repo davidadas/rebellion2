@@ -149,7 +149,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_LocalTeammateStartsAnotherMission_StillRelocatesRemotePersonnel()
+        public void Execute_LocalTeammateStartsAnotherMission_RejectsStaleTeamRelocation()
         {
             var (context, proposal) = CreateStagingContext();
             var local = proposal.Mission.Participants[0];
@@ -159,6 +159,8 @@ namespace Rebellion.Tests.AI.Proposals
             context.Game.AttachNode(otherMission, proposal.Destination);
             context.Game.MoveNode(local, otherMission);
 
+            var remoteOrigin = relocation.Participants[0].GetParent();
+
             relocation.Execute(context);
 
             CollectionAssert.AreEqual(
@@ -166,8 +168,8 @@ namespace Rebellion.Tests.AI.Proposals
                 relocation.Participants
             );
             Assert.AreSame(otherMission, local.GetParent());
-            Assert.IsNotNull(relocation.Participants[0].Movement);
-            Assert.AreSame(relocation.Destination, relocation.Participants[0].GetParent());
+            Assert.IsNull(relocation.Participants[0].Movement);
+            Assert.AreSame(remoteOrigin, relocation.Participants[0].GetParent());
         }
 
         /// <summary>

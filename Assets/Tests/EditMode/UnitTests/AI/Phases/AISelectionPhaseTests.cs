@@ -154,16 +154,15 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(choices[continueCurrent ? 0 : 1], selected.Single());
         }
 
-        [TestCase(1, true, false, 1)]
-        [TestCase(2, true, false, 2)]
-        [TestCase(2, false, false, 2)]
-        [TestCase(1, true, true, 1)]
-        [TestCase(2, true, true, 2)]
-        public void Select_AdditionalAgentDemandWithExistingOrder_UsesOnlySpareCapacity(
+        [TestCase(1, true, false)]
+        [TestCase(2, true, false)]
+        [TestCase(2, false, false)]
+        [TestCase(1, true, true)]
+        [TestCase(2, true, true)]
+        public void Select_AdditionalAgentDemandWithExistingOrder_PreservesSingleOrder(
             int facilityCount,
             bool continuationFirst,
-            bool separateDestination,
-            int expectedOrders
+            bool separateDestination
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
@@ -236,10 +235,7 @@ namespace Rebellion.Tests.AI.Phases
             foreach (AIProposal proposal in new AISelectionPhase().Select(context))
                 proposal.Execute(context);
 
-            Assert.AreEqual(
-                expectedOrders,
-                planet.GetManufacturingQueue()[ManufacturingType.Troop].Count
-            );
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Troop].Count);
         }
 
         [TestCase(true)]
@@ -456,7 +452,7 @@ namespace Rebellion.Tests.AI.Phases
             foreach (AIProposal proposal in selected)
                 proposal.Execute(context);
 
-            Assert.AreEqual(2, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
         }
 
         [TestCase(0, false)]
@@ -1211,7 +1207,11 @@ namespace Rebellion.Tests.AI.Phases
             );
             foreach (var proposal in selected)
                 proposal.Execute(context);
-            Assert.AreEqual(facilityTarget, hub.GetTotalBuildingTypeCount(facilityType));
+            Assert.AreEqual(
+                facilityTarget,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(hub, facilityType)
+            );
+            Assert.AreEqual(1, hub.GetTotalBuildingTypeCount(facilityType));
             Assert.AreEqual(1, hub.GetTotalBuildingTypeCount(BuildingType.Defense));
             Assert.AreEqual(0, hub.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
@@ -1888,7 +1888,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithPartiallyAffordableFacilityBatch_PreservesFullBatchOrdering()
+        public void Select_WithMultiUnitFacilityDemand_PreservesPriorityForSingleOrder()
         {
             AITurnContext context = CreateFacilityExpansionContext(
                 allocationPercent: 100,
@@ -1906,9 +1906,9 @@ namespace Rebellion.Tests.AI.Phases
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             Assert.AreEqual(2, selected.Count);
-            Assert.AreEqual(2, ((AIManufactureProposal)selected[0]).GetManufacturingCount());
-            Assert.AreEqual(4, proposal.GetManufacturingCount());
-            Assert.Less(selected[0].Score, independent.Score);
+            Assert.AreEqual(1, ((AIManufactureProposal)selected[0]).GetManufacturingCount());
+            Assert.AreEqual(4, proposal.Demand.QuantityNeeded);
+            Assert.Greater(selected[0].Score, independent.Score);
             Assert.AreSame(independent, selected[1]);
         }
 
@@ -2109,42 +2109,66 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithShipyardAndHigherScoredDefense_DrainsDefenseProduction()
+        public void Select_WithHigherScoredRoutineDefense_PrioritizesShipyardReplacement()
         {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
+            IManufacturable currentOrder = producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
             AIManufactureProposal defense = CreateManufactureProposal(
                 context,
                 producer,
                 AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
-                score: 100
+                score: 100,
+                currentOrder: currentOrder
             );
             AIManufactureProposal shipyard = CreateManufactureProposal(
                 context,
                 producer,
                 AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
-                score: 1
+                score: 1,
+                currentOrder: currentOrder,
+                buildingDestination: context.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub")
             );
             context.AddProposal(defense);
             context.AddProposal(shipyard);
 
+            Assert.IsTrue(shipyard.CanSelect(context));
+            Assert.Greater(new AIProductionProposalScorer().Score(context, shipyard), 0);
+
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            Assert.AreEqual(
+                shipyard.Demand.Kind,
+                ((AIManufactureProposal)selected.Single()).Demand.Kind
+            );
+            selected.Single().Execute(context);
+            Assert.AreEqual(
+                BuildingType.Shipyard,
+                (
+                    (Building)producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                ).BuildingType
+            );
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(currentOrder.InstanceID));
         }
 
         [Test]
-        public void Select_WithQueuedDefenseAndStrategicManufacturing_DrainsDefenseProduction()
+        public void Select_WithQueuedDefense_ReplacesWithStrategicManufacturing()
         {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
+            IManufacturable currentOrder = producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
             AIManufactureProposal higherScore = CreateManufactureProposal(
                 context,
                 producer,
                 AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 30,
-                score: 100
+                score: 100,
+                currentOrder: currentOrder
             );
             AIManufactureProposal lowerScore = CreateManufactureProposal(
                 context,
@@ -2152,27 +2176,47 @@ namespace Rebellion.Tests.AI.Phases
                 AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 30,
-                score: 90
+                score: 90,
+                currentOrder: currentOrder,
+                buildingDestination: context.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub")
             );
             context.AddProposal(lowerScore);
             context.AddProposal(higherScore);
 
+            Assert.IsTrue(lowerScore.CanSelect(context));
+            Assert.Greater(new AIProductionProposalScorer().Score(context, lowerScore), 0);
+
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            Assert.AreEqual(
+                lowerScore.Demand.Kind,
+                ((AIManufactureProposal)selected.Single()).Demand.Kind
+            );
+            selected.Single().Execute(context);
+            Assert.AreEqual(
+                BuildingType.Shipyard,
+                (
+                    (Building)producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                ).BuildingType
+            );
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(currentOrder.InstanceID));
         }
 
         [Test]
-        public void Select_WithHigherScoredDefense_DrainsForStrategicManufacturing()
+        public void Select_WithMoreExpensiveRoutineDefense_SelectsShipyardReplacement()
         {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
+            IManufacturable currentOrder = producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
             AIManufactureProposal higherTotalCost = CreateManufactureProposal(
                 context,
                 producer,
                 AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 60,
-                score: 100
+                score: 100,
+                currentOrder: currentOrder
             );
             AIManufactureProposal affordable = CreateManufactureProposal(
                 context,
@@ -2180,20 +2224,36 @@ namespace Rebellion.Tests.AI.Phases
                 AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 40,
-                score: 90
+                score: 90,
+                currentOrder: currentOrder,
+                buildingDestination: context.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub")
             );
             context.AddProposal(higherTotalCost);
             context.AddProposal(affordable);
 
+            Assert.IsTrue(affordable.CanSelect(context));
+            Assert.Greater(new AIProductionProposalScorer().Score(context, affordable), 0);
+
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            Assert.AreEqual(
+                affordable.Demand.Kind,
+                ((AIManufactureProposal)selected.Single()).Demand.Kind
+            );
+            selected.Single().Execute(context);
+            Assert.AreEqual(
+                BuildingType.Shipyard,
+                (
+                    (Building)producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                ).BuildingType
+            );
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(currentOrder.InstanceID));
         }
 
         [Test]
-        public void Select_WithLongProductionOrder_UsesAverageHorizonConsumption()
+        public void Select_WithOccupiedProductionLane_RejectsAdditionalOrder()
         {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
                 context,
                 producer,
@@ -2207,59 +2267,99 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { proposal }, selected);
-        }
-
-        [Test]
-        public void Select_WithHigherScoredReplacement_DrainsCurrentProduction()
-        {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
-            AIManufactureProposal replacement = CreateManufactureProposal(
-                context,
-                producer,
-                AIProductionDemandKind.Shipyard,
-                BuildingType.Shipyard,
-                score: 200
-            );
-            AIManufactureProposal continuation = CreateManufactureProposal(
-                context,
-                producer,
-                AIProductionDemandKind.PlanetaryDefense,
-                BuildingType.Defense,
-                score: 100
-            );
-            context.AddProposal(replacement);
-            context.AddProposal(continuation);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(0, selected.Count);
-        }
-
-        [Test]
-        public void Select_WithLowerScoredStrategicReplacement_DrainsDefenseProduction()
-        {
-            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
-            AIManufactureProposal continuation = CreateManufactureProposal(
-                context,
-                producer,
-                AIProductionDemandKind.PlanetaryDefense,
-                BuildingType.Defense,
-                score: 200
-            );
-            AIManufactureProposal replacement = CreateManufactureProposal(
-                context,
-                producer,
-                AIProductionDemandKind.Shipyard,
-                BuildingType.Shipyard,
-                score: 100
-            );
-            context.AddProposal(continuation);
-            context.AddProposal(replacement);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
             Assert.IsEmpty(selected);
+        }
+
+        [Test]
+        public void Select_WithHigherScoredReplacement_ReplacesQueuedDefense()
+        {
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
+            IManufacturable currentOrder = producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 200,
+                currentOrder: currentOrder,
+                buildingDestination: context.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub")
+            );
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 100,
+                currentOrder: currentOrder
+            );
+            context.AddProposal(replacement);
+            context.AddProposal(continuation);
+
+            Assert.IsTrue(replacement.CanSelect(context));
+            Assert.Greater(new AIProductionProposalScorer().Score(context, replacement), 0);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(
+                replacement.Demand.Kind,
+                ((AIManufactureProposal)selected.Single()).Demand.Kind
+            );
+            selected.Single().Execute(context);
+            Assert.AreEqual(
+                BuildingType.Shipyard,
+                (
+                    (Building)producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                ).BuildingType
+            );
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(currentOrder.InstanceID));
+        }
+
+        [Test]
+        public void Select_WithLowerScoredStrategicReplacement_ReplacesQueuedDefense()
+        {
+            AITurnContext context = CreateQueuedDefenseContext(out Planet producer);
+            IManufacturable currentOrder = producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 200,
+                currentOrder: currentOrder
+            );
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 100,
+                currentOrder: currentOrder,
+                buildingDestination: context.Game.GetSceneNodeByInstanceID<Planet>("shipyard-hub")
+            );
+            context.AddProposal(continuation);
+            context.AddProposal(replacement);
+
+            Assert.IsTrue(replacement.CanSelect(context));
+            Assert.Greater(new AIProductionProposalScorer().Score(context, replacement), 0);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(
+                replacement.Demand.Kind,
+                ((AIManufactureProposal)selected.Single()).Demand.Kind
+            );
+            selected.Single().Execute(context);
+            Assert.AreEqual(
+                BuildingType.Shipyard,
+                (
+                    (Building)producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+                ).BuildingType
+            );
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(currentOrder.InstanceID));
         }
 
         [Test]
@@ -2656,14 +2756,17 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         /// <summary>
-        /// Creates a manufacturing context with a bounded refined-material commitment budget.
+        /// Creates a production context with a queued defense order and a separate shipyard destination.
         /// </summary>
         /// <param name="producer">The planet containing the construction facilities.</param>
         /// <returns>The configured AI turn context.</returns>
-        private static AITurnContext CreateRefinedMaterialCommitmentContext(out Planet producer)
+        private static AITurnContext CreateQueuedDefenseContext(out Planet producer)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Selection.RefinedMaterialReservePercent = 50;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.DemandUtility.SaturationValue = 100;
             empire.Settings.RefinementMultiplier = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "commitment-system");
             producer = AITestSceneBuilder.AddPlanet(
@@ -2699,6 +2802,12 @@ namespace Rebellion.Tests.AI.Phases
                 );
             }
 
+            Planet shipyardHub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-hub",
+                empire.InstanceID
+            );
             Building queued = AITestSceneBuilder.CreateBuildingTemplate(
                 "reserve-Defense",
                 BuildingType.Defense,
@@ -2706,11 +2815,18 @@ namespace Rebellion.Tests.AI.Phases
             );
             queued.OwnerInstanceID = empire.InstanceID;
             queued.ConstructionCost = 100;
-            queued.ManufacturingStatus = ManufacturingStatus.Building;
-            game.AttachNode(queued, producer);
-            producer.AddToManufacturingQueue(queued);
             empire.RefinedMaterialStockpile = 209;
-            return AITestSceneBuilder.CreateContext(game, empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsTrue(context.Manufacturing.Enqueue(producer, queued, producer));
+            context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsTrue(
+                context.StrategicPlan.TryAllocateInfrastructureHub(
+                    shipyardHub,
+                    BuildingType.Shipyard,
+                    1
+                )
+            );
+            return context;
         }
 
         /// <summary>
@@ -2799,6 +2915,8 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="score">The score.</param>
         /// <param name="isEmergencyDefense">Whether the defense is essential rather than spare-capacity filler.</param>
         /// <param name="maintenanceCost">The manufactured product's maintenance cost.</param>
+        /// <param name="currentOrder">The existing queued item explicitly evaluated for continuation or replacement.</param>
+        /// <param name="buildingDestination">The optional planet receiving the manufactured building.</param>
         private static AIManufactureProposal CreateManufactureProposal(
             AITurnContext context,
             Planet producer,
@@ -2807,12 +2925,14 @@ namespace Rebellion.Tests.AI.Phases
             int constructionCost = 10,
             double score = 100,
             bool isEmergencyDefense = false,
-            int maintenanceCost = 0
+            int maintenanceCost = 0,
+            IManufacturable currentOrder = null,
+            Planet buildingDestination = null
         )
         {
             IManufacturable product;
             ManufacturingType manufacturingType;
-            Rebellion.SceneGraph.ContainerNode destination = producer;
+            Rebellion.SceneGraph.ContainerNode destination = buildingDestination ?? producer;
             switch (kind)
             {
                 case AIProductionDemandKind.FleetCapitalShip:
@@ -2880,14 +3000,19 @@ namespace Rebellion.Tests.AI.Phases
                 buildingType,
                 destination,
                 1,
+                targetCount: 1,
                 baseDemandPercent: 100,
-                isEmergencyDefense: isEmergencyDefense
+                isEmergencyDefense: isEmergencyDefense,
+                existingOrder: currentOrder?.GetTypeID() == product.GetTypeID()
+                    ? currentOrder
+                    : null
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 producer,
                 new Technology(product),
-                false
+                false,
+                replacedOrder: currentOrder
             );
             proposal.SetScore(score);
             return proposal;

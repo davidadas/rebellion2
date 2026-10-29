@@ -748,6 +748,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Execute_WithSuccessfulPlanetaryAssault_DefersResultsUntilTurnCompletion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -919,6 +920,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Execute_WithSuccessfulPlanetaryAssault_RefreshesManufacturingBudget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(

@@ -778,6 +778,7 @@ namespace Rebellion.Tests.AI.Scorers
                         null
                     );
             }
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.CoreWorld.Weight = 0;
             context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight = 1;
             context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.SystemPresence.Weight = 0.6;
             AITurnContext updated = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
@@ -1205,7 +1206,7 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
-        public void Score_OfficerMissionAbovePersonnelLossLimit_RemainsAvailableForDecoy()
+        public void Score_OfficerCannotEvadeCertainDetection_ReturnsZero()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1229,12 +1230,20 @@ namespace Rebellion.Tests.AI.Scorers
             game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 5;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            double score = new AIMissionProposalScorer().Score(
-                context,
-                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+            AIMissionProposal proposal = new(
+                new[] { participant },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            MissionOdds odds = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                proposal.CreateContext()
             );
 
-            Assert.Greater(score, 0);
+            double score = new AIMissionProposalScorer().Score(context, proposal);
+
+            Assert.Zero(odds.OverallSuccessProbability);
+            Assert.Zero(score);
         }
 
         [Test]

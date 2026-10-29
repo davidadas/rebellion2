@@ -736,7 +736,7 @@ namespace Rebellion.Tests.AI
         [TestCase("planet", "empire", true)]
         [TestCase("elsewhere", "empire", false)]
         [TestCase("planet", "rebels", false)]
-        public void Constructor_HoldPositionConditions_FilterOnlyMatchingOfficer(
+        public void Constructor_HoldPositionConditions_RestrictsOnlyMatchingOfficersDestination(
             string requiredParent,
             string requiredOwner,
             bool held
@@ -769,10 +769,13 @@ namespace Rebellion.Tests.AI
                 },
             };
 
+            Planet remote = AITestSceneBuilder.AddPlanet(game, sector, "remote", owner.InstanceID);
             AIAssessment assessment = new(game, owner, game.Galaxy, behaviors);
 
             Assert.AreEqual(held, assessment.IsOfficerHoldingPosition(officer));
-            Assert.AreEqual(!held, assessment.AvailableMissionParticipants.Contains(officer));
+            CollectionAssert.Contains(assessment.AvailableMissionParticipants, officer);
+            Assert.IsTrue(assessment.CanAssignOfficerToPlanet(officer, planet));
+            Assert.AreEqual(!held, assessment.CanAssignOfficerToPlanet(officer, remote));
             CollectionAssert.Contains(assessment.AvailableMissionParticipants, other);
         }
 
@@ -1982,6 +1985,9 @@ namespace Rebellion.Tests.AI
         public void IsFleetReadyToAttack_BombardmentCanRemoveDefenders_RequiresOccupationForce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -2014,7 +2020,7 @@ namespace Rebellion.Tests.AI
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             Assert.Greater(context.GetAttackDemand(target).RegimentCount, 1);
-            Assert.AreEqual(1, context.GetAttackDemand(target).OccupationRegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).OccupationRegimentCount);
             Assert.Zero(context.Assessment.GetFleetBombardmentStrength(groundFleet));
             Assert.AreEqual(1, context.Assessment.GetFleetBombardmentStrength(bombardmentFleet));
         }
@@ -2132,7 +2138,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, context.GetAttackDemand(target).OccupationRegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).OccupationRegimentCount);
         }
 
         [Test]
@@ -2176,7 +2182,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, context.GetAttackDemand(target).RegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).RegimentCount);
         }
 
         [Test]
@@ -2253,6 +2259,9 @@ namespace Rebellion.Tests.AI
         public void GetRequiredAttackPackage_WithMultipleEnemyPlanets_UsesEachTargetsFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -2333,11 +2342,11 @@ namespace Rebellion.Tests.AI
             Planet secondTarget = assessment.GetKnownPlanet(secondEnemy.InstanceID);
 
             Assert.AreEqual(200, context.GetAttackDemand(firstTarget).CombatStrength);
-            Assert.AreEqual(4, context.GetAttackDemand(firstTarget).RegimentCount);
+            Assert.AreEqual(9, context.GetAttackDemand(firstTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(firstTarget).RegimentStrength);
             Assert.AreEqual(11, context.GetAttackDemand(firstTarget).BombardmentStrength);
             Assert.AreEqual(300, context.GetAttackDemand(secondTarget).CombatStrength);
-            Assert.AreEqual(3, context.GetAttackDemand(secondTarget).RegimentCount);
+            Assert.AreEqual(8, context.GetAttackDemand(secondTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(secondTarget).RegimentStrength);
             Assert.AreEqual(0, context.GetAttackDemand(secondTarget).BombardmentStrength);
         }

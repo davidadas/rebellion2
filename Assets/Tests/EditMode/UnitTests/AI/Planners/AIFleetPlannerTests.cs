@@ -200,8 +200,8 @@ namespace Rebellion.Tests.AI.Fleets
         [TestCase(false, 1, 0)]
         [TestCase(false, 2, 1)]
         [TestCase(true, 1, 1)]
-        [TestCase(true, 2, 2)]
-        public void Plan_WithStablePlanetGarrison_ReservesRegimentNeededForOwnership(
+        [TestCase(true, 2, 1)]
+        public void Plan_WithStablePlanetGarrison_OffersOneTransferPreservingOwnership(
             bool isColonized,
             int regimentCount,
             int expectedTransfers
@@ -1685,6 +1685,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Plan_WithInboundCapitalShipFillingAttackNeed_DoesNotAddTransferProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1730,6 +1731,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Plan_WithInboundRegimentFillingAttackNeed_DoesNotAddTransferProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
@@ -2168,6 +2170,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Plan_WithBombardmentAndCombatGaps_TransfersBombardmentShipFirst()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -3393,7 +3396,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Plan_WithAttackFleetMissingRegiment_SourcesFromMostSecurePlanet()
+        public void Plan_WithEquivalentRegimentSources_UsesDeterministicOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -3447,8 +3450,8 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AITransferUnitProposal>()
                 .Single(candidate => candidate.Unit is Regiment);
 
-            Assert.AreSame(secure, proposal.SourceContainer);
-            Assert.AreSame(secureRegiment, proposal.Unit);
+            Assert.AreSame(lessSecure, proposal.SourceContainer);
+            Assert.AreSame(lessSecureRegiment, proposal.Unit);
             Assert.AreSame(fleet, proposal.Destination);
         }
 

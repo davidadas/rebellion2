@@ -72,6 +72,7 @@ namespace Rebellion.Tests.AI.Planners
                 out Planet _
             );
             game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 20;
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
             for (int index = 0; index < 4; index++)
                 game.AttachNode(
                     CreateSpecialForces(
@@ -613,6 +614,11 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
             game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
@@ -1111,6 +1117,7 @@ namespace Rebellion.Tests.AI.Planners
             saboteur.Ratings[SkillRating.Espionage] = 100;
             saboteur.Ratings[SkillRating.Combat] = 100;
             game.AttachNode(saboteur, origin);
+            target.SetPopularSupport(rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
 
             AIMissionProposal[] proposals = new AIMissionPlanner()
@@ -1442,6 +1449,7 @@ namespace Rebellion.Tests.AI.Planners
                 MissionTypeIDs.Sabotage
             );
             saboteur.Ratings[SkillRating.Espionage] = 100;
+            saboteur.Ratings[SkillRating.Combat] = 100;
             game.AttachNode(saboteur, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
 
@@ -1576,6 +1584,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 EspionageMission.MissionTypeID
             );
+            leadSpy.Ratings[SkillRating.Espionage] = 100;
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
             officerDecoy.Ratings[SkillRating.Espionage] = 80;
             game.AttachNode(leadSpy, origin);
@@ -1819,14 +1828,16 @@ namespace Rebellion.Tests.AI.Planners
                 "target-2",
                 rebels.InstanceID
             );
-            game.AttachNode(
-                CreateSpecialForces("spy-1", empire.InstanceID, EspionageMission.MissionTypeID),
-                origin
-            );
-            game.AttachNode(
-                CreateSpecialForces("spy-2", empire.InstanceID, EspionageMission.MissionTypeID),
-                origin
-            );
+            for (int index = 1; index <= 2; index++)
+            {
+                SpecialForces spy = CreateSpecialForces(
+                    $"spy-{index}",
+                    empire.InstanceID,
+                    EspionageMission.MissionTypeID
+                );
+                spy.Ratings[SkillRating.Espionage] = 100;
+                game.AttachNode(spy, origin);
+            }
             AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;

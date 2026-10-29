@@ -1787,7 +1787,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithShieldPairExactlyAtDefensiveBudget_QueuesCompletePair()
+        public void Plan_WithShieldNetworkDemand_RequestsOneShieldWithinBudget()
         {
             (GameRoot game, Faction empire, Building _) = CreatePlanetaryDefenseScene(
                 minimumMaintenanceHeadroom: 36,
@@ -1803,8 +1803,8 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Demand.BuildingType == BuildingType.Defense
                 );
 
-            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
-            Assert.AreEqual(14, proposal.GetMaintenanceCost());
+            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(7, proposal.GetMaintenanceCost());
         }
 
         [Test]
@@ -2019,10 +2019,10 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(destination, proposal.Destination);
         }
 
-        [TestCase(false, 1, 0)]
+        [TestCase(false, 1, 1)]
         [TestCase(false, 2, 1)]
         [TestCase(true, 1, 1)]
-        public void Plan_AgentQueueBudget_ExcludesOnlyReplacedWork(
+        public void Plan_WithQueuedAgent_OffersSingleUnitWithoutAppending(
             bool differentProduct,
             int facilityCount,
             int expectedQuantity
@@ -2090,6 +2090,9 @@ namespace Rebellion.Tests.AI.Planners
                 expectedQuantity,
                 proposals.OfType<AIManufactureProposal>().Sum(item => item.ManufacturingCount)
             );
+            foreach (AIProposal proposal in proposals)
+                proposal.Execute(context);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
         }
 
         [Test]
@@ -3614,7 +3617,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithStarfighterDeficit_QueuesWorkThroughNextPlanningTick()
+        public void Plan_WithStarfighterDeficit_RequestsOneSquadron()
         {
             (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
                 CreateDistributedStarfighterScene(includeSecondProducer: false);
@@ -3629,11 +3632,11 @@ namespace Rebellion.Tests.AI.Planners
                 );
 
             Assert.AreSame(firstProducer, proposal.ProducerPlanet);
-            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
         [Test]
-        public void Plan_WithStarfighterDeficit_DistributesBatchAcrossProducerPlanets()
+        public void Plan_WithStarfighterDeficit_RequestsOneSquadronPerProducer()
         {
             (
                 GameRoot game,
@@ -3656,9 +3659,9 @@ namespace Rebellion.Tests.AI.Planners
                     item => item.Demand.QuantityNeeded
                 );
 
-            Assert.AreEqual(2, quantities[firstProducer.InstanceID]);
-            Assert.AreEqual(2, quantities[secondProducer.InstanceID]);
-            Assert.AreEqual(4, quantities.Values.Sum());
+            Assert.AreEqual(1, quantities[firstProducer.InstanceID]);
+            Assert.AreEqual(1, quantities[secondProducer.InstanceID]);
+            Assert.AreEqual(2, quantities.Values.Sum());
         }
 
         [Test]

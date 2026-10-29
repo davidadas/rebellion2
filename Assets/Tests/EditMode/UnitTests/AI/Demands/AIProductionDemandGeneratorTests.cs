@@ -165,6 +165,7 @@ namespace Rebellion.Tests.AI.Demands
             }
             game.CurrentTick = 1;
 
+            game.Config.AI.Infrastructure.ManufacturingEspionageDemandPercent = 0;
             List<AIProductionDemand> demands = new AIProductionDemandGenerator()
                 .BuildDemands(AITestSceneBuilder.CreateContext(game, faction))
                 .Where(demand => demand.Kind == AIProductionDemandKind.SpecialForces)
@@ -225,6 +226,7 @@ namespace Rebellion.Tests.AI.Demands
                     game.AttachNode(agent, origin);
             }
 
+            game.Config.AI.Infrastructure.ManufacturingEspionageDemandPercent = 0;
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().BuildDemands(
                 AITestSceneBuilder.CreateContext(game, faction)
             );
@@ -294,6 +296,7 @@ namespace Rebellion.Tests.AI.Demands
                 out Planet target
             );
 
+            game.Config.AI.Infrastructure.ManufacturingEspionageDemandPercent = 0;
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().BuildDemands(
                 AITestSceneBuilder.CreateContext(game, faction)
             );
@@ -1701,9 +1704,9 @@ namespace Rebellion.Tests.AI.Demands
         [TestCase(1, 5, ManufacturingStatus.Complete, 0)]
         [TestCase(1, 2, ManufacturingStatus.Building, 0)]
         [TestCase(1, 2, ManufacturingStatus.Delivering, 0)]
-        [TestCase(50, 2, ManufacturingStatus.Complete, 3)]
-        [TestCase(100, 2, ManufacturingStatus.Complete, 8)]
-        public void BuildDemands_AssignedAttackRegiments_RespectsTargetAndConfiguredReserve(
+        [TestCase(50, 2, ManufacturingStatus.Complete, 0)]
+        [TestCase(100, 2, ManufacturingStatus.Complete, 0)]
+        public void BuildDemands_AssignedAttackRegiments_UsesAttackRequirementsRegardlessOfFillTarget(
             int loadPercent,
             int committedCount,
             ManufacturingStatus status,
@@ -2222,13 +2225,14 @@ namespace Rebellion.Tests.AI.Demands
 
         [TestCase(0, 3)]
         [TestCase(1, 3)]
-        [TestCase(100, 4)]
+        [TestCase(100, 3)]
         public void BuildDemands_WithAttackRegimentStrengthGap_AddsDemandForEntireDeficit(
             int loadPercent,
             int expectedDeficit
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
@@ -2269,6 +2273,7 @@ namespace Rebellion.Tests.AI.Demands
         public void BuildDemands_WithAttackRegimentStrengthGapAndFullCapacity_AddsCapitalShipDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
@@ -2593,6 +2598,7 @@ namespace Rebellion.Tests.AI.Demands
                 demands.Any(demand =>
                     demand.Kind == AIProductionDemandKind.FleetCapitalShip
                     && demand.DestinationFleet == fleet
+                    && demand.InterdictionDeficit > 0
                 )
             );
         }
@@ -2716,6 +2722,7 @@ namespace Rebellion.Tests.AI.Demands
         public void BuildDemands_WithSmallCombatGapAndNoCapitalFirepowerTarget_UsesCombatRatio()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -2796,7 +2803,7 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
-        public void BuildDemands_WithColonizationFleetMissingRegimentCapacity_AddsCapitalShipDemand()
+        public void BuildDemands_WithColonizationTransportBelowDesiredCapacity_DoesNotRequestSecondHull()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -2814,27 +2821,22 @@ namespace Rebellion.Tests.AI.Demands
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
                 "ship",
                 empire.InstanceID,
-                regimentCapacity: 0,
+                regimentCapacity: 1,
                 starfighterCapacity: 0
             );
+            ship.Roles.Add(CapitalShipRole.Transport);
             fleet.AddChild(ship);
             ship.SetParent(fleet);
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
-                .BuildDemands(context)
-                .Single(item =>
-                    item.Kind == AIProductionDemandKind.FleetCapitalShip
-                    && item.DestinationFleet == fleet
-                );
-
-            Assert.AreEqual(1, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
-            Assert.AreEqual(0, demand.EscortDeficit);
-            Assert.AreEqual(
-                game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount,
-                demand.RegimentCapacityDeficit
+            Assert.IsFalse(
+                new AIProductionDemandGenerator()
+                    .BuildDemands(context)
+                    .Any(item =>
+                        item.Kind == AIProductionDemandKind.FleetCapitalShip
+                        && item.DestinationFleet == fleet
+                    )
             );
         }
 
