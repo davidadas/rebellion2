@@ -200,58 +200,8 @@ namespace Rebellion.AI
                         )
                         .ToHashSet()
                     : new HashSet<SpecialForces>();
-            HashSet<Planet> localEspionagePlanets =
-                assessment == null
-                    ? new HashSet<Planet>()
-                    : assessment.GetManufacturingEspionagePlanets().ToHashSet();
-            if (
-                faction?.Settings?.Headquarters?.IsMobile == true
-                && assessment?.FactionHeadquarters != null
-            )
-                localEspionagePlanets.Add(assessment.FactionHeadquarters);
-            _localEspionageAgents =
-                assessment
-                    ?.AvailableMissionParticipants.OfType<SpecialForces>()
-                    .Where(unit =>
-                        unit.CanPerformMission(MissionTypeIDs.Espionage)
-                        && localEspionagePlanets.Contains(unit.GetParentOfType<Planet>())
-                    )
-                    .GroupBy(unit => unit.GetParentOfType<Planet>())
-                    .Select(group =>
-                        group
-                            .OrderByDescending(unit =>
-                                unit.GetEffectiveRating(SkillRating.Espionage)
-                            )
-                            .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
-                            .First()
-                    )
-                    .ToHashSet()
-                ?? new HashSet<SpecialForces>();
-            _manufacturingInterceptionAgents =
-                assessment == null
-                    ? new HashSet<SpecialForces>()
-                    : assessment
-                        .GetManufacturingEspionagePlanets()
-                        .SelectMany(planet =>
-                            GetManufacturingInterceptionCandidates(planet)
-                                .Where(unit =>
-                                    assessment.AvailableMissionParticipants.Contains(unit)
-                                )
-                                .OrderByDescending(unit =>
-                                    unit.GetEffectiveRating(SkillRating.Combat)
-                                )
-                                .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
-                                .Take(
-                                    Math.Max(
-                                        0,
-                                        game.Config
-                                            .AI
-                                            .Infrastructure
-                                            .ManufacturingInterceptionAgentCount
-                                    )
-                                )
-                        )
-                        .ToHashSet();
+            _localEspionageAgents = BuildLocalEspionageAgents();
+            _manufacturingInterceptionAgents = BuildManufacturingInterceptionAgents();
         }
 
         /// <summary>
@@ -706,6 +656,66 @@ namespace Rebellion.AI
         {
             return GetManufacturingInterceptionCandidates(planet)
                 .Count(unit => !ReferenceEquals(unit, excluded));
+        }
+
+        /// <summary>
+        /// Selects one available local spy per manufacturing hub or mobile headquarters.
+        /// </summary>
+        /// <returns>The strongest available spy at each covered planet.</returns>
+        private HashSet<SpecialForces> BuildLocalEspionageAgents()
+        {
+            if (Assessment == null)
+                return new HashSet<SpecialForces>();
+
+            HashSet<Planet> planets = Assessment.GetManufacturingEspionagePlanets().ToHashSet();
+            if (
+                Faction?.Settings?.Headquarters?.IsMobile == true
+                && Assessment.FactionHeadquarters != null
+            )
+                planets.Add(Assessment.FactionHeadquarters);
+
+            return Assessment
+                .AvailableMissionParticipants.OfType<SpecialForces>()
+                .Where(unit =>
+                    unit.CanPerformMission(MissionTypeIDs.Espionage)
+                    && planets.Contains(unit.GetParentOfType<Planet>())
+                )
+                .GroupBy(unit => unit.GetParentOfType<Planet>())
+                .Select(group =>
+                    group
+                        .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Espionage))
+                        .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                        .First()
+                )
+                .ToHashSet();
+        }
+
+        /// <summary>
+        /// Selects each manufacturing hub's available interception complement after its spy.
+        /// </summary>
+        /// <returns>The available guards selected for manufacturing hubs.</returns>
+        private HashSet<SpecialForces> BuildManufacturingInterceptionAgents()
+        {
+            if (Assessment == null)
+                return new HashSet<SpecialForces>();
+
+            HashSet<IMissionParticipant> available =
+                Assessment.AvailableMissionParticipants.ToHashSet();
+            return Assessment
+                .GetManufacturingEspionagePlanets()
+                .SelectMany(planet =>
+                    GetManufacturingInterceptionCandidates(planet)
+                        .Where(available.Contains)
+                        .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Combat))
+                        .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                        .Take(
+                            Math.Max(
+                                0,
+                                Game.Config.AI.Infrastructure.ManufacturingInterceptionAgentCount
+                            )
+                        )
+                )
+                .ToHashSet();
         }
 
         /// <summary>

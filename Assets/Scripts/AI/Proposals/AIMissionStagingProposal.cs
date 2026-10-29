@@ -28,7 +28,7 @@ namespace Rebellion.AI.Proposals
             );
 
         /// <summary>
-        /// Creates a relocation alternative for a fully assessed sabotage team.
+        /// Creates a relocation or local-wait alternative for an assessed mission team.
         /// </summary>
         /// <param name="mission">The mission opportunity motivating the relocation.</param>
         /// <param name="destination">The proposed friendly departure planet.</param>
@@ -72,12 +72,14 @@ namespace Rebellion.AI.Proposals
             Participants =
                 mission
                     ?.Participants.Where(participant =>
-                        mission.IsInterception ? participant.GetTransitMovement() == null
-                        : isWaiting
-                            ? participant.GetParent()?.InstanceID == destination?.InstanceID
-                                && participant.GetTransitMovement() == null
-                        : participant.GetParent()?.InstanceID != destination?.InstanceID
-                    )
+                    {
+                        if (mission.IsInterception)
+                            return participant.GetTransitMovement() == null;
+                        if (isWaiting)
+                            return participant.GetParent()?.InstanceID == destination?.InstanceID
+                                && participant.GetTransitMovement() == null;
+                        return participant.GetParent()?.InstanceID != destination?.InstanceID;
+                    })
                     .ToArray()
                 ?? Array.Empty<IMissionParticipant>();
         }
@@ -168,8 +170,8 @@ namespace Rebellion.AI.Proposals
             if (Mission.IsInterception)
                 return TryGetInterceptionTravelTicks(context, out directTicks, out stagedTicks);
             if (
-                context?.MovementQueries == null
-                || Mission?.MissionTypeID != MissionTypeIDs.Sabotage
+                context.MovementQueries == null
+                || Mission.MissionTypeID != MissionTypeIDs.Sabotage
                 || !Mission.IsTeamFinal
                 || Participants.Count == 0
                 || Participants.Any(participant =>
@@ -299,9 +301,9 @@ namespace Rebellion.AI.Proposals
                     return false;
                 relocation = Math.Max(relocation, ticks);
             }
-            if (relocation > 0 && HasInboundInterceptor(context))
-                return false;
             long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
+            if (relocation > 0 && HasInboundInterceptor(context, outbound))
+                return false;
             if (
                 !Mission.TryGetInterceptionTiming(
                     context,
@@ -321,8 +323,9 @@ namespace Rebellion.AI.Proposals
         /// Avoids dispatching another interceptor when a capable teammate is already arriving.
         /// </summary>
         /// <param name="context">The faction's current personnel and observed target window.</param>
+        /// <param name="outboundTicks">The mission travel duration from the proposed departure planet.</param>
         /// <returns>True when an equally capable incoming participant can complete the interception.</returns>
-        private bool HasInboundInterceptor(AITurnContext context)
+        private bool HasInboundInterceptor(AITurnContext context, long outboundTicks)
         {
             foreach (
                 IMissionParticipant participant in context.Faction.GetOwnedUnitsByType<IMissionParticipant>()
@@ -341,11 +344,10 @@ namespace Rebellion.AI.Proposals
                         < Mission.Participant.GetEffectiveRating(SkillRating.Combat)
                 )
                     continue;
-                long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
                 if (
                     Mission.TryGetInterceptionTiming(
                         context,
-                        outbound,
+                        outboundTicks,
                         out _,
                         out _,
                         System.Math.Max(0, participant.Movement.TicksRemaining())

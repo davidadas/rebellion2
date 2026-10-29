@@ -42,50 +42,24 @@ namespace Rebellion.AI.Selectors
         )
         {
             resolved = proposal;
-            if (
-                !proposal.IsTeamFinal
-                && proposal.IsInterception
-                && proposal.MissionTypeID == MissionTypeIDs.Abduction
-                && proposal.MainParticipants.Count == 1
-                && proposal.Participant is SpecialForces guard
-                && context.IsManufacturingInterceptionAgent(guard)
-                && proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
-            )
+            SpecialForces partner = FindLocalInterceptionPartner(context, proposal);
+            if (partner != null)
             {
-                SpecialForces partner = context
-                    .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
-                    .Where(unit =>
-                        !proposal.Participants.Contains(unit)
-                        && context.IsManufacturingInterceptionAgent(unit)
-                        && unit.GetParentOfType<Planet>()?.InstanceID
-                            == proposal.TargetPlanet.InstanceID
-                        && unit.CanPerformMission(MissionTypeIDs.Abduction)
-                        && _state.CanReserve(GetParticipantReservations(new[] { unit }))
-                    )
-                    .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Combat))
-                    .ThenBy(unit => unit.InstanceID)
-                    .FirstOrDefault();
-                if (partner != null)
-                {
-                    resolved = new AIMissionProposal(
-                        proposal.MainParticipants.Append(partner),
-                        proposal.MissionTypeID,
-                        proposal.TargetPlanet,
-                        proposal.SelectedTarget,
-                        proposal.TargetOfficer,
-                        proposal.Discipline,
-                        proposal.DecoyParticipants,
-                        teamIsFinal: true,
-                        isInterception: true
-                    );
-                    if (
-                        !_state.CanReserve(GetReservations(resolved))
-                        || !resolved.CanExecute(context)
-                    )
-                        return false;
-                    resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
-                    return true;
-                }
+                resolved = new AIMissionProposal(
+                    proposal.MainParticipants.Append(partner),
+                    proposal.MissionTypeID,
+                    proposal.TargetPlanet,
+                    proposal.SelectedTarget,
+                    proposal.TargetOfficer,
+                    proposal.Discipline,
+                    proposal.DecoyParticipants,
+                    teamIsFinal: true,
+                    isInterception: true
+                );
+                if (!_state.CanReserve(GetReservations(resolved)) || !resolved.CanExecute(context))
+                    return false;
+                resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
+                return true;
             }
             if (
                 proposal.IsTeamFinal
@@ -173,6 +147,43 @@ namespace Rebellion.AI.Selectors
 
             resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
             return true;
+        }
+
+        /// <summary>
+        /// Finds a second available local guard for an unfinalized manufacturing-hub abduction.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The mission whose main team may be paired.</param>
+        /// <returns>The strongest unreserved local partner, or null when no pairing applies.</returns>
+        private SpecialForces FindLocalInterceptionPartner(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (
+                proposal.IsTeamFinal
+                || !proposal.IsInterception
+                || proposal.MissionTypeID != MissionTypeIDs.Abduction
+                || proposal.MainParticipants.Count != 1
+                || proposal.Participant is not SpecialForces guard
+                || !context.IsManufacturingInterceptionAgent(guard)
+                || proposal.TargetPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
+            )
+                return null;
+
+            return context
+                .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
+                .Where(unit =>
+                    !proposal.Participants.Contains(unit)
+                    && context.IsManufacturingInterceptionAgent(unit)
+                    && unit.GetParentOfType<Planet>()?.InstanceID
+                        == proposal.TargetPlanet.InstanceID
+                    && unit.CanPerformMission(MissionTypeIDs.Abduction)
+                    && _state.CanReserve(GetParticipantReservations(new[] { unit }))
+                )
+                .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Combat))
+                .ThenBy(unit => unit.InstanceID)
+                .FirstOrDefault();
         }
 
         /// <summary>

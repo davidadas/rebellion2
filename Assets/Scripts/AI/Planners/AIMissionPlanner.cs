@@ -1222,31 +1222,39 @@ namespace Rebellion.AI.Planners
                         targetOfficer: targetOfficer,
                         isInterception: interception
                     );
-                    if (!interception)
-                    {
-                        TryAddProposal(context, proposals, proposal);
-                        continue;
-                    }
-                    if (proposal.CanExecute(context))
+                    if (!interception || proposal.CanExecute(context))
                         TryAddProposal(context, proposals, proposal);
                     else
-                    {
-                        foreach (
-                            Planet destination in context
-                                .Assessment.OwnedPlanets.OrderBy(candidate =>
-                                    candidate.GetRawDistanceTo(planet)
-                                )
-                                .ThenBy(candidate => candidate.InstanceID)
-                        )
-                        {
-                            AIMissionStagingProposal preparation = new(proposal, destination);
-                            if (!preparation.CanSelect(context))
-                                continue;
-                            _candidateSelector.TryAdd(context, proposals, proposal, preparation);
-                            break;
-                        }
-                    }
+                        AddInterceptionStagingProposal(context, proposals, proposal);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Offers the nearest valid owned departure planet for an observed officer interception.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
+        /// <param name="proposal">The assessed officer-targeting mission needing preparation.</param>
+        private void AddInterceptionStagingProposal(
+            AITurnContext context,
+            List<AIProposal> proposals,
+            AIMissionProposal proposal
+        )
+        {
+            foreach (
+                Planet destination in context
+                    .Assessment.OwnedPlanets.OrderBy(candidate =>
+                        candidate.GetRawDistanceTo(proposal.TargetPlanet)
+                    )
+                    .ThenBy(candidate => candidate.InstanceID)
+            )
+            {
+                AIMissionStagingProposal preparation = new(proposal, destination);
+                if (!preparation.CanSelect(context))
+                    continue;
+                _candidateSelector.TryAdd(context, proposals, proposal, preparation);
+                break;
             }
         }
 

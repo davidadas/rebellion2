@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Mathematics;
 
@@ -1956,7 +1955,7 @@ namespace Rebellion.AI.Demands
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            (string guardRole, int guardQuantity) = AddManufacturingSpecialForcesDemands(
+            (string espionageRole, int espionageQuantity) = AddManufacturingSpecialForcesDemands(
                 context,
                 demands,
                 MissionTypeIDs.Espionage,
@@ -2018,7 +2017,7 @@ namespace Rebellion.AI.Demands
                 int coverageDeficit =
                     desiredSupply
                     - existingSupply
-                    - (role.Key == guardRole ? guardQuantity : 0)
+                    - (role.Key == espionageRole ? espionageQuantity : 0)
                     - (role.Key == interceptionRole ? interceptionQuantity : 0);
                 bool suppliesHeadquartersEspionage =
                     role.Key == headquartersEspionageRole && headquartersEspionageTemplate != null;
