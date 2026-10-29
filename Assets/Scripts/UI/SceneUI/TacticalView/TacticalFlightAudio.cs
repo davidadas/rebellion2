@@ -45,7 +45,7 @@ public sealed class TacticalFlightAudio : IDisposable
     /// Receives one successful squadron release without depending on player selection or camera state.
     /// </summary>
     /// <param name="carrier">The carrier that released the squadron.</param>
-    public void PlayLaunch(Rebellion.Game.Combat.CombatUnit carrier)
+    public void PlayLaunch(Rebellion.Game.Combat.SpaceCombatUnit carrier)
     {
         if (carrier == null)
             throw new ArgumentNullException(nameof(carrier));

@@ -17,7 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private AudioManager _audio;
         private bool _ownsAudio;
         private TacticalArrivalView _view;
-        private Dictionary<CombatUnit, Transform> _presentations;
+        private Dictionary<SpaceCombatUnit, Transform> _presentations;
 
         /// <summary>
         /// Creates an isolated presentation root and silent arrival sound.
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _clip = AudioClip.Create("Arrival Test", 441, 1, 44100, false);
             _ownsAudio = AudioManager.Instance == null;
             _audio = AudioManager.EnsureExists();
-            _presentations = new Dictionary<CombatUnit, Transform>();
+            _presentations = new Dictionary<SpaceCombatUnit, Transform>();
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [TestCase(-1f)]
         public void Constructor_DeployedUnit_OffsetsOnlyPresentation(float forwardZ)
         {
-            CombatUnit unit = AddUnit(forwardZ);
+            SpaceCombatUnit unit = AddUnit(forwardZ);
             Transform root = _presentations[unit];
 
             _view = CreateView();
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Advance_HalfwayThroughArrival_EasesTowardDeploymentPose()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
             _view = CreateView();
 
             _view.Advance(0.72f + 0.43f, false);
@@ -90,7 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Advance_Paused_DoesNotAdvanceFlyIn()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
             _view = CreateView();
             Vector3 before = _presentations[unit].localPosition;
 
@@ -107,7 +107,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Advance_ArrivalFinishes_ReleasesPoseAndCreatesBurst()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
             _view = CreateView();
 
             _view.Advance(1.58f, false);
@@ -124,8 +124,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Advance_StaggeredUnits_FirstFinishesBeforeSecond()
         {
-            CombatUnit first = AddUnit();
-            CombatUnit second = AddUnit();
+            SpaceCombatUnit first = AddUnit();
+            SpaceCombatUnit second = AddUnit();
             _view = CreateView();
 
             _view.Advance(1.59f, false);
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Dispose_UnfinishedArrival_RestoresPoseAndReleasesResources()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
             _view = CreateView();
             Material material = _presentations[unit].GetComponent<TrailRenderer>().sharedMaterial;
             Texture texture = material.mainTexture;
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Constructor_MissingSound_DoesNotModifyPresentations()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
 
             Assert.Throws<ArgumentNullException>(() =>
                 new TacticalArrivalView(_scene.transform, _presentations, null, _audio)
@@ -194,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Constructor_RetreatedUnit_DoesNotAnimateOrCreateTrail()
         {
-            CombatUnit unit = AddUnit();
+            SpaceCombatUnit unit = AddUnit();
             unit.HasRetreated = true;
 
             _view = CreateView();
@@ -210,9 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Constructor_DifferentFactions_SharesArrivalMaterial()
         {
-            CombatUnit first = AddUnit();
-            CombatUnit second = AddUnit();
-            second.GetUnit().OwnerInstanceID = "OTHER_FACTION";
+            SpaceCombatUnit first = AddUnit();
+            SpaceCombatUnit second = AddUnit();
+            second.OwnerInstanceID = "OTHER_FACTION";
 
             _view = CreateView();
 
@@ -227,9 +227,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// </summary>
         /// <param name="forwardZ">The deployed heading.</param>
         /// <returns>The battle copy registered with the fixture.</returns>
-        private CombatUnit AddUnit(float forwardZ = 1f)
+        private SpaceCombatUnit AddUnit(float forwardZ = 1f)
         {
-            CombatUnit unit = CombatUnit.Create(new CapitalShip { OwnerInstanceID = "FACTION" });
+            SpaceCombatUnit unit = SpaceCombatUnit.Create(
+                new CapitalShip { OwnerInstanceID = "FACTION" }
+            );
             unit.Position = new BattleVector3
             {
                 X = 6f,
@@ -237,7 +239,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Z = 20f,
             };
             unit.Forward = new BattleVector3 { Z = forwardZ };
-            unit.GetUnit().ModelSize = new ModelDimensions
+            unit.ModelSize = new ModelDimensions
             {
                 Width = 4f,
                 Height = 2f,

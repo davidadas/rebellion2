@@ -22,6 +22,7 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         Shield,
         Hull,
         SelectionRectangle,
+        Dock,
     }
 
     [SerializeField]
@@ -140,6 +141,37 @@ public sealed class TacticalHudGraphic : MaskableGraphic
                     c - Vector2.right * s,
                     c + new Vector2(-s * 0.25f, -s * 0.65f),
                     2.5f,
+                    color
+                );
+                break;
+            case Artwork.Dock:
+                Line(
+                    mesh,
+                    c + new Vector2(-s * 0.78f, -s * 0.2f),
+                    c + new Vector2(-s * 0.78f, -s * 0.88f),
+                    2f,
+                    color
+                );
+                Line(
+                    mesh,
+                    c + new Vector2(-s * 0.78f, -s * 0.88f),
+                    c + new Vector2(s * 0.78f, -s * 0.88f),
+                    2f,
+                    color
+                );
+                Line(
+                    mesh,
+                    c + new Vector2(s * 0.78f, -s * 0.88f),
+                    c + new Vector2(s * 0.78f, -s * 0.2f),
+                    2f,
+                    color
+                );
+                Line(mesh, c + Vector2.up * s * 0.9f, c - Vector2.up * s * 0.34f, 2.5f, color);
+                Triangle(
+                    mesh,
+                    c - Vector2.up * s * 0.62f,
+                    c + new Vector2(-s * 0.38f, -s * 0.2f),
+                    c + new Vector2(s * 0.38f, -s * 0.2f),
                     color
                 );
                 break;

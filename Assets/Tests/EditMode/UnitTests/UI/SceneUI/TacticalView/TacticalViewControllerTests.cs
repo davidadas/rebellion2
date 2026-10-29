@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Tactical;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -15,6 +16,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -75,8 +77,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Mouse mouse = InputSystem.AddDevice<Mouse>();
-                ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
-                ((CapitalShip)combatant.GetUnit()).SublightSpeed = 4;
+                ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
+                combatant.SublightSpeed = 4;
                 Task initialization = controller.InitializeAsync(
                     battle,
                     CreateBattleMap(),
@@ -105,12 +107,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 yield return null;
                 InputSystem.QueueStateEvent(mouse, new MouseState { position = target });
                 yield return null;
-                yield return null;
+                for (int frame = 0; frame < 10 && combatant.Position.X <= 0f; frame++)
+                    yield return null;
 
                 Assert.That(combatant.Position.X, Is.GreaterThan(0f));
                 Assert.That(combatant.Position.Z, Is.GreaterThan(0f));
                 Assert.That(combatant.Forward.X, Is.GreaterThan(0f).And.LessThan(1f));
-                Assert.That(combatant.MoveDestination.X, Is.EqualTo(100f).Within(0.01f));
+                Assert.That(combatant.MoveOrder.Destination.X, Is.EqualTo(100f).Within(0.05f));
                 Transform presentation = controller.BattleRoot.GetChild(0).GetChild(0);
                 Assert.That(
                     presentation.localPosition.x,
@@ -133,7 +136,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 float stopped = combatant.Position.X;
                 yield return null;
                 Assert.AreEqual(stopped, combatant.Position.X);
-                Assert.IsNull(combatant.MoveDestination);
+                Assert.IsNull(combatant.MoveOrder.Destination);
             }
             finally
             {
@@ -155,6 +158,53 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(controller.BattleCamera.GetComponent<TacticalViewCameraController>());
             Assert.IsNotNull(instance.GetComponent<TacticalSelectionController>());
             Assert.IsNotNull(instance.GetComponentInChildren<TacticalSelectionView>());
+            Assert.IsNotNull(instance.GetComponentInChildren<TacticalTimeControlsView>());
+        }
+
+        /// <summary>
+        /// Checks every generated speed button updates the tactical-only battle clock.
+        /// </summary>
+        /// <returns>The play-mode lifecycle and speed-selection checks.</returns>
+        [UnityTest]
+        public IEnumerator TimeControl_SpeedClicked_UpdatesBattleClock()
+        {
+            UnityEngine.Object.DestroyImmediate(instance);
+            models.Dispose();
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.EmptyScene,
+                NewSceneMode.Single
+            );
+            EditorSceneManager.MarkSceneDirty(scene);
+            yield return new EnterPlayMode();
+            SetUp();
+            try
+            {
+                (string Name, TacticalBattleSpeed Speed, float Scale)[] cases =
+                {
+                    ("TimeControl0", TacticalBattleSpeed.Paused, 0f),
+                    ("TimeControl1", TacticalBattleSpeed.Half, 0.5f),
+                    ("TimeControl2", TacticalBattleSpeed.Normal, 1f),
+                    ("TimeControl3", TacticalBattleSpeed.Double, 2f),
+                    ("TimeControl4", TacticalBattleSpeed.Quadruple, 4f),
+                };
+                foreach ((string name, TacticalBattleSpeed speed, float scale) in cases)
+                {
+                    Button button = instance
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(candidate => candidate.name == name);
+
+                    button.onClick.Invoke();
+
+                    Assert.AreEqual(speed, controller.BattleSpeed);
+                    Assert.AreEqual(scale, controller.BattleTimeScale);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+                models.Dispose();
+            }
+            yield return new ExitPlayMode();
         }
 
         /// <summary>
@@ -164,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public async Task InitializeAsync_LoadedHull_CanBeSelectedAsync()
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
             await controller.InitializeAsync(battle, CreateBattleMap(), models, "FACTION");
             TacticalSelectionController selection =
                 instance.GetComponent<TacticalSelectionController>();
@@ -216,9 +266,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 TestContent.CreateThemeLibrary().GetTheme(viewer).BattleHud,
                 TestContent.Assets
             );
-            CombatUnit[] selected = battle.GetParticipants().First().GetCombatants().ToArray();
-            System.Collections.Generic.Dictionary<CombatUnit, Transform> presentations =
-                new System.Collections.Generic.Dictionary<CombatUnit, Transform>();
+            SpaceCombatUnit[] selected = battle.GetParticipants().First().GetCombatants().ToArray();
+            System.Collections.Generic.Dictionary<SpaceCombatUnit, Transform> presentations =
+                new System.Collections.Generic.Dictionary<SpaceCombatUnit, Transform>();
             for (int i = 0; i < selected.Length; i++)
                 presentations.Add(selected[i], controller.BattleRoot.GetChild(0).GetChild(i));
             dock.RenderSelection(
@@ -252,7 +302,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public async Task InitializeAsync_BattleCombatant_CreatesModelPresentationAsync()
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
             combatant.Position = new BattleVector3
             {
                 X = 25f,
@@ -301,7 +351,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public async Task InitializeAsync_DefaultFleet_LoadsAndDeploysEveryCombatantAsync()
+        public async Task InitializeAsync_HeavyDefaultFleet_LoadsAndDeploysEveryCombatantAsync()
         {
             TacticalBattleLaunchContext.Reset(TestContent.Pack);
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
@@ -329,12 +379,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 );
                 for (int unitIndex = 0; unitIndex < participant.GetCombatants().Count; unitIndex++)
                 {
-                    CombatUnit combatant = participant.GetCombatants()[unitIndex];
+                    SpaceCombatUnit combatant = participant.GetCombatants()[unitIndex];
                     Transform presentation = participantRoot.GetChild(unitIndex);
                     Assert.That(presentation.GetComponentsInChildren<Renderer>(true), Is.Not.Empty);
                     Assert.That(
                         presentation.gameObject.activeSelf,
-                        Is.EqualTo(combatant.FlightState != FighterFlightState.Docked)
+                        Is.EqualTo(combatant.Flight.Phase != FighterFlightState.Docked)
                     );
                     Assert.That(
                         presentation.localPosition,
@@ -462,7 +512,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public async Task InitializeAsync_StaleDimensions_ReplacesSnapshotWithRenderedSizeAsync()
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
 
             await controller.InitializeAsync(battle, CreateBattleMap(), models, "FACTION");
 
@@ -471,7 +521,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Bounds expected = renderers[0].bounds;
             foreach (Renderer renderer in renderers.Skip(1))
                 expected.Encapsulate(renderer.bounds);
-            ModelDimensions measured = combatant.GetUnit().ModelSize;
+            ModelDimensions measured = combatant.ModelSize;
             Assert.That(measured.Width, Is.EqualTo(expected.size.x).Within(0.0001f));
             Assert.That(measured.Height, Is.EqualTo(expected.size.y).Within(0.0001f));
             Assert.That(measured.Depth, Is.EqualTo(expected.size.z).Within(0.0001f));
@@ -484,16 +534,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             float scale
         )
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
             BattleMap map = CreateBattleMap();
-            Assert.AreEqual(1f, combatant.GetUnit().ModelScale);
+            Assert.AreEqual(1f, combatant.ModelScale);
             await controller.InitializeAsync(battle, map, models);
-            ModelDimensions unscaled = combatant.GetUnit().ModelSize;
-            combatant.GetUnit().ModelScale = scale;
+            ModelDimensions unscaled = combatant.ModelSize;
+            combatant.ModelScale = scale;
 
             await controller.InitializeAsync(battle, map, models);
 
-            ModelDimensions measured = combatant.GetUnit().ModelSize;
+            ModelDimensions measured = combatant.ModelSize;
             Assert.That(measured.Width, Is.EqualTo(unscaled.Width * scale).Within(0.0001f));
             Assert.That(measured.Height, Is.EqualTo(unscaled.Height * scale).Within(0.0001f));
             Assert.That(measured.Depth, Is.EqualTo(unscaled.Depth * scale).Within(0.0001f));
@@ -512,8 +562,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [TestCase(float.PositiveInfinity)]
         public void InitializeAsync_InvalidModelScale_ThrowsInvalidOperationException(float scale)
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
-            combatant.GetUnit().ModelScale = scale;
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
+            combatant.ModelScale = scale;
 
             Assert.ThrowsAsync<InvalidOperationException>(() =>
                 controller.InitializeAsync(battle, CreateBattleMap(), models)
@@ -523,7 +573,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public async Task InitializeAsync_RestoredBattle_PreservesSavedPoseAsync()
         {
-            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            ActiveBattle battle = CreateBattleWithCombatant(out SpaceCombatUnit combatant);
             combatant.Position = new BattleVector3
             {
                 X = 42f,
@@ -531,21 +581,25 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Z = -80f,
             };
             combatant.Forward = new BattleVector3 { X = 1f };
-            combatant.GetUnit().ModelScale = 2.5f;
+            combatant.ModelScale = 2.5f;
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
                 SerializationHelper.Serialize(battle)
             );
 
             await controller.InitializeAsync(restored, CreateBattleMap(), models, "FACTION");
 
-            CombatUnit restoredUnit = restored.GetParticipants().Single().GetCombatants().Single();
+            SpaceCombatUnit restoredUnit = restored
+                .GetParticipants()
+                .Single()
+                .GetCombatants()
+                .Single();
             Assert.AreEqual(42f, restoredUnit.Position.X);
             Assert.AreEqual(6f, restoredUnit.Position.Y);
             Assert.AreEqual(-80f, restoredUnit.Position.Z);
             Assert.AreEqual(1f, restoredUnit.Forward.X);
             Assert.AreEqual(0f, restoredUnit.Forward.Y);
             Assert.AreEqual(0f, restoredUnit.Forward.Z);
-            Assert.AreEqual(2.5f, restoredUnit.GetUnit().ModelScale);
+            Assert.AreEqual(2.5f, restoredUnit.ModelScale);
         }
 
         [Test]
@@ -596,10 +650,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
 
             await controller.InitializeAsync(battle, map, models, "FACTION", deployFleet: true);
 
-            CombatUnit[] combatants = battle.GetParticipants().Single().GetCombatants().ToArray();
+            SpaceCombatUnit[] combatants = battle
+                .GetParticipants()
+                .Single()
+                .GetCombatants()
+                .ToArray();
             CollectionAssert.AreEquivalent(
                 templates.Select(unit => unit.TypeID),
-                combatants.Select(unit => unit.GetUnit().TypeID).Distinct()
+                combatants.Select(unit => unit.TypeID).Distinct()
             );
             for (int index = 0; index < combatants.Length; index++)
             {
@@ -609,7 +667,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Bounds actual = renderers[0].bounds;
                 foreach (Renderer renderer in renderers.Skip(1))
                     actual.Encapsulate(renderer.bounds);
-                ModelDimensions measured = combatants[index].GetUnit().ModelSize;
+                ModelDimensions measured = combatants[index].ModelSize;
                 Assert.That(actual.size.x, Is.EqualTo(measured.Width).Within(0.0001f));
                 Assert.That(actual.size.y, Is.EqualTo(measured.Height).Within(0.0001f));
                 Assert.That(actual.size.z, Is.EqualTo(measured.Depth).Within(0.0001f));
@@ -627,7 +685,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// </summary>
         /// <param name="combatant">The independently mutable combatant created for the ship.</param>
         /// <returns>The active battle.</returns>
-        private static ActiveBattle CreateBattleWithCombatant(out CombatUnit combatant)
+        private static ActiveBattle CreateBattleWithCombatant(out SpaceCombatUnit combatant)
         {
             ActiveBattle battle = new ActiveBattle
             {

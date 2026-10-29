@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Simulation.Tactical
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Places a new battle's fleets inside their assigned map regions before presentation begins.
@@ -120,7 +119,7 @@ namespace Rebellion.Simulation.Tactical
             Vector3 right = Vector3.Transform(Vector3.UnitX, rotation);
             Vector3 up = Vector3.Transform(Vector3.UnitY, rotation);
             Vector3 forward = Vector3.Transform(Vector3.UnitZ, rotation);
-            // CombatUnit stores a heading, not roll. Match the renderer's heading-based orientation.
+            // SpaceCombatUnit stores a heading, not roll. Match the renderer's heading-based orientation.
             Vector3 localSize = new Vector3(
                 Vector3.Dot(Vector3.Abs(right), worldSize),
                 Vector3.Dot(Vector3.Abs(up), worldSize),
@@ -137,10 +136,14 @@ namespace Rebellion.Simulation.Tactical
             Dictionary<string, Group> squadrons = new Dictionary<string, Group>(
                 StringComparer.Ordinal
             );
-            foreach (CombatUnit combatant in participant.GetCombatants())
+            foreach (SpaceCombatUnit combatant in participant.GetCombatants())
             {
-                BaseSceneNode unit = combatant?.GetUnit();
-                if (unit is not CapitalShip && unit is not Starfighter)
+                SpaceCombatUnit unit = combatant;
+                if (
+                    unit == null
+                    || unit.Kind
+                        is not (SpaceCombatUnitKind.CapitalShip or SpaceCombatUnitKind.Starfighter)
+                )
                     throw new ArgumentException(
                         "Deployment requires capital ships or fighters.",
                         nameof(participant)
@@ -163,7 +166,7 @@ namespace Rebellion.Simulation.Tactical
                     _maximumClearance
                 );
                 Ship ship = new Ship(combatant, size + new Vector3(clearance * 2f));
-                if (unit is CapitalShip)
+                if (unit.Kind == SpaceCombatUnitKind.CapitalShip)
                     capitals.Add(new Group(combatant.InstanceID, new List<Ship> { ship }));
                 else
                 {
@@ -182,8 +185,8 @@ namespace Rebellion.Simulation.Tactical
             List<Group> fighters = new List<Group>(squadrons.Values);
             PrepareGroups(capitals, capacity);
             PrepareGroups(fighters, capacity);
-            Layout core = Pack(GetSizes(capitals), capacity);
-            Layout screen = Pack(GetSizes(fighters), capacity);
+            Layout core = BuildRanks(GetSizes(capitals), capacity);
+            Layout screen = BuildRanks(GetSizes(fighters), capacity);
             float gap = capitals.Count > 0 && fighters.Count > 0 ? _screenClearance : 0f;
             float totalDepth = core.Size.Z + screen.Size.Z + gap;
             if (totalDepth > capacity.Z)
@@ -214,7 +217,7 @@ namespace Rebellion.Simulation.Tactical
         }
 
         /// <summary>
-        /// Packs squadron members and orders groups by size with stable identity tie breaks.
+        /// Arranges squadron members and orders groups by size with stable identity tie breaks.
         /// </summary>
         /// <param name="groups">The groups to prepare.</param>
         /// <param name="capacity">The available local volume.</param>
@@ -234,7 +237,7 @@ namespace Rebellion.Simulation.Tactical
                 List<Vector3> sizes = new List<Vector3>(group.Ships.Count);
                 foreach (Ship ship in group.Ships)
                     sizes.Add(ship.Size);
-                group.Layout = Pack(sizes, capacity);
+                group.Layout = BuildRanks(sizes, capacity);
             }
             groups.Sort(
                 (left, right) => CompareSize(left.Layout.Size, right.Layout.Size, left.Id, right.Id)
@@ -255,131 +258,92 @@ namespace Rebellion.Simulation.Tactical
         }
 
         /// <summary>
-        /// Searches dimension-aware rows and depth layers, preferring shallow, balanced formations.
-        /// Measures candidates without allocating positions and builds only the winning arrangement.
+        /// Builds centered vertical ranks with approximately the square root of the item count as
+        /// the preferred rank count. Depth layers are added only when the available height cannot
+        /// hold every rank.
         /// </summary>
         /// <param name="sizes">The occupied item sizes in stable size order.</param>
         /// <param name="capacity">The available local dimensions.</param>
         /// <returns>A centered layout containing every item.</returns>
-        private static Layout Pack(List<Vector3> sizes, Vector3 capacity)
+        private static Layout BuildRanks(List<Vector3> sizes, Vector3 capacity)
         {
             if (sizes.Count == 0)
                 return new Layout(Vector3.Zero, Array.Empty<Vector3>());
-            int bestColumns = 0;
-            int bestRows = 0;
-            Vector3 bestSize = Vector3.Zero;
-            float bestBalance = float.PositiveInfinity;
-            for (int columns = 1; columns <= sizes.Count; columns++)
+
+            int preferredRankCount = Math.Max(1, (int)Math.Floor(Math.Sqrt(sizes.Count)));
+            int preferredItemsPerRank = sizes.Count / preferredRankCount;
+            List<Rank> ranks = new List<Rank>();
+            Rank rank = new Rank();
+            for (int index = 0; index < sizes.Count; index++)
             {
-                int maximumRows = (sizes.Count + columns - 1) / columns;
-                for (int rows = 1; rows <= maximumRows; rows++)
+                Vector3 size = sizes[index];
+                if (size.X > capacity.X || size.Y > capacity.Y || size.Z > capacity.Z)
+                    throw new InvalidOperationException(
+                        "Fleet or squadron cannot fit the assigned deployment volume."
+                    );
+                bool preferredRankFilled =
+                    ranks.Count < preferredRankCount - 1 && rank.Count >= preferredItemsPerRank;
+                if (rank.Count > 0 && (preferredRankFilled || rank.Width + size.X > capacity.X))
                 {
-                    Vector3 size = Measure(sizes, columns, rows);
-                    if (size.X > capacity.X || size.Y > capacity.Y || size.Z > capacity.Z)
-                        continue;
-                    float balance = Math.Max(size.X / capacity.X, size.Y / capacity.Y);
-                    if (
-                        bestColumns != 0
-                        && (size.Z > bestSize.Z || (size.Z == bestSize.Z && balance >= bestBalance))
-                    )
-                        continue;
-                    bestColumns = columns;
-                    bestRows = rows;
-                    bestSize = size;
-                    bestBalance = balance;
+                    ranks.Add(rank);
+                    rank = new Rank(index);
                 }
+                rank.Add(size);
             }
-            if (bestColumns == 0)
+            ranks.Add(rank);
+
+            List<Layer> layers = new List<Layer>();
+            Layer layer = new Layer();
+            foreach (Rank candidate in ranks)
+            {
+                if (layer.Count > 0 && layer.Height + candidate.Height > capacity.Y)
+                {
+                    layers.Add(layer);
+                    layer = new Layer();
+                }
+                layer.Add(candidate);
+            }
+            layers.Add(layer);
+
+            float totalDepth = 0f;
+            float maximumHeight = 0f;
+            float width = 0f;
+            foreach (Layer candidate in layers)
+            {
+                totalDepth += candidate.Depth;
+                maximumHeight = Math.Max(maximumHeight, candidate.Height);
+                width = Math.Max(width, candidate.Width);
+            }
+            if (totalDepth > capacity.Z)
                 throw new InvalidOperationException(
                     "Fleet or squadron cannot fit the assigned deployment volume."
                 );
-            return BuildLayout(sizes, bestColumns, bestRows, bestSize);
-        }
 
-        /// <summary>
-        /// Measures actual row widths, row heights, and layer depths.
-        /// </summary>
-        /// <param name="sizes">The occupied item sizes.</param>
-        /// <param name="columns">The maximum items per row.</param>
-        /// <param name="rows">The maximum rows per depth layer.</param>
-        /// <returns>The envelope dimensions.</returns>
-        private static Vector3 Measure(List<Vector3> sizes, int columns, int rows)
-        {
-            Vector3 result = Vector3.Zero;
-            for (int layerStart = 0; layerStart < sizes.Count; )
-            {
-                float layerHeight = 0f;
-                float layerDepth = 0f;
-                for (int row = 0; row < rows && layerStart < sizes.Count; row++)
-                {
-                    Vector3 rowSize = Vector3.Zero;
-                    for (
-                        int column = 0;
-                        column < columns && layerStart < sizes.Count;
-                        column++, layerStart++
-                    )
-                    {
-                        Vector3 size = sizes[layerStart];
-                        rowSize.X += size.X;
-                        rowSize.Y = Math.Max(rowSize.Y, size.Y);
-                        rowSize.Z = Math.Max(rowSize.Z, size.Z);
-                    }
-                    result.X = Math.Max(result.X, rowSize.X);
-                    layerHeight += rowSize.Y;
-                    layerDepth = Math.Max(layerDepth, rowSize.Z);
-                }
-                result.Y = Math.Max(result.Y, layerHeight);
-                result.Z += layerDepth;
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// Builds the winning rows with larger items and rows nearest the center.
-        /// </summary>
-        /// <param name="sizes">The occupied item sizes.</param>
-        /// <param name="columns">The items per row.</param>
-        /// <param name="rows">The rows per depth layer.</param>
-        /// <param name="size">The measured envelope.</param>
-        /// <returns>The centered placements.</returns>
-        private static Layout BuildLayout(List<Vector3> sizes, int columns, int rows, Vector3 size)
-        {
             Vector3[] positions = new Vector3[sizes.Count];
-            float z = -size.Z * 0.5f;
-            for (int start = 0; start < sizes.Count; )
+            float z = -totalDepth * 0.5f;
+            foreach (Layer candidate in layers)
             {
-                int count = Math.Min(sizes.Count - start, columns * rows);
-                int rowCount = (count + columns - 1) / columns;
-                float[] heights = new float[rowCount];
-                float depth = 0f;
-                for (int index = 0; index < count; index++)
+                float[] heights = new float[candidate.Count];
+                for (int index = 0; index < candidate.Count; index++)
+                    heights[index] = candidate.Ranks[index].Height;
+                float[] verticalCenters = GetCenters(heights);
+                for (int rankIndex = 0; rankIndex < candidate.Count; rankIndex++)
                 {
-                    heights[index / columns] = Math.Max(
-                        heights[index / columns],
-                        sizes[start + index].Y
-                    );
-                    depth = Math.Max(depth, sizes[start + index].Z);
-                }
-                float[] yCenters = GetCenters(heights);
-                for (int row = 0; row < rowCount; row++)
-                {
-                    int rowStart = start + row * columns;
-                    int rowSize = Math.Min(columns, start + count - rowStart);
-                    float[] widths = new float[rowSize];
-                    for (int column = 0; column < rowSize; column++)
-                        widths[column] = sizes[rowStart + column].X;
-                    float[] xCenters = GetCenters(widths);
-                    for (int column = 0; column < rowSize; column++)
-                        positions[rowStart + column] = new Vector3(
-                            xCenters[column],
-                            yCenters[row],
-                            z + depth * 0.5f
+                    Rank candidateRank = candidate.Ranks[rankIndex];
+                    float[] widths = new float[candidateRank.Count];
+                    for (int index = 0; index < candidateRank.Count; index++)
+                        widths[index] = sizes[candidateRank.Start + index].X;
+                    float[] lateralCenters = GetCenters(widths);
+                    for (int index = 0; index < candidateRank.Count; index++)
+                        positions[candidateRank.Start + index] = new Vector3(
+                            lateralCenters[index],
+                            verticalCenters[rankIndex],
+                            z + candidate.Depth * 0.5f
                         );
                 }
-                z += depth;
-                start += count;
+                z += candidate.Depth;
             }
-            return new Layout(size, positions);
+            return new Layout(new Vector3(width, maximumHeight, totalDepth), positions);
         }
 
         /// <summary>
@@ -396,13 +360,13 @@ namespace Rebellion.Simulation.Tactical
             {
                 if (index % 2 == 1)
                 {
-                    centers[index] = maximum + lengths[index] * 0.5f;
-                    maximum += lengths[index];
+                    centers[index] = minimum - lengths[index] * 0.5f;
+                    minimum -= lengths[index];
                 }
                 else
                 {
-                    centers[index] = minimum - lengths[index] * 0.5f;
-                    minimum -= lengths[index];
+                    centers[index] = maximum + lengths[index] * 0.5f;
+                    maximum += lengths[index];
                 }
             }
             float center = (minimum + maximum) * 0.5f;
@@ -685,7 +649,7 @@ namespace Rebellion.Simulation.Tactical
 
         private readonly struct Ship
         {
-            internal readonly CombatUnit Combatant;
+            internal readonly SpaceCombatUnit Combatant;
             internal readonly Vector3 Size;
 
             /// <summary>
@@ -693,7 +657,7 @@ namespace Rebellion.Simulation.Tactical
             /// </summary>
             /// <param name="combatant">The persistent combatant.</param>
             /// <param name="size">The hull dimensions with clearance.</param>
-            internal Ship(CombatUnit combatant, Vector3 size)
+            internal Ship(SpaceCombatUnit combatant, Vector3 size)
             {
                 Combatant = combatant;
                 Size = size;
@@ -717,9 +681,60 @@ namespace Rebellion.Simulation.Tactical
             }
         }
 
+        private sealed class Rank
+        {
+            internal int Start { get; }
+            internal int Count { get; private set; }
+            internal float Depth { get; private set; }
+            internal float Height { get; private set; }
+            internal float Width { get; private set; }
+
+            /// <summary>
+            /// Creates a lateral rank beginning at an item index.
+            /// </summary>
+            /// <param name="start">The first item index in the rank.</param>
+            internal Rank(int start = 0)
+            {
+                Start = start;
+            }
+
+            /// <summary>
+            /// Adds one occupied item to this lateral rank.
+            /// </summary>
+            /// <param name="size">The item's occupied dimensions.</param>
+            internal void Add(Vector3 size)
+            {
+                Count++;
+                Width += size.X;
+                Height = Math.Max(Height, size.Y);
+                Depth = Math.Max(Depth, size.Z);
+            }
+        }
+
+        private sealed class Layer
+        {
+            internal List<Rank> Ranks { get; } = new List<Rank>();
+            internal int Count => Ranks.Count;
+            internal float Depth { get; private set; }
+            internal float Height { get; private set; }
+            internal float Width { get; private set; }
+
+            /// <summary>
+            /// Adds one vertical rank to this depth layer.
+            /// </summary>
+            /// <param name="rank">The rank to add.</param>
+            internal void Add(Rank rank)
+            {
+                Ranks.Add(rank);
+                Width = Math.Max(Width, rank.Width);
+                Height += rank.Height;
+                Depth = Math.Max(Depth, rank.Depth);
+            }
+        }
+
         private readonly struct Placement
         {
-            internal readonly CombatUnit Combatant;
+            internal readonly SpaceCombatUnit Combatant;
             internal readonly Vector3 Position;
             internal readonly Vector3 Right;
             internal readonly Vector3 Up;
@@ -737,7 +752,7 @@ namespace Rebellion.Simulation.Tactical
             /// <param name="forward">The world heading.</param>
             /// <param name="extent">The occupied local extent.</param>
             internal Placement(
-                CombatUnit combatant,
+                SpaceCombatUnit combatant,
                 Vector3 position,
                 Vector3 right,
                 Vector3 up,

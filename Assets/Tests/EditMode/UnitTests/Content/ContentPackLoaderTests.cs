@@ -199,6 +199,45 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void DiscoverPacks_SpaceCombatMusic_DeserializesPlaylistPaths()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-space-combat-music-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                string packRoot = Path.Combine(contentRoot, "Packs", "Fixture");
+                Directory.CreateDirectory(packRoot);
+                File.WriteAllText(
+                    Path.Combine(packRoot, "pack.xml"),
+                    "<ContentPack><ID>fixture</ID><SpaceCombatMusic>"
+                        + "<Path>Pack/Shared/Tactical/Audio/Music/first.wav</Path>"
+                        + "<Path>Pack/Shared/Tactical/Audio/Music/second.wav</Path>"
+                        + "</SpaceCombatMusic></ContentPack>"
+                );
+
+                ContentPackDefinition definition = ContentPackLoader
+                    .DiscoverPacks(contentRoot)
+                    .Single();
+
+                CollectionAssert.AreEqual(
+                    new[]
+                    {
+                        "Pack/Shared/Tactical/Audio/Music/first.wav",
+                        "Pack/Shared/Tactical/Audio/Music/second.wav",
+                    },
+                    definition.SpaceCombatMusicPaths
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(contentRoot))
+                    Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void GetDefaultPackID_CatalogSelection_ReturnsConfiguredPack()
         {
             string contentRoot = Path.Combine(

@@ -1,10 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
+using Rebellion.Tactical;
+using Rebellion.Util.Serialization;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -19,7 +21,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private TacticalSelectionView _view;
         private UnityEngine.Camera _camera;
         private Transform _presentation;
-        private CombatUnit _combatant;
+        private SpaceCombatUnit _combatant;
+        private Texture2D _texture;
 
         /// <summary>
         /// Creates the generated overlay and an independently mutable battle ship.
@@ -43,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             GameObject hull = new GameObject("Hull");
             hull.transform.SetParent(_instance.transform, false);
             _presentation = hull.transform;
-            _combatant = CombatUnit.Create(
+            _combatant = SpaceCombatUnit.Create(
                 new CapitalShip
                 {
                     DisplayName = "Test Cruiser",
@@ -67,19 +70,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_instance);
+            if (_texture)
+                UnityEngine.Object.DestroyImmediate(_texture);
         }
 
         /// <summary>
         /// Verifies the selected-unit presentation contract.
         /// </summary>
         [Test]
-        public void Render_SelectedShip_ShowsNameAndCurrentDurability()
+        public void Render_SelectedShip_ShowsCurrentDurabilityWithoutTinyNameLabel()
         {
-            _combatant.CurrentShieldStrength = 20;
+            _combatant.Condition.CurrentShieldStrength = 20;
 
             _view.Render(_combatant, _presentation, _camera);
 
-            Assert.AreEqual("Test Cruiser", FindLabel("UnitName").text);
+            Assert.IsFalse(
+                _view.GetComponentsInChildren<TMP_Text>().Any(label => label.name == "UnitName")
+            );
+            Assert.AreEqual("x01", FindLabel("UnitCount").text);
             Assert.AreEqual("Hull: 75 / 100", FindLabel("HullLabel").text);
             Assert.AreEqual("Shields: 20 / 50", FindLabel("ShieldLabel").text);
             Assert.That(FindFill("HullBar").anchorMax.x, Is.EqualTo(0.75f));
@@ -93,8 +101,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void Render_ChangedBattleStats_RefreshesExistingSelection()
         {
             _view.Render(_combatant, _presentation, _camera);
-            ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength = 30;
-            _combatant.CurrentShieldStrength = 0;
+            _combatant.Condition.CurrentHullStrength = 30;
+            _combatant.Condition.CurrentShieldStrength = 0;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -110,7 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_ConfiguredFighter_UsesPerFighterHullAndBattleShields()
         {
-            CombatUnit fighter = CombatUnit.Create(
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
                 new Starfighter
                 {
                     MaxHullStrength = 20,
@@ -124,7 +132,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     },
                 }
             );
-            fighter.CurrentShieldStrength = 3;
+            fighter.Condition.CurrentShieldStrength = 3;
 
             _view.Render(fighter, _presentation, _camera);
 
@@ -138,7 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_UnconfiguredFighterHull_DoesNotShowInventedHealth()
         {
-            CombatUnit fighter = CombatUnit.Create(
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
                 new Starfighter
                 {
                     ModelSize = new ModelDimensions
@@ -180,7 +188,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_NoShieldCapacity_ShowsNoShields()
         {
-            ((CapitalShip)_combatant.GetUnit()).MaxShieldStrength = 0;
+            _combatant.MaxShieldStrength = 0;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -194,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void Render_UnrecordedShields_DistinguishesUnknownFromDepleted()
         {
-            _combatant.CurrentShieldStrength = null;
+            _combatant.Condition.CurrentShieldStrength = null;
 
             _view.Render(_combatant, _presentation, _camera);
 
@@ -214,15 +222,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             float fraction
         )
         {
-            ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength = value;
-            _combatant.CurrentShieldStrength = value;
+            _combatant.Condition.CurrentHullStrength = value;
+            _combatant.Condition.CurrentShieldStrength = value;
 
             _view.Render(_combatant, _presentation, _camera);
 
             Assert.AreEqual(fraction, FindFill("HullBar").anchorMax.x);
             Assert.AreEqual(fraction, FindFill("ShieldBar").anchorMax.x);
-            Assert.AreEqual(value, ((CapitalShip)_combatant.GetUnit()).CurrentHullStrength);
-            Assert.AreEqual(value, _combatant.CurrentShieldStrength);
+            Assert.AreEqual(value, _combatant.Condition.CurrentHullStrength);
+            Assert.AreEqual(value, _combatant.Condition.CurrentShieldStrength);
         }
 
         /// <summary>
@@ -331,6 +339,38 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
+        /// Verifies a hovered hostile uses the same projected durability presentation as a selected ship.
+        /// </summary>
+        [Test]
+        public void RenderContacts_HoveredHostile_UsesProjectedShipDurabilityFrame()
+        {
+            _combatant.Condition.CurrentShieldStrength = 20;
+            Dictionary<SpaceCombatUnit, Transform> presentations = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
+            {
+                [_combatant] = _presentation,
+            };
+
+            _view.RenderContacts(
+                Array.Empty<SpaceCombatUnit>(),
+                _combatant,
+                presentations,
+                _camera
+            );
+
+            Transform frame = _view.transform.Find("HoverFrame");
+            Assert.IsTrue(frame.gameObject.activeSelf);
+            Assert.That(((RectTransform)frame.Find("HullBar/Fill")).anchorMax.x, Is.EqualTo(0.75f));
+            Assert.That(
+                ((RectTransform)frame.Find("ShieldBar/Fill")).anchorMax.x,
+                Is.EqualTo(0.4f)
+            );
+            Assert.IsNull(_view.transform.Find("HoverDurability"));
+        }
+
+        /// <summary>
         /// Verifies the selected-unit presentation contract.
         /// </summary>
         [Test]
@@ -339,9 +379,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             RectTransform well = (RectTransform)_view.transform.Find("BattleDock/RosterHousing");
             Canvas.ForceUpdateCanvases();
             float width = well.rect.width;
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            CombatUnit third = CombatUnit.Create(_combatant.GetUnit());
-            Dictionary<CombatUnit, Transform> roots = new Dictionary<CombatUnit, Transform>
+            SpaceCombatUnit second = CopyCombatant(_combatant);
+            SpaceCombatUnit third = CopyCombatant(_combatant);
+            Dictionary<SpaceCombatUnit, Transform> roots = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
             {
                 [_combatant] = _presentation,
                 [second] = _presentation,
@@ -458,6 +501,102 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
+        [Test]
+        public void RenderControlGroups_AssignedGroup_ShowsActiveNumberAboveRoster()
+        {
+            int[] counts = new int[TacticalSelectionController.ControlGroupCount];
+            counts[0] = 2;
+
+            _view.RenderControlGroups(counts, 0);
+
+            Transform row = _view.transform.Find("BattleDock/RosterHousing/ControlGroups");
+            Button[] buttons = row.GetComponentsInChildren<Button>(true);
+            Assert.AreEqual(TacticalSelectionController.ControlGroupCount, buttons.Length);
+            Assert.IsTrue(buttons[0].interactable);
+            Assert.IsTrue(buttons[1].interactable);
+            Assert.AreEqual("1", buttons[0].GetComponentInChildren<TMP_Text>().text);
+            Assert.That(
+                ((RectTransform)row).anchoredPosition.y,
+                Is.GreaterThan(((RectTransform)row.parent).rect.height)
+            );
+        }
+
+        [Test]
+        public void BindBattle_FriendlyOfficerAboardShip_ShowsPortraitAboveHull()
+        {
+            CapitalShip source = new CapitalShip
+            {
+                OwnerInstanceID = "PLAYER",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ModelSize = new ModelDimensions
+                {
+                    Width = 10f,
+                    Height = 6f,
+                    Depth = 14f,
+                },
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER",
+                OwnerInstanceID = "PLAYER",
+                SmallDisplayImagePath = "Pack/Officer/small-display",
+            };
+            source.AddChild(officer);
+            officer.SetParent(source);
+            SpaceCombatUnit combatant = SpaceCombatUnit.Create(source);
+            _texture = new Texture2D(4, 2);
+            Dictionary<SpaceCombatUnit, Transform> presentations = new Dictionary<
+                SpaceCombatUnit,
+                Transform
+            >
+            {
+                [combatant] = _presentation,
+            };
+            _view.BindBattle(
+                presentations,
+                new BattleMapBounds
+                {
+                    MinimumX = -100f,
+                    MaximumX = 100f,
+                    MinimumY = -100f,
+                    MaximumY = 100f,
+                    MinimumZ = -100f,
+                    MaximumZ = 100f,
+                },
+                _camera,
+                "PLAYER",
+                Array.Empty<SpaceCombatUnit>()
+            );
+            UnityEngine.Object.DestroyImmediate(
+                _view.transform.Find("OfficerMarkerTemplate").GetComponent<Button>()
+            );
+            SpaceCombatUnit clicked = null;
+            _view.OfficerMarkerClicked += combatant => clicked = combatant;
+            _view.ApplyTheme(
+                new BattleHudTheme { ContactColorHex = "#FF00FF" },
+                new FixedTextureAssetSource(_texture)
+            );
+
+            _view.RenderSelection(Array.Empty<SpaceCombatUnit>(), presentations, _camera);
+
+            Transform markerRoot = _view.transform.Find("OfficerMarker OFFICER");
+            RawImage marker = markerRoot
+                .Find("PortraitViewport/PortraitImage")
+                .GetComponent<RawImage>();
+            RawImage background = markerRoot
+                .Find("PortraitViewport/PortraitBackground")
+                .GetComponent<RawImage>();
+            Assert.AreSame(_texture, marker.texture);
+            Assert.AreEqual(new Rect(0.25f, 0f, 0.5f, 1f), marker.uvRect);
+            Assert.AreEqual(new Vector2(40f, 40f), ((RectTransform)markerRoot).sizeDelta);
+            Assert.AreEqual(new Color(0.08f, 0.32f, 0.52f), background.color);
+            Assert.IsNull(markerRoot.GetComponentInChildren<Mask>(includeInactive: true));
+            Assert.AreEqual(Color.magenta, markerRoot.GetComponent<Image>().color);
+            Assert.IsTrue(markerRoot.gameObject.activeSelf);
+            markerRoot.GetComponent<Button>().onClick.Invoke();
+            Assert.AreSame(combatant, clicked);
+        }
+
         /// <summary>
         /// Verifies carrier commands occupy the remaining three authored command slots.
         /// </summary>
@@ -480,9 +619,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_LargeSelection_ScrollContentEnclosesLastCard()
         {
-            CombatUnit[] selected = Enumerable
+            SpaceCombatUnit[] selected = Enumerable
                 .Range(0, 40)
-                .Select(_ => CombatUnit.Create(_combatant.GetUnit()))
+                .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
 
             _view.RenderSelection(selected, null, null);
@@ -508,11 +647,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_SameShipType_GroupsMembersAndAveragesBars()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            ((CapitalShip)second.GetUnit()).CurrentHullStrength = 25;
-            second.CurrentShieldStrength = 0;
-            _combatant.CurrentShieldStrength = 50;
+            _combatant.TypeID = "CRUISER";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
+            second.Condition.CurrentHullStrength = 25;
+            second.Condition.CurrentShieldStrength = 0;
+            _combatant.Condition.CurrentShieldStrength = 50;
 
             _view.RenderSelection(new[] { _combatant, second }, null, null);
 
@@ -530,8 +669,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_ChangedGroupMembers_RebindsCardAndUpdatesCount()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
+            _combatant.TypeID = "CRUISER";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
             _view.RenderSelection(new[] { _combatant, second }, null, null);
             TacticalUnitCardView card = FindCard();
 
@@ -548,10 +687,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_OpposingOwners_DoesNotMergeCards()
         {
-            _combatant.GetUnit().TypeID = "CRUISER";
-            _combatant.GetUnit().OwnerInstanceID = "FNEMP1";
-            CombatUnit second = CombatUnit.Create(_combatant.GetUnit());
-            second.GetUnit().OwnerInstanceID = "FNALL1";
+            _combatant.TypeID = "CRUISER";
+            _combatant.OwnerInstanceID = "FNEMP1";
+            SpaceCombatUnit second = CopyCombatant(_combatant);
+            second.OwnerInstanceID = "FNALL1";
 
             _view.RenderSelection(new[] { _combatant, second }, null, null);
 
@@ -559,23 +698,100 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Verifies fighters from different source squadrons stay in separate cards.
+        /// Verifies separate squadrons of one fighter definition collapse into one command card.
         /// </summary>
         [Test]
-        public void RenderSelection_DifferentFighterSquadrons_DoesNotMergeCards()
+        public void RenderSelection_SameFighterTypeAcrossSquadrons_GroupsIntoOneCard()
         {
             Starfighter definition = new Starfighter
             {
                 TypeID = "FIGHTER",
                 InstanceID = "SQUADRON1",
             };
-            CombatUnit first = CombatUnit.Create(definition);
+            SpaceCombatUnit first = SpaceCombatUnit.Create(definition);
             definition.InstanceID = "SQUADRON2";
-            CombatUnit second = CombatUnit.Create(definition);
+            SpaceCombatUnit second = SpaceCombatUnit.Create(definition);
 
             _view.RenderSelection(new[] { first, second }, null, null);
 
-            Assert.AreEqual(2, _view.GetComponentsInChildren<TacticalUnitCardView>().Length);
+            TacticalUnitCardView card = FindCard();
+            CollectionAssert.AreEqual(new[] { first, second }, card.Combatants);
+            Assert.AreEqual("x02", FindLabel("UnitCount").text);
+        }
+
+        /// <summary>
+        /// Verifies a fleet-scale selection produces one card per unit definition without
+        /// collapsing the represented command members.
+        /// </summary>
+        [Test]
+        public void RenderSelection_MassiveTypedFleet_GroupsIntoOrderedTypeCards()
+        {
+            Starfighter fighter = new Starfighter
+            {
+                TypeID = "FIGHTER",
+                DisplayName = "Fighter",
+                OwnerInstanceID = "PLAYER",
+            };
+            CapitalShip capital = new CapitalShip
+            {
+                TypeID = "CAPITAL",
+                DisplayName = "Capital",
+                OwnerInstanceID = "PLAYER",
+            };
+            SpaceCombatUnit[] fighters = Enumerable
+                .Range(0, 40)
+                .Select(index =>
+                {
+                    fighter.InstanceID = $"FIGHTER-{index}";
+                    return SpaceCombatUnit.Create(fighter);
+                })
+                .ToArray();
+            SpaceCombatUnit[] capitals = Enumerable
+                .Range(0, 20)
+                .Select(index =>
+                {
+                    capital.InstanceID = $"CAPITAL-{index}";
+                    return SpaceCombatUnit.Create(capital);
+                })
+                .ToArray();
+
+            _view.RenderSelection(capitals.Concat(fighters).ToArray(), null, null);
+
+            TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
+            Assert.AreEqual(2, cards.Length);
+            Assert.That(cards[0].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.Starfighter));
+            Assert.AreEqual(40, cards[0].Combatants.Count);
+            Assert.That(cards[1].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.CapitalShip));
+            Assert.AreEqual(20, cards[1].Combatants.Count);
+        }
+
+        /// <summary>
+        /// Verifies sorting the roster does not make an unchanged controller-order selection look
+        /// changed again on every rendered frame.
+        /// </summary>
+        [Test]
+        public void RenderSelection_UnsortedUnchangedSelection_DoesNotRebindTypeCards()
+        {
+            _combatant.TypeID = "CAPITAL";
+            SpaceCombatUnit fighter = SpaceCombatUnit.Create(
+                new Starfighter { TypeID = "FIGHTER", DisplayName = "Fighter" }
+            );
+            SpaceCombatUnit[] selected = { _combatant, fighter };
+            _view.RenderSelection(selected, null, null);
+            TMP_Text[] stableLabels = _view
+                .GetComponentsInChildren<TacticalUnitCardView>()
+                .SelectMany(card => card.GetComponentsInChildren<TMP_Text>(true))
+                .Where(label => label.name == "UnitCount")
+                .ToArray();
+            foreach (TMP_Text label in stableLabels)
+                label.havePropertiesChanged = false;
+
+            _view.RenderSelection(selected, null, null);
+
+            Assert.That(
+                stableLabels,
+                Has.All.Matches<TMP_Text>(label => !label.havePropertiesChanged)
+            );
         }
 
         /// <summary>
@@ -600,9 +816,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [Test]
         public void RenderSelection_FourCards_UsesTwoRows()
         {
-            CombatUnit[] selected = Enumerable
+            SpaceCombatUnit[] selected = Enumerable
                 .Range(0, 4)
-                .Select(_ => CombatUnit.Create(_combatant.GetUnit()))
+                .Select(_ => CopyCombatant(_combatant))
                 .ToArray();
 
             _view.RenderSelection(selected, null, null);
@@ -667,11 +883,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             source.AddChild(squadron);
             squadron.SetParent(source);
-            CombatUnit carrier = battle.AddCombatants(source)[0];
+            SpaceCombatUnit carrier = battle.AddCombatants(source)[0];
             battle.AddCombatants(squadron);
             TacticalCarrierOperations operations = new TacticalCarrierOperations(
                 battle,
-                new Dictionary<CombatUnit, System.Numerics.Vector3[][]>
+                new Dictionary<SpaceCombatUnit, System.Numerics.Vector3[][]>
                 {
                     [carrier] = new[]
                     {
@@ -683,8 +899,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _view.RenderSelection(new[] { carrier }, null, null);
             TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
             Assert.That(cards.Length, Is.EqualTo(2));
+            Assert.That(cards[0].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.Starfighter));
+            Assert.That(cards[1].Combatant.Kind, Is.EqualTo(SpaceCombatUnitKind.CapitalShip));
             Assert.That(
-                cards.Single(card => card.Combatant.GetUnit() is Starfighter).Combatants.Count,
+                cards
+                    .Single(card => card.Combatant.Kind == SpaceCombatUnitKind.Starfighter)
+                    .Combatants.Count,
                 Is.EqualTo(1)
             );
             Assert.IsTrue(_view.LaunchButton.interactable);
@@ -728,11 +948,59 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             FindCard().GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == name);
 
         /// <summary>
+        /// Creates an independent roster member while restoring its fixture-owned geometry.
+        /// </summary>
+        /// <param name="source">The combatant supplying the fixture state.</param>
+        /// <returns>The independently identified combatant.</returns>
+        private static SpaceCombatUnit CopyCombatant(SpaceCombatUnit source)
+        {
+            SpaceCombatUnit copy = SerializationHelper.Deserialize<SpaceCombatUnit>(
+                SerializationHelper.Serialize(source)
+            );
+            copy.InstanceID = Guid.NewGuid().ToString("N");
+            copy.ModelSize = source.ModelSize?.CreateCopy();
+            return copy;
+        }
+
+        /// <summary>
         /// Returns one authored durability fill without accessing private view state.
         /// </summary>
         /// <param name="name">The bar name.</param>
         /// <returns>The fill rectangle.</returns>
         private RectTransform FindFill(string name) =>
             (RectTransform)FindCard().transform.Find($"{name}/Fill");
+
+        private sealed class FixedTextureAssetSource : IContentAssetSource
+        {
+            private readonly Texture2D _texture;
+
+            /// <summary>
+            /// Creates an asset source returning one known portrait texture.
+            /// </summary>
+            /// <param name="texture">The texture returned for every texture address.</param>
+            public FixedTextureAssetSource(Texture2D texture) => _texture = texture;
+
+            /// <summary>
+            /// Returns the fixture portrait texture.
+            /// </summary>
+            /// <param name="address">The ignored content address.</param>
+            /// <returns>The fixture texture.</returns>
+            public Texture2D GetTexture(string address) => _texture;
+
+            /// <summary>
+            /// Returns no sprite because this fixture resolves portraits only.
+            /// </summary>
+            /// <param name="address">The ignored content address.</param>
+            /// <returns>Null.</returns>
+            public Sprite GetSprite(string address) => null;
+
+            /// <summary>
+            /// Returns no bordered sprite because this fixture resolves portraits only.
+            /// </summary>
+            /// <param name="address">The ignored content address.</param>
+            /// <param name="border">The ignored border.</param>
+            /// <returns>Null.</returns>
+            public Sprite GetSprite(string address, Vector4 border) => null;
+        }
     }
 }

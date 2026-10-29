@@ -45,13 +45,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 MinimumZ = -100f,
                 MaximumZ = 100f,
             };
-            _navigation.Configure(bounds, Vector3.zero);
+            _navigation.Configure(
+                bounds,
+                new Bounds(Vector3.zero, new Vector3(200f, 20f, 200f)),
+                Vector3.zero
+            );
             _radar.Bind(
-                new Dictionary<CombatUnit, Transform>(),
+                new Dictionary<SpaceCombatUnit, Transform>(),
                 bounds,
                 camera,
                 "VIEWER",
-                new CombatUnit[0]
+                new SpaceCombatUnit[0]
             );
             Canvas.ForceUpdateCanvases();
         }
@@ -63,10 +67,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void TearDown() => UnityEngine.Object.DestroyImmediate(_instance);
 
         /// <summary>
-        /// Checks an empty minimap contains only its background and no decorative geometry.
+        /// Checks an empty minimap separates its housing from its playable area.
         /// </summary>
         [Test]
-        public void Bind_EmptyBattle_DrawsOnlyBackground()
+        public void Bind_EmptyBattle_DrawsHousingAndPlayableArea()
         {
             _radar.Rebuild(CanvasUpdate.PreRender);
             Canvas.ForceUpdateCanvases();
@@ -74,7 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             try
             {
                 Assert.IsNotNull(mesh);
-                Assert.AreEqual(4, mesh.vertexCount);
+                Assert.AreEqual(8, mesh.vertexCount);
             }
             finally
             {
@@ -126,6 +130,46 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     button = PointerEventData.InputButton.Right,
                 }
             );
+            Assert.AreEqual(previous, _navigation.Pivot);
+        }
+
+        /// <summary>
+        /// Checks unused radar space outside a narrow playable area cannot navigate the camera.
+        /// </summary>
+        [Test]
+        public void OnPointerDown_OutsideAspectCorrectPlayableArea_PreservesCameraPivot()
+        {
+            BattleMapBounds bounds = new BattleMapBounds
+            {
+                MinimumX = -50f,
+                MaximumX = 50f,
+                MinimumY = -10f,
+                MaximumY = 10f,
+                MinimumZ = -100f,
+                MaximumZ = 100f,
+            };
+            _radar.Bind(
+                new Dictionary<SpaceCombatUnit, Transform>(),
+                bounds,
+                _navigation.GetComponent<UnityEngine.Camera>(),
+                "VIEWER",
+                new SpaceCombatUnit[0]
+            );
+            Rect r = _radar.rectTransform.rect;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(
+                null,
+                _radar.transform.TransformPoint(new Vector3(r.xMin + 5f, r.center.y))
+            );
+            Vector3 previous = _navigation.Pivot;
+
+            _radar.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    position = screen,
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+
             Assert.AreEqual(previous, _navigation.Pivot);
         }
     }

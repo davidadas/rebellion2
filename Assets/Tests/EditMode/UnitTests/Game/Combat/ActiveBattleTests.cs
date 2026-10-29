@@ -23,13 +23,13 @@ namespace Rebellion.Tests.Game.Combat
             };
             ActiveBattle battle = CreateBattle();
 
-            IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            IReadOnlyList<SpaceCombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(1, addedCombatants.Count);
             Assert.AreEqual("FACTION_1", participant.FactionInstanceID);
             Assert.AreSame(addedCombatants[0], participant.GetCombatants()[0]);
-            Assert.AreNotSame(source, addedCombatants[0].GetUnit());
+            Assert.AreNotSame(source, addedCombatants[0]);
         }
 
         /// <summary>
@@ -47,17 +47,17 @@ namespace Rebellion.Tests.Game.Combat
             };
             ActiveBattle battle = CreateBattle();
 
-            IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            IReadOnlyList<SpaceCombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(1, addedCombatants.Count);
             Assert.AreEqual(1, participant.GetCombatants().Count);
-            foreach (CombatUnit combatUnit in addedCombatants)
+            foreach (SpaceCombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
-                Starfighter fighter = combatUnit.GetUnit() as Starfighter;
+                SpaceCombatUnit fighter = combatUnit;
                 Assert.IsNotNull(fighter);
-                Assert.AreEqual(3, fighter.CurrentSquadronSize);
+                Assert.AreEqual(3, combatUnit.Condition.CurrentSquadronSize);
                 Assert.AreEqual(12, fighter.MaxSquadronSize);
             }
         }
@@ -173,7 +173,7 @@ namespace Rebellion.Tests.Game.Combat
                         BattleMapSlotID = "defender",
                     }
                 );
-            CombatUnit combatUnit = battle.AddCombatants(source)[0];
+            SpaceCombatUnit combatUnit = battle.AddCombatants(source)[0];
             combatUnit.Position = new BattleVector3
             {
                 X = 10f,
@@ -189,15 +189,15 @@ namespace Rebellion.Tests.Game.Combat
 
             string xml = SerializationHelper.Serialize(battle);
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
-            CombatUnit restoredCombatUnit = restored
+            SpaceCombatUnit restoredCombatUnit = restored
                 .GetParticipants()
                 .Single(participant => participant.FactionInstanceID == "FACTION_1")
                 .GetCombatants()[0];
-            CapitalShip restoredShip = restoredCombatUnit.GetUnit() as CapitalShip;
+            SpaceCombatUnit restoredShip = restoredCombatUnit;
 
             Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitInstanceID);
             Assert.IsNotNull(restoredShip);
-            Assert.AreEqual(75, restoredShip.CurrentHullStrength);
+            Assert.AreEqual(75, restoredCombatUnit.Condition.CurrentHullStrength);
             Assert.AreEqual(10f, restoredCombatUnit.Position.X);
             Assert.AreEqual(20f, restoredCombatUnit.Position.Y);
             Assert.AreEqual(30f, restoredCombatUnit.Position.Z);
@@ -206,9 +206,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0f, restoredCombatUnit.Forward.Z);
             Assert.AreEqual(source.ModelPath, restoredShip.ModelPath);
             Assert.AreEqual(2.5f, restoredShip.ModelScale);
-            Assert.AreEqual(100f, restoredShip.ModelSize.Width);
-            Assert.AreEqual(40f, restoredShip.ModelSize.Height);
-            Assert.AreEqual(250f, restoredShip.ModelSize.Depth);
+            Assert.IsNull(restoredShip.ModelSize);
             Assert.AreEqual(2, restored.GetParticipants().Count);
             Assert.AreEqual(
                 "defender",

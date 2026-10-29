@@ -14,6 +14,8 @@ public static class TacticalViewPrefabBuilder
     private const string _prefabPath = "Assets/Prefabs/UI/TacticalView/TacticalViewRoot.prefab";
     private const string _scenePath = "Assets/Scenes/TacticalView.unity";
     private const string _sceneInstanceName = "TacticalViewRoot";
+    private const string _shieldPrefabPath =
+        "Assets/FXV/ShieldEffect/Prefabs/Domes/ShieldDome1.prefab";
 
     /// <summary>
     /// Rebuilds the tactical root prefab and generated scene.
@@ -32,6 +34,8 @@ public static class TacticalViewPrefabBuilder
             GameObject battleRoot = new GameObject("BattleRoot");
             battleRoot.transform.SetParent(root.transform, false);
 
+            GameObject shieldTemplate = BuildShieldTemplate(root.transform);
+
             GameObject cameraObject = new GameObject(
                 "BattleCamera",
                 typeof(Camera),
@@ -43,7 +47,10 @@ public static class TacticalViewPrefabBuilder
 
             TacticalSelectionController selection =
                 root.AddComponent<TacticalSelectionController>();
-            TacticalSelectionView selectionView = BuildSelectionView(root.transform);
+            TacticalSelectionView selectionView = BuildSelectionView(
+                root.transform,
+                out TacticalTimeControlsView timeControls
+            );
             SerializedObject serializedSelection = new SerializedObject(selection);
             serializedSelection.FindProperty("view").objectReferenceValue = selectionView;
             serializedSelection.ApplyModifiedPropertiesWithoutUndo();
@@ -67,6 +74,12 @@ public static class TacticalViewPrefabBuilder
             serializedController.FindProperty("battleRoot").objectReferenceValue =
                 battleRoot.transform;
             serializedController.FindProperty("mapRoot").objectReferenceValue = mapRoot.transform;
+            serializedController.FindProperty("timeControls").objectReferenceValue = timeControls;
+            serializedController.FindProperty("weaponShader").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<Shader>("Assets/Shaders/TacticalLaserBolt.shader")
+                ?? throw new IOException("The tactical weapon shader is missing.");
+            serializedController.FindProperty("shieldTemplate").objectReferenceValue =
+                shieldTemplate;
             serializedController.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
@@ -79,6 +92,38 @@ public static class TacticalViewPrefabBuilder
         }
 
         SceneBuilder.Build(_scenePath, _prefabPath, _sceneInstanceName);
+    }
+
+    /// <summary>
+    /// Authors an inactive battle-local shield template from the installed effect prefab.
+    /// </summary>
+    /// <param name="parent">The generated tactical root.</param>
+    /// <returns>The stripped shield template retained by the tactical controller.</returns>
+    private static GameObject BuildShieldTemplate(Transform parent)
+    {
+        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(_shieldPrefabPath);
+        if (!source)
+            throw new FileNotFoundException("The tactical shield effect is not installed.");
+        GameObject template = (GameObject)PrefabUtility.InstantiatePrefab(source, parent);
+        PrefabUtility.UnpackPrefabInstance(
+            template,
+            PrefabUnpackMode.Completely,
+            InteractionMode.AutomatedAction
+        );
+        template.name = "ShieldTemplate";
+        foreach (Collider collider in template.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+        foreach (Light light in template.GetComponentsInChildren<Light>(true))
+            Object.DestroyImmediate(light.gameObject);
+        foreach (MonoBehaviour behaviour in template.GetComponentsInChildren<MonoBehaviour>(true))
+            if (behaviour && behaviour.GetType().Name == "fxvSinPos")
+                Object.DestroyImmediate(behaviour);
+        System.Type adapter = System.Type.GetType("TacticalShieldEffect, Assembly-CSharp");
+        if (adapter == null || !typeof(MonoBehaviour).IsAssignableFrom(adapter))
+            throw new MissingComponentException("The tactical shield adapter is not compiled.");
+        template.AddComponent(adapter);
+        template.SetActive(false);
+        return template;
     }
 
     /// <summary>
@@ -124,6 +169,7 @@ public static class TacticalViewPrefabBuilder
         SetReference(serialized, "overlay", overlay.gameObject);
         SetReference(serialized, "windowLayer", layer);
         SetReference(serialized, "windowManager", manager);
+        SetReference(serialized, "selection", selection);
         SetReferences(serialized, "battleInput", new Object[] { selection, cameraInput });
         serialized.ApplyModifiedPropertiesWithoutUndo();
         overlay.gameObject.SetActive(false);
@@ -133,8 +179,12 @@ public static class TacticalViewPrefabBuilder
     /// Authors a compact bottom HUD and reusable selection presentation.
     /// </summary>
     /// <param name="parent">The tactical scene root.</param>
+    /// <param name="timeControls">Receives the authored tactical time-control view.</param>
     /// <returns>The authored dock and selection view.</returns>
-    private static TacticalSelectionView BuildSelectionView(Transform parent)
+    private static TacticalSelectionView BuildSelectionView(
+        Transform parent,
+        out TacticalTimeControlsView timeControls
+    )
     {
         GameObject overlay = new GameObject(
             "SelectionOverlay",
@@ -151,18 +201,32 @@ public static class TacticalViewPrefabBuilder
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         TacticalSelectionView view = overlay.AddComponent<TacticalSelectionView>();
 
-        TacticalHudGraphic frame = Art(
+        TacticalHudGraphic frame = ProjectedUnitFrame(
             "SelectionFrame",
             overlay.transform,
-            TacticalHudGraphic.Artwork.Brackets,
             Color.white,
+            out _,
+            out _
+        );
+        TacticalHudGraphic targetFrame = Art(
+            "AttackTargetFrame",
+            overlay.transform,
+            TacticalHudGraphic.Artwork.Brackets,
+            new Color(1f, 0.22f, 0.17f),
             new Rect(0f, 0f, 24f, 24f)
         );
-        frame.rectTransform.anchorMin =
-            frame.rectTransform.anchorMax =
-            frame.rectTransform.pivot =
+        targetFrame.rectTransform.anchorMin =
+            targetFrame.rectTransform.anchorMax =
+            targetFrame.rectTransform.pivot =
                 new Vector2(0.5f, 0.5f);
-        frame.gameObject.SetActive(false);
+        targetFrame.gameObject.SetActive(false);
+        TacticalHudGraphic hover = ProjectedUnitFrame(
+            "HoverFrame",
+            overlay.transform,
+            new Color(1f, 0.22f, 0.17f),
+            out RectTransform hoverShieldFill,
+            out RectTransform hoverHullFill
+        );
         TacticalHudGraphic marquee = Art(
             "Marquee",
             overlay.transform,
@@ -175,6 +239,49 @@ public static class TacticalViewPrefabBuilder
             marquee.rectTransform.pivot =
                 new Vector2(0.5f, 0.5f);
         marquee.gameObject.SetActive(false);
+        TacticalHudGraphic contextualCursor = Art(
+            "ContextualCursor",
+            overlay.transform,
+            TacticalHudGraphic.Artwork.Dock,
+            new Color(0.35f, 1f, 0.62f),
+            new Rect(0f, 0f, 36f, 36f)
+        );
+        contextualCursor.rectTransform.anchorMin =
+            contextualCursor.rectTransform.anchorMax =
+            contextualCursor.rectTransform.pivot =
+                new Vector2(0.5f, 0.5f);
+        contextualCursor.gameObject.SetActive(false);
+        RectTransform officerMarkerFrame = RectObject(
+            "OfficerMarkerTemplate",
+            overlay.transform,
+            new Rect(0f, 0f, 40f, 40f)
+        );
+        Image officerFrame = officerMarkerFrame.gameObject.AddComponent<Image>();
+        officerFrame.color = Color.white;
+        officerFrame.raycastTarget = true;
+        Button officerButton = officerMarkerFrame.gameObject.AddComponent<Button>();
+        officerButton.targetGraphic = officerFrame;
+        officerButton.navigation = new Navigation { mode = Navigation.Mode.None };
+        RectTransform officerViewport = RectObject(
+            "PortraitViewport",
+            officerMarkerFrame,
+            new Rect(2f, 2f, 36f, 36f)
+        );
+        RawImage officerBackground = RectObject("PortraitBackground", officerViewport, new Rect())
+            .gameObject.AddComponent<RawImage>();
+        officerBackground.color = new Color(0.08f, 0.32f, 0.52f);
+        officerBackground.raycastTarget = false;
+        Fill(officerBackground.rectTransform, Vector2.zero, Vector2.zero);
+        RawImage officerMarker = RectObject("PortraitImage", officerViewport, new Rect())
+            .gameObject.AddComponent<RawImage>();
+        officerMarker.color = Color.white;
+        officerMarker.raycastTarget = false;
+        Fill(officerMarker.rectTransform, Vector2.zero, Vector2.zero);
+        officerMarkerFrame.anchorMin =
+            officerMarkerFrame.anchorMax =
+            officerMarkerFrame.pivot =
+                new Vector2(0.5f, 0.5f);
+        officerMarkerFrame.gameObject.SetActive(false);
 
         TMP_Text fps = Label(
             "FrameRate",
@@ -222,7 +329,7 @@ public static class TacticalViewPrefabBuilder
         )
             .gameObject.AddComponent<TacticalRadarView>();
         radar.raycastTarget = true;
-        BuildTimeControls(left.transform);
+        timeControls = BuildTimeControls(left.transform);
 
         TacticalHudGraphic rosterHousing = Art(
             "RosterHousing",
@@ -259,7 +366,7 @@ public static class TacticalViewPrefabBuilder
         content.pivot = new Vector2(0f, 0.5f);
         content.offsetMin = content.offsetMax = Vector2.zero;
         GridLayoutGroup layout = content.gameObject.AddComponent<GridLayoutGroup>();
-        layout.childAlignment = TextAnchor.MiddleLeft;
+        layout.childAlignment = TextAnchor.UpperLeft;
         layout.cellSize = new Vector2(130f, 88f);
         layout.spacing = new Vector2(5f, 5f);
         layout.startAxis = GridLayoutGroup.Axis.Vertical;
@@ -273,6 +380,12 @@ public static class TacticalViewPrefabBuilder
         scroll.scrollSensitivity = 28f;
         TacticalUnitCardView card = BuildCard(overlay.transform);
         card.gameObject.SetActive(false);
+        BuildControlGroups(
+            rosterHousing.transform,
+            out Button[] controlGroupButtons,
+            out TMP_Text[] controlGroupLabels,
+            out TacticalHudGraphic[] controlGroupFaces
+        );
 
         TacticalHudGraphic commands = Art(
             "CommandsHousing",
@@ -290,7 +403,7 @@ public static class TacticalViewPrefabBuilder
             "COMMANDS",
             new Color(0.6f, 0.67f, 0.75f)
         );
-        TacticalHudGraphic[] keys = new TacticalHudGraphic[10];
+        TacticalHudGraphic[] keys = new TacticalHudGraphic[10 + controlGroupFaces.Length];
         string[] names =
         {
             "Move",
@@ -322,8 +435,14 @@ public static class TacticalViewPrefabBuilder
             );
 
         keys[9] = BuildFollowButton(dock.transform, out TMP_Text followLabel);
+        for (int index = 0; index < controlGroupFaces.Length; index++)
+            keys[index + 10] = controlGroupFaces[index];
         SerializedObject serialized = new SerializedObject(view);
         SetReference(serialized, "selectionFrame", frame.rectTransform);
+        SetReference(serialized, "attackTargetFrame", targetFrame.rectTransform);
+        SetReference(serialized, "hoverFrame", hover.rectTransform);
+        SetReference(serialized, "hoverHullFill", hoverHullFill);
+        SetReference(serialized, "hoverShieldFill", hoverShieldFill);
         SetReference(serialized, "marquee", marquee.rectTransform);
         SetReference(serialized, "cardTemplate", card);
         SetReference(serialized, "rosterContent", content);
@@ -336,12 +455,21 @@ public static class TacticalViewPrefabBuilder
             keys[9].GetComponentInParent<TacticalCommandButton>()
         );
         SetReference(serialized, "followLabel", followLabel);
+        SetReferences(serialized, "controlGroupButtons", controlGroupButtons);
+        SetReferences(serialized, "controlGroupLabels", controlGroupLabels);
+        SetReference(serialized, "contextualCursor", contextualCursor);
+        SetReference(serialized, "officerMarkerTemplate", officerMarkerFrame);
         SetReferences(serialized, "housings", new Object[] { left, rosterHousing, commands });
         SetReferences(serialized, "keys", keys);
         SetReference(
             serialized,
             "moveButton",
             keys[0].GetComponentInParent<TacticalCommandButton>()
+        );
+        SetReference(
+            serialized,
+            "attackButton",
+            keys[1].GetComponentInParent<TacticalCommandButton>()
         );
         SetReference(
             serialized,
@@ -365,6 +493,67 @@ public static class TacticalViewPrefabBuilder
         );
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return view;
+    }
+
+    /// <summary>
+    /// Authors nine numbered control-group slots aligned above the selected-unit roster.
+    /// </summary>
+    /// <param name="parent">The roster housing that establishes responsive centering.</param>
+    /// <param name="buttons">Receives the authored group buttons.</param>
+    /// <param name="labels">Receives the visible group numbers.</param>
+    /// <param name="faces">Receives the theme-tintable key faces.</param>
+    private static void BuildControlGroups(
+        Transform parent,
+        out Button[] buttons,
+        out TMP_Text[] labels,
+        out TacticalHudGraphic[] faces
+    )
+    {
+        const float keySize = 36f;
+        const float gap = 6f;
+        float width =
+            TacticalSelectionController.ControlGroupCount * keySize
+            + (TacticalSelectionController.ControlGroupCount - 1) * gap;
+        RectTransform row = RectObject("ControlGroups", parent, new Rect(0f, 0f, width, keySize));
+        row.anchorMin = row.anchorMax = Vector2.zero;
+        row.pivot = Vector2.zero;
+        row.anchoredPosition = new Vector2(10f, 236f);
+        buttons = new Button[TacticalSelectionController.ControlGroupCount];
+        labels = new TMP_Text[buttons.Length];
+        faces = new TacticalHudGraphic[buttons.Length];
+        for (int index = 0; index < buttons.Length; index++)
+        {
+            TacticalHudGraphic face = Art(
+                $"ControlGroup{index + 1}",
+                row,
+                TacticalHudGraphic.Artwork.Key,
+                new Color(0.125f, 0.165f, 0.212f),
+                new Rect(index * (keySize + gap), 0f, keySize, keySize)
+            );
+            face.raycastTarget = true;
+            Button button = face.gameObject.AddComponent<Button>();
+            button.targetGraphic = face;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.3f, 1.3f, 1.3f);
+            colors.pressedColor = new Color(0.65f, 0.65f, 0.65f);
+            colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 1f);
+            colors.fadeDuration = 0.06f;
+            button.colors = colors;
+            TMP_Text label = Label(
+                "Label",
+                face.transform,
+                new Rect(0f, 0f, keySize, keySize),
+                14f,
+                (index + 1).ToString(),
+                new Color(0.38f, 0.43f, 0.5f)
+            );
+            label.alignment = TextAlignmentOptions.Center;
+            buttons[index] = button;
+            labels[index] = label;
+            faces[index] = face;
+        }
     }
 
     /// <summary>
@@ -429,25 +618,15 @@ public static class TacticalViewPrefabBuilder
         button.targetGraphic = face;
         button.navigation = new Navigation { mode = Navigation.Mode.None };
         TacticalUnitCardView card = face.gameObject.AddComponent<TacticalUnitCardView>();
-        TMP_Text name = Label(
-            "UnitName",
-            face.transform,
-            new Rect(5f, 66f, 88f, 19f),
-            9.5f,
-            string.Empty,
-            Color.white
-        );
-        name.enableAutoSizing = true;
-        name.fontSizeMin = 8.5f;
         TMP_Text count = Label(
             "UnitCount",
             face.transform,
-            new Rect(96f, 66f, 29f, 19f),
-            11f,
+            new Rect(5f, 66f, 120f, 19f),
+            12f,
             "x01",
             Color.white
         );
-        count.alignment = TextAlignmentOptions.TopRight;
+        count.alignment = TextAlignmentOptions.Center;
         RectTransform portraitArea = RectObject(
             "PortraitArea",
             face.transform,
@@ -493,7 +672,6 @@ public static class TacticalViewPrefabBuilder
         hullLabel.fontSizeMin = 9f;
         tooltip.gameObject.SetActive(false);
         SerializedObject serialized = new SerializedObject(card);
-        SetReference(serialized, "unitName", name);
         SetReference(serialized, "unitCount", count);
         SetReferences(serialized, "memberButtons", members);
         SetReference(serialized, "portrait", portrait);
@@ -597,12 +775,15 @@ public static class TacticalViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the dock's time-control placeholders without changing global simulation time.
+    /// Authors the dock's tactical-only time controls.
     /// </summary>
     /// <param name="parent">The instrument housing.</param>
-    private static void BuildTimeControls(Transform parent)
+    /// <returns>The view presenting and dispatching tactical speed selections.</returns>
+    private static TacticalTimeControlsView BuildTimeControls(Transform parent)
     {
         string[] labels = { "||", "0.5", "1", "2", "4" };
+        Button[] buttons = new Button[labels.Length];
+        TacticalHudGraphic[] faces = new TacticalHudGraphic[labels.Length];
         for (int i = 0; i < labels.Length; i++)
         {
             TacticalHudGraphic face = Art(
@@ -631,7 +812,16 @@ public static class TacticalViewPrefabBuilder
                 new Color(0.76f, 0.94f, 1f)
             );
             label.alignment = TextAlignmentOptions.Center;
+            buttons[i] = button;
+            faces[i] = face;
         }
+
+        TacticalTimeControlsView view = parent.gameObject.AddComponent<TacticalTimeControlsView>();
+        SerializedObject serialized = new SerializedObject(view);
+        SetReferences(serialized, "buttons", buttons);
+        SetReferences(serialized, "faces", faces);
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        return view;
     }
 
     /// <summary>
@@ -654,6 +844,66 @@ public static class TacticalViewPrefabBuilder
         fill.raycastTarget = false;
         Fill(fill.rectTransform, Vector2.zero, Vector2.zero);
         return fill.rectTransform;
+    }
+
+    /// <summary>
+    /// Creates a durability bar that stretches with a projected hull frame.
+    /// </summary>
+    /// <param name="name">The track name.</param>
+    /// <param name="parent">The projected frame.</param>
+    /// <param name="y">The vertical offset beneath the frame.</param>
+    /// <param name="color">The fill color.</param>
+    /// <returns>The fill rectangle whose horizontal anchor represents current durability.</returns>
+    private static RectTransform ProjectedBar(string name, Transform parent, float y, Color color)
+    {
+        Image track = RectObject(name, parent, new Rect()).gameObject.AddComponent<Image>();
+        track.color = new Color(0.025f, 0.035f, 0.04f, 0.95f);
+        track.raycastTarget = false;
+        track.rectTransform.anchorMin = new Vector2(0f, 0f);
+        track.rectTransform.anchorMax = new Vector2(1f, 0f);
+        track.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        track.rectTransform.offsetMin = new Vector2(4f, y);
+        track.rectTransform.offsetMax = new Vector2(-4f, y + 4f);
+        Image fill = RectObject("Fill", track.transform, new Rect())
+            .gameObject.AddComponent<Image>();
+        fill.color = color;
+        fill.raycastTarget = false;
+        Fill(fill.rectTransform, Vector2.zero, Vector2.zero);
+        return fill.rectTransform;
+    }
+
+    /// <summary>
+    /// Authors the shared projected hull brackets and durability bars used for selected and hovered ships.
+    /// </summary>
+    /// <param name="name">The frame object name.</param>
+    /// <param name="parent">The screen-space overlay receiving the frame.</param>
+    /// <param name="color">The bracket color identifying the contact state.</param>
+    /// <param name="shieldFill">Receives the shared shield-bar fill.</param>
+    /// <param name="hullFill">Receives the shared hull-bar fill.</param>
+    /// <returns>The inactive projected frame.</returns>
+    private static TacticalHudGraphic ProjectedUnitFrame(
+        string name,
+        Transform parent,
+        Color color,
+        out RectTransform shieldFill,
+        out RectTransform hullFill
+    )
+    {
+        TacticalHudGraphic frame = Art(
+            name,
+            parent,
+            TacticalHudGraphic.Artwork.Brackets,
+            color,
+            new Rect(0f, 0f, 24f, 24f)
+        );
+        frame.rectTransform.anchorMin =
+            frame.rectTransform.anchorMax =
+            frame.rectTransform.pivot =
+                new Vector2(0.5f, 0.5f);
+        shieldFill = ProjectedBar("ShieldBar", frame.transform, -9f, new Color(0.2f, 0.66f, 0.89f));
+        hullFill = ProjectedBar("HullBar", frame.transform, -15f, new Color(0.35f, 0.85f, 0.58f));
+        frame.gameObject.SetActive(false);
+        return frame;
     }
 
     /// <summary>

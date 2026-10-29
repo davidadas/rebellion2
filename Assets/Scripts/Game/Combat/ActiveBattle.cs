@@ -13,7 +13,7 @@ namespace Rebellion.Game.Combat
     public sealed class BattleParticipant
     {
         [PersistableMember(Name = "Combatants")]
-        private List<CombatUnit> _combatants = new List<CombatUnit>();
+        private List<SpaceCombatUnit> _combatants = new List<SpaceCombatUnit>();
 
         public string FactionInstanceID { get; set; }
         public string BattleMapSlotID { get; set; }
@@ -22,7 +22,7 @@ namespace Rebellion.Game.Combat
         /// Returns the battle units controlled by this participant.
         /// </summary>
         /// <returns>The participant's combatants.</returns>
-        public List<CombatUnit> GetCombatants()
+        public List<SpaceCombatUnit> GetCombatants()
         {
             return _combatants;
         }
@@ -42,6 +42,11 @@ namespace Rebellion.Game.Combat
         public string PlanetInstanceID { get; set; }
         public int FlightRandomSeed { get; set; }
         public long FlightRandomIndex { get; set; }
+        public int WeaponRandomSeed { get; set; }
+        public long WeaponRandomIndex { get; set; }
+        public long NextShotID { get; set; }
+        public float WeaponTimeRemainder { get; set; }
+        public List<BattleProjectile> Projectiles { get; set; } = new List<BattleProjectile>();
 
         /// <summary>
         /// Returns the factions participating in the battle.
@@ -58,7 +63,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="sourceUnit">The strategic unit entering the battle.</param>
         /// <returns>The battle copies.</returns>
-        public IReadOnlyList<CombatUnit> AddCombatants(BaseSceneNode sourceUnit)
+        public IReadOnlyList<SpaceCombatUnit> AddCombatants(BaseSceneNode sourceUnit)
         {
             if (sourceUnit == null)
                 throw new ArgumentNullException(nameof(sourceUnit));
@@ -72,11 +77,11 @@ namespace Rebellion.Game.Combat
                     "Capital ships and starfighters can only enter space battles."
                 );
 
-            List<CombatUnit> addedCombatants = new List<CombatUnit>(1);
+            List<SpaceCombatUnit> addedCombatants = new List<SpaceCombatUnit>(1);
             if (sourceUnit is Starfighter { CurrentSquadronSize: <= 0 })
                 return addedCombatants.AsReadOnly();
 
-            addedCombatants.Add(CombatUnit.Create(sourceUnit));
+            addedCombatants.Add(SpaceCombatUnit.Create(sourceUnit));
 
             BattleParticipant participant = _participants.Find(candidate =>
                 candidate.FactionInstanceID == sourceUnit.OwnerInstanceID
@@ -94,5 +99,22 @@ namespace Rebellion.Game.Combat
 
             return addedCombatants.AsReadOnly();
         }
+    }
+
+    /// <summary>
+    /// Stores an emitted shot independently of its shooter and rendered effect.
+    /// </summary>
+    [PersistableObject]
+    public sealed class BattleProjectile
+    {
+        public long ID { get; set; }
+        public string SourceInstanceID { get; set; }
+        public string TargetInstanceID { get; set; }
+        public string OwnerInstanceID { get; set; }
+        public Rebellion.Game.ShipComponents.ProjectileData Projectile { get; set; }
+        public float Range { get; set; }
+        public BattleVector3 Position { get; set; }
+        public BattleVector3 Direction { get; set; }
+        public float DistanceTraveled { get; set; }
     }
 }

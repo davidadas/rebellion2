@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.ShipComponents
@@ -32,12 +33,13 @@ namespace Rebellion.Game.ShipComponents
     public sealed class WeaponData
     {
         public HardpointWeaponType WeaponType { get; set; }
-        public WeaponDeliveryMode DeliveryMode { get; set; }
-        public int Damage { get; set; }
         public float Range { get; set; }
         public float FireIntervalSeconds { get; set; }
-        public float ProjectileSpeed { get; set; }
-        public float EffectDurationSeconds { get; set; }
+        public int ShotsPerVolley { get; set; } = 1;
+        public float MinimumRechargeSeconds { get; set; }
+        public float MaximumRechargeSeconds { get; set; }
+        public List<string> FireSoundPaths { get; set; } = new List<string>();
+        public ProjectileData Projectile { get; set; } = new ProjectileData();
 
         /// <summary>
         /// Creates an independent copy of the authored weapon data.
@@ -48,12 +50,13 @@ namespace Rebellion.Game.ShipComponents
             return new WeaponData
             {
                 WeaponType = WeaponType,
-                DeliveryMode = DeliveryMode,
-                Damage = Damage,
                 Range = Range,
                 FireIntervalSeconds = FireIntervalSeconds,
-                ProjectileSpeed = ProjectileSpeed,
-                EffectDurationSeconds = EffectDurationSeconds,
+                ShotsPerVolley = ShotsPerVolley,
+                MinimumRechargeSeconds = MinimumRechargeSeconds,
+                MaximumRechargeSeconds = MaximumRechargeSeconds,
+                FireSoundPaths = new List<string>(FireSoundPaths),
+                Projectile = Projectile?.CreateCopy(),
             };
         }
     }

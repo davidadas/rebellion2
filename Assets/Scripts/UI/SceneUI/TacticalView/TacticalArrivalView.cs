@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,8 +20,8 @@ public sealed class TacticalArrivalView : IDisposable
     private static readonly Color _trailColor = new Color32(0x33, 0xb3, 0xff, 0xd1);
     private static readonly Color _burstColor = new Color32(0x33, 0xb8, 0xff, 0xff);
 
-    private readonly Dictionary<CombatUnit, Arrival> _arrivals =
-        new Dictionary<CombatUnit, Arrival>();
+    private readonly Dictionary<SpaceCombatUnit, Arrival> _arrivals =
+        new Dictionary<SpaceCombatUnit, Arrival>();
     private readonly AudioManager _audioManager;
     private GameObject _effectsRoot;
     private AudioSource _sound;
@@ -58,7 +57,7 @@ public sealed class TacticalArrivalView : IDisposable
     /// <param name="audioManager">The application sound-volume owner.</param>
     public TacticalArrivalView(
         Transform parent,
-        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        IReadOnlyDictionary<SpaceCombatUnit, Transform> presentations,
         AudioClip clip,
         AudioManager audioManager
     )
@@ -83,16 +82,17 @@ public sealed class TacticalArrivalView : IDisposable
             _sound.spatialBlend = 0f;
             _sound.dopplerLevel = 0f;
             int index = 0;
-            foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+            foreach (KeyValuePair<SpaceCombatUnit, Transform> presentation in presentations)
             {
                 if (
                     presentation.Key.HasRetreated
-                    || presentation.Key.FlightState != FighterFlightState.Deployed
-                    || presentation.Key.GetUnit() is Starfighter { Hyperdrive: <= 0 }
+                    || presentation.Key.Flight.Phase != FighterFlightState.Deployed
+                    || presentation.Key
+                        is { Kind: SpaceCombatUnitKind.Starfighter, Hyperdrive: <= 0 }
                 )
                     continue;
                 Transform root = presentation.Value;
-                ModelDimensions size = presentation.Key.GetUnit().ModelSize;
+                ModelDimensions size = presentation.Key.ModelSize;
                 float selectionRadius = Mathf.Max(
                     0.65f,
                     Mathf.Max(size.Width, Mathf.Max(size.Height, size.Depth)) * 0.63f
@@ -138,7 +138,7 @@ public sealed class TacticalArrivalView : IDisposable
     /// </summary>
     /// <param name="unit">The battle unit being presented.</param>
     /// <returns>Whether the normal movement presenter must wait for this unit's fly-in.</returns>
-    public bool IsArriving(CombatUnit unit) =>
+    public bool IsArriving(SpaceCombatUnit unit) =>
         _arrivals.TryGetValue(unit, out Arrival arrival) && !arrival.Complete;
 
     /// <summary>

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
-using Rebellion.Game.Units;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -10,11 +9,12 @@ using UnityEngine.UI;
 /// <summary>
 /// One reusable roster card bound to a real combatant's portrait and durability.
 /// </summary>
-public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public sealed class TacticalUnitCardView
+    : MonoBehaviour,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerClickHandler
 {
-    [SerializeField]
-    private TMP_Text unitName;
-
     [SerializeField]
     private TMP_Text unitCount;
 
@@ -44,17 +44,18 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
 
     [SerializeField]
     private GameObject durabilityTooltip;
-    private CombatUnit _combatant;
-    private IReadOnlyList<CombatUnit> _combatants = Array.Empty<CombatUnit>();
-    private readonly CombatUnit[] _single = new CombatUnit[1];
+    private SpaceCombatUnit _combatant;
+    private IReadOnlyList<SpaceCombatUnit> _combatants = Array.Empty<SpaceCombatUnit>();
+    private readonly SpaceCombatUnit[] _single = new SpaceCombatUnit[1];
     private int _hull = int.MinValue;
     private int _maximumHull;
     private int? _shields;
     private int _maximumShields = -1;
 
-    public event Action<IReadOnlyList<CombatUnit>> Clicked;
-    public CombatUnit Combatant => _combatant;
-    public IReadOnlyList<CombatUnit> Combatants => _combatants;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> Clicked;
+    public event Action<IReadOnlyList<SpaceCombatUnit>> DoubleClicked;
+    public SpaceCombatUnit Combatant => _combatant;
+    public IReadOnlyList<SpaceCombatUnit> Combatants => _combatants;
 
     /// <summary>
     /// Connects the authored roster button.
@@ -74,7 +75,7 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     /// </summary>
     /// <param name="combatant">The combatant represented by the card.</param>
     /// <param name="texture">The combatant's resolved portrait, when available.</param>
-    public void Bind(CombatUnit combatant, Texture2D texture)
+    public void Bind(SpaceCombatUnit combatant, Texture2D texture)
     {
         _single[0] = combatant ?? throw new ArgumentNullException(nameof(combatant));
         BindGroup(_single, texture);
@@ -85,7 +86,7 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     /// </summary>
     /// <param name="combatants">The nonempty group owned by the selection view.</param>
     /// <param name="texture">The group's resolved portrait.</param>
-    public void BindGroup(IReadOnlyList<CombatUnit> combatants, Texture2D texture)
+    public void BindGroup(IReadOnlyList<SpaceCombatUnit> combatants, Texture2D texture)
     {
         if (combatants == null || combatants.Count == 0)
             throw new ArgumentException(
@@ -94,10 +95,6 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
             );
         _combatants = combatants;
         _combatant = combatants[0];
-        unitName.text =
-            _combatant.GetUnit().DisplayName
-            ?? _combatant.GetUnit().TypeID
-            ?? _combatant.SourceUnitInstanceID;
         unitCount.text = $"x{combatants.Count:00}";
         for (int i = 0; i < memberButtons.Length; i++)
             memberButtons[i].gameObject.SetActive(i < combatants.Count);
@@ -116,7 +113,7 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     public void Unbind()
     {
         _combatant = null;
-        _combatants = Array.Empty<CombatUnit>();
+        _combatants = Array.Empty<SpaceCombatUnit>();
         _single[0] = null;
         portrait.texture = null;
         portrait.enabled = false;
@@ -138,27 +135,14 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         float shieldFraction = 0f;
         for (int i = 0; i < _combatants.Count; i++)
         {
-            CombatUnit combatant = _combatants[i];
-            int memberHull;
-            int memberMaximumHull;
-            int memberMaximumShields;
-            if (combatant.GetUnit() is CapitalShip ship)
-            {
-                memberHull = ship.CurrentHullStrength;
-                memberMaximumHull = ship.MaxHullStrength;
-                memberMaximumShields = ship.MaxShieldStrength;
-            }
-            else
-            {
-                Starfighter fighter = (Starfighter)combatant.GetUnit();
-                memberHull = fighter.CurrentHullStrength;
-                memberMaximumHull = fighter.MaxHullStrength;
-                memberMaximumShields = fighter.ShieldStrength;
-            }
+            SpaceCombatUnit combatant = _combatants[i];
+            int memberHull = combatant.Condition.CurrentHullStrength;
+            int memberMaximumHull = combatant.MaxHullStrength;
+            int memberMaximumShields = combatant.MaxShieldStrength;
             hull += memberHull;
             maximumHull += memberMaximumHull;
             maximumShields += memberMaximumShields;
-            shields += combatant.CurrentShieldStrength;
+            shields += combatant.Condition.CurrentShieldStrength;
             float memberHullFraction =
                 memberMaximumHull > 0 ? Mathf.Clamp01((float)memberHull / memberMaximumHull) : 0f;
             hullFraction += memberHullFraction;
@@ -169,9 +153,10 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
                     memberHullFraction
                 );
             shieldFraction +=
-                memberMaximumShields > 0 && combatant.CurrentShieldStrength.HasValue
+                memberMaximumShields > 0 && combatant.Condition.CurrentShieldStrength.HasValue
                     ? Mathf.Clamp01(
-                        (float)combatant.CurrentShieldStrength.Value / memberMaximumShields
+                        (float)combatant.Condition.CurrentShieldStrength.Value
+                            / memberMaximumShields
                     )
                     : 0f;
         }
@@ -225,6 +210,16 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerExit(PointerEventData eventData) => durabilityTooltip.SetActive(false);
+
+    /// <summary>
+    /// Forwards a primary-button double click as a request to center on this card's unit.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left && eventData.clickCount == 2)
+            DoubleClicked?.Invoke(_combatants);
+    }
 
     /// <summary>
     /// Hides transient hover feedback when a pooled card is released.
