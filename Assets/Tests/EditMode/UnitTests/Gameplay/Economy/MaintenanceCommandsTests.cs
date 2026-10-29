@@ -93,6 +93,7 @@ namespace Rebellion.Tests.Gameplay
             game.ChangeOwnership(first, other.InstanceID);
             game.ChangeOwnership(first, owner.InstanceID);
             owner.NextMaintenanceAutoscrapTick = game.CurrentTick;
+            source.ExecuteCommandAsync(() => true).GetAwaiter().GetResult();
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(source);
             using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
                 snapshot.Payload,

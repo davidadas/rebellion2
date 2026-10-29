@@ -103,6 +103,23 @@ script compilation to finish before testing or building.
 Each launch, shared load and reconnect receives an initialization identity. Readiness, recovery
 snapshots and gameplay packets from an outgoing initialization cannot enter its replacement.
 Snapshot revisions are ordered within that initialization; a restarted host begins its own sequence.
+Completed commands include their queued movement and manufacturing reactions before the caller
+receives success. Tick completion and the handoff to human combat input also settle these reactions.
+Persistence admission rejects pending reactions; requesting a save does not flush gameplay work.
+Ownership-changing operations also publish their returned facts before completion. A constant-time
+pending-fact counter rejects unfinished ownership reactions instead of persisting observer tables.
+Normal loading also settles derived-state rebuild work before exposing a savable session.
+Mission roster baselines are saved as IDs on the mission. Victory suppression belongs only to the
+live session, which ends through the campaign-ending flow.
+
+Planet notifications use the existing result bus plus model support/presence observables.
+Authored activation changes use the same mutation boundary, including sector reactivation. They
+reconcile affected locations after gameplay reactions; only suppression changes include other planets
+in the affected sectors. Planet subscriptions are enumerated once when a session connects. Normal
+batches with no relevant changes do not scan the world. Loading silently initializes the notification
+baseline. Resource diversion is computed once per producing planet per resource phase and does not
+depend on notification history. Uprising progression remains timed simulation work.
+
 Recovery transport initiation follows room ownership, while simulation authority retains the
 campaign's authenticated host role. The shared persistence channel is created after the agreed
 state handshake, rather than binding to a provisional recovery identity.

@@ -10,17 +10,20 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Evaluates and records victory conditions.
     /// </summary>
-    public partial class VictoryCommands
+    public class VictoryCommands
     {
         private readonly GameRoot _game;
         private bool _victoryDeclared;
 
         /// <summary>
+        /// Gets whether this live session has already declared its terminal outcome.
+        /// </summary>
+        internal bool IsDeclared => _victoryDeclared;
+
+        /// <summary>
         /// Raised when an immediate victory declaration produces a result.
         /// </summary>
         public event Action<IReadOnlyList<VictoryResult>> ResultsProduced;
-
-        internal bool IsDeclared => _victoryDeclared;
 
         /// <summary>
         /// Creates victory operations for one game.

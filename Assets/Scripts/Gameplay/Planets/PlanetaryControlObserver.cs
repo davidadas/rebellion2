@@ -27,6 +27,12 @@ namespace Rebellion.Gameplay
         private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
         private IDisposable[] _subscriptions;
         private int _controlShiftTick = -1;
+        private int _pendingOwnershipChanges;
+
+        /// <summary>
+        /// Gets whether an ownership-changing operation still owes its returned fact to the result bus.
+        /// </summary>
+        internal bool HasPendingOwnershipChanges => _pendingOwnershipChanges != 0;
 
         /// <summary>
         /// Creates the planetary control listener.
@@ -96,6 +102,7 @@ namespace Rebellion.Gameplay
             List<GameResult> results = new List<GameResult>();
             EvictDisplacedUnits(change, results);
             _transitionResults.Add(change, results);
+            _pendingOwnershipChanges++;
         }
 
         /// <summary>
@@ -473,13 +480,13 @@ namespace Rebellion.Gameplay
         private List<GameResult> ApplyOwnershipReaction(PlanetOwnershipChangedResult change)
         {
             List<GameResult> results = new List<GameResult>();
+            List<GameResult> transitionResults = TakeOwnershipTransition(change);
             if (change?.Planet == null || change.Planet.IsDestroyed)
                 return results;
 
-            if (_transitionResults.TryGetValue(change, out List<GameResult> transitionResults))
+            if (transitionResults != null)
             {
                 results.AddRange(transitionResults);
-                _transitionResults.Remove(change);
             }
             else
             {
@@ -554,6 +561,24 @@ namespace Rebellion.Gameplay
                 results.Add(reaction);
             }
 
+            return results;
+        }
+
+        /// <summary>
+        /// Consumes the immediate displacement association even when the planet no longer exists.
+        /// The counter makes incomplete ownership operations ineligible for checkpoints in constant time.
+        /// </summary>
+        /// <param name="change">The ownership fact being published.</param>
+        /// <returns>The already-applied displacement results, or null when no association exists.</returns>
+        private List<GameResult> TakeOwnershipTransition(PlanetOwnershipChangedResult change)
+        {
+            if (
+                change == null
+                || !_transitionResults.TryGetValue(change, out List<GameResult> results)
+            )
+                return null;
+            _transitionResults.Remove(change);
+            _pendingOwnershipChanges--;
             return results;
         }
 

@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -18,7 +15,8 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets whether a complete writable session boundary can be captured without interrupting dispatch.
         /// </summary>
-        internal bool CanCaptureRecoveryState => CanExecuteCommands;
+        internal bool CanCaptureRecoveryState =>
+            CanExecuteCommands && !HasPendingGameplayResults && !HasPendingOwnershipChanges;
 
         /// <summary>
         /// Captures the graph and its existing runtime continuation without publishing or consuming facts.
@@ -37,10 +35,6 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "Recovery requires the session's active deterministic random stream."
                 );
-            List<ISceneNode> registered = Game
-                .NodesByInstanceID.OrderBy(entry => entry.Key, StringComparer.Ordinal)
-                .Select(entry => entry.Value)
-                .ToList();
             return new GameSessionRecoveryState
             {
                 Game = Game,
@@ -48,30 +42,13 @@ namespace Rebellion.Gameplay
                 RandomSeed = random.Seed,
                 Tick = Tick.CaptureRecoveryState(),
                 PendingCombat = GetService<SpaceCombatCommands>().CaptureRecoveryDecision(),
-                PendingMovementResults = GetService<MovementCommands>().CaptureRecoveryResults(),
-                PendingManufacturingResults = GetService<ManufacturingCommands>()
-                    .CaptureRecoveryResults(),
-                Smuggling = GetService<SmugglingCommands>().CaptureRecoveryState(),
-                GarrisonSurplus = GetService<UprisingResolver>().CaptureRecoveryState(),
                 PlanetaryControl = GetService<PlanetaryControlObserver>().CaptureRecoveryState(),
-                ObservedOwnershipChanges = GetService<FogOfWarObserver>()
-                    .CaptureRecoveryOwnershipChanges(),
-                VictoryDeclared = GetService<VictoryCommands>().IsDeclared,
                 Ownership = Game.GetFactions()
                     .ConvertAll(faction => new FactionOwnershipRecoveryState
                     {
                         Faction = faction,
                         Units = faction.CaptureRecoveryOwnership(),
                     }),
-                Missions = registered
-                    .OfType<Mission>()
-                    .Select(mission => new MissionParticipantRecoveryState
-                    {
-                        Mission = mission,
-                        ParticipantIDs = mission.CaptureRecoveryParticipantIDs(),
-                        WasCaptured = mission.HasRecoveryParticipantRoster,
-                    })
-                    .ToList(),
             };
         }
 
@@ -124,15 +101,7 @@ namespace Rebellion.Gameplay
                 InitializeComponents(Tick.ConnectRecoveryRuntime);
                 RebuildContentBindings();
                 GetService<ManufacturingObserver>().RebuildQueues();
-                GetService<MovementCommands>().RestoreRecoveryResults(state.PendingMovementResults);
-                GetService<ManufacturingCommands>()
-                    .RestoreRecoveryResults(state.PendingManufacturingResults);
-                GetService<SmugglingCommands>().RestoreRecoveryState(state.Smuggling);
-                GetService<UprisingResolver>().RestoreRecoveryState(state.GarrisonSurplus);
                 GetService<PlanetaryControlObserver>().RestoreRecoveryState(state.PlanetaryControl);
-                GetService<FogOfWarObserver>()
-                    .RestoreRecoveryOwnershipChanges(state.ObservedOwnershipChanges);
-                GetService<VictoryCommands>().RestoreRecoveryState(state.VictoryDeclared);
                 GetService<SpaceCombatCommands>().RestoreRecoveryDecision(state.PendingCombat);
                 Tick.RestoreRecoveryState(state.Tick);
             }
@@ -153,11 +122,6 @@ namespace Rebellion.Gameplay
         {
             foreach (FactionOwnershipRecoveryState ownership in state.Ownership)
                 ownership.Faction.RestoreRecoveryOwnership(ownership.Units);
-            foreach (MissionParticipantRecoveryState mission in state.Missions)
-                mission.Mission.RestoreRecoveryParticipants(
-                    mission.ParticipantIDs,
-                    mission.WasCaptured
-                );
             foreach (
                 PlanetSector sector in state.Game.NodesByInstanceID.Values.OfType<PlanetSector>()
             )
@@ -181,14 +145,8 @@ namespace Rebellion.Gameplay
             if (
                 state.Game == null
                 || state.Tick == null
-                || state.PendingMovementResults == null
-                || state.PendingManufacturingResults == null
-                || state.Smuggling == null
-                || state.GarrisonSurplus == null
                 || state.PlanetaryControl == null
-                || state.ObservedOwnershipChanges == null
                 || state.Ownership == null
-                || state.Missions == null
             )
                 throw new ArgumentException(
                     "Complete session recovery facts are required.",

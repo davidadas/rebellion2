@@ -15,6 +15,38 @@ namespace Rebellion.Tests.Game.Missions
     public class MissionTests
     {
         [Test]
+        public void GetAbortReason_SavedChangedRoster_PreservesFailureWithOnlyBaselineIDs()
+        {
+            (GameRoot game, _, Planet targetPlanet, Officer officer, _) =
+                MissionSceneBuilder.Build();
+            Officer other = new() { InstanceID = "other-participant", OwnerInstanceID = "empire" };
+            Regiment target = CreateSabotageTarget(game, targetPlanet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                targetPlanet,
+                new List<IMissionParticipant> { officer, other },
+                new List<IMissionParticipant>(),
+                target
+            );
+            mission.Initiate(10);
+            mission.RemoveChild(officer);
+
+            string xml = SerializationHelper.Serialize(mission);
+            Mission loaded = SerializationHelper.Deserialize<Mission>(xml);
+
+            Assert.That(loaded.GetAbortReason(game), Is.EqualTo(MissionCompletionReason.Failure));
+            System.Xml.Linq.XElement baseline = System
+                .Xml.Linq.XElement.Parse(xml)
+                .Elements()
+                .Single(element => element.Name.LocalName == "InitialMainParticipantIDs");
+            Assert.That(baseline.Elements().All(element => !element.HasElements), Is.True);
+            CollectionAssert.AreEquivalent(
+                new[] { officer.InstanceID, other.InstanceID },
+                baseline.Elements().Select(element => element.Value)
+            );
+        }
+
+        [Test]
         public void GetMissionOdds_AIControlledFaction_AppliesDifficultyModifier()
         {
             (

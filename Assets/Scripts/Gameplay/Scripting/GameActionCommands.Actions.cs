@@ -1437,7 +1437,7 @@ namespace Rebellion.Gameplay.Scripting
                     );
                 }
 
-                node.IsEnabled = action.State == SceneNodeState.Active;
+                context.Game.SetNodeEnabled(node, action.State == SceneNodeState.Active);
             }
             return;
         }

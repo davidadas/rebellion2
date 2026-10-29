@@ -88,19 +88,6 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void ComputeSimulation_UnpersistedVictoryStateChange_DetectsDifference()
-        {
-            GameSessionRecoveryState state = _restored.CaptureRecoveryState();
-            state.VictoryDeclared = !state.VictoryDeclared;
-            _restored.ApplyRecoveryState(state);
-
-            Assert.AreNotEqual(
-                MultiplayerStateFingerprint.ComputeSimulation(_source),
-                MultiplayerStateFingerprint.ComputeSimulation(_restored)
-            );
-        }
-
-        [Test]
         public void ComputeSimulation_DifferentActualRandomSeed_DetectsDifference()
         {
             GameSessionRecoveryState state = _restored.CaptureRecoveryState();

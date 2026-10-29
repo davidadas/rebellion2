@@ -137,6 +137,17 @@ namespace Rebellion.Tests.Multiplayer
                 planet
             );
             peers.HostGame.DeleteNode(peers.HostGame.GetSceneNodeByInstanceID<Regiment>("removed"));
+            peers
+                .HostSimulation.ExecuteCommandAsync(() =>
+                {
+                    peers.HostSimulation.Pipeline.ProcessResults(
+                        Array.Empty<GameResult>(),
+                        processMessages: false
+                    );
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
                 peers.HostSimulation
             );
@@ -148,6 +159,18 @@ namespace Rebellion.Tests.Multiplayer
                     new Regiment { InstanceID = "added", OwnerInstanceID = _hostFactionID },
                     game.GetSceneNodeByInstanceID<Planet>("host-planet")
                 );
+            foreach (GameSession session in new[] { peers.HostSimulation, peers.GuestSimulation })
+                session
+                    .ExecuteCommandAsync(() =>
+                    {
+                        session.Pipeline.ProcessResults(
+                            Array.Empty<GameResult>(),
+                            processMessages: false
+                        );
+                        return true;
+                    })
+                    .GetAwaiter()
+                    .GetResult();
             peers.AssertSharedState();
             Assert.DoesNotThrow(() =>
                 MultiplayerStateFingerprint.VerifyRecovery(

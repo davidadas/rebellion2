@@ -61,6 +61,11 @@ namespace Rebellion.Gameplay
         internal Func<bool> CanStartTick { get; set; }
 
         /// <summary>
+        /// Gets or sets the session callback completing queued gameplay reactions at writable boundaries.
+        /// </summary>
+        internal Action CompletingOperation { get; set; }
+
+        /// <summary>
         /// Gets whether a player operation can run outside an active incremental simulation step.
         /// A pending combat decision accepts its resolving operation while remaining unsaveable.
         /// </summary>
@@ -136,8 +141,7 @@ namespace Rebellion.Gameplay
                 services.GetService<FactionAutomationCommands>()
             );
             SmugglingCommands smugglingCommands = services.GetService<SmugglingCommands>();
-            SmugglingTickProcessor smuggling = new(smugglingCommands);
-            _resourceProduction = new ResourceProductionTickProcessor(smuggling, smugglingCommands);
+            _resourceProduction = new ResourceProductionTickProcessor(smugglingCommands);
             _manufacturing = new ManufacturingTickProcessor(
                 services.GetService<ManufacturingCommands>(),
                 _movementCommands
@@ -334,6 +338,7 @@ namespace Rebellion.Gameplay
             _fogOfWarObserver.RefreshVisibleKnowledge();
             yield return null;
 
+            CompletingOperation?.Invoke();
             _tickState = TickExecutionState.Idle;
 
             TickCompleted?.Invoke();
@@ -647,6 +652,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void BeginPendingCombatDecision()
         {
+            CompletingOperation?.Invoke();
             _tickState = TickExecutionState.AwaitingCombatDecision;
 
             CombatDecisionRequired?.Invoke();

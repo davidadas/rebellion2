@@ -31,6 +31,12 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
+        /// <summary>
+        /// Reports completed membership or ownership changes with their affected planet locations.
+        /// Observers defer reactions until the enclosing simulation operation has settled.
+        /// </summary>
+        internal event Action<ISceneNode, Planet, Planet> UnitPresenceChanged;
+
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -511,6 +517,7 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -518,6 +525,26 @@ namespace Rebellion.Game
                 DeregsiterOwnedUnit(child);
                 RemoveSceneNodeByInstanceID(child);
             });
+            UnitPresenceChanged?.Invoke(node, origin, null);
+        }
+
+        /// <summary>
+        /// Applies an authored active-state change and reports the affected live location.
+        /// </summary>
+        /// <param name="node">The node whose local active state changes.</param>
+        /// <param name="enabled">Whether the node should be locally active.</param>
+        internal void SetNodeEnabled(ISceneNode node, bool enabled)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.IsEnabled == enabled)
+                return;
+            node.IsEnabled = enabled;
+            if (UnitPresenceChanged != null)
+            {
+                Planet planet = GetContainingPlanet(node);
+                UnitPresenceChanged(node, planet, planet);
+            }
         }
 
         /// <summary>
@@ -535,6 +562,11 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);
+            if (UnitPresenceChanged != null)
+            {
+                Planet planet = GetContainingPlanet(node);
+                UnitPresenceChanged(node, planet, planet);
+            }
         }
 
         /// <summary>
@@ -555,6 +587,7 @@ namespace Rebellion.Game
 
             DeregsiterOwnedUnit(planet);
             planet.ClearDestroyedControl();
+            UnitPresenceChanged?.Invoke(planet, planet, planet);
         }
 
         /// <summary>
@@ -582,6 +615,8 @@ namespace Rebellion.Game
 
             // Register the node and its children.
             ((BaseSceneNode)node).TraverseIncludingDisabled(AddSceneNodeByInstanceID);
+            if (UnitPresenceChanged != null)
+                UnitPresenceChanged(node, null, GetContainingPlanet(node));
         }
 
         /// <summary>
@@ -599,6 +634,7 @@ namespace Rebellion.Game
             }
 
             ISceneNode parent = node.GetParent();
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
             parent.RemoveChild(node);
             node.SetParent(null);
@@ -608,6 +644,7 @@ namespace Rebellion.Game
 
             // Deregister the node and its children.
             ((BaseSceneNode)node).TraverseIncludingDisabled(RemoveSceneNodeByInstanceID);
+            UnitPresenceChanged?.Invoke(node, origin, null);
         }
 
         /// <summary>
@@ -643,6 +680,7 @@ namespace Rebellion.Game
                     $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
                 );
 
+            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
             oldParent.RemoveChild(node);
             try
             {
@@ -655,7 +693,17 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
+            if (UnitPresenceChanged != null)
+                UnitPresenceChanged(node, origin, GetContainingPlanet(node));
         }
+
+        /// <summary>
+        /// Resolves a node's current planet by its ancestor chain, without enumerating the scene.
+        /// </summary>
+        /// <param name="node">The changed node.</param>
+        /// <returns>The node itself when it is a planet, otherwise its nearest containing planet.</returns>
+        private static Planet GetContainingPlanet(ISceneNode node) =>
+            node as Planet ?? node.GetParentOfType<Planet>();
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.

@@ -16,7 +16,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Applies completed-result knowledge changes to faction intelligence.
     /// </summary>
-    public sealed partial class FogOfWarObserver : IResultObserver, IDisposable
+    public sealed class FogOfWarObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _commands;

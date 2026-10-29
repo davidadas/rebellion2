@@ -108,6 +108,7 @@ namespace Rebellion.Tests.Gameplay
             int published = 0;
             _session.Pipeline.ResultsResolved += _ => published++;
 
+            CompleteModelChanges(_session);
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
             using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
                 snapshot.Payload,
@@ -256,6 +257,7 @@ namespace Rebellion.Tests.Gameplay
             _game.ChangeOwnership(first, opponent.InstanceID);
             _game.ChangeOwnership(first, _faction.InstanceID);
 
+            CompleteModelChanges(_session);
             GameSessionRecoveryState state = _session.CaptureRecoveryState();
 
             FactionOwnershipRecoveryState ownership = state.Ownership.Single(item =>
@@ -360,6 +362,7 @@ namespace Rebellion.Tests.Gameplay
             MaintenanceCommands previousCommands = _session.GetService<MaintenanceCommands>();
             GameTickProcessor tick = _session.Tick;
             GameResultPipeline pipeline = _session.Pipeline;
+            CompleteModelChanges(_session);
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
             GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
                 snapshot.Payload,
@@ -498,6 +501,7 @@ namespace Rebellion.Tests.Gameplay
             ship.LastParentNode = historicalParent;
             ship.LastParentInstanceID = historicalParent.InstanceID;
             string parentID = ship.ParentInstanceID;
+            CompleteModelChanges(_session);
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
 
             using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
@@ -566,39 +570,41 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RestoreRecoveryState_UnpublishedOwnershipChange_PreservesBothIdentityKeyedObserversUntilPublication()
+        public void CaptureRecoveryState_UnpublishedOwnershipChange_RequiresCompletedReactions()
         {
-            Faction opponent = new Faction { InstanceID = "recovery-ownership-opponent" };
+            Faction opponent = new() { InstanceID = "ownership-opponent" };
             _game.GetFactions().Add(opponent);
             PlanetOwnershipChangedResult change = _session
                 .GetService<PlanetaryControlCommands>()
                 .TransferPlanet(_planet, opponent);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
-                snapshot.Payload,
-                snapshot.Hash
-            );
-            PlanetOwnershipChangedResult decodedChange = decoded
-                .PlanetaryControl.Transitions.Single()
-                .Change;
-            Assert.That(decoded.ObservedOwnershipChanges.Single(), Is.SameAs(decodedChange));
-            using GameSession recovered = GameSession.RestoreRecoveryState(
-                decoded,
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+
+            _session
+                .ExecuteCommandAsync(() =>
+                {
+                    _session.Pipeline.ProcessResults(
+                        new GameResult[] { change },
+                        processMessages: false
+                    );
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
+            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                checkpoint.Payload,
+                checkpoint.Hash,
                 TestGameData.Create(_game.Config)
             );
 
-            _session.Pipeline.ProcessResults(new GameResult[] { change }, processMessages: false);
-            recovered.Pipeline.ProcessResults(
-                new GameResult[] { decodedChange },
-                processMessages: false
-            );
-
-            GameSessionRecoveryState continued = recovered.CaptureRecoveryState();
-            Assert.That(continued.PlanetaryControl.Transitions, Is.Empty);
-            Assert.That(continued.ObservedOwnershipChanges, Is.Empty);
             Assert.That(
-                decodedChange.Planet,
-                Is.SameAs(recovered.Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID))
+                recovered.Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID).OwnerInstanceID,
+                Is.EqualTo(opponent.InstanceID)
+            );
+            Assert.That(
+                MultiplayerStateFingerprint.ComputeSimulation(recovered),
+                Is.EqualTo(MultiplayerStateFingerprint.ComputeSimulation(_session))
             );
         }
 
@@ -745,6 +751,7 @@ namespace Rebellion.Tests.Gameplay
                 Planet producer = loaded.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
                 Faction owner = loaded.GetFactionByOwnerInstanceID(_faction.InstanceID);
 
+                Assert.That(session.CanCaptureSettledState, Is.True);
                 Assert.IsNull(producer.OwnerInstanceID);
                 Assert.IsEmpty(producer.GetManufacturingQueue());
                 Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(localOrder.InstanceID));
@@ -3218,6 +3225,103 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ExecuteCommandAsync_ProductionQueued_CompletesCreationCallbacksBeforeSaving()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            int creations = 0;
+            using IDisposable subscription = _session.Results.Subscribe<GameObjectCreatedResult>(
+                results => creations += results.Count
+            );
+
+            Task<bool> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet)
+            );
+
+            Assert.That(command.Result, Is.True);
+            Assert.That(creations, Is.EqualTo(1));
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+            Assert.That(_session.GetService<ManufacturingCommands>().HasPendingResults, Is.False);
+            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                checkpoint.Payload,
+                checkpoint.Hash,
+                TestGameData.Create(_game.Config)
+            );
+            int replayedCreations = 0;
+            using IDisposable restoredSubscription =
+                recovered.Results.Subscribe<GameObjectCreatedResult>(results =>
+                    replayedCreations += results.Count
+                );
+            recovered.Tick.ProcessTick();
+            Assert.That(replayedCreations, Is.Zero);
+        }
+
+        [Test]
+        public void CanCaptureSettledState_UnprocessedProduction_RejectedUntilOperationCompletes()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            Assert.That(
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet),
+                Is.True
+            );
+
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.That(_session.ExecuteCommandAsync(() => true).Result, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_UnpublishedOwnershipFact_RejectsIncompleteOperation()
+        {
+            Faction opponent = new() { InstanceID = "ownership-opponent" };
+            _game.GetFactions().Add(opponent);
+
+            Task<PlanetOwnershipChangedResult> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<PlanetaryControlCommands>().TransferPlanet(_planet, opponent)
+            );
+
+            Assert.That(command.IsFaulted, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_CreationCallbackThrows_PreventsCheckpointAndLaterCommands()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            using IDisposable subscription = _session.Results.Subscribe<GameObjectCreatedResult>(
+                _ => throw new InvalidOperationException("reaction failed")
+            );
+
+            Task<bool> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet)
+            );
+
+            Assert.That(command.IsFaulted, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.That(_session.ExecuteCommandAsync(() => true).IsFaulted, Is.True);
+        }
+
+        [Test]
         public void ExecuteCommandAsync_SuspendedTick_DefersUntilTickFinishes()
         {
             _game.SetGameSpeed(TickSpeed.Fast);
@@ -3817,6 +3921,25 @@ namespace Rebellion.Tests.Gameplay
                 new EncyclopediaEntries(),
                 new FactionThemes()
             );
+        }
+
+        /// <summary>
+        /// Completes fixture mutations while isolating tests from cosmetic message creation.
+        /// </summary>
+        /// <param name="session">The session owning the fixture changes.</param>
+        private static void CompleteModelChanges(GameSession session)
+        {
+            session
+                .ExecuteCommandAsync(() =>
+                {
+                    session.Pipeline.ProcessResults(
+                        Array.Empty<GameResult>(),
+                        processMessages: false
+                    );
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
         }
     }
 }

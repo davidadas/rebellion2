@@ -14,13 +14,18 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Manages unit and facility production orders.
     /// </summary>
-    public partial class ManufacturingCommands
+    public class ManufacturingCommands
     {
         private readonly GameRoot _game;
         private readonly ManufacturingQueries _queries;
         private readonly MovementCommands _movementSystem;
         private readonly FleetCommands _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
+
+        /// <summary>
+        /// Gets whether completed operations still have gameplay reactions awaiting delivery.
+        /// </summary>
+        internal bool HasPendingResults => _pendingResults.Count > 0;
 
         /// <summary>
         /// Creates a new ManufacturingCommands.

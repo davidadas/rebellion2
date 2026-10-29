@@ -31,27 +31,43 @@ the remaining decisions concern ownership of specific state, not a second genera
 - Removing the per-fleet combat-flag DTOs. The pending encounter already identifies its fleets;
   restoring that encounter reconstructs their flags without clearing their orders.
 
+- Saving a mission's starting roster as unit IDs and a baseline-present flag on `Mission` through
+  ordinary persistence; removing its separate recovery DTO and capture/restore methods.
+- Removing victory persistence and its recovery adapter. The live session still suppresses
+  duplicate declarations and the campaign-ending flow disposes the session.
+- Selecting smuggling and near-uprising notifications from observed support, membership, ownership,
+  transit, deployment, and authored activation changes. The observer coalesces affected planets after gameplay reactions.
+  Loading establishes a silent current-world baseline; neither notification-history adapter remains.
+- Computing diversion rates once per producing planet per resource phase, independently of
+  notification history. Removing the all-planet smuggling tick scan. Uprising gameplay timers and
+  deficit resolution continue to run in their existing simulation phase.
+- Completing queued movement/manufacturing reactions at command completion and tick handoff points,
+  including the pause for human combat input. Saves and recovery capture reject pending reactions.
+  Saving does not execute gameplay. The two private result-queue recovery adapters are removed.
+- Removing saved ownership-observer associations and the fog-of-war recovery adapter. Ownership
+  operations must publish their facts before completing; an O(1) pending-fact counter rejects
+  incomplete operations and checkpoints. The live deduplication tables remain operation-local.
+
 The generic registry-order/slot persistence removed in the preceding revision remains removed.
 No new acquisition-order policy, AI behavior, or combat rule is introduced by this review.
 
 ### Remaining state to discuss
 
-| Item | Demonstrated reason it exists | Ownership/design decision |
+| Item | Demonstrated reason it remains | Decision still open |
 | --- | --- | --- |
-| Unfinished turn and combat | `GameTickProcessor` can stop awaiting a human encounter. Its phase, selected fleets, responses, deferred messages, and deferred blockade reactions determine how that same turn finishes. | Keep an explicit continuation contract. These are unfinished operations, not another copy of movement orders or production progress. |
-| Movement/manufacturing results awaiting consumption | Commands append domain results before their tick processors drain them. A command can finish at a writable boundary while those results still await processing. Dropping them loses the next consumers' reactions/notifications. | Keep the pending work; decide its proper session/transaction owner before replacing these adapters. |
-| Smuggling and garrison notification history | Smuggling is recalculated before production. Previous relationships/rates distinguish start, stop, and change messages. Previous garrison surplus distinguishes a new near-uprising warning from an unchanged condition. Reinitializing from the current world loses these transitions. | Current beneficiary/rate/surplus are derived. Discuss storing only the needed notification baseline on the appropriate model, or making event delivery explicit. |
-| Mission roster baseline | `Mission.HaveMainParticipantsChanged` compares the current required roster with the roster captured at mission start. Capturing a fresh baseline on rejoin can accept a changed roster instead of aborting the mission. | This belongs with the mission's normal saved state, not a list maintained by the session envelope. |
-| Victory already declared | `VictoryCommands.CreateVictory` uses a private flag to prevent another terminal result. The world conditions alone do not record whether the result was already delivered. | Discuss a saved campaign outcome on the game model. |
-| Ownership enumeration used for automatic scrapping | `MaintenanceCommands.ScrapRandomEligibleUnit` selects a random index from `Faction.GetAllOwnedManufacturables`. Ownership transfer removes/re-adds a unit, changing that list. Rebuilding it from hierarchy can therefore scrap a different unit with the same draw. The new regression executes actual scrapping after a transfer and recovery. | Keep the existing ownership index snapshot for now. Decide whether acquisition order is meaningful saved state or whether this mechanic should use an explicit selection order. Do not generalize this into registry slot persistence. |
-| In-turn support/reaction bookkeeping | `PlanetaryControlObserver` suppresses repeated support shifts for a displaced faction within one tick and retains displacement results until their ownership fact is consumed. `FogOfWarObserver` marks the same fact as already observed. Losing these pending associations can repeat reactions or knowledge updates. | Discuss putting delivery/reaction status on the pending operation rather than snapshotting observer internals. |
-| RNG seed and generated-ID mode | Normal campaigns use `Summary.Seed`, but the public generation/session contracts also accept an injected stream whose seed can differ. The next draw depends on that seed plus the already-saved position. A separate runtime flag chooses counter-based versus random generated IDs; the counter itself is already saved. | Keep the actual seed and ID mode until each has one explicit owner. Neither counter is duplicated. |
+| Unfinished turn and combat | A turn can stop awaiting a human encounter. Its phase, selected fleets, both responses, deferred message facts and blockade reactions determine how that turn finishes. | Keep the explicit continuation for this genuinely incomplete turn. |
+| Ownership enumeration used for automatic scrapping | Automatic scrapping selects a random index from the faction's owned-unit list. Ownership transfers alter that list; rebuilding it can therefore select a different unit with the same draw. The regression executes actual scrapping after a transfer and recovery. | Decide whether acquisition order is meaningful saved state or whether this mechanic should use an explicit selection order. No registry slot persistence is introduced. |
+| In-turn support-shift history | Control shifts are suppressed once per displaced faction per tick, including across the pause for human combat input. | Keep the current tick and already-handled faction IDs as part of the unfinished turn; transient observer associations are no longer saved. |
+| RNG seed and generated-ID mode | Normal campaigns use `Summary.Seed`, but injected streams can have a different seed. A runtime flag also chooses counter-based versus random IDs. Both counters are already saved normally. | Keep the actual seed and mode until each has one explicit owner; neither counter is duplicated. |
+
+The earlier shared-control builder consolidation remains unfinished: preview/proposal tools were
+removed, but `MenuControlPrefabBuilder` still adds a shared authoring layer alongside
+`MenuPrefabBuilder`. This recovery change does not claim to complete that UI cleanup.
 
 ### Serialization contract issues
 
 The reference-aware JSON codec remains temporarily necessary for the current continuation contract:
-deferred results, observer bookkeeping, live units, and historical combat references share object
-identity. Replacing it with an ordinary XML world save currently loses those associations. That
+deferred results, live units, and historical combat references share object identity. Replacing it with an ordinary XML world save currently loses those associations. That
 establishes a need to preserve identity for unfinished work; it does not establish that two complete
 serialization implementations are the right permanent design.
 
@@ -76,7 +92,12 @@ Inspected producers, consumers, and restoration paths include `GameSession.Recov
 `SpaceCombatCommands`, `MultiplayerRecoverySnapshotCodec`, and `MultiplayerStateFingerprint`.
 Regression coverage includes ordinary save/load of an active maintenance timer, recovery followed
 by real automatic scrapping after an ownership transfer, production priority with sequence gaps,
-and continuation of pending combat with its derived flags.
+and continuation of pending combat with its derived flags. Additional coverage verifies normal
+mission-roster serialization contains only IDs for its baseline, creation callbacks finish before
+saving and do not replay after recovery, callback failures prevent later checkpoints, support changes
+need no tick poll, unrelated planets are not scanned, deletion/relocation is observed, and suppression
+ship moves update other affected garrisons. Activation/deactivation cases verify stationary force
+eligibility and subscriptions when an inactive sector becomes active again.
 
 The earlier timing captures below are historical measurements of earlier revisions. They do not
 establish a native FPS improvement from this cleanup. The native verification cost in P1 remains

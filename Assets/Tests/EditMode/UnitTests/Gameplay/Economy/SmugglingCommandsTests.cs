@@ -44,23 +44,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RestoreRecoveryState_WorldChangedSinceReconciliation_PreservesNextRelationshipTransition()
-        {
-            List<SmugglingRecoveryState> state = _system.CaptureRecoveryState();
-            SetSupport(15, 85);
-            SmugglingCommands restored = new SmugglingCommands(_game);
-            restored.RestoreRecoveryState(state);
-
-            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(restored).ProcessTick(
-                _game
-            );
-
-            SmugglingChangedResult transition = results.OfType<SmugglingChangedResult>().Single();
-            Assert.That(transition.OldPercent, Is.Zero);
-            Assert.That(transition.NewPercent, Is.EqualTo(75));
-        }
-
-        [Test]
         public void ResolveProductionRecipient_DetachedFacility_ReturnsControllerWithoutRolling()
         {
             _game.Random = new ThrowingRNG();
@@ -90,7 +73,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Building facility = AddFacility();
             SetSupport(15, 85);
-            new SmugglingTickProcessor(_system).ProcessTick(_game);
+            RefreshPlanet();
             _game.Random = new QueueRNG(roll);
 
             Faction recipient = _system.ResolveProductionRecipient(_controller, facility);
@@ -103,7 +86,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Building facility = AddFacility();
             SetSupport(15, 85);
-            new SmugglingTickProcessor(_system).ProcessTick(_game);
+            RefreshPlanet();
             _game.Random = new QueueRNG(0.5, 0.8, 0.1);
 
             (Faction beneficiary, int divertedQuantity) = _system.ResolveProductionBatch(
@@ -116,13 +99,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
+        public void RefreshPlanet_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
             SetSupport(15, 85);
 
-            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
-                _game
-            );
+            IReadOnlyList<GameResult> results = RefreshPlanet();
 
             PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(75, stat.NewValue);
@@ -132,20 +113,18 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_ExistingSmugglingState_DoesNotRepeatStartNotification()
+        public void RefreshPlanet_ExistingSmugglingState_DoesNotRepeatStartNotification()
         {
             SetSupport(15, 85);
             _system = new SmugglingCommands(_game);
 
-            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
-                _game
-            );
+            IReadOnlyList<GameResult> results = RefreshPlanet();
 
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
         [Test]
-        public void ProcessTick_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
+        public void RefreshPlanet_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
         {
             SetSupport(15, 85);
             _game.AttachNode(Active(new Regiment { InstanceID = "REGIMENT1" }), _planet);
@@ -158,8 +137,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(fleet, _planet);
             _game.AttachNode(Active(new CapitalShip { InstanceID = "SHIP1" }), fleet);
 
-            PlanetStatChangedResult result = new SmugglingTickProcessor(_system)
-                .ProcessTick(_game)
+            PlanetStatChangedResult result = RefreshPlanet()
                 .OfType<PlanetStatChangedResult>()
                 .Single();
 
@@ -167,7 +145,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
+        public void RefreshPlanet_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
         {
             SetSupport(15, 85);
             Fleet fleet = new Fleet
@@ -183,22 +161,19 @@ namespace Rebellion.Tests.Gameplay
                 fleet
             );
 
-            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
-                _game
-            );
+            IReadOnlyList<GameResult> results = RefreshPlanet();
 
             Assert.IsEmpty(results);
         }
 
         [Test]
-        public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
+        public void RefreshPlanet_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
         {
             SetSupport(20, 20);
-            new SmugglingTickProcessor(_system).ProcessTick(_game);
+            RefreshPlanet();
             _planet.OwnerInstanceID = "FACTION2";
 
-            SmugglingChangedResult[] changes = new SmugglingTickProcessor(_system)
-                .ProcessTick(_game)
+            SmugglingChangedResult[] changes = RefreshPlanet()
                 .OfType<SmugglingChangedResult>()
                 .ToArray();
 
@@ -210,20 +185,29 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_DiversionChangesWithinRelationship_OnlyReportsStatChange()
+        public void RefreshPlanet_DiversionChangesWithinRelationship_OnlyReportsStatChange()
         {
             SetSupport(15, 85);
-            new SmugglingTickProcessor(_system).ProcessTick(_game);
+            RefreshPlanet();
             SetSupport(25, 75);
 
-            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
-                _game
-            );
+            IReadOnlyList<GameResult> results = RefreshPlanet();
 
             PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(75, stat.OldValue);
             Assert.AreEqual(50, stat.NewValue);
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
+        }
+
+        /// <summary>
+        /// Reconciles the fixture's changed planet through the smuggling command contract.
+        /// </summary>
+        /// <returns>The selected notification facts.</returns>
+        private IReadOnlyList<GameResult> RefreshPlanet()
+        {
+            List<GameResult> results = new();
+            _system.RefreshPlanet(_planet, results);
+            return results;
         }
 
         /// <summary>

@@ -15,13 +15,12 @@ namespace Rebellion.Tests.Gameplay
     public class VictoryCommandsTests
     {
         [Test]
-        public void RestoreRecoveryState_AlreadyDeclaredOutcome_DoesNotDeclareItAgain()
+        public void TryDeclareVictory_AlreadyDeclaredOutcome_DoesNotDeclareItAgain()
         {
             (GameRoot game, Faction loser, Faction winner, _, VictoryCommands original) =
                 BuildScene();
             original.TryDeclareVictory(winner, loser);
-            VictoryCommands restored = new VictoryCommands(game);
-            restored.RestoreRecoveryState(original.IsDeclared);
+            VictoryCommands restored = original;
             int published = 0;
             restored.ResultsProduced += _ => published++;
 

@@ -46,7 +46,25 @@ namespace Rebellion.Gameplay
         /// Gets whether settled state can be saved, including the completed-tick callback before
         /// its iterator releases the execution guard. Executing commands remain excluded.
         /// </summary>
-        public bool CanCaptureSettledState => IsOperationBoundaryClear && Tick.IsSettled;
+        public bool CanCaptureSettledState =>
+            IsOperationBoundaryClear
+            && !HasPendingGameplayResults
+            && !HasPendingOwnershipChanges
+            && Tick.IsSettled;
+
+        private bool HasPendingGameplayResults =>
+            !_disposed
+            && _serviceScope != null
+            && (
+                GetService<MovementCommands>().HasPendingResults
+                || GetService<ManufacturingCommands>().HasPendingResults
+                || GetService<PlanetNotificationObserver>().HasPendingChanges
+            );
+
+        private bool HasPendingOwnershipChanges =>
+            !_disposed
+            && _serviceScope != null
+            && GetService<PlanetaryControlObserver>().HasPendingOwnershipChanges;
 
         public GameRoot Game { get; private set; }
         public GameResultPipeline Pipeline { get; }
@@ -87,6 +105,7 @@ namespace Rebellion.Gameplay
                 && !Pipeline.IsProcessing
             );
             Tick.CanStartTick = () => IsOperationBoundaryClear;
+            Tick.CompletingOperation = SettlePendingGameplayResults;
         }
 
         /// <summary>
@@ -96,7 +115,35 @@ namespace Rebellion.Gameplay
         /// <typeparam name="T">The completed mutation result.</typeparam>
         /// <param name="command">The operation against this session's current graph.</param>
         /// <returns>The result, cancellation before execution on replacement, or the execution failure.</returns>
-        public Task<T> ExecuteCommandAsync<T>(Func<T> command) => _commands.EnqueueAsync(command);
+        public Task<T> ExecuteCommandAsync<T>(Func<T> command)
+        {
+            if (command == null)
+                throw new ArgumentNullException(nameof(command));
+            return _commands.EnqueueAsync(() =>
+            {
+                T result = command();
+                SettlePendingGameplayResults();
+                return result;
+            });
+        }
+
+        /// <summary>
+        /// Completes command-generated gameplay reactions before admitting a checkpoint or another operation.
+        /// Reactions may append further facts, which are delivered before this boundary is released.
+        /// </summary>
+        private void SettlePendingGameplayResults()
+        {
+            while (HasPendingGameplayResults)
+            {
+                List<GameResult> pending = GetService<ManufacturingCommands>().TakePendingResults();
+                pending.AddRange(GetService<MovementCommands>().TakePendingResults());
+                Pipeline.ProcessImmediate(pending);
+            }
+            if (HasPendingOwnershipChanges)
+                throw new InvalidOperationException(
+                    "An ownership change must publish its gameplay reactions before the operation completes."
+                );
+        }
 
         /// <summary>
         /// Drains deferred commands from the application's existing owning-thread frame loop.
@@ -166,6 +213,7 @@ namespace Rebellion.Gameplay
             {
                 InitializeComponents(Tick.ConnectRuntime);
                 RebuildDerivedState();
+                SettlePendingGameplayResults();
             }
             catch
             {

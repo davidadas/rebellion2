@@ -16,7 +16,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public partial class UprisingResolver
+    public class UprisingResolver
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -75,7 +75,6 @@ namespace Rebellion.Gameplay
             Faction faction = GetControllingFaction(planet);
             if (faction == null)
             {
-                _garrisonSurplusByPlanet[planet] = 0;
                 return results;
             }
 
@@ -212,7 +211,7 @@ namespace Rebellion.Gameplay
                 return true;
 
             Faction controller = GetControllingFaction(planet);
-            if (controller == null || UpdateGarrisonSurplus(planet, controller) < 0)
+            if (controller == null || CalculateGarrisonSurplus(planet, controller) < 0)
                 return false;
 
             planet.EndUprising();
@@ -287,14 +286,7 @@ namespace Rebellion.Gameplay
         /// <param name="results">Collection to append uprising results to.</param>
         private void ReconcileGarrison(Planet planet, Faction faction, List<GameResult> results)
         {
-            int previousSurplus = _garrisonSurplusByPlanet.TryGetValue(
-                planet,
-                out int storedSurplus
-            )
-                ? storedSurplus
-                : CalculateGarrisonSurplus(planet, faction);
-            int troopCount = CountControllingRegiments(planet, faction);
-            int currentSurplus = UpdateGarrisonSurplus(planet, faction);
+            int currentSurplus = CalculateGarrisonSurplus(planet, faction);
 
             if (currentSurplus < 0)
             {
@@ -310,24 +302,37 @@ namespace Rebellion.Gameplay
                 );
                 return;
             }
-
-            if (troopCount == 0 || currentSurplus != 0 || previousSurplus == 0)
-                return;
-
-            results.Add(new PlanetNearUprisingResult { Planet = planet, Tick = _game.CurrentTick });
         }
 
         /// <summary>
-        /// Recalculates and stores one planet's garrison surplus.
+        /// Records a near-uprising warning only when an observed change crosses the garrison threshold.
+        /// Loading a world establishes a silent baseline instead of replaying earlier notifications.
         /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The updated garrison surplus.</returns>
-        private int UpdateGarrisonSurplus(Planet planet, Faction faction)
+        /// <param name="planet">The planet affected by a completed change.</param>
+        /// <param name="results">The collection receiving a new warning.</param>
+        internal void RecordGarrisonWarning(Planet planet, List<GameResult> results)
         {
-            int surplus = CalculateGarrisonSurplus(planet, faction);
-            _garrisonSurplusByPlanet[planet] = surplus;
-            return surplus;
+            if (!planet.IsActive())
+            {
+                _garrisonSurplusByPlanet[planet] = 0;
+                return;
+            }
+            Faction faction = GetControllingFaction(planet);
+            int current = faction == null ? 0 : CalculateGarrisonSurplus(planet, faction);
+            int previous = _garrisonSurplusByPlanet.TryGetValue(planet, out int stored)
+                ? stored
+                : current;
+            _garrisonSurplusByPlanet[planet] = current;
+            if (
+                faction != null
+                && !planet.IsInUprising
+                && current == 0
+                && previous != 0
+                && CountControllingRegiments(planet, faction) > 0
+            )
+                results.Add(
+                    new PlanetNearUprisingResult { Planet = planet, Tick = _game.CurrentTick }
+                );
         }
 
         /// <summary>
@@ -565,7 +570,7 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The controlling faction.</param>
         private void SynchronizeUprisingClearTimer(Planet planet, Faction faction)
         {
-            int surplus = UpdateGarrisonSurplus(planet, faction);
+            int surplus = CalculateGarrisonSurplus(planet, faction);
             if (surplus < 0)
             {
                 planet.NextUprisingClearTick = 0;

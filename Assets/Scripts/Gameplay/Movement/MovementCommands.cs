@@ -17,7 +17,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Executes movement orders, custody transfers, arrivals, and evacuation while owning queued movement results.
     /// </summary>
-    public partial class MovementCommands
+    public class MovementCommands
     {
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _fogOfWar;
@@ -29,6 +29,11 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _movementRandom;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
+
+        /// <summary>
+        /// Gets whether completed operations still have gameplay reactions awaiting delivery.
+        /// </summary>
+        internal bool HasPendingResults => _pendingResults.Count > 0;
 
         /// <summary>
         /// Raised after an immediate movement command produces results.
