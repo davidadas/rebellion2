@@ -631,12 +631,24 @@ public static class MainMenuPrefabBuilder
         );
         buttonObject.layer = 5;
         PerspectiveImage image = buttonObject.GetComponent<PerspectiveImage>();
-        MainMenuLayoutSettings.ApplyPlacement(
-            image,
-            MainMenuLayoutSettings.instance.Multiplayer,
-            MainMenuLayoutSettings.instance.MultiplayerRotation,
-            MainMenuLayoutSettings.instance.MultiplayerCorners
+        Rect bounds = new Rect(0.1722801f, 0.05278285f, 0.065058485f, 0.13881326f);
+        UIQuadrilateral corners = new UIQuadrilateral(
+            new Vector2(0.026555566f, -2.6678687e-11f),
+            new Vector2(8.031459e-11f, 0.97144955f),
+            new Vector2(0.9871366f, 1.0000001f),
+            new Vector2(1f, 0.042613905f)
         );
+        UIQuadrilateral surface = new UIQuadrilateral(
+            new Vector2(12f / 51f, 0),
+            new Vector2(0, 42f / 61f),
+            new Vector2(40f / 51f, 1),
+            new Vector2(1, 22f / 61f)
+        );
+        image.rectTransform.anchorMin = bounds.min;
+        image.rectTransform.anchorMax = bounds.max;
+        image.rectTransform.offsetMin = image.rectTransform.offsetMax = Vector2.zero;
+        image.rectTransform.localRotation = Quaternion.identity;
+        image.Configure(corners, surface.Transform(corners.ToMatrix()));
         SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon");
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.SpriteSwap;

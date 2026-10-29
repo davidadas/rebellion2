@@ -265,11 +265,9 @@ namespace Rebellion.Multiplayer
                 if (_verificationPending && _session.CanExecuteCommands)
                 {
                     _localDayReceipt = CaptureReceipt();
-                    using (
-                        _session.Timings.Measure(SimulationPhase.StateVerification, _expectedTick)
-                    )
-                        _localDayReceipt.stateFingerprint =
-                            MultiplayerStateFingerprint.ComputeSimulation(_session);
+
+                    _localDayReceipt.stateFingerprint =
+                        MultiplayerStateFingerprint.ComputeSimulation(_session);
                     _verificationPending = false;
                     Send(MultiplayerMessageType.DayReceipt, _localDayReceipt);
                     CompleteDayBarrier();

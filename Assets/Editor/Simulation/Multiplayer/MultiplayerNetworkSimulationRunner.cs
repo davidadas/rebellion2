@@ -39,7 +39,6 @@ public static class MultiplayerNetworkSimulationRunner
     private const string _fightHumanBattlesFlag = "-networkSimFightHumanBattles";
     private const string _humanParticipantsFlag = "-networkSimHumanParticipants";
     private const string _saveDirectoryFlag = "-saveDirectory";
-    private const string _timingCapacityFlag = "-networkSimTimingCapacity";
     private const int _defaultTickCount = 100;
     private const int _defaultSeed = 314159;
 
@@ -268,14 +267,6 @@ public static class MultiplayerNetworkSimulationRunner
         hostSession.Pipeline.ResultsResolved += outcomes.Record;
         try
         {
-            int timingCapacity = ReadIntArgument(args, _timingCapacityFlag, 0);
-            if (timingCapacity < 0)
-                throw new ArgumentOutOfRangeException(_timingCapacityFlag);
-            if (timingCapacity > 0)
-            {
-                hostSession.Timings.Start(timingCapacity);
-                guestSession.Timings.Start(timingCapacity);
-            }
             VerifyState(hostSession.Game, guestSession.Game, report);
             for (int index = 0; index < report.ticksRequested; index++)
             {
@@ -335,10 +326,6 @@ public static class MultiplayerNetworkSimulationRunner
         }
         finally
         {
-            if (hostSession.Timings.IsRecording)
-                report.hostPhases = ExportTimingCapture(hostSession.Timings.Stop());
-            if (guestSession.Timings.IsRecording)
-                report.guestPhases = ExportTimingCapture(guestSession.Timings.Stop());
             hostSession.Pipeline.ResultsResolved -= outcomes.Record;
             report.factions = outcomes.Complete(hostGame);
             report.victory = outcomes.Victory;
@@ -350,30 +337,6 @@ public static class MultiplayerNetworkSimulationRunner
                     throw new IOException("The isolated input save changed during verification.");
             }
         }
-    }
-
-    /// <summary>
-    /// Converts stopped scalar measurements into the explicitly requested diagnostic report.
-    /// </summary>
-    /// <param name="capture">The stopped session buffer.</param>
-    /// <returns>The export with every retained timing and its omission count.</returns>
-    private static PhaseCapture ExportTimingCapture(SimulationTimingCapture capture)
-    {
-        return new PhaseCapture
-        {
-            capacity = capture.Capacity,
-            droppedSamples = capture.DroppedSamples,
-            timestampFrequency = capture.TimestampFrequency,
-            samples = capture
-                .Samples.Select(sample => new PhaseSample
-                {
-                    tick = sample.Tick,
-                    phase = sample.Phase.ToString(),
-                    milliseconds =
-                        sample.ElapsedTimestampTicks * 1000.0 / capture.TimestampFrequency,
-                })
-                .ToList(),
-        };
     }
 
     /// <summary>
@@ -1453,32 +1416,7 @@ public static class MultiplayerNetworkSimulationRunner
         public string divergenceGuestPath;
         public string divergencePath;
         public List<DayTiming> days = new List<DayTiming>();
-        public PhaseCapture hostPhases;
-        public PhaseCapture guestPhases;
         public FactionOutcome[] factions;
         public VictoryOutcome victory;
-    }
-
-    /// <summary>
-    /// Exports a stopped bounded phase capture without retaining simulation objects.
-    /// </summary>
-    [Serializable]
-    private sealed class PhaseCapture
-    {
-        public int capacity;
-        public long droppedSamples;
-        public long timestampFrequency;
-        public List<PhaseSample> samples;
-    }
-
-    /// <summary>
-    /// Reports one measured synchronous boundary after recording has stopped.
-    /// </summary>
-    [Serializable]
-    private sealed class PhaseSample
-    {
-        public int tick;
-        public string phase;
-        public double milliseconds;
     }
 }

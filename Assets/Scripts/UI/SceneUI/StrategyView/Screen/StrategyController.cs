@@ -1488,10 +1488,6 @@ public sealed class StrategyController
     /// </summary>
     private void RebuildSnapshot()
     {
-        using var timing = session.Timings.Measure(
-            SimulationPhase.StrategySnapshot,
-            session.Game.CurrentTick
-        );
         galaxyMapController.RebuildSnapshot(
             session.Game.GetPlayerFaction(),
             session.GetService<FogOfWarQueries>()
@@ -1570,10 +1566,6 @@ public sealed class StrategyController
     /// </summary>
     private void Render()
     {
-        using var timing = session.Timings.Measure(
-            SimulationPhase.StrategyRender,
-            session.Game.CurrentTick
-        );
         idleBarController.Render();
         RenderGalaxyMap();
         RenderBookmarks();

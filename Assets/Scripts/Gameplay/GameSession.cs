@@ -52,11 +52,6 @@ namespace Rebellion.Gameplay
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
-        /// <summary>
-        /// Gets this session's disabled-by-default bounded phase timing recorder.
-        /// </summary>
-        public SimulationPhaseTrace Timings { get; } = new();
-
         internal MessageObserver MessageObserver { get; private set; }
 
         internal GameEventCommands GameEventCommands { get; private set; }
@@ -84,8 +79,7 @@ namespace Rebellion.Gameplay
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
-                results => Pipeline.ProcessMessageReactions(results),
-                Timings
+                results => Pipeline.ProcessMessageReactions(results)
             );
             _commands = new SimulationCommandQueue(() =>
                 Tick.CanAcceptPlayerActions

@@ -198,31 +198,6 @@ namespace Rebellion.Tests.NativeAudit
                     InputSystem.QueueStateEvent(_keyboard, new KeyboardState());
                     yield return null;
                     break;
-                case "start-timings":
-                    GetSession().Timings.Start(command.capacity);
-                    break;
-                case "stop-timings":
-                    SimulationTimingCapture timings = GetSession().Timings.Stop();
-                    File.WriteAllText(
-                        Path.Combine(_directory, "timings-" + command.id + ".json"),
-                        JsonUtility.ToJson(
-                            new TimingCapture
-                            {
-                                frequency = timings.TimestampFrequency,
-                                dropped = timings.DroppedSamples,
-                                samples = timings
-                                    .Samples.Select(sample => new TimingSample
-                                    {
-                                        tick = sample.Tick,
-                                        phase = sample.Phase.ToString(),
-                                        elapsed = sample.ElapsedTimestampTicks,
-                                    })
-                                    .ToArray(),
-                            },
-                            true
-                        )
-                    );
-                    break;
                 case "point":
                     Vector2 point = GetTargetPoint(command.target);
                     if (
@@ -541,7 +516,6 @@ namespace Rebellion.Tests.NativeAudit
             public string operation;
             public string target;
             public int milliseconds;
-            public int capacity;
             public string text;
             public bool ready;
             public string[] keys;
@@ -556,28 +530,6 @@ namespace Rebellion.Tests.NativeAudit
             public string id;
             public string name;
             public string state;
-        }
-
-        /// <summary>
-        /// Holds an explicitly stopped bounded timing trace outside simulation execution.
-        /// </summary>
-        [Serializable]
-        private sealed class TimingCapture
-        {
-            public long frequency;
-            public long dropped;
-            public TimingSample[] samples;
-        }
-
-        /// <summary>
-        /// Exports one existing scalar measurement without retaining game references.
-        /// </summary>
-        [Serializable]
-        private sealed class TimingSample
-        {
-            public int tick;
-            public string phase;
-            public long elapsed;
         }
 
         /// <summary>

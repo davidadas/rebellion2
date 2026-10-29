@@ -335,15 +335,10 @@ namespace Rebellion.Multiplayer
             Task<bool> publication;
             if (command.automatic)
             {
-                using (
-                    runtime
-                        .GetActiveGameSession()
-                        .Timings.Measure(SimulationPhase.HostCheckpointWrite, current.CurrentTick)
-                )
-                    publication = store.ProcessMultiplayerAutosaveTickAsync(
-                        current,
-                        _hostAutosaveSettings
-                    );
+                publication = store.ProcessMultiplayerAutosaveTickAsync(
+                    current,
+                    _hostAutosaveSettings
+                );
             }
             else
             {
@@ -368,12 +363,8 @@ namespace Rebellion.Multiplayer
                     && string.IsNullOrWhiteSpace(displayName)
                 )
                     displayName = "Quicksave";
-                using (
-                    runtime
-                        .GetActiveGameSession()
-                        .Timings.Measure(SimulationPhase.HostCheckpointWrite, current.CurrentTick)
-                )
-                    publication = runtime.SaveGameLocallyAsync(fileName, displayName);
+
+                publication = runtime.SaveGameLocallyAsync(fileName, displayName);
             }
             byte[] metadataPayload = MultiplayerSnapshotSerializer.SerializeValue(
                 current.Metadata,
@@ -470,14 +461,10 @@ namespace Rebellion.Multiplayer
                     command.fileName
                 );
                 Task publication;
-                using (
-                    _runtime
-                        .GetActiveGameSession()
-                        .Timings.Measure(SimulationPhase.GuestCheckpointWrite, current.CurrentTick)
-                )
-                    publication = _runtime
-                        .GetSaveGameManager()
-                        .SaveGameDataWithMetadataAsync(current, fileName, metadata);
+
+                publication = _runtime
+                    .GetSaveGameManager()
+                    .SaveGameDataWithMetadataAsync(current, fileName, metadata);
                 await publication;
             }
         }
