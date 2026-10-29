@@ -468,18 +468,16 @@ public class SaveGameManager
         Action<Type, string> unknownElementSkipped = null
     )
     {
-        GameSerializer serializer = CreateSaveDeserializer(
-            typeof(GameRoot),
-            unknownElementSkipped: unknownElementSkipped
-        );
-
         using FileStream fileStream = new FileStream(
             saveFilePath,
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read
         );
-        return SaveGameMigration.Deserialize(fileStream, serializer);
+        return SaveGameMigration.Deserialize(
+            fileStream,
+            type => CreateSaveDeserializer(type, unknownElementSkipped: unknownElementSkipped)
+        );
     }
 
     /// <summary>

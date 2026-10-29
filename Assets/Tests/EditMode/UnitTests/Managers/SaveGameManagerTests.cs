@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
@@ -1600,6 +1603,95 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+        }
+
+        [TestCase("/CapitalShip")]
+        [TestCase("/CapitalShip/Components/Engine")]
+        [TestCase("/CapitalShip/Officers/Officer")]
+        public void LoadGameData_LegacyBattleWithUnknownMember_PreservesKnownState(
+            string parentPath
+        )
+        {
+            WriteLegacyBattleSave(parentPath);
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+
+            AssertLegacyBattleState(restored);
+        }
+
+        [TestCase("/CapitalShip")]
+        [TestCase("/CapitalShip/Components/Engine")]
+        [TestCase("/CapitalShip/Officers/Officer")]
+        public async Task LoadGameDataAsync_LegacyBattleWithUnknownMember_PreservesKnownState(
+            string parentPath
+        )
+        {
+            WriteLegacyBattleSave(parentPath);
+
+            GameRoot restored = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            AssertLegacyBattleState(restored);
+        }
+
+        /// <summary>
+        /// Writes a version 1 battle using a production-serialized root and a copied ship with one obsolete member.
+        /// </summary>
+        /// <param name="parentPath">The legacy ship subtree that contains the obsolete member.</param>
+        private void WriteLegacyBattleSave(string parentPath)
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SOURCE",
+                TypeID = "CRUISER",
+                OwnerInstanceID = "OWNER",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 35,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            ship.GetComponents().Add(new Engine { Health = 55 });
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER",
+                OwnerInstanceID = "OWNER",
+                DisplayName = "Admiral",
+            };
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+            XmlDocument shipDocument = new XmlDocument();
+            shipDocument.LoadXml(SerializationHelper.Serialize(ship));
+            XmlNode parent = shipDocument.SelectSingleNode(parentPath);
+            Assert.IsNotNull(parent);
+            parent.AppendChild(shipDocument.CreateElement("RemovedSetting")).InnerText = "99";
+
+            GameRoot game = new GameRoot { Metadata = new GameMetadata { SaveVersion = 1 } };
+            XmlDocument document = new XmlDocument();
+            document.LoadXml(SerializationHelper.Serialize(game));
+            XmlElement battle = document.CreateElement(nameof(ActiveBattle));
+            battle.InnerXml =
+                "<Kind>Space</Kind><Participants><BattleParticipant><FactionInstanceID>OWNER</FactionInstanceID>"
+                + "<Combatants><CombatUnit><SourceUnitInstanceID>SOURCE</SourceUnitInstanceID>"
+                + "</CombatUnit></Combatants></BattleParticipant></Participants>";
+            battle
+                .SelectSingleNode("Participants/BattleParticipant/Combatants/CombatUnit")
+                .AppendChild(document.ImportNode(shipDocument.DocumentElement, true));
+            document.DocumentElement.AppendChild(battle);
+            Directory.CreateDirectory(_saveDirectoryPath);
+            document.Save(_saveGameManager.GetSaveFilePath(_saveFileName));
+        }
+
+        /// <summary>
+        /// Checks that compatibility loading retains known ship, component, and officer state.
+        /// </summary>
+        /// <param name="game">The loaded legacy battle.</param>
+        private static void AssertLegacyBattleState(GameRoot game)
+        {
+            SpaceCombatUnit unit = game.GetActiveBattle().GetParticipants()[0].GetCombatants()[0];
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, game.Metadata.SaveVersion);
+            Assert.AreEqual("SOURCE", unit.SourceUnitInstanceID);
+            Assert.AreEqual("CRUISER", unit.TypeID);
+            Assert.AreEqual(35, unit.Condition.CurrentHullStrength);
+            Assert.AreEqual(55, unit.GetComponents()[0].Health);
+            Assert.AreEqual("Admiral", unit.Officers.Single().DisplayName);
         }
 
         /// <summary>

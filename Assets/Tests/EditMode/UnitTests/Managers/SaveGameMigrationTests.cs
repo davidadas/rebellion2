@@ -150,7 +150,10 @@ namespace Rebellion.Tests.Managers
             serializer.Serialize(stream, game);
             stream.Position = 0;
 
-            GameRoot restored = SaveGameMigration.Deserialize(stream, serializer);
+            GameRoot restored = SaveGameMigration.Deserialize(
+                stream,
+                type => new GameSerializer(type)
+            );
 
             Assert.AreEqual(xml, SerializationHelper.Serialize(restored));
         }
@@ -228,6 +231,26 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1.5f, unit.Carrier.LaunchCountdown);
         }
 
+        [TestCase(1)]
+        [TestCase(2)]
+        public void Deserialize_ProductionRoot_UpdatesLegacySaveVersion(int saveVersion)
+        {
+            GameRoot game = new GameRoot
+            {
+                Metadata = new GameMetadata { SaveVersion = saveVersion },
+            };
+            using MemoryStream stream = new MemoryStream();
+            new GameSerializer(typeof(GameRoot)).Serialize(stream, game);
+            stream.Position = 0;
+
+            GameRoot restored = SaveGameMigration.Deserialize(
+                stream,
+                type => new GameSerializer(type)
+            );
+
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, restored.Metadata.SaveVersion);
+        }
+
         /// <summary>
         /// Wraps a recorded combatant in an older saved battle format.
         /// </summary>
@@ -248,7 +271,7 @@ namespace Rebellion.Tests.Managers
         private static GameRoot Restore(string xml)
         {
             using MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
-            return SaveGameMigration.Deserialize(stream, new GameSerializer(typeof(GameRoot)));
+            return SaveGameMigration.Deserialize(stream, type => new GameSerializer(type));
         }
     }
 }

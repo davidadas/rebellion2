@@ -18,10 +18,11 @@ internal static class SaveGameMigration
     /// Reads current saves directly and upgrades older weapon and space-unit records.
     /// </summary>
     /// <param name="stream">The seekable saved-game stream.</param>
-    /// <param name="serializer">The configured game-root deserializer.</param>
+    /// <param name="createDeserializer">Creates readers with the caller's saved-game compatibility policy.</param>
     /// <returns>The restored game state.</returns>
-    public static GameRoot Deserialize(Stream stream, GameSerializer serializer)
+    public static GameRoot Deserialize(Stream stream, Func<Type, GameSerializer> createDeserializer)
     {
+        GameSerializer serializer = createDeserializer(typeof(GameRoot));
         long position = stream.Position;
         int version = ReadVersion(stream);
         stream.Position = position;
@@ -34,10 +35,10 @@ internal static class SaveGameMigration
         {
             UpgradeWeapons(document);
             UpgradeProjectiles(document);
-            UpgradeCombatants(document);
+            UpgradeCombatants(document, createDeserializer);
         }
         UpgradeSpaceCombatants(document);
-        XmlNode versionNode = document.SelectSingleNode("/Game/Metadata/SaveVersion");
+        XmlNode versionNode = document.DocumentElement?["Metadata"]?["SaveVersion"];
         if (versionNode != null)
             versionNode.InnerText = GameMetadata.CurrentSaveVersion.ToString(
                 CultureInfo.InvariantCulture
@@ -160,7 +161,11 @@ internal static class SaveGameMigration
     /// Rebuilds older battle copies as combat-only capabilities and grouped mutable state.
     /// </summary>
     /// <param name="document">The saved-game document being upgraded.</param>
-    private static void UpgradeCombatants(XmlDocument document)
+    /// <param name="createDeserializer">Creates readers with the caller's saved-game compatibility policy.</param>
+    private static void UpgradeCombatants(
+        XmlDocument document,
+        Func<Type, GameSerializer> createDeserializer
+    )
     {
         foreach (
             XmlElement oldUnit in document
@@ -176,7 +181,7 @@ internal static class SaveGameMigration
             shipDocument.AppendChild(shipDocument.ImportNode(ship, true));
             Type type = ship.Name == "CapitalShip" ? typeof(CapitalShip) : typeof(Starfighter);
             BaseSceneNode source = (BaseSceneNode)
-                new GameSerializer(type).Deserialize(shipDocument);
+                createDeserializer(type).Deserialize(shipDocument);
             SpaceCombatUnit combatant = SpaceCombatUnit.Create(source);
             combatant.InstanceID = oldUnit["InstanceID"]?.InnerText ?? combatant.InstanceID;
             combatant.SourceUnitInstanceID =
