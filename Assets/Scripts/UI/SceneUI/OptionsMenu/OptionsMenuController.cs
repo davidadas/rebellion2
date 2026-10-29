@@ -536,6 +536,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         )
             return;
 
+        if (!_saveSlots[slot].IsCreateNew && submitted && HasActiveGame())
+        {
+            RequestSaveOverwrite(_saveSlots[slot], newName);
+            return;
+        }
+
         UIWindow requestedWindow = _window;
         _persistencePending = true;
         try
@@ -549,13 +555,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             else
             {
                 selectedFileName = _saveSlots[slot].FileName;
-                if (submitted && HasActiveGame())
-                {
-                    if (!await OverwriteSaveAsync(selectedFileName, newName))
-                        return;
-                }
-                else
-                    _saveGameManager.SetSaveDisplayName(selectedFileName, newName);
+                _saveGameManager.SetSaveDisplayName(selectedFileName, newName);
             }
 
             if (_disposed || !ReferenceEquals(_window, requestedWindow))
@@ -602,33 +602,55 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Overwrites the selected existing save with the running game.
+    /// Requests confirmation before replacing the selected save with the running game.
     /// </summary>
-    private async void HandleSaveRequested()
+    private void HandleSaveRequested()
     {
         if (_persistencePending || !CanSaveGame() || !IsSelectedExistingSave())
             return;
 
-        string fileName = _saveSlots[_selectedSlot].FileName;
+        OptionsSaveSlot slot = _saveSlots[_selectedSlot];
+        RequestSaveOverwrite(slot, slot.Name);
+    }
+
+    /// <summary>
+    /// Confirms replacement of a captured save and awaits its persistence owner before refreshing.
+    /// </summary>
+    /// <param name="slot">The existing save to replace.</param>
+    /// <param name="displayName">The display name to persist after confirmation.</param>
+    private void RequestSaveOverwrite(OptionsSaveSlot slot, string displayName)
+    {
+        if (_persistencePending || !CanSaveGame())
+            return;
+
+        string fileName = slot.FileName;
         UIWindow requestedWindow = _window;
-        _persistencePending = true;
-        try
-        {
-            if (!await OverwriteSaveAsync(fileName, _saveSlots[_selectedSlot].Name))
-                return;
-            if (_disposed || !ReferenceEquals(_window, requestedWindow))
-                return;
-            RefreshSaveSlots(fileName);
-            _markDirty();
-        }
-        catch (OperationCanceledException)
-        {
-            // A closed coordinated session cannot acknowledge a pending save.
-        }
-        finally
-        {
-            _persistencePending = false;
-        }
+        RequestConfirm(
+            $"Overwrite \"{slot.Name}\"?",
+            async () =>
+            {
+                if (_persistencePending)
+                    return;
+                _persistencePending = true;
+                try
+                {
+                    if (!await OverwriteSaveAsync(fileName, displayName))
+                        return;
+                    if (_disposed || !ReferenceEquals(_window, requestedWindow))
+                        return;
+                    RefreshSaveSlots(fileName);
+                    _markDirty();
+                }
+                catch (OperationCanceledException)
+                {
+                    // A closed coordinated session cannot acknowledge a pending save.
+                }
+                finally
+                {
+                    _persistencePending = false;
+                }
+            }
+        );
     }
 
     /// <summary>
@@ -727,7 +749,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (!CanSaveGame())
             return Task.FromResult(false);
 
-        string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
+        string fileName = "save_" + Guid.NewGuid().ToString("N");
         return _saveGame(fileName, displayName);
     }
 

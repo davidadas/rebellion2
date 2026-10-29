@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer

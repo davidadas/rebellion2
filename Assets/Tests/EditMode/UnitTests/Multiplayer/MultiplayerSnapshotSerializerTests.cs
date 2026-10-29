@@ -6,8 +6,8 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Multiplayer

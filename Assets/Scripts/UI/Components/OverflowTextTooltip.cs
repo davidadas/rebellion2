@@ -9,6 +9,9 @@ public sealed class OverflowTextTooltip : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI _textField;
 
+    [SerializeField]
+    private TextOverflowModes _overflowMode = TextOverflowModes.Ellipsis;
+
     private bool _isHovered;
     private string _lastObservedText;
     private float _lastObservedWidth;
@@ -18,9 +21,14 @@ public sealed class OverflowTextTooltip : MonoBehaviour
     /// Assigns the bounded text label revealed by this hover surface.
     /// </summary>
     /// <param name="textField">The bounded text label.</param>
-    public void Configure(TextMeshProUGUI textField)
+    /// <param name="overflowMode">The bounded label's overflow presentation.</param>
+    public void Configure(
+        TextMeshProUGUI textField,
+        TextOverflowModes overflowMode = TextOverflowModes.Ellipsis
+    )
     {
         _textField = textField;
+        _overflowMode = overflowMode;
         ConfigureTextField();
     }
 
@@ -64,7 +72,7 @@ public sealed class OverflowTextTooltip : MonoBehaviour
             return;
 
         _textField.textWrappingMode = TextWrappingModes.NoWrap;
-        _textField.overflowMode = TextOverflowModes.Ellipsis;
+        _textField.overflowMode = _overflowMode;
         _textField.raycastTarget = false;
     }
 

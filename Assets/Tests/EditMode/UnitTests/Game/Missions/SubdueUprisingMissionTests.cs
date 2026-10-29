@@ -7,7 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 namespace Rebellion.Tests.Game.Missions
 {

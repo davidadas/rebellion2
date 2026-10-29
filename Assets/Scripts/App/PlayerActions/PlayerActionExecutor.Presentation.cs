@@ -5,7 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 namespace Rebellion.App.PlayerActions
 {

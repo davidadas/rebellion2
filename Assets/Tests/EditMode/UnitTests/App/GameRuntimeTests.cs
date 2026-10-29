@@ -7,14 +7,14 @@ using NUnit.Framework;
 using Rebellion.App;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Generation;
-using Rebellion.Simulation;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.App

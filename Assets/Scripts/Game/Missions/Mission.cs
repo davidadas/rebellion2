@@ -507,12 +507,6 @@ namespace Rebellion.Game.Missions
         public bool IsComplete() => CurrentProgress >= MaxProgress;
 
         /// <summary>
-        /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.
-        /// </summary>
-        /// <param name="tick">The exact tick count to assign as MaxProgress.</param>
-        public void SetExecutionTick(int tick) => MaxProgress = tick;
-
-        /// <summary>
         /// Returns all main and decoy participants as a single list.
         /// </summary>
         /// <param name="includeDisabled">Whether disabled participants may be returned.</param>

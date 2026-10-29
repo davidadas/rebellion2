@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>

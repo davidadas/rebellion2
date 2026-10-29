@@ -13,8 +13,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer

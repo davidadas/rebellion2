@@ -7,8 +7,8 @@ using Rebellion.App;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.TestTools;
 

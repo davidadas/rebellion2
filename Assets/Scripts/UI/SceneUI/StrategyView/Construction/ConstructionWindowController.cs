@@ -4,8 +4,8 @@ using System.Linq;
 using Rebellion.App;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 

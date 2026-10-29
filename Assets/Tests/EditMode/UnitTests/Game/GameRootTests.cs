@@ -5,13 +5,13 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 

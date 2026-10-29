@@ -50,8 +50,8 @@ public static class NewGameSettingsPrefabBuilder
         string[] names =
         {
             "GAME SETUP",
-            "DIFFICULTY MODIFIERS",
-            "WORLD GENERATION",
+            "DIFFICULTY",
+            "WORLD SETTINGS",
             "FACTION MODIFIERS",
             "SAVE / LOAD",
         };
@@ -120,7 +120,7 @@ public static class NewGameSettingsPrefabBuilder
         Button close = CreateMenuNavigationRow(
             "Close",
             contentRoot,
-            "BACK TO MENU",
+            "MAIN MENU",
             38,
             392,
             _mutedColor,

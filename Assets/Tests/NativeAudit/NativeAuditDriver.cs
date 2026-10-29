@@ -7,8 +7,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game.Results;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -421,7 +421,7 @@ namespace Rebellion.Tests.NativeAudit
             MultiplayerCoordinator multiplayer = MultiplayerCoordinator.Instance;
             GameRuntime runtime =
                 AppBootstrap.Instance == null ? null : AppBootstrap.Instance.GetRuntime();
-            Rebellion.Simulation.GameSession session = runtime?.GetActiveGameSession();
+            Rebellion.Gameplay.GameSession session = runtime?.GetActiveGameSession();
             response.frame = Time.frameCount;
             response.scene = SceneManager.GetActiveScene().name;
             response.focused = Application.isFocused;

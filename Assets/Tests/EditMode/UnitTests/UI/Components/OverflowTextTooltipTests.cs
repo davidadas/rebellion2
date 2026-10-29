@@ -62,6 +62,16 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void Configure_TruncateMode_PreservesHardCutoff()
+        {
+            _tooltip.Configure(_label, TextOverflowModes.Truncate);
+
+            Assert.AreEqual(TextWrappingModes.NoWrap, _label.textWrappingMode);
+            Assert.AreEqual(TextOverflowModes.Truncate, _label.overflowMode);
+            Assert.IsFalse(_label.raycastTarget);
+        }
+
+        [Test]
         public void AdvanceHover_OverflowingText_ShowsCompleteText()
         {
             _label.text = "A content pack name that cannot fit";

@@ -10,8 +10,8 @@ using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Multiplayer

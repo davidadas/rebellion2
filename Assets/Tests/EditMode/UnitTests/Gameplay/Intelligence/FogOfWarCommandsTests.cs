@@ -1,0 +1,1145 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Tests.Helpers;
+
+namespace Rebellion.Tests.Gameplay
+{
+    [TestFixture]
+    public class FogOfWarCommandsTests : FogOfWarTestBase
+    {
+        private FogOfWarCommands _commands;
+        private FogOfWarObserver _observer;
+        private FogOfWarQueries _queries;
+
+        /// <summary>
+        /// Creates the subject for the arranged faction scene.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            _commands = new FogOfWarCommands(_game, recorder);
+            _queries = new FogOfWarQueries(_game);
+            _observer = new FogOfWarObserver(_game, _commands, _queries, recorder);
+        }
+
+        [Test]
+        public void ObservePlanet_RegisteredPlanet_RecordsCurrentState()
+        {
+            _game.CurrentTick = 42;
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            bool observed = _commands.ObservePlanet(_alliance, _coruscant);
+
+            Assert.IsTrue(observed);
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.AreEqual("VADER", snapshot.Officers.Single().InstanceID);
+        }
+
+        [Test]
+        public void ForgetEntity_RememberedOfficer_RemovesObservation()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _commands.ObservePlanet(_alliance, _coruscant);
+
+            bool forgotten = _commands.ForgetEntity(_alliance, vader.InstanceID);
+
+            Assert.IsTrue(forgotten);
+            Assert.IsEmpty(_alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"].Officers);
+        }
+
+        [Test]
+        public void ForgetEntityAt_NewerLocationKnown_PreservesNewerObservation()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _commands.ObservePlanet(_alliance, _coruscant);
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            _commands.ObservePlanet(_alliance, _tatooine);
+
+            bool forgotten = _commands.ForgetEntityAt(_alliance, vader.InstanceID, _coruscant);
+
+            Assert.IsTrue(forgotten);
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[vader.InstanceID]);
+            Assert.AreEqual(
+                vader.InstanceID,
+                _alliance
+                    .Fog.Snapshots[_outerRim.InstanceID]
+                    .Planets[_tatooine.InstanceID]
+                    .Officers.Single()
+                    .InstanceID
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_PlanetWithAllEntities_CreatesAccurateSnapshot()
+        {
+            _coruscant.NumRawResourceNodes = 5;
+            _coruscant.EnergyCapacity = 1;
+            Officer vader = CreateOfficer("VADER", _empire);
+            Fleet imperialFleet = CreateFleet("FLEET1", _empire);
+            CapitalShip destroyer = new CapitalShip
+            {
+                InstanceID = "SD1",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment stormtroopers = CreateRegiment("REG1", _empire);
+            Building starport = CreateBuilding("BLDG1", _empire);
+            Starfighter tieFighter = CreateStarfighter("TIE1", _empire);
+
+            _game.AttachNode(vader, _coruscant);
+            _game.AttachNode(imperialFleet, _coruscant);
+            _game.AttachNode(destroyer, imperialFleet);
+            _game.AttachNode(stormtroopers, _coruscant);
+            _coruscant.AddChild(starport);
+            _coruscant.AddChild(tieFighter);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(1, snapshot.Officers.Count);
+            Assert.AreEqual(1, snapshot.Fleets.Count);
+            Assert.AreEqual(1, snapshot.Regiments.Count);
+            Assert.AreEqual(1, snapshot.Buildings.Count);
+            Assert.AreEqual(1, snapshot.Starfighters.Count);
+            Assert.AreEqual("FNEMP1", snapshot.OwnerInstanceID);
+            Assert.AreEqual(5, snapshot.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void ObservePlanet_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.SetBaseRating(SkillRating.Diplomacy, 50);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            vader.SetBaseRating(SkillRating.Diplomacy, 99);
+            _coruscant.RemoveChild(vader);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(1, snapshot.Officers.Count);
+            Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(SkillRating.Diplomacy));
+        }
+
+        [Test]
+        public void ObservePlanet_SingleEntity_CopiesEntityWithSameInstanceID()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual("VADER", snapshot.Officers[0].InstanceID);
+            Assert.AreNotSame(vader, snapshot.Officers[0]);
+        }
+
+        [Test]
+        public void ObservePlanet_UnvisitedPlanet_MarksPlanetVisited()
+        {
+            Assert.IsFalse(_coruscant.WasVisitedBy(_alliance.InstanceID));
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
+        }
+
+        [Test]
+        public void ObservePlanet_EntityMoves_RemovedFromOldPlanetSnapshot()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
+
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
+
+            Assert.AreEqual(1, tatooineSnapshot.Officers.Count);
+            Assert.AreEqual("VADER", tatooineSnapshot.Officers[0].InstanceID);
+        }
+
+        [Test]
+        public void ObservePlanet_MultipleEntitiesMove_InvalidationIndependentPerEntity()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            Fleet fleet = CreateFleet("FLEET1", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "CS1");
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            _hoth.OwnerInstanceID = _empire.InstanceID; // Set owner so fleet can move here
+            _game.MoveNode(fleet, _hoth);
+            ObservePlanet(_alliance, _hoth, _outerRim, 30);
+
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(0, coruscantSnapshot.Officers.Count);
+            Assert.AreEqual(0, coruscantSnapshot.Fleets.Count);
+        }
+
+        [Test]
+        public void ObservePlanet_EntitySeenTwiceSamePlanet_DoesNotDuplicate()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(1, snapshot.Officers.Count);
+        }
+
+        [Test]
+        public void ObservePlanet_EntityMovesBackToOriginalPlanet_HandledCorrectly()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            _game.MoveNode(vader, _coruscant);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 30);
+
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(1, coruscantSnapshot.Officers.Count);
+
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
+
+            Assert.AreEqual(0, tatooineSnapshot.Officers.Count);
+        }
+
+        [Test]
+        public void ObservePlanet_VaderRediscovered_RemovesFromOldPlanet()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "OUTERRIM")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "TATOOINE");
+
+            Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
+            Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
+        }
+
+        [Test]
+        public void ObservePlanet_EmptyPlanet_CreatesPlanetSnapshot()
+        {
+            ObservePlanet(_alliance, _tatooine, _outerRim, 10);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["TATOOINE"];
+
+            Assert.IsNotNull(snapshot);
+        }
+
+        [Test]
+        public void ObservePlanet_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            Regiment regiment = CreateRegiment("REGIMENT", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(regiment, ship);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(regiment, _tatooine);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(
+                oldSnapshot
+                    .Fleets.Single()
+                    .GetChildren<CapitalShip>()
+                    .Single()
+                    .GetChildren<Regiment>()
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[regiment.InstanceID]
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_EntityOnPlanet_UpdatesLastSeenIndex()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            Assert.AreEqual("CORUSCANT", _alliance.Fog.EntityLastSeenAt["VADER"]);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
+        }
+
+        [Test]
+        public void ObservePlanet_PlanetInPlanetSector_MapsPlanetToSector()
+        {
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            Assert.AreEqual("CORE_SECTOR", _alliance.Fog.PlanetToSector["CORUSCANT"]);
+
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
+        }
+
+        [Test]
+        public void ObservePlanet_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.SetBaseRating(SkillRating.Diplomacy, 50);
+            _game.AttachNode(vader, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
+            int originalTickCaptured = snapshot.TickCaptured;
+
+            Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
+
+            vader.SetBaseRating(SkillRating.Diplomacy, 99);
+
+            Assert.AreEqual(
+                originalTickCaptured,
+                snapshot.TickCaptured,
+                "Snapshot tick should not change"
+            );
+            Assert.AreEqual(
+                50,
+                snapshot.Officers[0].GetBaseRating(SkillRating.Diplomacy),
+                "Snapshot should preserve old skill value"
+            );
+            Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");
+        }
+
+        [Test]
+        public void ObservePlanet_Invalidation_RemovesOnlyTargetEntity()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            Officer tarkin = CreateOfficer("PALPATINE", _empire);
+            Fleet fleet = CreateFleet("FLEET1", _empire);
+            CapitalShip destroyer = new CapitalShip
+            {
+                InstanceID = "SD1",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(vader, _coruscant);
+            _game.AttachNode(tarkin, _coruscant);
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(destroyer, fleet);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
+            PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
+
+            Assert.AreEqual(
+                1,
+                coruscantSnapshot.Officers.Count,
+                "Should have 1 officer (Palpatine)"
+            );
+            Assert.AreEqual(
+                "PALPATINE",
+                coruscantSnapshot.Officers[0].InstanceID,
+                "Palpatine should remain"
+            );
+            Assert.AreEqual(1, coruscantSnapshot.Fleets.Count, "Fleet should remain");
+
+            PlanetSectorSnapshot outerSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
+            PlanetSnapshot tatooineSnapshot = outerSnapshot.Planets["TATOOINE"];
+            Assert.AreEqual(
+                1,
+                tatooineSnapshot.Officers.Count,
+                "Tatooine should have 1 officer (Vader)"
+            );
+            Assert.AreEqual(
+                "VADER",
+                tatooineSnapshot.Officers[0].InstanceID,
+                "Vader should be at new location"
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_CapturedFriendlyOfficer_IncludesDetachedOfficer()
+        {
+            Officer leia = CreateOfficer("LEIA", _alliance);
+            leia.IsCaptured = true;
+            leia.CaptorInstanceID = _empire.InstanceID;
+            _game.AttachNode(leia, _coruscant);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+
+            Officer observed = snapshot.Officers.Single(officer => officer.InstanceID == "LEIA");
+            Assert.AreNotSame(leia, observed);
+            Assert.IsTrue(observed.IsCaptured);
+            Assert.AreEqual(_empire.InstanceID, observed.CaptorInstanceID);
+        }
+
+        [Test]
+        public void ObservePlanet_OrdinaryObservation_ManufacturingRemainsHidden()
+        {
+            AddQueuedBuilding(_coruscant, _empire, "HIDDEN_BUILDING", 25);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.IsFalse(snapshot.HasManufacturingIntelligence);
+            Assert.IsEmpty(snapshot.ManufacturingQueueItems);
+            Assert.IsFalse(
+                snapshot.Buildings.Any(building => building.InstanceID == "HIDDEN_BUILDING")
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_ParticipantSeenElsewhere_RemovesStaleMission()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.DisplayName = "Darth Vader";
+            _game.AttachNode(vader, _coruscant);
+
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            _game.MoveNode(vader, empireMission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            vader.DisplayName = "Vader observed elsewhere";
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
+
+            PlanetSnapshot coruscantSnapshot = _alliance
+                .Fog
+                .Snapshots[_coreSector.InstanceID]
+                .Planets[_coruscant.InstanceID];
+            Assert.IsEmpty(coruscantSnapshot.Officers);
+            Assert.IsEmpty(coruscantSnapshot.Missions);
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[vader.InstanceID]);
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_PreservesIncomingEnemyFleet()
+        {
+            Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
+            _game.AttachNode(empireFleet, _coruscant);
+            AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
+            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant
+                .GetChildren<Fleet>()
+                .Single(fleet => fleet.InstanceID == empireFleet.InstanceID);
+            Assert.IsNotNull(viewFleet.Movement);
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_PreservesMissionIntelligence()
+        {
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.AreEqual(1, snapshot.Missions.Count);
+            Assert.AreEqual(empireMission.InstanceID, snapshot.Missions[0].InstanceID);
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_PreservesStaleManufacturingIntel()
+        {
+            Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            knownBuilding.ManufacturingProgress = 75;
+            AddQueuedBuilding(_coruscant, _empire, "UNKNOWN_BUILDING", 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _coruscant.InstanceID);
+            List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
+                ManufacturingType.Building
+            ];
+
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual("KNOWN_BUILDING", queue[0].InstanceID);
+            Assert.AreEqual(25, queue[0].ManufacturingProgress);
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_RemovesAbsentManufacturingIntel()
+        {
+            Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(knownBuilding);
+            _game.DetachNode(knownBuilding);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Buildings.Any(building => building.InstanceID == knownBuilding.InstanceID)
+            );
+            Assert.IsFalse(
+                snapshot.ManufacturingQueueItems.Any(item =>
+                    item.InstanceID == knownBuilding.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "VISIBLE_SHIP");
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                RegimentCapacity = 1,
+            };
+            Regiment departedRegiment = CreateRegiment("DEPARTED_REGIMENT", _empire);
+            _game.AttachNode(knownShip, fleet);
+            _game.AttachNode(departedRegiment, knownShip);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.DetachNode(departedRegiment);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            CapitalShip preservedShip = snapshot
+                .Fleets.Single(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
+                .GetChildren<CapitalShip>()
+                .Single(ship => ship.InstanceID == knownShip.InstanceID);
+            Assert.IsEmpty(preservedShip.GetChildren<Regiment>());
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingProgress = 25,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            knownShip.ManufacturingProgress = 75;
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
+                snapshotFleet.InstanceID == fleet.InstanceID
+            );
+            CapitalShip preservedShip = preservedFleet.GetChildren<CapitalShip>().Single();
+            Assert.AreEqual(knownShip.InstanceID, preservedShip.InstanceID);
+            Assert.AreEqual(25, preservedShip.ManufacturingProgress);
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[fleet.InstanceID]
+            );
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[knownShip.InstanceID]
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.DetachNode(knownShip);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Fleets.Any(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(fleet.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(knownShip.InstanceID));
+        }
+
+        [Test]
+        public void ObservePlanet_EnemyUnitsInTransit_NotRecorded()
+        {
+            Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
+            officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(officer, _coruscant);
+
+            Regiment regiment = CreateRegiment("MOVING_REGIMENT", _empire);
+            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(regiment, _coruscant);
+
+            Starfighter starfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
+            starfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(starfighter, _coruscant);
+
+            Fleet fleet = CreateFleet("MOVING_FLEET", _empire);
+            fleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "MOVING_FLEET_SHIP");
+
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(snapshot.Officers);
+            Assert.IsEmpty(snapshot.Regiments);
+            Assert.IsEmpty(snapshot.Starfighters);
+            Assert.IsEmpty(snapshot.Fleets);
+        }
+
+        [Test]
+        public void ObservePlanet_EmptyFleet_ExcludedFromSnapshot()
+        {
+            // An empty fleet (no capital ships) should not appear in snapshots
+            Fleet emptyFleet = new Fleet
+            {
+                InstanceID = "empty_fleet",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(emptyFleet, _coruscant);
+
+            ObservePlanet(_empire, _coruscant, _coreSector, _game.CurrentTick);
+
+            GalaxyMap view = _queries.BuildFactionView(_empire);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsFalse(
+                viewCoruscant.GetChildren<Fleet>().Any(f => f.InstanceID == "empty_fleet"),
+                "Empty fleet should not appear in snapshot"
+            );
+        }
+
+        [Test]
+        public void ObservePlanet_FleetWithShips_IncludedInSnapshot()
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "armed_fleet",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(fleet, _coruscant);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(ship, fleet);
+
+            ObservePlanet(_empire, _coruscant, _coreSector, _game.CurrentTick);
+
+            GalaxyMap view = _queries.BuildFactionView(_empire);
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(
+                viewCoruscant.GetChildren<Fleet>().Any(f => f.InstanceID == "armed_fleet"),
+                "Fleet with capital ships should appear in snapshot"
+            );
+        }
+
+        [Test]
+        public void RefreshVisibleKnowledge_EnemyShipAtNewPlanet_RemovesOldSnapshotLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fleet, _hoth);
+            _game.CurrentTick = 20;
+
+            _observer.RefreshVisibleKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            PlanetSnapshot currentSnapshot = _alliance.Fog.Snapshots[_outerRim.InstanceID].Planets[
+                _hoth.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet
+                        .GetChildren<CapitalShip>()
+                        .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                )
+            );
+            Assert.AreEqual(
+                1,
+                currentSnapshot
+                    .Fleets.SelectMany(snapshotFleet => snapshotFleet.GetChildren<CapitalShip>())
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(_hoth.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+        }
+
+        [Test]
+        public void ReconcileKnowledge_DuplicateRememberedShip_KeepsIndexedLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+            PlanetSnapshot duplicateSnapshot = new PlanetSnapshot { TickCaptured = 20 };
+            duplicateSnapshot.Fleets.Add(FogOfWarRecorder.CopyFleetForSnapshot(fleet));
+            PlanetSectorSnapshot outerRimSnapshot = new PlanetSectorSnapshot();
+            outerRimSnapshot.Planets[_tatooine.InstanceID] = duplicateSnapshot;
+            _alliance.Fog.Snapshots[_outerRim.InstanceID] = outerRimSnapshot;
+            _alliance.Fog.PlanetToSector[_tatooine.InstanceID] = _outerRim.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[fleet.InstanceID] = _tatooine.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[ship.InstanceID] = _tatooine.InstanceID;
+
+            _observer.ReconcileKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                1,
+                duplicateSnapshot.Fleets.Count(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+            List<Planet> viewedPlanets = view.GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .ToList();
+            Assert.AreEqual(
+                1,
+                viewedPlanets
+                    .SelectMany(planet => planet.GetChildren<CapitalShip>(recursive: true))
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                viewedPlanets
+                    .Single(planet =>
+                        planet
+                            .GetChildren<CapitalShip>(recursive: true)
+                            .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                    )
+                    .InstanceID
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ObservePlanets_MovedFleetAcrossObservationOrder_PreservesCurrentLocation(
+            bool destinationFirst
+        )
+        {
+            Fleet fleet = CreateFleet("MOVING_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "MOVING_SHIP");
+            Officer passenger = CreateOfficer("PASSENGER", _empire);
+            _game.AttachNode(passenger, ship);
+            _commands.ObservePlanet(_alliance, _coruscant, 10);
+            _game.MoveNode(fleet, _tatooine);
+
+            _commands.ObservePlanets(
+                _alliance,
+                destinationFirst
+                    ? new[] { _tatooine, _coruscant }
+                    : new[] { _coruscant, _tatooine },
+                20
+            );
+
+            foreach (string id in new[] { fleet.InstanceID, ship.InstanceID, passenger.InstanceID })
+                Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[id]);
+            Assert.IsEmpty(
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Fleets
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_ForwardEntryAbsentFromSnapshot_RemovesOnlyObservedPlanetEntry()
+        {
+            _alliance.Fog.EntityLastSeenAt["ORPHAN"] = _coruscant.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[string.Empty] = _coruscant.InstanceID;
+            _alliance.Fog.EntityLastSeenAt["UNOBSERVED"] = _hoth.InstanceID;
+            _alliance.Fog.EntityLastSeenAt["UNLOCATED"] = null;
+
+            _commands.ObservePlanets(_alliance, new[] { _coruscant }, 20);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "UNOBSERVED", "UNLOCATED" },
+                _alliance.Fog.EntityLastSeenAt.Keys
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_RevisitedPlanet_RemovesEntityInsertedByFirstObservation()
+        {
+            Officer officer = CreateOfficer("NEW_OBSERVATION", _empire);
+            _game.AttachNode(officer, _coruscant);
+
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(_coruscant, () => _game.DetachNode(officer), _coruscant),
+                20
+            );
+
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(officer.InstanceID));
+            Assert.IsEmpty(
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Officers
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_EnumeratorThrowsAfterFirstPlanet_PreservesCompletedObservation()
+        {
+            Officer officer = CreateOfficer("RECORDED_FIRST", _empire);
+            _game.AttachNode(officer, _coruscant);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _commands.ObservePlanets(_alliance, EnumerateThenThrow(_coruscant), 20)
+            );
+
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[officer.InstanceID]
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_LaterPlanetHasCyclicHierarchy_PreservesCompletedObservation()
+        {
+            Officer officer = CreateOfficer("RECORDED_FIRST", _empire);
+            _game.AttachNode(officer, _coruscant);
+            _hoth.ParentNode = _hoth;
+            try
+            {
+                Assert.Throws<InvalidOperationException>(() =>
+                    _commands.ObservePlanets(_alliance, new[] { _coruscant, _hoth }, 20)
+                );
+
+                Assert.AreEqual(
+                    _coruscant.InstanceID,
+                    _alliance.Fog.EntityLastSeenAt[officer.InstanceID]
+                );
+            }
+            finally
+            {
+                _hoth.ParentNode = _outerRim;
+            }
+        }
+
+        [Test]
+        public void ObservePlanets_EnumerationChangesCurrentTick_RecordsEachItemAtItsOwnTick()
+        {
+            _game.CurrentTick = 10;
+
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(_coruscant, () => _game.CurrentTick = 20, _tatooine)
+            );
+
+            Assert.AreEqual(
+                10,
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .TickCaptured
+            );
+            Assert.AreEqual(
+                20,
+                _alliance
+                    .Fog
+                    .Snapshots[_outerRim.InstanceID]
+                    .Planets[_tatooine.InstanceID]
+                    .TickCaptured
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_ForwardDictionaryReplacedDuringBatch_UsesCurrentIndex()
+        {
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(
+                    _coruscant,
+                    () =>
+                        _alliance.Fog.EntityLastSeenAt = new Dictionary<string, string>
+                        {
+                            ["REPLACED_ORPHAN"] = _tatooine.InstanceID,
+                        },
+                    _tatooine
+                ),
+                20
+            );
+
+            Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
+        }
+
+        [Test]
+        public void ObservePlanets_PriorMissionInvalidated_CleansOrphanedDescendantIndex()
+        {
+            MakeTatooineImperial();
+            Officer moving = CreateOfficer("MOVING_PARTICIPANT", _empire);
+            Officer remaining = CreateOfficer("REMAINING_PARTICIPANT", _empire);
+            Mission mission = CreateMission("REMEMBERED_MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(moving, mission);
+            mission.AddDecoyParticipant(remaining);
+            _game.AttachNode(remaining, mission);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.MoveNode(moving, _tatooine);
+
+            _commands.ObservePlanets(_alliance, new[] { _tatooine, _coruscant }, 20);
+
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[moving.InstanceID]
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(remaining.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(mission.InstanceID));
+        }
+
+        [Test]
+        public void ObservePlanets_AfterEspionage_PreservesObservedManufacturingState()
+        {
+            Building building = AddQueuedBuilding(_coruscant, _empire, "QUEUED_BUILDING", 25);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            building.ManufacturingProgress = 75;
+
+            _commands.ObservePlanets(_alliance, new[] { _coruscant, _tatooine }, 20);
+
+            Building recorded = _alliance
+                .Fog.Snapshots[_coreSector.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Buildings.Single(item => item.InstanceID == building.InstanceID);
+            Assert.AreEqual(25, recorded.ManufacturingProgress);
+        }
+
+        [Test]
+        public void ObservePlanets_MixedRepeatedObservations_MatchesIndividualSerializedFog()
+        {
+            MakeTatooineImperial();
+            _game.AttachNode(CreateOfficer("FIRST", _empire), _coruscant);
+            _game.AttachNode(CreateOfficer("SECOND", _empire), _tatooine);
+            Func<FogState> initialState = () =>
+                new FogState
+                {
+                    EntityLastSeenAt = new Dictionary<string, string>
+                    {
+                        ["OLD_FIRST"] = _coruscant.InstanceID,
+                        ["OLD_SECOND"] = _tatooine.InstanceID,
+                        ["UNOBSERVED"] = _hoth.InstanceID,
+                        ["UNLOCATED"] = null,
+                    },
+                };
+            Planet[] observations = { _coruscant, _tatooine, _coruscant };
+            _alliance.Fog = initialState();
+            foreach (Planet planet in observations)
+                _commands.ObservePlanet(_alliance, planet, 20);
+            string individual = SerializationHelper.Serialize(_alliance.Fog);
+            _alliance.Fog = initialState();
+
+            _commands.ObservePlanets(_alliance, observations, 20);
+
+            Assert.AreEqual(individual, SerializationHelper.Serialize(_alliance.Fog));
+        }
+
+        /// <summary>
+        /// Yields a second observation only after applying the arranged change after the first.
+        /// </summary>
+        /// <param name="first">The observation that must complete first.</param>
+        /// <param name="afterFirst">The change made before requesting the next observation.</param>
+        /// <param name="second">The next observation.</param>
+        /// <returns>The ordered lazy observation sequence.</returns>
+        private static IEnumerable<Planet> EnumerateAfter(
+            Planet first,
+            Action afterFirst,
+            Planet second
+        )
+        {
+            yield return first;
+            afterFirst();
+            yield return second;
+        }
+
+        /// <summary>
+        /// Fails the next enumeration step after yielding the arranged first observation.
+        /// </summary>
+        /// <param name="first">The observation that must complete before the failure.</param>
+        /// <returns>The lazy observation sequence.</returns>
+        private static IEnumerable<Planet> EnumerateThenThrow(Planet first)
+        {
+            yield return first;
+            throw new InvalidOperationException("The later observation failed.");
+        }
+
+        /// <summary>
+        /// Observes a planet at a selected simulation tick through the public command.
+        /// </summary>
+        /// <param name="faction">The observing faction.</param>
+        /// <param name="planet">The observed planet.</param>
+        /// <param name="sector">The expected containing sector.</param>
+        /// <param name="tick">The observation tick.</param>
+        private void ObservePlanet(Faction faction, Planet planet, PlanetSector sector, int tick)
+        {
+            Assert.AreSame(sector, planet.GetParentOfType<PlanetSector>());
+            _game.CurrentTick = tick;
+            Assert.IsTrue(_commands.ObservePlanet(faction, planet));
+        }
+    }
+}

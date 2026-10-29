@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer

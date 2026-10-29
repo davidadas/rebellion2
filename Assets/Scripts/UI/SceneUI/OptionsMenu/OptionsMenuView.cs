@@ -800,13 +800,33 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             badgeTemplate.width,
             badgeTemplate.height
         );
+        TextMeshProUGUI key = GetBindingField(keys, _bindingKeyTemplate, prefix + "Key", index);
+        ConfigureBindingTooltip(badge, key);
         UILayout.SetTemplateText(
-            GetBindingField(keys, _bindingKeyTemplate, prefix + "Key", index),
+            key,
             _bindingKeyTemplate,
             listening ? "..." : text,
             editable ? _textColor : _metaColor,
             new RectInt(x, top + keyTemplate.y, keyTemplate.width, keyTemplate.height)
         );
+    }
+
+    /// <summary>
+    /// Connects a binding badge to the complete value of its truncated key label.
+    /// </summary>
+    /// <param name="badge">The binding badge used as the hover surface.</param>
+    /// <param name="key">The bounded key label.</param>
+    private static void ConfigureBindingTooltip(Image badge, TextMeshProUGUI key)
+    {
+        OverflowTextTooltip tooltip = key.GetComponent<OverflowTextTooltip>();
+        if (tooltip == null)
+            tooltip = key.gameObject.AddComponent<OverflowTextTooltip>();
+        tooltip.Configure(key, TextOverflowModes.Truncate);
+
+        OverflowTextTooltipTrigger trigger = badge.GetComponent<OverflowTextTooltipTrigger>();
+        if (trigger == null)
+            trigger = badge.gameObject.AddComponent<OverflowTextTooltipTrigger>();
+        trigger.Configure(tooltip);
     }
 
     /// <summary>
@@ -1119,6 +1139,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Clones the established content-pack selector into another Options-style page.
     /// </summary>
+    /// <param name="contentAssets">The active content source applied to the cloned selector.</param>
     /// <param name="parent">The destination settings row.</param>
     /// <param name="name">The cloned selector name.</param>
     /// <param name="x">The destination left coordinate.</param>
@@ -1126,6 +1147,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="width">The space available for the destination selector.</param>
     /// <returns>The reusable cloned choice field.</returns>
     internal OptionsChoiceFieldView CloneContentPackChoice(
+        IContentAssetSource contentAssets,
         Transform parent,
         string name,
         int x,
@@ -1133,12 +1155,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         int width
     )
     {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
         Transform sourceParent = _contentPackValueField.transform.parent;
         Image badge = sourceParent.Find("ContentPackBadge")?.GetComponent<Image>();
         if (badge == null)
             throw new MissingReferenceException("ContentPackBadge is missing.");
 
-        return OptionsChoiceFieldView.Clone(
+        OptionsChoiceFieldView choice = OptionsChoiceFieldView.Clone(
             parent,
             name,
             badge,
@@ -1149,6 +1174,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             y,
             width
         );
+        ContentBindings.Apply(choice.gameObject, contentAssets);
+        return choice;
     }
 
     /// <summary>

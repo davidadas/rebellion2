@@ -8,7 +8,7 @@ using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Reflection;
 using UnityEngine;

@@ -567,6 +567,7 @@ public static class OptionsMenuPrefabBuilder
         {
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
+            UserInterfaceOption.KeepIdleBarAboveWindows,
             UserInterfaceOption.ShowUnitCardStats,
             UserInterfaceOption.ShowFrameRate,
         };
@@ -574,11 +575,12 @@ public static class OptionsMenuPrefabBuilder
         {
             "Show Idle Bar",
             "Keep Idle Bar Open",
+            "Keep Idle Bar Above Windows",
             "Show Unit Card Stats",
             "Show FPS Counter",
         };
-        int[] yPositions = { 70, 96, 122, 180 };
-        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 158, accent);
+        int[] yPositions = { 70, 96, 122, 148, 206 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
@@ -789,6 +791,8 @@ public static class OptionsMenuPrefabBuilder
         bindingKeyTemplate.text = "Key";
         bindingKeyTemplate.color = textColor;
         bindingKeyTemplate.fontSize = 10;
+        bindingKeyTemplate.textWrappingMode = TextWrappingModes.NoWrap;
+        bindingKeyTemplate.overflowMode = TextOverflowModes.Truncate;
         bindingKeyTemplate.alignment = TextAlignmentOptions.Midline;
         SetSourceRect(bindingKeyTemplate.rectTransform, 251, 3, 57, 16);
         bindingKeyTemplate.gameObject.SetActive(false);
@@ -829,7 +833,7 @@ public static class OptionsMenuPrefabBuilder
         Button backToGameButton = CreateMenuNavigationRow(
             "BackToGame",
             footerNavigation,
-            "RETURN TO GAME",
+            "RESUME GAME",
             0,
             0,
             textDim,
@@ -839,7 +843,7 @@ public static class OptionsMenuPrefabBuilder
         Button mainMenuButton = CreateMenuNavigationRow(
             "MainMenu",
             footerNavigation,
-            "RETURN TO MAIN MENU",
+            "MAIN MENU",
             0,
             _navigationRowStride,
             textDim,

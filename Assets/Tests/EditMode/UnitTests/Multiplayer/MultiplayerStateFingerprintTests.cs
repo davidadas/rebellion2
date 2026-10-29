@@ -2,8 +2,8 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
-using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Multiplayer

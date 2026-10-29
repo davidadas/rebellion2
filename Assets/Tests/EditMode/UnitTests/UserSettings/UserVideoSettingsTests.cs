@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UserSettings
         }
 
         [Test]
-        public void Normalize_InvalidDisplayValues_RestoresNativeExclusiveDefaults()
+        public void Normalize_InvalidDisplayValues_RestoresNativeBorderlessDefaults()
         {
             UserVideoSettings settings = new UserVideoSettings
             {
@@ -34,7 +34,20 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(0, settings.ResolutionWidth);
             Assert.AreEqual(0, settings.ResolutionHeight);
-            Assert.AreEqual((int)FullScreenMode.ExclusiveFullScreen, settings.FullScreenMode);
+            Assert.AreEqual((int)FullScreenMode.FullScreenWindow, settings.FullScreenMode);
+        }
+
+        [Test]
+        public void Normalize_ExclusiveFullScreen_MigratesToBorderless()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                FullScreenMode = (int)FullScreenMode.ExclusiveFullScreen,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual((int)FullScreenMode.FullScreenWindow, settings.FullScreenMode);
         }
 
         [Test]

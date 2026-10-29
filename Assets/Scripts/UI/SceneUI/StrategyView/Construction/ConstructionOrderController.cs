@@ -6,8 +6,8 @@ using Rebellion.App;
 using Rebellion.App.PlayerActions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 
 /// <summary>

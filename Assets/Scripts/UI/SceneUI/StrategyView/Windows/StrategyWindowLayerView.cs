@@ -10,6 +10,9 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     private RectTransform modelessWindowLayer;
 
     [SerializeField]
+    private RectTransform idleBarLayer;
+
+    [SerializeField]
     private RectTransform modalWindowLayer;
 
     [SerializeField]
@@ -116,6 +119,23 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
             return modelessWindowLayer;
 
         return transform;
+    }
+
+    /// <summary>
+    /// Places the idle bar immediately above or below modeless strategy windows.
+    /// </summary>
+    /// <param name="aboveModelessWindows">
+    /// Whether the idle bar should remain visible above modeless windows.
+    /// </param>
+    internal void RenderIdleBarLayer(bool aboveModelessWindows)
+    {
+        if (idleBarLayer == null || modelessWindowLayer == null)
+            return;
+
+        bool isAboveModelessWindows =
+            idleBarLayer.GetSiblingIndex() > modelessWindowLayer.GetSiblingIndex();
+        if (isAboveModelessWindows != aboveModelessWindows)
+            idleBarLayer.SetSiblingIndex(modelessWindowLayer.GetSiblingIndex());
     }
 
     /// <summary>
