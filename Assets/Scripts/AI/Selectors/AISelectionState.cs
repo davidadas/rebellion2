@@ -110,13 +110,15 @@ namespace Rebellion.AI.Selectors
                         proposal.TargetFleet,
                         proposal.TargetPlanet,
                         true,
-                        selectedBombardment
+                        selectedBombardment,
+                        attack.ShieldStrength
                     )
                     && context.Assessment.CanBombardDefenders(
                         proposal.TargetFleet,
                         proposal.TargetPlanet,
                         true,
-                        selectedBombardment + additionalBombardment
+                        selectedBombardment + additionalBombardment,
+                        attack.ShieldStrength
                     )
                 )
                     return true;

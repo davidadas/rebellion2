@@ -610,19 +610,65 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(expectedTransfers, selected.OfType<AITransferUnitProposal>().Count());
         }
 
-        [Test]
-        public void Select_LoadedShipWithoutHullShortage_ReinforcesMissingRegiments()
+        [TestCase(true, 0, true)]
+        [TestCase(false, 80, true)]
+        [TestCase(false, 150, false)]
+        public void Select_ShipWithoutHullShortage_FillsOnlyUnmetGroundRequirement(
+            bool carriesRegiment,
+            int shieldStrength,
+            bool expectedTransfer
+        )
         {
             AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
-            context.Game.AttachNode(
-                AITestSceneBuilder.CreateRegiment("reinforcement", context.Faction.InstanceID, 100),
-                (CapitalShip)transfer.Unit
-            );
+            if (carriesRegiment)
+                context.Game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "reinforcement",
+                        context.Faction.InstanceID,
+                        100
+                    ),
+                    (CapitalShip)transfer.Unit
+                );
+            else
+            {
+                CapitalShip bombardShip = AITestSceneBuilder.CreateCapitalShip(
+                    "bombarder",
+                    context.Faction.InstanceID
+                );
+                bombardShip.Bombardment = 50;
+                context.Game.AttachNode(bombardShip, transfer.TargetFleet);
+                ((CapitalShip)transfer.Unit).Bombardment = 100;
+                context.Game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "defender",
+                        transfer.TargetPlanet.GetOwnerInstanceID()
+                    ),
+                    transfer.TargetPlanet
+                );
+                AITestSceneBuilder.RevealPlanet(
+                    context.Game,
+                    context.Faction,
+                    transfer.TargetPlanet
+                );
+            }
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
             context.SetAttackDemands(
                 new[]
                 {
-                    new AIAttackDemand(transfer.TargetPlanet, 0, 0, 0, 0, 0, 100, 1, 1, 0, false),
+                    new AIAttackDemand(
+                        transfer.TargetPlanet,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        100,
+                        1,
+                        1,
+                        0,
+                        false,
+                        shieldStrength
+                    ),
                 }
             );
             context.SetProductionDemands(Array.Empty<AIProductionDemand>());
@@ -631,16 +677,33 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new AIProposal[] { transfer }, selected);
+            CollectionAssert.AreEqual(
+                expectedTransfer ? new AIProposal[] { transfer } : Array.Empty<AIProposal>(),
+                selected
+            );
         }
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public void Select_DefenseContinuationAndDonation_SelectsBoth(bool defenseFirst)
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        public void Select_DefenseContinuationAndDonation_SelectsBoth(
+            bool defenseFirst,
+            bool usePlanetView
+        )
         {
             AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
             Fleet donor = (Fleet)transfer.SourceContainer;
-            AIFleetDefenseProposal defense = new(donor, donor.GetParentOfType<Planet>());
+            Planet livePlanet = donor.GetParentOfType<Planet>();
+            Planet target = usePlanetView
+                ? context.Assessment.GetKnownPlanet(livePlanet.InstanceID)
+                : livePlanet;
+            if (usePlanetView)
+            {
+                Assert.AreNotSame(livePlanet, target);
+                Assert.AreEqual(livePlanet.InstanceID, target.InstanceID);
+            }
+            AIFleetDefenseProposal defense = new(donor, target);
             transfer.SetScore(defenseFirst ? 1 : 2);
             defense.SetScore(defenseFirst ? 2 : 1);
             context.AddProposal(transfer);

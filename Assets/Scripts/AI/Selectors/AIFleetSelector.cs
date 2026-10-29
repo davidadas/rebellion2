@@ -87,7 +87,8 @@ namespace Rebellion.AI.Selectors
                     bool continuingDefense =
                         defense.Fleet?.Order?.OrderType == FleetOrderType.Defend
                         && defense.Fleet.Order.TargetPlanetId == defense.TargetPlanet?.InstanceID
-                        && defense.Fleet.GetParentOfType<Planet>() == defense.TargetPlanet
+                        && defense.Fleet.GetParentOfType<Planet>()?.InstanceID
+                            == defense.TargetPlanet?.InstanceID
                         && defense.Fleet.Movement == null
                         && !defense.Fleet.IsInCombat;
                     Add(
