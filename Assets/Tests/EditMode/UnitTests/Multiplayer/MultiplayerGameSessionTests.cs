@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void ApplyRecoveryState_RemovedRegistrySlot_PreservesFutureSelectionOrder()
+        public void ApplyRecoveryState_RemovedUnitThenSameAddition_PreservesVerification()
         {
             using PeerPair peers = new();
             Planet planet = peers.HostGame.GetSceneNodeByInstanceID<Planet>("host-planet");
@@ -148,17 +148,12 @@ namespace Rebellion.Tests.Multiplayer
                     new Regiment { InstanceID = "added", OwnerInstanceID = _hostFactionID },
                     game.GetSceneNodeByInstanceID<Planet>("host-planet")
                 );
-            CollectionAssert.AreEqual(
-                peers
-                    .HostGame.GetRegisteredSceneNodesByType<Regiment>()
-                    .Select(node => node.InstanceID),
-                peers
-                    .GuestGame.GetRegisteredSceneNodesByType<Regiment>()
-                    .Select(node => node.InstanceID)
-            );
-            Assert.AreEqual(
-                "added",
-                peers.GuestGame.GetRegisteredSceneNodesByType<Regiment>().First().InstanceID
+            peers.AssertSharedState();
+            Assert.DoesNotThrow(() =>
+                MultiplayerStateFingerprint.VerifyRecovery(
+                    peers.GuestSimulation,
+                    MultiplayerStateFingerprint.ComputeSimulation(peers.HostSimulation)
+                )
             );
         }
 

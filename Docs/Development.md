@@ -114,6 +114,10 @@ Simulation verification performs one graph traversal per completed multiplayer d
 the tick iterator releases its execution boundary. `SimulationPhase.StateVerification` records its
 cost when timing capture is enabled; verification is not a frame-loop poll.
 
+Scene-node lookup uses a standard dictionary. Snapshot capture projects its registered references
+by identity so equivalent worlds compare equally after recovery. Save files and network snapshots
+do not preserve dictionary storage positions or vacant slots.
+
 Human participants select their own game speed. The effective clock uses the slowest human
 selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances
 only when neither remains paused. A faster preference takes effect as the slower participant raises

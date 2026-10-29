@@ -5,7 +5,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -84,27 +83,18 @@ namespace Rebellion.Multiplayer
         /// <param name="value">The value to encode.</param>
         /// <param name="declaredType">The protocol root schema.</param>
         /// <param name="settings">The strict schema and reference policy.</param>
-        /// <param name="orderedGraph">The authoritative graph contained by an enclosing recovery value.</param>
         /// <returns>The UTF-8 representation.</returns>
         internal static byte[] SerializeValue(
             object value,
             Type declaredType,
-            JsonSerializerSettings settings,
-            IOrderedObjectGraph orderedGraph = null
+            JsonSerializerSettings settings
         )
         {
-            SerializationOrderContext order = (orderedGraph ?? value as IOrderedObjectGraph)
-                is IOrderedObjectGraph graph
-                ? new SerializationOrderContext(graph)
-                : null;
             JsonSerializer serializer = JsonSerializer.Create(settings);
-            if (order != null)
-                serializer.ReferenceResolver = new OrderedReferences(order);
             using MemoryStream stream = new MemoryStream();
             using (StreamWriter text = new StreamWriter(stream, _encoding, 16384, true))
             using (JsonTextWriter writer = new JsonTextWriter(text))
                 serializer.Serialize(writer, value, declaredType);
-            order?.CompleteWrite();
             return stream.ToArray();
         }
 
@@ -135,156 +125,21 @@ namespace Rebellion.Multiplayer
         /// <param name="payload">The UTF-8 representation.</param>
         /// <param name="declaredType">The protocol root schema.</param>
         /// <param name="settings">The strict schema and reference policy.</param>
-        /// <param name="selectGraph">Resolves the decoded authoritative graph from a recovery envelope.</param>
         /// <returns>The independently restored non-null value.</returns>
         internal static object DeserializeValue(
             byte[] payload,
             Type declaredType,
-            JsonSerializerSettings settings,
-            Func<object, IOrderedObjectGraph> selectGraph = null
+            JsonSerializerSettings settings
         )
         {
-            SerializationOrderContext order =
-                typeof(IOrderedObjectGraph).IsAssignableFrom(declaredType) || selectGraph != null
-                    ? new SerializationOrderContext()
-                    : null;
             JsonSerializer serializer = JsonSerializer.Create(settings);
-            if (order != null)
-                serializer.ReferenceResolver = new OrderedReferences(order);
             using MemoryStream stream = new MemoryStream(payload, false);
             using StreamReader text = new StreamReader(stream, _encoding);
             using JsonTextReader reader = new JsonTextReader(text);
             object value =
                 serializer.Deserialize(reader, declaredType)
                 ?? throw new InvalidDataException("A multiplayer payload must contain a value.");
-            order?.Restore(selectGraph != null ? selectGraph(value) : value as IOrderedObjectGraph);
             return value;
-        }
-
-        /// <summary>
-        /// Carries logical positions through the JSON serializer's existing object-reference records.
-        /// Each operation owns its reference map while model contracts remain cached and reusable.
-        /// </summary>
-        private sealed class OrderedReferences : IReferenceResolver
-        {
-            private readonly SerializationOrderContext _order;
-            private readonly Dictionary<object, string> _references = new(
-                ReferenceIdentity.Instance
-            );
-            private readonly Dictionary<string, object> _objects = new(StringComparer.Ordinal);
-            private int _nextReference;
-
-            /// <summary>
-            /// Binds reference identities to one serialization operation.
-            /// </summary>
-            /// <param name="order">The captured or decoded logical object order.</param>
-            public OrderedReferences(SerializationOrderContext order)
-            {
-                _order = order;
-            }
-
-            /// <summary>
-            /// Resolves a previously decoded instance without creating an additional model object.
-            /// </summary>
-            /// <param name="context">The JSON serializer's operation context.</param>
-            /// <param name="reference">The wire reference identity.</param>
-            /// <returns>The previously decoded object.</returns>
-            public object ResolveReference(object context, string reference)
-            {
-                return _objects.TryGetValue(reference, out object value)
-                    ? value
-                    : throw new JsonSerializationException("An object reference is unresolved.");
-            }
-
-            /// <summary>
-            /// Assigns an existing reference record its logical position or ordinary operation identity.
-            /// </summary>
-            /// <param name="context">The JSON serializer's operation context.</param>
-            /// <param name="value">The existing object instance.</param>
-            /// <returns>The reference identity used by this operation.</returns>
-            public string GetReference(object context, object value)
-            {
-                if (_references.TryGetValue(value, out string reference))
-                    return reference;
-                if (value is IOrderedObjectGraph)
-                    reference =
-                        "g:"
-                        + _order.SlotCount.ToString(CultureInfo.InvariantCulture)
-                        + ":"
-                        + string.Join(",", _order.Vacancies);
-                else if (value is BaseSceneNode && _order.WritePosition(value) is int position)
-                    reference = "p:" + position.ToString(CultureInfo.InvariantCulture);
-                else
-                    reference = (++_nextReference).ToString(CultureInfo.InvariantCulture);
-                _references.Add(value, reference);
-                return reference;
-            }
-
-            /// <summary>
-            /// Reports whether the actual instance already has an operation-local reference.
-            /// </summary>
-            /// <param name="context">The JSON serializer's operation context.</param>
-            /// <param name="value">The actual object instance.</param>
-            /// <returns>True when the object has already been written.</returns>
-            public bool IsReferenced(object context, object value) =>
-                _references.ContainsKey(value);
-
-            /// <summary>
-            /// Records a newly decoded instance and the order metadata carried by its reference record.
-            /// </summary>
-            /// <param name="context">The JSON serializer's operation context.</param>
-            /// <param name="reference">The encoded reference identity.</param>
-            /// <param name="value">The newly created object before its members are populated.</param>
-            public void AddReference(object context, string reference, object value)
-            {
-                if (reference == null || value == null || _objects.ContainsKey(reference))
-                    throw new JsonSerializationException(
-                        "An object reference is invalid or repeated."
-                    );
-                if (reference.StartsWith("g:", StringComparison.Ordinal))
-                {
-                    string[] parts = reference.Split(':');
-                    if (parts.Length != 3 || value is not IOrderedObjectGraph)
-                        throw new JsonSerializationException(
-                            "An ordered graph reference is invalid."
-                        );
-                    _order.ReadSlotCount(int.Parse(parts[1], CultureInfo.InvariantCulture));
-                    List<int> vacancies = new();
-                    if (parts[2].Length > 0)
-                        foreach (string position in parts[2].Split(','))
-                            vacancies.Add(int.Parse(position, CultureInfo.InvariantCulture));
-                    _order.ReadVacancies(vacancies);
-                }
-                else if (reference.StartsWith("p:", StringComparison.Ordinal))
-                    _order.ReadPosition(
-                        value,
-                        int.Parse(reference.Substring(2), CultureInfo.InvariantCulture)
-                    );
-                _objects.Add(reference, value);
-            }
-        }
-
-        /// <summary>
-        /// Compares wire-reference keys by their actual object identity.
-        /// </summary>
-        private sealed class ReferenceIdentity : IEqualityComparer<object>
-        {
-            public static readonly ReferenceIdentity Instance = new();
-
-            /// <summary>
-            /// Compares the actual instances without model value equality.
-            /// </summary>
-            /// <param name="x">The first instance.</param>
-            /// <param name="y">The second instance.</param>
-            /// <returns>True when both references identify the same object.</returns>
-            public new bool Equals(object x, object y) => ReferenceEquals(x, y);
-
-            /// <summary>
-            /// Computes an identity hash for this operation's actual object instance.
-            /// </summary>
-            /// <param name="obj">The actual object instance.</param>
-            /// <returns>The runtime reference hash.</returns>
-            public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
         }
 
         /// <summary>
@@ -302,7 +157,7 @@ namespace Rebellion.Multiplayer
             }
 
             /// <summary>
-            /// Gives graph roots and scene nodes reference records that can carry operation-local order.
+            /// Preserves shared references to graph roots and scene nodes during snapshot transfer.
             /// </summary>
             /// <param name="objectType">The persisted model type.</param>
             /// <returns>The cached model contract with its reference policy.</returns>

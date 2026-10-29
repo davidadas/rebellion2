@@ -14,55 +14,6 @@ namespace Rebellion.Tests.Multiplayer
 {
     public sealed class MultiplayerSnapshotSerializerTests
     {
-        [TestCase(false)]
-        [TestCase(true)]
-        public void SerializeAndDeserialize_RegistrationAcrossPlanetsWithVacancy_PreservesFutureOrder(
-            bool recovery
-        )
-        {
-            GameRoot game = CreateGame();
-            using GameSession session = new(game, TestContent.Data);
-            Planet first = game.GetSceneNodeByInstanceID<Planet>("test-planet");
-            Planet second = new() { InstanceID = "second-planet" };
-            game.AttachNode(second, first.ParentNode);
-            game.AttachNode(new Regiment { InstanceID = "retained-first" }, second);
-            game.AttachNode(new Regiment { InstanceID = "removed" }, first);
-            game.AttachNode(new Regiment { InstanceID = "retained-second" }, first);
-            game.DeleteNode(game.GetSceneNodeByInstanceID<Regiment>("removed"));
-
-            GameRoot restored;
-            if (recovery)
-            {
-                MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(session);
-                using GameSession decoded = MultiplayerRecoverySnapshotCodec.Restore(
-                    snapshot.Payload,
-                    snapshot.Hash,
-                    TestContent.Data
-                );
-                restored = decoded.Game;
-            }
-            else
-                restored = MultiplayerSnapshotSerializer.Deserialize(
-                    MultiplayerSnapshotSerializer.Serialize(game)
-                );
-
-            CollectionAssert.AreEqual(game.NodesByInstanceID.Keys, restored.NodesByInstanceID.Keys);
-            restored.RebuildSceneState();
-            game.AttachNode(new Regiment { InstanceID = "added" }, first);
-            restored.AttachNode(
-                new Regiment { InstanceID = "added" },
-                restored.GetSceneNodeByInstanceID<Planet>(first.InstanceID)
-            );
-            CollectionAssert.AreEqual(
-                game.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID),
-                restored.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID)
-            );
-            CollectionAssert.AreEqual(
-                new[] { "retained-first", "added", "retained-second" },
-                restored.GetRegisteredSceneNodesByType<Regiment>().Select(node => node.InstanceID)
-            );
-        }
-
         [Test]
         public void SerializeAndDeserialize_NestedGraph_PreservesPersistedValues()
         {

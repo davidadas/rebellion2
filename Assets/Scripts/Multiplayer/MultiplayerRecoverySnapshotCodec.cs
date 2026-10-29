@@ -35,8 +35,7 @@ namespace Rebellion.Multiplayer
                 MultiplayerSnapshotSerializer.SerializeValue(
                     state,
                     typeof(GameSessionRecoveryState),
-                    _settings,
-                    state.Game
+                    _settings
                 )
             );
         }
@@ -53,8 +52,7 @@ namespace Rebellion.Multiplayer
                 MultiplayerSnapshotSerializer.DeserializeValue(
                     MultiplayerSnapshotCodec.RestorePayload(payload, hash),
                     typeof(GameSessionRecoveryState),
-                    _settings,
-                    value => ((GameSessionRecoveryState)value).Game
+                    _settings
                 );
         }
 
