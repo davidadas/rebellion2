@@ -198,6 +198,72 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void RenderWindow_MissionCapableDragOverPlanet_ShowsMissionDropTarget()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(officer, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            Assert.IsFalse(
+                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
+            );
+            StrategyWindowItemDragController dragReceiver = new StrategyWindowItemDragController(
+                _targetingController,
+                new DragController(5),
+                _ => Array.Empty<ISceneNode>(),
+                (UIWindow _, int _, int _, out DragPreview preview) =>
+                {
+                    preview = null;
+                    return false;
+                },
+                _ => null,
+                _actions
+            );
+            _targetingController.Begin(
+                new TargetingRequest(
+                    "Move",
+                    new StrategyWindowTargetingSource(
+                        null,
+                        StrategyMenuAction.Move,
+                        0,
+                        0,
+                        new ISceneNode[] { officer }
+                    ),
+                    dragReceiver
+                )
+            );
+
+            planetView.OnPointerEnter(
+                CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+            _controller.RenderWindow(view, window);
+
+            Assert.IsTrue(
+                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform missionIcon)
+            );
+            RawImage missionImage = missionIcon.GetComponent<RawImage>();
+            planetView.OnDrop(
+                new PointerEventData(null)
+                {
+                    button = PointerEventData.InputButton.Left,
+                    pointerCurrentRaycast = new RaycastResult
+                    {
+                        gameObject = missionImage.gameObject,
+                    },
+                }
+            );
+            Assert.IsTrue(_actions.LastTarget.MissionCreationRequested);
+            CollectionAssert.AreEqual(new ISceneNode[] { officer }, _actions.LastItems);
+        }
+
+        [Test]
         public void TryOpenInAvailableSlot_AvailableSlot_OpensWithoutReplacingWindow()
         {
             GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
@@ -834,6 +900,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateTargetForHit_MissionOverlayIcon_RequestsMissionCreation()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
+
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
+                hit,
+                CreateRequest(StrategyMenuAction.Move, Array.Empty<ISceneNode>()),
+                null
+            );
+
+            Assert.IsNotNull(target);
+            Assert.IsTrue(target.MissionCreationRequested);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
+        }
+
+        [Test]
         public void CreateTargetForHit_ManufacturingDestinationOnFleetOverlayIcon_TargetsFleet()
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
@@ -1287,7 +1369,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
-            ) { }
+            )
+            {
+                LastItems = items;
+                LastTarget = target;
+            }
 
             /// <summary>
             /// Opens planet sector battle result.

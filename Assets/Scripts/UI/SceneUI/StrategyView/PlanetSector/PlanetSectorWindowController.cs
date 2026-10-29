@@ -443,9 +443,36 @@ public sealed class PlanetSectorWindowController
                 getSelectedFleetInstanceIds(),
                 filterMode == GalacticInformationFilterMode.FleetWaypoints,
                 filterMode,
-                getSectors()
+                getSectors(),
+                GetMissionDropPlanetInstanceId(session)
             )
         );
+    }
+
+    /// <summary>
+    /// Resolves the hovered planet that should expose its mission drop target.
+    /// </summary>
+    /// <param name="session">The active planet-sector session.</param>
+    /// <returns>The hovered planet identifier, or null when the active drag cannot create missions.</returns>
+    private string GetMissionDropPlanetInstanceId(PlanetSectorWindowSession session)
+    {
+        if (
+            string.IsNullOrEmpty(session?.HoveredPlanetInstanceId)
+            || targetingController.ActiveRequest
+                is not {
+                    Receiver: StrategyWindowItemDragController,
+                    Source: StrategyWindowTargetingSource
+                    {
+                        Action: StrategyMenuAction.Move,
+                    } source,
+                }
+        )
+            return null;
+
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        return StrategyContextMenuAvailability.CanCreateMission(source.Items, playerFactionId)
+            ? session.HoveredPlanetInstanceId
+            : null;
     }
 
     /// <summary>
@@ -962,7 +989,13 @@ public sealed class PlanetSectorWindowController
         )
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
-            return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
+        {
+            return new StrategyMissionTarget(
+                hit.GalaxyMapPlanet,
+                hit.GalaxyMapPlanet.Planet,
+                hit.Icon == PlanetIcon.Mission
+            );
+        }
         return null;
     }
 

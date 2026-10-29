@@ -42,6 +42,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
     /// <param name="filterMode">The galactic-information filter applied to visible planets.</param>
     /// <param name="visibleSectors">All faction-filtered strategy sectors.</param>
+    /// <param name="missionDropPlanetInstanceId">The planet exposing a transient mission drop target.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
@@ -53,7 +54,8 @@ internal sealed class PlanetSectorWindowProjector
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
         bool showAllWaypointRoutes = false,
         GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff,
-        IReadOnlyList<GalaxyMapSector> visibleSectors = null
+        IReadOnlyList<GalaxyMapSector> visibleSectors = null,
+        string missionDropPlanetInstanceId = null
     )
     {
         UIContext uiContext = GetUIContext();
@@ -81,7 +83,8 @@ internal sealed class PlanetSectorWindowProjector
                     hoveredPlanetInstanceId,
                     hoveredIcon,
                     playerFactionId,
-                    filter
+                    filter,
+                    missionDropPlanetInstanceId
                 )
             );
         }
@@ -220,6 +223,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="hoveredIcon">The hovered planet icon.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filter">The active galactic-information filter, or null.</param>
+    /// <param name="missionDropPlanetInstanceId">The planet exposing a transient mission drop target.</param>
     /// <returns>The immutable planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanetData(
         UIContext uiContext,
@@ -231,7 +235,8 @@ internal sealed class PlanetSectorWindowProjector
         string hoveredPlanetInstanceId,
         PlanetIcon hoveredIcon,
         string playerFactionId,
-        GalacticInformationFilterTheme filter
+        GalacticInformationFilterTheme filter,
+        string missionDropPlanetInstanceId
     )
     {
         Planet planet = strategyPlanet?.Planet;
@@ -248,6 +253,19 @@ internal sealed class PlanetSectorWindowProjector
             GetMissionOwnerFactionIDs(planet),
             ownerFactionId
         );
+        if (
+            showPlanetDetails
+            && string.IsNullOrEmpty(missionFactionId)
+            && !string.IsNullOrEmpty(missionDropPlanetInstanceId)
+            && string.Equals(
+                missionDropPlanetInstanceId,
+                planetInstanceId,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            missionFactionId = playerFactionId;
+        }
         bool showUprising = showPlanetDetails && planet?.IsInUprising == true;
         int popularSupport = GetPlayerSupport(uiContext, planet);
         Texture2D fleetTexture = string.IsNullOrEmpty(fleetFactionId)

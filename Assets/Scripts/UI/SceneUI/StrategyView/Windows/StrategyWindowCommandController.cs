@@ -122,17 +122,24 @@ public sealed class StrategyWindowCommandController
     {
         string playerFactionId = GetPlayerFactionID();
         ISceneNode destination = target?.Item ?? target?.Planet?.Planet;
+        bool canCreateMission = StrategyContextMenuAvailability.CanCreateMission(
+            items,
+            playerFactionId
+        );
         bool opensMission =
             target?.Planet?.Planet != null
             && destination != null
             && destination is not Fleet
             && !string.IsNullOrEmpty(playerFactionId)
-            && !string.Equals(
-                destination.GetOwnerInstanceID(),
-                playerFactionId,
-                StringComparison.Ordinal
-            )
-            && StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId);
+            && canCreateMission
+            && (
+                target.MissionCreationRequested
+                || !string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    playerFactionId,
+                    StringComparison.Ordinal
+                )
+            );
 
         if (opensMission)
             OpenMissionCreateWindow(target, items);

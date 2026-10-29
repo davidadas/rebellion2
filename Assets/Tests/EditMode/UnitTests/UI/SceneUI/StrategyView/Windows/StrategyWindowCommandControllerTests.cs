@@ -451,6 +451,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteItemDrop_MissionTargetOnFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(
+                    _destination,
+                    _destination.Planet,
+                    missionCreationRequested: true
+                ),
+                new ISceneNode[] { _officer }
+            );
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
+        }
+
+        [Test]
         public void ExecuteItemDrop_EnemyFleet_DoesNotOpenMissionCreateWindow()
         {
             Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
