@@ -237,8 +237,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(_session.CanCaptureRecoveryState, Is.True);
         }
 
-        [Test]
-        public void CaptureRecoveryState_OwnershipRegistrationOrder_PreservesOrderAfterTransfer()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RestoreRecoveryState_OwnershipTransfer_RebuildsFactionMembership(bool enabled)
         {
             Faction opponent = new Faction { InstanceID = "recovery-transfer-owner" };
             _game.GetFactions().Add(opponent);
@@ -246,6 +247,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 InstanceID = "recovery-first-regiment",
                 OwnerInstanceID = _faction.InstanceID,
+                IsEnabled = enabled,
             };
             Regiment second = new Regiment
             {
@@ -258,12 +260,38 @@ namespace Rebellion.Tests.Gameplay
             _game.ChangeOwnership(first, _faction.InstanceID);
 
             CompleteModelChanges(_session);
-            GameSessionRecoveryState state = _session.CaptureRecoveryState();
-
-            FactionOwnershipRecoveryState ownership = state.Ownership.Single(item =>
-                ReferenceEquals(item.Faction, _faction)
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
             );
-            CollectionAssert.AreEqual(new[] { second, first }, ownership.Units.OfType<Regiment>());
+            Faction restoredFaction = recovered.Game.GetFactionByOwnerInstanceID(
+                _faction.InstanceID
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                restoredFaction
+                    .GetOwnedUnitsByType<Regiment>(includeDisabled: true)
+                    .Select(unit => unit.InstanceID)
+            );
+            Assert.That(
+                restoredFaction.GetOwnedUnitsByType<Regiment>(),
+                Has.Count.EqualTo(enabled ? 2 : 1)
+            );
+            Assert.That(
+                recovered
+                    .Game.GetFactionByOwnerInstanceID(opponent.InstanceID)
+                    .GetOwnedUnitsByType<Regiment>(includeDisabled: true),
+                Is.Empty
+            );
+            Assert.That(
+                MultiplayerStateFingerprint.VerifyRecovery(
+                    recovered,
+                    MultiplayerStateFingerprint.ComputeSimulation(_session)
+                ),
+                Is.Not.Empty
+            );
         }
 
         [TestCase(false)]

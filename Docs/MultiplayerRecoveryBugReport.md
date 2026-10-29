@@ -47,16 +47,19 @@ the remaining decisions concern ownership of specific state, not a second genera
 - Removing saved ownership-observer associations and the fog-of-war recovery adapter. Ownership
   operations must publish their facts before completing; an O(1) pending-fact counter rejects
   incomplete operations and checkpoints. The live deduplication tables remain operation-local.
+- Removing the saved per-faction ownership lists and their capture/restore methods. Recovery rebuilds
+  faction membership from the existing hierarchy. Automatic scrapping orders eligible units by
+  ordinal ID before its random draw, so both peers choose consistently without acquisition history.
 
 The generic registry-order/slot persistence removed in the preceding revision remains removed.
-No new acquisition-order policy, AI behavior, or combat rule is introduced by this review.
+Acquisition order is not preserved. The random scrap target may differ from earlier revisions;
+eligibility, draw count, shortfall timing, and the number of units scrapped are unchanged.
 
 ### Remaining state to discuss
 
 | Item | Demonstrated reason it remains | Decision still open |
 | --- | --- | --- |
 | Unfinished turn and combat | A turn can stop awaiting a human encounter. Its phase, selected fleets, both responses, deferred message facts and blockade reactions determine how that turn finishes. | Keep the explicit continuation for this genuinely incomplete turn. |
-| Ownership enumeration used for automatic scrapping | Automatic scrapping selects a random index from the faction's owned-unit list. Ownership transfers alter that list; rebuilding it can therefore select a different unit with the same draw. The regression executes actual scrapping after a transfer and recovery. | Decide whether acquisition order is meaningful saved state or whether this mechanic should use an explicit selection order. No registry slot persistence is introduced. |
 | In-turn support-shift history | Control shifts are suppressed once per displaced faction per tick, including across the pause for human combat input. | Keep the current tick and already-handled faction IDs as part of the unfinished turn; transient observer associations are no longer saved. |
 | RNG seed and generated-ID mode | Normal campaigns use `Summary.Seed`, but injected streams can have a different seed. A runtime flag also chooses counter-based versus random IDs. Both counters are already saved normally. | Keep the actual seed and mode until each has one explicit owner; neither counter is duplicated. |
 
@@ -91,7 +94,8 @@ Inspected producers, consumers, and restoration paths include `GameSession.Recov
 `PlanetaryControlObserver`, `FogOfWarObserver`, `Mission`, `VictoryCommands`,
 `SpaceCombatCommands`, `MultiplayerRecoverySnapshotCodec`, and `MultiplayerStateFingerprint`.
 Regression coverage includes ordinary save/load of an active maintenance timer, recovery followed
-by real automatic scrapping after an ownership transfer, production priority with sequence gaps,
+by real automatic scrapping after an ownership transfer through both ordinary load and recovery,
+covering the first and last random indices without saving ownership order; production priority with sequence gaps,
 and continuation of pending combat with its derived flags. Additional coverage verifies normal
 mission-roster serialization contains only IDs for its baseline, creation callbacks finish before
 saving and do not replay after recovery, callback failures prevent later checkpoints, support changes

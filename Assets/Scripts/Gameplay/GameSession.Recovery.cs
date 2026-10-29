@@ -43,12 +43,6 @@ namespace Rebellion.Gameplay
                 Tick = Tick.CaptureRecoveryState(),
                 PendingCombat = GetService<SpaceCombatCommands>().CaptureRecoveryDecision(),
                 PlanetaryControl = GetService<PlanetaryControlObserver>().CaptureRecoveryState(),
-                Ownership = Game.GetFactions()
-                    .ConvertAll(faction => new FactionOwnershipRecoveryState
-                    {
-                        Faction = faction,
-                        Units = faction.CaptureRecoveryOwnership(),
-                    }),
             };
         }
 
@@ -115,13 +109,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Restores index order and model continuation flags without invoking domain transitions.
+        /// Restores derived suppression membership without invoking domain transitions.
         /// </summary>
         /// <param name="state">The decoded graph and model facts.</param>
         private static void RestoreModelRecoveryFacts(GameSessionRecoveryState state)
         {
-            foreach (FactionOwnershipRecoveryState ownership in state.Ownership)
-                ownership.Faction.RestoreRecoveryOwnership(ownership.Units);
             foreach (
                 PlanetSector sector in state.Game.NodesByInstanceID.Values.OfType<PlanetSector>()
             )
@@ -142,12 +134,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "A recovered random position cannot be negative."
                 );
-            if (
-                state.Game == null
-                || state.Tick == null
-                || state.PlanetaryControl == null
-                || state.Ownership == null
-            )
+            if (state.Game == null || state.Tick == null || state.PlanetaryControl == null)
                 throw new ArgumentException(
                     "Complete session recovery facts are required.",
                     nameof(state)

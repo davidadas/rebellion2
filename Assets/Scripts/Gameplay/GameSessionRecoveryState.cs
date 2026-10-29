@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Gameplay
@@ -20,7 +18,6 @@ namespace Rebellion.Gameplay
         public GameTickRecoveryState Tick { get; set; }
         public SpaceCombatDecision PendingCombat { get; set; }
         public PlanetaryControlRecoveryState PlanetaryControl { get; set; }
-        public List<FactionOwnershipRecoveryState> Ownership { get; set; }
     }
 
     /// <summary>
@@ -51,15 +48,5 @@ namespace Rebellion.Gameplay
     {
         public int ControlShiftTick { get; set; }
         public List<string> ControlShiftedOwners { get; set; }
-    }
-
-    /// <summary>
-    /// Preserves the raw ordered per-type ownership index for a faction.
-    /// </summary>
-    [PersistableObject]
-    internal sealed class FactionOwnershipRecoveryState
-    {
-        public Faction Faction { get; set; }
-        public List<ISceneNode> Units { get; set; }
     }
 }

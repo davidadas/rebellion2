@@ -10,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -58,8 +59,14 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID), Is.Null);
         }
 
-        [Test]
-        public void ProcessTick_RecoveredOwnershipTransfer_PreservesAutomaticScrapTarget()
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ProcessTick_ReloadedOwnershipTransfer_SelectsSameRandomUnit(
+            bool recovery,
+            bool highestDraw
+        )
         {
             GameRoot game = CreateGame();
             Faction owner = CreateFaction("owner", "Owner");
@@ -94,27 +101,44 @@ namespace Rebellion.Tests.Gameplay
             game.ChangeOwnership(first, owner.InstanceID);
             owner.NextMaintenanceAutoscrapTick = game.CurrentTick;
             source.ExecuteCommandAsync(() => true).GetAwaiter().GetResult();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(source);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
-                catalog
-            );
+            GameSession restored;
+            if (recovery)
+            {
+                MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(source);
+                restored = MultiplayerRecoverySnapshotCodec.Restore(
+                    snapshot.Payload,
+                    snapshot.Hash,
+                    catalog
+                );
+            }
+            else
+            {
+                GameRoot saved = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+                saved.SetConfig(game.Config);
+                restored = new GameSession(saved, catalog);
+            }
+            using GameSession recovered = restored;
+            IRandomNumberProvider random = highestDraw ? new MaximumRNG() : new FixedRNG();
 
             GameObjectAutoscrappedResult actual = new MaintenanceTickProcessor(
-                new MaintenanceCommands(recovered.Game, new FixedRNG())
+                new MaintenanceCommands(recovered.Game, random)
             )
                 .ProcessTick(recovered.Game)
                 .OfType<GameObjectAutoscrappedResult>()
                 .Single();
             GameObjectAutoscrappedResult expected = new MaintenanceTickProcessor(
-                new MaintenanceCommands(game, new FixedRNG())
+                new MaintenanceCommands(game, random)
             )
                 .ProcessTick(game)
                 .OfType<GameObjectAutoscrappedResult>()
                 .Single();
 
-            Assert.That(actual.DestroyedObject.InstanceID, Is.EqualTo(second.InstanceID));
+            Assert.That(
+                actual.DestroyedObject.InstanceID,
+                Is.EqualTo(highestDraw ? second.InstanceID : first.InstanceID)
+            );
             Assert.That(
                 actual.DestroyedObject.InstanceID,
                 Is.EqualTo(expected.DestroyedObject.InstanceID)

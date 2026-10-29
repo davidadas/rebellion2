@@ -134,7 +134,9 @@ verification is not a frame-loop poll.
 
 Scene-node lookup uses a standard dictionary rebuilt from the decoded hierarchy. Save files and
 network snapshots do not preserve a second registry membership list, dictionary storage positions,
-or vacant slots. Manufacturing queues are rebuilt from saved producer IDs and sequence values.
+or vacant slots. Faction ownership indexes are also rebuilt from the hierarchy. Random automatic
+scrapping orders eligible units by ordinal ID before drawing an index; acquisition history is not
+saved. Manufacturing queues are rebuilt from saved producer IDs and sequence values.
 
 Human participants select their own game speed. The effective clock uses the slowest human
 selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances

@@ -362,26 +362,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Captures ownership bucket order without filtering disabled units or removing repeated references.
-        /// </summary>
-        /// <returns>The raw owned references in their existing concrete-type bucket order.</returns>
-        internal List<ISceneNode> CaptureRecoveryOwnership() =>
-            _ownedEntities.Values.SelectMany(units => units).ToList();
-
-        /// <summary>
-        /// Restores the captured per-type ownership ordering without changing any unit owner.
-        /// </summary>
-        /// <param name="units">The raw owned references in captured bucket order.</param>
-        internal void RestoreRecoveryOwnership(IReadOnlyList<ISceneNode> units)
-        {
-            if (units == null)
-                throw new ArgumentNullException(nameof(units));
-            ClearOwnedUnits();
-            foreach (ISceneNode unit in units)
-                AddOwnedUnit(unit);
-        }
-
-        /// <summary>
         /// Returns colonized planets owned by the faction.
         /// </summary>
         /// <returns>Owned colonized planets.</returns>

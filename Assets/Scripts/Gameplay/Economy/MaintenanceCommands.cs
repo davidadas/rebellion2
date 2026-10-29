@@ -192,7 +192,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Scraps one random eligible unit from the faction.
+        /// Scraps one random eligible unit, using ordinal unit IDs to make draws independent of index history.
         /// </summary>
         /// <param name="faction">The faction whose unit is scrapped.</param>
         /// <param name="results">The result collection receiving the scrap effects.</param>
@@ -205,6 +205,7 @@ namespace Rebellion.Gameplay
                     && m.GetManufacturingStatus() == ManufacturingStatus.Complete
                     && m.GetMaintenanceCost() > 0
                 )
+                .OrderBy(m => m.InstanceID, StringComparer.Ordinal)
                 .ToList();
 
             if (candidates.Count == 0)

@@ -202,12 +202,14 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Rebuilds the node lookup from the restored hierarchy without changing identities,
+        /// Rebuilds node and faction ownership indexes from the restored hierarchy without changing identities,
         /// ownership, parent history, or gameplay state.
         /// </summary>
         internal void RebuildNodeIndex()
         {
             NodesByInstanceID.Clear();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
             ((BaseSceneNode)Galaxy).TraverseIncludingDisabled(node =>
             {
                 string identity = ((BaseGameEntity)node).GetRecoveryInstanceID();
@@ -216,6 +218,7 @@ namespace Rebellion.Game
                         "A restored scene node has no assigned identity."
                     );
                 NodesByInstanceID.Add(identity, node);
+                RegisterOwnedUnit(node);
             });
         }
 
