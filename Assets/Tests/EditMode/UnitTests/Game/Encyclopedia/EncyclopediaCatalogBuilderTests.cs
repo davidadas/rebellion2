@@ -25,6 +25,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 {
                     new EncyclopediaEntryStat { Label = "Maintenance Cost", Value = "4" },
                 },
+                DetectionRating = 17,
                 Description = "Static description.",
                 EncyclopediaDescription = "Encyclopedia description.",
             };
@@ -43,10 +44,46 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 "Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer",
                 entry.ImagePath
             );
-            Assert.AreEqual(1, entry.Stats.Count);
+            Assert.AreEqual(2, entry.Stats.Count);
             Assert.AreEqual("Maintenance Cost", entry.Stats[0].Label);
             Assert.AreEqual("4", entry.Stats[0].Value);
+            Assert.AreEqual("Detection rating", entry.Stats[1].Label);
+            Assert.AreEqual("17", entry.Stats[1].Value);
             Assert.AreEqual("Encyclopedia description.", entry.Description);
+        }
+
+        [Test]
+        public void Build_WithDetectingUnits_AppendsDetectionRatingAfterAuthoredStats()
+        {
+            CapitalShip capitalShip = new CapitalShip
+            {
+                TypeID = "SHIP1",
+                EncyclopediaImagePath = "ship-image",
+                DetectionRating = 10,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                TypeID = "FIGHTER1",
+                EncyclopediaImagePath = "fighter-image",
+                DetectionRating = 20,
+            };
+            Regiment regiment = new Regiment
+            {
+                TypeID = "REGIMENT1",
+                EncyclopediaImagePath = "regiment-image",
+                DetectionRating = 30,
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                capitalShips: new[] { capitalShip },
+                starfighters: new[] { starfighter },
+                regiments: new[] { regiment }
+            );
+
+            AssertDetectionRating(catalog.FindEntry("SHIP1", null), "10");
+            AssertDetectionRating(catalog.FindEntry("FIGHTER1", null), "20");
+            AssertDetectionRating(catalog.FindEntry("REGIMENT1", null), "30");
         }
 
         [Test]
@@ -279,6 +316,19 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 specialForces,
                 officers
             );
+        }
+
+        /// <summary>
+        /// Asserts that an entry ends with the expected detection rating.
+        /// </summary>
+        /// <param name="entry">The entry to inspect.</param>
+        /// <param name="expectedValue">The expected detection rating.</param>
+        private static void AssertDetectionRating(EncyclopediaEntry entry, string expectedValue)
+        {
+            Assert.IsNotNull(entry);
+            EncyclopediaEntryStat stat = entry.Stats.Last();
+            Assert.AreEqual("Detection rating", stat.Label);
+            Assert.AreEqual(expectedValue, stat.Value);
         }
     }
 }
