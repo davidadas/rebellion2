@@ -5,6 +5,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
@@ -76,6 +77,31 @@ namespace Rebellion.AI.Scorers
             )
                 return 0;
 
+            long interceptionWait = 0;
+            double interceptionConfidence = 1;
+            if (missionProposal.IsInterception)
+            {
+                long outbound = travelTicks.HasValue
+                    ? System.Math.Max(
+                        0,
+                        travelTicks.Value
+                            - missionProposal.EstimateReturnTravelTicks(
+                                context,
+                                staging?.Destination
+                            )
+                    )
+                    : missionProposal.EstimateOutboundTravelTicks(context);
+                if (
+                    !missionProposal.TryGetInterceptionTiming(
+                        context,
+                        staging == null ? outbound : 0,
+                        out interceptionWait,
+                        out interceptionConfidence,
+                        staging == null ? 0 : outbound
+                    )
+                )
+                    return 0;
+            }
             MissionOdds odds =
                 missionProposal.OperationalOdds
                 ?? context.Assessment.GetOperationalMissionOdds(
@@ -87,7 +113,9 @@ namespace Rebellion.AI.Scorers
 
             bool isSabotage = missionProposal.MissionTypeID == MissionTypeIDs.Sabotage;
             bool usesMissionTime =
-                isSabotage || missionProposal.MissionTypeID == MissionTypeIDs.Espionage;
+                isSabotage
+                || missionProposal.MissionTypeID == MissionTypeIDs.Espionage
+                || missionProposal.IsInterception;
             double successProbability = usesMissionTime
                 ? odds.OverallSuccessProbability
                 : odds.ObjectiveSuccessProbability;
@@ -149,7 +177,8 @@ namespace Rebellion.AI.Scorers
             if (usesMissionTime && includeTravelTime)
             {
                 long completeTravelTicks =
-                    travelTicks ?? missionProposal.EstimateTravelTicks(context);
+                    (travelTicks ?? missionProposal.EstimateTravelTicks(context))
+                    + interceptionWait;
                 outboundTicks = travelTicks.HasValue
                     ? Math.Max(
                         0,
@@ -177,6 +206,7 @@ namespace Rebellion.AI.Scorers
                     outboundTicks + EstimateExecutionTicks(context, missionProposal),
                     utility.Objective.ExecutionDelay
                 );
+            value *= interceptionConfidence;
             return value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? value : 0;
         }
 
@@ -230,7 +260,8 @@ namespace Rebellion.AI.Scorers
             score.AddCost(0, utility.Objective.FoilRisk);
             score.AddCost(
                 AIUtility.Fulfillment(
-                    proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage
+                    proposal.IsInterception
+                    || proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage
                         ? 0
                         : GetTravelCost(context, proposal),
                     utility.Objective.TravelCost
@@ -241,7 +272,10 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
-            if (proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage)
+            if (
+                proposal.IsInterception
+                || proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage
+            )
             {
                 IMissionParticipant leader = proposal.Participant;
                 Planet origin = departure ?? leader.GetParentOfType<Planet>();
@@ -301,6 +335,10 @@ namespace Rebellion.AI.Scorers
                 .Objective;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(AIUtility.Fulfillment(successProbability, utility.Success), utility.Success);
+            if (proposal.IsInterception && proposal.TargetOfficer != null)
+                score.Add(
+                    GetOfficerTargetUtility(context, proposal.TargetOfficer, successProbability)
+                );
             bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
             bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
             double intelligenceSuccess =
@@ -336,6 +374,80 @@ namespace Rebellion.AI.Scorers
                 utility.TrainingValue
             );
 
+            return score;
+        }
+
+        /// <summary>
+        /// Scores the known capabilities removed by a successful officer interception.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="successProbability">The estimated chance of completing the mission.</param>
+        /// <returns>The weighted target utility.</returns>
+        internal static AIUtilityScore GetOfficerTargetUtility(
+            AITurnContext context,
+            Officer officer,
+            double successProbability = 100
+        )
+        {
+            GameConfig.AIOfficerTargetUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .OfficerTarget;
+            AIUtilityScore score = new AIUtilityScore();
+            double probability = successProbability / 100d;
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(SkillRating.Combat),
+                    utility.Combat
+                ) * probability,
+                utility.Combat
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(SkillRating.Espionage),
+                    utility.Espionage
+                ) * probability,
+                utility.Espionage
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(SkillRating.Diplomacy),
+                    utility.Diplomacy
+                ) * probability,
+                utility.Diplomacy
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(SkillRating.Leadership),
+                    utility.Leadership
+                ) * probability,
+                utility.Leadership
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.ShipDesign),
+                    utility.ShipResearch
+                ) * probability,
+                utility.ShipResearch
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
+                    utility.FacilityResearch
+                ) * probability,
+                utility.FacilityResearch
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.TroopTraining),
+                    utility.TroopResearch
+                ) * probability,
+                utility.TroopResearch
+            );
             return score;
         }
 
@@ -852,6 +964,22 @@ namespace Rebellion.AI.Scorers
                     ? successProbability / 100d
                     : 0,
                 utility.MobileHeadquartersEspionage
+            );
+            score.Add(
+                missionTypeId == MissionTypeIDs.Espionage
+                && proposal.Participant is SpecialForces localAgent
+                && context.IsLocalEspionageAgent(localAgent)
+                && localAgent.GetParentOfType<Planet>() == proposal.TargetPlanet
+                && context
+                    .Assessment.GetManufacturingEspionagePlanets()
+                    .Contains(proposal.TargetPlanet)
+                && !(
+                    context.Faction.Settings.Headquarters.IsMobile
+                    && proposal.TargetPlanet == context.Assessment.FactionHeadquarters
+                )
+                    ? successProbability / 100d
+                    : 0,
+                utility.ManufacturingEspionage
             );
             score.Add(missionTypeId == MissionTypeIDs.Diplomacy ? 1 : 0, utility.Diplomacy);
         }

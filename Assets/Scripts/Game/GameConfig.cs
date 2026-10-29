@@ -269,6 +269,9 @@ namespace Rebellion.Game
             public AIConsiderationConfig MobileHeadquartersEspionage { get; set; } =
                 new AIConsiderationConfig();
 
+            public AIConsiderationConfig ManufacturingEspionage { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig Diplomacy { get; set; } = new AIConsiderationConfig();
         }
 
@@ -750,6 +753,12 @@ namespace Rebellion.Game
             public int SpecialForcesDemandPercent { get; set; }
 
             public int MobileHeadquartersEspionageDemandPercent { get; set; }
+
+            public int ManufacturingEspionageDemandPercent { get; set; }
+
+            public int ManufacturingInterceptionAgentCount { get; set; }
+
+            public int ManufacturingInterceptionDemandPercent { get; set; }
 
             public int SpecialForcesMissionCoveragePercent { get; set; }
 

@@ -1094,7 +1094,7 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns the ground reserve sufficient to release fleets from a political hold.
+        /// Returns the preferred ground reserve against garrison losses.
         /// </summary>
         /// <param name="planet">The owned planet.</param>
         /// <returns>The stability requirement with a reserve against garrison losses.</returns>
@@ -1736,7 +1736,11 @@ namespace Rebellion.AI
                 && (
                     planet.IsInUprising
                     || _assessment.GetActiveGarrisonCount(planet, planet.GetOwnerInstanceID())
-                        < GetPlanetaryGarrisonReserve(planet)
+                        < UprisingQueries.CalculateGarrisonRequirement(
+                            planet,
+                            _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID()),
+                            _game.Config.AI.Garrison
+                        )
                 );
             int requiredStrength = GetHeadquartersDefenseStrength(planet);
             commitment = new AIPlanetDefenseCommitment(holdAllLocalFleets, requiredStrength);

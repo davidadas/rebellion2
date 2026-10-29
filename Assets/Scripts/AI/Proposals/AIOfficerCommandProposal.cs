@@ -64,6 +64,7 @@ namespace Rebellion.AI.Proposals
                 || Fleet.Order.TargetPlanetId != TargetPlanet.InstanceID
                 || Fleet.Order.Status == FleetOrderStatus.Returning
                 || !context.Faction.IsAvailableMissionParticipant(Officer)
+                || context.Assessment.IsOfficerHoldingPosition(Officer)
                 || Officer.IsRetired
                 || Officer.InjuryPoints > 0
                 || Officer.AllowedRanks?.Contains(Rank) != true

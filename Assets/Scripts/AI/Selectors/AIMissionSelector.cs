@@ -43,6 +43,51 @@ namespace Rebellion.AI.Selectors
         {
             resolved = proposal;
             if (
+                !proposal.IsTeamFinal
+                && proposal.IsInterception
+                && proposal.MissionTypeID == MissionTypeIDs.Abduction
+                && proposal.MainParticipants.Count == 1
+                && proposal.Participant is SpecialForces guard
+                && context.IsManufacturingInterceptionAgent(guard)
+                && proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+            )
+            {
+                SpecialForces partner = context
+                    .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
+                    .Where(unit =>
+                        !proposal.Participants.Contains(unit)
+                        && context.IsManufacturingInterceptionAgent(unit)
+                        && unit.GetParentOfType<Planet>()?.InstanceID
+                            == proposal.TargetPlanet.InstanceID
+                        && unit.CanPerformMission(MissionTypeIDs.Abduction)
+                        && _state.CanReserve(GetParticipantReservations(new[] { unit }))
+                    )
+                    .OrderByDescending(unit => unit.GetEffectiveRating(SkillRating.Combat))
+                    .ThenBy(unit => unit.InstanceID)
+                    .FirstOrDefault();
+                if (partner != null)
+                {
+                    resolved = new AIMissionProposal(
+                        proposal.MainParticipants.Append(partner),
+                        proposal.MissionTypeID,
+                        proposal.TargetPlanet,
+                        proposal.SelectedTarget,
+                        proposal.TargetOfficer,
+                        proposal.Discipline,
+                        proposal.DecoyParticipants,
+                        teamIsFinal: true,
+                        isInterception: true
+                    );
+                    if (
+                        !_state.CanReserve(GetReservations(resolved))
+                        || !resolved.CanExecute(context)
+                    )
+                        return false;
+                    resolved.SetScore(new AIMissionProposalScorer().Score(context, resolved));
+                    return true;
+                }
+            }
+            if (
                 proposal.IsTeamFinal
                 || !context.Assessment.IsEnemyPlanet(proposal.TargetPlanet)
                 || proposal.Participant is not (Officer or SpecialForces)
@@ -57,6 +102,13 @@ namespace Rebellion.AI.Selectors
                 .Assessment.AvailableMissionParticipants.Where(participant =>
                     !proposal.Participants.Contains(participant)
                     && (
+                        participant is not Officer officer
+                        || context.Assessment.CanAssignOfficerToPlanet(
+                            officer,
+                            proposal.TargetPlanet
+                        )
+                    )
+                    && (
                         officerLed
                             ? IsAvailableDecoy(context, participant)
                             : participant is SpecialForces
@@ -64,6 +116,11 @@ namespace Rebellion.AI.Selectors
                     && (
                         participant is not SpecialForces
                         || participant.CanPerformMission(proposal.MissionTypeID)
+                            && context.CanAssignManufacturingInterceptor(
+                                (SpecialForces)participant,
+                                proposal.MissionTypeID,
+                                proposal.TargetPlanet
+                            )
                     )
                     && _state.CanReserve(GetParticipantReservations(new[] { participant }))
                 )
@@ -108,7 +165,8 @@ namespace Rebellion.AI.Selectors
                 proposal.TargetOfficer,
                 proposal.Discipline,
                 decoys,
-                teamIsFinal: true
+                teamIsFinal: true,
+                isInterception: proposal.IsInterception
             );
             if (!resolved.CanExecute(context))
                 return false;
@@ -213,6 +271,12 @@ namespace Rebellion.AI.Selectors
                         staging.IsWaiting ? staging.Participants : staging.Mission.Participants
                     )
                 );
+                if (staging.Mission.IsInterception)
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.MissionOfficer,
+                        staging.Mission.TargetOfficer.InstanceID
+                    );
                 return reservations;
             }
             if (proposal is AIAbortMissionProposal abort)

@@ -56,6 +56,7 @@ namespace Rebellion.AI
         private double? _highestOwnedPlanetValue;
         private int? _strongestKnownHostileFleetStrength;
         private int? _totalFleetCombatStrength;
+        private IReadOnlyList<Planet> _manufacturingEspionagePlanets;
         private readonly Dictionary<string, int> _planetBuildingCounts = new Dictionary<
             string,
             int
@@ -783,7 +784,7 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether this assessment withholds an owned officer from new AI assignments.
+        /// Returns whether this assessment restricts an owned officer to their current planet.
         /// </summary>
         /// <param name="officer">The officer being considered.</param>
         /// <returns>True when the officer's hold-position conditions matched.</returns>
@@ -793,10 +794,24 @@ namespace Rebellion.AI
             && _heldOfficerIDs.Contains(officer.InstanceID);
 
         /// <summary>
+        /// Returns whether an officer's position restriction permits an assignment at a planet.
+        /// </summary>
+        /// <param name="officer">The officer being assigned.</param>
+        /// <param name="planet">The proposed assignment location.</param>
+        /// <returns>True when the assignment respects the officer's position restriction.</returns>
+        public bool CanAssignOfficerToPlanet(Officer officer, Planet planet) =>
+            officer != null
+            && planet != null
+            && (
+                !IsOfficerHoldingPosition(officer)
+                || officer.GetParentOfType<Planet>()?.InstanceID == planet.InstanceID
+            );
+
+        /// <summary>
         /// Evaluates the active catalog's hold-position conditions once for this faction turn.
         /// </summary>
         /// <param name="behaviors">The content-only configuration indexed by officer identity.</param>
-        /// <returns>The officers excluded from new assignments during this assessment.</returns>
+        /// <returns>The officers restricted to their current planet during this assessment.</returns>
         private HashSet<string> BuildHeldOfficerIDs(
             IReadOnlyDictionary<string, OfficerAIBehavior> behaviors
         )
@@ -2688,6 +2703,31 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Selects one leading completed-production planet per lane for local espionage coverage.
+        /// </summary>
+        /// <returns>Distinct owned hubs, with a shared planet occupying only one coverage slot.</returns>
+        public IReadOnlyList<Planet> GetManufacturingEspionagePlanets()
+        {
+            return _manufacturingEspionagePlanets ??= Enum.GetValues(typeof(ManufacturingType))
+                .Cast<ManufacturingType>()
+                .Where(type => type != ManufacturingType.None)
+                .Select(type =>
+                    OwnedPlanets
+                        .Where(planet =>
+                            planet.IsColonized
+                            && !planet.IsDestroyed
+                            && GetPlanetProductionRate(planet, type) > 0
+                        )
+                        .OrderByDescending(planet => GetPlanetProductionRate(planet, type))
+                        .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                        .FirstOrDefault()
+                )
+                .Where(planet => planet != null)
+                .Distinct()
+                .ToArray();
+        }
+
+        /// <summary>
         /// Returns officers known to be present at a planet.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
@@ -3976,12 +4016,7 @@ namespace Rebellion.AI
             if (_faction == null)
                 return new List<IMissionParticipant>();
 
-            return _faction
-                .GetAvailableMissionParticipants()
-                .Where(participant =>
-                    participant is not Officer officer || !IsOfficerHoldingPosition(officer)
-                )
-                .ToList();
+            return _faction.GetAvailableMissionParticipants().ToList();
         }
 
         /// <summary>
@@ -4011,10 +4046,15 @@ namespace Rebellion.AI
                 return new List<(Planet Planet, Officer TargetOfficer)>();
 
             return KnownColonizedPlanets
-                .Where(IsEnemyPlanet)
                 .SelectMany(planet =>
                     GetKnownOfficers(planet)
-                        .Where(IsTargetableEnemyOfficer)
+                        .Where(officer =>
+                            IsTargetableEnemyOfficer(officer)
+                            && (
+                                IsEnemyPlanet(planet)
+                                || TryGetOfficerMissionWindow(officer, out _, out _, out _)
+                            )
+                        )
                         .Select(officer => (Planet: planet, TargetOfficer: officer))
                 )
                 .OrderBy(candidate => GetPlanetSystemPositionX(candidate.Planet))
@@ -4034,6 +4074,79 @@ namespace Rebellion.AI
                 && officer.GetOwnerInstanceID() != _faction.InstanceID
                 && !officer.IsCaptured
                 && !officer.IsKilled;
+        }
+
+        /// <summary>
+        /// Estimates an observed officer's arrival and mission departure from dated transit intelligence.
+        /// </summary>
+        /// <param name="officer">The officer copied from the faction's mission intelligence.</param>
+        /// <param name="arrivalTicks">Ticks until the officer is expected to arrive, or zero after arrival.</param>
+        /// <param name="remainingTicks">Ticks until the observed mission is expected to finish.</param>
+        /// <param name="reportAge">Ticks since the dated mission observation.</param>
+        /// <returns>True when dated transit and unfinished mission progress define a usable window.</returns>
+        internal bool TryGetOfficerMissionWindow(
+            Officer officer,
+            out int arrivalTicks,
+            out int remainingTicks,
+            out int reportAge
+        )
+        {
+            arrivalTicks = 0;
+            remainingTicks = 0;
+            reportAge = 0;
+            Mission mission = officer?.GetParentOfType<Mission>();
+            if (
+                mission?.HasInitiated != true
+                || mission.GetOwnerInstanceID() == _faction.InstanceID
+                || IsOwnedPlanet(mission.GetParentOfType<Planet>())
+                    && !IsHostileMissionAtOwnedPlanet(mission.GetParentOfType<Planet>(), officer)
+            )
+                return false;
+            MovementState[] movements = mission
+                .GetAllParticipants()
+                .Select(participant => participant.Movement)
+                .Where(movement => movement != null)
+                .ToArray();
+            if (
+                movements.Length == 0
+                || movements.Any(movement =>
+                    !movement.IsObservation || !movement.ObservedAtTick.HasValue
+                )
+            )
+                return false;
+            reportAge = Math.Max(
+                0,
+                _game.CurrentTick - movements.Min(movement => movement.ObservedAtTick.Value)
+            );
+            int teamArrival = movements.Max(movement => movement.TicksRemaining());
+            arrivalTicks = Math.Max(0, (officer.Movement?.TicksRemaining() ?? 0) - reportAge);
+            remainingTicks =
+                teamArrival
+                + Math.Max(0, mission.MaxProgress - mission.CurrentProgress)
+                - reportAge;
+            return remainingTicks > arrivalTicks;
+        }
+
+        /// <summary>
+        /// Checks whether known enemy mission personnel are acting against an owned planet.
+        /// </summary>
+        /// <param name="planet">The destination of the observed mission.</param>
+        /// <param name="officer">The observed enemy participant.</param>
+        /// <returns>True for a hostile mission directed at a currently owned planet.</returns>
+        internal bool IsHostileMissionAtOwnedPlanet(Planet planet, Officer officer)
+        {
+            Mission mission = officer?.GetParentOfType<Mission>();
+            return IsOwnedPlanet(planet)
+                && mission?.HasInitiated == true
+                && mission.LocationInstanceID == planet.InstanceID
+                && mission.GetOwnerInstanceID() != _faction.InstanceID
+                && mission.ConfigKey
+                    is MissionTypeIDs.Abduction
+                        or MissionTypeIDs.Assassination
+                        or MissionTypeIDs.Espionage
+                        or MissionTypeIDs.InciteUprising
+                        or MissionTypeIDs.Rescue
+                        or MissionTypeIDs.Sabotage;
         }
 
         /// <summary>

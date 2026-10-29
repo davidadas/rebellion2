@@ -10,7 +10,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Prepares sabotage personnel by relocating or waiting for a team already arriving at a safe planet.
+    /// Prepares mission personnel by relocating or waiting at a safe planet.
     /// </summary>
     public sealed class AIMissionStagingProposal : AIProposal
     {
@@ -63,14 +63,20 @@ namespace Rebellion.AI.Proposals
         {
             Mission = mission;
             Destination = destination;
-            IsWaiting = isWaiting;
+            IsWaiting =
+                isWaiting
+                || mission?.IsInterception == true
+                    && mission.Participants.All(participant =>
+                        participant.GetParent()?.InstanceID == destination?.InstanceID
+                    );
             Participants =
                 mission
                     ?.Participants.Where(participant =>
-                        isWaiting
+                        mission.IsInterception ? participant.GetTransitMovement() == null
+                        : isWaiting
                             ? participant.GetParent()?.InstanceID == destination?.InstanceID
                                 && participant.GetTransitMovement() == null
-                            : participant.GetParent()?.InstanceID != destination?.InstanceID
+                        : participant.GetParent()?.InstanceID != destination?.InstanceID
                     )
                     .ToArray()
                 ?? Array.Empty<IMissionParticipant>();
@@ -145,6 +151,22 @@ namespace Rebellion.AI.Proposals
         {
             directTicks = 0;
             stagedTicks = 0;
+            if (context?.Assessment == null || Mission == null)
+                return false;
+            if (
+                Mission
+                    .Participants.OfType<Officer>()
+                    .Any(officer =>
+                        !context.Assessment.CanAssignOfficerToPlanet(officer, Destination)
+                        || !context.Assessment.CanAssignOfficerToPlanet(
+                            officer,
+                            Mission.TargetPlanet
+                        )
+                    )
+            )
+                return false;
+            if (Mission.IsInterception)
+                return TryGetInterceptionTravelTicks(context, out directTicks, out stagedTicks);
             if (
                 context?.MovementQueries == null
                 || Mission?.MissionTypeID != MissionTypeIDs.Sabotage
@@ -214,6 +236,124 @@ namespace Rebellion.AI.Proposals
             directTicks = Mission.EstimateTravelTicks(context);
             stagedTicks = relocationTicks + Mission.EstimateTravelTicks(context, Destination);
             return stagedTicks < directTicks;
+        }
+
+        /// <summary>
+        /// Validates normal relocation or local waiting against an observed officer's mission window.
+        /// </summary>
+        /// <param name="context">The current turn and movement operations.</param>
+        /// <param name="directTicks">Direct mission travel without preparation.</param>
+        /// <param name="stagedTicks">Relocation, waiting, and mission travel.</param>
+        /// <returns>True when safe preparation leaves time to complete the interception.</returns>
+        private bool TryGetInterceptionTravelTicks(
+            AITurnContext context,
+            out long directTicks,
+            out long stagedTicks
+        )
+        {
+            directTicks = 0;
+            stagedTicks = 0;
+            if (
+                context?.MovementQueries == null
+                || Participants.Count == 0
+                || !Mission.CanSelect(context)
+                || !IsOwnedBy(context, Destination)
+                || context.Assessment.HasKnownHostileFleet(Destination)
+                || !context.Assessment.TryGetOfficerMissionWindow(
+                    Mission.TargetOfficer,
+                    out int targetArrival,
+                    out _,
+                    out _
+                )
+                || targetArrival <= 0
+            )
+                return false;
+            int relocation = 0;
+            foreach (
+                IGrouping<ISceneNode, IMissionParticipant> group in Participants.GroupBy(
+                    participant => participant.GetParent()
+                )
+            )
+            {
+                if (
+                    group.Any(participant =>
+                        !context.MovementQueries.CanUseSafeRelocationDestination(
+                            participant,
+                            Destination,
+                            participant.GetParentOfType<Planet>(),
+                            allowOriginPlanet: true
+                        )
+                    )
+                )
+                    return false;
+                if (group.Key?.InstanceID == Destination.InstanceID)
+                    continue;
+                if (
+                    !context.MovementQueries.TryGetSelectionTransitTicks(
+                        group.Cast<ISceneNode>().ToArray(),
+                        Destination,
+                        context.Faction.InstanceID,
+                        out int ticks
+                    )
+                )
+                    return false;
+                relocation = Math.Max(relocation, ticks);
+            }
+            if (relocation > 0 && HasInboundInterceptor(context))
+                return false;
+            long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
+            if (
+                !Mission.TryGetInterceptionTiming(
+                    context,
+                    outbound,
+                    out long waiting,
+                    out _,
+                    relocation
+                )
+            )
+                return false;
+            directTicks = Mission.EstimateTravelTicks(context);
+            stagedTicks = relocation + waiting + Mission.EstimateTravelTicks(context, Destination);
+            return true;
+        }
+
+        /// <summary>
+        /// Avoids dispatching another interceptor when a capable teammate is already arriving.
+        /// </summary>
+        /// <param name="context">The faction's current personnel and observed target window.</param>
+        /// <returns>True when an equally capable incoming participant can complete the interception.</returns>
+        private bool HasInboundInterceptor(AITurnContext context)
+        {
+            foreach (
+                IMissionParticipant participant in context.Faction.GetOwnedUnitsByType<IMissionParticipant>()
+            )
+            {
+                if (
+                    participant.GetParent() is not Planet planet
+                    || planet.InstanceID != Destination.InstanceID
+                    || participant.Movement == null
+                    || participant.IsOnMission()
+                    || !participant.CanPerformMission(Mission.MissionTypeID)
+                    || participant is Officer { IsCaptured: true } or Officer { IsKilled: true }
+                    || participant
+                        is SpecialForces { ManufacturingStatus: not ManufacturingStatus.Complete }
+                    || participant.GetEffectiveRating(SkillRating.Combat)
+                        < Mission.Participant.GetEffectiveRating(SkillRating.Combat)
+                )
+                    continue;
+                long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
+                if (
+                    Mission.TryGetInterceptionTiming(
+                        context,
+                        outbound,
+                        out _,
+                        out _,
+                        System.Math.Max(0, participant.Movement.TicksRemaining())
+                    )
+                )
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>

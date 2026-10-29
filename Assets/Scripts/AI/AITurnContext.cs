@@ -106,6 +106,8 @@ namespace Rebellion.AI
             StringComparer.Ordinal
         );
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
+        private readonly HashSet<SpecialForces> _localEspionageAgents;
+        private readonly HashSet<SpecialForces> _manufacturingInterceptionAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private bool _hasManufacturingBudget;
         private int _availableManufacturingHeadroom;
@@ -198,6 +200,58 @@ namespace Rebellion.AI
                         )
                         .ToHashSet()
                     : new HashSet<SpecialForces>();
+            HashSet<Planet> localEspionagePlanets =
+                assessment == null
+                    ? new HashSet<Planet>()
+                    : assessment.GetManufacturingEspionagePlanets().ToHashSet();
+            if (
+                faction?.Settings?.Headquarters?.IsMobile == true
+                && assessment?.FactionHeadquarters != null
+            )
+                localEspionagePlanets.Add(assessment.FactionHeadquarters);
+            _localEspionageAgents =
+                assessment
+                    ?.AvailableMissionParticipants.OfType<SpecialForces>()
+                    .Where(unit =>
+                        unit.CanPerformMission(MissionTypeIDs.Espionage)
+                        && localEspionagePlanets.Contains(unit.GetParentOfType<Planet>())
+                    )
+                    .GroupBy(unit => unit.GetParentOfType<Planet>())
+                    .Select(group =>
+                        group
+                            .OrderByDescending(unit =>
+                                unit.GetEffectiveRating(SkillRating.Espionage)
+                            )
+                            .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                            .First()
+                    )
+                    .ToHashSet()
+                ?? new HashSet<SpecialForces>();
+            _manufacturingInterceptionAgents =
+                assessment == null
+                    ? new HashSet<SpecialForces>()
+                    : assessment
+                        .GetManufacturingEspionagePlanets()
+                        .SelectMany(planet =>
+                            GetManufacturingInterceptionCandidates(planet)
+                                .Where(unit =>
+                                    assessment.AvailableMissionParticipants.Contains(unit)
+                                )
+                                .OrderByDescending(unit =>
+                                    unit.GetEffectiveRating(SkillRating.Combat)
+                                )
+                                .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                                .Take(
+                                    Math.Max(
+                                        0,
+                                        game.Config
+                                            .AI
+                                            .Infrastructure
+                                            .ManufacturingInterceptionAgentCount
+                                    )
+                                )
+                        )
+                        .ToHashSet();
         }
 
         /// <summary>
@@ -602,6 +656,80 @@ namespace Rebellion.AI
         public bool IsHeadquartersEspionageAgent(SpecialForces unit)
         {
             return unit != null && _headquartersEspionageAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Returns whether this turn assigns the available agent to local headquarters or hub espionage.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True for the selected available local agent at a covered planet.</returns>
+        public bool IsLocalEspionageAgent(SpecialForces unit)
+        {
+            return unit != null && _localEspionageAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Returns the available special forces retained for local interceptions at a leading hub.
+        /// </summary>
+        /// <param name="unit">The available unit to inspect.</param>
+        /// <returns>True when this turn reserves the unit for local abduction or assassination.</returns>
+        public bool IsManufacturingInterceptionAgent(SpecialForces unit)
+        {
+            return unit != null && _manufacturingInterceptionAgents.Contains(unit);
+        }
+
+        /// <summary>
+        /// Keeps a hub's interception agents on missions at their stationed planet.
+        /// </summary>
+        /// <param name="unit">The potential main participant or decoy.</param>
+        /// <param name="missionTypeId">The proposed mission capability.</param>
+        /// <param name="target">The mission's target planet.</param>
+        /// <returns>True for unrestricted units or local officer-targeting work.</returns>
+        public bool CanAssignManufacturingInterceptor(
+            SpecialForces unit,
+            string missionTypeId,
+            Planet target
+        )
+        {
+            return !IsManufacturingInterceptionAgent(unit)
+                || missionTypeId is MissionTypeIDs.Abduction or MissionTypeIDs.Assassination
+                    && target?.InstanceID == unit.GetParentOfType<Planet>()?.InstanceID;
+        }
+
+        /// <summary>
+        /// Counts local interception personnel, including active missions, deliveries, and construction.
+        /// </summary>
+        /// <param name="planet">The hub to supply.</param>
+        /// <param name="excluded">An existing manufacturing order omitted when measuring its continuation.</param>
+        /// <returns>The supplied abduction-capable units after preserving one local spy.</returns>
+        public int GetManufacturingInterceptionSupply(Planet planet, SpecialForces excluded = null)
+        {
+            return GetManufacturingInterceptionCandidates(planet)
+                .Count(unit => !ReferenceEquals(unit, excluded));
+        }
+
+        /// <summary>
+        /// Identifies local abduction personnel without counting the same unit as a hub's spy.
+        /// </summary>
+        /// <param name="planet">The local mission base or delivery destination.</param>
+        /// <returns>Owned abduction-capable units assigned directly to the planet or its missions.</returns>
+        private IEnumerable<SpecialForces> GetManufacturingInterceptionCandidates(Planet planet)
+        {
+            List<SpecialForces> local = Assessment
+                .OwnedSpecialForces.Where(unit =>
+                    !unit.IsRetired
+                    && unit.GetParent() is Planet or Mission
+                    && unit.GetParentOfType<Planet>() == planet
+                )
+                .ToList();
+            SpecialForces spy = local
+                .Where(unit => unit.CanPerformMission(MissionTypeIDs.Espionage))
+                .OrderByDescending(IsLocalEspionageAgent)
+                .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            return local.Where(unit =>
+                unit != spy && unit.CanPerformMission(MissionTypeIDs.Abduction)
+            );
         }
 
         /// <summary>

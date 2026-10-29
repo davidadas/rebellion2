@@ -49,6 +49,9 @@ namespace Rebellion.AI.Planners
                         fleet.RoleType == FleetRoleType.Colonization
                     )
             );
+            if (context.Game.CurrentTick > context.Game.Config.AI.TickInterval)
+                colonizationSlots = 0;
+
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
             {
                 if (fleet.RoleType == FleetRoleType.None)

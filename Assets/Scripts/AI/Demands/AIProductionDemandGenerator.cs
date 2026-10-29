@@ -1256,6 +1256,12 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
             bool isColonizationFleet = fleet.RoleType == FleetRoleType.Colonization;
             bool isColonizationOrder = fleet.Order?.OrderType == FleetOrderType.Colonize;
+            if (
+                (isColonizationFleet || isColonizationOrder)
+                && fleet.GetChildren<CapitalShip>().Count > 0
+            )
+                return;
+
             Planet defenseTarget = GetDefenseTarget(context, fleet);
             bool isDefenseOrder = fleet.Order?.OrderType == FleetOrderType.Defend;
             if (
@@ -1840,7 +1846,12 @@ namespace Rebellion.AI.Demands
                     otherSupply = context.Assessment.GetSpecialForcesSupply(specialForces) - 1;
                     pressure = context.Game.Config.AI.Infrastructure.SpecialForcesDemandPercent;
                     if (
-                        GetMobileHeadquarters(context) == destination
+                        (
+                            GetMobileHeadquarters(context) == destination
+                            || context
+                                .Assessment.GetManufacturingEspionagePlanets()
+                                .Contains(destination)
+                        )
                         && specialForces.CanPerformMission(MissionTypeIDs.Espionage)
                         && !context.Assessment.OwnedSpecialForces.Any(other =>
                             !ReferenceEquals(other, order)
@@ -1852,13 +1863,56 @@ namespace Rebellion.AI.Demands
                         target = Math.Max(target, otherSupply + 1);
                         pressure = Math.Max(
                             pressure,
+                            GetMobileHeadquarters(context) == destination
+                                ? context
+                                    .Game
+                                    .Config
+                                    .AI
+                                    .Infrastructure
+                                    .MobileHeadquartersEspionageDemandPercent
+                                : context
+                                    .Game
+                                    .Config
+                                    .AI
+                                    .Infrastructure
+                                    .ManufacturingEspionageDemandPercent
+                        );
+                    }
+                    if (
+                        destination is Planet hub
+                        && specialForces.CanPerformMission(MissionTypeIDs.Abduction)
+                        && context.Assessment.GetManufacturingEspionagePlanets().Contains(hub)
+                        && context
+                            .Game
+                            .Config
+                            .AI
+                            .Infrastructure
+                            .ManufacturingInterceptionDemandPercent > 0
+                    )
+                    {
+                        int localDeficit = Math.Max(
+                            0,
                             context
                                 .Game
                                 .Config
                                 .AI
                                 .Infrastructure
-                                .MobileHeadquartersEspionageDemandPercent
+                                .ManufacturingInterceptionAgentCount
+                                - context.GetManufacturingInterceptionSupply(hub, specialForces)
                         );
+                        if (localDeficit > 0)
+                        {
+                            target = Math.Max(target, otherSupply + localDeficit);
+                            pressure = Math.Max(
+                                pressure,
+                                context
+                                    .Game
+                                    .Config
+                                    .AI
+                                    .Infrastructure
+                                    .ManufacturingInterceptionDemandPercent
+                            );
+                        }
                     }
                 }
                 else
@@ -1902,6 +1956,21 @@ namespace Rebellion.AI.Demands
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            (string guardRole, int guardQuantity) = AddManufacturingSpecialForcesDemands(
+                context,
+                demands,
+                MissionTypeIDs.Espionage,
+                1,
+                config.ManufacturingEspionageDemandPercent
+            );
+            (string interceptionRole, int interceptionQuantity) =
+                AddManufacturingSpecialForcesDemands(
+                    context,
+                    demands,
+                    MissionTypeIDs.Abduction,
+                    config.ManufacturingInterceptionAgentCount,
+                    config.ManufacturingInterceptionDemandPercent
+                );
             IReadOnlyList<SpecialForces> existingUnits = context.Assessment.OwnedSpecialForces;
             List<IGrouping<string, SpecialForces>> roles = context
                 .UnlockedSpecialForcesTemplates.Where(template =>
@@ -1946,7 +2015,11 @@ namespace Rebellion.AI.Demands
                 );
                 int existingSupply = context.Assessment.GetSpecialForcesSupply(template);
                 int desiredSupply = context.StrategicPlan.GetSpecialForcesReserveTarget(template);
-                int coverageDeficit = desiredSupply - existingSupply;
+                int coverageDeficit =
+                    desiredSupply
+                    - existingSupply
+                    - (role.Key == guardRole ? guardQuantity : 0)
+                    - (role.Key == interceptionRole ? interceptionQuantity : 0);
                 bool suppliesHeadquartersEspionage =
                     role.Key == headquartersEspionageRole && headquartersEspionageTemplate != null;
                 int headquartersDeficit = suppliesHeadquartersEspionage ? 1 : 0;
@@ -1986,6 +2059,73 @@ namespace Rebellion.AI.Demands
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Supplies local intelligence and interception personnel at leading manufacturing planets.
+        /// </summary>
+        /// <param name="context">The faction's current hubs, personnel, and unlocked templates.</param>
+        /// <param name="demands">The production needs to extend.</param>
+        /// <param name="missionTypeId">The capability required by the local assignment.</param>
+        /// <param name="targetCount">The requested local complement.</param>
+        /// <param name="baseDemandPercent">The assignment's configured production pressure.</param>
+        /// <returns>The selected capability role and agent count already requested for hub coverage.</returns>
+        private static (string Role, int Quantity) AddManufacturingSpecialForcesDemands(
+            AITurnContext context,
+            ICollection<AIProductionDemand> demands,
+            string missionTypeId,
+            int targetCount,
+            int baseDemandPercent
+        )
+        {
+            if (targetCount <= 0 || baseDemandPercent <= 0)
+                return (null, 0);
+            SpecialForces template = SelectPreferredSpecialForcesTemplate(
+                context.UnlockedSpecialForcesTemplates.Where(unit =>
+                    unit.CanPerformMission(missionTypeId)
+                ),
+                context.Game.Config.AI.Selection.TechnologyUtility.SpecialForces.BuildEfficiency
+            );
+            if (template == null)
+                return (null, 0);
+            int count = 0;
+            foreach (Planet planet in context.Assessment.GetManufacturingEspionagePlanets())
+            {
+                bool espionage = missionTypeId == MissionTypeIDs.Espionage;
+                if (espionage && planet == GetMobileHeadquarters(context))
+                    continue;
+                int supply = espionage
+                    ? context.Assessment.OwnedSpecialForces.Count(unit =>
+                        !unit.IsRetired
+                        && unit.CanPerformMission(missionTypeId)
+                        && unit.GetParentOfType<Planet>() == planet
+                    )
+                    : context.GetManufacturingInterceptionSupply(planet);
+                int deficit = Math.Max(0, targetCount - supply);
+                if (deficit == 0)
+                    continue;
+                demands.Add(
+                    new AIProductionDemand(
+                        AIProductionDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIProductionDemandKind.SpecialForces,
+                            espionage ? "manufacturing-espionage" : "manufacturing-interception",
+                            planet.InstanceID
+                        ),
+                        AIProductionDemandKind.SpecialForces,
+                        ManufacturingType.Troop,
+                        BuildingType.None,
+                        planet,
+                        1,
+                        template.GetTypeID(),
+                        targetCount: targetCount,
+                        deficitCount: deficit,
+                        baseDemandPercent: baseDemandPercent
+                    )
+                );
+                count++;
+            }
+            return (GetRoleId(template), count);
         }
 
         /// <summary>
