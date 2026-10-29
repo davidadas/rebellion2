@@ -74,8 +74,9 @@ For native service audits, explicit `browse`, `host`, `join`, `ready`, `launch`,
 private callbacks. Poll `operationPending`, then check `operationSucceeded`, coordinator status,
 and the resulting scene and files: completion of a service call alone does not establish admission.
 `fight` submits one explicit local Fight response; it does not automate future battles.
-`start-timings` starts the existing bounded phase trace with the requested `capacity`;
-`stop-timings` exports its samples and timestamp frequency to `timings-ID.json`.
+Simulation profiling stays in the editor/headless runners. The network simulation runner records
+per-day tick, step, barrier, and verification durations with `Stopwatch`. Ordinary gameplay has
+no phase-trace collector or native timing commands.
 
 Service audits do not establish physical input delivery. Drive input through the operating system
 when testing actual shortcuts and controls, and verify the resulting UI, checkpoint, or save
@@ -111,12 +112,12 @@ seed/position, identifiers, faction rules and pending simulation facts. Particip
 excluded. A mismatch or execution failure stops replay without retrying a potentially applied action.
 
 Simulation verification performs one graph traversal per completed multiplayer day per peer, after
-the tick iterator releases its execution boundary. `SimulationPhase.StateVerification` records its
-cost when timing capture is enabled; verification is not a frame-loop poll.
+the tick iterator releases its execution boundary. The headless network runner measures its cost;
+verification is not a frame-loop poll.
 
-Scene-node lookup uses a standard dictionary. Snapshot capture projects its registered references
-by identity so equivalent worlds compare equally after recovery. Save files and network snapshots
-do not preserve dictionary storage positions or vacant slots.
+Scene-node lookup uses a standard dictionary rebuilt from the decoded hierarchy. Save files and
+network snapshots do not preserve a second registry membership list, dictionary storage positions,
+or vacant slots. Manufacturing queues are rebuilt from saved producer IDs and sequence values.
 
 Human participants select their own game speed. The effective clock uses the slowest human
 selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances

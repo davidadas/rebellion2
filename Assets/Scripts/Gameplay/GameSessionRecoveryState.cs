@@ -4,7 +4,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -18,24 +17,18 @@ namespace Rebellion.Gameplay
     internal sealed class GameSessionRecoveryState
     {
         public GameRoot Game { get; set; }
-        public GameConfig Config { get; set; }
         public bool UseDeterministicRuntimeIdentifiers { get; set; }
         public int RandomSeed { get; set; }
-        public long RandomPosition { get; set; }
         public GameTickRecoveryState Tick { get; set; }
         public SpaceCombatDecision PendingCombat { get; set; }
         public List<GameResult> PendingMovementResults { get; set; }
         public List<GameResult> PendingManufacturingResults { get; set; }
-        public MaintenanceRecoveryState Maintenance { get; set; }
         public List<SmugglingRecoveryState> Smuggling { get; set; }
         public List<PlanetIntegerRecoveryState> GarrisonSurplus { get; set; }
         public PlanetaryControlRecoveryState PlanetaryControl { get; set; }
         public List<PlanetOwnershipChangedResult> ObservedOwnershipChanges { get; set; }
         public bool VictoryDeclared { get; set; }
-        public List<ISceneNode> RegisteredNodes { get; set; }
         public List<FactionOwnershipRecoveryState> Ownership { get; set; }
-        public List<ManufacturingQueueRecoveryState> ManufacturingQueues { get; set; }
-        public List<FleetCombatRecoveryState> Fleets { get; set; }
         public List<MissionParticipantRecoveryState> Missions { get; set; }
     }
 
@@ -57,16 +50,6 @@ namespace Rebellion.Gameplay
         public GameTickRecoveryPhase Phase { get; set; }
         public List<GameResult> DeferredMessageResults { get; set; }
         public List<BlockadeChangedResult> DeferredBlockadeResults { get; set; }
-    }
-
-    /// <summary>
-    /// Preserves maintenance notification suppression and the exact next automatic scrap pulse.
-    /// </summary>
-    [PersistableObject]
-    internal sealed class MaintenanceRecoveryState
-    {
-        public List<string> ShortfallFactionIDs { get; set; }
-        public Dictionary<string, int> NextAutoscrapTickByFaction { get; set; }
     }
 
     /// <summary>
@@ -120,36 +103,6 @@ namespace Rebellion.Gameplay
     {
         public Faction Faction { get; set; }
         public List<ISceneNode> Units { get; set; }
-    }
-
-    /// <summary>
-    /// Preserves a planet's exact ordered manufacturing lanes, including empty lanes.
-    /// </summary>
-    [PersistableObject]
-    internal sealed class ManufacturingQueueRecoveryState
-    {
-        public Planet Planet { get; set; }
-        public List<ManufacturingLaneRecoveryState> Lanes { get; set; }
-    }
-
-    /// <summary>
-    /// Preserves manufacturing item order independently of scene hierarchy and persisted sequence gaps.
-    /// </summary>
-    [PersistableObject]
-    internal sealed class ManufacturingLaneRecoveryState
-    {
-        public ManufacturingType Type { get; set; }
-        public List<IManufacturable> Items { get; set; }
-    }
-
-    /// <summary>
-    /// Preserves the combat flag without issuing a new combat transition or clearing waypoints.
-    /// </summary>
-    [PersistableObject]
-    internal sealed class FleetCombatRecoveryState
-    {
-        public Fleet Fleet { get; set; }
-        public bool IsInCombat { get; set; }
     }
 
     /// <summary>

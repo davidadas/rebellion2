@@ -75,52 +75,63 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CaptureRecoveryState_OrderedManufacturingWithSequenceGaps_PreservesSourceAndLaneOrder()
+        public void RestoreRecoveryState_QueuedProduction_RebuildsPriorityWithoutChangingSavedSequences()
         {
             _planet.EnergyCapacity = 2;
             Building first = new Building
             {
                 InstanceID = "recovery-first-order",
                 OwnerInstanceID = _faction.InstanceID,
+                ProducerPlanetID = _planet.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Building,
-                ManufacturingQueueSequence = 19,
+                ManufacturingQueueSequence = 51,
+                ManufacturingProgress = 3,
             };
             Building second = new Building
             {
                 InstanceID = "recovery-second-order",
                 OwnerInstanceID = _faction.InstanceID,
+                ProducerPlanetID = _planet.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Building,
-                ManufacturingQueueSequence = 51,
+                ManufacturingQueueSequence = 19,
+                ManufacturingProgress = 7,
             };
             _game.AttachNode(first, _planet);
             _game.AttachNode(second, _planet);
-            _planet.ManufacturingQueue.Clear();
-            _planet.ManufacturingQueue.Add(ManufacturingType.Troop, new List<IManufacturable>());
-            _planet.ManufacturingQueue.Add(
-                ManufacturingType.Building,
-                new List<IManufacturable> { second, first }
-            );
+            _planet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                second,
+                first,
+            };
             long randomPosition = _game.RandomIndex;
             long identityPosition = _game.RuntimeIdentifierIndex;
             int published = 0;
             _session.Pipeline.ResultsResolved += _ => published++;
 
-            GameSessionRecoveryState state = _session.CaptureRecoveryState();
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
+            );
 
-            ManufacturingQueueRecoveryState queue = state.ManufacturingQueues.Single(item =>
-                ReferenceEquals(item.Planet, _planet)
+            List<IManufacturable> queue = recovered
+                .Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID)
+                .ManufacturingQueue[ManufacturingType.Building];
+            CollectionAssert.AreEqual(
+                new[] { second.InstanceID, first.InstanceID },
+                queue.Select(item => item.InstanceID)
             );
             CollectionAssert.AreEqual(
-                new[] { ManufacturingType.Troop, ManufacturingType.Building },
-                queue.Lanes.Select(item => item.Type)
+                new long[] { 19, 51 },
+                queue.Select(item => item.ManufacturingQueueSequence)
             );
-            Assert.That(queue.Lanes[0].Items, Is.Empty);
             CollectionAssert.AreEqual(
-                new IManufacturable[] { second, first },
-                queue.Lanes[1].Items
+                new double[] { 7, 3 },
+                queue.Select(item => item.ManufacturingProgress)
             );
-            Assert.That(first.ManufacturingQueueSequence, Is.EqualTo(19));
-            Assert.That(second.ManufacturingQueueSequence, Is.EqualTo(51));
+            Assert.That(first.ManufacturingQueueSequence, Is.EqualTo(51));
+            Assert.That(second.ManufacturingQueueSequence, Is.EqualTo(19));
             Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
             Assert.That(_game.RuntimeIdentifierIndex, Is.EqualTo(identityPosition));
             Assert.That(published, Is.Zero);
@@ -218,14 +229,7 @@ namespace Rebellion.Tests.Gameplay
                 state.Tick.DeferredMessageResults.OfType<PendingCombatResult>().Count(),
                 Is.EqualTo(1)
             );
-            Assert.That(
-                state
-                    .Fleets.Where(item =>
-                        ReferenceEquals(item.Fleet, first) || ReferenceEquals(item.Fleet, second)
-                    )
-                    .All(item => item.IsInCombat),
-                Is.True
-            );
+            Assert.That(first.IsInCombat && second.IsInCombat, Is.True);
             Assert.That(_game.CurrentTick, Is.EqualTo(tick));
             Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
             Assert.That(_session.Tick.IsSettled, Is.False);
@@ -258,10 +262,6 @@ namespace Rebellion.Tests.Gameplay
                 ReferenceEquals(item.Faction, _faction)
             );
             CollectionAssert.AreEqual(new[] { second, first }, ownership.Units.OfType<Regiment>());
-            CollectionAssert.AreEqual(
-                new[] { first, second },
-                state.RegisteredNodes.OfType<Regiment>()
-            );
         }
 
         [TestCase(false)]
@@ -311,6 +311,11 @@ namespace Rebellion.Tests.Gameplay
                 snapshot.Hash,
                 TestGameData.Create(_game.Config)
             );
+            Assert.That(
+                recovered.Game.GetSceneNodesByType<Fleet>().All(fleet => fleet.IsInCombat),
+                Is.True
+            );
+
             MultiplayerStateFingerprint.VerifyRecovery(
                 recovered,
                 MultiplayerStateFingerprint.ComputeSimulation(_session)

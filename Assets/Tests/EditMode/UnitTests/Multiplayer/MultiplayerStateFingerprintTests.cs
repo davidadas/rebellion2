@@ -24,12 +24,12 @@ namespace Rebellion.Tests.Multiplayer
             game.Summary.Seed = 123;
             game.GetFactions().Add(new Faction { InstanceID = "owner" });
             game.SetFactionController("owner", "participant", PlayerControllerType.Human);
-            _source = new GameSession(game, TestContent.Data);
+            _source = new GameSession(game, TestGameData.Create(game.Config));
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_source);
             _restored = MultiplayerRecoverySnapshotCodec.Restore(
                 snapshot.Payload,
                 snapshot.Hash,
-                TestContent.Data
+                TestGameData.Create(_source.Game.Config)
             );
         }
 
@@ -77,6 +77,17 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void ComputeSimulation_RuntimeConfigurationChanged_DetectsDifference()
+        {
+            _restored.Game.Config.Production.MaintenanceShortfallAutoscrapInterval++;
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
         public void ComputeSimulation_UnpersistedVictoryStateChange_DetectsDifference()
         {
             GameSessionRecoveryState state = _restored.CaptureRecoveryState();
@@ -92,10 +103,8 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void ComputeSimulation_DifferentActualRandomSeed_DetectsDifference()
         {
-            long position = _restored.Game.RandomIndex;
             GameSessionRecoveryState state = _restored.CaptureRecoveryState();
             state.RandomSeed = 456;
-            state.RandomPosition = position;
             _restored.ApplyRecoveryState(state);
             Assert.AreEqual(_source.Game.Summary.Seed, _restored.Game.Summary.Seed);
             Assert.AreEqual(_source.Game.RandomIndex, _restored.Game.RandomIndex);
@@ -143,13 +152,13 @@ namespace Rebellion.Tests.Multiplayer
             game.Summary.Seed = 123;
             game.Random = new SystemRandomProvider(456);
             game.Random.NextInt(int.MinValue, int.MaxValue);
-            _source = new GameSession(game, TestContent.Data);
+            _source = new GameSession(game, TestGameData.Create(game.Config));
             MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_source);
             _restored.Dispose();
             _restored = MultiplayerRecoverySnapshotCodec.Restore(
                 snapshot.Payload,
                 snapshot.Hash,
-                TestContent.Data
+                TestGameData.Create(_source.Game.Config)
             );
 
             MultiplayerStateFingerprint.VerifyRecovery(
@@ -172,7 +181,7 @@ namespace Rebellion.Tests.Multiplayer
                 _restored = MultiplayerRecoverySnapshotCodec.Restore(
                     snapshot.Payload,
                     snapshot.Hash,
-                    TestContent.Data
+                    TestGameData.Create(_source.Game.Config)
                 );
                 MultiplayerStateFingerprint.VerifyRecovery(
                     _restored,

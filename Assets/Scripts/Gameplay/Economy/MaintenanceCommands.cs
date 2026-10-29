@@ -17,14 +17,11 @@ namespace Rebellion.Gameplay
     /// When a faction's committed maintenance cost exceeds its resource-facility capacity,
     /// one random eligible unit is scrapped on each configured timer pulse until balance is restored.
     /// </summary>
-    public partial class MaintenanceCommands
+    public class MaintenanceCommands
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
-        private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
-        private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
-            new Dictionary<string, int>();
 
         /// <summary>
         /// Raised after an immediate scrap command produces results.
@@ -141,8 +138,8 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction no longer in shortfall.</param>
         private void ClearMaintenanceShortfall(Faction faction)
         {
-            _shortfallFactions.Remove(faction.InstanceID);
-            _nextAutoscrapTickByFaction.Remove(faction.InstanceID);
+            faction.MaintenanceShortfallNotified = false;
+            faction.NextMaintenanceAutoscrapTick = null;
         }
 
         /// <summary>
@@ -159,9 +156,10 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            if (!_shortfallFactions.Add(faction.InstanceID))
+            if (faction.MaintenanceShortfallNotified)
                 return;
 
+            faction.MaintenanceShortfallNotified = true;
             results.Add(
                 new MaintenanceRequiredResult
                 {
@@ -180,16 +178,16 @@ namespace Rebellion.Gameplay
         private bool TryConsumeAutoScrapPulse(Faction faction)
         {
             int interval = _game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            if (!_nextAutoscrapTickByFaction.TryGetValue(faction.InstanceID, out int nextTick))
+            if (faction.NextMaintenanceAutoscrapTick is not int nextTick)
             {
-                _nextAutoscrapTickByFaction[faction.InstanceID] = _game.CurrentTick + interval;
+                faction.NextMaintenanceAutoscrapTick = _game.CurrentTick + interval;
                 return false;
             }
 
             if (_game.CurrentTick < nextTick)
                 return false;
 
-            _nextAutoscrapTickByFaction[faction.InstanceID] = _game.CurrentTick + interval;
+            faction.NextMaintenanceAutoscrapTick = _game.CurrentTick + interval;
             return true;
         }
 

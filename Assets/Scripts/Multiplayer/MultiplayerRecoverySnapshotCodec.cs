@@ -125,8 +125,6 @@ namespace Rebellion.Multiplayer
                         typeof(BaseSceneNode).GetProperty(nameof(BaseSceneNode.LastParentNode))
                     );
                 }
-                if (typeof(Faction).IsAssignableFrom(objectType))
-                    members.Add(typeof(Faction).GetProperty(nameof(Faction.Settings)));
                 return members.Distinct().ToList();
             }
 

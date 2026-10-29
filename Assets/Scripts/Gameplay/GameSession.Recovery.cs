@@ -37,55 +37,32 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "Recovery requires the session's active deterministic random stream."
                 );
-            List<ISceneNode> registered = Game.CaptureRecoveryNodes();
+            List<ISceneNode> registered = Game
+                .NodesByInstanceID.OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .Select(entry => entry.Value)
+                .ToList();
             return new GameSessionRecoveryState
             {
                 Game = Game,
-                Config = Game.Config,
                 UseDeterministicRuntimeIdentifiers = Game.UseDeterministicRuntimeIdentifiers,
                 RandomSeed = random.Seed,
-                RandomPosition = random.CallCount,
                 Tick = Tick.CaptureRecoveryState(),
                 PendingCombat = GetService<SpaceCombatCommands>().CaptureRecoveryDecision(),
                 PendingMovementResults = GetService<MovementCommands>().CaptureRecoveryResults(),
                 PendingManufacturingResults = GetService<ManufacturingCommands>()
                     .CaptureRecoveryResults(),
-                Maintenance = GetService<MaintenanceCommands>().CaptureRecoveryState(),
                 Smuggling = GetService<SmugglingCommands>().CaptureRecoveryState(),
                 GarrisonSurplus = GetService<UprisingResolver>().CaptureRecoveryState(),
                 PlanetaryControl = GetService<PlanetaryControlObserver>().CaptureRecoveryState(),
                 ObservedOwnershipChanges = GetService<FogOfWarObserver>()
                     .CaptureRecoveryOwnershipChanges(),
                 VictoryDeclared = GetService<VictoryCommands>().IsDeclared,
-                RegisteredNodes = registered,
                 Ownership = Game.GetFactions()
                     .ConvertAll(faction => new FactionOwnershipRecoveryState
                     {
                         Faction = faction,
                         Units = faction.CaptureRecoveryOwnership(),
                     }),
-                ManufacturingQueues = registered
-                    .OfType<Planet>()
-                    .Select(planet => new ManufacturingQueueRecoveryState
-                    {
-                        Planet = planet,
-                        Lanes = planet
-                            .ManufacturingQueue.Select(lane => new ManufacturingLaneRecoveryState
-                            {
-                                Type = lane.Key,
-                                Items = new List<IManufacturable>(lane.Value),
-                            })
-                            .ToList(),
-                    })
-                    .ToList(),
-                Fleets = registered
-                    .OfType<Fleet>()
-                    .Select(fleet => new FleetCombatRecoveryState
-                    {
-                        Fleet = fleet,
-                        IsInCombat = fleet.IsInCombat,
-                    })
-                    .ToList(),
                 Missions = registered
                     .OfType<Mission>()
                     .Select(mission => new MissionParticipantRecoveryState
@@ -134,10 +111,10 @@ namespace Rebellion.Gameplay
             ValidateRecoveryState(state);
             PrepareGameReplacement();
             Game = state.Game;
-            Game.SetConfig(state.Config);
+            EnsureGameConfiguration();
             Game.UseDeterministicRuntimeIdentifiers = state.UseDeterministicRuntimeIdentifiers;
-            Game.Random = new SystemRandomProvider(state.RandomSeed, state.RandomPosition);
-            Game.RestoreRecoveryNodes(state.RegisteredNodes);
+            Game.Random = new SystemRandomProvider(state.RandomSeed, Game.RandomIndex);
+            Game.RebuildNodeIndex();
             RestoreModelRecoveryFacts(state);
             _randomProvider = Game.Random;
             Action[] previousConnections = _disconnect.ToArray();
@@ -146,10 +123,10 @@ namespace Rebellion.Gameplay
             {
                 InitializeComponents(Tick.ConnectRecoveryRuntime);
                 RebuildContentBindings();
+                GetService<ManufacturingObserver>().RebuildQueues();
                 GetService<MovementCommands>().RestoreRecoveryResults(state.PendingMovementResults);
                 GetService<ManufacturingCommands>()
                     .RestoreRecoveryResults(state.PendingManufacturingResults);
-                GetService<MaintenanceCommands>().RestoreRecoveryState(state.Maintenance);
                 GetService<SmugglingCommands>().RestoreRecoveryState(state.Smuggling);
                 GetService<UprisingResolver>().RestoreRecoveryState(state.GarrisonSurplus);
                 GetService<PlanetaryControlObserver>().RestoreRecoveryState(state.PlanetaryControl);
@@ -176,24 +153,16 @@ namespace Rebellion.Gameplay
         {
             foreach (FactionOwnershipRecoveryState ownership in state.Ownership)
                 ownership.Faction.RestoreRecoveryOwnership(ownership.Units);
-            foreach (ManufacturingQueueRecoveryState queue in state.ManufacturingQueues)
-            {
-                Dictionary<ManufacturingType, List<IManufacturable>> lanes =
-                    new Dictionary<ManufacturingType, List<IManufacturable>>();
-                foreach (ManufacturingLaneRecoveryState lane in queue.Lanes)
-                    lanes.Add(lane.Type, new List<IManufacturable>(lane.Items));
-                queue.Planet.ManufacturingQueue = lanes;
-            }
-            foreach (FleetCombatRecoveryState fleet in state.Fleets)
-                fleet.Fleet.RestoreRecoveryCombatState(fleet.IsInCombat);
             foreach (MissionParticipantRecoveryState mission in state.Missions)
                 mission.Mission.RestoreRecoveryParticipants(
                     mission.ParticipantIDs,
                     mission.WasCaptured
                 );
-            foreach (PlanetSector sector in state.RegisteredNodes.OfType<PlanetSector>())
+            foreach (
+                PlanetSector sector in state.Game.NodesByInstanceID.Values.OfType<PlanetSector>()
+            )
                 sector.ClearRecoverySuppressionSources();
-            foreach (CapitalShip ship in state.RegisteredNodes.OfType<CapitalShip>())
+            foreach (CapitalShip ship in state.Game.NodesByInstanceID.Values.OfType<CapitalShip>())
                 ship.RestoreRecoverySuppressionMembership();
         }
 
@@ -205,25 +174,20 @@ namespace Rebellion.Gameplay
         {
             if (state == null)
                 throw new ArgumentNullException(nameof(state));
-            if (state.RandomPosition < 0)
+            if (state.Game?.RandomIndex < 0)
                 throw new InvalidOperationException(
                     "A recovered random position cannot be negative."
                 );
             if (
                 state.Game == null
-                || state.Config == null
                 || state.Tick == null
                 || state.PendingMovementResults == null
                 || state.PendingManufacturingResults == null
-                || state.Maintenance == null
                 || state.Smuggling == null
                 || state.GarrisonSurplus == null
                 || state.PlanetaryControl == null
                 || state.ObservedOwnershipChanges == null
-                || state.RegisteredNodes == null
                 || state.Ownership == null
-                || state.ManufacturingQueues == null
-                || state.Fleets == null
                 || state.Missions == null
             )
                 throw new ArgumentException(

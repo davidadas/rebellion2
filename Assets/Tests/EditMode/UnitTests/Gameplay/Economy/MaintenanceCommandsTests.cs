@@ -9,6 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -16,7 +17,7 @@ namespace Rebellion.Tests.Gameplay
     public class MaintenanceCommandsTests
     {
         [Test]
-        public void RestoreRecoveryState_ExistingShortfall_PreservesDueScrapPulseWithoutRepeatingNotification()
+        public void ProcessTick_SavedShortfall_PreservesDueScrapPulseWithoutRepeatingNotification()
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 10;
@@ -38,10 +39,12 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(regiment, planet);
             MaintenanceCommands original = new MaintenanceCommands(game, new FixedRNG());
             new MaintenanceTickProcessor(original).ProcessTick(game);
-            MaintenanceRecoveryState state = original.CaptureRecoveryState();
+            GameConfig config = game.Config;
+            game = SerializationHelper.Deserialize<GameRoot>(SerializationHelper.Serialize(game));
+            game.SetConfig(config);
+            game.RebuildSceneState();
             MaintenanceCommands restored = new MaintenanceCommands(game, new FixedRNG());
-            restored.RestoreRecoveryState(state);
-            game.CurrentTick += game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            game.CurrentTick += config.Production.MaintenanceShortfallAutoscrapInterval;
 
             IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(restored).ProcessTick(
                 game
@@ -50,9 +53,71 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(results.OfType<MaintenanceRequiredResult>(), Is.Empty);
             Assert.That(
                 results.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject,
-                Is.SameAs(regiment)
+                Has.Property(nameof(Regiment.InstanceID)).EqualTo(regiment.InstanceID)
             );
             Assert.That(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID), Is.Null);
+        }
+
+        [Test]
+        public void ProcessTick_RecoveredOwnershipTransfer_PreservesAutomaticScrapTarget()
+        {
+            GameRoot game = CreateGame();
+            Faction owner = CreateFaction("owner", "Owner");
+            Faction other = CreateFaction("other", "Other");
+            game.GetFactions().AddRange(new[] { owner, other });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = CreatePlanet("planet", "Planet", owner.InstanceID);
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Regiment first = new Regiment
+            {
+                InstanceID = "first",
+                OwnerInstanceID = owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+                ConstructionCost = 1,
+            };
+            Regiment second = new Regiment
+            {
+                InstanceID = "second",
+                OwnerInstanceID = owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+                ConstructionCost = 1,
+            };
+            game.AttachNode(first, planet);
+            game.AttachNode(second, planet);
+            GameDataCatalog catalog = TestGameData.Create(game.Config);
+            using GameSession source = new GameSession(game, catalog);
+            game.ChangeOwnership(first, other.InstanceID);
+            game.ChangeOwnership(first, owner.InstanceID);
+            owner.NextMaintenanceAutoscrapTick = game.CurrentTick;
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(source);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                catalog
+            );
+
+            GameObjectAutoscrappedResult actual = new MaintenanceTickProcessor(
+                new MaintenanceCommands(recovered.Game, new FixedRNG())
+            )
+                .ProcessTick(recovered.Game)
+                .OfType<GameObjectAutoscrappedResult>()
+                .Single();
+            GameObjectAutoscrappedResult expected = new MaintenanceTickProcessor(
+                new MaintenanceCommands(game, new FixedRNG())
+            )
+                .ProcessTick(game)
+                .OfType<GameObjectAutoscrappedResult>()
+                .Single();
+
+            Assert.That(actual.DestroyedObject.InstanceID, Is.EqualTo(second.InstanceID));
+            Assert.That(
+                actual.DestroyedObject.InstanceID,
+                Is.EqualTo(expected.DestroyedObject.InstanceID)
+            );
         }
 
         [Test]

@@ -196,34 +196,21 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Captures registered object references by identity for snapshots and state comparisons.
+        /// Rebuilds the node lookup from the restored hierarchy without changing identities,
+        /// ownership, parent history, or gameplay state.
         /// </summary>
-        /// <returns>The registered objects in stable identity order.</returns>
-        internal List<ISceneNode> CaptureRecoveryNodes() =>
-            NodesByInstanceID
-                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
-                .Select(entry => entry.Value)
-                .ToList();
-
-        /// <summary>
-        /// Restores registered object references without assigning identities, changing owners, or reparenting nodes.
-        /// </summary>
-        /// <param name="nodes">The registered objects captured with the runtime state.</param>
-        internal void RestoreRecoveryNodes(IReadOnlyList<ISceneNode> nodes)
+        internal void RebuildNodeIndex()
         {
-            if (nodes == null)
-                throw new ArgumentNullException(nameof(nodes));
-            foreach (ISceneNode node in nodes)
+            NodesByInstanceID.Clear();
+            ((BaseSceneNode)Galaxy).TraverseIncludingDisabled(node =>
             {
-                string identity = (node as BaseGameEntity)?.GetRecoveryInstanceID();
+                string identity = ((BaseGameEntity)node).GetRecoveryInstanceID();
                 if (string.IsNullOrEmpty(identity))
                     throw new InvalidOperationException(
-                        "A recovered registered object has no assigned identity."
+                        "A restored scene node has no assigned identity."
                     );
-            }
-            NodesByInstanceID.Clear();
-            foreach (ISceneNode node in nodes)
-                NodesByInstanceID.Add(node.InstanceID, node);
+                NodesByInstanceID.Add(identity, node);
+            });
         }
 
         /// <summary>

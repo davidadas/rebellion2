@@ -155,12 +155,7 @@ namespace Rebellion.Gameplay
 
             PrepareGameReplacement();
             Game = game;
-            if (Game.Config == null)
-            {
-                GameConfig config = _gameData.GameConfig.GetDeepCopy();
-                Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
-                Game.SetConfig(config);
-            }
+            EnsureGameConfiguration();
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();
             Tick.Reset();
@@ -180,6 +175,18 @@ namespace Rebellion.Gameplay
             }
 
             CompleteScopeReplacement(previousConnections, previousServiceScope);
+        }
+
+        /// <summary>
+        /// Reconstructs runtime rules from the installed catalog and the campaign's saved settings.
+        /// </summary>
+        private void EnsureGameConfiguration()
+        {
+            if (Game.Config != null)
+                return;
+            GameConfig config = _gameData.GameConfig.GetDeepCopy();
+            Game.Summary?.CustomSettings?.ApplyRuntimeRules(config);
+            Game.SetConfig(config);
         }
 
         /// <summary>

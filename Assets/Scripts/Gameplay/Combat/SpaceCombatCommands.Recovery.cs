@@ -1,3 +1,6 @@
+using System.Linq;
+using Rebellion.Game.Units;
+
 namespace Rebellion.Gameplay
 {
     /// <summary>
@@ -12,10 +15,20 @@ namespace Rebellion.Gameplay
         internal SpaceCombatDecision CaptureRecoveryDecision() => _pendingDecision;
 
         /// <summary>
-        /// Restores the selected encounter without changing fleet flags or rebuilding its selection.
+        /// Restores the selected encounter and its derived combat flags without clearing fleet orders.
         /// </summary>
         /// <param name="decision">The existing selected encounter, or null.</param>
-        internal void RestoreRecoveryDecision(SpaceCombatDecision decision) =>
+        internal void RestoreRecoveryDecision(SpaceCombatDecision decision)
+        {
             _pendingDecision = decision;
+            if (decision == null)
+                return;
+            foreach (
+                string identity in decision.AttackerFleetInstanceIDs.Concat(
+                    decision.DefenderFleetInstanceIDs
+                )
+            )
+                _game.GetSceneNodeByInstanceID<Fleet>(identity)?.RestoreRecoveryCombatState(true);
+        }
     }
 }

@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -57,10 +56,7 @@ namespace Rebellion.Multiplayer
             VerificationState state = new()
             {
                 Continuation = session.CaptureRecoveryState(),
-                FactionRules = session
-                    .Game.GetFactions()
-                    .Select(faction => faction.Settings)
-                    .ToArray(),
+                RuntimeRules = session.Game.Config,
             };
             Accumulator accumulator = new();
             Visit(state, ref accumulator, new HashContext(_simulationPlans, CreateSimulationPlan));
@@ -218,7 +214,7 @@ namespace Rebellion.Multiplayer
         private sealed class VerificationState
         {
             public GameSessionRecoveryState Continuation { get; set; }
-            public FactionSettings[] FactionRules { get; set; }
+            public GameConfig RuntimeRules { get; set; }
         }
 
         /// <summary>
