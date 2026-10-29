@@ -216,19 +216,10 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
 
-            /// <summary>
-            /// Gets or sets optional travel-duration tuning for sabotage and espionage.
-            /// </summary>
             public AIConsiderationConfig TravelTime { get; set; }
 
-            /// <summary>
-            /// Gets or sets optional value discounting until sabotage and espionage objectives resolve.
-            /// </summary>
             public AIConsiderationConfig ExecutionDelay { get; set; }
 
-            /// <summary>
-            /// Gets or sets travel discounting when selecting mission personnel by skill.
-            /// </summary>
             public AIConsiderationConfig ParticipantTravelTime { get; set; }
 
             public AIConsiderationConfig OfficerRisk { get; set; } = new AIConsiderationConfig();
@@ -238,9 +229,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig AttackPreparationIntel { get; set; } =
                 new AIConsiderationConfig();
 
-            /// <summary>
-            /// Gets or sets intelligence value for staged fleets blocked by uncertain combat requirements.
-            /// </summary>
             public AIConsiderationConfig BlockedAttackIntel { get; set; }
 
             public AIConsiderationConfig TrainingValue { get; set; } = new AIConsiderationConfig();
@@ -379,9 +367,6 @@ namespace Rebellion.Game
 
             public int HeadquartersDefenseCombatPercent { get; set; }
 
-            /// <summary>
-            /// Sets the headquarters reserve against the strongest known hostile fleet; zero uses the attack multiplier.
-            /// </summary>
             public int HeadquartersDefensePercentOfStrongestHostileFleet { get; set; }
 
             public int MinimumPlanetaryAssaultRegimentCount { get; set; }
@@ -400,9 +385,6 @@ namespace Rebellion.Game
 
             public int AttackIntelAgeGraceTicks { get; set; }
 
-            /// <summary>
-            /// Maximum intelligence age in ticks for starting an attack on a headquarters.
-            /// </summary>
             public int HeadquartersAttackMaximumIntelAgeTicks { get; set; }
 
             public double AttackReadinessFloorWeight { get; set; }
@@ -589,9 +571,6 @@ namespace Rebellion.Game
             public AIMaintenanceRecoveryConfig MaintenanceRecovery { get; set; } =
                 new AIMaintenanceRecoveryConfig();
 
-            /// <summary>
-            /// Discounts anticipated economic capacity from active diplomacy for planning urgency only.
-            /// </summary>
             public int DiplomacyEconomyConfidencePercent { get; set; }
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
@@ -717,9 +696,6 @@ namespace Rebellion.Game
             public int ShipyardTargetClearTicks { get; set; }
             public int FleetProductionMinimumShipyardCount { get; set; }
 
-            /// <summary>
-            /// Limits a new capital ship's production duration at its assigned yard; zero disables the limit.
-            /// </summary>
             public int CapitalShipMaximumBuildTicks { get; set; }
             public int TrainingFacilityTargetClearTicks { get; set; }
             public int ConstructionFacilityPortfolioPercent { get; set; }
@@ -775,16 +751,10 @@ namespace Rebellion.Game
             public int IdleShipyardFighterDemandPercent { get; set; }
             public int PlanetaryWeaponTargetCount { get; set; }
 
-            /// <summary>
-            /// Preserves the stored defense preference when loading existing configurations.
-            /// </summary>
             public bool RequireEstablishedIndustryForStaticDefense { get; set; }
             public int PlanetaryDefenseSurplusBatchSize { get; set; }
             public int PlanetaryShieldDemandPercent { get; set; }
 
-            /// <summary>
-            /// Sets the shield count reserved for industrial worlds without an immediate defense need.
-            /// </summary>
             public int IndustrialShieldTargetCount { get; set; }
             public int PlanetaryWeaponDemandPercent { get; set; }
             public int PlanetaryGarrisonDemandPercent { get; set; }
