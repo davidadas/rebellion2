@@ -57,6 +57,61 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Records registered planets in source order while sharing one transient observation index.
+        /// </summary>
+        /// <param name="faction">The registered faction receiving the observations.</param>
+        /// <param name="planets">The planets selected by the caller's existing visibility rules.</param>
+        /// <param name="observedAtTick">The observation tick, or the current game tick.</param>
+        internal void ObservePlanets(
+            Faction faction,
+            IEnumerable<Planet> planets,
+            int? observedAtTick = null
+        )
+        {
+            if (planets == null)
+                return;
+
+            _recorder.RecordPlanetSnapshots(
+                ResolvePlanetObservations(faction, planets, observedAtTick)
+            );
+        }
+
+        /// <summary>
+        /// Resolves one registered observation only after the preceding observation has been recorded.
+        /// </summary>
+        /// <param name="faction">The requested observing faction.</param>
+        /// <param name="planets">The lazily selected planets in source order.</param>
+        /// <param name="observedAtTick">The fixed observation tick, or null to read the current tick per item.</param>
+        /// <returns>The valid observations resolved in the same order as individual commands.</returns>
+        private IEnumerable<(
+            Faction Faction,
+            Planet Planet,
+            PlanetSector Sector,
+            int Tick
+        )> ResolvePlanetObservations(
+            Faction faction,
+            IEnumerable<Planet> planets,
+            int? observedAtTick
+        )
+        {
+            foreach (Planet planet in planets)
+            {
+                Faction liveFaction = FindFaction(faction?.InstanceID);
+                Planet livePlanet = string.IsNullOrEmpty(planet?.InstanceID)
+                    ? null
+                    : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+                PlanetSector sector = livePlanet?.GetParentOfType<PlanetSector>();
+                if (liveFaction != null && livePlanet != null && sector != null)
+                    yield return (
+                        liveFaction,
+                        livePlanet,
+                        sector,
+                        observedAtTick ?? _game.CurrentTick
+                    );
+            }
+        }
+
+        /// <summary>
         /// Records the planet knowledge retained when a registered faction loses control.
         /// </summary>
         /// <param name="faction">The faction that lost control.</param>

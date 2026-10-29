@@ -71,6 +71,12 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
+        /// Reads the assigned identity without creating one or merging null and empty values.
+        /// </summary>
+        /// <returns>The exact assigned identity, including null when no identity was assigned.</returns>
+        internal string GetRecoveryInstanceID() => _instanceId;
+
+        /// <summary>
         /// Returns the instance ID of the entity.
         /// </summary>
         /// <returns>The instance ID of the entity.</returns>

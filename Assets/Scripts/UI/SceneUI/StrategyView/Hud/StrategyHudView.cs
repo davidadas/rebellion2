@@ -14,6 +14,9 @@ public sealed class StrategyHudView : MonoBehaviour
 {
     public const int ResourceBreakdownPanelHeight = 92;
     public const int ResourceBreakdownPanelWidth = 170;
+    public const int SessionNoticeWidth = 400;
+    public const int SessionNoticeHeight = 28;
+    public const int SessionNoticePadding = 8;
 
     private const float _resourceBreakdownHoverDelay = 0.75f;
 
@@ -46,6 +49,9 @@ public sealed class StrategyHudView : MonoBehaviour
 
     [SerializeField]
     private UIRaycastArea speedContextView;
+
+    [SerializeField]
+    private UIRequestNoticeView sessionNotice;
 
     [SerializeField]
     private UIRaycastArea[] resourceBreakdownHoverViews = Array.Empty<UIRaycastArea>();
@@ -103,6 +109,8 @@ public sealed class StrategyHudView : MonoBehaviour
     /// Occurs when a speed context request is raised.
     /// </summary>
     public event Action<int, int> SpeedContextRequested;
+
+    public event Action<bool> SpeedResponseRequested;
 
     public StrategyAdvisorView AdvisorView => advisorView;
 
@@ -163,6 +171,7 @@ public sealed class StrategyHudView : MonoBehaviour
         SetCounter(refinedMaterialsTextField, data.RefinedMaterialsCounter);
         SetCounter(maintenanceTextField, data.MaintenanceCounter);
         RenderResourceBreakdown(data.ResourceBreakdown);
+        RenderSpeedAgreement(data);
         SetImageAtSourceRect(
             speedIndicatorImage,
             data.SpeedIndicatorTexture,
@@ -172,6 +181,40 @@ public sealed class StrategyHudView : MonoBehaviour
         RenderButtons(data.Buttons, data.SpeedContextBounds);
         RenderPressedButtonOverlay();
     }
+
+    /// <summary>
+    /// Displays a compact request or connection notice without covering the clock controls.
+    /// </summary>
+    /// <param name="data">The current HUD presentation.</param>
+    private void RenderSpeedAgreement(StrategyHudViewData data)
+    {
+        if (sessionNotice != null && data.SessionNoticeBounds.HasValue)
+        {
+            RectInt bounds = data.SessionNoticeBounds.Value;
+            UILayout.SetSourceRect(
+                (RectTransform)sessionNotice.transform,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+        }
+        if (sessionNotice != null)
+            sessionNotice.Render(
+                data.SpeedAgreementText,
+                data.TickCounter?.Color ?? Color.white,
+                data.CanRespondToSpeedRequest
+            );
+        else if (!string.IsNullOrEmpty(data.SpeedAgreementText))
+            throw new MissingReferenceException("The HUD session notice is missing.");
+    }
+
+    /// <summary>
+    /// Forwards a notice response without owning any gameplay state.
+    /// </summary>
+    /// <param name="accept">Whether the displayed request was accepted.</param>
+    private void HandleSpeedResponseRequested(bool accept) =>
+        SpeedResponseRequested?.Invoke(accept);
 
     /// <summary>
     /// Subscribes the authored HUD controls exactly once.
@@ -190,6 +233,8 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested += HandleSpeedContextRequested;
+        if (sessionNotice != null)
+            sessionNotice.Responded += HandleSpeedResponseRequested;
         foreach (UIRaycastArea hoverView in resourceBreakdownHoverViews)
         {
             hoverView.Entered += HandleResourceBreakdownEntered;
@@ -235,6 +280,8 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested -= HandleSpeedContextRequested;
+        if (sessionNotice != null)
+            sessionNotice.Responded -= HandleSpeedResponseRequested;
         foreach (UIRaycastArea hoverView in resourceBreakdownHoverViews)
         {
             hoverView.Entered -= HandleResourceBreakdownEntered;

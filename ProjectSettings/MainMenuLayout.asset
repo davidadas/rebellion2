@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 53
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4c4ddd96f01d2749948228179a5cbb0, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::MainMenuLayoutSettings
+  _multiplayer:
+    serializedVersion: 2
+    x: 0.1722801
+    y: 0.05278285
+    width: 0.065058485
+    height: 0.13881326
+  _multiplayerRotation: 0
+  _multiplayerCorners:
+    bottomLeft: {x: 0.026555566, y: -2.6678687e-11}
+    topLeft: {x: 8.031459e-11, y: 0.97144955}
+    topRight: {x: 0.9871366, y: 1.0000001}
+    bottomRight: {x: 1, y: 0.042613905}

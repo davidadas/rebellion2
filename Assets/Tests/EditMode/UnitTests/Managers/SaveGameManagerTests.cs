@@ -9,6 +9,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
@@ -48,6 +49,127 @@ namespace Rebellion.Tests.Managers
             // Cleanup code after each test.
             if (Directory.Exists(_saveDirectoryPath))
                 Directory.Delete(_saveDirectoryPath, true);
+        }
+
+        [Test]
+        public void Constructor_NoDirectoryOverride_UsesDefaultDirectory()
+        {
+            SaveGameManager manager = new SaveGameManager(
+                _saveDirectoryPath,
+                new[] { "application", "-batchmode" }
+            );
+
+            Assert.AreEqual(_saveDirectoryPath, manager.GetSaveDirectoryPath());
+        }
+
+        [Test]
+        public void Constructor_AbsoluteDirectoryOverride_UsesOverrideWithoutCreatingDirectory()
+        {
+            string overridePath = Path.Combine(_saveDirectoryPath, "isolated");
+
+            SaveGameManager manager = new SaveGameManager(
+                Path.Combine(_saveDirectoryPath, "default"),
+                new[] { "application", "-saveDirectory", overridePath }
+            );
+
+            Assert.AreEqual(Path.GetFullPath(overridePath), manager.GetSaveDirectoryPath());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void SaveGameData_ProcessDirectoryOverride_WritesOnlyToSelectedDirectory()
+        {
+            string defaultPath = Path.Combine(_saveDirectoryPath, "default");
+            string overridePath = Path.Combine(_saveDirectoryPath, "isolated");
+            SaveGameManager manager = new SaveGameManager(
+                defaultPath,
+                new[] { "application", "-saveDirectory", overridePath }
+            );
+
+            manager.SaveGameData(new GameRoot(), _saveFileName);
+
+            Assert.IsTrue(File.Exists(Path.Combine(overridePath, _saveFileName + ".sav")));
+            Assert.IsFalse(Directory.Exists(defaultPath));
+        }
+
+        [Test]
+        public void Constructor_MissingDirectoryOverrideValue_RejectsBeforeCreatingDirectory()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(_saveDirectoryPath, new[] { "application", "-saveDirectory" })
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [TestCase("")]
+        [TestCase("relative-directory")]
+        [TestCase("../relative-directory")]
+        public void Constructor_NonAbsoluteDirectoryOverride_RejectsBeforeCreatingDirectory(
+            string overridePath
+        )
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_DuplicateDirectoryOverride_RejectsBeforeCreatingDirectory()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[]
+                    {
+                        "application",
+                        "-saveDirectory",
+                        _saveDirectoryPath,
+                        "-saveDirectory",
+                        _saveDirectoryPath,
+                    }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_InvalidDirectoryOverride_RejectsBeforeCreatingDirectory()
+        {
+            string overridePath =
+                _saveDirectoryPath + Path.DirectorySeparatorChar + "invalid\0directory";
+
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_FileDirectoryOverride_RejectsWithoutChangingFile()
+        {
+            Directory.CreateDirectory(_saveDirectoryPath);
+            string overridePath = Path.Combine(_saveDirectoryPath, "existing-file");
+            File.WriteAllText(overridePath, "Existing data");
+
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.AreEqual("Existing data", File.ReadAllText(overridePath));
         }
 
         [Test]
@@ -95,6 +217,52 @@ namespace Rebellion.Tests.Managers
             GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
             Assert.AreEqual(GameDifficulty.Hard, restored.Summary.Difficulty);
             Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+        }
+
+        [Test]
+        public void SaveGameData_SettledState_WritesCompactPayloadAndLoads()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 123,
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+            StringAssert.DoesNotContain("\n", xml);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(123, restored.CurrentTick);
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+        }
+
+        [TestCase("   ")]
+        [TestCase("\t\n \t")]
+        [TestCase("\r\n \r")]
+        [TestCase("First line\r\nSecond line\rThird line")]
+        public void SaveGameData_ChatText_RestoresRawBody(string body)
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            faction.Messages[MessageType.Chat] = new List<Message>
+            {
+                new StatusMessage(MessageType.Chat, "Message from another player", body),
+            };
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+            };
+            game.GetFactions().Add(faction);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(
+                body,
+                restored.GetFactions().Single().Messages[MessageType.Chat].Single().Body
+            );
         }
 
         [Test]
@@ -246,6 +414,69 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_NewCampaign_AssignsPersistentIdentity()
+        {
+            GameRoot game = new GameRoot();
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            Assert.IsTrue(Guid.TryParseExact(game.Metadata.CampaignID, "N", out _));
+            Assert.AreEqual(
+                game.Metadata.CampaignID,
+                _saveGameManager.LoadGameData(_saveFileName).Metadata.CampaignID
+            );
+        }
+
+        [Test]
+        public void SaveGameData_LoadedCampaign_RetainsExistingIdentity()
+        {
+            string campaignId = Guid.NewGuid().ToString("N");
+            GameRoot game = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = campaignId },
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+
+            _saveGameManager.SaveGameData(loaded, "second-save");
+
+            Assert.AreEqual(
+                campaignId,
+                _saveGameManager.LoadGameData("second-save").Metadata.CampaignID
+            );
+        }
+
+        [Test]
+        public void LoadGameData_LegacyCampaign_DoesNotAssignIdentityOrRewriteSave()
+        {
+            const string legacyXml =
+                "<GameRoot><Metadata/><CurrentTick>100</CurrentTick></GameRoot>";
+            Directory.CreateDirectory(_saveDirectoryPath);
+            string legacyPath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            File.WriteAllText(legacyPath, legacyXml);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.IsNull(loaded.Metadata.CampaignID);
+            Assert.AreEqual(legacyXml, File.ReadAllText(legacyPath));
+        }
+
+        [Test]
+        public void SaveGameData_InvalidCampaignIdentity_RejectsBeforeCreatingDirectory()
+        {
+            GameRoot game = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = "../another-campaign" },
+            };
+
+            Assert.Throws<ArgumentException>(() =>
+                _saveGameManager.SaveGameData(game, _saveFileName)
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
         public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
@@ -367,14 +598,18 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(
                 File.Exists(
                     _saveGameManager.GetSaveFilePath(
-                        SaveGameManager.AutosaveFilePrefix + "0000000300"
+                        SaveGameManager.AutosaveFilePrefix
+                            + game.Metadata.CampaignID
+                            + "_0000000300"
                     )
                 )
             );
             Assert.IsTrue(
                 File.Exists(
                     _saveGameManager.GetSaveFilePath(
-                        SaveGameManager.AutosaveFilePrefix + "0000000400"
+                        SaveGameManager.AutosaveFilePrefix
+                            + game.Metadata.CampaignID
+                            + "_0000000400"
                     )
                 )
             );
@@ -398,6 +633,136 @@ namespace Rebellion.Tests.Managers
                     .GetFiles(_saveDirectoryPath, $"{SaveGameManager.AutosaveFilePrefix}*.sav")
                     .Length
             );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_DifferentCampaignsAtSameTick_WritesDistinctSaves()
+        {
+            GameRoot first = new GameRoot { CurrentTick = 100 };
+            GameRoot second = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(second, settings));
+
+            CollectionAssert.AreEquivalent(
+                new[] { first.Metadata.CampaignID, second.Metadata.CampaignID },
+                _saveGameManager.GetSavedGames().Select(entry => entry.Metadata.CampaignID)
+            );
+            Assert.AreNotEqual(first.Metadata.CampaignID, second.Metadata.CampaignID);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_ExceedsOneCampaignRetention_PreservesOtherCampaign()
+        {
+            GameRoot first = new GameRoot { CurrentTick = 100 };
+            GameRoot second = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(1);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(second, settings));
+            string secondFile = _saveGameManager
+                .GetSavedGames()
+                .Single(entry => entry.Metadata.CampaignID == second.Metadata.CampaignID)
+                .FileName;
+            byte[] originalSecondSave = File.ReadAllBytes(
+                _saveGameManager.GetSaveFilePath(secondFile)
+            );
+            first.CurrentTick = 200;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+
+            Assert.AreEqual(2, _saveGameManager.GetSavedGames().Count);
+            CollectionAssert.AreEqual(
+                originalSecondSave,
+                File.ReadAllBytes(_saveGameManager.GetSaveFilePath(secondFile))
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_RotatesHistory_PreservesLegacyManualAndQuickSaves()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            _saveGameManager.SaveGameData(game, "manual-save");
+            _saveGameManager.SaveQuickGameData(game);
+            string campaignPrefix = SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID;
+            string prefixedManual = campaignPrefix + "_manual";
+            _saveGameManager.SaveGameData(game, prefixedManual);
+            string legacyName = SaveGameManager.AutosaveFilePrefix + "0000000100";
+            string legacyPath = _saveGameManager.GetSaveFilePath(legacyName);
+            const string legacyXml =
+                "<GameRoot><Metadata/><CurrentTick>100</CurrentTick></GameRoot>";
+            File.WriteAllText(legacyPath, legacyXml);
+            string[] protectedNames =
+            {
+                "manual-save",
+                SaveGameManager.QuickSaveFileName,
+                prefixedManual,
+                legacyName,
+            };
+            Dictionary<string, byte[]> protectedBytes = protectedNames.ToDictionary(
+                name => name,
+                name => File.ReadAllBytes(_saveGameManager.GetSaveFilePath(name))
+            );
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(1);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            game.CurrentTick = 200;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+
+            foreach (string fileName in protectedNames)
+                CollectionAssert.AreEqual(
+                    protectedBytes[fileName],
+                    File.ReadAllBytes(_saveGameManager.GetSaveFilePath(fileName))
+                );
+            Assert.AreEqual(5, Directory.GetFiles(_saveDirectoryPath, "*.sav").Length);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_Disabled_DoesNotCreateHistoryOrCampaignIdentity()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings { AutosaveEnabled = false };
+
+            bool saved = _saveGameManager.ProcessAutosaveTick(game, settings);
+
+            Assert.IsFalse(saved);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+            Assert.IsNull(game.Metadata.CampaignID);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_PublicationFails_DoesNotPruneExistingHistory()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            game.CurrentTick = 200;
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            string[] previousFiles = Directory.GetFiles(_saveDirectoryPath, "*.sav");
+            Dictionary<string, byte[]> previousBytes = previousFiles.ToDictionary(
+                path => path,
+                File.ReadAllBytes
+            );
+            game.CurrentTick = 300;
+            settings.SetAutosavesToKeep(1);
+            string blockedPath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000300"
+            );
+            Directory.CreateDirectory(blockedPath);
+
+            bool saved = _saveGameManager.ProcessAutosaveTick(game, settings);
+
+            Assert.IsFalse(saved);
+            CollectionAssert.AreEquivalent(
+                previousFiles,
+                Directory.GetFiles(_saveDirectoryPath, "*.sav")
+            );
+            foreach (string path in previousFiles)
+                CollectionAssert.AreEqual(previousBytes[path], File.ReadAllBytes(path));
+            CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
         }
 
         [Test]
@@ -1600,6 +1965,453 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+        }
+
+        [TestCase("../escape")]
+        [TestCase("folder/save")]
+        [TestCase("folder\\save")]
+        [TestCase("C:\\outside")]
+        [TestCase(".")]
+        [TestCase("save.")]
+        [TestCase("save ")]
+        public void GetSaveFilePath_UnownedIdentifier_RejectsBeforeCreatingDirectory(
+            string fileName
+        )
+        {
+            Assert.Throws<ArgumentException>(() => _saveGameManager.GetSaveFilePath(fileName));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void GetMultiplayerSaveFileName_ParticipantCopies_PreservesCampaignAndRoleIsolation()
+        {
+            string campaignID = Guid.NewGuid().ToString("N");
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                campaignID,
+                false,
+                "save_20261027_010203"
+            );
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                campaignID,
+                true,
+                guestName
+            );
+
+            Assert.AreEqual("mp_" + campaignID + "_guest_save_20261027_010203", guestName);
+            Assert.AreEqual("mp_" + campaignID + "_host_save_20261027_010203", hostName);
+            Assert.AreNotEqual(hostName, guestName);
+            Assert.IsTrue(
+                SaveGameManager.TryParseMultiplayerSaveFileName(
+                    guestName,
+                    out string parsedCampaignID,
+                    out bool isHost,
+                    out string logicalName
+                )
+            );
+            Assert.AreEqual(campaignID, parsedCampaignID);
+            Assert.IsFalse(isHost);
+            Assert.AreEqual("save_20261027_010203", logicalName);
+        }
+
+        [Test]
+        public void SaveGameDataWithMetadata_PeerCopy_PersistsExactSharedCheckpointMetadata()
+        {
+            GameRoot host = BuildMultiplayerGame();
+            host.CurrentTick = 40;
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                host.Metadata.CampaignID,
+                true,
+                "checkpoint"
+            );
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                host.Metadata.CampaignID,
+                false,
+                "checkpoint"
+            );
+            GameRoot singlePlayer = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = host.Metadata.CampaignID },
+            };
+            _saveGameManager.SaveGameData(singlePlayer, "checkpoint", "Single-player source");
+            byte[] singlePlayerBytes = File.ReadAllBytes(
+                _saveGameManager.GetSaveFilePath("checkpoint")
+            );
+            _saveGameManager.SaveGameData(host, hostName, "Shared checkpoint");
+            GameRoot guest = BuildMultiplayerGame();
+            guest.CurrentTick = host.CurrentTick;
+            DateTime savedAt = host.Metadata.LastSavedUtc;
+
+            _saveGameManager.SaveGameDataWithMetadata(guest, guestName, host.Metadata);
+
+            GameMetadata restoredHost = _saveGameManager.LoadGameData(hostName).Metadata;
+            GameMetadata restoredGuest = _saveGameManager.LoadGameData(guestName).Metadata;
+            Assert.AreEqual(savedAt, guest.Metadata.LastSavedUtc);
+            Assert.AreEqual(restoredHost.LastSavedUtc, restoredGuest.LastSavedUtc);
+            Assert.AreEqual(restoredHost.SharedSaveToken, restoredGuest.SharedSaveToken);
+            Assert.AreEqual(restoredHost.CampaignID, restoredGuest.CampaignID);
+            Assert.AreEqual(restoredHost.SaveVersion, restoredGuest.SaveVersion);
+            Assert.AreEqual(restoredHost.SaveDisplayName, restoredGuest.SaveDisplayName);
+            Assert.IsTrue(restoredGuest.IsMultiplayer);
+            Assert.AreEqual("authenticated-host", restoredGuest.MultiplayerCampaign.HostUserID);
+            Assert.AreEqual("authenticated-guest", restoredGuest.MultiplayerCampaign.GuestUserID);
+            Assert.AreEqual("FNALL1", restoredGuest.MultiplayerCampaign.HostFactionID);
+            Assert.AreEqual("FNEMP1", restoredGuest.MultiplayerCampaign.GuestFactionID);
+            CollectionAssert.AreEqual(
+                singlePlayerBytes,
+                File.ReadAllBytes(_saveGameManager.GetSaveFilePath("checkpoint"))
+            );
+        }
+
+        [Test]
+        public void ProcessMultiplayerAutosaveTick_Rotation_PreservesSinglePlayerGuestManualAndOtherCampaignFiles()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 2,
+            };
+            GameRoot singlePlayer = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = game.Metadata.CampaignID },
+            };
+            singlePlayer.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(singlePlayer, settings));
+            string singlePlayerName =
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000020";
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                false,
+                "autosave_0000000020"
+            );
+            string manualName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                true,
+                "autosave_0000000020_manual"
+            );
+            _saveGameManager.SaveGameData(game, guestName, "Guest copy");
+            _saveGameManager.SaveGameData(game, manualName, "Manual checkpoint");
+            GameRoot otherCampaign = BuildMultiplayerGame();
+            otherCampaign.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(otherCampaign, settings));
+            foreach (int tick in new[] { 20, 40, 60 })
+            {
+                game.CurrentTick = tick;
+                Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(game, settings));
+            }
+
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(singlePlayerName)));
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(guestName)));
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(manualName)));
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            otherCampaign.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+            Assert.IsFalse(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+            foreach (int tick in new[] { 40, 60 })
+                Assert.IsTrue(
+                    File.Exists(
+                        _saveGameManager.GetSaveFilePath(
+                            SaveGameManager.GetMultiplayerSaveFileName(
+                                game.Metadata.CampaignID,
+                                true,
+                                "autosave_" + tick.ToString("D10")
+                            )
+                        )
+                    )
+                );
+        }
+
+        [Test]
+        public void ProcessMultiplayerAutosaveTick_PublicationFailure_ReportsFailureWithoutPruningHistory()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(game, settings));
+            game.CurrentTick = 40;
+            string failedPath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.GetMultiplayerSaveFileName(
+                    game.Metadata.CampaignID,
+                    true,
+                    "autosave_0000000040"
+                )
+            );
+            Directory.CreateDirectory(failedPath);
+
+            Assert.Throws<IOException>(() =>
+                _saveGameManager.ProcessMultiplayerAutosaveTick(game, settings)
+            );
+
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void GetSavedGames_RoleFilter_KeepsOwnMultiplayerCopiesAndSinglePlayerSources(
+            bool isHost
+        )
+        {
+            GameRoot multiplayer = BuildMultiplayerGame();
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                multiplayer.Metadata.CampaignID,
+                true,
+                "checkpoint"
+            );
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                multiplayer.Metadata.CampaignID,
+                false,
+                "checkpoint"
+            );
+            _saveGameManager.SaveGameData(multiplayer, hostName, "Host checkpoint");
+            _saveGameManager.SaveGameData(multiplayer, guestName, "Guest checkpoint");
+            _saveGameManager.SaveGameData(
+                new GameRoot(),
+                "single-player-source",
+                "Single-player source"
+            );
+
+            IReadOnlyList<SaveGameEntry> visible = _saveGameManager.GetSavedGames(isHost);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "single-player-source", isHost ? hostName : guestName },
+                visible.Select(entry => entry.FileName)
+            );
+            Assert.AreEqual(3, _saveGameManager.GetSavedGames().Count);
+        }
+
+        [Test]
+        public async Task SaveGameDataAsync_CallerMutatesAfterCapture_PreservesPayloadAndMetadataAsync()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+            game.CurrentTick = 42;
+
+            Task publication = _saveGameManager.SaveGameDataAsync(
+                game,
+                _saveFileName,
+                "Captured checkpoint"
+            );
+            game.CurrentTick = 99;
+            game.Metadata.SaveDisplayName = "Later metadata";
+            game.GetPlayers().Single().UIState.UIStateSections.Single().Values[
+                "GalacticInformationFilter"
+            ] = "Later presentation";
+            await publication;
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+            Assert.That(restored.CurrentTick, Is.EqualTo(42));
+            Assert.That(restored.Metadata.SaveDisplayName, Is.EqualTo("Captured checkpoint"));
+            Assert.That(metadata.SaveDisplayName, Is.EqualTo("Captured checkpoint"));
+            Assert.That(
+                restored.GetPlayers().Single().UIState.UIStateSections.Single().Values[
+                    "GalacticInformationFilter"
+                ],
+                Is.EqualTo("IdleConstructionYards")
+            );
+        }
+
+        [Test]
+        public async Task SaveGameDataAsync_SavingListenerUpdatesModel_CapturesOnCallingThreadAsync()
+        {
+            GameRoot game = new GameRoot();
+            int caller = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            int callbackThread = 0;
+            _saveGameManager.Saving += () =>
+            {
+                callbackThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                game.CurrentTick = 42;
+            };
+
+            await _saveGameManager.SaveGameDataAsync(game, _saveFileName);
+
+            Assert.That(callbackThread, Is.EqualTo(caller));
+            Assert.That(_saveGameManager.LoadGameData(_saveFileName).CurrentTick, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task SaveGameDataWithMetadataAsync_LaterMetadataMutation_PreservesHostCheckpointAsync()
+        {
+            GameRoot host = BuildMultiplayerGame();
+            host.CurrentTick = 40;
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            await _saveGameManager.SaveGameDataAsync(host, "host", "Shared checkpoint");
+            DateTime savedAt = host.Metadata.LastSavedUtc;
+            string token = host.Metadata.SharedSaveToken;
+            GameRoot guest = BuildMultiplayerGame();
+            guest.CurrentTick = 40;
+
+            Task publication = _saveGameManager.SaveGameDataWithMetadataAsync(
+                guest,
+                "guest",
+                host.Metadata
+            );
+            host.Metadata.SaveDisplayName = "Later host state";
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            await publication;
+
+            GameMetadata restored = _saveGameManager.LoadGameData("guest").Metadata;
+            GameMetadata cache = _saveGameManager.GetSaveMetadata("guest");
+            Assert.That(restored.LastSavedUtc, Is.EqualTo(savedAt));
+            Assert.That(restored.SharedSaveToken, Is.EqualTo(token));
+            Assert.That(cache.SharedSaveToken, Is.EqualTo(token));
+            Assert.That(cache.SaveDisplayName, Is.EqualTo("Shared checkpoint"));
+        }
+
+        [Test]
+        public async Task ProcessMultiplayerAutosaveTickAsync_LaterSettingsMutation_UsesCapturedRotationAsync()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string campaignID = game.Metadata.CampaignID;
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.That(
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings),
+                Is.True
+            );
+            game.CurrentTick = 40;
+
+            Task<bool> publication = _saveGameManager.ProcessMultiplayerAutosaveTickAsync(
+                game,
+                settings
+            );
+            settings.AutosavesToKeep = 99;
+            game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
+            Assert.That(await publication, Is.True);
+
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            campaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                ),
+                Is.False
+            );
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            campaignID,
+                            true,
+                            "autosave_0000000040"
+                        )
+                    )
+                ),
+                Is.True
+            );
+        }
+
+        [Test]
+        public async Task ProcessMultiplayerAutosaveTickAsync_PublicationFailure_PreservesPriorRestorePointAsync()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.That(
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings),
+                Is.True
+            );
+            game.CurrentTick = 40;
+            Directory.CreateDirectory(
+                _saveGameManager.GetSaveFilePath(
+                    SaveGameManager.GetMultiplayerSaveFileName(
+                        game.Metadata.CampaignID,
+                        true,
+                        "autosave_0000000040"
+                    )
+                )
+            );
+
+            IOException failure = null;
+            try
+            {
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings);
+            }
+            catch (IOException exception)
+            {
+                failure = exception;
+            }
+            Assert.That(failure, Is.Not.Null);
+
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                ),
+                Is.True
+            );
+            Assert.That(Directory.GetFiles(_saveDirectoryPath, "*.tmp"), Is.Empty);
+        }
+
+        /// <summary>
+        /// Creates a multiplayer-classified graph with explicit authenticated ownership.
+        /// </summary>
+        /// <returns>The saveable multiplayer graph.</returns>
+        private static GameRoot BuildMultiplayerGame()
+        {
+            return new GameRoot
+            {
+                Metadata = new GameMetadata
+                {
+                    CampaignID = Guid.NewGuid().ToString("N"),
+                    MultiplayerCampaign = new MultiplayerCampaignIdentity
+                    {
+                        HostUserID = "authenticated-host",
+                        GuestUserID = "authenticated-guest",
+                        HostFactionID = "FNALL1",
+                        GuestFactionID = "FNEMP1",
+                    },
+                },
+            };
         }
 
         /// <summary>

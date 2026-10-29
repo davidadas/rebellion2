@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
@@ -285,6 +286,8 @@ public static class MainMenuPrefabBuilder
         SerializedObject serializedView = new SerializedObject(view);
         serializedView.FindProperty("newGameSettingsButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "NewGameSettingsButton");
+        serializedView.FindProperty("multiplayerButton").objectReferenceValue =
+            FindRequiredComponent<Button>(root, "MultiplayerButton");
         serializedView.FindProperty("loadGameButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "LoadGameButton");
         serializedView.FindProperty("exitButton").objectReferenceValue =
@@ -350,6 +353,11 @@ public static class MainMenuPrefabBuilder
             ("VictoryConditionButton", EventTriggerType.PointerUp, _selectSfxPath),
             ("VictoryConditionIcon", EventTriggerType.PointerUp, _selectSfxPath),
             ("NewGameSettingsButton", EventTriggerType.PointerUp, _selectSfxPath),
+            (
+                "MultiplayerButton",
+                EventTriggerType.PointerDown,
+                "Application/MainMenu/Audio/multiplayer-select"
+            ),
         };
 
         List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)> bindings =
@@ -422,6 +430,13 @@ public static class MainMenuPrefabBuilder
             "_newGameSettingsPrefab",
             AssetDatabase.LoadAssetAtPath<NewGameSettingsView>(
                 NewGameSettingsPrefabBuilder.PrefabPath
+            )
+        );
+        AssignReference(
+            controller,
+            "_multiplayerMenuPrefab",
+            AssetDatabase.LoadAssetAtPath<MultiplayerMenuOverlay>(
+                MultiplayerMenuPrefabBuilder.PrefabPath
             )
         );
         return controller;
@@ -533,6 +548,11 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(modalLayer.GetComponent<RectTransform>());
         overlay.SetActive(false);
+        CommonUIPrefabBuilder.CreateMultiplayerSessionEndNotice(
+            parent,
+            overlay.GetComponent<UIWindowManager>(),
+            true
+        );
     }
 
     /// <summary>
@@ -549,6 +569,7 @@ public static class MainMenuPrefabBuilder
         BuildExitButton(controls.transform);
         BuildCreditsButton(controls.transform);
         BuildNewGameSettingsButton(controls.transform);
+        BuildMultiplayerButton(controls.transform);
         BuildLoadGameButton(controls.transform);
         BuildFactionLaunchButton(
             controls.transform,
@@ -591,6 +612,44 @@ public static class MainMenuPrefabBuilder
         button.targetGraphic = face;
         button.transition = Selectable.Transition.None;
         AddPointerUpTrigger(obj.GetComponent<EventTrigger>());
+    }
+
+    /// <summary>
+    /// Authors the multiplayer monitor control in its bottom-left cockpit position.
+    /// </summary>
+    /// <param name="parent">The main-menu controls layer.</param>
+    private static void BuildMultiplayerButton(Transform parent)
+    {
+        GameObject buttonObject = NewChild(
+            "MultiplayerButton",
+            parent,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(PerspectiveImage),
+            typeof(Button),
+            typeof(EventTrigger)
+        );
+        buttonObject.layer = 5;
+        PerspectiveImage image = buttonObject.GetComponent<PerspectiveImage>();
+        MainMenuLayoutSettings.ApplyPlacement(
+            image,
+            MainMenuLayoutSettings.instance.Multiplayer,
+            MainMenuLayoutSettings.instance.MultiplayerRotation,
+            MainMenuLayoutSettings.instance.MultiplayerCorners
+        );
+        SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon");
+        Button button = buttonObject.GetComponent<Button>();
+        button.transition = Selectable.Transition.SpriteSwap;
+        button.targetGraphic = image;
+        SpriteState spriteState = button.spriteState;
+        spriteState.highlightedSprite = null;
+        spriteState.pressedSprite = LoadSprite(
+            "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon_pressed"
+        );
+        spriteState.selectedSprite = null;
+        spriteState.disabledSprite = null;
+        button.spriteState = spriteState;
+        AddPointerUpTrigger(buttonObject.GetComponent<EventTrigger>());
     }
 
     /// <summary>

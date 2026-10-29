@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Rebellion.App;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -20,6 +23,10 @@ public sealed class StrategyWindowCommandController
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly IServiceLocator services;
+    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IRandomNumberProvider presentationRandom = new SystemRandomProvider(
+        Environment.TickCount
+    );
     private readonly Func<string> getPlayerFactionId;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
@@ -35,6 +42,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="services">Resolves commands and queries for the active game.</param>
+    /// <param name="playerActions">Completes player orders through the session action boundary.</param>
     /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
@@ -47,6 +55,7 @@ public sealed class StrategyWindowCommandController
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
         IServiceLocator services,
+        IPlayerActionDispatcher playerActions,
         Func<string> getPlayerFactionId,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
@@ -64,6 +73,8 @@ public sealed class StrategyWindowCommandController
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.playerActions =
+            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
         this.getPlayerFactionId =
             getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
@@ -83,7 +94,7 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="source">The targeting source command and selection.</param>
     /// <param name="target">The selected strategy target.</param>
-    public void ExecuteTargetedCommand(
+    public async void ExecuteTargetedCommand(
         StrategyWindowTargetingSource source,
         StrategyMissionTarget target
     )
@@ -97,7 +108,7 @@ public sealed class StrategyWindowCommandController
                 OpenMissionCreateWindow(target, source.Items);
                 break;
             case StrategyMenuAction.Move:
-                TryExecuteMove(source.Window, target, source.Items);
+                await TryExecuteMoveAsync(source.Window, target, source.Items);
                 break;
             case StrategyMenuAction.MoveConfirm:
                 OpenMoveConfirmWindow(source.Window, target, source.Items);
@@ -114,7 +125,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="sourceWindow">The strategy window that owns the dragged selection.</param>
     /// <param name="target">The exact drop target.</param>
     /// <param name="items">The dragged scene nodes.</param>
-    public void ExecuteItemDrop(
+    public async void ExecuteItemDrop(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
@@ -137,7 +148,7 @@ public sealed class StrategyWindowCommandController
         if (opensMission)
             OpenMissionCreateWindow(target, items);
         else
-            TryExecuteMove(sourceWindow, target, items);
+            await TryExecuteMoveAsync(sourceWindow, target, items);
     }
 
     /// <summary>
@@ -164,14 +175,14 @@ public sealed class StrategyWindowCommandController
     /// <param name="target">The selected move target.</param>
     /// <param name="items">The selected movable items.</param>
     /// <returns>True when the move was executed.</returns>
-    public bool TryExecuteMove(
+    public async Task<bool> TryExecuteMoveAsync(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
     )
     {
         List<ISceneNode> sourceItems = CopyItems(items);
-        if (!TryMove(target, sourceItems))
+        if (!await TryMoveAsync(target, sourceItems))
             return false;
 
         RefreshAfterMutation(sourceWindow);
@@ -209,8 +220,7 @@ public sealed class StrategyWindowCommandController
 
         MovementQueries movementQueries = services.GetService<MovementQueries>();
         if (
-            services.GetService<MovementCommands>() == null
-            || movementQueries == null
+            movementQueries == null
             || !movementQueries.TryGetSelectionTransitTicks(
                 sourceItems,
                 destination,
@@ -226,10 +236,12 @@ public sealed class StrategyWindowCommandController
         confirmDialogWindowController.OpenMove(
             sourceItems,
             transitTimeInDays,
-            () =>
+            async () =>
             {
-                if (TryMove(target, sourceItems))
+                bool moved = await TryMoveAsync(target, sourceItems);
+                if (moved)
                     RefreshAfterMutation(sourceWindow);
+                return moved;
             }
         );
     }
@@ -252,11 +264,10 @@ public sealed class StrategyWindowCommandController
         List<string> proposedWaypoints = source.WaypointPlanetIds.ToList();
         proposedWaypoints.Add(destination.InstanceID);
         if (
-            services.GetService<MovementCommands>() == null
-            || services
+            services
                 .GetService<MovementQueries>()
                 ?.CanSetFleetWaypointRoute(source.Items, proposedWaypoints, GetPlayerFactionID())
-                != true
+            != true
         )
             return false;
 
@@ -271,17 +282,19 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="source">The active waypoint targeting session.</param>
     /// <returns>True when the route was committed.</returns>
-    public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source)
+    public async Task<bool> TryCommitFleetWaypointPlanAsync(StrategyWindowTargetingSource source)
     {
         if (
             source?.Action != StrategyMenuAction.WaypointMove
-            || services
-                .GetService<MovementCommands>()
-                ?.TrySetFleetWaypointRoute(
-                    source.Items,
-                    source.WaypointPlanetIds,
-                    GetPlayerFactionID()
-                ) != true
+            || !(
+                await playerActions.ExecuteAsync(
+                    new SetFleetRoutePlayerAction
+                    {
+                        ItemIDs = source.Items.Select(item => item?.InstanceID).ToArray(),
+                        WaypointPlanetIDs = source.WaypointPlanetIds.ToArray(),
+                    }
+                )
+            ).Accepted
         )
             return false;
 
@@ -308,12 +321,17 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="items">The selected fleets or their visible snapshots.</param>
     /// <returns>True when at least one waypoint was cleared.</returns>
-    public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items)
+    public async Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items)
     {
         if (
-            services
-                .GetService<MovementCommands>()
-                ?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true
+            !(
+                await playerActions.ExecuteAsync(
+                    new ClearFleetRoutePlayerAction
+                    {
+                        ItemIDs = items?.Select(item => item?.InstanceID).ToArray(),
+                    }
+                )
+            ).Accepted
         )
             return false;
 
@@ -337,10 +355,7 @@ public sealed class StrategyWindowCommandController
 
         confirmDialogWindowController.OpenMissionAbort(
             missions,
-            () =>
-            {
-                TryAbortMissions(missionInstanceIds, sourceWindow);
-            }
+            () => TryAbortMissionsAsync(missionInstanceIds, sourceWindow)
         );
     }
 
@@ -349,12 +364,12 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="missionInstanceId">The persistent mission identifier.</param>
     /// <returns>True when the mission remained eligible and was aborted.</returns>
-    public bool TryAbortMission(string missionInstanceId)
+    public Task<bool> TryAbortMissionAsync(string missionInstanceId)
     {
         if (string.IsNullOrEmpty(missionInstanceId))
-            return false;
+            return Task.FromResult(false);
 
-        return TryAbortMissions(new[] { missionInstanceId }, null);
+        return TryAbortMissionsAsync(new[] { missionInstanceId }, null);
     }
 
     /// <summary>
@@ -367,20 +382,27 @@ public sealed class StrategyWindowCommandController
         List<ISceneNode> sourceItems = CopyItems(items);
         confirmDialogWindowController.OpenScrap(
             sourceItems,
-            () =>
+            async () =>
             {
                 List<IManufacturable> manufacturables = sourceItems
                     .OfType<IManufacturable>()
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && services
-                        .GetService<MaintenanceCommands>()
-                        ?.TryScrap(manufacturables, GetPlayerFactionID()) == true
+                    && (
+                        await playerActions.ExecuteAsync(
+                            new ScrapPlayerAction
+                            {
+                                ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
+                            }
+                        )
+                    ).Accepted
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
+                    return true;
                 }
+                return false;
             }
         );
     }
@@ -400,21 +422,28 @@ public sealed class StrategyWindowCommandController
         List<ISceneNode> sourceItems = CopyItems(items);
         confirmDialogWindowController.OpenStopConstruction(
             sourceItems,
-            () =>
+            async () =>
             {
                 List<IManufacturable> manufacturables = sourceItems
                     .OfType<IManufacturable>()
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && services
-                        .GetService<ManufacturingCommands>()
-                        ?.CancelManufacturing(manufacturables, GetPlayerFactionID()) == true
+                    && (
+                        await playerActions.ExecuteAsync(
+                            new CancelManufacturingPlayerAction
+                            {
+                                ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
+                            }
+                        )
+                    ).Accepted
                 )
                 {
                     onStopped?.Invoke();
                     RefreshAfterMutation(sourceWindow);
+                    return true;
                 }
+                return false;
             }
         );
     }
@@ -432,14 +461,23 @@ public sealed class StrategyWindowCommandController
 
         confirmDialogWindowController.OpenRetire(
             sourceItems,
-            () =>
+            async () =>
             {
                 if (
-                    services
-                        .GetService<PersonnelCommands>()
-                        ?.Retire(sourceItems, GetPlayerFactionID()) == true
+                    (
+                        await playerActions.ExecuteAsync(
+                            new RetirePersonnelPlayerAction
+                            {
+                                ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
+                            }
+                        )
+                    ).Accepted
                 )
+                {
                     RefreshAfterMutation(sourceWindow);
+                    return true;
+                }
+                return false;
             }
         );
     }
@@ -461,7 +499,10 @@ public sealed class StrategyWindowCommandController
     /// <param name="target">The requested strategy target.</param>
     /// <param name="items">The selected scene nodes.</param>
     /// <returns>True when the movement order was accepted.</returns>
-    private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
+    private async Task<bool> TryMoveAsync(
+        StrategyMissionTarget target,
+        IReadOnlyList<ISceneNode> items
+    )
     {
         if (ContainsInTransitUnit(items))
         {
@@ -480,14 +521,19 @@ public sealed class StrategyWindowCommandController
             return false;
 
         Building headquarters = items?.Count == 1 ? items[0] as Building : null;
-        bool moved =
+        PlayerAction action =
             headquarters?.BuildingType == BuildingType.Headquarters
-                ? services
-                    .GetService<HeadquartersCommands>()
-                    ?.TryRelocate(headquarters, target?.Planet?.Planet) == true
-                : services
-                    .GetService<MovementCommands>()
-                    ?.TryRequestMove(items, destination, GetPlayerFactionID()) == true;
+                ? new RelocateHeadquartersPlayerAction
+                {
+                    HeadquartersID = headquarters.InstanceID,
+                    DestinationPlanetID = target?.Planet?.Planet?.InstanceID,
+                }
+                : new MovePlayerAction
+                {
+                    ItemIDs = items?.Select(item => item?.InstanceID).ToArray(),
+                    DestinationID = destination?.InstanceID,
+                };
+        bool moved = (await playerActions.ExecuteAsync(action)).Accepted;
         if (moved)
             PlayMoveVoice(items);
 
@@ -543,7 +589,7 @@ public sealed class StrategyWindowCommandController
 
         string voicePath = selectedOfficer.GetVoicePath(
             OfficerVoiceLineType.Order,
-            services.GetService<IRandomNumberProvider>()
+            presentationRandom
         );
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
@@ -604,14 +650,22 @@ public sealed class StrategyWindowCommandController
     /// <param name="missionInstanceIds">The persistent mission identifiers.</param>
     /// <param name="sourceWindow">The optional source window whose selection should be cleared.</param>
     /// <returns>True when every mission was aborted.</returns>
-    private bool TryAbortMissions(IReadOnlyList<string> missionInstanceIds, UIWindow sourceWindow)
+    private async Task<bool> TryAbortMissionsAsync(
+        IReadOnlyList<string> missionInstanceIds,
+        UIWindow sourceWindow
+    )
     {
         if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
             return false;
 
-        GameRoot game = services.GetService<GameRoot>();
-        string voicePath = GetMissionAbortVoicePath(missions, game);
-        if (services.GetService<MissionCommands>()?.AbortMissions(missionInstanceIds) != true)
+        string voicePath = GetMissionAbortVoicePath(missions);
+        if (
+            !(
+                await playerActions.ExecuteAsync(
+                    new AbortMissionsPlayerAction { ItemIDs = missionInstanceIds.ToArray() }
+                )
+            ).Accepted
+        )
             return false;
 
         if (!string.IsNullOrEmpty(voicePath))
@@ -632,20 +686,16 @@ public sealed class StrategyWindowCommandController
     /// Selects one mission-abort response from the validated mission selection.
     /// </summary>
     /// <param name="missions">The missions being aborted.</param>
-    /// <param name="game">The current game state.</param>
     /// <returns>The selected voice path, or null.</returns>
-    private static string GetMissionAbortVoicePath(IReadOnlyList<Mission> missions, GameRoot game)
+    private string GetMissionAbortVoicePath(IReadOnlyList<Mission> missions)
     {
-        if (game == null)
-            return null;
-
         Officer speaker = missions
             ?.SelectMany(mission =>
                 mission.GetMainParticipants().Concat(mission.GetDecoyParticipants())
             )
             .OfType<Officer>()
             .FirstOrDefault(officer => officer.HasVoicePath(OfficerVoiceLineType.MissionAbort));
-        return speaker?.GetVoicePath(OfficerVoiceLineType.MissionAbort, game.Random);
+        return speaker?.GetVoicePath(OfficerVoiceLineType.MissionAbort, presentationRandom);
     }
 
     /// <summary>

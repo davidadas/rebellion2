@@ -297,6 +297,11 @@ namespace Rebellion.Game.Missions
         internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
 
         /// <summary>
+        /// Gets whether the original main-participant roster has already been captured.
+        /// </summary>
+        internal bool HasRecoveryParticipantRoster => _hasCapturedMainParticipantIds;
+
+        /// <summary>
         /// Parameterless constructor for deserialization.
         /// </summary>
         protected Mission()
@@ -562,6 +567,29 @@ namespace Rebellion.Game.Missions
         /// mission lifecycle.
         /// </summary>
         internal void AcceptCurrentParticipantRoster() => CaptureMainParticipantIDs();
+
+        /// <summary>
+        /// Reads the original main-participant roster retained for change detection.
+        /// </summary>
+        /// <returns>The tracked participant identities without accepting the current roster.</returns>
+        internal List<string> CaptureRecoveryParticipantIDs() =>
+            _mainParticipantInstanceIds.ToList();
+
+        /// <summary>
+        /// Restores mission change tracking without treating the current participants as a new roster.
+        /// </summary>
+        /// <param name="identities">The original tracked participant identities.</param>
+        /// <param name="wasCaptured">Whether the roster had already been captured.</param>
+        internal void RestoreRecoveryParticipants(
+            IReadOnlyList<string> identities,
+            bool wasCaptured
+        )
+        {
+            if (identities == null)
+                throw new ArgumentNullException(nameof(identities));
+            _mainParticipantInstanceIds = new HashSet<string>(identities, StringComparer.Ordinal);
+            _hasCapturedMainParticipantIds = wasCaptured;
+        }
 
         /// <summary>
         /// Returns whether the required main-participant list differs from mission start.

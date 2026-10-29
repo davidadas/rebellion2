@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Threading.Tasks;
+using Rebellion.Multiplayer;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Presents saved-game and main-menu content transitions independently from the outgoing scene.
@@ -20,13 +22,17 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private Action _transitionCompleted;
     private Action _continueAccepted;
     private LoadingScreenView _view;
+    private Coroutine _loadRoutine;
     private Coroutine _finishRoutine;
     private Coroutine _prepareRoutine;
     private Coroutine _recoveryRoutine;
     private Task _preparationTask;
     private ContentLoadOperation _operation;
+    private MultiplayerLaunchConfiguration _multiplayerLaunch;
     private bool _loadInProgress;
     private bool _quitOnContinue;
+    private int _navigationVersion;
+    private string _expectedScene;
 
     /// <summary>
     /// Gets whether a saved-game or content loading transition is currently active.
@@ -119,23 +125,48 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
+    /// Reconstructs verified multiplayer content while retaining the independent online session.
+    /// </summary>
+    /// <param name="bootstrap">The application owning the outgoing content.</param>
+    /// <param name="contentPack">The exact content verified in the lobby.</param>
+    /// <param name="configuration">The explicitly approved two-player launch.</param>
+    internal static void StartMultiplayer(
+        AppBootstrap bootstrap,
+        ContentPack contentPack,
+        MultiplayerLaunchConfiguration configuration
+    )
+    {
+        if (bootstrap == null)
+            throw new ArgumentNullException(nameof(bootstrap));
+        if (IsLoadInProgress)
+            return;
+        ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
+        operation.PrepareCustomGame(contentPack, configuration.Summary);
+        BeginLoad(bootstrap, operation, Task.CompletedTask, configuration);
+    }
+
+    /// <summary>
     /// Initializes the shared persistent presentation for a scene or content transition.
     /// </summary>
     /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
     /// <param name="operation">The application operation that owns this load's decisions.</param>
     /// <param name="preparation">The operation's pending preparation.</param>
+    /// <param name="multiplayerLaunch">The approved multiplayer launch, when applicable.</param>
     private static void BeginLoad(
         AppBootstrap bootstrap,
         ContentLoadOperation operation,
-        Task preparation
+        Task preparation,
+        MultiplayerLaunchConfiguration multiplayerLaunch = null
     )
     {
         LoadingScreenController controller = GetOrCreateController();
         if (controller._loadInProgress)
             return;
 
+        controller.CancelPendingTransitionWork();
         controller._bootstrap = bootstrap;
         controller._operation = operation;
+        controller._multiplayerLaunch = multiplayerLaunch;
         controller._preparationTask = preparation;
         controller._transitionCompleted = null;
         controller._continueAccepted = null;
@@ -155,7 +186,9 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         AudioManager.Instance?.FadeOutMusic(_fadeToBlackDuration);
         controller._view.PrepareEntrance();
-        controller.StartCoroutine(controller.LoadContent());
+        controller._loadRoutine = controller.StartCoroutine(
+            controller.LoadContent(controller._navigationVersion)
+        );
     }
 
     /// <summary>
@@ -215,6 +248,12 @@ internal sealed class LoadingScreenController : MonoBehaviour
             !_activeController
             || !_activeController._loadInProgress
             || _activeController._bootstrap != bootstrap
+            || Application.isPlaying
+                && !string.Equals(
+                    _activeController._expectedScene,
+                    SceneManager.GetActiveScene().name,
+                    StringComparison.Ordinal
+                )
         )
             return false;
 
@@ -280,8 +319,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return true;
         }
 
-        controller._transitionCompleted = null;
-        controller._continueAccepted = null;
+        controller.CancelPendingTransitionWork();
         controller._quitOnContinue = false;
         controller._view?.ShowLoadFailure(exception?.Message);
 
@@ -305,9 +343,82 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         if (controller._recoveryRoutine == null)
         {
-            controller._recoveryRoutine = controller.StartCoroutine(controller.ReturnToMainMenu());
+            controller._recoveryRoutine = controller.StartCoroutine(
+                controller.ReturnToMainMenu(controller._navigationVersion)
+            );
         }
         return true;
+    }
+
+    /// <summary>
+    /// Returns an interrupted shared launch to the menu even after the loading view released ownership.
+    /// Uncommitted loads keep their existing recovery policy; committed content is retained.
+    /// </summary>
+    /// <param name="bootstrap">The current committed application services, when available.</param>
+    /// <param name="interruption">The optional failure shown during recovery.</param>
+    /// <returns>True when recovery has a loading or application owner.</returns>
+    internal static bool RecoverInterruptedMultiplayerLoad(
+        AppBootstrap bootstrap,
+        Exception interruption
+    )
+    {
+        LoadingScreenController controller = _activeController;
+        if (controller && controller._loadInProgress && controller._operation != null)
+        {
+            if (controller._operation.IsRecovering)
+                return true;
+            if (!controller._operation.HasCommittedContent)
+                return RecoverFromLoadFailure(interruption);
+        }
+        if (bootstrap == null)
+            return false;
+
+        controller = GetOrCreateController();
+        controller.RecoverCommittedLoad(bootstrap, interruption);
+        return true;
+    }
+
+    /// <summary>
+    /// Invalidates the previous loading callbacks and navigates with the application's current content.
+    /// </summary>
+    /// <param name="bootstrap">The application whose committed strategy session must end.</param>
+    /// <param name="interruption">The optional failure shown during the menu transition.</param>
+    private void RecoverCommittedLoad(AppBootstrap bootstrap, Exception interruption)
+    {
+        CancelPendingTransitionWork();
+        _multiplayerLaunch = null;
+        _bootstrap = bootstrap;
+        _operation = bootstrap.CreateContentLoadOperation();
+        if (!_operation.BeginRecovery())
+            throw new InvalidOperationException(
+                "The menu return operation could not begin recovery."
+            );
+        _preparationTask = Task.CompletedTask;
+        _quitOnContinue = false;
+        _loadInProgress = true;
+        EnsurePresentation();
+        _view.SetVisible(true);
+        _view.ShowLoadFailure(interruption?.Message);
+        if (interruption != null)
+            Debug.LogException(interruption);
+        PrepareDestinationLaunch();
+        try
+        {
+            bootstrap.SuspendForLoad();
+        }
+        catch (Exception exception)
+        {
+            HandleRecoverySceneFailure(exception);
+            return;
+        }
+        if (!Application.isPlaying)
+        {
+            _loadInProgress = false;
+            DestroyImmediate(gameObject);
+            return;
+        }
+        if (_recoveryRoutine == null)
+            _recoveryRoutine = StartCoroutine(ReturnToMainMenu(_navigationVersion));
     }
 
     /// <summary>
@@ -328,15 +439,23 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// Waits for the incoming strategy scene transition to release the shared scene loader before
     /// starting recovery navigation.
     /// </summary>
+    /// <param name="version">The recovery owner that may reconstruct services and navigate.</param>
     /// <returns>The recovery-navigation coroutine.</returns>
-    private IEnumerator ReturnToMainMenu()
+    private IEnumerator ReturnToMainMenu(int version)
     {
         yield return new WaitForSecondsRealtime(_failureDisplayDuration);
+        if (!OwnsTransition(version))
+            yield break;
 
         if (_operation.RequiresContentRestart)
         {
             Exception reconstructionFailure = null;
-            yield return ReconstructBootstrap(exception => reconstructionFailure = exception);
+            yield return ReconstructBootstrap(
+                version,
+                exception => reconstructionFailure = exception
+            );
+            if (!OwnsTransition(version))
+                yield break;
             if (reconstructionFailure != null)
             {
                 HandleRecoverySceneFailure(reconstructionFailure);
@@ -367,7 +486,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
         }
 
         while (_bootstrap.IsSceneTransitionInProgress)
+        {
             yield return null;
+            if (!OwnsTransition(version))
+                yield break;
+        }
 
         PrepareDestinationLaunch();
         LoadDestinationScene(_operation.DestinationScene, HandleRecoverySceneFailure);
@@ -390,8 +513,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <param name="exception">The unrecoverable application failure.</param>
     private void EnterTerminalFailure(Exception exception)
     {
-        _transitionCompleted = null;
-        _continueAccepted = null;
+        CancelPendingTransitionWork();
         _operation.Fail();
         _quitOnContinue = true;
         _loadInProgress = true;
@@ -408,6 +530,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        _navigationVersion++;
         _transitionCompleted = null;
         _continueAccepted = null;
         _quitOnContinue = false;
@@ -433,15 +556,24 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <summary>
     /// Validates content, optionally replaces application services, and opens the destination scene.
     /// </summary>
+    /// <param name="version">The loading owner that may prepare content and navigate.</param>
     /// <returns>The content transition coroutine.</returns>
-    private IEnumerator LoadContent()
+    private IEnumerator LoadContent(int version)
     {
         yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
+        if (!OwnsTransition(version))
+            yield break;
         _view.SetPresentationVisible(true);
         yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
+        if (!OwnsTransition(version))
+            yield break;
 
         while (!_preparationTask.IsCompleted)
+        {
             yield return null;
+            if (!OwnsTransition(version))
+                yield break;
+        }
 
         if (_operation.IsRecovering)
             yield break;
@@ -468,7 +600,12 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (_operation.RequiresContentRestart)
         {
             Exception reconstructionFailure = null;
-            yield return ReconstructBootstrap(exception => reconstructionFailure = exception);
+            yield return ReconstructBootstrap(
+                version,
+                exception => reconstructionFailure = exception
+            );
+            if (!OwnsTransition(version))
+                yield break;
 
             if (reconstructionFailure != null)
             {
@@ -478,6 +615,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         }
 
         PrepareDestinationLaunch();
+        _loadRoutine = null;
         LoadDestinationScene(_operation.DestinationScene, HandleSceneLoadFailure);
     }
 
@@ -487,7 +625,14 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private void PrepareDestinationLaunch()
     {
         GameLaunchContext.Reset(_operation.Pack);
-        if (_operation.SaveFileName != null)
+        if (_operation.IsRecovering && _multiplayerLaunch != null)
+        {
+            MultiplayerCoordinator.Instance?.Disconnect();
+            _multiplayerLaunch = null;
+        }
+        if (_multiplayerLaunch != null)
+            GameLaunchContext.PrepareMultiplayer(_multiplayerLaunch);
+        else if (_operation.SaveFileName != null)
             GameLaunchContext.PrepareSaveLoad(_operation.SaveFileName);
         else if (_operation.CustomGameSummary is Rebellion.Game.GameSummary summary)
         {
@@ -499,9 +644,10 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <summary>
     /// Releases outgoing or partially initialized services before creating the staged bootstrap.
     /// </summary>
+    /// <param name="version">The transition owner allowed to create replacement services.</param>
     /// <param name="completed">Receives the initialization failure, or null after success.</param>
     /// <returns>The service-reconstruction coroutine.</returns>
-    private IEnumerator ReconstructBootstrap(Action<Exception> completed)
+    private IEnumerator ReconstructBootstrap(int version, Action<Exception> completed)
     {
         Exception failure = null;
         try
@@ -519,6 +665,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
             Destroy(_bootstrap.gameObject);
         _bootstrap = null;
         yield return null;
+        if (!OwnsTransition(version))
+            yield break;
 
         if (failure == null)
         {
@@ -541,16 +689,23 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <param name="failed">The transition's failure handler.</param>
     private void LoadDestinationScene(string sceneName, Action<Exception> failed)
     {
+        int version = _navigationVersion;
+        _expectedScene = sceneName;
+        Action<Exception> reportFailure = exception =>
+        {
+            if (OwnsTransition(version))
+                failed(exception);
+        };
         try
         {
-            if (!_bootstrap.LoadScene(sceneName, failed))
-                failed(
+            if (!_bootstrap.LoadScene(sceneName, reportFailure))
+                reportFailure(
                     new InvalidOperationException($"The {sceneName} scene could not start loading.")
                 );
         }
         catch (Exception exception)
         {
-            failed(exception);
+            reportFailure(exception);
         }
     }
 
@@ -594,14 +749,15 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (_view == null || _finishRoutine != null)
             return;
 
-        _finishRoutine = StartCoroutine(FinishTransition());
+        _finishRoutine = StartCoroutine(FinishTransition(_navigationVersion));
     }
 
     /// <summary>
     /// Fades the loading presentation through black into the newly activated strategy view.
     /// </summary>
+    /// <param name="version">The completion owner allowed to release the loading view.</param>
     /// <returns>The exit-transition coroutine.</returns>
-    private IEnumerator FinishTransition()
+    private IEnumerator FinishTransition(int version)
     {
         if (_operation.IsRecovering && _operation.RequiresContentRestart)
         {
@@ -610,20 +766,64 @@ internal sealed class LoadingScreenController : MonoBehaviour
                     + "Returning to the main menu."
             );
             yield return new WaitForSecondsRealtime(_failureDisplayDuration);
+            if (!OwnsTransition(version))
+                yield break;
         }
 
         yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
+        if (!OwnsTransition(version))
+            yield break;
         _view.SetPresentationVisible(false);
         yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
+        if (!OwnsTransition(version))
+            yield break;
         _view.SetVisible(false);
         _loadInProgress = false;
         _preparationTask = null;
         _operation = null;
+        _multiplayerLaunch = null;
         _finishRoutine = null;
+        _expectedScene = null;
         Action transitionCompleted = _transitionCompleted;
         _transitionCompleted = null;
         _continueAccepted = null;
         transitionCompleted?.Invoke();
+    }
+
+    /// <summary>
+    /// Cancels superseded coroutine owners and invalidates their navigation callbacks together.
+    /// </summary>
+    private void CancelPendingTransitionWork()
+    {
+        _navigationVersion++;
+        _expectedScene = null;
+        _transitionCompleted = null;
+        _continueAccepted = null;
+        if (_loadRoutine != null)
+            StopCoroutine(_loadRoutine);
+        if (_finishRoutine != null)
+            StopCoroutine(_finishRoutine);
+        if (_prepareRoutine != null)
+            StopCoroutine(_prepareRoutine);
+        if (_recoveryRoutine != null)
+            StopCoroutine(_recoveryRoutine);
+        _loadRoutine = null;
+        _finishRoutine = null;
+        _prepareRoutine = null;
+        _recoveryRoutine = null;
+    }
+
+    /// <summary>
+    /// Reports whether a coroutine or callback still owns the active loading transition.
+    /// </summary>
+    /// <param name="version">The owner captured before an asynchronous boundary.</param>
+    /// <returns>True while the originating transition remains current and active.</returns>
+    private bool OwnsTransition(int version)
+    {
+        return this != null
+            && _activeController == this
+            && _loadInProgress
+            && version == _navigationVersion;
     }
 
     /// <summary>

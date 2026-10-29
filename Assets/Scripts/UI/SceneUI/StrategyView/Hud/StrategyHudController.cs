@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.App;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using UnityEngine;
@@ -18,9 +20,21 @@ public sealed class StrategyHudController : IContextMenuReceiver
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
     private readonly StrategyAdvisorController advisorController;
+    private readonly Dictionary<TickSpeed, ContextMenuSelectionState> speedSelectionStates = new()
+    {
+        [TickSpeed.Paused] = new(),
+        [TickSpeed.VerySlow] = new(),
+        [TickSpeed.Slow] = new(),
+        [TickSpeed.Medium] = new(),
+        [TickSpeed.Fast] = new(),
+    };
 
     private IStrategyHudActions actions;
     private StrategyHudView view;
+    private StrategyHudPlayerSpeedSelection pendingSpeedRequest;
+    private TickSpeed localSpeedSelection;
+    private IReadOnlyList<StrategyHudPlayerSpeedSelection> playerSpeedSelections =
+        Array.Empty<StrategyHudPlayerSpeedSelection>();
 
     /// <summary>
     /// Creates a strategy HUD controller with current-faction, theme, texture, and audio dependencies.
@@ -29,6 +43,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="getPlayerTheme">Returns the current player faction theme.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
+    /// <param name="playerActions">Completes advisor requests through the session action boundary.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
     public StrategyHudController(
@@ -36,6 +51,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
+        IPlayerActionDispatcher playerActions,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
         Func<string, float> getAudioDuration = null
     )
@@ -51,6 +67,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getPlayerFaction,
             getTexture,
             playSfx,
+            playerActions,
             playSfxInstance: playSfxInstance,
             getAudioDuration: getAudioDuration
         );
@@ -64,6 +81,19 @@ public sealed class StrategyHudController : IContextMenuReceiver
     {
         this.actions = actions ?? throw new ArgumentNullException(nameof(actions));
         advisorController.Initialize(actions);
+    }
+
+    /// <summary>
+    /// Binds advisor timing to the active local player's durable state and simulation counter.
+    /// </summary>
+    /// <param name="getPlayerUIState">Returns the current local player's interface state.</param>
+    /// <param name="getSimulationTick">Returns the active simulation counter.</param>
+    public void BindNotificationContext(
+        Func<PlayerUIState> getPlayerUIState,
+        Func<int> getSimulationTick
+    )
+    {
+        advisorController.BindNotificationContext(getPlayerUIState, getSimulationTick);
     }
 
     /// <summary>
@@ -87,6 +117,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         view.MessageTabRequested += HandleMessageTabRequested;
         view.RenderRequested += HandleRenderRequested;
         view.SpeedContextRequested += HandleSpeedContextRequested;
+        view.SpeedResponseRequested += HandleSpeedResponseRequested;
         advisorController.BindView(view.AdvisorView);
     }
 
@@ -101,6 +132,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
 
         StrategyHudView targetView = GetRequiredView();
         FactionTheme theme = getPlayerTheme();
+        pendingSpeedRequest = GetSpeedRequest(data);
+        playerSpeedSelections = data.PlayerSpeeds;
+        foreach (var selection in speedSelectionStates)
+            selection.Value.SetColors(
+                GetSpeedSelectionColors(selection.Key, playerSpeedSelections)
+            );
+        localSpeedSelection =
+            data.PlayerSpeeds.FirstOrDefault(player => player.IsLocal)?.Speed ?? data.Speed;
         StrategyHudViewData viewData = CreateViewData(data, theme);
         targetView.Render(viewData);
         advisorController.Render(theme?.StrategyAdvisor);
@@ -277,9 +316,96 @@ public sealed class StrategyHudController : IContextMenuReceiver
             speedIndicatorBounds: ToRect(hudTheme?.SpeedIndicatorSourceLayout),
             speedContextBounds: ToRect(hudTheme?.SpeedContextSourceLayout),
             buttons: CreateButtons(hudTheme?.Buttons),
-            messageNotifications: CreateMessageNotifications(hudTheme?.MessageNotifications, data)
+            messageNotifications: CreateMessageNotifications(hudTheme?.MessageNotifications, data),
+            speedAgreementText: string.IsNullOrEmpty(data.ConnectionNotice)
+                ? CreateSpeedAgreementText(data)
+                : data.ConnectionNotice,
+            canRespondToSpeedRequest: string.IsNullOrEmpty(data.ConnectionNotice)
+                && GetSpeedRequest(data) != null,
+            sessionNoticeBounds: CreateSessionNoticeBounds(
+                theme?.StrategyWindowPlacements?.WindowBounds
+            )
         );
     }
+
+    /// <summary>
+    /// Insets the notice from the upper-left corner of the faction's galaxy play area.
+    /// </summary>
+    /// <param name="playArea">The source-space rectangle available to strategy windows.</param>
+    /// <returns>The left-aligned notice rectangle, or null when no play area is configured.</returns>
+    private static RectInt? CreateSessionNoticeBounds(SourceRectLayout playArea)
+    {
+        if (playArea == null)
+            return null;
+        int width = Math.Min(
+            StrategyHudView.SessionNoticeWidth,
+            playArea.Width - 2 * StrategyHudView.SessionNoticePadding
+        );
+        return new RectInt(
+            playArea.X + StrategyHudView.SessionNoticePadding,
+            playArea.Y + StrategyHudView.SessionNoticePadding,
+            width,
+            StrategyHudView.SessionNoticeHeight
+        );
+    }
+
+    /// <summary>
+    /// Shows only an outstanding proposal from the other player.
+    /// </summary>
+    /// <param name="data">The immutable current HUD facts.</param>
+    /// <returns>The compact request text, or empty when no response is needed.</returns>
+    internal static string CreateSpeedAgreementText(StrategyHudRenderData data)
+    {
+        StrategyHudPlayerSpeedSelection request = GetSpeedRequest(data);
+        return request == null
+            ? string.Empty
+            : request.Name
+                + (
+                    request.Speed == TickSpeed.Paused
+                        ? " is requesting a pause"
+                        : " is requesting " + GetSpeedName(request.Speed) + " speed"
+                );
+    }
+
+    /// <summary>
+    /// Identifies another human's unagreed proposal separately from the active clock speed.
+    /// </summary>
+    /// <param name="data">The current acknowledged participant selections.</param>
+    /// <returns>The outstanding remote selection, or null when no response is needed.</returns>
+    private static StrategyHudPlayerSpeedSelection GetSpeedRequest(StrategyHudRenderData data)
+    {
+        StrategyHudPlayerSpeedSelection local = data.PlayerSpeeds.FirstOrDefault(player =>
+            player.IsLocal
+        );
+        return local == null
+            ? null
+            : data.PlayerSpeeds.FirstOrDefault(player =>
+                !player.IsLocal && player.Speed != data.Speed && player.Speed != local.Speed
+            );
+    }
+
+    /// <summary>
+    /// Answers the proposal captured by the last rendered notice.
+    /// </summary>
+    /// <param name="accept">Whether to accept rather than decline the proposal.</param>
+    private void HandleSpeedResponseRequested(bool accept)
+    {
+        if (pendingSpeedRequest != null)
+            actions.RespondToSpeedRequest(
+                pendingSpeedRequest.FactionID,
+                pendingSpeedRequest.Speed,
+                pendingSpeedRequest.Revision,
+                accept
+            );
+    }
+
+    /// <summary>
+    /// Formats a speed selection for the native participant status panel.
+    /// </summary>
+    /// <param name="speed">The selected supported speed.</param>
+    /// <returns>The readable speed label.</returns>
+    private static string GetSpeedName(TickSpeed speed) =>
+        speed == TickSpeed.VerySlow ? "Very slow" : speed.ToString();
 
     /// <summary>
     /// Enumerates all HUD artwork that can appear for one faction theme.
@@ -615,7 +741,11 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     private void HandleSpeedContextRequested(int sourceX, int sourceY)
     {
-        IReadOnlyList<StrategyMenuCommand> commands = BuildSpeedMenuCommands();
+        IReadOnlyList<StrategyMenuCommand> commands = BuildSpeedMenuCommands(
+            localSpeedSelection,
+            playerSpeedSelections,
+            speedSelectionStates
+        );
         actions.OpenSpeedContextMenu(
             new ContextMenuRequest(this, commands, this),
             sourceX,
@@ -626,8 +756,15 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <summary>
     /// Creates the ordered game-speed commands.
     /// </summary>
+    /// <param name="selectedSpeed">The local participant's acknowledged selection, when present.</param>
+    /// <param name="playerSpeeds">The acknowledged participant selections and their faction colors.</param>
+    /// <param name="selectionStates">The optional owners that refresh markers while the menu is open.</param>
     /// <returns>The ordered game-speed commands.</returns>
-    internal static IReadOnlyList<StrategyMenuCommand> BuildSpeedMenuCommands()
+    internal static IReadOnlyList<StrategyMenuCommand> BuildSpeedMenuCommands(
+        TickSpeed? selectedSpeed = null,
+        IReadOnlyList<StrategyHudPlayerSpeedSelection> playerSpeeds = null,
+        IReadOnlyDictionary<TickSpeed, ContextMenuSelectionState> selectionStates = null
+    )
     {
         return new List<StrategyMenuCommand>
         {
@@ -635,33 +772,66 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 StrategyMenuAction.GameSpeedPause,
                 "Pause",
                 true,
-                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Paused))
+                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Paused)),
+                selected: selectedSpeed == TickSpeed.Paused,
+                selectionColors: GetSpeedSelectionColors(TickSpeed.Paused, playerSpeeds),
+                selectionState: selectionStates?[TickSpeed.Paused]
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.GameSpeedVerySlow,
                 "Very Slow",
                 true,
-                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.VerySlow))
+                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.VerySlow)),
+                selected: selectedSpeed == TickSpeed.VerySlow,
+                selectionColors: GetSpeedSelectionColors(TickSpeed.VerySlow, playerSpeeds),
+                selectionState: selectionStates?[TickSpeed.VerySlow]
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.GameSpeedSlow,
                 "Slow",
                 true,
-                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Slow))
+                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Slow)),
+                selected: selectedSpeed == TickSpeed.Slow,
+                selectionColors: GetSpeedSelectionColors(TickSpeed.Slow, playerSpeeds),
+                selectionState: selectionStates?[TickSpeed.Slow]
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.GameSpeedMedium,
                 "Medium",
                 true,
-                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Medium))
+                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Medium)),
+                selected: selectedSpeed == TickSpeed.Medium,
+                selectionColors: GetSpeedSelectionColors(TickSpeed.Medium, playerSpeeds),
+                selectionState: selectionStates?[TickSpeed.Medium]
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.GameSpeedFast,
                 "Fast",
                 true,
-                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Fast))
+                StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Fast)),
+                selected: selectedSpeed == TickSpeed.Fast,
+                selectionColors: GetSpeedSelectionColors(TickSpeed.Fast, playerSpeeds),
+                selectionState: selectionStates?[TickSpeed.Fast]
             ),
         };
+    }
+
+    /// <summary>
+    /// Collects the configured faction markers for one speed from the current HUD snapshot.
+    /// </summary>
+    /// <param name="speed">The speed represented by the menu row.</param>
+    /// <param name="playerSpeeds">The acknowledged participant selections.</param>
+    /// <returns>The selecting participants' colors in their stable player order.</returns>
+    private static IReadOnlyList<Color32> GetSpeedSelectionColors(
+        TickSpeed speed,
+        IReadOnlyList<StrategyHudPlayerSpeedSelection> playerSpeeds
+    )
+    {
+        return playerSpeeds
+                ?.Where(player => player.Speed == speed && player.FactionColor.HasValue)
+                .Select(player => player.FactionColor.Value)
+                .ToArray()
+            ?? Array.Empty<Color32>();
     }
 
     /// <summary>
@@ -691,6 +861,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         view.MessageTabRequested -= HandleMessageTabRequested;
         view.RenderRequested -= HandleRenderRequested;
         view.SpeedContextRequested -= HandleSpeedContextRequested;
+        view.SpeedResponseRequested -= HandleSpeedResponseRequested;
         view = null;
     }
 

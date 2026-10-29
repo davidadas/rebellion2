@@ -494,6 +494,8 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
 /// </summary>
 public sealed class ContextMenuCommandItem
 {
+    private readonly IReadOnlyList<Color32> selectionColors;
+
     public IContextMenuCommand Command { get; }
 
     public string Text => Command.Text;
@@ -501,6 +503,10 @@ public sealed class ContextMenuCommandItem
     public bool Enabled => Command.Enabled;
 
     public bool Active { get; set; }
+
+    public bool Selected { get; }
+    public IReadOnlyList<Color32> SelectionColors => SelectionState?.Colors ?? selectionColors;
+    public ContextMenuSelectionState SelectionState { get; }
 
     public bool UsesIconColumn { get; }
 
@@ -523,16 +529,28 @@ public sealed class ContextMenuCommandItem
     /// <param name="usesIconColumn">Whether the item reserves the panel icon column.</param>
     /// <param name="centerNativeIcon">Whether the icon uses its native source size.</param>
     /// <param name="submenuCommands">The optional submenu commands.</param>
+    /// <param name="selected">Whether the command has a persistent selection frame.</param>
+    /// <param name="selectionColors">The owner colors displayed by the selection frames.</param>
+    /// <param name="selectionState">The optional owner of selection updates for an open menu.</param>
     public ContextMenuCommandItem(
         IContextMenuCommand command,
         Texture iconTexture = null,
         Texture activeIconTexture = null,
         bool usesIconColumn = false,
         bool centerNativeIcon = false,
-        IReadOnlyList<ContextMenuCommandItem> submenuCommands = null
+        IReadOnlyList<ContextMenuCommandItem> submenuCommands = null,
+        bool selected = false,
+        IReadOnlyList<Color32> selectionColors = null,
+        ContextMenuSelectionState selectionState = null
     )
     {
         Command = command ?? throw new System.ArgumentNullException(nameof(command));
+        Selected = selected;
+        this.selectionColors =
+            selectionColors == null
+                ? System.Array.Empty<Color32>()
+                : new List<Color32>(selectionColors).AsReadOnly();
+        SelectionState = selectionState;
         IconTexture = iconTexture;
         ActiveIconTexture = activeIconTexture;
         UsesIconColumn = usesIconColumn || iconTexture != null || activeIconTexture != null;

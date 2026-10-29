@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Rebellion.Tests.UI.Runtime.Targeting
@@ -185,7 +186,7 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
         }
 
         [Test]
-        public void TrySubmit_ReceiverAccepts_ClearsRequestAndHidesCursor()
+        public async Task TrySubmitAsync_ReceiverAccepts_ClearsRequestAndHidesCursorAsync()
         {
             RecordingCursor cursor = new RecordingCursor();
             RecordingSubmissionReceiver receiver = new RecordingSubmissionReceiver
@@ -196,7 +197,7 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             TargetingController controller = new TargetingController(cursor);
             controller.Begin(request, 1, 2);
 
-            bool submitted = controller.TrySubmit();
+            bool submitted = await controller.TrySubmitAsync();
 
             Assert.IsTrue(submitted);
             Assert.IsFalse(controller.IsTargeting);
@@ -360,11 +361,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             /// </summary>
             /// <param name="request">The request.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TrySubmitTargeting(TargetingRequest request)
+            public Task<bool> TrySubmitTargetingAsync(TargetingRequest request)
             {
                 SubmissionCount++;
                 LastRequest = request;
-                return AcceptSubmission;
+                return Task.FromResult(AcceptSubmission);
             }
 
             /// <summary>

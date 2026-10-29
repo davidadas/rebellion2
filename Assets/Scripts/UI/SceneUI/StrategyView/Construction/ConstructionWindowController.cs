@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.App;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -40,6 +41,8 @@ public sealed class ConstructionWindowController
 {
     private readonly HashSet<ConstructionWindowView> boundViews =
         new HashSet<ConstructionWindowView>();
+    private readonly HashSet<ConstructionWindowView> pendingOrders =
+        new HashSet<ConstructionWindowView>();
     private readonly Action<UIWindow> closeWindow;
     private readonly IServiceLocator services;
     private readonly Func<int, int, Vector2Int> getConstructionWindowPosition;
@@ -64,6 +67,7 @@ public sealed class ConstructionWindowController
     /// Creates a construction feature controller.
     /// </summary>
     /// <param name="services">Resolves the active game's commands and queries.</param>
+    /// <param name="playerActions">Completes production requests through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="windowLayer">Provides the authored construction prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -74,6 +78,7 @@ public sealed class ConstructionWindowController
     /// <param name="findVisibleNode">Finds a node in the faction-filtered galaxy view.</param>
     public ConstructionWindowController(
         IServiceLocator services,
+        IPlayerActionDispatcher playerActions,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
@@ -99,7 +104,7 @@ public sealed class ConstructionWindowController
             ?? throw new ArgumentNullException(nameof(getUtilityWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        orderController = new ConstructionOrderController(services);
+        orderController = new ConstructionOrderController(services, playerActions);
         projector = new ConstructionWindowProjector(getUIContext);
     }
 
@@ -534,30 +539,38 @@ public sealed class ConstructionWindowController
     /// Starts the selected construction order and routes successful completion.
     /// </summary>
     /// <param name="view">The requesting construction view.</param>
-    private void HandleStartRequested(ConstructionWindowView view)
+    private async void HandleStartRequested(ConstructionWindowView view)
     {
-        if (!sessions.TryGetValue(view, out ConstructionWindowSession session))
+        if (
+            !sessions.TryGetValue(view, out ConstructionWindowSession session)
+            || !pendingOrders.Add(view)
+        )
             return;
-
-        session.Window.RequestFocus();
-        string playerFactionId = GetPlayerFactionID();
-        IManufacturable selected = session.SelectedItem;
-        bool started = orderController.TrySetConstructionOrder(
-            session.Planet?.Planet,
-            GetConstructionDestination(session),
-            selected,
-            session.BuildCount,
-            playerFactionId
-        );
-        if (started)
+        try
         {
-            lastOrderedItemTypeIds[(playerFactionId, session.ManufacturingTab)] =
-                selected.GetTypeID();
-            actions.RefreshAfterConstruction();
-            closeWindow(session.Window);
+            session.Window.RequestFocus();
+            string playerFactionId = GetPlayerFactionID();
+            IManufacturable selected = session.SelectedItem;
+            FacilityWindowTab manufacturingTab = session.ManufacturingTab;
+            bool started = await orderController.TrySetConstructionOrderAsync(
+                session.Planet?.Planet,
+                GetConstructionDestination(session),
+                selected,
+                session.BuildCount
+            );
+            if (started)
+            {
+                lastOrderedItemTypeIds[(playerFactionId, manufacturingTab)] = selected.GetTypeID();
+                actions.RefreshAfterConstruction();
+                closeWindow(session.Window);
+            }
+            else
+                markDirty();
         }
-        else
-            markDirty();
+        finally
+        {
+            pendingOrders.Remove(view);
+        }
     }
 
     /// <summary>

@@ -8,7 +8,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Contains a compressed game snapshot and the hash of its canonical XML bytes.
+    /// Contains a compressed game snapshot and the hash of its uncompressed wire bytes.
     /// </summary>
     public sealed class MultiplayerSnapshot
     {
@@ -26,7 +26,7 @@ namespace Rebellion.Multiplayer
         /// Creates a snapshot value.
         /// </summary>
         /// <param name="payload">The compressed snapshot payload.</param>
-        /// <param name="hash">The canonical state hash.</param>
+        /// <param name="hash">The uncompressed wire-state hash.</param>
         public MultiplayerSnapshot(byte[] payload, string hash)
         {
             Payload = payload ?? throw new ArgumentNullException(nameof(payload));
@@ -35,7 +35,7 @@ namespace Rebellion.Multiplayer
     }
 
     /// <summary>
-    /// Serializes deterministic launch settings and complete synchronized game states.
+    /// Serializes XML launch settings and complete synchronized wire states.
     /// </summary>
     public static class MultiplayerSnapshotCodec
     {
@@ -64,7 +64,19 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Captures a complete game as compressed XML and hashes the uncompressed bytes.
+        /// Detects persisted state changes through the existing serializer without materializing a snapshot.
+        /// </summary>
+        /// <param name="game">The stable game state to inspect.</param>
+        /// <returns>The local serializer-token fingerprint; this is not a wire integrity hash.</returns>
+        public static string ComputeStateFingerprint(GameRoot game)
+        {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            return MultiplayerStateFingerprint.Compute(game);
+        }
+
+        /// <summary>
+        /// Captures a complete game through cached wire contracts and hashes its uncompressed bytes.
         /// </summary>
         /// <param name="game">The game to capture.</param>
         /// <returns>The compressed snapshot and canonical state hash.</returns>
@@ -73,8 +85,18 @@ namespace Rebellion.Multiplayer
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
-            byte[] xml = Serialize(typeof(GameRoot), game);
-            return new MultiplayerSnapshot(Compress(xml), ComputeHash(xml));
+            byte[] state = MultiplayerSnapshotSerializer.Serialize(game);
+            return CapturePayload(state);
+        }
+
+        /// <summary>
+        /// Compresses and authenticates bytes produced by an explicitly selected snapshot schema.
+        /// </summary>
+        /// <param name="state">The complete uncompressed schema payload.</param>
+        /// <returns>The bounded snapshot envelope.</returns>
+        internal static MultiplayerSnapshot CapturePayload(byte[] state)
+        {
+            return new MultiplayerSnapshot(Compress(state), ComputeHash(state));
         }
 
         /// <summary>
@@ -85,16 +107,29 @@ namespace Rebellion.Multiplayer
         /// <returns>The restored game.</returns>
         public static GameRoot Restore(byte[] snapshot, string expectedHash)
         {
+            return MultiplayerSnapshotSerializer.Deserialize(
+                RestorePayload(snapshot, expectedHash)
+            );
+        }
+
+        /// <summary>
+        /// Verifies and expands a snapshot before its explicit schema is decoded.
+        /// </summary>
+        /// <param name="snapshot">The compressed snapshot bytes.</param>
+        /// <param name="expectedHash">The expected SHA-256 payload hash.</param>
+        /// <returns>The verified uncompressed schema payload.</returns>
+        internal static byte[] RestorePayload(byte[] snapshot, string expectedHash)
+        {
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
             if (string.IsNullOrWhiteSpace(expectedHash))
                 throw new ArgumentException("A snapshot hash is required.", nameof(expectedHash));
 
-            byte[] xml = Decompress(snapshot);
-            string actualHash = ComputeHash(xml);
+            byte[] state = Decompress(snapshot);
+            string actualHash = ComputeHash(state);
             if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The multiplayer snapshot hash does not match.");
-            return (GameRoot)Deserialize(typeof(GameRoot), xml);
+            return state;
         }
 
         /// <summary>

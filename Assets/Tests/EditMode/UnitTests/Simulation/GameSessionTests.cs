@@ -17,9 +17,11 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
+using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -68,6 +70,549 @@ namespace Rebellion.Tests.Simulation
         public void TearDown()
         {
             _session.Dispose();
+        }
+
+        [Test]
+        public void CaptureRecoveryState_OrderedManufacturingWithSequenceGaps_PreservesSourceAndLaneOrder()
+        {
+            _planet.EnergyCapacity = 2;
+            Building first = new Building
+            {
+                InstanceID = "recovery-first-order",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingQueueSequence = 19,
+            };
+            Building second = new Building
+            {
+                InstanceID = "recovery-second-order",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingQueueSequence = 51,
+            };
+            _game.AttachNode(first, _planet);
+            _game.AttachNode(second, _planet);
+            _planet.ManufacturingQueue.Clear();
+            _planet.ManufacturingQueue.Add(ManufacturingType.Troop, new List<IManufacturable>());
+            _planet.ManufacturingQueue.Add(
+                ManufacturingType.Building,
+                new List<IManufacturable> { second, first }
+            );
+            long randomPosition = _game.RandomIndex;
+            long identityPosition = _game.RuntimeIdentifierIndex;
+            int published = 0;
+            _session.Pipeline.ResultsResolved += _ => published++;
+
+            GameSessionRecoveryState state = _session.CaptureRecoveryState();
+
+            ManufacturingQueueRecoveryState queue = state.ManufacturingQueues.Single(item =>
+                ReferenceEquals(item.Planet, _planet)
+            );
+            CollectionAssert.AreEqual(
+                new[] { ManufacturingType.Troop, ManufacturingType.Building },
+                queue.Lanes.Select(item => item.Type)
+            );
+            Assert.That(queue.Lanes[0].Items, Is.Empty);
+            CollectionAssert.AreEqual(
+                new IManufacturable[] { second, first },
+                queue.Lanes[1].Items
+            );
+            Assert.That(first.ManufacturingQueueSequence, Is.EqualTo(19));
+            Assert.That(second.ManufacturingQueueSequence, Is.EqualTo(51));
+            Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
+            Assert.That(_game.RuntimeIdentifierIndex, Is.EqualTo(identityPosition));
+            Assert.That(published, Is.Zero);
+        }
+
+        [Test]
+        public void CaptureRecoveryState_ExecutingIncrementalTick_RejectsWithoutInterruptingIterator()
+        {
+            _game.Config.AI.TickInterval = 1;
+            _game.SetFactionController(_faction.InstanceID, "recovery-ai", PlayerControllerType.AI);
+            IEnumerator iterator = _session.Tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.That(iterator.MoveNext(), Is.True);
+
+                Assert.That(_session.CanCaptureRecoveryState, Is.False);
+                Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+                Assert.That(_session.Tick.CanAcceptPlayerActions, Is.False);
+            }
+            finally
+            {
+                (iterator as IDisposable)?.Dispose();
+            }
+        }
+
+        [Test]
+        public void CaptureRecoveryState_ResultObserverDispatch_RejectsReentrantCapture()
+        {
+            bool observed = false;
+            using IDisposable observation = _session.Results.Observe<GameResult>(_ =>
+            {
+                observed = true;
+                Assert.That(_session.CanCaptureRecoveryState, Is.False);
+                Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            });
+
+            _session.Pipeline.ProcessResults(
+                new GameResult[]
+                {
+                    new MaintenanceRequiredResult
+                    {
+                        Faction = _faction,
+                        Amount = 1,
+                        Tick = _game.CurrentTick,
+                    },
+                },
+                processMessages: false
+            );
+
+            Assert.That(observed, Is.True);
+            Assert.That(_session.CanCaptureRecoveryState, Is.True);
+        }
+
+        [Test]
+        public void CaptureRecoveryState_PendingHumanCombat_PreservesSelectedEncounterAndDeferredFacts()
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-opponent" };
+            _game.GetFactions().Add(opponent);
+            _game.SetFactionController(
+                _faction.InstanceID,
+                "recovery-human",
+                PlayerControllerType.Human
+            );
+            Fleet first = CreateCombatFleet(
+                _game,
+                "recovery-own-fleet",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            Fleet second = CreateCombatFleet(
+                _game,
+                "recovery-other-fleet",
+                opponent.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            _session.Tick.ProcessTick();
+            int tick = _game.CurrentTick;
+            long randomPosition = _game.RandomIndex;
+
+            GameSessionRecoveryState state = _session.CaptureRecoveryState();
+
+            Assert.That(state.Tick.Phase, Is.EqualTo(GameTickRecoveryPhase.AwaitingCombatDecision));
+            Assert.That(state.PendingCombat.PlanetInstanceID, Is.EqualTo(_planet.InstanceID));
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                state.PendingCombat.AttackerFleetInstanceIDs.Concat(
+                    state.PendingCombat.DefenderFleetInstanceIDs
+                )
+            );
+            Assert.That(
+                state.Tick.DeferredMessageResults.OfType<PendingCombatResult>().Count(),
+                Is.EqualTo(1)
+            );
+            Assert.That(
+                state
+                    .Fleets.Where(item =>
+                        ReferenceEquals(item.Fleet, first) || ReferenceEquals(item.Fleet, second)
+                    )
+                    .All(item => item.IsInCombat),
+                Is.True
+            );
+            Assert.That(_game.CurrentTick, Is.EqualTo(tick));
+            Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
+            Assert.That(_session.Tick.IsSettled, Is.False);
+            Assert.That(_session.CanCaptureRecoveryState, Is.True);
+        }
+
+        [Test]
+        public void CaptureRecoveryState_OwnershipRegistrationOrder_PreservesOrderAfterTransfer()
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-transfer-owner" };
+            _game.GetFactions().Add(opponent);
+            Regiment first = new Regiment
+            {
+                InstanceID = "recovery-first-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            Regiment second = new Regiment
+            {
+                InstanceID = "recovery-second-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            _game.AttachNode(first, _planet);
+            _game.AttachNode(second, _planet);
+            _game.ChangeOwnership(first, opponent.InstanceID);
+            _game.ChangeOwnership(first, _faction.InstanceID);
+
+            GameSessionRecoveryState state = _session.CaptureRecoveryState();
+
+            FactionOwnershipRecoveryState ownership = state.Ownership.Single(item =>
+                ReferenceEquals(item.Faction, _faction)
+            );
+            CollectionAssert.AreEqual(new[] { second, first }, ownership.Units.OfType<Regiment>());
+            CollectionAssert.AreEqual(
+                new[] { first, second },
+                state.RegisteredNodes.OfType<Regiment>()
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RestoreRecoveryState_PendingCombat_ContinuesSameTickAndMatchesUninterruptedOutcome(
+            bool retreat
+        )
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-resolve-opponent" };
+            _game.GetFactions().Add(opponent);
+            _game.SetFactionController(
+                _faction.InstanceID,
+                "recovery-resolve-human",
+                PlayerControllerType.Human
+            );
+            _game.UseDeterministicRuntimeIdentifiers = true;
+            Planet safePlanet = new Planet
+            {
+                InstanceID = "recovery-safe-planet",
+                OwnerInstanceID = _faction.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+            };
+            _game.AttachNode(safePlanet, _planet.GetParent());
+            Fleet ownFleet = CreateCombatFleet(
+                _game,
+                "recovery-resolve-own",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            ownFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 1;
+            CreateCombatFleet(
+                _game,
+                "recovery-resolve-other",
+                opponent.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            _session.Tick.ProcessTick();
+            int pendingTick = _game.CurrentTick;
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
+            );
+            MultiplayerStateFingerprint.VerifyRecovery(
+                recovered,
+                MultiplayerStateFingerprint.ComputeSimulation(_session)
+            );
+            int originalCompleted = 0;
+            int recoveredCompleted = 0;
+            _session.Tick.TickCompleted += () => originalCompleted++;
+            recovered.Tick.TickCompleted += () => recoveredCompleted++;
+
+            SpaceCombatResult originalResult = retreat
+                ? _session.Tick.ResolveCombatRetreat(_faction.InstanceID)
+                : _session.Tick.ResolveCombat(autoResolve: true);
+            SpaceCombatResult recoveredResult = retreat
+                ? recovered.Tick.ResolveCombatRetreat(_faction.InstanceID)
+                : recovered.Tick.ResolveCombat(autoResolve: true);
+
+            Assert.That(originalResult, Is.Not.Null);
+            Assert.That(recoveredResult, Is.Not.Null);
+            Assert.That(recovered.Game, Is.Not.SameAs(_game));
+            Assert.That(recovered.Game.Random, Is.Not.SameAs(_game.Random));
+            Assert.That(originalCompleted, Is.EqualTo(1));
+            Assert.That(recoveredCompleted, Is.EqualTo(1));
+            Assert.That(recovered.Game.CurrentTick, Is.EqualTo(pendingTick));
+            Assert.That(recovered.Tick.IsSettled, Is.True);
+            using StringWriter originalXml = new StringWriter();
+            using StringWriter recoveredXml = new StringWriter();
+            new GameSerializer(typeof(GameRoot)).Serialize(originalXml, _game);
+            new GameSerializer(typeof(GameRoot)).Serialize(recoveredXml, recovered.Game);
+            Assert.That(recoveredXml.ToString(), Is.EqualTo(originalXml.ToString()));
+        }
+
+        [Test]
+        public void ApplyRecoveryState_DecodedBoundary_PreservesFacadesAndSubscriptionsWhileDetachingOldProducers()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "recovery-old-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(regiment, _planet);
+            MaintenanceCommands previousCommands = _session.GetService<MaintenanceCommands>();
+            GameTickProcessor tick = _session.Tick;
+            GameResultPipeline pipeline = _session.Pipeline;
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
+                snapshot.Payload,
+                snapshot.Hash
+            );
+            int observed = 0;
+            pipeline.ResultsResolved += _ => observed++;
+
+            _session.ApplyRecoveryState(decoded);
+            Assert.That(
+                previousCommands.TryScrap(new IManufacturable[] { regiment }, _faction.InstanceID),
+                Is.True
+            );
+            Assert.That(observed, Is.Zero);
+            _session.Pipeline.ProcessResults(
+                new GameResult[]
+                {
+                    new MaintenanceRequiredResult
+                    {
+                        Faction = _session.Game.GetFactions().Single(),
+                        Amount = 1,
+                    },
+                },
+                processMessages: false
+            );
+
+            Assert.That(_session.Tick, Is.SameAs(tick));
+            Assert.That(_session.Pipeline, Is.SameAs(pipeline));
+            Assert.That(_session.Game, Is.SameAs(decoded.Game));
+            Assert.That(observed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RestoreRecoveryState_PriorAutomaticCombat_PreservesLiveDetachedAndRepeatedResultReferences()
+        {
+            Faction firstAI = new Faction { InstanceID = "recovery-first-ai" };
+            Faction secondAI = new Faction { InstanceID = "recovery-second-ai" };
+            _game.GetFactions().Add(firstAI);
+            _game.GetFactions().Add(secondAI);
+            _game.SetFactionController(
+                _faction.InstanceID,
+                "recovery-identity-human",
+                PlayerControllerType.Human
+            );
+            _game.UseDeterministicRuntimeIdentifiers = true;
+            ISceneNode sector = _planet.GetParent();
+            _game.DetachNode(_planet);
+            Planet automaticPlanet = new Planet
+            {
+                InstanceID = "recovery-automatic-planet",
+                IsColonized = true,
+            };
+            _game.AttachNode(automaticPlanet, sector);
+            _game.AttachNode(_planet, sector);
+            Fleet automaticWinner = CreateCombatFleet(
+                _game,
+                "recovery-automatic-winner",
+                firstAI.InstanceID,
+                automaticPlanet,
+                10000,
+                10000
+            );
+            Fleet automaticLoser = CreateCombatFleet(
+                _game,
+                "recovery-automatic-loser",
+                secondAI.InstanceID,
+                automaticPlanet,
+                1,
+                0
+            );
+            string survivingShipID = automaticWinner.GetChildren<CapitalShip>().Single().InstanceID;
+            string destroyedShipID = automaticLoser.GetChildren<CapitalShip>().Single().InstanceID;
+            CreateCombatFleet(
+                _game,
+                "recovery-pending-human",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            CreateCombatFleet(_game, "recovery-pending-ai", firstAI.InstanceID, _planet, 1000, 100);
+            _session.Tick.ProcessTick();
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+
+            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
+                snapshot.Payload,
+                snapshot.Hash
+            );
+
+            using GameSession recovered = GameSession.RestoreRecoveryState(
+                decoded,
+                TestGameData.Create(_game.Config)
+            );
+            SpaceCombatResult combat = decoded
+                .Tick.DeferredMessageResults.OfType<SpaceCombatResult>()
+                .Single();
+            CombatUnitSnapshot observedSurvivor = combat
+                .AttackingUnits.Concat(combat.DefendingUnits)
+                .Single(item => item.Unit.InstanceID == survivingShipID);
+            Assert.That(
+                observedSurvivor.Unit,
+                Is.Not.SameAs(decoded.Game.GetSceneNodeByInstanceID<CapitalShip>(survivingShipID))
+            );
+            Assert.That(
+                combat.Planet,
+                Is.SameAs(decoded.Game.GetSceneNodeByInstanceID<Planet>(automaticPlanet.InstanceID))
+            );
+            Assert.That(
+                decoded.Game.GetSceneNodeByInstanceID<CapitalShip>(destroyedShipID),
+                Is.Null
+            );
+            GameObjectDestroyedResult destruction = combat
+                .Events.OfType<GameObjectDestroyedResult>()
+                .Single(item => item.DestroyedObject.InstanceID == destroyedShipID);
+            Assert.That(
+                decoded.Tick.DeferredMessageResults.Any(item => ReferenceEquals(item, destruction)),
+                Is.True
+            );
+            Assert.That(destruction.DestroyedObject.InstanceID, Is.EqualTo(destroyedShipID));
+        }
+
+        [Test]
+        public void RestoreRecoveryState_SuppressionShipWithDetachedHistoricalParent_RebuildsMembershipWithoutReparenting()
+        {
+            Fleet fleet = CreateCombatFleet(
+                _game,
+                "recovery-suppression-fleet",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                0
+            );
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.SectorSuppression = 7;
+            Fleet historicalParent = new Fleet { InstanceID = "recovery-detached-history" };
+            ship.LastParentNode = historicalParent;
+            ship.LastParentInstanceID = historicalParent.InstanceID;
+            string parentID = ship.ParentInstanceID;
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
+            );
+
+            CapitalShip restoredShip = recovered.Game.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID
+            );
+            PlanetSector sector = restoredShip.GetParentOfType<PlanetSector>();
+            Assert.That(sector.GetSectorSuppressionDivisor(_faction.InstanceID), Is.EqualTo(7));
+            Assert.That(restoredShip.ParentInstanceID, Is.EqualTo(parentID));
+            Assert.That(restoredShip.LastParentInstanceID, Is.EqualTo(historicalParent.InstanceID));
+            Assert.That(restoredShip.LastParentNode, Is.Not.Null);
+            Assert.That(restoredShip.LastParentNode, Is.Not.SameAs(historicalParent));
+            Assert.That(
+                restoredShip.LastParentNode.InstanceID,
+                Is.EqualTo(historicalParent.InstanceID)
+            );
+            Assert.That(
+                recovered.Game.GetSceneNodeByInstanceID<Fleet>(historicalParent.InstanceID),
+                Is.Null
+            );
+        }
+
+        [Test]
+        public void RestoreRecoveryState_MissionRosterChanged_PreservesExistingAbortDetection()
+        {
+            ReconnaissanceMission mission = new ReconnaissanceMission
+            {
+                InstanceID = "recovery-roster-mission",
+                OwnerInstanceID = _faction.InstanceID,
+                LocationInstanceID = _planet.InstanceID,
+            };
+            _game.AttachNode(mission, _planet);
+            Officer first = new Officer
+            {
+                InstanceID = "recovery-roster-first",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            Officer second = new Officer
+            {
+                InstanceID = "recovery-roster-second",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            _game.AttachNode(first, mission);
+            _game.AttachNode(second, mission);
+            mission.Initiate(20);
+            _game.MoveNode(first, _planet);
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
+            );
+
+            Mission restored = recovered.Game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID);
+            Assert.That(restored.GetMainParticipants().Count, Is.EqualTo(1));
+            Assert.That(
+                restored.GetAbortReason(recovered.Game),
+                Is.EqualTo(MissionCompletionReason.Failure)
+            );
+        }
+
+        [Test]
+        public void RestoreRecoveryState_UnpublishedOwnershipChange_PreservesBothIdentityKeyedObserversUntilPublication()
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-ownership-opponent" };
+            _game.GetFactions().Add(opponent);
+            PlanetOwnershipChangedResult change = _session
+                .GetService<PlanetaryControlCommands>()
+                .TransferPlanet(_planet, opponent);
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
+                snapshot.Payload,
+                snapshot.Hash
+            );
+            PlanetOwnershipChangedResult decodedChange = decoded
+                .PlanetaryControl.Transitions.Single()
+                .Change;
+            Assert.That(decoded.ObservedOwnershipChanges.Single(), Is.SameAs(decodedChange));
+            using GameSession recovered = GameSession.RestoreRecoveryState(
+                decoded,
+                TestGameData.Create(_game.Config)
+            );
+
+            _session.Pipeline.ProcessResults(new GameResult[] { change }, processMessages: false);
+            recovered.Pipeline.ProcessResults(
+                new GameResult[] { decodedChange },
+                processMessages: false
+            );
+
+            GameSessionRecoveryState continued = recovered.CaptureRecoveryState();
+            Assert.That(continued.PlanetaryControl.Transitions, Is.Empty);
+            Assert.That(continued.ObservedOwnershipChanges, Is.Empty);
+            Assert.That(
+                decodedChange.Planet,
+                Is.SameAs(recovered.Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID))
+            );
+        }
+
+        [Test]
+        public void RestoreRecoveryState_ZeroResearchTimer_RetainsTimerAndRandomPositionUntilNormalResearchPhase()
+        {
+            _faction.ResearchState.NextRefreshTick = 0;
+            long randomPosition = _game.RandomIndex;
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+
+            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
+                snapshot.Payload,
+                snapshot.Hash,
+                TestGameData.Create(_game.Config)
+            );
+
+            Assert.That(
+                recovered.Game.GetFactions().Single().ResearchState.NextRefreshTick,
+                Is.Zero
+            );
+            Assert.That(recovered.Game.RandomIndex, Is.EqualTo(randomPosition));
         }
 
         [TestCase(false)]

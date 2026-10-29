@@ -1,13 +1,13 @@
 {
-  "name": "rebellion2-matchmaker",
-  "version": "1.0.0",
+  "name": "rebellion-session-directory",
+  "version": "0.1.0",
   "private": true,
-  "description": "Directory service for direct multiplayer games",
+  "description": "Lease-based directory for player-hosted Rebellion sessions",
   "scripts": {
     "start": "node server.js",
     "test": "node --test server.test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

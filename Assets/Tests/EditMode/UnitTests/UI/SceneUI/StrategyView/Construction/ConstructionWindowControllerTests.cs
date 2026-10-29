@@ -74,6 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.Throws<ArgumentNullException>(() =>
                 new ConstructionWindowController(
                     null,
+                    TestPlayerActions.RejectAll(),
                     () => _uiContext,
                     _windowLayer,
                     _windowManager,
@@ -141,7 +142,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void OpenFromAdvisor_ActiveManufacturingOrder_DisplaysProductQuantity()
         {
             IReadOnlyList<IManufacturable> templates = new ConstructionOrderController(
-                _session
+                _session,
+                TestPlayerActions.RejectAll()
             ).GetBuildSelection(FacilityWindowTab.Shipyards, _playerFactionId);
             IManufacturable template = templates.OfType<CapitalShip>().First();
             Rebellion.Game.Units.Fleet fleet = EntityFactory.CreateFleet(
@@ -497,6 +499,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             return new ConstructionWindowController(
                 _session,
+                TestPlayerActions.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,

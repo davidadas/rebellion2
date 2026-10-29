@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -859,7 +860,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             return new StrategyFleetCommandController(
                 _session,
-                () => _game.GetPlayerFaction().InstanceID
+                () => _game.GetPlayerFaction().InstanceID,
+                TestPlayerActions.Create(_session, () => _game.GetPlayerFaction().InstanceID)
             );
         }
 
@@ -1368,14 +1370,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// <param name="target">The target.</param>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryExecuteMove(
+            public Task<bool> TryExecuteMoveAsync(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             )
             {
                 LastItems = items;
-                return true;
+                return Task.FromResult(true);
             }
 
             /// <summary>
@@ -1409,7 +1411,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// </summary>
             /// <param name="source">The source.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+            public Task<bool> TryCommitFleetWaypointPlanAsync(
+                StrategyWindowTargetingSource source
+            ) => Task.FromResult(false);
 
             /// <summary>
             /// Attempts undo fleet waypoint plan.
@@ -1423,7 +1427,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items) =>
+                Task.FromResult(false);
         }
     }
 }

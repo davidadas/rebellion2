@@ -14,7 +14,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Executes the ordered tick phases and suspends or resumes them around player combat decisions.
     /// </summary>
-    public sealed class GameTickProcessor
+    public sealed partial class GameTickProcessor
     {
         /// <summary>
         /// Identifies whether tick execution is idle, advancing a tick, or waiting for combat input.
@@ -28,6 +28,7 @@ namespace Rebellion.Simulation
 
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
+        private readonly SimulationPhaseTrace _timings;
         private readonly List<BlockadeChangedResult> _deferredBlockadeResults = new();
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
@@ -57,8 +58,13 @@ namespace Rebellion.Simulation
 
         public bool IsSettled => _tickState == TickExecutionState.Idle;
         public bool IsBusy => _tickInProgress || !IsSettled;
-        public bool CanAcceptPlayerActions => !_tickInProgress;
         internal Func<bool> CanStartTick { get; set; }
+
+        /// <summary>
+        /// Gets whether a player operation can run outside an active incremental simulation step.
+        /// A pending combat decision accepts its resolving operation while remaining unsaveable.
+        /// </summary>
+        public bool CanAcceptPlayerActions => !_tickInProgress;
 
         public event Action TickCompleted;
 
@@ -75,15 +81,18 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="processResults">Resolves and presents one result batch at its existing release boundary.</param>
         /// <param name="processMessages">Releases the messages of an already resolved batch.</param>
+        /// <param name="timings">The session's optional phase recorder.</param>
         internal GameTickProcessor(
             Func<IEnumerable<GameResult>, bool, List<GameResult>> processResults,
-            Action<List<GameResult>> processMessages
+            Action<List<GameResult>> processMessages,
+            SimulationPhaseTrace timings = null
         )
         {
             _processResults =
                 processResults ?? throw new ArgumentNullException(nameof(processResults));
             _processMessages =
                 processMessages ?? throw new ArgumentNullException(nameof(processMessages));
+            _timings = timings ?? new SimulationPhaseTrace();
         }
 
         /// <summary>
@@ -92,6 +101,25 @@ namespace Rebellion.Simulation
         /// <param name="services">The newly constructed runtime service scope.</param>
         internal void ConnectRuntime(IServiceLocator services)
         {
+            ConnectRuntimeCore(services, initializeResearchTimers: true);
+        }
+
+        /// <summary>
+        /// Connects recovered services while retaining every captured research timer and random position.
+        /// </summary>
+        /// <param name="services">The recovered service scope.</param>
+        internal void ConnectRecoveryRuntime(IServiceLocator services)
+        {
+            ConnectRuntimeCore(services, initializeResearchTimers: false);
+        }
+
+        /// <summary>
+        /// Constructs stateless tick processors for the selected session initialization boundary.
+        /// </summary>
+        /// <param name="services">The owning service scope.</param>
+        /// <param name="initializeResearchTimers">Whether this is normal game initialization.</param>
+        private void ConnectRuntimeCore(IServiceLocator services, bool initializeResearchTimers)
+        {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
@@ -99,7 +127,8 @@ namespace Rebellion.Simulation
             ResearchTickProcessor research = new ResearchTickProcessor(
                 services.GetService<Rebellion.Util.Random.IRandomNumberProvider>()
             );
-            research.InitializeTimers(_game);
+            if (initializeResearchTimers)
+                research.InitializeTimers(_game);
             _research = research;
 
             _movementCommands = services.GetService<MovementCommands>();
@@ -163,9 +192,9 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Runs one game tick and yields after each AI phase.
+        /// Runs one game tick and yields between completed phase groups, production points, and AI phases.
         /// </summary>
-        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        /// <returns>The ordered simulation steps, retaining the mutation guard across every yield.</returns>
         public IEnumerator ProcessTickIncrementally()
         {
             if (
@@ -194,47 +223,60 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Processes the systems contained in one game tick.
         /// </summary>
-        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        /// <returns>The ordered steps through completed simulation phase groups.</returns>
         private IEnumerable<object> ProcessTickCore()
         {
             _game.CurrentTick++;
-            _messages.ProcessTick(_game);
+            ProcessSystem(SimulationPhase.Messages, _messages);
             GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-            _factionAutomation.ProcessTick(_game);
-            ProcessResults(_resourceProduction.ProcessTick(_game));
+            ProcessSystem(SimulationPhase.AutomationBeforeProduction, _factionAutomation);
+            ProcessResults(ProcessSystem(SimulationPhase.ResourceProduction, _resourceProduction));
             List<GameResult> manufacturingResults = new List<GameResult>();
-            foreach (
-                IReadOnlyList<GameResult> manufacturingStep in _manufacturing.ProcessTickIncrementally(
-                    _game
-                )
+            using (
+                IEnumerator<IReadOnlyList<GameResult>> manufacturing = _manufacturing
+                    .ProcessTickIncrementally(_game)
+                    .GetEnumerator()
             )
             {
-                manufacturingResults.AddRange(manufacturingStep);
-                ManufacturingPointsCompletedResult progress = manufacturingStep
-                    .OfType<ManufacturingPointsCompletedResult>()
-                    .FirstOrDefault();
-                if (progress == null)
-                    continue;
+                while (AdvanceTimed(manufacturing, SimulationPhase.ManufacturingStep))
+                {
+                    IReadOnlyList<GameResult> manufacturingStep = manufacturing.Current;
+                    manufacturingResults.AddRange(manufacturingStep);
+                    ManufacturingPointsCompletedResult progress = manufacturingStep
+                        .OfType<ManufacturingPointsCompletedResult>()
+                        .FirstOrDefault();
+                    if (progress == null)
+                        continue;
 
-                TickProgressed?.Invoke(progress.Context as Planet);
-                yield return null;
+                    using (
+                        _timings.Measure(
+                            SimulationPhase.ManufacturingProgressNotification,
+                            _game.CurrentTick
+                        )
+                    )
+                        TickProgressed?.Invoke(progress.Context as Planet);
+                    yield return null;
+                }
             }
             ProcessResults(manufacturingResults);
             // Refill capacity released by completed orders before tick observers render idle lanes.
-            _factionAutomation.ProcessTick(_game);
-            ProcessResults(_maintenance.ProcessTick(_game));
-            ProcessResults(_recovery.ProcessTick(_game));
-            ProcessResults(_captive.ProcessTick(_game));
+            ProcessSystem(SimulationPhase.AutomationRefill, _factionAutomation);
+            yield return null;
+
+            ProcessResults(ProcessSystem(SimulationPhase.Maintenance, _maintenance));
+            ProcessResults(ProcessSystem(SimulationPhase.Recovery, _recovery));
+            ProcessResults(ProcessSystem(SimulationPhase.Captives, _captive));
+            yield return null;
 
             List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
             List<GameResult> movementResults = ProcessMovementPhaseResults(
-                _movement.ProcessTick(_game),
+                ProcessSystem(SimulationPhase.Movement, _movement),
                 blockadeTransitions
             );
 
             List<GameResult> combatResults = ProcessMovementPhaseResults(
-                _spaceCombat.ProcessTick(_game),
+                ProcessSystem(SimulationPhase.SpaceCombat, _spaceCombat),
                 blockadeTransitions
             );
 
@@ -244,7 +286,7 @@ namespace Rebellion.Simulation
             List<GameResult> blockadeResults = ResolveMovementPhaseBlockadeTransitions(
                 blockadeTransitions
             );
-            _fogOfWarObserver.RefreshVisibleKnowledge();
+            RefreshKnowledge(SimulationPhase.KnowledgeAfterMovement);
 
             List<GameResult> movementPhaseResults = CombineResults(
                 movementResults,
@@ -259,7 +301,8 @@ namespace Rebellion.Simulation
                 yield break;
             }
 
-            _processMessages(movementPhaseResults);
+            ProcessMessageResults(movementPhaseResults);
+            yield return null;
 
             foreach (object step in ProcessRemainingTickPhases())
                 yield return step;
@@ -268,27 +311,41 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Processes the phases that run after movement and space combat have settled.
         /// </summary>
-        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        /// <returns>The ordered steps through completed simulation and AI phases.</returns>
         private IEnumerable<object> ProcessRemainingTickPhases()
         {
             ProcessMissionPhase();
-            ProcessResults(_gameEvents.ProcessTick(_game));
-            _naming.ProcessTick(_game);
+            ProcessResults(ProcessSystem(SimulationPhase.Events, _gameEvents));
+            ProcessSystem(SimulationPhase.Naming, _naming);
+            yield return null;
+
             List<GameResult> aiResults = new List<GameResult>();
-            foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))
-                yield return step;
+            using (
+                IEnumerator<object> ai = _aiDirector
+                    .ProcessTickIncrementally(aiResults)
+                    .GetEnumerator()
+            )
+            {
+                while (AdvanceTimed(ai, SimulationPhase.AIStep))
+                    yield return ai.Current;
+            }
             ProcessResults(aiResults);
             ProcessDeferredBlockadeResults();
 
-            ProcessResults(_planetaryControl.ProcessTick(_game));
-            ProcessResults(_uprising.ProcessTick(_game));
+            ProcessResults(ProcessSystem(SimulationPhase.PlanetaryControl, _planetaryControl));
+            ProcessResults(ProcessSystem(SimulationPhase.Uprising, _uprising));
 
-            ProcessResults(_research.ProcessTick(_game));
-            ProcessResults(_jedi.ProcessTick(_game));
-            ProcessResults(_victory.ProcessTick(_game));
-            _fogOfWarObserver.RefreshVisibleKnowledge();
+            ProcessResults(ProcessSystem(SimulationPhase.Research, _research));
+            ProcessResults(ProcessSystem(SimulationPhase.Jedi, _jedi));
+            ProcessResults(ProcessSystem(SimulationPhase.Victory, _victory));
+            yield return null;
+
+            RefreshKnowledge(SimulationPhase.KnowledgeAfterTick);
+            yield return null;
+
             _tickState = TickExecutionState.Idle;
-            TickCompleted?.Invoke();
+            using (_timings.Measure(SimulationPhase.TickCompletedNotification, _game.CurrentTick))
+                TickCompleted?.Invoke();
         }
 
         /// <summary>
@@ -296,6 +353,7 @@ namespace Rebellion.Simulation
         /// </summary>
         private void ProcessMissionPhase()
         {
+            using var timing = _timings.Measure(SimulationPhase.Missions, _game.CurrentTick);
             List<GameResult> orderedResults = new List<GameResult>();
             List<GameResult> reactionResults = new List<GameResult>();
             List<GameResult> deferredResults = new List<GameResult>();
@@ -333,7 +391,7 @@ namespace Rebellion.Simulation
             }
 
             orderedResults.AddRange(reactionResults);
-            _processMessages(orderedResults);
+            ProcessMessageResults(orderedResults);
         }
 
         /// <summary>
@@ -343,8 +401,33 @@ namespace Rebellion.Simulation
         /// <returns>The space combat result generated by the encounter, when present.</returns>
         public SpaceCombatResult ResolveCombat(bool autoResolve)
         {
-            List<GameResult> combatResults = _spaceCombatCommands.ResolvePending(autoResolve);
+            List<GameResult> combatResults;
+            using (_timings.Measure(SimulationPhase.CombatResolution, _game.CurrentTick))
+                combatResults = _spaceCombatCommands.ResolvePending(autoResolve);
             return CompleteCombatResolution(combatResults);
+        }
+
+        /// <summary>
+        /// Records a human combat response, keeping the day suspended until every required response arrives.
+        /// </summary>
+        /// <param name="factionID">The authenticated responding faction.</param>
+        /// <param name="retreat">Whether that faction chooses withdrawal.</param>
+        /// <param name="result">The completed battle result, or null while waiting for another response.</param>
+        /// <returns>Whether the response was accepted.</returns>
+        public bool TrySubmitCombatResponse(
+            string factionID,
+            bool retreat,
+            out SpaceCombatResult result
+        )
+        {
+            result = null;
+            List<GameResult> results;
+            using (_timings.Measure(SimulationPhase.CombatResolution, _game.CurrentTick))
+                if (!_spaceCombatCommands.TrySubmitResponse(factionID, retreat, out results))
+                    return false;
+            if (results != null)
+                result = CompleteCombatResolution(results);
+            return true;
         }
 
         /// <summary>
@@ -354,9 +437,11 @@ namespace Rebellion.Simulation
         /// <returns>The resulting space-combat summary, or null when retreat is unavailable.</returns>
         public SpaceCombatResult ResolveCombatRetreat(string retreatingFactionInstanceId)
         {
-            List<GameResult> combatResults = _spaceCombatCommands.ResolvePendingRetreat(
-                retreatingFactionInstanceId
-            );
+            List<GameResult> combatResults;
+            using (_timings.Measure(SimulationPhase.CombatResolution, _game.CurrentTick))
+                combatResults = _spaceCombatCommands.ResolvePendingRetreat(
+                    retreatingFactionInstanceId
+                );
             if (combatResults == null)
                 return null;
 
@@ -370,6 +455,10 @@ namespace Rebellion.Simulation
         /// <returns>The space-combat result in the routed batch, when present.</returns>
         private SpaceCombatResult CompleteCombatResolution(List<GameResult> combatResults)
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.CombatContinuation,
+                _game.CurrentTick
+            );
             _tickInProgress = true;
             _tickState = TickExecutionState.Processing;
             try
@@ -384,13 +473,13 @@ namespace Rebellion.Simulation
                     blockadeTransitions
                 );
                 List<GameResult> additionalCombatResults = ProcessMovementPhaseResults(
-                    _spaceCombat.ProcessTick(_game),
+                    ProcessSystem(SimulationPhase.SpaceCombat, _spaceCombat),
                     blockadeTransitions
                 );
                 List<GameResult> blockadeResults = ResolveMovementPhaseBlockadeTransitions(
                     blockadeTransitions
                 );
-                _fogOfWarObserver.RefreshVisibleKnowledge();
+                RefreshKnowledge(SimulationPhase.KnowledgeAfterMovement);
                 _deferredMessageResults.AddRange(combatResults);
                 _deferredMessageResults.AddRange(waypointResults);
                 _deferredMessageResults.AddRange(additionalCombatResults);
@@ -402,7 +491,7 @@ namespace Rebellion.Simulation
                     return completedCombat;
                 }
 
-                _processMessages(TakeDeferredMessageResults());
+                ProcessMessageResults(TakeDeferredMessageResults());
                 IEnumerator remainingTick = ProcessRemainingTickPhases().GetEnumerator();
                 try
                 {
@@ -413,7 +502,10 @@ namespace Rebellion.Simulation
                     (remainingTick as IDisposable)?.Dispose();
                 }
 
-                CombatResumed?.Invoke();
+                using (
+                    _timings.Measure(SimulationPhase.CombatResumedNotification, _game.CurrentTick)
+                )
+                    CombatResumed?.Invoke();
                 return completedCombat;
             }
             finally
@@ -430,13 +522,17 @@ namespace Rebellion.Simulation
         /// </summary>
         internal void ReconcileLoadedState()
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.LoadedStateReconciliation,
+                _game.CurrentTick
+            );
             List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
             List<GameResult> combatResults = ProcessMovementPhaseResults(
-                _spaceCombat.ProcessTick(_game),
+                ProcessSystem(SimulationPhase.SpaceCombat, _spaceCombat),
                 blockadeTransitions
             );
             combatResults.AddRange(ResolveMovementPhaseBlockadeTransitions(blockadeTransitions));
-            _fogOfWarObserver.RefreshVisibleKnowledge();
+            RefreshKnowledge(SimulationPhase.KnowledgeAfterMovement);
             if (_spaceCombatCommands.HasPendingDecision)
             {
                 StoreDeferredMessageResults(combatResults);
@@ -444,7 +540,7 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            _processMessages(combatResults);
+            ProcessMessageResults(combatResults);
         }
 
         /// <summary>
@@ -456,6 +552,10 @@ namespace Rebellion.Simulation
             ICollection<BlockadeChangedResult> blockadeTransitions
         )
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.WaypointContinuation,
+                _game.CurrentTick
+            );
             if (_spaceCombatCommands.HasPendingDecision)
                 return new List<GameResult>();
 
@@ -477,6 +577,10 @@ namespace Rebellion.Simulation
             ICollection<BlockadeChangedResult> blockadeTransitions
         )
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.MovementResultSettlement,
+                _game.CurrentTick
+            );
             if (blockadeTransitions == null)
                 throw new ArgumentNullException(nameof(blockadeTransitions));
 
@@ -504,6 +608,10 @@ namespace Rebellion.Simulation
             IReadOnlyCollection<BlockadeChangedResult> blockadeTransitions
         )
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.BlockadeSettlement,
+                _game.CurrentTick
+            );
             if (blockadeTransitions == null || blockadeTransitions.Count == 0)
                 return new List<GameResult>();
 
@@ -548,6 +656,10 @@ namespace Rebellion.Simulation
         /// </summary>
         private void ProcessDeferredBlockadeResults()
         {
+            using var timing = _timings.Measure(
+                SimulationPhase.DeferredBlockades,
+                _game.CurrentTick
+            );
             if (_deferredBlockadeResults.Count == 0)
                 return;
 
@@ -575,7 +687,8 @@ namespace Rebellion.Simulation
         private void BeginPendingCombatDecision()
         {
             _tickState = TickExecutionState.AwaitingCombatDecision;
-            CombatDecisionRequired?.Invoke();
+            using (_timings.Measure(SimulationPhase.CombatDecisionNotification, _game.CurrentTick))
+                CombatDecisionRequired?.Invoke();
         }
 
         /// <summary>
@@ -617,7 +730,56 @@ namespace Rebellion.Simulation
             bool processMessages = true
         )
         {
+            using var timing = _timings.Measure(SimulationPhase.ResultDelivery, _game.CurrentTick);
             return _processResults(results, processMessages);
+        }
+
+        /// <summary>
+        /// Measures one synchronous processor independently of the following result delivery.
+        /// </summary>
+        /// <param name="phase">The processor's fixed measurement label.</param>
+        /// <param name="processor">The existing domain processor.</param>
+        /// <returns>The processor's unchanged result collection.</returns>
+        private IReadOnlyList<GameResult> ProcessSystem(
+            SimulationPhase phase,
+            ITickProcessor processor
+        )
+        {
+            using var timing = _timings.Measure(phase, _game.CurrentTick);
+            return processor.ProcessTick(_game);
+        }
+
+        /// <summary>
+        /// Measures one iterator advance without including time suspended at a presentation yield.
+        /// </summary>
+        /// <typeparam name="T">The existing iterator's step type.</typeparam>
+        /// <param name="steps">The existing iterator.</param>
+        /// <param name="phase">The iterator's fixed measurement label.</param>
+        /// <returns>The iterator's unchanged completion result.</returns>
+        private bool AdvanceTimed<T>(IEnumerator<T> steps, SimulationPhase phase)
+        {
+            using var timing = _timings.Measure(phase, _game.CurrentTick);
+            return steps.MoveNext();
+        }
+
+        /// <summary>
+        /// Measures the existing visibility refresh without querying entities for diagnostics.
+        /// </summary>
+        /// <param name="phase">The existing refresh boundary's fixed label.</param>
+        private void RefreshKnowledge(SimulationPhase phase)
+        {
+            using var timing = _timings.Measure(phase, _game.CurrentTick);
+            _fogOfWarObserver.RefreshVisibleKnowledge();
+        }
+
+        /// <summary>
+        /// Measures release of a settled batch's messages independently of its domain phase.
+        /// </summary>
+        /// <param name="results">The unchanged already-settled result batch.</param>
+        private void ProcessMessageResults(List<GameResult> results)
+        {
+            using var timing = _timings.Measure(SimulationPhase.MessageDelivery, _game.CurrentTick);
+            _processMessages(results);
         }
     }
 }

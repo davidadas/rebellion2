@@ -18,7 +18,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Constructs and connects runtime components for the active game graph.
     /// </summary>
-    public sealed class GameSession : IServiceLocator, IDisposable
+    public sealed partial class GameSession : IServiceLocator, IDisposable
     {
         private readonly GameDataCatalog _gameData;
         private readonly List<Action> _disconnect = new();
@@ -51,6 +51,11 @@ namespace Rebellion.Simulation
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
+        /// <summary>
+        /// Gets this session's disabled-by-default bounded phase timing recorder.
+        /// </summary>
+        public SimulationPhaseTrace Timings { get; } = new();
+
         internal MessageObserver MessageObserver { get; private set; }
 
         internal GameEventCommands GameEventCommands { get; private set; }
@@ -63,12 +68,23 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
         public GameSession(GameRoot game, GameDataCatalog gameData)
+            : this(gameData)
+        {
+            ReplaceGame(game);
+        }
+
+        /// <summary>
+        /// Creates disconnected session owners before selecting initialization or recovery.
+        /// </summary>
+        /// <param name="gameData">The exact installed content catalog.</param>
+        private GameSession(GameDataCatalog gameData)
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
-                results => Pipeline.ProcessMessageReactions(results)
+                results => Pipeline.ProcessMessageReactions(results),
+                Timings
             );
             _commands = new SimulationCommandQueue(() =>
                 Tick.CanAcceptPlayerActions
@@ -76,7 +92,6 @@ namespace Rebellion.Simulation
                 && !Pipeline.IsProcessing
             );
             Tick.CanStartTick = () => IsOperationBoundaryClear;
-            ReplaceGame(game);
         }
 
         /// <summary>
@@ -115,14 +130,11 @@ namespace Rebellion.Simulation
         public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
 
         /// <summary>
-        /// Rebuilds components in place, preserving partial initialization on failure.
+        /// Invalidates outgoing commands only at a writable graph-replacement boundary.
+        /// A faulted command queue may recover through successful graph replacement.
         /// </summary>
-        /// <param name="game">The replacement graph to prepare.</param>
-        internal void ReplaceGame(GameRoot game)
+        private void PrepareGameReplacement()
         {
-            if (game == null)
-                throw new InvalidOperationException("Cannot manage a null game.");
-
             if (_disposed)
                 throw new ObjectDisposedException(nameof(GameSession));
             if (
@@ -135,6 +147,18 @@ namespace Rebellion.Simulation
                     "An executing simulation operation cannot replace its graph."
                 );
             _commands.CancelPendingCommands();
+        }
+
+        /// <summary>
+        /// Rebuilds components in place, preserving partial initialization on failure.
+        /// </summary>
+        /// <param name="game">The replacement graph to prepare.</param>
+        internal void ReplaceGame(GameRoot game)
+        {
+            if (game == null)
+                throw new InvalidOperationException("Cannot manage a null game.");
+
+            PrepareGameReplacement();
             Game = game;
             if (Game.Config == null)
             {
@@ -150,7 +174,7 @@ namespace Rebellion.Simulation
             ServiceLocator previousServiceScope = _serviceScope;
             try
             {
-                InitializeComponents();
+                InitializeComponents(Tick.ConnectRuntime);
                 RebuildDerivedState();
             }
             catch
@@ -160,6 +184,19 @@ namespace Rebellion.Simulation
                 throw;
             }
 
+            CompleteScopeReplacement(previousConnections, previousServiceScope);
+        }
+
+        /// <summary>
+        /// Releases previous runtime bindings after the replacement scope is completely prepared.
+        /// </summary>
+        /// <param name="previousConnections">The callbacks attached by the previous scope.</param>
+        /// <param name="previousServiceScope">The previous owned scope, when one existed.</param>
+        private void CompleteScopeReplacement(
+            Action[] previousConnections,
+            ServiceLocator previousServiceScope
+        )
+        {
             foreach (Action disconnect in previousConnections)
             {
                 disconnect();
@@ -213,7 +250,8 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Constructs the runtime components and connects their explicit dependencies.
         /// </summary>
-        private void InitializeComponents()
+        /// <param name="connectTick">Connects normal or recovered tick scheduling.</param>
+        private void InitializeComponents(Action<IServiceLocator> connectTick)
         {
             MessageFactory messageFactory = new MessageFactory(
                 _gameData.MessageDefinitions.GetDeepCopy()
@@ -229,7 +267,7 @@ namespace Rebellion.Simulation
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
-            Tick.ConnectRuntime(_serviceScope);
+            connectTick(_serviceScope);
             GameEventCommands = GetService<GameEventCommands>();
             GameEventCommands.ValidateEvents(Game.GetEventPool());
 
@@ -304,6 +342,16 @@ namespace Rebellion.Simulation
         /// </summary>
         private void RebuildDerivedState()
         {
+            RebuildContentBindings();
+            GetService<ManufacturingObserver>().RebuildQueues();
+            GetService<FogOfWarObserver>().ReconcileKnowledge();
+        }
+
+        /// <summary>
+        /// Rebinds immutable content catalogs without changing queues, knowledge, or runtime timers.
+        /// </summary>
+        private void RebuildContentBindings()
+        {
             _gameData.BindOfficerTraits(GetPersistedOfficers());
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
@@ -316,9 +364,6 @@ namespace Rebellion.Simulation
 
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
-
-            GetService<ManufacturingObserver>().RebuildQueues();
-            GetService<FogOfWarObserver>().ReconcileKnowledge();
         }
 
         /// <summary>

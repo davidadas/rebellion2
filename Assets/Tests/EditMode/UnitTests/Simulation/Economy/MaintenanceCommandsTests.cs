@@ -16,6 +16,46 @@ namespace Rebellion.Tests.Simulation
     public class MaintenanceCommandsTests
     {
         [Test]
+        public void RestoreRecoveryState_ExistingShortfall_PreservesDueScrapPulseWithoutRepeatingNotification()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 10;
+            Faction faction = CreateFaction("recovery-owner", "Owner");
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "recovery-sector" };
+            Planet planet = CreatePlanet("recovery-planet", "Planet", faction.InstanceID);
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "recovery-scrap-unit",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+                ConstructionCost = 1,
+            };
+            game.AttachNode(regiment, planet);
+            MaintenanceCommands original = new MaintenanceCommands(game, new FixedRNG());
+            new MaintenanceTickProcessor(original).ProcessTick(game);
+            MaintenanceRecoveryState state = original.CaptureRecoveryState();
+            MaintenanceCommands restored = new MaintenanceCommands(game, new FixedRNG());
+            restored.RestoreRecoveryState(state);
+            game.CurrentTick += game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+
+            IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(restored).ProcessTick(
+                game
+            );
+
+            Assert.That(results.OfType<MaintenanceRequiredResult>(), Is.Empty);
+            Assert.That(
+                results.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject,
+                Is.SameAs(regiment)
+            );
+            Assert.That(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID), Is.Null);
+        }
+
+        [Test]
         public void TryScrap_LaterSelectionIsUnfinished_PreservesEarlierSelection()
         {
             GameRoot game = CreateGame();

@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.App;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -13,6 +16,7 @@ using UnityEngine;
 public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
     private readonly Func<Faction> getPlayerFaction;
+    private readonly IPlayerActionDispatcher playerActions;
     private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
@@ -20,13 +24,21 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Func<int, int> selectRandomIndex;
     private readonly List<AudioPlaybackHandle> activeAudioPlaybacks =
         new List<AudioPlaybackHandle>();
-    private readonly Queue<
-        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>
-    > pendingNotifications =
-        new Queue<KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>>();
+    private readonly Queue<PendingAdvisorNotification> pendingNotifications =
+        new Queue<PendingAdvisorNotification>();
+    private readonly Dictionary<
+        AdvisorNotificationType,
+        PendingAdvisorNotification
+    > pendingTimedNotifications =
+        new Dictionary<AdvisorNotificationType, PendingAdvisorNotification>();
     private readonly HashSet<AdvisorNotificationType> queuedNotificationTypes =
         new HashSet<AdvisorNotificationType>();
 
+    private Func<PlayerUIState> getNotificationState;
+    private Func<int> getCurrentTick;
+    private PlayerUIState timingUIState;
+    private AdvisorNotificationTiming notificationTiming;
+    private bool timedRestorationRequired = true;
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
@@ -41,6 +53,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getPlayerFaction">Resolves the current player faction.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
+    /// <param name="playerActions">Completes advisor requests through the session action boundary.</param>
     /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
@@ -48,6 +61,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
+        IPlayerActionDispatcher playerActions,
         Func<int, int> selectRandomIndex = null,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
         Func<string, float> getAudioDuration = null
@@ -57,6 +71,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
+        this.playerActions =
+            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
         this.playSfxInstance = playSfxInstance;
         this.getAudioDuration = getAudioDuration ?? (_ => 0f);
         this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
@@ -69,6 +85,25 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     public void Initialize(IStrategyHudActions actions)
     {
         this.actions = actions ?? throw new ArgumentNullException(nameof(actions));
+    }
+
+    /// <summary>
+    /// Binds timed notifications to the current local player's saved state and simulation counter.
+    /// </summary>
+    /// <param name="getPlayerUIState">Returns the local player's interface state for the active game.</param>
+    /// <param name="getSimulationTick">Returns the active game's current simulation counter.</param>
+    public void BindNotificationContext(
+        Func<PlayerUIState> getPlayerUIState,
+        Func<int> getSimulationTick
+    )
+    {
+        getNotificationState =
+            getPlayerUIState ?? throw new ArgumentNullException(nameof(getPlayerUIState));
+        getCurrentTick =
+            getSimulationTick ?? throw new ArgumentNullException(nameof(getSimulationTick));
+        timingUIState = null;
+        notificationTiming = null;
+        timedRestorationRequired = true;
     }
 
     /// <summary>
@@ -160,7 +195,24 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (notification == null)
             return;
 
+        RefreshNotificationContext();
+        RestoreTimedNotifications();
         AdvisorNotificationType notificationType = GetCoalescedNotificationType(delivery);
+        if (notification.MaxPendingTicks.HasValue)
+        {
+            AdvisorNotificationTiming timing = GetRequiredNotificationTiming();
+            timing.RecordArrival(notificationType, notification.MaxPendingTicks.Value);
+            if (!pendingTimedNotifications.ContainsKey(notificationType))
+            {
+                PendingAdvisorNotification timed = new PendingAdvisorNotification(
+                    notificationType,
+                    notification
+                );
+                pendingTimedNotifications.Add(notificationType, timed);
+                pendingNotifications.Enqueue(timed);
+            }
+            return;
+        }
         if (
             notificationType != AdvisorNotificationType.None
             && queuedNotificationTypes.Contains(notificationType)
@@ -171,10 +223,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             queuedNotificationTypes.Add(notificationType);
 
         pendingNotifications.Enqueue(
-            new KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>(
-                notificationType,
-                notification
-            )
+            new PendingAdvisorNotification(notificationType, notification)
         );
     }
 
@@ -200,6 +249,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         return new StrategyAdvisorNotificationTheme
         {
+            MaxPendingTicks = preset?.MaxPendingTicks,
+            RepeatCooldownTicks = preset?.RepeatCooldownTicks,
             Droid = MergeAnimation(preset?.Droid, authored.Droid),
             Protocol = MergeAnimation(preset?.Protocol, authored.Protocol),
         };
@@ -252,31 +303,46 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="announcementsEnabled">Whether gated protocol announcements may play.</param>
     public void ProcessPending(bool announcementsEnabled)
     {
-        if (theme == null)
+        RefreshNotificationContext();
+        RestoreTimedNotifications();
+        notificationTiming?.SampleClock(getCurrentTick());
+        if (theme == null || notificationPlaybackSubmitted)
             return;
 
-        if (pendingNotifications.Count == 0 || notificationPlaybackSubmitted)
-            return;
-
-        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme> pending =
-            pendingNotifications.Peek();
-        if (
-            !TryCreatePlaybackBatch(
-                pending.Value,
-                announcementsEnabled,
-                out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
-            )
-        )
-            return;
-
-        if (playbackBatch.Count == 0)
+        while (pendingNotifications.Count > 0)
         {
-            CompletePendingNotification();
+            PendingAdvisorNotification pending = pendingNotifications.Peek();
+            if (pending.Timed && !pending.Dispatched)
+            {
+                pendingTimedNotifications.Remove(pending.Type);
+                pending.Dispatched = true;
+                if (
+                    !GetRequiredNotificationTiming()
+                        .TryConsume(pending.Type, pending.Theme.RepeatCooldownTicks)
+                )
+                {
+                    pendingNotifications.Dequeue();
+                    continue;
+                }
+                pending.DispatchAnnouncementsEnabled = announcementsEnabled;
+            }
+            if (
+                !TryCreatePlaybackBatch(
+                    pending.Theme,
+                    pending.Timed ? pending.DispatchAnnouncementsEnabled : announcementsEnabled,
+                    out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
+                )
+            )
+                return;
+            if (playbackBatch.Count == 0)
+            {
+                CompletePendingNotification();
+                return;
+            }
+            notificationPlaybackSubmitted = true;
+            GetRequiredView().EnqueuePlaybacks(playbackBatch);
             return;
         }
-
-        notificationPlaybackSubmitted = true;
-        GetRequiredView().EnqueuePlaybacks(playbackBatch);
     }
 
     /// <summary>
@@ -404,10 +470,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private void CompletePendingNotification()
     {
-        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme> completed =
-            pendingNotifications.Dequeue();
-        if (completed.Key != AdvisorNotificationType.None)
-            queuedNotificationTypes.Remove(completed.Key);
+        PendingAdvisorNotification completed = pendingNotifications.Dequeue();
+        if (!completed.Timed && completed.Type != AdvisorNotificationType.None)
+            queuedNotificationTypes.Remove(completed.Type);
     }
 
     /// <summary>
@@ -432,8 +497,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     public void ResetSession()
     {
+        timingUIState = null;
+        notificationTiming = null;
         pendingNotifications.Clear();
+        pendingTimedNotifications.Clear();
         queuedNotificationTypes.Clear();
+        timedRestorationRequired = true;
         notificationPlaybackSubmitted = false;
         playbackStarted = null;
         playbackCompleted = null;
@@ -600,7 +669,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     /// <param name="request">The completed advisor request.</param>
     /// <param name="command">The selected advisor command.</param>
-    public void OnContextMenuCommandSelected(
+    public async void OnContextMenuCommandSelected(
         ContextMenuRequest request,
         IContextMenuCommand command
     )
@@ -635,53 +704,52 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (faction == null)
             return;
 
-        if (menuCommand.Action == StrategyMenuAction.AdvisorMarkAllMessagesRead)
+        PlayerAction playerRequest = menuCommand.Action switch
         {
-            faction.MarkAllMessagesRead();
-            actions.RequestHudRender();
+            StrategyMenuAction.AdvisorMarkAllMessagesRead => new MarkAllMessagesReadPlayerAction(),
+            StrategyMenuAction.AdvisorManageGarrisons => new ToggleAdvisorOptionPlayerAction
+            {
+                Option = PlayerAdvisorOption.ManageGarrisons,
+            },
+            StrategyMenuAction.AdvisorManageProduction => new ToggleAdvisorOptionPlayerAction
+            {
+                Option = PlayerAdvisorOption.ManageProduction,
+            },
+            StrategyMenuAction.AdvisorManageNaming => new ToggleAdvisorOptionPlayerAction
+            {
+                Option = PlayerAdvisorOption.ManageNaming,
+            },
+            StrategyMenuAction.AdvisorTranslateCounterpart => new ToggleAdvisorOptionPlayerAction
+            {
+                Option = PlayerAdvisorOption.TranslateCounterpart,
+            },
+            StrategyMenuAction.AdvisorAgentAdvice => new ToggleAdvisorOptionPlayerAction
+            {
+                Option = PlayerAdvisorOption.AgentAdvice,
+            },
+            _ => null,
+        };
+        if (
+            playerRequest == null
+            && TryGetMessageType(menuCommand.Action, out MessageType messageType)
+        )
+            playerRequest = new ToggleMessageNotificationPlayerAction { MessageType = messageType };
+        if (playerRequest == null || !(await playerActions.ExecuteAsync(playerRequest)).Accepted)
             return;
-        }
 
-        if (TryGetMessageType(menuCommand.Action, out MessageType messageType))
-        {
-            faction.ToggleAdvisorMessageNotification(messageType);
-            return;
-        }
-
-        switch (menuCommand.Action)
-        {
-            case StrategyMenuAction.AdvisorManageGarrisons:
-                faction.ManageGarrisons = !faction.ManageGarrisons;
-                if (faction.ManageGarrisons)
-                    actions.ProcessAdvisorAutomation(faction);
-                PlayResponse(
-                    faction.ManageGarrisons
-                        ? theme?.PlanetaryGarrisonManagementEnabled
-                        : theme?.PlanetaryGarrisonManagementDisabled
-                );
-                break;
-            case StrategyMenuAction.AdvisorManageProduction:
-                faction.ManageProduction = !faction.ManageProduction;
-                if (faction.ManageProduction)
-                    actions.ProcessAdvisorAutomation(faction);
-                PlayResponse(
-                    faction.ManageProduction
-                        ? theme?.ResourceProductionManagementEnabled
-                        : theme?.ResourceProductionManagementDisabled
-                );
-                break;
-            case StrategyMenuAction.AdvisorManageNaming:
-                faction.ManageNaming = !faction.ManageNaming;
-                if (faction.ManageNaming)
-                    actions.ProcessAdvisorAutomation(faction);
-                break;
-            case StrategyMenuAction.AdvisorTranslateCounterpart:
-                faction.TranslateCounterpart = !faction.TranslateCounterpart;
-                break;
-            case StrategyMenuAction.AdvisorAgentAdvice:
-                faction.AgentAdvice = !faction.AgentAdvice;
-                break;
-        }
+        actions.RequestHudRender();
+        if (menuCommand.Action == StrategyMenuAction.AdvisorManageGarrisons)
+            PlayResponse(
+                faction.ManageGarrisons
+                    ? theme?.PlanetaryGarrisonManagementEnabled
+                    : theme?.PlanetaryGarrisonManagementDisabled
+            );
+        else if (menuCommand.Action == StrategyMenuAction.AdvisorManageProduction)
+            PlayResponse(
+                faction.ManageProduction
+                    ? theme?.ResourceProductionManagementEnabled
+                    : theme?.ResourceProductionManagementDisabled
+            );
     }
 
     /// <summary>
@@ -1040,8 +1108,66 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private void ClearNotificationState()
     {
         pendingNotifications.Clear();
+        pendingTimedNotifications.Clear();
         queuedNotificationTypes.Clear();
+        timedRestorationRequired = true;
         notificationPlaybackSubmitted = false;
+    }
+
+    /// <summary>
+    /// Rebinds timed scheduling when the loaded local player state changes.
+    /// </summary>
+    private void RefreshNotificationContext()
+    {
+        if (getNotificationState == null)
+            return;
+        PlayerUIState current =
+            getNotificationState()
+            ?? throw new InvalidOperationException(
+                "Advisor notifications require the local player's interface state."
+            );
+        if (ReferenceEquals(current, timingUIState) && notificationTiming != null)
+            return;
+        if (timingUIState != null)
+            ResetSession();
+        timingUIState = current;
+        notificationTiming = new AdvisorNotificationTiming(current);
+        timedRestorationRequired = true;
+    }
+
+    /// <summary>
+    /// Recreates pending semantic presentations once after loading player state or changing themes.
+    /// </summary>
+    private void RestoreTimedNotifications()
+    {
+        if (!timedRestorationRequired || notificationTiming == null || theme == null)
+            return;
+        foreach (StrategyAdvisorNotificationTheme notification in theme.Notifications)
+        {
+            AdvisorNotificationType type = notification.NotificationType;
+            if (
+                !notification.MaxPendingTicks.HasValue
+                || !notificationTiming.HasPending(type)
+                || pendingTimedNotifications.ContainsKey(type)
+            )
+                continue;
+            PendingAdvisorNotification pending = new PendingAdvisorNotification(type, notification);
+            pendingTimedNotifications.Add(type, pending);
+            pendingNotifications.Enqueue(pending);
+        }
+        timedRestorationRequired = false;
+    }
+
+    /// <summary>
+    /// Requires explicit saved-state and clock ownership before applying authored timing.
+    /// </summary>
+    /// <returns>The local player's timed notification scheduler.</returns>
+    private AdvisorNotificationTiming GetRequiredNotificationTiming()
+    {
+        return notificationTiming
+            ?? throw new InvalidOperationException(
+                "Timed advisor notifications require a bound player state and simulation clock."
+            );
     }
 
     /// <summary>
@@ -1096,6 +1222,32 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         {
             SourceX = sourceX;
             SourceY = sourceY;
+        }
+    }
+
+    /// <summary>
+    /// Separates one dispatched presentation from a later pending arrival of the same semantic type.
+    /// </summary>
+    private sealed class PendingAdvisorNotification
+    {
+        public AdvisorNotificationType Type { get; }
+        public StrategyAdvisorNotificationTheme Theme { get; }
+        public bool Timed => Theme.MaxPendingTicks.HasValue;
+        public bool Dispatched { get; set; }
+        public bool DispatchAnnouncementsEnabled { get; set; }
+
+        /// <summary>
+        /// Captures the semantic type and resolved presentation for one queue entry.
+        /// </summary>
+        /// <param name="type">The semantic notification identifier.</param>
+        /// <param name="theme">The resolved notification presentation and optional timing policy.</param>
+        public PendingAdvisorNotification(
+            AdvisorNotificationType type,
+            StrategyAdvisorNotificationTheme theme
+        )
+        {
+            Type = type;
+            Theme = theme;
         }
     }
 }

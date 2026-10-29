@@ -67,6 +67,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTickIncrementally_NoProductionOrAI_YieldsWithoutReleasingMutationGuard()
+        {
+            int completions = 0;
+            _tick.TickCompleted += () => completions++;
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.IsTrue(tick.MoveNext());
+                do
+                {
+                    Assert.IsTrue(_tick.IsBusy);
+                    Assert.IsFalse(_tick.CanAcceptPlayerActions);
+                    Assert.IsFalse(_tick.IsSettled);
+                    Assert.AreEqual(0, completions);
+                } while (tick.MoveNext());
+
+                Assert.AreEqual(1, completions);
+                Assert.AreEqual(1, _game.CurrentTick);
+                Assert.IsFalse(_tick.IsBusy);
+                Assert.IsTrue(_tick.CanAcceptPlayerActions);
+                Assert.IsTrue(_tick.IsSettled);
+            }
+            finally
+            {
+                (tick as IDisposable)?.Dispose();
+            }
+        }
+
+        [Test]
         public void ProcessTickIncrementally_MultipleReadyFacilities_YieldsAfterEachProductionPoint()
         {
             Building order = CreateManufacturingScenario();
@@ -327,6 +356,81 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(0, _game.CurrentTick);
             Assert.IsTrue(_tick.IsSettled);
+        }
+
+        /// <summary>
+        /// Separates both knowledge refreshes and completion callbacks in an explicitly enabled trace.
+        /// </summary>
+        [Test]
+        public void ProcessTick_TracingEnabled_RecordsDistinctKnowledgeAndCompletionBoundaries()
+        {
+            _session.Timings.Start(128);
+            int completions = 0;
+            _session.Tick.TickCompleted += () => completions++;
+
+            _session.Tick.ProcessTick();
+            SimulationTimingCapture capture = _session.Timings.Stop();
+
+            Assert.That(completions, Is.EqualTo(1));
+            Assert.That(_game.CurrentTick, Is.EqualTo(1));
+            Assert.That(capture.DroppedSamples, Is.Zero);
+            Assert.That(capture.Samples.All(sample => sample.Tick == 1), Is.True);
+            Assert.That(
+                capture.Samples.Count(sample =>
+                    sample.Phase == SimulationPhase.KnowledgeAfterMovement
+                ),
+                Is.EqualTo(1)
+            );
+            Assert.That(
+                capture.Samples.Count(sample => sample.Phase == SimulationPhase.KnowledgeAfterTick),
+                Is.EqualTo(1)
+            );
+            Assert.That(
+                capture.Samples.Count(sample =>
+                    sample.Phase == SimulationPhase.TickCompletedNotification
+                ),
+                Is.EqualTo(1)
+            );
+        }
+
+        /// <summary>
+        /// Records completed manufacturing work before yielding rather than leaving a running scope.
+        /// </summary>
+        [Test]
+        public void ProcessTickIncrementally_TracingManufacturing_ClosesScopesBeforeYield()
+        {
+            CreateManufacturingScenario();
+            _session.Timings.Start(128);
+            IEnumerator tick = _session.Tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.That(tick.MoveNext(), Is.True);
+
+                SimulationTimingCapture capture = _session.Timings.Stop();
+
+                Assert.That(
+                    capture.Samples.Count(sample =>
+                        sample.Phase == SimulationPhase.ManufacturingStep
+                    ),
+                    Is.GreaterThanOrEqualTo(1)
+                );
+                Assert.That(
+                    capture.Samples.Count(sample =>
+                        sample.Phase == SimulationPhase.ManufacturingProgressNotification
+                    ),
+                    Is.EqualTo(1)
+                );
+                Assert.That(
+                    capture.Samples.Any(sample =>
+                        sample.Phase == SimulationPhase.TickCompletedNotification
+                    ),
+                    Is.False
+                );
+            }
+            finally
+            {
+                (tick as IDisposable)?.Dispose();
+            }
         }
 
         /// <summary>

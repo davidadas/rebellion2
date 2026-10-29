@@ -85,6 +85,11 @@ namespace Rebellion.Simulation
             if (victoryResults.Count > 0)
                 VictoriesResolved?.Invoke(victoryResults);
 
+            foreach (
+                MessageDeliveredResult delivery in resolvedResults.OfType<MessageDeliveredResult>()
+            )
+                MessageDelivered?.Invoke(delivery);
+
             if (processMessages)
                 ProcessMessageReactions(resolvedResults);
 

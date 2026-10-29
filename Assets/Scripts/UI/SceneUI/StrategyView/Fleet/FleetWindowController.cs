@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Rebellion.App;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
@@ -49,6 +52,7 @@ public sealed class FleetWindowController
 {
     private readonly HashSet<FleetWindowView> boundViews = new HashSet<FleetWindowView>();
     private readonly StrategyFleetCommandController fleetCommandController;
+    private readonly IPlayerActionDispatcher playerActions;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
@@ -72,6 +76,7 @@ public sealed class FleetWindowController
     /// Creates the fleet feature controller with its shared interaction dependencies.
     /// </summary>
     /// <param name="fleetCommandController">Executes shared fleet mutations.</param>
+    /// <param name="playerActions">Completes player orders through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="targetingController">Owns the active strategy targeting request.</param>
     /// <param name="windowLayer">Provides the authored fleet prefab and normal window layer.</param>
@@ -82,6 +87,7 @@ public sealed class FleetWindowController
     /// <param name="renderSelectionRoutes">Refreshes waypoint overlays after fleet selection changes.</param>
     public FleetWindowController(
         StrategyFleetCommandController fleetCommandController,
+        IPlayerActionDispatcher playerActions,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
         StrategyWindowLayerView windowLayer,
@@ -95,6 +101,8 @@ public sealed class FleetWindowController
         this.fleetCommandController =
             fleetCommandController
             ?? throw new ArgumentNullException(nameof(fleetCommandController));
+        this.playerActions =
+            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         projector = new FleetWindowProjector(
             getUIContext,
@@ -596,7 +604,7 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="request">The completed shared context-menu request.</param>
     /// <param name="command">The selected command.</param>
-    public void OnContextMenuCommandSelected(
+    public async void OnContextMenuCommandSelected(
         ContextMenuRequest request,
         IContextMenuCommand command
     )
@@ -615,7 +623,7 @@ public sealed class FleetWindowController
             case StrategyMenuAction.CommandGeneral:
                 if (
                     menuCommand.Action.TryGetOfficerRank(out OfficerRank rank)
-                    && actions.TrySetOfficerCommand(source.Items, rank)
+                    && await actions.TrySetOfficerCommandAsync(source.Items, rank)
                 )
                     actions.RefreshFleetState();
                 break;
@@ -628,7 +636,11 @@ public sealed class FleetWindowController
             case StrategyMenuAction.GeneralBombardment:
             case StrategyMenuAction.DestroyPlanet:
             case StrategyMenuAction.PlanetaryAssault:
-                TryExecutePlanetaryCombat(source.Window, source.Items, menuCommand.Action);
+                await TryExecutePlanetaryCombatAsync(
+                    source.Window,
+                    source.Items,
+                    menuCommand.Action
+                );
                 break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenFleetEncyclopediaWindow(source.Items);
@@ -649,12 +661,12 @@ public sealed class FleetWindowController
                 confirmationActions.OpenRetireConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyMenuAction.CreateFleet:
-                TryCreateFleetFromCapitalShips(source.Window, source.Items);
+                await TryCreateFleetFromCapitalShipsAsync(source.Window, source.Items);
                 break;
             case StrategyMenuAction.WaypointMove
                 when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
                 targetingController.Cancel();
-                commandActions.ClearFleetWaypoints(source.Items);
+                await commandActions.ClearFleetWaypointsAsync(source.Items);
                 break;
             case StrategyMenuAction.CreateMission:
             case StrategyMenuAction.Move:
@@ -687,12 +699,12 @@ public sealed class FleetWindowController
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="items">The selected capital ships.</param>
     /// <returns>True when a fleet was created.</returns>
-    private bool TryCreateFleetFromCapitalShips(
+    private async Task<bool> TryCreateFleetFromCapitalShipsAsync(
         UIWindow sourceWindow,
         IReadOnlyList<ISceneNode> items
     )
     {
-        if (!fleetCommandController.TryCreateFleetFromCapitalShips(items))
+        if (!await fleetCommandController.TryCreateFleetFromCapitalShipsAsync(items))
             return false;
 
         ClearSelection(sourceWindow);
@@ -707,7 +719,7 @@ public sealed class FleetWindowController
     /// <param name="items">The selected fleets.</param>
     /// <param name="action">The selected planetary combat action.</param>
     /// <returns>True when planetary combat was executed.</returns>
-    private bool TryExecutePlanetaryCombat(
+    private async Task<bool> TryExecutePlanetaryCombatAsync(
         UIWindow sourceWindow,
         IReadOnlyList<ISceneNode> items,
         StrategyMenuAction action
@@ -721,7 +733,7 @@ public sealed class FleetWindowController
         if (targetPlanet == null)
             return false;
 
-        CombatReport report = fleetCommandController.ExecutePlanetaryCombat(
+        CombatReport report = await fleetCommandController.ExecutePlanetaryCombatAsync(
             items,
             targetPlanet,
             action
@@ -787,10 +799,10 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="request">The active targeting request.</param>
     /// <returns>True when the complete route was committed.</returns>
-    public bool TrySubmitTargeting(TargetingRequest request)
+    public async Task<bool> TrySubmitTargetingAsync(TargetingRequest request)
     {
         return request?.Source is StrategyWindowTargetingSource source
-            && commandActions.TryCommitFleetWaypointPlan(source);
+            && await commandActions.TryCommitFleetWaypointPlanAsync(source);
     }
 
     /// <summary>
@@ -1348,17 +1360,18 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="view">The source fleet view.</param>
     /// <param name="value">The submitted name.</param>
-    private void HandleRenameSubmitted(FleetWindowView view, string value)
+    private async void HandleRenameSubmitted(FleetWindowView view, string value)
     {
         if (!TryGetSession(view, out FleetWindowSession session))
             return;
 
         if (session.RenameTarget != null && !string.IsNullOrEmpty(value))
         {
-            if (session.RenameTarget is CapitalShip capitalShip)
-                capitalShip.AssignName(value);
-            else
-                session.RenameTarget.DisplayName = value;
+            PlayerActionResult result = await playerActions.ExecuteAsync(
+                new RenamePlayerAction { EntityID = session.RenameTarget.InstanceID, Name = value }
+            );
+            if (!result.Accepted)
+                return;
         }
         session.EndRename();
         markDirty();

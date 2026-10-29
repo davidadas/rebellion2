@@ -10,7 +10,17 @@ namespace Rebellion.Util.Serialization
     public class GameSerializerSettings
     {
         public string RootName { get; set; }
+
+        /// <summary>
+        /// Controls formatting whitespace between serialized XML elements.
+        /// </summary>
         public bool Idendent { get; set; } = true;
+
+        /// <summary>
+        /// Controls line-break encoding within serialized text and attribute values.
+        /// </summary>
+        public NewLineHandling NewLineHandling { get; set; } = NewLineHandling.Replace;
+
         public bool IgnoreComments { get; set; } = true;
         public bool IgnoreWhitespace { get; set; } = true;
 
@@ -42,7 +52,12 @@ namespace Rebellion.Util.Serialization
         /// <returns>A new instance of the <see cref="XmlWriterSettings"/> class.</returns>
         public XmlWriterSettings CreateWriterSettings()
         {
-            return new XmlWriterSettings { Indent = true, NewLineChars = "\n" };
+            return new XmlWriterSettings
+            {
+                Indent = Idendent,
+                NewLineChars = "\n",
+                NewLineHandling = NewLineHandling,
+            };
         }
 
         /// <summary>

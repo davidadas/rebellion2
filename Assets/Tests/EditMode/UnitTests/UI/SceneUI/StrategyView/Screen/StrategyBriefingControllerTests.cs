@@ -658,7 +658,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 game.GetPlayerFaction,
                 () => factionTheme,
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
-                _ => { }
+                _ => { },
+                TestPlayerActions.RejectAll()
             );
             hudController.Initialize(new TestHudActions());
             StrategyHudView hudView = rootObject.GetComponentInChildren<StrategyHudView>(true);
@@ -866,8 +867,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// <summary>
             /// Processes advisor automation.
             /// </summary>
-            /// <param name="faction">The faction.</param>
-            public void ProcessAdvisorAutomation(Faction faction) { }
+            /// <param name="_">The unused faction.</param>
+            public void ProcessAdvisorAutomation(Faction _) { }
 
             /// <summary>
             /// Opens speed context menu.
@@ -893,6 +894,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// Executes request hud render.
             /// </summary>
             public void RequestHudRender() { }
+
+            /// <summary>
+            /// Receives the displayed proposal response for the fixture.
+            /// </summary>
+            /// <param name="requestingFactionID">The proposing faction.</param>
+            /// <param name="speed">The displayed speed.</param>
+            /// <param name="revision">The proposal revision.</param>
+            /// <param name="accept">Whether the proposal is accepted.</param>
+            public void RespondToSpeedRequest(
+                string requestingFactionID,
+                TickSpeed speed,
+                long revision,
+                bool accept
+            ) { }
 
             /// <summary>
             /// Sets game speed.

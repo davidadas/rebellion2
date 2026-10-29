@@ -15,6 +15,9 @@ namespace Rebellion.Simulation
         private readonly List<GameResult> _pendingResults = new();
         private bool _isPublishing;
 
+        /// <summary>
+        /// Gets whether a result delivery or reaction wave is currently executing.
+        /// </summary>
         internal bool IsPublishing => _isPublishing;
 
         /// <summary>

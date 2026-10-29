@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -78,6 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             try
             {
                 MessagesWindowController controller = new MessagesWindowController(
+                    TestPlayerActions.RejectAll(),
                     _ => { },
                     path =>
                     {
@@ -126,93 +128,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 UnityEngine.Object.DestroyImmediate(dependencies);
                 DestroyAudioManagers();
             }
-        }
-
-        [Test]
-        public void ToggleMessageNotification_AllMessagesTab_TogglesGlobalSetting()
-        {
-            Faction faction = new Faction();
-            faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
-
-            MessagesWindowController.ToggleMessageNotification(faction, MessagesTab.All);
-
-            Assert.IsFalse(faction.AdvisorMessageNotificationsEnabled);
-            Assert.IsFalse(
-                MessagesWindowController.IsMessageNotificationEnabled(faction, MessagesTab.Fleet)
-            );
-            Assert.IsFalse(
-                MessagesWindowController.IsMessageNotificationEnabled(faction, MessagesTab.Mission)
-            );
-        }
-
-        [Test]
-        public void ToggleMessageNotification_CategoryTab_TogglesOnlyCategorySetting()
-        {
-            Faction faction = new Faction();
-
-            MessagesWindowController.ToggleMessageNotification(faction, MessagesTab.Fleet);
-
-            Assert.IsTrue(faction.AdvisorMessageNotificationsEnabled);
-            Assert.IsFalse(
-                MessagesWindowController.IsMessageNotificationEnabled(faction, MessagesTab.Fleet)
-            );
-            Assert.IsTrue(
-                MessagesWindowController.IsMessageNotificationEnabled(faction, MessagesTab.Mission)
-            );
-        }
-
-        [Test]
-        public void RemoveSelectedMessages_SelectedIDs_RemovesMatchingMessagesAcrossBuckets()
-        {
-            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
-            {
-                InstanceID = "fleet",
-            };
-            Message mission = new StatusMessage(MessageType.Mission, "Mission", "Mission")
-            {
-                InstanceID = "mission",
-            };
-            Message retained = new StatusMessage(MessageType.Mission, "Retained", "Retained")
-            {
-                InstanceID = "retained",
-            };
-            Faction faction = new Faction();
-            faction.Messages[MessageType.Fleet] = new List<Message> { fleet };
-            faction.Messages[MessageType.Mission] = new List<Message> { mission, retained };
-
-            bool removed = MessagesWindowController.RemoveSelectedMessages(
-                faction,
-                new[] { fleet.InstanceID, mission.InstanceID }
-            );
-
-            Assert.IsTrue(removed);
-            Assert.IsEmpty(faction.Messages[MessageType.Fleet]);
-            CollectionAssert.AreEqual(new[] { retained }, faction.Messages[MessageType.Mission]);
-        }
-
-        [Test]
-        public void RemoveSelectedMessages_MissingInputOrMatch_ReturnsFalse()
-        {
-            Faction faction = new Faction();
-            faction.Messages[MessageType.Fleet] = new List<Message>
-            {
-                new StatusMessage(MessageType.Fleet, "Fleet", "Fleet") { InstanceID = "fleet" },
-            };
-
-            Assert.IsFalse(
-                MessagesWindowController.RemoveSelectedMessages(null, new[] { "fleet" })
-            );
-            Assert.IsFalse(MessagesWindowController.RemoveSelectedMessages(faction, null));
-            Assert.IsFalse(
-                MessagesWindowController.RemoveSelectedMessages(faction, new List<string>())
-            );
-            Assert.IsFalse(
-                MessagesWindowController.RemoveSelectedMessages(
-                    faction,
-                    new[] { null, string.Empty, "missing" }
-                )
-            );
-            Assert.AreEqual(1, faction.Messages[MessageType.Fleet].Count);
         }
 
         [Test]
@@ -307,20 +222,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void MarkMessageRead_Message_SetsReadState()
-        {
-            Message message = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
-            {
-                Read = false,
-            };
-
-            MessagesWindowController.MarkMessageRead(message);
-            MessagesWindowController.MarkMessageRead(null);
-
-            Assert.IsTrue(message.Read);
-        }
-
-        [Test]
         public void CanChooseMissionContinuation_PendingOwnedWorkingMission_ReturnsTrue()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -366,28 +267,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
 
             Assert.IsFalse(available);
-        }
-
-        [Test]
-        public void ConsumeMissionContinuationChoice_PendingReport_ClearsChoiceButRetainsMission()
-        {
-            Message message = new StatusMessage
-            {
-                MissionInstanceID = "mission",
-                MissionContinuationPending = true,
-            };
-
-            bool firstConsumption = MessagesWindowController.ConsumeMissionContinuationChoice(
-                message
-            );
-            bool secondConsumption = MessagesWindowController.ConsumeMissionContinuationChoice(
-                message
-            );
-
-            Assert.IsTrue(firstConsumption);
-            Assert.IsFalse(secondConsumption);
-            Assert.IsFalse(message.MissionContinuationPending);
-            Assert.AreEqual("mission", message.MissionInstanceID);
         }
 
         [Test]
@@ -634,6 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
+                    TestPlayerActions.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -665,7 +545,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(
                 MessagesWindowController.IsMessageNotificationEnabled(null, MessagesTab.All)
             );
-            MessagesWindowController.ToggleMessageNotification(null, MessagesTab.All);
         }
 
         [Test]
@@ -697,6 +576,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
+                    TestPlayerActions.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -754,6 +634,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
+                    TestPlayerActions.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -786,6 +667,225 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>
+        /// Opens an empty composer without changing the selected message category.
+        /// </summary>
+        [Test]
+        public void ChatRequested_PeerAvailable_OpensEmptyComposerAndPreservesIndexCategory()
+        {
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: new TestActions { CanSendPeerChat = true }
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+
+                Assert.IsTrue(
+                    fixture
+                        .view.GetComponentInChildren<MessagesChatComposerView>(true)
+                        .gameObject.activeSelf
+                );
+                Assert.AreEqual(string.Empty, GetChatInput(fixture.view).text);
+                Assert.AreEqual(MessagesTab.Fleet, fixture.controller.GetActiveTab(fixture.view));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        [Test]
+        public async Task SubmitPeerChatAsync_MultilineRawText_SendsUnchangedAndReturnsToIndexAsync()
+        {
+            TestActions actions = new TestActions { CanSendPeerChat = true };
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: actions
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+                GetChatInput(fixture.view).text = "  Hello\nother player  ";
+
+                await fixture.controller.SubmitPeerChatAsync(fixture.view);
+                fixture.controller.RenderWindows();
+
+                Assert.AreEqual("  Hello\nother player  ", actions.SubmittedPeerChat);
+                Assert.IsFalse(
+                    fixture
+                        .view.GetComponentInChildren<MessagesChatComposerView>(true)
+                        .gameObject.activeSelf
+                );
+                Assert.IsEmpty(fixture.faction.Messages[MessageType.Chat]);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        [Test]
+        public async Task SubmitPeerChatAsync_EmptyDraft_DoesNotSubmitAsync()
+        {
+            TestActions actions = new TestActions { CanSendPeerChat = true };
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: actions
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+
+                await fixture.controller.SubmitPeerChatAsync(fixture.view);
+
+                Assert.AreEqual(0, actions.PeerChatSubmissionCount);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        [Test]
+        public async Task SubmitPeerChatAsync_RejectedSubmission_PreservesDraftAsync()
+        {
+            TestActions actions = new TestActions
+            {
+                CanSendPeerChat = true,
+                PeerChatSubmit = _ => Task.FromResult(false),
+            };
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: actions
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+                GetChatInput(fixture.view).text = "  keep this\ndraft  ";
+
+                await fixture.controller.SubmitPeerChatAsync(fixture.view);
+                fixture.controller.RenderWindows();
+
+                Assert.IsTrue(
+                    fixture
+                        .view.GetComponentInChildren<MessagesChatComposerView>(true)
+                        .gameObject.activeSelf
+                );
+                Assert.AreEqual("  keep this\ndraft  ", GetChatInput(fixture.view).text);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        [Test]
+        public async Task SubmitPeerChatAsync_OverlappingSubmissions_SendsOnceAsync()
+        {
+            TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+            TestActions actions = new TestActions
+            {
+                CanSendPeerChat = true,
+                PeerChatSubmit = _ => completion.Task,
+            };
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: actions
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+                GetChatInput(fixture.view).text = "Only once";
+                Task first = fixture.controller.SubmitPeerChatAsync(fixture.view);
+
+                await fixture.controller.SubmitPeerChatAsync(fixture.view);
+
+                Assert.AreEqual(1, actions.PeerChatSubmissionCount);
+                completion.SetResult(true);
+                await first;
+            }
+            finally
+            {
+                completion.TrySetResult(false);
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        [Test]
+        public async Task SubmitPeerChatAsync_CompletionAfterCancelAndReopen_PreservesNewDraftAsync()
+        {
+            TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+            TestActions actions = new TestActions
+            {
+                CanSendPeerChat = true,
+                PeerChatSubmit = _ => completion.Task,
+            };
+            var fixture = OpenMessagesWindow(
+                Array.Empty<Message>(),
+                () => default,
+                actions: actions
+            );
+            try
+            {
+                OpenChatComposer(fixture.controller, fixture.view);
+                GetChatInput(fixture.view).text = "First draft";
+                Task first = fixture.controller.SubmitPeerChatAsync(fixture.view);
+                Assert.IsTrue(fixture.view.TryCancel());
+                fixture.controller.RenderWindows();
+                OpenChatComposer(fixture.controller, fixture.view);
+                GetChatInput(fixture.view).text = "New draft";
+
+                completion.SetResult(true);
+                await first;
+                fixture.controller.RenderWindows();
+
+                Assert.IsTrue(
+                    fixture
+                        .view.GetComponentInChildren<MessagesChatComposerView>(true)
+                        .gameObject.activeSelf
+                );
+                Assert.AreEqual("New draft", GetChatInput(fixture.view).text);
+            }
+            finally
+            {
+                completion.TrySetResult(false);
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+            }
+        }
+
+        /// <summary>
+        /// Opens the authored chat editor through the existing window command.
+        /// </summary>
+        /// <param name="controller">The window controller.</param>
+        /// <param name="view">The authored window view.</param>
+        private static void OpenChatComposer(
+            MessagesWindowController controller,
+            MessagesWindowView view
+        )
+        {
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ChatCommandButtonImage")
+                .onClick.Invoke();
+            controller.RenderWindows();
+        }
+
+        /// <summary>
+        /// Resolves the authored player-message input.
+        /// </summary>
+        /// <param name="view">The authored window view.</param>
+        /// <returns>The player-message input.</returns>
+        private static TMPro.TMP_InputField GetChatInput(MessagesWindowView view)
+        {
+            return view.GetComponentInChildren<MessagesChatComposerView>(true)
+                .GetComponentInChildren<TMPro.TMP_InputField>(true);
         }
 
         /// <summary>
@@ -899,6 +999,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 root.GetComponentInChildren<StrategyWindowLayerView>(true);
             UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
             MessagesWindowController controller = new MessagesWindowController(
+                TestPlayerActions.Create(game, () => faction.InstanceID),
                 _ => { },
                 _ => null,
                 () => uiContext,
@@ -947,8 +1048,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .onClick.Invoke();
         }
 
-        private sealed class TestActions : IMessagesWindowActions
+        private sealed class TestActions : IMessagesWindowActions, IMessagesPeerChatActions
         {
+            public bool CanSendPeerChat { get; set; }
+
+            public Func<string, Task<bool>> PeerChatSubmit { get; set; }
+
+            public string SubmittedPeerChat { get; private set; }
+
+            public int PeerChatSubmissionCount { get; private set; }
+
             public string AbortedMissionInstanceId { get; private set; }
 
             public CombatReport OpenedCombatReport { get; private set; }
@@ -987,10 +1096,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             /// </summary>
             /// <param name="missionInstanceId">The mission instance id.</param>
             /// <returns>True when the mission id is present.</returns>
-            public bool TryAbortMission(string missionInstanceId)
+            public Task<bool> TryAbortMissionAsync(string missionInstanceId)
             {
                 AbortedMissionInstanceId = missionInstanceId;
-                return !string.IsNullOrEmpty(missionInstanceId);
+                return Task.FromResult(!string.IsNullOrEmpty(missionInstanceId));
+            }
+
+            /// <summary>
+            /// Captures the submitted raw draft and returns the configured acceptance.
+            /// </summary>
+            /// <param name="rawText">The unmodified player-message text.</param>
+            /// <returns>The configured submission result.</returns>
+            public Task<bool> SendPeerChatAsync(string rawText)
+            {
+                SubmittedPeerChat = rawText;
+                PeerChatSubmissionCount++;
+                return PeerChatSubmit?.Invoke(rawText) ?? Task.FromResult(true);
             }
         }
     }

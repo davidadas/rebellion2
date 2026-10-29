@@ -147,6 +147,33 @@ public sealed class OptionsSaveSlot
         IsCreateNew = isCreateNew;
         FileName = fileName ?? string.Empty;
     }
+
+    /// <summary>
+    /// Formats saved-game metadata consistently for every host of the shared save list.
+    /// </summary>
+    /// <param name="entry">The persistence service's save entry.</param>
+    /// <param name="factionIcon">The active theme's saved-faction icon.</param>
+    /// <returns>The canonical saved-game row.</returns>
+    public static OptionsSaveSlot FromSave(SaveGameEntry entry, Texture2D factionIcon)
+    {
+        if (entry == null)
+            throw new ArgumentNullException(nameof(entry));
+        return new OptionsSaveSlot(
+            string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
+                ? entry.FileName
+                : entry.Metadata.SaveDisplayName,
+            entry.Metadata != null
+                ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
+                : string.Empty,
+            factionIcon,
+            false,
+            entry.FileName,
+            entry.Metadata?.IsCustomGame == true
+                ? "Custom"
+                : entry.Metadata?.Difficulty?.ToString(),
+            entry.Metadata?.CurrentTick
+        );
+    }
 }
 
 /// <summary>

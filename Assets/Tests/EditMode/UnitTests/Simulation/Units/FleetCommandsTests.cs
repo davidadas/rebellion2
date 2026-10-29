@@ -50,6 +50,20 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateFleet_DeterministicRuntimeIdentity_AssignsBeforeShipParentLink()
+        {
+            _game.UseDeterministicRuntimeIdentifiers = true;
+            CreateFleet("source", out CapitalShip ship);
+
+            Fleet createdFleet = _fleetSystem.CreateFleet(new[] { ship }, _ownerId);
+
+            Assert.IsNotNull(createdFleet);
+            Assert.IsTrue(Guid.TryParseExact(createdFleet.InstanceID, "N", out _));
+            Assert.AreEqual(createdFleet.InstanceID, ship.ParentInstanceID);
+            Assert.AreEqual(1, _game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
         public void CreateAtPlanet_SnapshotDestination_CreatesFleetOnLivePlanet()
         {
             Fleet fleet = _fleetSystem.CreateAtPlanet(

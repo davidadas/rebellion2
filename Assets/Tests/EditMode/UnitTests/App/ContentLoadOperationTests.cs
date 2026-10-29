@@ -96,6 +96,18 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void HasCommittedContent_ReplacementReady_ChangesOnlyAfterSuccessfulCommit()
+        {
+            ContentLoadOperation operation = CreatePreparedOperation();
+            Assert.IsFalse(operation.HasCommittedContent);
+
+            operation.Complete(operation.Pack, _settings);
+
+            Assert.IsTrue(operation.HasCommittedContent);
+            Assert.IsFalse(operation.BeginRecovery());
+        }
+
+        [Test]
         public void Complete_DifferentContent_RejectsCompletionWithoutWritingSettings()
         {
             ContentLoadOperation operation = CreatePreparedOperation();

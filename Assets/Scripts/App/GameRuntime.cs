@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Rebellion.App;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -20,8 +23,32 @@ public sealed class GameRuntime
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
     private GameSession _activeGameSession;
     private GameManager _gameManager;
+    private bool _operationsBlocked;
+    private IGamePersistenceCoordinator _persistenceCoordinator;
+    private SessionPlayerActionDispatcher _playerActions;
+    private IGameSessionOwner _sessionOwner;
+
+    /// <summary>
+    /// Gets whether persistence is owned by a coordinated session rather than the local process.
+    /// </summary>
+    public bool HasCoordinatedPersistence => _persistenceCoordinator != null;
+
+    /// <summary>
+    /// Gets the active player's ordered application action boundary.
+    /// </summary>
+    public IPlayerActionDispatcher PlayerActions => _playerActions;
 
     public event Action<GameRoot> GameReplaced;
+
+    /// <summary>
+    /// Raised when an ordered remote operation changes the existing live graph.
+    /// </summary>
+    public event Action GameStateChanged;
+
+    /// <summary>
+    /// Reports a storage failure belonging to the session that requested the save or load.
+    /// </summary>
+    public event Action<GameRuntime, PersistenceOperation, Exception> PersistenceFailed;
 
     /// <summary>
     /// Gets whether a game session is currently active.
@@ -29,9 +56,18 @@ public sealed class GameRuntime
     public bool HasActiveGame => _activeGameSession != null;
 
     /// <summary>
-    /// Gets whether the active simulation is at a stable boundary that can be saved.
+    /// Gets whether the persistence owner can accept a request without requiring an immediate snapshot.
     /// </summary>
-    public bool CanSave => _activeGameSession?.CanCaptureSettledState == true;
+    public bool CanRequestSave =>
+        _persistenceCoordinator != null
+            ? !_operationsBlocked && _persistenceCoordinator.CanRequestSave
+            : CanSave;
+
+    /// <summary>
+    /// Gets whether a complete settled snapshot can be captured immediately.
+    /// </summary>
+    public bool CanSave =>
+        !_operationsBlocked && _activeGameSession?.CanCaptureSettledState == true;
 
     /// <summary>
     /// Creates an application runtime backed by the active content pack.
@@ -79,20 +115,22 @@ public sealed class GameRuntime
     /// Creates and owns the simulation and its application clock.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
+    /// <param name="owner">The coordinated owner, required for multiplayer campaigns.</param>
     /// <returns>The created game session.</returns>
-    public GameSession StartGame(GameRoot game)
+    public GameSession StartGame(GameRoot game, IGameSessionOwner owner = null)
     {
-        return ReplaceSession(game);
+        return ReplaceSession(game, owner);
     }
 
     /// <summary>
     /// Starts a game session from deserialized state and reconstructs unresolved runtime decisions.
     /// </summary>
     /// <param name="game">The loaded game instance to manage.</param>
+    /// <param name="owner">The coordinated owner, required for multiplayer campaigns.</param>
     /// <returns>The created game session.</returns>
-    public GameSession StartLoadedGame(GameRoot game)
+    public GameSession StartLoadedGame(GameRoot game, IGameSessionOwner owner = null)
     {
-        GameSession session = ReplaceSession(game);
+        GameSession session = ReplaceSession(game, owner);
         session.Tick.ReconcileLoadedState();
         return session;
     }
@@ -101,22 +139,127 @@ public sealed class GameRuntime
     /// Replaces the active game session with one backed by the supplied game.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
+    /// <param name="owner">The execution and persistence owner chosen before composition.</param>
     /// <returns>The created game session.</returns>
-    private GameSession ReplaceSession(GameRoot game)
+    private GameSession ReplaceSession(GameRoot game, IGameSessionOwner owner)
     {
+        ValidateSessionOwner(game, owner);
         if (_activeGameSession != null)
         {
             EndGame();
         }
 
+        owner?.PrepareGame(game);
         ValidateGameContent(game);
         ReconcileStaticContent(game);
+        game.Metadata ??= new GameMetadata();
+        if (string.IsNullOrEmpty(game.Metadata.CampaignID))
+            game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
         GameSession session = new GameSession(game, _contentPack.GameData);
+        return BindSession(session, owner);
+    }
+
+    /// <summary>
+    /// Starts from an exact runtime continuation without replaying a saved game's loading phases.
+    /// </summary>
+    /// <param name="state">The independently decoded and content-verified continuation.</param>
+    /// <param name="owner">The execution and persistence owner chosen before recovery.</param>
+    /// <returns>The recovered active session.</returns>
+    internal GameSession StartRecoveredGame(
+        GameSessionRecoveryState state,
+        IGameSessionOwner owner = null
+    )
+    {
+        ValidateSessionOwner(state?.Game, owner);
+        if (_activeGameSession != null)
+            EndGame();
+        owner?.PrepareGame(state.Game);
+        ValidateGameContent(state.Game);
+        return BindSession(GameSession.RestoreRecoveryState(state, _contentPack.GameData), owner);
+    }
+
+    /// <summary>
+    /// Connects application clock, player actions, and persistence to an initialized simulation owner.
+    /// </summary>
+    /// <param name="session">The initialized simulation session.</param>
+    /// <param name="owner">The declared coordinated owner, or null for local execution.</param>
+    /// <returns>The active session.</returns>
+    private GameSession BindSession(GameSession session, IGameSessionOwner owner)
+    {
         GameManager clock = new GameManager(() => session.Game, session.Tick);
         _activeGameSession = session;
         _gameManager = clock;
+        _operationsBlocked = false;
+        _sessionOwner = owner;
+        _persistenceCoordinator = owner;
+        _playerActions = new SessionPlayerActionDispatcher(
+            owner
+                ?? (IPlayerActionDispatcher)
+                    new LocalPlayerActionDispatcher(
+                        new PlayerActionExecutor(session, clock),
+                        () => session.Game.GetPlayerFaction()?.InstanceID,
+                        () =>
+                        {
+                            if (ReferenceEquals(_activeGameSession, session))
+                                NotifyGameStateChanged();
+                        }
+                    ),
+            () => ReferenceEquals(_activeGameSession, session)
+        );
         _activeGameSession.Tick.TickCompleted += HandleTickCompleted;
+        try
+        {
+            owner?.BindRuntime(this);
+        }
+        catch
+        {
+            EndGame();
+            throw;
+        }
         return _activeGameSession;
+    }
+
+    /// <summary>
+    /// Requires saved multiplayer campaigns to declare their execution owner before composition.
+    /// </summary>
+    /// <param name="game">The graph being started.</param>
+    /// <param name="owner">The declared execution owner.</param>
+    private static void ValidateSessionOwner(GameRoot game, IGameSessionOwner owner)
+    {
+        if (game == null)
+            throw new ArgumentNullException(nameof(game));
+        if (game.Metadata?.MultiplayerCampaign != null && owner == null)
+            throw new InvalidOperationException(
+                "A multiplayer campaign requires its session owner before starting."
+            );
+    }
+
+    /// <summary>
+    /// Reports completed presentation setup to the owner selected when the session was created.
+    /// </summary>
+    /// <param name="session">The originating session whose presentation finished.</param>
+    /// <returns>False when an outgoing presentation no longer belongs to the active session.</returns>
+    public bool NotifyPresentationReady(GameSession session)
+    {
+        if (!HasActiveGame || !ReferenceEquals(_activeGameSession, session))
+            return false;
+        _sessionOwner?.NotifyPresentationReady(this);
+        return true;
+    }
+
+    /// <summary>
+    /// Admits the next tick through this session's existing execution owner.
+    /// </summary>
+    /// <param name="elapsedSeconds">The elapsed application frame interval.</param>
+    /// <returns>True when the current session should begin its next tick.</returns>
+    public bool TryBeginGameTick(float elapsedSeconds)
+    {
+        return HasActiveGame
+            && (
+                _sessionOwner != null
+                    ? _sessionOwner.TryBeginGameTick(elapsedSeconds)
+                    : _gameManager.TryAdvanceTickTimer(elapsedSeconds)
+            );
     }
 
     /// <summary>
@@ -128,11 +271,163 @@ public sealed class GameRuntime
         if (_activeGameSession == null)
             return;
 
-        _activeGameSession.Tick.TickCompleted -= HandleTickCompleted;
-        _gameManager.SetGameSpeed(TickSpeed.Paused);
-        _activeGameSession.Dispose();
-        _activeGameSession = null;
-        _gameManager = null;
+        try
+        {
+            _sessionOwner?.ReleaseRuntime(this);
+        }
+        finally
+        {
+            _sessionOwner = null;
+            _activeGameSession.Tick.TickCompleted -= HandleTickCompleted;
+            _gameManager.ApplyGameSpeed(TickSpeed.Paused);
+            _activeGameSession.Dispose();
+            _activeGameSession = null;
+            _gameManager = null;
+            _playerActions = null;
+            _persistenceCoordinator = null;
+        }
+    }
+
+    /// <summary>
+    /// Invalidates strategy projections without replacing windows or services.
+    /// </summary>
+    internal void NotifyGameStateChanged()
+    {
+        GameStateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Prevents saving or autosaving a session whose simulation could be partially applied.
+    /// </summary>
+    internal void BlockGameOperations()
+    {
+        _operationsBlocked = true;
+    }
+
+    /// <summary>
+    /// Reopens persistence after the session owner establishes a writable multiplayer boundary.
+    /// </summary>
+    internal void ResumeMultiplayerOperations()
+    {
+        if (_sessionOwner == null || _activeGameSession?.CanCaptureRecoveryState != true)
+            throw new InvalidOperationException("A settled coordinated session is required.");
+        _operationsBlocked = false;
+    }
+
+    /// <summary>
+    /// Assigns the current session's save and load policy to its persistence owner.
+    /// </summary>
+    /// <param name="coordinator">The owner of save and load permissions and completion.</param>
+    internal void BindPersistenceCoordinator(IGamePersistenceCoordinator coordinator)
+    {
+        if (!HasActiveGame)
+            throw new InvalidOperationException("No active game can coordinate persistence.");
+        _persistenceCoordinator =
+            coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+    }
+
+    /// <summary>
+    /// Restores local persistence ownership after the coordinated session has released its requests.
+    /// </summary>
+    internal void UnbindPersistenceCoordinator()
+    {
+        _persistenceCoordinator = null;
+    }
+
+    /// <summary>
+    /// Returns the actual persistence store owned by this runtime, including injected stores.
+    /// </summary>
+    /// <returns>The runtime's save manager.</returns>
+    internal SaveGameManager GetSaveGameManager() => _saveGameManager;
+
+    /// <summary>
+    /// Saves the quicksave through the current persistence owner.
+    /// </summary>
+    /// <returns>True only after the quicksave has completed.</returns>
+    public Task<bool> QuickSaveAsync()
+    {
+        return ExecutePersistenceAsync(
+            PersistenceOperation.Save,
+            () =>
+                HasCoordinatedPersistence
+                    ? _persistenceCoordinator.SaveGameAsync(SaveGameManager.QuickSaveFileName, null)
+                    : Task.FromResult(QuickSave())
+        );
+    }
+
+    /// <summary>
+    /// Loads the quicksave through the current persistence owner.
+    /// </summary>
+    /// <returns>True only after the quickload has completed.</returns>
+    public Task<bool> QuickLoadAsync()
+    {
+        return ExecutePersistenceAsync(
+            PersistenceOperation.Load,
+            () =>
+                HasCoordinatedPersistence
+                    ? _persistenceCoordinator.LoadGameAsync(SaveGameManager.QuickSaveFileName)
+                    : Task.FromResult(QuickLoadLocally())
+        );
+    }
+
+    /// <summary>
+    /// Saves through the shared coordinator when bound, otherwise writes a local settled checkpoint.
+    /// </summary>
+    /// <param name="fileName">The save identifier without its extension.</param>
+    /// <param name="displayName">The requested display name.</param>
+    /// <returns>The persistence owner's completed save outcome.</returns>
+    public Task<bool> SaveGameAsync(string fileName, string displayName)
+    {
+        return ExecutePersistenceAsync(
+            PersistenceOperation.Save,
+            () =>
+                _persistenceCoordinator != null
+                    ? _persistenceCoordinator.SaveGameAsync(fileName, displayName)
+                    : Task.FromResult(SaveGameLocally(fileName, displayName))
+        );
+    }
+
+    /// <summary>
+    /// Loads through the shared coordinator when bound, otherwise restores the active local session.
+    /// </summary>
+    /// <param name="fileName">The save identifier without its extension.</param>
+    /// <returns>The persistence owner's completed load outcome.</returns>
+    public Task<bool> LoadGameAsync(string fileName)
+    {
+        return ExecutePersistenceAsync(
+            PersistenceOperation.Load,
+            () =>
+                _persistenceCoordinator != null
+                    ? _persistenceCoordinator.LoadGameAsync(fileName)
+                    : Task.FromResult(LoadGameLocally(fileName))
+        );
+    }
+
+    /// <summary>
+    /// Reports storage failures without leaving async input callbacks with an unobserved exception.
+    /// Departed sessions cannot publish a notice into their replacement.
+    /// </summary>
+    /// <param name="operation">The operation used for user-facing failure reporting.</param>
+    /// <param name="execute">Starts the existing local or coordinated operation.</param>
+    /// <returns>The operation's result, or false after a reported storage failure.</returns>
+    private async Task<bool> ExecutePersistenceAsync(
+        PersistenceOperation operation,
+        Func<Task<bool>> execute
+    )
+    {
+        GameSession requestedSession = _activeGameSession;
+        try
+        {
+            return await execute();
+        }
+        catch (Exception exception)
+            when (exception is IOException || exception is UnauthorizedAccessException)
+        {
+            Debug.LogException(exception);
+            if (ReferenceEquals(_activeGameSession, requestedSession))
+                PersistenceFailed?.Invoke(this, operation, exception);
+            return false;
+        }
     }
 
     /// <summary>
@@ -141,13 +436,10 @@ public sealed class GameRuntime
     /// <returns>True when the quicksave was written.</returns>
     public bool QuickSave()
     {
-        if (!CanSave)
-        {
-            LogUnsettledSaveWarning();
+        if (HasCoordinatedPersistence)
             return false;
-        }
-
-        _saveGameManager.SaveQuickGameData(GetActiveGame());
+        if (!SaveGameLocally(SaveGameManager.QuickSaveFileName, null))
+            return false;
         GameLogger.Log(
             $"Quick save completed: {_saveGameManager.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
         );
@@ -162,6 +454,44 @@ public sealed class GameRuntime
     /// <returns>True when the save was written; otherwise false.</returns>
     public bool SaveGame(string fileName, string displayName)
     {
+        return !HasCoordinatedPersistence && SaveGameLocally(fileName, displayName);
+    }
+
+    /// <summary>
+    /// Writes the settled local checkpoint after the persistence owner has established permission.
+    /// </summary>
+    /// <param name="fileName">The save identifier without its extension.</param>
+    /// <param name="displayName">The requested display name.</param>
+    /// <returns>True when the local save was written.</returns>
+    internal bool SaveGameLocally(string fileName, string displayName)
+    {
+        if (!CanWriteLocalSave(fileName))
+            return false;
+        _saveGameManager.SaveGameData(GetActiveGame(), fileName, displayName);
+        return true;
+    }
+
+    /// <summary>
+    /// Captures a permitted settled checkpoint and awaits its durable publication.
+    /// </summary>
+    /// <param name="fileName">The save identifier without its extension.</param>
+    /// <param name="displayName">The requested display name.</param>
+    /// <returns>True after the local checkpoint has been published.</returns>
+    internal async Task<bool> SaveGameLocallyAsync(string fileName, string displayName)
+    {
+        if (!CanWriteLocalSave(fileName))
+            return false;
+        await _saveGameManager.SaveGameDataAsync(GetActiveGame(), fileName, displayName);
+        return true;
+    }
+
+    /// <summary>
+    /// Applies the shared local-write guard before either publication entry point.
+    /// </summary>
+    /// <param name="fileName">The requested extension-free save identifier.</param>
+    /// <returns>True when the active model is at a permitted writable boundary.</returns>
+    private bool CanWriteLocalSave(string fileName)
+    {
         if (string.IsNullOrWhiteSpace(fileName))
             return false;
 
@@ -171,7 +501,6 @@ public sealed class GameRuntime
             return false;
         }
 
-        _saveGameManager.SaveGameData(GetActiveGame(), fileName, displayName);
         return true;
     }
 
@@ -181,10 +510,26 @@ public sealed class GameRuntime
     /// </summary>
     public void QuickLoad()
     {
-        if (LoadGame(SaveGameManager.QuickSaveFileName))
+        if (HasCoordinatedPersistence)
+        {
+            Debug.LogWarning("Quick load requires coordinated persistence completion.");
+            return;
+        }
+        QuickLoadLocally();
+    }
+
+    /// <summary>
+    /// Restores the local quicksave and reports the same completion diagnostics as the shortcut.
+    /// </summary>
+    /// <returns>True when the quicksave replaced the active local graph.</returns>
+    private bool QuickLoadLocally()
+    {
+        bool loaded = LoadGameLocally(SaveGameManager.QuickSaveFileName);
+        if (loaded)
             Debug.Log("Quick load completed.");
         else
             Debug.LogWarning("Quick load skipped because no quick save exists.");
+        return loaded;
     }
 
     /// <summary>
@@ -195,7 +540,21 @@ public sealed class GameRuntime
         if (!CanSave)
             return;
 
-        _saveGameManager.ProcessAutosaveTick(GetActiveGame(), _getGameplaySettings?.Invoke());
+        UserGameplaySettings settings = _getGameplaySettings?.Invoke();
+        if (_persistenceCoordinator != null)
+            _persistenceCoordinator.ProcessAutosaveTick(settings);
+        else
+            ProcessAutosaveLocally(settings);
+    }
+
+    /// <summary>
+    /// Runs the local autosave scheduler after the persistence owner has established the checkpoint.
+    /// </summary>
+    /// <param name="settings">The automatic-save cadence and retention settings.</param>
+    /// <returns>True when the local automatic save was written.</returns>
+    internal bool ProcessAutosaveLocally(UserGameplaySettings settings)
+    {
+        return CanSave && _saveGameManager.ProcessAutosaveTick(GetActiveGame(), settings);
     }
 
     /// <summary>
@@ -212,6 +571,16 @@ public sealed class GameRuntime
     /// <param name="fileName">The save file name to load.</param>
     /// <returns>True if the save file exists and load started.</returns>
     public bool LoadGame(string fileName)
+    {
+        return !HasCoordinatedPersistence && LoadGameLocally(fileName);
+    }
+
+    /// <summary>
+    /// Restores a local save after the persistence owner has established the load boundary.
+    /// </summary>
+    /// <param name="fileName">The save identifier without its extension.</param>
+    /// <returns>True when an existing save replaced the active local graph.</returns>
+    internal bool LoadGameLocally(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
             return false;
@@ -259,6 +628,28 @@ public sealed class GameRuntime
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
         _activeGameSession.Tick.ReconcileLoadedState();
+    }
+
+    /// <summary>
+    /// Applies an exact writable continuation without replaying a tick or disk-load migration.
+    /// </summary>
+    /// <param name="state">The independently decoded authoritative runtime boundary.</param>
+    internal void ReplaceMultiplayerRecovery(GameSessionRecoveryState state)
+    {
+        if (_activeGameSession == null)
+            throw new InvalidOperationException(
+                "No active game can receive a multiplayer continuation."
+            );
+        ValidateGameContent(state.Game);
+        LocalPlayerPresentationState localPresentation = LocalPlayerPresentationState.Capture(
+            _activeGameSession.Game,
+            _activeGameSession.Game.LocalPlayerFactionID
+        );
+        localPresentation?.TryRestore(state.Game, state.Game.LocalPlayerFactionID);
+        _activeGameSession.ApplyRecoveryState(state);
+        _gameManager.Reset();
+        _operationsBlocked = false;
+        GameReplaced?.Invoke(_activeGameSession.Game);
     }
 
     /// <summary>

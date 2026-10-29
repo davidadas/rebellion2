@@ -16,6 +16,32 @@ namespace Rebellion.Tests.Simulation
     public class UprisingResolverTests
     {
         [Test]
+        public void RestoreRecoveryState_GarrisonRecentlyFellToRequirement_ReportsNearUprisingOnce()
+        {
+            (GameRoot game, Planet planet, UprisingResolver original) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 6
+            );
+            List<PlanetIntegerRecoveryState> state = original.CaptureRecoveryState();
+            game.DetachNode(planet.GetChildren<Regiment>()[0]);
+            PlanetaryControlCommands control = new PlanetaryControlCommands(
+                game,
+                new PlanetaryControlQueries(game),
+                new FogOfWarQueries(game)
+            );
+            UprisingResolver restored = new UprisingResolver(game, new ThrowingRNG(), control);
+            restored.RestoreRecoveryState(state);
+
+            IReadOnlyList<GameResult> first = new UprisingTickProcessor(restored).ProcessTick(game);
+            IReadOnlyList<GameResult> second = new UprisingTickProcessor(restored).ProcessTick(
+                game
+            );
+
+            Assert.That(first.OfType<PlanetNearUprisingResult>().Count(), Is.EqualTo(1));
+            Assert.That(second.OfType<PlanetNearUprisingResult>(), Is.Empty);
+        }
+
+        [Test]
         public void Constructor_OwnedPlanet_DoesNotConsumeRandomValues()
         {
             Assert.DoesNotThrow(() => BuildScene(rng: new ThrowingRNG()));

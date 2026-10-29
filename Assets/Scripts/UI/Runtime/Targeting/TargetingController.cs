@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Exposes the domain target represented by an interactive UI element.
@@ -98,7 +99,7 @@ public interface ITargetingSubmissionReceiver
     /// </summary>
     /// <param name="request">The active targeting request.</param>
     /// <returns>True when the request was committed and targeting should end.</returns>
-    bool TrySubmitTargeting(TargetingRequest request);
+    Task<bool> TrySubmitTargetingAsync(TargetingRequest request);
 }
 
 /// <summary>
@@ -122,6 +123,7 @@ public sealed class TargetingController : ICancelable
     private readonly ITargetingCursor cursor;
     private TargetingRequest activeRequest;
     private bool cursorVisible;
+    private bool submitting;
 
     public bool IsTargeting => activeRequest != null;
 
@@ -200,18 +202,32 @@ public sealed class TargetingController : ICancelable
     /// Tries to submit an active multi-selection targeting request.
     /// </summary>
     /// <returns>True when the receiver committed the request.</returns>
-    public bool TrySubmit()
+    public async Task<bool> TrySubmitAsync()
     {
         if (
-            activeRequest == null
+            submitting
+            || activeRequest == null
             || activeRequest.Receiver is not ITargetingSubmissionReceiver receiver
-            || !receiver.TrySubmitTargeting(activeRequest)
         )
             return false;
 
-        activeRequest = null;
-        HideCursor();
-        return true;
+        TargetingRequest submittedRequest = activeRequest;
+        submitting = true;
+        try
+        {
+            if (!await receiver.TrySubmitTargetingAsync(submittedRequest))
+                return false;
+            if (ReferenceEquals(activeRequest, submittedRequest))
+            {
+                activeRequest = null;
+                HideCursor();
+            }
+            return true;
+        }
+        finally
+        {
+            submitting = false;
+        }
     }
 
     /// <summary>

@@ -1,52 +1,59 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.App;
 using Rebellion.Game;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Owns matchmaking, the direct peer connection, launch negotiation, and game-state ordering.
+    /// Owns online discovery, the peer connection, launch negotiation, and game-state ordering.
     /// </summary>
-    public sealed class MultiplayerCoordinator : MonoBehaviour
+    public sealed partial class MultiplayerCoordinator : MonoBehaviour, IGameSessionOwner
     {
-        private const int _protocolVersion = 1;
-        private const float _snapshotIntervalSeconds = 0.2f;
-        private const float _heartbeatIntervalSeconds = 20f;
-        private const string _hostPlayerID = "MULTIPLAYER_HOST";
-        private const string _guestPlayerID = "MULTIPLAYER_GUEST";
+        private const int _protocolVersion = 11;
 
         private readonly List<MatchmakerGame> _games = new();
-        private MatchmakerClient _matchmaker;
-        private MultiplayerPeer _peer;
+        private readonly MultiplayerSnapshotBuffer _pendingCommits = new();
+        private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();
+        private EpicOnlineServicesClient _onlineClient;
+        private EpicMultiplayerBackend _backend;
+        private IMultiplayerPeer _peer;
+        private CancellationTokenSource _sessionCancellation = new();
+        private Task _leaveTask = Task.CompletedTask;
+        private int _browseVersion;
         private MultiplayerLaunchConfiguration _launchConfiguration;
         private GameRuntime _runtime;
         private GameSummary _hostSummary;
-        private MultiplayerPacket _pendingProposal;
+        private ContentPack _identityContent;
+        private string _gameplayContentIdentity;
         private MultiplayerRole _role;
         private string _playerName;
         private string _hostPlayerName;
-        private string _matchmakerUrl;
-        private string _listingID;
-        private int _hostPort;
+        private string _gameName;
+        private string _listingState = "waiting";
         private string _status = "Offline";
         private string _lastAcceptedHash;
-        private long _revision;
-        private float _nextSnapshotTime;
-        private float _nextHeartbeatTime;
+        private string _initializationID => _snapshotAdmission.InitializationID;
         private bool _remoteReady;
         private bool _synchronizationReady;
-        private bool _proposalPending;
-        private bool _heartbeatPending;
+        private bool _previousRunInBackground;
+        private bool _backgroundOwned;
+        private bool _browserOpen;
+        private bool _disposed;
 
         /// <summary>
         /// Gets the application-lifetime multiplayer coordinator.
         /// </summary>
         public static MultiplayerCoordinator Instance { get; private set; }
+
+        /// <summary>
+        /// Gets the terminal notice retained until acknowledgment, independently of connection teardown.
+        /// </summary>
+        public MultiplayerSessionEndNotice SessionEndNotice { get; } = new();
 
         /// <summary>
         /// Gets the local multiplayer role.
@@ -57,6 +64,21 @@ namespace Rebellion.Multiplayer
         /// Gets whether a multiplayer launch has been negotiated.
         /// </summary>
         public bool IsMultiplayerGame => _launchConfiguration != null;
+
+        /// <summary>
+        /// Gets the last connection or content failure for the form that initiated it.
+        /// </summary>
+        public Exception Failure { get; private set; }
+
+        /// <summary>
+        /// Gets whether a cancellable room connection is still being negotiated.
+        /// </summary>
+        public bool IsConnecting =>
+            _launchConfiguration == null
+            && (
+                _role == MultiplayerRole.Host && _peer == null
+                || _role == MultiplayerRole.Guest && _guestLobby == null
+            );
 
         /// <summary>
         /// Gets whether the local peer owns simulation ticks.
@@ -72,6 +94,11 @@ namespace Rebellion.Multiplayer
         /// Gets the current connection status for presentation.
         /// </summary>
         public string Status => _status;
+
+        public StorePlayerSession PlayerSession => _onlineClient?.Session;
+
+        public bool IsSigningIn { get; private set; }
+        public bool IsSearchingGames { get; private set; }
 
         /// <summary>
         /// Gets the most recently discovered live games.
@@ -89,6 +116,35 @@ namespace Rebellion.Multiplayer
         public event Action StateChanged;
 
         /// <summary>
+        /// Authenticates a store account before hosting or browsing multiplayer games.
+        /// </summary>
+        /// <param name="provider">The Steam or GOG provider identifier.</param>
+        /// <returns>The pending store and online identity sign-in.</returns>
+        public async Task SignInAsync(string provider)
+        {
+            if (IsSigningIn)
+                return;
+            Disconnect();
+            IsSigningIn = true;
+            SetStatus("Signing in with " + (provider == "steam" ? "Steam" : "GOG"));
+            try
+            {
+                StorePlayerSession session = await _onlineClient.SignInAsync(provider);
+                SetStatus("Signed in as " + session.DisplayName);
+            }
+            catch (Exception exception)
+            {
+                Failure = exception;
+                SetStatus(exception.Message);
+            }
+            finally
+            {
+                IsSigningIn = false;
+                StateChanged?.Invoke();
+            }
+        }
+
+        /// <summary>
         /// Returns the existing coordinator or creates it on the persistent application object.
         /// </summary>
         /// <returns>The application-lifetime coordinator.</returns>
@@ -97,15 +153,19 @@ namespace Rebellion.Multiplayer
             if (Instance != null)
                 return Instance;
 
-            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            MultiplayerCoordinator coordinator = bootstrap.GetComponent<MultiplayerCoordinator>();
-            return coordinator != null
-                ? coordinator
-                : bootstrap.gameObject.AddComponent<MultiplayerCoordinator>();
+            return new GameObject("Multiplayer session").AddComponent<MultiplayerCoordinator>();
         }
 
         /// <summary>
-        /// Claims the singleton and prepares the directory client.
+        /// Clears a dismissed form failure before starting another operation.
+        /// </summary>
+        public void ClearFailure()
+        {
+            Failure = null;
+        }
+
+        /// <summary>
+        /// Claims the singleton and prepares lazy online authentication.
         /// </summary>
         private void Awake()
         {
@@ -116,7 +176,9 @@ namespace Rebellion.Multiplayer
             }
 
             Instance = this;
-            _matchmaker = new MatchmakerClient();
+            if (Application.isPlaying)
+                DontDestroyOnLoad(gameObject);
+            _onlineClient = new EpicOnlineServicesClient(gameObject);
         }
 
         /// <summary>
@@ -124,10 +186,14 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void Update()
         {
+            _backend?.Poll();
             ProcessTransportEvents();
-            ProcessPendingProposal();
-            ProcessSynchronization();
-            ProcessHeartbeat();
+            ProcessPendingCommit();
+            if (_persistence?.BlocksGameplay != true)
+                _gameSession?.Pump();
+            _persistence?.Pump();
+            ProcessRejoinRecovery();
+            TrySendInitialSnapshot();
         }
 
         /// <summary>
@@ -138,110 +204,180 @@ namespace Rebellion.Multiplayer
             if (Instance != this)
                 return;
 
+            _browserOpen = false;
             Disconnect();
-            _matchmaker?.Dispose();
-            _matchmaker = null;
+            _disposed = true;
+            _sessionCancellation.Dispose();
+            _onlineClient?.Dispose();
+            _onlineClient = null;
             Instance = null;
         }
 
         /// <summary>
-        /// Starts a direct listen socket and advertises it through the optional directory.
+        /// Authenticates the host and publishes a named two-player EOS lobby.
         /// </summary>
         /// <param name="playerName">The host display name.</param>
-        /// <param name="port">The TCP listen port.</param>
-        /// <param name="matchmakerUrl">The optional directory base URL.</param>
-        /// <param name="summary">The host's selected launch settings.</param>
-        /// <returns>A task representing listener and directory setup.</returns>
+        /// <param name="gameName">The advertised game name.</param>
+        /// <param name="summary">The selected launch settings.</param>
+        /// <param name="password">The optional private-room password.</param>
+        /// <returns>The pending lobby setup.</returns>
         public async Task HostAsync(
             string playerName,
-            int port,
-            string matchmakerUrl,
-            GameSummary summary
+            string gameName,
+            GameSummary summary,
+            string password = null
         )
         {
+            CancellationToken cancellationToken = BeginSession(MultiplayerRole.Host);
             try
             {
-                Disconnect();
-                _role = MultiplayerRole.Host;
                 _playerName = NormalizePlayerName(playerName);
                 _hostPlayerName = _playerName;
-                _matchmakerUrl = matchmakerUrl?.Trim();
+                _gameName = NormalizeGameName(gameName, _playerName);
+                _listingState = "waiting";
                 _hostSummary = MultiplayerSnapshotCodec.DeserializeSummary(
                     MultiplayerSnapshotCodec.SerializeSummary(
                         summary ?? throw new ArgumentNullException(nameof(summary))
                     )
                 );
                 ValidatePlayableFactions(_hostSummary);
-                _peer = new MultiplayerPeer();
-                _peer.StartHost(port);
-                int listeningPort = _peer.ListeningPort;
-                _hostPort = listeningPort;
-                SetStatus($"Hosting on port {listeningPort}; waiting for a player");
-
-                if (!string.IsNullOrWhiteSpace(_matchmakerUrl))
-                {
-                    MatchmakerGame listing = await _matchmaker.RegisterAsync(
-                        _matchmakerUrl,
-                        CreateListing(listeningPort)
-                    );
-                    _listingID = listing.id;
-                    _nextHeartbeatTime = Time.unscaledTime + _heartbeatIntervalSeconds;
-                    SetStatus($"Listed as '{listing.name}'; waiting for a player");
-                }
+                _password = password ?? string.Empty;
+                _lobbyContent = MultiplayerContentSelection.Open(
+                    AppBootstrap.EnsureExists().GetContentPack(),
+                    _hostSummary
+                );
+                SetStatus("Signing in for multiplayer");
+                await _leaveTask;
+                cancellationToken.ThrowIfCancellationRequested();
+                EpicMultiplayerBackend backend = await _onlineClient.ConnectAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                _backend = backend;
+                _playerName = NormalizePlayerName(_onlineClient.Session.DisplayName);
+                _hostPlayerName = _playerName;
+                _lobby = new MultiplayerLobby(_gameName, _hostPlayerName, _hostSummary);
+                cancellationToken.ThrowIfCancellationRequested();
+                IMultiplayerPeer peer = await _backend.HostAsync(
+                    CreateListing(),
+                    cancellationToken
+                );
+                cancellationToken.ThrowIfCancellationRequested();
+                _peer = peer;
+                SetStatus($"Listed as '{_gameName}'; waiting for a player");
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
             catch (Exception exception)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
                 Disconnect();
+                Failure = exception;
                 SetStatus($"Host failed: {exception.Message}");
             }
         }
 
         /// <summary>
-        /// Connects directly to a player-hosted game.
+        /// Joins the selected EOS lobby and negotiates its peer connection.
         /// </summary>
         /// <param name="playerName">The guest display name.</param>
-        /// <param name="host">The host name or address.</param>
-        /// <param name="port">The host TCP port.</param>
-        /// <param name="matchmakerUrl">The directory used for later refreshes.</param>
-        /// <returns>A task representing the connection attempt.</returns>
-        public async Task JoinAsync(string playerName, string host, int port, string matchmakerUrl)
+        /// <param name="game">The selected game listing.</param>
+        /// <param name="password">The password entered for a protected game.</param>
+        /// <returns>The pending lobby join.</returns>
+        public async Task JoinAsync(string playerName, MatchmakerGame game, string password = null)
         {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            CancellationToken cancellationToken = BeginSession(MultiplayerRole.Guest);
             try
             {
-                Disconnect();
-                _role = MultiplayerRole.Guest;
                 _playerName = NormalizePlayerName(playerName);
-                _matchmakerUrl = matchmakerUrl?.Trim();
-                _peer = new MultiplayerPeer();
-                SetStatus($"Connecting to {host}:{port}");
-                await _peer.ConnectAsync(host, port);
+                _passwordProof = MultiplayerLobbyPassword.CreateProof(game.id, password);
+                _expectedFingerprint = game.contentFingerprint;
+                SetStatus($"Joining '{game.name}'");
+                await _leaveTask;
+                cancellationToken.ThrowIfCancellationRequested();
+                EpicMultiplayerBackend backend = await _onlineClient.ConnectAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                _backend = backend;
+                _playerName = NormalizePlayerName(_onlineClient.Session.DisplayName);
+                cancellationToken.ThrowIfCancellationRequested();
+                IMultiplayerPeer peer = await _backend.JoinAsync(game, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                _peer = peer;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
             catch (Exception exception)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
                 Disconnect();
+                Failure = exception;
                 SetStatus($"Connection failed: {exception.Message}");
             }
         }
 
         /// <summary>
-        /// Refreshes live games from the configured directory.
+        /// Refreshes public EOS games for the browser.
         /// </summary>
-        /// <param name="matchmakerUrl">The directory base URL.</param>
-        /// <returns>A task representing the lookup.</returns>
-        public async Task RefreshGamesAsync(string matchmakerUrl)
+        /// <returns>The pending lookup.</returns>
+        public async Task RefreshGamesAsync()
         {
+            CancellationToken cancellationToken = _sessionCancellation.Token;
+            int browseVersion = ++_browseVersion;
+            IsSearchingGames = true;
+            Failure = null;
             try
             {
-                _matchmakerUrl = matchmakerUrl?.Trim();
-                IReadOnlyList<MatchmakerGame> games = await _matchmaker.ListAsync(_matchmakerUrl);
+                SetStatus("Finding online games");
+                EpicMultiplayerBackend backend = await _onlineClient.ConnectAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                _backend = backend;
+                RefreshRecoveryRecord();
+                IReadOnlyList<MatchmakerGame> games = await _backend.ListAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (browseVersion != _browseVersion)
+                    return;
                 _games.Clear();
                 _games.AddRange(games);
                 SetStatus($"Found {_games.Count} game{(_games.Count == 1 ? string.Empty : "s")}");
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
             catch (Exception exception)
             {
-                SetStatus($"Directory lookup failed: {exception.Message}");
+                if (!cancellationToken.IsCancellationRequested && browseVersion == _browseVersion)
+                {
+                    Failure = exception;
+                    SetStatus($"Game search failed: {exception.Message}");
+                }
             }
+            finally
+            {
+                if (browseVersion == _browseVersion)
+                {
+                    IsSearchingGames = false;
+                    StateChanged?.Invoke();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines whether a directory listing uses the same content identity as local settings.
+        /// </summary>
+        /// <param name="game">The directory listing to compare.</param>
+        /// <param name="summary">The local launch settings.</param>
+        /// <returns>True when the game can pass the content handshake.</returns>
+        public bool IsCompatible(MatchmakerGame game, GameSummary summary)
+        {
+            return game != null
+                && string.Equals(
+                    game.transport,
+                    EpicLobbyListing.Transport,
+                    StringComparison.Ordinal
+                )
+                && string.Equals(
+                    game.contentFingerprint,
+                    EpicLobbyListing.HashContent(CreateContentFingerprint(summary)),
+                    StringComparison.Ordinal
+                );
         }
 
         /// <summary>
@@ -249,21 +385,33 @@ namespace Rebellion.Multiplayer
         /// </summary>
         public void Disconnect()
         {
-            StopAdvertising();
+            if (_disposed)
+                return;
+            if (!_browserOpen)
+                ReleaseBackgroundProcessing();
+            _sessionCancellation.Cancel();
+            _sessionCancellation.Dispose();
+            _sessionCancellation = new CancellationTokenSource();
+            _browseVersion++;
+            IsSearchingGames = false;
+            _leaveTask = LeaveLobbyAsync();
             _peer?.Dispose();
             _peer = null;
+            ReleaseGameplay();
+            ResetRecovery();
             _runtime = null;
             _hostSummary = null;
             _launchConfiguration = null;
-            _pendingProposal = null;
+            Failure = null;
+            _pendingCommits.Clear();
             _role = MultiplayerRole.None;
-            _hostPort = 0;
-            _revision = 0;
+            _gameName = null;
+            _listingState = "waiting";
+            _snapshotAdmission.Clear();
             _lastAcceptedHash = null;
             _remoteReady = false;
             _synchronizationReady = false;
-            _proposalPending = false;
-            _heartbeatPending = false;
+            ResetLobby();
             SetStatus("Offline");
         }
 
@@ -278,55 +426,16 @@ namespace Rebellion.Multiplayer
             if (_launchConfiguration == null)
                 return;
 
-            game.SetFactionController(
-                _launchConfiguration.HostFactionID,
-                _hostPlayerID,
-                PlayerControllerType.Human
+            MultiplayerCampaignAdmission.ConfigureGame(
+                game,
+                GetAdmittedCampaignIdentity(),
+                _launchConfiguration,
+                _role == MultiplayerRole.Host,
+                _hostPlayerName,
+                _role == MultiplayerRole.Guest
+                    ? _playerName
+                    : _lobby?.State.guestName ?? _recoveryRecord?.guestName
             );
-            game.SetFactionController(
-                _launchConfiguration.GuestFactionID,
-                _guestPlayerID,
-                PlayerControllerType.Human
-            );
-            game.LocalPlayerFactionID = _launchConfiguration.LocalFactionID;
-        }
-
-        /// <summary>
-        /// Attaches the active runtime after deterministic scene generation finishes.
-        /// </summary>
-        /// <param name="runtime">The active game runtime.</param>
-        public void AttachGame(GameRuntime runtime)
-        {
-            if (_launchConfiguration == null)
-                return;
-            _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
-            ConfigureGame(_runtime.GetActiveGame());
-            MultiplayerSnapshot initial = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGame()
-            );
-            _lastAcceptedHash = initial.Hash;
-            _nextSnapshotTime = Time.unscaledTime + _snapshotIntervalSeconds;
-
-            if (_role == MultiplayerRole.Guest)
-            {
-                QueueSend(new MultiplayerPacket(MultiplayerMessageType.Ready));
-                SetStatus("Game loaded; waiting for the host state");
-            }
-            else
-            {
-                SetStatus("Game loaded; waiting for the other player");
-                TrySendInitialSnapshot();
-            }
-        }
-
-        /// <summary>
-        /// Returns whether this machine may advance the simulation clock.
-        /// </summary>
-        /// <returns>True outside multiplayer, or for a synchronized host.</returns>
-        public bool ShouldAdvanceLocalTicks()
-        {
-            return _launchConfiguration == null
-                || (_role == MultiplayerRole.Host && _synchronizationReady);
         }
 
         /// <summary>
@@ -346,11 +455,7 @@ namespace Rebellion.Multiplayer
                         break;
                     case MultiplayerTransportEventType.Disconnected:
                         _synchronizationReady = false;
-                        SetStatus(
-                            string.IsNullOrWhiteSpace(transportEvent.Error)
-                                ? "The other player disconnected"
-                                : $"Disconnected: {transportEvent.Error}"
-                        );
+                        HandlePeerDeparture(transportEvent.Error);
                         break;
                 }
             }
@@ -361,7 +466,12 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void HandleConnected()
         {
-            if (_role == MultiplayerRole.Host)
+            if (_waitingForRejoin && _backend.IsLobbyOwner)
+            {
+                SetStatus("Player connected; verifying the returning account");
+                return;
+            }
+            if (_backend.IsLobbyOwner)
             {
                 SetStatus("Player connected; negotiating game");
                 return;
@@ -370,8 +480,12 @@ namespace Rebellion.Multiplayer
             MultiplayerHelloMessage hello = new MultiplayerHelloMessage
             {
                 protocolVersion = _protocolVersion,
+                simulationBuild = MultiplayerCompatibility.SimulationBuild,
                 playerName = _playerName,
-                contentFingerprint = CreateContentFingerprint(GameLaunchContext.Summary),
+                contentFingerprint = _expectedFingerprint,
+                passwordProof = _passwordProof,
+                recoveryCampaignID =
+                    _returningToRecovery || _waitingForRejoin ? _recoveryRecord?.campaignID : null,
             };
             QueueSend(
                 new MultiplayerPacket(MultiplayerMessageType.Hello, JsonUtility.ToJson(hello))
@@ -394,19 +508,88 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.Welcome:
                         HandleWelcome(packet);
                         break;
-                    case MultiplayerMessageType.Ready:
-                        HandleReady();
+                    case MultiplayerMessageType.RecoveryWelcome:
+                        HandleRecoveryWelcome(packet);
                         break;
-                    case MultiplayerMessageType.SnapshotProposal:
-                        HandleSnapshotProposal(packet);
+                    case MultiplayerMessageType.Ready:
+                        HandleReady(packet);
                         break;
                     case MultiplayerMessageType.SnapshotCommit:
-                    case MultiplayerMessageType.SnapshotRejected:
                         HandleSnapshotCommit(packet);
                         break;
+                    case MultiplayerMessageType.SnapshotReceipt:
+                        HandleSnapshotReceipt(packet);
+                        break;
+                    case MultiplayerMessageType.PersistenceRequest:
+                    case MultiplayerMessageType.PersistencePrepare:
+                    case MultiplayerMessageType.PersistenceReady:
+                    case MultiplayerMessageType.PersistenceCommit:
+                    case MultiplayerMessageType.PersistenceReceipt:
+                    case MultiplayerMessageType.PersistenceComplete:
+                    case MultiplayerMessageType.PersistenceTransfer:
+                    case MultiplayerMessageType.PersistenceFailed:
+                        if (_persistence == null)
+                        {
+                            if (_waitingForRejoin)
+                                break;
+                            throw new InvalidOperationException(
+                                "Shared persistence has not started."
+                            );
+                        }
+                        _persistence.Receive(packet);
+                        break;
+                    case MultiplayerMessageType.PlayerActionRequest:
+                    case MultiplayerMessageType.PlayerActionCommit:
+                    case MultiplayerMessageType.PlayerActionReceipt:
+                    case MultiplayerMessageType.PlayerActionRejected:
+                    case MultiplayerMessageType.AdvanceDay:
+                    case MultiplayerMessageType.DayReceipt:
+                    case MultiplayerMessageType.SynchronizationFailed:
+                        MultiplayerSessionIdentity gameplayIdentity =
+                            JsonUtility.FromJson<MultiplayerSessionIdentity>(packet.Metadata);
+                        if (
+                            !MultiplayerSessionIdentity.Matches(
+                                _initializationID,
+                                gameplayIdentity?.initializationID
+                            )
+                        )
+                            break;
+                        if (_gameSession == null)
+                        {
+                            if (packet.Type == MultiplayerMessageType.SynchronizationFailed)
+                            {
+                                StopGameplay(
+                                    new InvalidOperationException(gameplayIdentity.reason),
+                                    false
+                                );
+                                break;
+                            }
+                            throw new InvalidOperationException(
+                                "Gameplay synchronization has not started."
+                            );
+                        }
+                        _gameSession.Receive(packet);
+                        break;
                     case MultiplayerMessageType.Disconnect:
-                        SetStatus("The other player ended the session");
-                        _synchronizationReady = false;
+                        HandlePeerDeparture("The other player ended the session");
+                        break;
+                    case MultiplayerMessageType.LobbyState:
+                        HandleLobbyState(packet);
+                        break;
+                    case MultiplayerMessageType.SelectFaction:
+                    case MultiplayerMessageType.LobbyReady:
+                    case MultiplayerMessageType.LobbyContentReady:
+                        HandleLobbyCommand(packet);
+                        break;
+                    case MultiplayerMessageType.LobbyChat:
+                        HandleLobbyChat(packet);
+                        break;
+                    case MultiplayerMessageType.StartGame:
+                        HandleStartGame();
+                        break;
+                    case MultiplayerMessageType.AdmissionRejectedAck:
+                        if (_backend.IsLobbyOwner && _rejectingGuest)
+                            RejectGuest();
                         break;
                     default:
                         throw new InvalidOperationException(
@@ -426,6 +609,13 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The hello packet.</param>
         private void HandleHello(MultiplayerPacket packet)
         {
+            if (_rejectingGuest)
+                return;
+            if (_waitingForRejoin)
+            {
+                HandleRecoveryHello(packet);
+                return;
+            }
             if (_role != MultiplayerRole.Host || _hostSummary == null)
                 throw new InvalidOperationException("Only a waiting host can accept a player.");
 
@@ -436,23 +626,51 @@ namespace Rebellion.Multiplayer
             if (hello == null || hello.protocolVersion != _protocolVersion)
                 error = "The multiplayer protocol versions do not match.";
             else if (
+                MultiplayerCompatibility.GetBuildError(hello.simulationBuild) is string buildError
+            )
+                error = buildError;
+            else if (
                 !string.Equals(
                     hello.contentFingerprint,
-                    CreateContentFingerprint(_hostSummary),
+                    EpicLobbyListing.HashContent(CreateContentFingerprint(_hostSummary)),
                     StringComparison.Ordinal
                 )
             )
                 error = "The content pack, scenario, or enabled mods do not match.";
+            else if (
+                !string.Equals(
+                    hello.passwordProof ?? string.Empty,
+                    MultiplayerLobbyPassword.CreateProof(_backend.LobbyId, _password),
+                    StringComparison.Ordinal
+                )
+            )
+                error = "The game password is incorrect.";
+            else if (
+                MultiplayerCampaignAdmission.GetParticipantError(
+                    _restoredGame?.Metadata?.MultiplayerCampaign,
+                    _backend.LocalUserID,
+                    _backend.RemoteUserID,
+                    true
+                )
+                is string participantError
+            )
+                error = participantError;
+            else if (_lobby?.State.guestName != null || _launchConfiguration != null)
+                error = "The game is no longer accepting players.";
 
             string hostFaction = _hostSummary.PlayerFactionID;
             string guestFaction = _hostSummary.StartingFactionIDs.First(id => id != hostFaction);
             MultiplayerWelcomeMessage welcome = new MultiplayerWelcomeMessage
             {
                 accepted = error == null,
+                simulationBuild = MultiplayerCompatibility.SimulationBuild,
+                gameplayContent = GetGameplayContentIdentity(_lobbyContent),
                 error = error,
                 hostPlayerName = _hostPlayerName,
                 hostFactionID = hostFaction,
                 guestFactionID = guestFaction,
+                chat = _chat.ToArray(),
+                initializationID = _initializationID,
             };
             QueueSend(
                 new MultiplayerPacket(
@@ -466,20 +684,16 @@ namespace Rebellion.Multiplayer
             if (error != null)
             {
                 SetStatus($"Player rejected: {error}");
+                _rejectingGuest = true;
                 return;
             }
 
-            StopAdvertising();
-            _launchConfiguration = new MultiplayerLaunchConfiguration(
-                MultiplayerSnapshotCodec.DeserializeSummary(
-                    MultiplayerSnapshotCodec.SerializeSummary(_hostSummary)
-                ),
-                hostFaction,
-                hostFaction,
-                guestFaction
-            );
-            SetStatus($"Connected to {NormalizePlayerName(hello.playerName)}; starting game");
-            LaunchRequested?.Invoke(_launchConfiguration);
+            MarkListingFull();
+            _admittedGuestUserID = _backend.RemoteUserID;
+            _lobby.Join(NormalizePlayerName(hello.playerName));
+            PublishLobby();
+            AddLobbyNotice(_lobby.State.guestName + " joined the lobby.");
+            SetStatus(string.Empty);
         }
 
         /// <summary>
@@ -494,200 +708,86 @@ namespace Rebellion.Multiplayer
                 packet.Metadata
             );
             if (welcome?.accepted != true)
-                throw new InvalidOperationException(
-                    welcome?.error ?? "The host rejected the join."
-                );
+            {
+                FinishRejectedJoin(welcome?.error ?? "The host rejected the join.");
+                return;
+            }
 
+            MultiplayerCompatibility.ValidateBuild(welcome.simulationBuild);
             GameSummary summary = MultiplayerSnapshotCodec.DeserializeSummary(packet.Payload);
+            if (
+                EpicLobbyListing.HashContent(CreateContentFingerprint(summary))
+                != _expectedFingerprint
+            )
+                throw new InvalidOperationException(
+                    "The host changed content. Refresh and join the game again."
+                );
             _hostPlayerName = NormalizePlayerName(welcome.hostPlayerName);
-            _launchConfiguration = new MultiplayerLaunchConfiguration(
-                summary,
-                welcome.guestFactionID,
-                welcome.hostFactionID,
-                welcome.guestFactionID
-            );
-            SetStatus($"Connected to {_hostPlayerName}; starting game");
-            LaunchRequested?.Invoke(_launchConfiguration);
+            _hostSummary = summary;
+            _chat.Clear();
+            _chat.AddRange(welcome.chat ?? Array.Empty<MultiplayerChatMessage>());
+            SetStatus($"Connected to {_hostPlayerName}; preparing the lobby");
         }
 
         /// <summary>
         /// Records that the guest finished deterministic game generation.
         /// </summary>
-        private void HandleReady()
+        /// <param name="packet">The readiness message for the current initialization.</param>
+        private void HandleReady(MultiplayerPacket packet)
         {
             if (_role != MultiplayerRole.Host)
+                return;
+            MultiplayerSessionIdentity identity = JsonUtility.FromJson<MultiplayerSessionIdentity>(
+                packet.Metadata
+            );
+            if (!MultiplayerSessionIdentity.Matches(_initializationID, identity?.initializationID))
                 return;
             _remoteReady = true;
             TrySendInitialSnapshot();
         }
 
         /// <summary>
-        /// Queues a guest proposal until the host reaches a stable simulation boundary.
-        /// </summary>
-        /// <param name="packet">The proposed snapshot packet.</param>
-        private void HandleSnapshotProposal(MultiplayerPacket packet)
-        {
-            if (_role != MultiplayerRole.Host)
-                throw new InvalidOperationException("Only the host can order state proposals.");
-            _pendingProposal = packet;
-        }
-
-        /// <summary>
-        /// Applies an authoritative host snapshot on the guest.
+        /// Retains the newest complete authoritative state without rebuilding presentation inside the receive loop.
         /// </summary>
         /// <param name="packet">The committed snapshot packet.</param>
         private void HandleSnapshotCommit(MultiplayerPacket packet)
         {
-            if (_role != MultiplayerRole.Guest || _runtime == null)
+            if (_role != MultiplayerRole.Guest || _gameSession != null)
                 return;
             MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
                 packet.Metadata
             );
-            if (metadata == null || metadata.revision < _revision)
-                return;
-
-            GameRoot game = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
-            ConfigureGame(game);
-            _runtime.ReplaceMultiplayerGame(game);
-            _revision = metadata.revision;
-            _lastAcceptedHash = MultiplayerSnapshotCodec.Capture(game).Hash;
-            _proposalPending = false;
-            _synchronizationReady = true;
-            _nextSnapshotTime = Time.unscaledTime + _snapshotIntervalSeconds;
-            SetStatus($"Connected to {_hostPlayerName} — revision {_revision}");
-        }
-
-        /// <summary>
-        /// Applies or rejects the latest queued guest proposal once the host is stable.
-        /// </summary>
-        private void ProcessPendingProposal()
-        {
             if (
-                _role != MultiplayerRole.Host
-                || _pendingProposal == null
-                || _runtime?.CanSave != true
+                metadata == null
+                || !_snapshotAdmission.Accepts(metadata.initializationID, metadata.revision)
             )
                 return;
 
-            CommitLocalChanges();
-            MultiplayerPacket proposal = _pendingProposal;
-            _pendingProposal = null;
-            MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
-                proposal.Metadata
-            );
-            if (metadata == null || metadata.baseRevision != _revision)
-            {
-                SendCurrentSnapshot(MultiplayerMessageType.SnapshotRejected);
+            _pendingCommits.Enqueue(packet, metadata.revision);
+        }
+
+        /// <summary>
+        /// Applies at most one complete host state per frame, after all received revisions have been inspected.
+        /// </summary>
+        private void ProcessPendingCommit()
+        {
+            if (
+                _role != MultiplayerRole.Guest
+                || _runtime == null
+                || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+            )
                 return;
+            MultiplayerPacket packet = _pendingCommits.Take();
+            if (packet == null)
+                return;
+            try
+            {
+                ApplySnapshotCommit(packet);
             }
-
-            GameRoot game = MultiplayerSnapshotCodec.Restore(proposal.Payload, metadata.hash);
-            ConfigureGame(game);
-            _runtime.ReplaceMultiplayerGame(game);
-            _revision++;
-            _lastAcceptedHash = MultiplayerSnapshotCodec.Capture(game).Hash;
-            MultiplayerSnapshotMessage commit = new MultiplayerSnapshotMessage
+            catch (Exception exception)
             {
-                revision = _revision,
-                baseRevision = metadata.baseRevision,
-                hash = metadata.hash,
-            };
-            QueueSend(
-                new MultiplayerPacket(
-                    MultiplayerMessageType.SnapshotCommit,
-                    JsonUtility.ToJson(commit),
-                    proposal.Payload
-                )
-            );
-            SetStatus($"Player action synchronized — revision {_revision}");
-        }
-
-        /// <summary>
-        /// Detects stable local changes and sends them through the host ordering boundary.
-        /// </summary>
-        private void ProcessSynchronization()
-        {
-            if (
-                !_synchronizationReady
-                || _runtime?.CanSave != true
-                || _peer?.IsConnected != true
-                || Time.unscaledTime < _nextSnapshotTime
-            )
-                return;
-
-            _nextSnapshotTime = Time.unscaledTime + _snapshotIntervalSeconds;
-            if (_role == MultiplayerRole.Host)
-                CommitLocalChanges();
-            else if (_role == MultiplayerRole.Guest && !_proposalPending)
-                ProposeLocalChanges();
-        }
-
-        /// <summary>
-        /// Commits changed host state and broadcasts a new authoritative revision.
-        /// </summary>
-        private void CommitLocalChanges()
-        {
-            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGame()
-            );
-            if (string.Equals(snapshot.Hash, _lastAcceptedHash, StringComparison.Ordinal))
-                return;
-
-            long baseRevision = _revision;
-            _revision++;
-            _lastAcceptedHash = snapshot.Hash;
-            SendSnapshot(MultiplayerMessageType.SnapshotCommit, snapshot, _revision, baseRevision);
-        }
-
-        /// <summary>
-        /// Sends changed guest state to the host as a revision-checked proposal.
-        /// </summary>
-        private void ProposeLocalChanges()
-        {
-            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGame()
-            );
-            if (string.Equals(snapshot.Hash, _lastAcceptedHash, StringComparison.Ordinal))
-                return;
-
-            _proposalPending = true;
-            SendSnapshot(MultiplayerMessageType.SnapshotProposal, snapshot, _revision, _revision);
-        }
-
-        /// <summary>
-        /// Sends the initial authoritative state after both generated sessions are ready.
-        /// </summary>
-        private void TrySendInitialSnapshot()
-        {
-            if (
-                _role != MultiplayerRole.Host
-                || !_remoteReady
-                || _runtime?.GetActiveGame() == null
-                || _synchronizationReady
-            )
-                return;
-
-            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGame()
-            );
-            _revision = 1;
-            _lastAcceptedHash = snapshot.Hash;
-            _synchronizationReady = true;
-            SendSnapshot(MultiplayerMessageType.SnapshotCommit, snapshot, _revision, 0);
-            SetStatus("Both players synchronized — revision 1");
-        }
-
-        /// <summary>
-        /// Sends the current host state as a correction or resynchronization snapshot.
-        /// </summary>
-        /// <param name="type">The correction message type.</param>
-        private void SendCurrentSnapshot(MultiplayerMessageType type)
-        {
-            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGame()
-            );
-            _lastAcceptedHash = snapshot.Hash;
-            SendSnapshot(type, snapshot, _revision, _revision);
+                HandleGameplayFailure(exception);
+            }
         }
 
         /// <summary>
@@ -709,47 +809,21 @@ namespace Rebellion.Multiplayer
                 revision = revision,
                 baseRevision = baseRevision,
                 hash = snapshot.Hash,
+                simulationFingerprint = _initialSimulationFingerprint,
+                runtimeRecovery = true,
+                initializationID = _initializationID,
             };
             QueueSend(new MultiplayerPacket(type, JsonUtility.ToJson(metadata), snapshot.Payload));
         }
 
         /// <summary>
-        /// Refreshes a hosted directory listing before its lease expires.
+        /// Adopts snapshot ordering for a new initialization and discards its predecessor's pending state.
         /// </summary>
-        private void ProcessHeartbeat()
+        /// <param name="initializationID">The identity agreed for the initialized game.</param>
+        private void BeginInitialization(string initializationID)
         {
-            if (
-                _role != MultiplayerRole.Host
-                || string.IsNullOrWhiteSpace(_listingID)
-                || _heartbeatPending
-                || Time.unscaledTime < _nextHeartbeatTime
-            )
-                return;
-
-            _heartbeatPending = true;
-            _nextHeartbeatTime = Time.unscaledTime + _heartbeatIntervalSeconds;
-            RefreshListingAsync();
-        }
-
-        /// <summary>
-        /// Sends a directory heartbeat without interrupting an active direct connection.
-        /// </summary>
-        private async void RefreshListingAsync()
-        {
-            try
-            {
-                MatchmakerGame listing = CreateListing(_hostPort);
-                listing.id = _listingID;
-                await _matchmaker.RegisterAsync(_matchmakerUrl, listing);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning($"Multiplayer directory heartbeat failed: {exception.Message}");
-            }
-            finally
-            {
-                _heartbeatPending = false;
-            }
+            if (_snapshotAdmission.Begin(initializationID))
+                _pendingCommits.Clear();
         }
 
         /// <summary>
@@ -758,85 +832,99 @@ namespace Rebellion.Multiplayer
         /// <param name="packet">The packet to send.</param>
         private async void QueueSend(MultiplayerPacket packet)
         {
+            CancellationToken cancellationToken = _sessionCancellation.Token;
+            IMultiplayerPeer sendingPeer = _peer;
             try
             {
-                await _peer.SendAsync(packet);
+                await sendingPeer.SendAsync(packet);
             }
             catch (Exception exception)
             {
-                _synchronizationReady = false;
-                SetStatus($"Send failed: {exception.Message}");
+                if (
+                    cancellationToken.IsCancellationRequested
+                    || !ReferenceEquals(sendingPeer, _peer)
+                    || sendingPeer?.IsConnected != true
+                )
+                    return;
+                if (_runtime != null)
+                    HandleGameplayFailure(exception);
+                else
+                    SetStatus($"Send failed: {exception.Message}");
             }
         }
 
         /// <summary>
-        /// Removes a hosted listing without delaying local teardown.
+        /// Removes lobby membership without blocking synchronous menu teardown.
         /// </summary>
-        /// <param name="matchmakerUrl">The directory base URL.</param>
-        /// <param name="listingID">The listing identifier.</param>
-        private async void RemoveListingAsync(string matchmakerUrl, string listingID)
+        /// <returns>The pending lobby cleanup.</returns>
+        private async Task LeaveLobbyAsync()
         {
+            if (_backend == null)
+                return;
             try
             {
-                await _matchmaker.RemoveAsync(matchmakerUrl, listingID);
+                await _backend.LeaveAsync(_launchConfiguration != null);
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Multiplayer listing removal failed: {exception.Message}");
+                Debug.LogWarning($"Multiplayer lobby cleanup failed: {exception.Message}");
             }
         }
 
         /// <summary>
-        /// Stops advertising the hosted game while leaving its direct connection intact.
+        /// Marks the accepted two-player room as full in its discovery metadata.
         /// </summary>
-        private void StopAdvertising()
+        private void MarkListingFull()
         {
-            string listingID = _listingID;
-            string matchmakerUrl = _matchmakerUrl;
-            _listingID = null;
-            _heartbeatPending = false;
-            if (!string.IsNullOrWhiteSpace(listingID) && !string.IsNullOrWhiteSpace(matchmakerUrl))
-                RemoveListingAsync(matchmakerUrl, listingID);
+            _listingState = "full";
+            _ = UpdateHostedListingAsync(_sessionCancellation.Token);
         }
 
         /// <summary>
-        /// Creates a directory listing for the current host settings.
+        /// Publishes changed host state once, without a directory heartbeat.
         /// </summary>
-        /// <param name="port">The advertised direct-connect port.</param>
-        /// <returns>The directory listing.</returns>
-        private MatchmakerGame CreateListing(int port)
+        /// <param name="cancellationToken">Identifies the session that owns the update.</param>
+        /// <returns>The pending lobby update.</returns>
+        private async Task UpdateHostedListingAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _backend.UpdateListingAsync(CreateListing());
+            }
+            catch (Exception exception)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                    Debug.LogWarning($"Multiplayer listing update failed: {exception.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates the advertised metadata for the current host settings.
+        /// </summary>
+        /// <returns>The host's game listing.</returns>
+        private MatchmakerGame CreateListing()
         {
             return new MatchmakerGame
             {
-                id = _listingID,
-                name = $"{_playerName}'s Game",
-                address = GetLocalAddress(),
-                port = port,
+                name = _gameName,
+                transport = EpicLobbyListing.Transport,
+                maxPlayers = 2,
+                state = _listingState,
                 hostFaction = _hostSummary?.PlayerFactionID,
                 contentFingerprint = CreateContentFingerprint(_hostSummary),
+                packID = _hostSummary?.PackID,
+                packName = _lobbyContent?.Definition.DisplayName,
+                packVersion = _hostSummary?.PackVersion,
+                scenarioID = _hostSummary?.ScenarioID,
+                passwordProtected = !string.IsNullOrEmpty(_password),
+                campaignID =
+                    _runtime?.GetActiveGame()?.Metadata?.CampaignID
+                    ?? (
+                        _waitingForRejoin || _returningToRecovery
+                            ? _recoveryRecord?.campaignID
+                            : null
+                    ),
             };
-        }
-
-        /// <summary>
-        /// Returns a best-effort LAN address for directory clients on the same network.
-        /// </summary>
-        /// <returns>The selected IPv4 address, or loopback as a fallback.</returns>
-        private static string GetLocalAddress()
-        {
-            try
-            {
-                return Dns.GetHostAddresses(Dns.GetHostName())
-                        .FirstOrDefault(address =>
-                            address.AddressFamily == AddressFamily.InterNetwork
-                            && !IPAddress.IsLoopback(address)
-                        )
-                        ?.ToString()
-                    ?? IPAddress.Loopback.ToString();
-            }
-            catch (SocketException)
-            {
-                return IPAddress.Loopback.ToString();
-            }
         }
 
         /// <summary>
@@ -856,6 +944,24 @@ namespace Rebellion.Multiplayer
                 )
             );
             return $"{summary.PackID}|{summary.PackVersion}|{summary.ScenarioID}|{mods}";
+        }
+
+        /// <summary>
+        /// Computes admission identity once per fully loaded content selection.
+        /// Runtime custom settings are checked separately as shared simulation state.
+        /// </summary>
+        /// <param name="content">The loaded selection used by simulation factories.</param>
+        /// <returns>The actual gameplay-data identity.</returns>
+        private string GetGameplayContentIdentity(ContentPack content)
+        {
+            if (content == null)
+                throw new InvalidOperationException("Gameplay content has not finished loading.");
+            if (!ReferenceEquals(_identityContent, content))
+            {
+                _gameplayContentIdentity = GameplayContentIdentity.Compute(content.GameData);
+                _identityContent = content;
+            }
+            return _gameplayContentIdentity;
         }
 
         /// <summary>
@@ -888,6 +994,20 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Normalizes an optional directory game name and falls back to the host identity.
+        /// </summary>
+        /// <param name="gameName">The requested game name.</param>
+        /// <param name="playerName">The normalized host display name.</param>
+        /// <returns>A non-empty bounded game name.</returns>
+        private static string NormalizeGameName(string gameName, string playerName)
+        {
+            string value = string.IsNullOrWhiteSpace(gameName)
+                ? $"{playerName}'s Game"
+                : gameName.Trim();
+            return value.Length <= 64 ? value : value.Substring(0, 64);
+        }
+
+        /// <summary>
         /// Updates connection status and notifies presentation listeners.
         /// </summary>
         /// <param name="status">The new status.</param>
@@ -895,6 +1015,73 @@ namespace Rebellion.Multiplayer
         {
             _status = status ?? string.Empty;
             StateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Starts one session scope and keeps networking responsive when the player window loses focus.
+        /// </summary>
+        /// <param name="role">The local participant's role.</param>
+        /// <returns>The cancellation token owned by this session.</returns>
+        private CancellationToken BeginSession(MultiplayerRole role)
+        {
+            Disconnect();
+            RetainBackgroundProcessing();
+            _role = role;
+            return _sessionCancellation.Token;
+        }
+
+        /// <summary>
+        /// Keeps authentication, discovery, and chat responsive while the console loses focus.
+        /// </summary>
+        public void OpenBrowser()
+        {
+            _browserOpen = true;
+            RetainBackgroundProcessing();
+        }
+
+        /// <summary>
+        /// Releases browser ownership while retaining background networking for an active session.
+        /// </summary>
+        public async void CloseBrowser()
+        {
+            _browserOpen = false;
+            try
+            {
+                if (_chatBackend != null)
+                    await _chatBackend.CloseGeneralChatAsync();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("General chat cleanup failed: " + exception.Message);
+            }
+            finally
+            {
+                if (!_browserOpen && _role == MultiplayerRole.None)
+                    ReleaseBackgroundProcessing();
+            }
+        }
+
+        /// <summary>
+        /// Captures the application's background preference once for the complete online lifecycle.
+        /// </summary>
+        private void RetainBackgroundProcessing()
+        {
+            if (_backgroundOwned)
+                return;
+            _previousRunInBackground = Application.runInBackground;
+            _backgroundOwned = true;
+            Application.runInBackground = true;
+        }
+
+        /// <summary>
+        /// Restores the preference captured before opening online play.
+        /// </summary>
+        private void ReleaseBackgroundProcessing()
+        {
+            if (!_backgroundOwned)
+                return;
+            Application.runInBackground = _previousRunInBackground;
+            _backgroundOwned = false;
         }
     }
 }

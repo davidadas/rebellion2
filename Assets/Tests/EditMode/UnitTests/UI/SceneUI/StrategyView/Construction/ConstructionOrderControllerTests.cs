@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -62,7 +63,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             container.AddSingletonInstance(game);
             container.AddSingletonInstance(new ManufacturingQueries(game));
             ConstructionOrderController controller = new ConstructionOrderController(
-                container.BuildServiceLocator()
+                container.BuildServiceLocator(),
+                TestPlayerActions.RejectAll()
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(tab, ownerId);
@@ -74,7 +76,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
-        public void TrySetConstructionOrder_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
+        public async Task TrySetConstructionOrderAsync_BuildCountExceedsFacilityCount_UsesDestinationCapacityAsync()
         {
             Building template = TestContent
                 .Data.Buildings.Where(building =>
@@ -104,28 +106,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             game.AttachNode(producer, sector);
             game.AttachNode(destination, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
-            FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
-            MovementCommands movement = new MovementCommands(
-                game,
-                fogOfWar,
-                new FleetCommands(game),
-                new FogOfWarQueries(game),
-                new MovementQueries(game)
+            using GameSession session = TestContent.CreateGameSession(game);
+            ConstructionOrderController controller = new ConstructionOrderController(
+                session,
+                TestPlayerActions.Create(session, () => ownerId)
             );
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                game,
-                new FleetCommands(game),
-                new ManufacturingQueries(game),
-                movement
-            );
-            ConstructionOrderController controller = CreateController(game, manufacturing);
 
-            bool started = controller.TrySetConstructionOrder(
+            bool started = await controller.TrySetConstructionOrderAsync(
                 producer,
                 destination,
                 template,
-                _destinationEnergyCapacity,
-                ownerId
+                _destinationEnergyCapacity
             );
 
             Assert.IsTrue(started);
@@ -326,7 +317,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             container.AddSingletonInstance(manufacturing);
             container.AddSingletonInstance(new MovementQueries(game));
             container.AddSingletonInstance(new ManufacturingQueries(game));
-            return new ConstructionOrderController(container.BuildServiceLocator());
+            return new ConstructionOrderController(
+                container.BuildServiceLocator(),
+                TestPlayerActions.RejectAll()
+            );
         }
 
         /// <summary>

@@ -10,7 +10,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Evaluates and records victory conditions.
     /// </summary>
-    public class VictoryCommands
+    public partial class VictoryCommands
     {
         private readonly GameRoot _game;
         private bool _victoryDeclared;

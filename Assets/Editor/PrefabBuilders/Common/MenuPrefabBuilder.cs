@@ -40,6 +40,7 @@ public static class MenuPrefabBuilder
         BuildWindowPrefab();
         BuildButtonPrefab(_navigationPrefabPath, _menuRowAddress, _panelBorder, 163, 28, 13);
         BuildButtonPrefab(_actionPrefabPath, _menuBadgeAddress, _badgeBorder, 76, 22, 11);
+        MenuControlPrefabBuilder.Rebuild();
     }
 
     /// <summary>
@@ -741,8 +742,7 @@ public static class MenuPrefabBuilder
         text.text = string.Empty;
         text.color = Color.white;
         text.fontSize = 12;
-        text.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(text.rectTransform, 2, 1, width - 2, height - 2);
+        text.alignment = TextAlignmentOptions.MidlineLeft;
 
         TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
         if (placeholder == null)
@@ -750,8 +750,7 @@ public static class MenuPrefabBuilder
         placeholder.text = placeholderText;
         placeholder.color = Color.white;
         placeholder.fontSize = 12;
-        placeholder.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(placeholder.rectTransform, 2, 1, width - 2, height - 2);
+        placeholder.alignment = TextAlignmentOptions.MidlineLeft;
 
         input.enabled = true;
         input.targetGraphic = image;
@@ -759,9 +758,25 @@ public static class MenuPrefabBuilder
         input.lineType = TMP_InputField.LineType.SingleLine;
         if (input.textViewport == null || input.textViewport == rect)
             throw new MissingReferenceException($"{name}/TextViewport is missing or invalid.");
+        StretchInputContents(input.textViewport);
+        input.textViewport.offsetMin = new Vector2(2, 0);
+        input.textViewport.offsetMax = new Vector2(-2, 0);
+        StretchInputContents(text.rectTransform);
+        StretchInputContents(placeholder.rectTransform);
         input.textComponent = text;
         input.placeholder = placeholder;
         return input;
+    }
+
+    /// <summary>
+    /// Fits input content symmetrically to its parent without a fixed-height baseline offset.
+    /// </summary>
+    /// <param name="rect">The viewport, entered text, or placeholder rectangle.</param>
+    private static void StretchInputContents(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
     }
 
     /// <summary>

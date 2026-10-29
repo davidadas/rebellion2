@@ -53,3 +53,76 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
+
+For native UI audits, pass `-nativeAuditBuild` to `StandalonePlayerBuild.Build` and use a
+separate player output directory. This adds the `REBELLION_NATIVE_AUDIT` compilation symbol;
+`Assets/Tests/NativeAudit` requires that symbol in standalone players. Launch each audit player
+with its own absolute `-nativeAuditControl` directory. Without that launch argument, the observer
+does not start. Ordinary builds omit the symbol.
+
+Write one JSON command to a temporary file, then rename it to `request.json` in that directory.
+Commands have a unique numeric `id` and an `operation`: `state`, `point`, `capture`, or `wait`.
+For example, `{"id":1,"operation":"point","target":"MultiplayerButton"}` resolves the
+center of a unique active control, its event-system raycasts, and public UI state. Exact hierarchy
+paths disambiguate repeated names. Coordinates use Unity's viewport origin at the bottom left.
+The completed response is published once as `response-1.json`; captures also create `frame-1.png`.
+Use a fresh control directory for each process and never reuse command IDs within it.
+
+For native service audits, explicit `browse`, `host`, `join`, `ready`, `launch`, `resume`, `save`,
+`quicksave`, `load`, `speed`, and `fight` commands call the existing public service contracts.
+`key` queues a virtual Input System keyboard press and release. These commands do not invoke
+private callbacks. Poll `operationPending`, then check `operationSucceeded`, coordinator status,
+and the resulting scene and files: completion of a service call alone does not establish admission.
+`fight` submits one explicit local Fight response; it does not automate future battles.
+`start-timings` starts the existing bounded phase trace with the requested `capacity`;
+`stop-timings` exports its samples and timestamp frequency to `timings-ID.json`.
+
+Service audits do not establish physical input delivery. Drive input through the operating system
+when testing actual shortcuts and controls, and verify the resulting UI, checkpoint, or save
+independently. A resolved pointer target does not prove a click was delivered. State responses include active control paths,
+interactivity, enabled action names, shortcut suppression, and selected-control focus; they omit
+input-field contents and credentials. Scene queries run only for explicit commands, with request
+polling at five hertz. Keep both audit clients on the same compiled build and use isolated saves.
+
+## Multiplayer synchronization
+
+`GameRuntime` selects the session owner before constructing simulation services. Multiplayer
+campaigns require an `IGameSessionOwner`; presentation reports readiness for that specific session
+and never replaces its execution owner. Local and network player actions use the session's writable
+command boundary. Commands wait while a tick executes, and network commands also wait for the
+completed day's verification barrier.
+
+Admission compares a source identity embedded in the compiled game assembly and a SHA-256 digest
+of the composed gameplay catalog. The source identity covers production scripts, assembly settings,
+package dependencies and Unity version; it is independent of checkout paths and line endings.
+Content checks apply to joining, content changes, shared loads and reconnects. Pack/version labels
+alone do not admit a peer. After changing source inputs, allow Unity's identity regeneration and
+script compilation to finish before testing or building.
+
+Each launch, shared load and reconnect receives an initialization identity. Readiness, recovery
+snapshots and gameplay packets from an outgoing initialization cannot enter its replacement.
+Snapshot revisions are ordered within that initialization; a restarted host begins its own sequence.
+Recovery transport initiation follows room ownership, while simulation authority retains the
+campaign's authenticated host role. The shared persistence channel is created after the agreed
+state handshake, rather than binding to a provisional recovery identity.
+Recovery checks both payload integrity and the restored simulation continuation before opening
+gameplay. Completed days compare model and runtime continuation fingerprints, including active RNG
+seed/position, identifiers, faction rules and pending simulation facts. Participant UI state is
+excluded. A mismatch or execution failure stops replay without retrying a potentially applied action.
+
+Simulation verification performs one graph traversal per completed multiplayer day per peer, after
+the tick iterator releases its execution boundary. `SimulationPhase.StateVerification` records its
+cost when timing capture is enabled; verification is not a frame-loop poll.
+
+Human participants select their own game speed. The effective clock uses the slowest human
+selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances
+only when neither remains paused. A faster preference takes effect as the slower participant raises
+their selection, without requiring identical choices. Keyboard stepping follows the local selection.
+The strategy HUD shows the effective clock, both acknowledged choices, and faster-speed requests.
+
+Each human side in a pending fleet encounter must respond before resolution. A single human facing
+an AI side resolves after that human's response. If either side selects withdrawal, its existing
+withdrawal eligibility and movement rules apply; when both select withdrawal, both plans are
+prepared before either is applied and the encounter is a draw. The battle window shows response
+receipt without exposing the other participant's choice. Pending responses belong to the runtime
+continuation and survive recovery.

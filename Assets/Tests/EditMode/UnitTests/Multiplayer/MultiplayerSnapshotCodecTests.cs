@@ -7,6 +7,127 @@ namespace Rebellion.Tests.Multiplayer
     public sealed class MultiplayerSnapshotCodecTests
     {
         [Test]
+        public void ComputeStateFingerprint_UnchangedState_ReturnsSameFingerprint()
+        {
+            GameRoot game = new GameRoot();
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_PersistedTickChanges_DetectsChange()
+        {
+            GameRoot game = new GameRoot();
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            game.CurrentTick++;
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.Not.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_LocalViewChanges_IgnoresRuntimeOnlyFaction()
+        {
+            GameRoot game = new GameRoot();
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            game.LocalPlayerFactionID = "other-faction";
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_NestedSummaryArrayChanges_DetectsChange()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { ModIDs = new[] { "first", "second" } },
+            };
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            game.Summary.ModIDs[1] = "changed";
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.Not.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_PlayerOwnershipChanges_DetectsChange()
+        {
+            GameRoot game = new GameRoot();
+            game.SetFactionController("faction", "host", PlayerControllerType.Human);
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            game.SetFactionController("faction", "guest", PlayerControllerType.Human);
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.Not.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_NestedSceneNodeChanges_DetectsChange()
+        {
+            GameRoot game = new GameRoot();
+            Rebellion.Game.Galaxy.Planet planet = new Rebellion.Game.Galaxy.Planet
+            {
+                InstanceID = "planet",
+                DisplayName = "Before",
+            };
+            Rebellion.Game.Galaxy.PlanetSector sector = new Rebellion.Game.Galaxy.PlanetSector
+            {
+                InstanceID = "sector",
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            string snapshotHash = MultiplayerSnapshotCodec.Capture(game).Hash;
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            planet.DisplayName = "After";
+            Assert.That(MultiplayerSnapshotCodec.Capture(game).Hash, Is.Not.EqualTo(snapshotHash));
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.Not.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_RestoredSnapshot_MatchesPersistedState()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 42 };
+            game.SetFactionController("faction", "host", PlayerControllerType.Human);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(game);
+            GameRoot restored = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(restored),
+                Is.EqualTo(MultiplayerSnapshotCodec.ComputeStateFingerprint(game))
+            );
+        }
+
+        [Test]
+        public void ComputeStateFingerprint_DateMetadataChanges_DetectsChange()
+        {
+            GameRoot game = new GameRoot();
+            string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
+            game.Metadata.LastSavedUtc = new System.DateTime(
+                2026,
+                10,
+                26,
+                12,
+                0,
+                0,
+                System.DateTimeKind.Utc
+            );
+            Assert.That(
+                MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
+                Is.Not.EqualTo(fingerprint)
+            );
+        }
+
+        [Test]
         public void CaptureAndRestore_GameState_RoundTripsAndValidatesHash()
         {
             GameRoot game = new GameRoot

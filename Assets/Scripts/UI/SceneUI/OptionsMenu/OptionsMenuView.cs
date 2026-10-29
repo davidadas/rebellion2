@@ -326,7 +326,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
         if (data.ActiveTab != OptionsMenuTab.SaveLoad)
             _saveListView.CancelRename();
-        if (data.ActiveTab != OptionsMenuTab.UserInterface)
+        if (data.ActiveTab != OptionsMenuTab.UserInterface && _idleBarLocationDropdown.IsExpanded)
             _idleBarLocationDropdown.Hide();
         RenderTabs(data.ActiveTab, data.ShowModsTab);
         RenderFooter(data);

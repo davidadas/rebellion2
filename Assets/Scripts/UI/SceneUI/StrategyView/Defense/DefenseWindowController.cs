@@ -528,7 +528,7 @@ public sealed class DefenseWindowController
     /// </summary>
     /// <param name="request">The completed context-menu request.</param>
     /// <param name="command">The selected context-menu command.</param>
-    public void OnContextMenuCommandSelected(
+    public async void OnContextMenuCommandSelected(
         ContextMenuRequest request,
         IContextMenuCommand command
     )
@@ -547,7 +547,7 @@ public sealed class DefenseWindowController
             case StrategyMenuAction.CommandGeneral:
                 if (
                     strategyCommand.Action.TryGetOfficerRank(out OfficerRank rank)
-                    && actions.TrySetOfficerCommand(source.Items, rank)
+                    && await actions.TrySetOfficerCommandAsync(source.Items, rank)
                 )
                     actions.RefreshDefenseState();
                 break;

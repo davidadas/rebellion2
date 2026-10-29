@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
@@ -17,6 +20,128 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     public class StrategyAdvisorControllerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+        private readonly List<GameSession> actionSessions = new List<GameSession>();
+
+        /// <summary>
+        /// Releases domain services owned by action-execution fixtures.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (GameSession session in actionSessions)
+                session.Dispose();
+            actionSessions.Clear();
+        }
+
+        [Test]
+        public void ProcessPending_RepeatedTimedArrival_ExtendsPendingLifetimeWithoutDuplicatingPlayback()
+        {
+            int tick = 1;
+            var fixture = CreateTimedNotificationFixture(() => tick);
+            int started = 0;
+            fixture.view.PlaybackStarted += _ => started++;
+            try
+            {
+                fixture.controller.ProcessPending(true);
+                fixture.controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.Maintenance),
+                    true
+                );
+                fixture.controller.ProcessPending(true);
+                fixture.controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.ChatReceived),
+                    true
+                );
+                tick = 40;
+                fixture.controller.ProcessPending(true);
+                fixture.controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.ChatReceived),
+                    true
+                );
+                tick = 80;
+                fixture.controller.ProcessPending(true);
+                fixture.view.AdvanceAnimation(fixture.theme.FrameIntervalSeconds);
+
+                fixture.controller.ProcessPending(true);
+
+                Assert.AreEqual(2, started);
+                fixture.view.AdvanceAnimation(fixture.theme.FrameIntervalSeconds);
+                fixture.controller.ProcessPending(true);
+                Assert.AreEqual(2, started);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+                UnityEngine.Object.DestroyImmediate(fixture.frame);
+            }
+        }
+
+        [Test]
+        public void Notify_TimedArrivalWhileTypeIsActive_CreatesSeparatePendingPresentation()
+        {
+            int tick = 1;
+            var fixture = CreateTimedNotificationFixture(() => tick);
+            int started = 0;
+            fixture.view.PlaybackStarted += _ => started++;
+            try
+            {
+                fixture.controller.ProcessPending(true);
+                fixture.controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.ChatReceived),
+                    true
+                );
+                fixture.controller.ProcessPending(true);
+                tick = 62;
+                fixture.controller.ProcessPending(true);
+
+                fixture.controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.ChatReceived),
+                    true
+                );
+
+                Assert.IsTrue(
+                    new AdvisorNotificationTiming(fixture.state).HasPending(
+                        AdvisorNotificationType.ChatReceived
+                    )
+                );
+                fixture.view.AdvanceAnimation(fixture.theme.FrameIntervalSeconds);
+                fixture.controller.ProcessPending(true);
+                Assert.AreEqual(2, started);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+                UnityEngine.Object.DestroyImmediate(fixture.frame);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_RestoredTimedSlot_ResumesPendingPresentation()
+        {
+            PlayerUIState state = new PlayerUIState();
+            AdvisorNotificationTiming savedTiming = new AdvisorNotificationTiming(state);
+            savedTiming.SampleClock(10);
+            savedTiming.RecordArrival(AdvisorNotificationType.ChatReceived, 50);
+            var fixture = CreateTimedNotificationFixture(() => 20, state);
+            int started = 0;
+            fixture.view.PlaybackStarted += _ => started++;
+            try
+            {
+                fixture.controller.ProcessPending(true);
+
+                Assert.AreEqual(1, started);
+                Assert.IsFalse(
+                    new AdvisorNotificationTiming(state).HasPending(
+                        AdvisorNotificationType.ChatReceived
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fixture.root);
+                UnityEngine.Object.DestroyImmediate(fixture.frame);
+            }
+        }
 
         [Test]
         public void BeginConstruction_PlayerFaction_RoutesRequestedCategory()
@@ -24,7 +149,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => new Faction(),
                 _ => null,
-                _ => { }
+                _ => { },
+                TestPlayerActions.RejectAll()
             );
             TestActions actions = new TestActions();
             controller.Initialize(actions);
@@ -41,7 +167,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => null,
                 _ => null,
-                _ => { }
+                _ => { },
+                TestPlayerActions.RejectAll()
             );
             TestActions actions = new TestActions();
             controller.Initialize(actions);
@@ -169,75 +296,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void OnContextMenuCommandSelected_ManageProductionEnabled_ProcessesAutomationImmediately()
+        public void OnContextMenuCommandSelected_ManageProductionEnabled_SubmitsAndAppliesProductionToggle()
         {
             Faction faction = new Faction();
             TestActions actions = new TestActions();
+            RecordingPlayerActionDispatcher playerActions = CreatePlayerActions(faction);
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => faction,
                 _ => null,
-                _ => { }
+                _ => { },
+                playerActions
             );
             controller.Initialize(actions);
-            StrategyMenuCommand command = StrategyAdvisorController
-                .BuildCommandMenu(faction)
-                .Single(item => item.Action == StrategyMenuAction.AdvisorManageProduction);
-            ContextMenuRequest request = (ContextMenuRequest)
-                typeof(StrategyAdvisorController)
-                    .GetMethod(
-                        "CreateContextMenuRequest",
-                        BindingFlags.Instance | BindingFlags.NonPublic
-                    )
-                    ?.Invoke(
-                        controller,
-                        new object[]
-                        {
-                            new List<StrategyMenuCommand> { command },
-                            0,
-                            0,
-                        }
-                    );
 
-            controller.OnContextMenuCommandSelected(request, command);
+            SelectCommand(controller, actions, StrategyMenuAction.AdvisorManageProduction);
 
             Assert.IsTrue(faction.ManageProduction);
-            Assert.AreSame(faction, actions.ProcessedFaction);
+            Assert.AreEqual(
+                PlayerAdvisorOption.ManageProduction,
+                ((ToggleAdvisorOptionPlayerAction)playerActions.Requests.Single()).Option
+            );
         }
 
         [Test]
-        public void OnContextMenuCommandSelected_ManageNamingEnabled_ProcessesAutomationImmediately()
+        public void OnContextMenuCommandSelected_ManageNamingEnabled_SubmitsAndAppliesNamingToggle()
         {
             Faction faction = new Faction();
             TestActions actions = new TestActions();
+            RecordingPlayerActionDispatcher playerActions = CreatePlayerActions(faction);
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => faction,
                 _ => null,
-                _ => { }
+                _ => { },
+                playerActions
             );
             controller.Initialize(actions);
-            StrategyMenuCommand command = StrategyAdvisorController
-                .BuildCommandMenu(faction)
-                .Single(item => item.Action == StrategyMenuAction.AdvisorManageNaming);
-            ContextMenuRequest request = (ContextMenuRequest)
-                typeof(StrategyAdvisorController)
-                    .GetMethod(
-                        "CreateContextMenuRequest",
-                        BindingFlags.Instance | BindingFlags.NonPublic
-                    )
-                    ?.Invoke(
-                        controller,
-                        new object[]
-                        {
-                            new List<StrategyMenuCommand> { command },
-                            0,
-                            0,
-                        }
-                    );
 
-            controller.OnContextMenuCommandSelected(request, command);
+            SelectCommand(controller, actions, StrategyMenuAction.AdvisorManageNaming);
 
             Assert.IsTrue(faction.ManageNaming);
-            Assert.AreSame(faction, actions.ProcessedFaction);
+            Assert.AreEqual(
+                PlayerAdvisorOption.ManageNaming,
+                ((ToggleAdvisorOptionPlayerAction)playerActions.Requests.Single()).Option
+            );
         }
 
         [Test]
@@ -279,16 +380,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 StrategyAdvisorController controller = new StrategyAdvisorController(
                     () => faction,
                     path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
-                    playedAudio.Add
+                    playedAudio.Add,
+                    CreatePlayerActions(faction)
                 );
-                controller.Initialize(new TestActions());
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
 
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageProduction);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(
+                    controller,
+                    view,
+                    actions,
+                    StrategyMenuAction.AdvisorManageProduction
+                );
+                SelectCommand(
+                    controller,
+                    view,
+                    actions,
+                    StrategyMenuAction.AdvisorManageProduction
+                );
 
                 CollectionAssert.AreEqual(
                     new[]
@@ -349,6 +462,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => faction,
                     path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                     _ => { },
+                    CreatePlayerActions(faction),
                     playSfxInstance: path =>
                     {
                         AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
@@ -356,16 +470,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         return playback;
                     }
                 );
-                controller.Initialize(new TestActions());
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
 
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
 
                 Assert.AreEqual(1, playbacks.Count);
                 Assert.AreSame(enabledClip, playbacks[0].Source.clip);
 
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
 
                 Assert.AreEqual(2, playbacks.Count);
                 Assert.IsNull(playbacks[0].Source);
@@ -403,14 +518,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => faction,
                     _ => frame,
                     _ => { },
+                    CreatePlayerActions(faction),
                     getAudioDuration: _ => 2f
                 );
-                controller.Initialize(new TestActions());
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
                 view.PlaybackCompleted += () => playbackCompleted = true;
 
-                SelectCommand(controller, faction, StrategyMenuAction.AdvisorManageGarrisons);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
                 view.AdvanceAnimation(advisorTheme.FrameIntervalSeconds);
 
                 Assert.IsFalse(playbackCompleted);
@@ -450,6 +567,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => new Faction(),
                     _ => null,
                     _ => { },
+                    TestPlayerActions.RejectAll(),
                     playSfxInstance: path =>
                     {
                         AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
@@ -457,7 +575,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         return playback;
                     }
                 );
-                controller.Initialize(new TestActions());
+                TestActions actions = new TestActions();
+                controller.Initialize(actions);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
 
@@ -540,6 +659,71 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 UnityEngine.Object.DestroyImmediate(droidIdleTexture);
                 UnityEngine.Object.DestroyImmediate(protocolIdleTexture);
                 UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ProcessPending_TimedNotificationFramesLoadLater_PreservesDispatchAnnouncementChoice(
+            bool announcementsAtDispatch
+        )
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = root.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.ChatReceived,
+                    MaxPendingTicks = 50,
+                    RepeatCooldownTicks = 60,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "DroidChat",
+                        FrameCount = 1,
+                    },
+                    Protocol = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "ProtocolChat",
+                        FrameCount = 1,
+                        RequiresAnnouncementsEnabled = true,
+                    },
+                }
+            );
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
+            Texture2D frame = new Texture2D(1, 1);
+            PlayerUIState state = new PlayerUIState();
+            List<bool> playbackRoles = new List<bool>();
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindNotificationContext(() => state, () => 1);
+                controller.BindView(view);
+                controller.Render(theme);
+                controller.ProcessPending(announcementsAtDispatch);
+                view.PlaybackStarted += data => playbackRoles.Add(data.UsesDroid);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.ChatReceived),
+                    true
+                );
+                controller.ProcessPending(announcementsAtDispatch);
+                Assert.IsEmpty(playbackRoles);
+                textures[theme.GetFramePath("DroidChat", 0, true)] = frame;
+                textures[theme.GetFramePath("ProtocolChat", 0, false)] = frame;
+
+                controller.ProcessPending(!announcementsAtDispatch);
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+
+                CollectionAssert.AreEqual(
+                    announcementsAtDispatch ? new[] { true, false } : new[] { true },
+                    playbackRoles
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(frame);
             }
         }
 
@@ -1135,9 +1319,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                 _ => { },
+                TestPlayerActions.RejectAll(),
                 selectRandomIndex
             );
-            controller.Initialize(new TestActions());
+            TestActions actions = new TestActions();
+            controller.Initialize(actions);
             return controller;
         }
 
@@ -1173,6 +1359,64 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         /// <summary>
+        /// Creates a native advisor fixture with explicit timed notification state.
+        /// </summary>
+        /// <param name="getTick">Returns the simulation counter observed by the scheduler.</param>
+        /// <param name="state">The player state to restore, or null for a fresh state.</param>
+        /// <returns>The authored view, presentation resources, controller, and local player state.</returns>
+        private static (
+            GameObject root,
+            Texture2D frame,
+            StrategyAdvisorController controller,
+            StrategyAdvisorView view,
+            StrategyAdvisorTheme theme,
+            PlayerUIState state
+        ) CreateTimedNotificationFixture(Func<int> getTick, PlayerUIState state = null)
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = root.GetComponentInChildren<StrategyAdvisorView>(true);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            Texture2D frame = new Texture2D(1, 1);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.ChatReceived,
+                    MaxPendingTicks = 50,
+                    RepeatCooldownTicks = 60,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Chat",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.Maintenance,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Maintenance",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            PlayerUIState playerState = state ?? new PlayerUIState();
+            StrategyAdvisorController controller = new StrategyAdvisorController(
+                () => new Faction(),
+                _ => frame,
+                _ => { },
+                TestPlayerActions.RejectAll()
+            );
+            controller.Initialize(new TestActions());
+            controller.BindNotificationContext(() => playerState, getTick);
+            controller.BindView(view);
+            controller.Render(theme);
+            return (root, frame, controller, view, theme, playerState);
+        }
+
+        /// <summary>
         /// Creates theme.
         /// </summary>
         /// <returns>The created theme.</returns>
@@ -1204,35 +1448,79 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         /// <summary>
-        /// Selects command.
+        /// Creates an owned domain dispatcher that records the advisor's typed requests.
         /// </summary>
-        /// <param name="controller">The controller.</param>
-        /// <param name="faction">The faction.</param>
-        /// <param name="action">The action.</param>
+        /// <param name="faction">The same faction displayed by the advisor.</param>
+        /// <returns>The recording boundary backed by real domain execution.</returns>
+        private RecordingPlayerActionDispatcher CreatePlayerActions(Faction faction)
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(faction);
+            GameSession session = TestContent.CreateGameSession(game);
+            actionSessions.Add(session);
+            var localActions = TestPlayerActions.Create(session, () => faction.InstanceID);
+            return new RecordingPlayerActionDispatcher(localActions.ExecuteAsync);
+        }
+
+        /// <summary>
+        /// Selects an advisor command through a temporary authored view's public pointer contract.
+        /// </summary>
+        /// <param name="controller">The initialized advisor controller.</param>
+        /// <param name="actions">The fixture's context-menu receiver.</param>
+        /// <param name="action">The requested advisor action.</param>
         private static void SelectCommand(
             StrategyAdvisorController controller,
-            Faction faction,
+            TestActions actions,
             StrategyMenuAction action
         )
         {
-            StrategyMenuCommand command = StrategyAdvisorController
-                .BuildCommandMenu(faction)
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyAdvisorView view = root.GetComponentInChildren<StrategyAdvisorView>(true);
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                controller.BindView(view);
+                controller.Render(CreateTheme());
+                SelectCommand(controller, view, actions, action);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        /// <summary>
+        /// Obtains the controller-owned menu through its view before selecting a public command.
+        /// </summary>
+        /// <param name="controller">The controller.</param>
+        /// <param name="view">The initialized authored advisor view.</param>
+        /// <param name="actions">The fixture's context-menu receiver.</param>
+        /// <param name="action">The action.</param>
+        private static void SelectCommand(
+            StrategyAdvisorController controller,
+            StrategyAdvisorView view,
+            TestActions actions,
+            StrategyMenuAction action
+        )
+        {
+            UIRaycastArea input = view.GetComponentsInChildren<UIRaycastArea>(true)
+                .Single(area => area.name == "ProtocolInput");
+            Canvas.ForceUpdateCanvases();
+            input.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Right,
+                    position = RectTransformUtility.WorldToScreenPoint(
+                        null,
+                        input.transform.position
+                    ),
+                }
+            );
+            ContextMenuRequest request = actions.CommandRequest;
+            Assert.IsNotNull(request);
+            StrategyMenuCommand command = request
+                .Commands.OfType<StrategyMenuCommand>()
                 .Single(item => item.Action == action);
-            ContextMenuRequest request = (ContextMenuRequest)
-                typeof(StrategyAdvisorController)
-                    .GetMethod(
-                        "CreateContextMenuRequest",
-                        BindingFlags.Instance | BindingFlags.NonPublic
-                    )
-                    ?.Invoke(
-                        controller,
-                        new object[]
-                        {
-                            new List<StrategyMenuCommand> { command },
-                            0,
-                            0,
-                        }
-                    );
             controller.OnContextMenuCommandSelected(request, command);
         }
 
@@ -1251,7 +1539,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
         private sealed class TestActions : IStrategyHudActions
         {
-            public Faction ProcessedFaction { get; private set; }
+            public ContextMenuRequest CommandRequest { get; private set; }
 
             public ManufacturingType? ConstructionType { get; private set; }
 
@@ -1283,7 +1571,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            {
+                CommandRequest = request;
+            }
 
             /// <summary>
             /// Opens advisor notification context menu.
@@ -1310,15 +1601,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             public void OpenMessagesTab(MessagesTab tab) { }
 
             /// <summary>
-            /// Processes advisor automation.
-            /// </summary>
-            /// <param name="faction">The faction.</param>
-            public void ProcessAdvisorAutomation(Faction faction)
-            {
-                ProcessedFaction = faction;
-            }
-
-            /// <summary>
             /// Opens speed context menu.
             /// </summary>
             /// <param name="request">The request.</param>
@@ -1337,6 +1619,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
+
+            /// <summary>
+            /// Receives the displayed proposal response for the fixture.
+            /// </summary>
+            /// <param name="requestingFactionID">The proposing faction.</param>
+            /// <param name="speed">The displayed speed.</param>
+            /// <param name="revision">The proposal revision.</param>
+            /// <param name="accept">Whether the proposal is accepted.</param>
+            public void RespondToSpeedRequest(
+                string requestingFactionID,
+                TickSpeed speed,
+                long revision,
+                bool accept
+            ) { }
 
             /// <summary>
             /// Sets game speed.

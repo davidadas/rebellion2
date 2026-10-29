@@ -22,6 +22,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private Button _loadButton;
 
     [SerializeField]
+    private TMP_Text _heading;
+
+    [SerializeField]
     private RawImage _saveDisabledImage;
 
     [SerializeField]
@@ -75,6 +78,10 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private int _renameRow = -1;
     private bool _suppressRenameCommit;
     private bool _pendingRenameFocus;
+    private bool _loadOnly;
+
+    [SerializeField]
+    private bool _showToolbar = true;
     private bool _canSaveGame;
     private bool _existingSaveSelected;
 
@@ -138,7 +145,6 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _saveButton.onClick.AddListener(HandleSaveRequested);
         _loadButton.onClick.AddListener(HandleLoadRequested);
         _renameField.onValueChanged.AddListener(HandleRenameValueChanged);
-        _renameField.onEndEdit.AddListener(HandleRenameEndEdit);
         _renameField.onSubmit.AddListener(HandleRenameSubmitted);
     }
 
@@ -158,7 +164,6 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _saveButton.onClick.RemoveListener(HandleSaveRequested);
         _loadButton.onClick.RemoveListener(HandleLoadRequested);
         _renameField.onValueChanged.RemoveListener(HandleRenameValueChanged);
-        _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
         _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
 
@@ -200,7 +205,20 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _loadButton.interactable = canLoad;
         SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);
         SetButtonDisabledVisual(_loadButton, _loadDisabledImage, canLoad);
+        if (_loadOnly)
+        {
+            _saveButton.gameObject.SetActive(false);
+            _saveDisabledImage.gameObject.SetActive(false);
+        }
 
+        if (!_showToolbar)
+        {
+            _heading.gameObject.SetActive(false);
+            _saveButton.gameObject.SetActive(false);
+            _loadButton.gameObject.SetActive(false);
+            _saveDisabledImage.gameObject.SetActive(false);
+            _loadDisabledImage.gameObject.SetActive(false);
+        }
         RectInt rowRect = UILayout.GetSourceRect(_rowTemplate.rectTransform);
         RectInt iconRect = UILayout.GetSourceRect(_iconTemplate.rectTransform);
         RectInt nameRect = UILayout.GetSourceRect(_nameTemplate.rectTransform);
@@ -297,7 +315,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             date.alignment = TextAlignmentOptions.TopRight;
 
             Button delete = GetDelete(index);
-            delete.gameObject.SetActive(!slot.IsCreateNew);
+            delete.gameObject.SetActive(!_loadOnly && !slot.IsCreateNew);
             UILayout.SetSourceRect(
                 (RectTransform)delete.transform,
                 rowRect.width - 24,
@@ -335,6 +353,49 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _renameField.selectionAnchorPosition = _renameField.caretPosition;
         _renameField.selectionFocusPosition = _renameField.caretPosition;
         _renameField.ForceLabelUpdate();
+    }
+
+    /// <summary>
+    /// Restricts the reusable list to selection and loading while retaining the canonical row presentation.
+    /// </summary>
+    /// <param name="loadOnly">Whether saving, renaming, and deleting are unavailable in this host.</param>
+    public void SetLoadOnly(bool loadOnly)
+    {
+        _loadOnly = loadOnly;
+        _saveButton.gameObject.SetActive(!loadOnly);
+        CancelRename();
+    }
+
+    /// <summary>
+    /// Fits the reusable save rows to a dialog whose heading and actions belong to its host.
+    /// </summary>
+    /// <param name="width">The container width.</param>
+    /// <param name="height">The container height.</param>
+    public void SetLoadOnlyLayout(int width, int height)
+    {
+        SetLoadOnly(true);
+        _showToolbar = false;
+        _heading.gameObject.SetActive(false);
+        _loadButton.gameObject.SetActive(false);
+        _loadDisabledImage.gameObject.SetActive(false);
+        UILayout.SetSourceRect((RectTransform)transform, 0, 0, width, height);
+        UILayout.SetSourceRect(
+            (RectTransform)_scrollArea.transform,
+            10,
+            10,
+            width - 20,
+            height - 20
+        );
+        _scrollArea.SetLayout(
+            Vector2Int.zero,
+            new Vector2Int(width - 20, height - 20),
+            new Vector2Int(width - 33, 0),
+            new Vector2Int(13, height - 20)
+        );
+        UILayout.SetSourceRect(_rowTemplate.rectTransform, 0, 0, width - 20, 34);
+        UILayout.SetSourceRect(_iconTemplate.rectTransform, 8, 7, 20, 20);
+        UILayout.SetSourceRect(_nameTemplate.rectTransform, 34, 3, width - 86, 18);
+        UILayout.SetSourceRect(_metaTemplate.rectTransform, 34, 20, width - 86, 10);
     }
 
     /// <summary>
@@ -491,7 +552,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
 
         bool existing = !_slots[index].IsCreateNew;
         float now = Time.unscaledTime;
-        if (existing && _lastClickTimes.TryGetValue(button, out float last) && now - last < 0.35f)
+        if (
+            !_loadOnly
+            && existing
+            && _lastClickTimes.TryGetValue(button, out float last)
+            && now - last < 0.35f
+        )
         {
             _lastClickTimes[button] = 0f;
             CancelRename();
@@ -503,7 +569,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _lastClickTimes[button] = now;
         CancelRename();
         SlotSelected?.Invoke(index);
-        if (!existing)
+        if (!existing && !_loadOnly)
             BeginRename(index);
     }
 
@@ -539,12 +605,6 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _pendingRenameFocus = true;
         RenameEditingChanged?.Invoke(true);
     }
-
-    /// <summary>
-    /// Completes editing without treating focus loss as an explicit submission.
-    /// </summary>
-    /// <param name="value">The value.</param>
-    private void HandleRenameEndEdit(string value) => CompleteRename(value, false);
 
     /// <summary>
     /// Completes editing as an explicit keyboard submission.
@@ -607,7 +667,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void HandleSaveRequested()
     {
-        if (IsCreatingNamedSave())
+        if (_renameRow >= 0)
         {
             CompleteRename(_renameField.text, true);
             return;

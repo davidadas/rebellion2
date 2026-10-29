@@ -2228,6 +2228,7 @@ namespace Rebellion.Tests.Simulation
                     : result.DefenderOutcome;
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.IsNull(result.ManualRetreatingFactionID);
             Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.AreSame(allianceFallback, fighter.GetParentOfType<Planet>());
             Assert.IsNotNull(fighter.Movement);
@@ -3003,6 +3004,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(empireFleet.Order);
             SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
             Assert.AreSame(combatPlanet, combatResult.Planet);
+            Assert.AreEqual("empire", combatResult.ManualRetreatingFactionID);
             bool empireWasAttacker = ReferenceEquals(combatResult.AttackerFleet, empireFleet);
             Assert.AreSame(
                 allianceFleet,

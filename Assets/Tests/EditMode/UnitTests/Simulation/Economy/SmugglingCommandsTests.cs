@@ -44,6 +44,23 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RestoreRecoveryState_WorldChangedSinceReconciliation_PreservesNextRelationshipTransition()
+        {
+            List<SmugglingRecoveryState> state = _system.CaptureRecoveryState();
+            SetSupport(15, 85);
+            SmugglingCommands restored = new SmugglingCommands(_game);
+            restored.RestoreRecoveryState(state);
+
+            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(restored).ProcessTick(
+                _game
+            );
+
+            SmugglingChangedResult transition = results.OfType<SmugglingChangedResult>().Single();
+            Assert.That(transition.OldPercent, Is.Zero);
+            Assert.That(transition.NewPercent, Is.EqualTo(75));
+        }
+
+        [Test]
         public void ResolveProductionRecipient_DetachedFacility_ReturnsControllerWithoutRolling()
         {
             _game.Random = new ThrowingRNG();

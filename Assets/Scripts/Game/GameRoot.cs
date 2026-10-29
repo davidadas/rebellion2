@@ -29,7 +29,7 @@ namespace Rebellion.Game
     /// by systems to process the simulation.
     /// </summary>
     [PersistableObject(Name = "Game")]
-    public class GameRoot
+    public class GameRoot : IOrderedObjectGraph
     {
         // Scene graph.
         private GalaxyMap _galaxy;
@@ -99,6 +99,21 @@ namespace Rebellion.Game
             set => PersistedRandomIndex = value;
         }
 
+        [PersistableMember(Name = nameof(RuntimeIdentifierIndex))]
+        private long _runtimeIdentifierIndex;
+
+        /// <summary>
+        /// Gets or sets whether accepted runtime entities use the game's persisted identity sequence.
+        /// </summary>
+        [PersistableIgnore]
+        public bool UseDeterministicRuntimeIdentifiers { get; set; }
+
+        /// <summary>
+        /// Gets the position of the campaign's runtime identity sequence independently of gameplay randomness.
+        /// </summary>
+        [PersistableIgnore]
+        public long RuntimeIdentifierIndex => _runtimeIdentifierIndex;
+
         // Game state.
         [PersistableMember(Name = nameof(CurrentTick))]
         private int _currentTick;
@@ -139,17 +154,7 @@ namespace Rebellion.Game
         private readonly SceneNodeRegistry _sceneNodes = new();
 
         [PersistableIgnore]
-        private SceneNodeRegistryState _restoredRegistryState;
-
-        [PersistableIgnore]
         public IReadOnlyDictionary<string, ISceneNode> NodesByInstanceID => _sceneNodes;
-
-        [PersistableMember(Name = "SceneRegistry")]
-        private SceneNodeRegistryState PersistedSceneRegistry
-        {
-            get => _restoredRegistryState ?? _sceneNodes.CaptureState();
-            set => _restoredRegistryState = SceneNodeRegistry.CopyValidatedState(value);
-        }
 
         // Game objects.
         [PersistableMember(Name = "Factions")]
@@ -184,11 +189,97 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Assigns a recovered hierarchy without performing parent transitions or gameplay repairs.
+        /// </summary>
+        /// <param name="galaxy">The recovered hierarchy with its original object references.</param>
+        internal void SetRecoveryGalaxy(GalaxyMap galaxy)
+        {
+            _galaxy = galaxy ?? throw new ArgumentNullException(nameof(galaxy));
+        }
+
+        /// <summary>
+        /// Captures registry enumeration order independently of current hierarchy order.
+        /// </summary>
+        /// <returns>The registered objects in their current lookup order.</returns>
+        internal List<ISceneNode> CaptureRecoveryNodes() => NodesByInstanceID.Values.ToList();
+
+        /// <summary>
+        /// Restores lookup order without assigning identities, changing owners, or reparenting nodes.
+        /// </summary>
+        /// <param name="nodes">The registered objects in their captured order.</param>
+        internal void RestoreRecoveryNodes(IReadOnlyList<ISceneNode> nodes)
+        {
+            if (nodes == null)
+                throw new ArgumentNullException(nameof(nodes));
+            foreach (ISceneNode node in nodes)
+            {
+                string identity = (node as BaseGameEntity)?.GetRecoveryInstanceID();
+                if (string.IsNullOrEmpty(identity))
+                    throw new InvalidOperationException(
+                        "A recovered registered object has no assigned identity."
+                    );
+            }
+            RestoreRegisteredNodes(nodes);
+        }
+
+        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public GameRoot()
         {
             Galaxy = new GalaxyMap();
+        }
+
+        /// <summary>
+        /// Creates an identity from the enabled per-game sequence or the normal random identity source.
+        /// </summary>
+        /// <returns>A unique 32-digit hexadecimal identity within this game's runtime sequence.</returns>
+        public string GenerateRuntimeIdentifier()
+        {
+            if (!UseDeterministicRuntimeIdentifiers)
+                return Guid.NewGuid().ToString("N");
+
+            ulong seed = MixRuntimeIdentifier(unchecked((uint)Summary.Seed + 0x9e3779b97f4a7c15UL));
+            ulong position = MixRuntimeIdentifier((ulong)checked(++_runtimeIdentifierIndex));
+            return new Guid(
+                unchecked((int)(seed >> 32)),
+                unchecked((short)(seed >> 16)),
+                unchecked((short)seed),
+                (byte)(position >> 56),
+                (byte)(position >> 48),
+                (byte)(position >> 40),
+                (byte)(position >> 32),
+                (byte)(position >> 24),
+                (byte)(position >> 16),
+                (byte)(position >> 8),
+                (byte)position
+            ).ToString("N");
+        }
+
+        /// <summary>
+        /// Assigns an accepted entity's missing identity when per-game deterministic identities are enabled.
+        /// Existing identities and the normal lazy identity source are preserved.
+        /// </summary>
+        /// <param name="entity">The runtime entity being attached or delivered.</param>
+        internal void EnsureRuntimeIdentifier(BaseGameEntity entity)
+        {
+            if (UseDeterministicRuntimeIdentifiers && string.IsNullOrEmpty(entity.PeekInstanceID()))
+                entity.InstanceID = GenerateRuntimeIdentifier();
+        }
+
+        /// <summary>
+        /// Applies a fixed, reversible integer mixing operation to one identity component.
+        /// </summary>
+        /// <param name="value">The seed or sequence component.</param>
+        /// <returns>The mixed 64-bit component.</returns>
+        private static ulong MixRuntimeIdentifier(ulong value)
+        {
+            unchecked
+            {
+                value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9UL;
+                value = (value ^ (value >> 27)) * 0x94d049bb133111ebUL;
+                return value ^ (value >> 31);
+            }
         }
 
         /// <summary>
@@ -491,6 +582,7 @@ namespace Rebellion.Game
                 );
             }
 
+            EnsureRuntimeIdentifier((BaseGameEntity)node);
             parent.AddChild(node);
             node.SetParent(parent);
 
@@ -763,6 +855,7 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to register.</param>
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
+            EnsureRuntimeIdentifier((BaseGameEntity)node);
             try
             {
                 _sceneNodes.Add(node);
@@ -789,8 +882,8 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            _sceneNodes.Reset(_restoredRegistryState);
-            _restoredRegistryState = null;
+            if (!_sceneNodes.HasSerializedOrder)
+                _sceneNodes.Reset();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
 
@@ -802,19 +895,32 @@ namespace Rebellion.Game
         /// Ownership and parent links remain the caller's separately captured state.
         /// </summary>
         /// <param name="nodes">The decoded live nodes belonging to this graph.</param>
-        public void RestoreRegisteredNodes(IEnumerable<ISceneNode> nodes)
-        {
-            if (nodes == null)
-                throw new ArgumentNullException(nameof(nodes));
-            SceneNodeRegistry restored = new();
-            restored.Reset(PersistedSceneRegistry);
-            foreach (ISceneNode node in nodes)
-                restored.Add(node);
-            _sceneNodes.Reset(restored.CaptureState());
-            foreach (ISceneNode node in restored.Values)
-                _sceneNodes.Add(node);
-            _restoredRegistryState = null;
-        }
+        public void RestoreRegisteredNodes(IEnumerable<ISceneNode> nodes) =>
+            _sceneNodes.RestoreRegisteredNodes(nodes);
+
+        /// <summary>
+        /// Supplies existing objects and positions to the serializer without duplicating their IDs.
+        /// </summary>
+        /// <returns>The current live registration order.</returns>
+        IReadOnlyList<OrderedObject> IOrderedObjectGraph.CaptureObjectOrder() =>
+            _sceneNodes.CaptureObjectOrder();
+
+        /// <summary>
+        /// Supplies sparse vacancy reuse metadata to the serializer.
+        /// </summary>
+        /// <returns>The vacant-position reuse stack.</returns>
+        IReadOnlyList<int> IOrderedObjectGraph.CaptureVacantPositions() =>
+            _sceneNodes.CaptureVacantPositions();
+
+        /// <summary>
+        /// Restores order using the actual instances decoded from their existing records.
+        /// </summary>
+        /// <param name="objects">The decoded objects and logical positions.</param>
+        /// <param name="vacancies">The decoded vacancy reuse stack.</param>
+        void IOrderedObjectGraph.RestoreObjectOrder(
+            IReadOnlyList<OrderedObject> objects,
+            IReadOnlyList<int> vacancies
+        ) => _sceneNodes.RestoreObjectOrder(objects, vacancies);
 
         /// <summary>
         /// Initializes and returns the supplied galaxy scene root.
@@ -823,6 +929,9 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
+            _sceneNodes.Reset();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);
             return galaxy;
         }
@@ -839,6 +948,7 @@ namespace Rebellion.Game
                     if (node is Planet { IsDestroyed: true } planet)
                         NeutralizeDestroyedPlanet(planet);
 
+                    EnsureRuntimeIdentifier((BaseGameEntity)node);
                     if (!NodesByInstanceID.ContainsKey(node.InstanceID))
                         AddSceneNodeByInstanceID(node);
 

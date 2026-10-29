@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebellion.App;
+using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -47,8 +51,157 @@ namespace Rebellion.Tests.App
         [TearDown]
         public void TearDown()
         {
+            _runtime?.EndGame();
             if (Directory.Exists(_saveDirectoryPath))
                 Directory.Delete(_saveDirectoryPath, true);
+        }
+
+        [Test]
+        public void StartGame_DeclaredOwner_BindsBeforePresentationReadiness()
+        {
+            GameRoot game = CreateGame();
+            ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
+            TestSessionOwner owner = new();
+
+            GameSession session = _runtime.StartGame(game, owner);
+
+            CollectionAssert.AreEqual(new[] { "prepare", "bind" }, owner.Calls);
+            Assert.IsTrue(_runtime.HasCoordinatedPersistence);
+            Assert.IsTrue(_runtime.NotifyPresentationReady(session));
+            CollectionAssert.AreEqual(new[] { "prepare", "bind", "ready" }, owner.Calls);
+        }
+
+        [Test]
+        public void NotifyPresentationReady_ReplacedSession_DoesNotNotifyNewOwner()
+        {
+            GameSession outgoing = _runtime.StartGame(CreateGame());
+            TestSessionOwner owner = new();
+            _runtime.StartGame(CreateGame(), owner);
+
+            Assert.IsFalse(_runtime.NotifyPresentationReady(outgoing));
+            CollectionAssert.AreEqual(new[] { "prepare", "bind" }, owner.Calls);
+        }
+
+        [Test]
+        public void ResumeMultiplayerOperations_VerifiedCoordinatedSession_ReopensPersistence()
+        {
+            _runtime.StartGame(CreateGame(), new TestSessionOwner());
+            _runtime.BlockGameOperations();
+            Assert.IsFalse(_runtime.CanSave);
+            _runtime.ResumeMultiplayerOperations();
+            Assert.IsTrue(_runtime.CanSave);
+        }
+
+        [Test]
+        public void ResumeMultiplayerOperations_UncoordinatedSession_RejectsResume()
+        {
+            _runtime.StartGame(CreateGame());
+            Assert.Throws<InvalidOperationException>(_runtime.ResumeMultiplayerOperations);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void StartGame_MultiplayerCampaignWithoutOwner_RejectsBeforeSessionCreation(
+            bool loaded
+        )
+        {
+            GameRoot game = CreateGame();
+            ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
+
+            Assert.Throws<InvalidOperationException>(() =>
+            {
+                if (loaded)
+                    _runtime.StartLoadedGame(game);
+                else
+                    _runtime.StartGame(game);
+            });
+            Assert.IsFalse(_runtime.HasActiveGame);
+        }
+
+        [Test]
+        public void StartGame_QueuedOutgoingRequest_CancelsBeforeReplacementOwnerStarts()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            Task<int> pending = null;
+            session.Game.SetGameSpeed(TickSpeed.Fast);
+            session.Tick.TickCompleted += () =>
+                pending = session.ExecuteCommandAsync(() => ++session.Game.CurrentTick);
+            session.Tick.ProcessTick();
+            int completedTick = session.Game.CurrentTick;
+            Assert.IsNotNull(pending);
+            Assert.IsFalse(pending.IsCompleted);
+            _runtime.StartGame(CreateGame(), new TestSessionOwner());
+            Assert.IsTrue(pending.IsCanceled);
+            Assert.AreEqual(completedTick, session.Game.CurrentTick);
+        }
+
+        [Test]
+        public async Task StartGame_DeclaredOwner_ReceivesRequestsBeforePresentationReadyAsync()
+        {
+            GameRoot game = CreateGame();
+            ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
+            RecordingPlayerActionDispatcher negotiatedOwner = TestPlayerActions.RejectAll();
+            _runtime.StartGame(game, new TestSessionOwner(negotiatedOwner));
+            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
+            SetSpeedPlayerAction action = new() { Speed = TickSpeed.Fast };
+
+            await capturedByWindow.ExecuteAsync(action);
+
+            Assert.That(negotiatedOwner.Requests, Is.EqualTo(new[] { action }));
+        }
+
+        [Test]
+        public async Task StartGame_BeforePresentationReady_DoesNotExecuteLocallyAsync()
+        {
+            GameRoot game = CreateGame();
+            ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
+            _runtime.StartGame(game, new TestSessionOwner());
+            _runtime.GetActiveGameManager().SetGameSpeed(TickSpeed.Paused);
+            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
+
+            await capturedByWindow.ExecuteAsync(
+                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+            );
+
+            Assert.That(game.GetGameSpeed(), Is.EqualTo(TickSpeed.Paused));
+        }
+
+        [Test]
+        public async Task EndGame_PreviouslyCapturedDispatcher_RejectsWithoutExecutingAsync()
+        {
+            GameRoot game = CreateGame();
+            ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
+            RecordingPlayerActionDispatcher owner = TestPlayerActions.RejectAll();
+            _runtime.StartGame(game, new TestSessionOwner(owner));
+            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
+            _runtime.EndGame();
+
+            PlayerActionResult result = await capturedByWindow.ExecuteAsync(
+                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+            );
+
+            Assert.IsFalse(result.Accepted);
+            Assert.IsEmpty(owner.Requests);
+        }
+
+        [Test]
+        public async Task StartGame_ReplacedSessionDispatcher_RejectsWithoutReachingNewOwnerAsync()
+        {
+            GameRoot first = CreateGame();
+            ConfigureMultiplayerPresentation(first, Guid.NewGuid().ToString("N"));
+            _runtime.StartGame(first, new TestSessionOwner());
+            IPlayerActionDispatcher capturedByOldWindow = _runtime.PlayerActions;
+            GameRoot replacement = CreateGame();
+            ConfigureMultiplayerPresentation(replacement, Guid.NewGuid().ToString("N"));
+            RecordingPlayerActionDispatcher newOwner = TestPlayerActions.RejectAll();
+            _runtime.StartGame(replacement, new TestSessionOwner(newOwner));
+
+            PlayerActionResult result = await capturedByOldWindow.ExecuteAsync(
+                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+            );
+
+            Assert.IsFalse(result.Accepted);
+            Assert.IsEmpty(newOwner.Requests);
         }
 
         [Test]
@@ -332,13 +485,7 @@ namespace Rebellion.Tests.App
             manager.SetGameSpeed(TickSpeed.Fast);
             session.Tick.ProcessTick();
 
-            Assert.IsFalse(
-                File.Exists(
-                    _saveGameManager.GetSaveFilePath(
-                        SaveGameManager.AutosaveFilePrefix + "0000000040"
-                    )
-                )
-            );
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
         }
 
         [Test]
@@ -349,17 +496,16 @@ namespace Rebellion.Tests.App
             _gameplaySettings.AutosaveIntervalTicks = 40;
             GameSession session = _runtime.StartGame(game);
             GameManager manager = _runtime.GetActiveGameManager();
-            string autosavePath = _saveGameManager.GetSaveFilePath(
-                SaveGameManager.AutosaveFilePrefix + "0000000040"
-            );
-
             session.Tick.ProcessTick();
 
-            Assert.IsFalse(File.Exists(autosavePath));
+            Assert.IsEmpty(_saveGameManager.GetSavedGames());
             Assert.IsFalse(_runtime.CanSave);
 
             session.Tick.ResolveCombat(true);
 
+            string autosavePath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000040"
+            );
             Assert.IsTrue(File.Exists(autosavePath));
             Assert.IsTrue(_runtime.CanSave);
         }
@@ -530,6 +676,433 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("contested"));
 
             Assert.IsFalse(session.GetService<SpaceCombatCommands>().HasPendingDecision);
+        }
+
+        [Test]
+        public void CanRequestSave_CoordinatedOwnerWhileSimulationBusy_DoesNotRequireImmediateSnapshot()
+        {
+            _runtime.StartLoadedGame(CreateContestedGame());
+            _runtime.BindPersistenceCoordinator(new TestPersistenceCoordinator());
+
+            Assert.IsFalse(_runtime.CanSave);
+            Assert.IsTrue(_runtime.CanRequestSave);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_CoordinatedOwner_WaitsWithoutIndependentWriteAsync()
+        {
+            GameRoot game = CreateGame();
+            _runtime.StartGame(game);
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            Task<bool> saving = _runtime.SaveGameAsync("shared-checkpoint", "Shared checkpoint");
+
+            Assert.IsTrue(_runtime.HasCoordinatedPersistence);
+            Assert.IsFalse(saving.IsCompleted);
+            Assert.AreEqual("shared-checkpoint", coordinator.SavedFileName);
+            Assert.AreEqual("Shared checkpoint", coordinator.SavedDisplayName);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+
+            coordinator.SaveCompletion.SetResult(true);
+
+            Assert.IsTrue(await saving);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task LoadGameAsync_CoordinatedOwner_UsesOwnerWithoutLocalFileLookupAsync()
+        {
+            GameRoot game = CreateGame();
+            _runtime.StartGame(game);
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            Task<bool> loading = _runtime.LoadGameAsync("host-only-file");
+
+            Assert.IsFalse(loading.IsCompleted);
+            Assert.AreEqual("host-only-file", coordinator.LoadedFileName);
+            Assert.AreSame(game, _runtime.GetActiveGame());
+            coordinator.LoadCompletion.SetResult(false);
+
+            Assert.IsFalse(await loading);
+            Assert.AreSame(game, _runtime.GetActiveGame());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void SaveGame_CoordinatedOwner_RefusesEverySynchronousPersistenceEntry()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 12;
+            _runtime.StartGame(game);
+            Assert.IsTrue(_runtime.SaveGame("checkpoint", "Checkpoint"));
+            Assert.IsTrue(_runtime.QuickSave());
+            byte[] originalSave = File.ReadAllBytes(_saveGameManager.GetSaveFilePath("checkpoint"));
+            game.CurrentTick = 99;
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            Assert.IsFalse(_runtime.SaveGame("checkpoint", "Changed checkpoint"));
+            Assert.IsFalse(_runtime.QuickSave());
+            Assert.IsFalse(_runtime.LoadGame("checkpoint"));
+            _runtime.QuickLoad();
+
+            Assert.AreSame(game, _runtime.GetActiveGame());
+            Assert.AreEqual(99, game.CurrentTick);
+            Assert.IsNull(coordinator.SavedFileName);
+            Assert.IsNull(coordinator.LoadedFileName);
+            CollectionAssert.AreEqual(
+                originalSave,
+                File.ReadAllBytes(_saveGameManager.GetSaveFilePath("checkpoint"))
+            );
+            Assert.AreEqual(
+                12,
+                _saveGameManager.LoadGameData(SaveGameManager.QuickSaveFileName).CurrentTick
+            );
+        }
+
+        [Test]
+        public async Task QuickSaveAsync_CoordinatedOwner_UsesQuicksaveSlotAndAwaitsCompletionAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            Task<bool> saving = _runtime.QuickSaveAsync();
+            Task<bool> loading = _runtime.QuickLoadAsync();
+
+            Assert.AreEqual(SaveGameManager.QuickSaveFileName, coordinator.SavedFileName);
+            Assert.IsNull(coordinator.SavedDisplayName);
+            Assert.AreEqual(SaveGameManager.QuickSaveFileName, coordinator.LoadedFileName);
+            Assert.IsFalse(saving.IsCompleted);
+            Assert.IsFalse(loading.IsCompleted);
+            coordinator.SaveCompletion.SetResult(true);
+            coordinator.LoadCompletion.SetResult(true);
+
+            Assert.IsTrue(await saving);
+            Assert.IsTrue(await loading);
+        }
+
+        [Test]
+        public void StartGame_CoordinatedAutosaveTick_DelegatesWithoutLocalWrite()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _runtime.StartGame(game);
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            session.Tick.ProcessTick();
+
+            Assert.AreEqual(40, game.CurrentTick);
+            Assert.AreEqual(1, coordinator.AutosaveTicks);
+            Assert.AreSame(_gameplaySettings, coordinator.AutosaveSettings);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public async Task SaveGameAsync_UnboundOwner_RestoresLocalPersistenceAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+
+            _runtime.UnbindPersistenceCoordinator();
+
+            Assert.IsFalse(_runtime.HasCoordinatedPersistence);
+            Assert.IsTrue(await _runtime.SaveGameAsync("local-checkpoint", "Local checkpoint"));
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath("local-checkpoint")));
+            Assert.IsNull(coordinator.SavedFileName);
+        }
+
+        [Test]
+        public async Task LoadGameAsync_LocalOwner_RestoresSaveWithoutReplacingSessionAsync()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 14;
+            GameSession session = _runtime.StartGame(game);
+            Assert.IsTrue(await _runtime.SaveGameAsync("local-checkpoint", "Local checkpoint"));
+            game.CurrentTick = 91;
+
+            bool loaded = await _runtime.LoadGameAsync("local-checkpoint");
+
+            Assert.IsTrue(loaded);
+            Assert.AreSame(session, _runtime.GetActiveGameSession());
+            Assert.AreEqual(14, _runtime.GetActiveGame().CurrentTick);
+        }
+
+        [Test]
+        public void SaveGameAsync_CanceledOwner_PropagatesCancellationWithoutLocalWrite()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            _runtime.BindPersistenceCoordinator(coordinator);
+            Task<bool> saving = _runtime.SaveGameAsync("shared-checkpoint", "Shared checkpoint");
+
+            coordinator.SaveCompletion.SetCanceled();
+
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await saving);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ReplaceMultiplayerRecovery_CampaignOwnership_PreservesOnlyMatchingLocalUI(
+            bool sameCampaign
+        )
+        {
+            string campaignID = Guid.NewGuid().ToString("N");
+            GameRoot current = CreateGame();
+            ConfigureMultiplayerPresentation(current, campaignID);
+            var currentGuestUI = current.GetFactionPlayer("FNEMP1").UIState;
+            currentGuestUI.GetOrCreateSection("AdvisorNotifications").Values["deadline"] = "150";
+            _runtime.StartGame(current, new TestSessionOwner());
+            GameRoot incoming = CreateGame();
+            ConfigureMultiplayerPresentation(
+                incoming,
+                sameCampaign ? campaignID : Guid.NewGuid().ToString("N")
+            );
+            incoming.CurrentTick = 120;
+            var incomingHostUI = incoming.GetFactionPlayer("FNALL1").UIState;
+            var incomingGuestUI = incoming.GetFactionPlayer("FNEMP1").UIState;
+            using GameSession source = new GameSession(incoming, _contentPack.GameData);
+
+            _runtime.ReplaceMultiplayerRecovery(source.CaptureRecoveryState());
+
+            Assert.AreSame(incoming, _runtime.GetActiveGame());
+            Assert.AreSame(incomingHostUI, incoming.GetFactionPlayer("FNALL1").UIState);
+            Assert.AreSame(
+                sameCampaign ? currentGuestUI : incomingGuestUI,
+                incoming.GetFactionPlayer("FNEMP1").UIState
+            );
+            Assert.AreEqual(120, _runtime.GetActiveGame().CurrentTick);
+        }
+
+        /// <summary>
+        /// Binds a minimal two-human graph to explicit campaign and local presentation ownership.
+        /// </summary>
+        /// <param name="game">The content-compatible fixture graph.</param>
+        /// <param name="campaignID">The stable campaign identity.</param>
+        private static void ConfigureMultiplayerPresentation(GameRoot game, string campaignID)
+        {
+            game.Metadata = new GameMetadata
+            {
+                CampaignID = campaignID,
+                MultiplayerCampaign = new MultiplayerCampaignIdentity
+                {
+                    HostUserID = "host-account",
+                    GuestUserID = "guest-account",
+                    HostFactionID = "FNALL1",
+                    GuestFactionID = "FNEMP1",
+                },
+            };
+            game.LocalPlayerFactionID = "FNEMP1";
+            game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            game.SetFactionController("FNALL1", "host", PlayerControllerType.Human);
+            game.SetFactionController("FNEMP1", "guest", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public async Task SaveGameAsync_StorageFailure_ReturnsFalseAndReportsFailureAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new();
+            _runtime.BindPersistenceCoordinator(coordinator);
+            PersistenceOperation? reported = null;
+            _runtime.PersistenceFailed += (_, operation, _) => reported = operation;
+            Task<bool> saving = _runtime.SaveGameAsync("checkpoint", "Checkpoint");
+            UnityEngine.TestTools.LogAssert.Expect(
+                UnityEngine.LogType.Exception,
+                new System.Text.RegularExpressions.Regex("test storage failure")
+            );
+            coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
+
+            Assert.That(await saving, Is.False);
+            Assert.That(reported, Is.EqualTo(PersistenceOperation.Save));
+        }
+
+        [Test]
+        public async Task QuickSaveAsync_StorageFailure_ReportsFailureAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new();
+            _runtime.BindPersistenceCoordinator(coordinator);
+            bool reported = false;
+            _runtime.PersistenceFailed += (_, _, _) => reported = true;
+            Task<bool> saving = _runtime.QuickSaveAsync();
+            UnityEngine.TestTools.LogAssert.Expect(
+                UnityEngine.LogType.Exception,
+                new System.Text.RegularExpressions.Regex("test storage failure")
+            );
+            coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
+            await saving;
+
+            Assert.That(reported, Is.True);
+        }
+
+        [Test]
+        public async Task LoadGameAsync_StorageFailure_ReportsFailedLoadAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new();
+            _runtime.BindPersistenceCoordinator(coordinator);
+            PersistenceOperation? reported = null;
+            _runtime.PersistenceFailed += (_, operation, _) => reported = operation;
+            Task<bool> loading = _runtime.LoadGameAsync("checkpoint");
+            UnityEngine.TestTools.LogAssert.Expect(
+                UnityEngine.LogType.Exception,
+                new System.Text.RegularExpressions.Regex("test storage failure")
+            );
+            coordinator.LoadCompletion.SetException(new IOException("test storage failure"));
+            await loading;
+
+            Assert.That(reported, Is.EqualTo(PersistenceOperation.Load));
+        }
+
+        [Test]
+        public async Task SaveGameAsync_FailureAfterSessionReplacement_DoesNotNotifyReplacementAsync()
+        {
+            _runtime.StartGame(CreateGame());
+            TestPersistenceCoordinator coordinator = new();
+            _runtime.BindPersistenceCoordinator(coordinator);
+            bool reported = false;
+            _runtime.PersistenceFailed += (_, _, _) => reported = true;
+            Task<bool> saving = _runtime.SaveGameAsync("checkpoint", "Checkpoint");
+            _runtime.StartGame(CreateGame());
+            UnityEngine.TestTools.LogAssert.Expect(
+                UnityEngine.LogType.Exception,
+                new System.Text.RegularExpressions.Regex("test storage failure")
+            );
+            coordinator.SaveCompletion.SetException(new IOException("test storage failure"));
+            await saving;
+
+            Assert.That(reported, Is.False);
+        }
+
+        private sealed class TestSessionOwner : IGameSessionOwner
+        {
+            public bool CanRequestSave => true;
+            private readonly IPlayerActionDispatcher _actions;
+            public readonly List<string> Calls = new();
+
+            /// <summary>
+            /// Records lifecycle ownership while delegating typed requests to the fixture dispatcher.
+            /// </summary>
+            /// <param name="actions">The explicit command owner.</param>
+            public TestSessionOwner(IPlayerActionDispatcher actions = null)
+            {
+                _actions = actions ?? TestPlayerActions.RejectAll();
+            }
+
+            /// <summary>
+            /// Records composition before the session services are created.
+            /// </summary>
+            /// <param name="game">The incoming graph.</param>
+            public void PrepareGame(GameRoot game) => Calls.Add("prepare");
+
+            /// <summary>
+            /// Records runtime attachment before presentation readiness.
+            /// </summary>
+            /// <param name="runtime">The newly composed runtime.</param>
+            public void BindRuntime(GameRuntime runtime) => Calls.Add("bind");
+
+            /// <summary>
+            /// Records the presentation's readiness notification.
+            /// </summary>
+            /// <param name="runtime">The ready runtime.</param>
+            public void NotifyPresentationReady(GameRuntime runtime) => Calls.Add("ready");
+
+            /// <summary>
+            /// Records release of the outgoing session.
+            /// </summary>
+            /// <param name="runtime">The outgoing runtime.</param>
+            public void ReleaseRuntime(GameRuntime runtime) => Calls.Add("release");
+
+            /// <summary>
+            /// Keeps the fixture clock stopped.
+            /// </summary>
+            /// <param name="elapsedSeconds">The elapsed frame interval.</param>
+            /// <returns>False while exercising lifecycle composition.</returns>
+            public bool TryBeginGameTick(float elapsedSeconds) => false;
+
+            /// <summary>
+            /// Forwards commands to the fixture's declared owner.
+            /// </summary>
+            /// <param name="action">The submitted command.</param>
+            /// <returns>The fixture execution result.</returns>
+            public Task<PlayerActionResult> ExecuteAsync(PlayerAction action) =>
+                _actions.ExecuteAsync(action);
+
+            /// <summary>
+            /// Leaves storage outside these lifecycle tests.
+            /// </summary>
+            /// <param name="fileName">The requested identifier.</param>
+            /// <param name="displayName">The requested display name.</param>
+            /// <returns>False without publishing a save.</returns>
+            public Task<bool> SaveGameAsync(string fileName, string displayName) =>
+                Task.FromResult(false);
+
+            /// <summary>
+            /// Leaves loading outside these lifecycle tests.
+            /// </summary>
+            /// <param name="fileName">The requested identifier.</param>
+            /// <returns>False without replacing the graph.</returns>
+            public Task<bool> LoadGameAsync(string fileName) => Task.FromResult(false);
+
+            /// <summary>
+            /// Leaves automatic persistence outside these lifecycle tests.
+            /// </summary>
+            /// <param name="settings">The configured save preferences.</param>
+            public void ProcessAutosaveTick(UserGameplaySettings settings) { }
+        }
+
+        private sealed class TestPersistenceCoordinator : IGamePersistenceCoordinator
+        {
+            public bool CanRequestSave => true;
+            internal readonly TaskCompletionSource<bool> SaveCompletion = new();
+            internal readonly TaskCompletionSource<bool> LoadCompletion = new();
+            internal string SavedFileName;
+            internal string SavedDisplayName;
+            internal string LoadedFileName;
+            internal int AutosaveTicks;
+            internal UserGameplaySettings AutosaveSettings;
+
+            /// <summary>
+            /// Captures a save request while the fixture controls durable completion.
+            /// </summary>
+            /// <param name="fileName">The requested save identifier.</param>
+            /// <param name="displayName">The requested display name.</param>
+            /// <returns>The fixture's pending completion.</returns>
+            public Task<bool> SaveGameAsync(string fileName, string displayName)
+            {
+                SavedFileName = fileName;
+                SavedDisplayName = displayName;
+                return SaveCompletion.Task;
+            }
+
+            /// <summary>
+            /// Captures a shared load without consulting the local save store.
+            /// </summary>
+            /// <param name="fileName">The requested save identifier.</param>
+            /// <returns>The fixture's pending completion.</returns>
+            public Task<bool> LoadGameAsync(string fileName)
+            {
+                LoadedFileName = fileName;
+                return LoadCompletion.Task;
+            }
+
+            /// <summary>
+            /// Records the completed tick's automatic-save preferences without writing.
+            /// </summary>
+            /// <param name="settings">The preferences supplied by the runtime.</param>
+            public void ProcessAutosaveTick(UserGameplaySettings settings)
+            {
+                AutosaveTicks++;
+                AutosaveSettings = settings;
+            }
         }
 
         /// <summary>

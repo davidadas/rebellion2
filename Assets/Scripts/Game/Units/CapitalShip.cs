@@ -339,6 +339,16 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Rebuilds derived sector membership from restored links without changing parent history.
+        /// </summary>
+        internal void RestoreRecoverySuppressionMembership()
+        {
+            _suppressionSector?.UnregisterSuppressionSource(this);
+            _suppressionSector = null;
+            UpdateSuppressionSector();
+        }
+
+        /// <summary>
         /// Maintains suppression membership without scanning sector descendants.
         /// </summary>
         private void UpdateSuppressionSector()

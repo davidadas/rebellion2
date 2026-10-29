@@ -83,6 +83,7 @@ namespace Rebellion.Simulation
                     continue;
 
                 Message message = _messageFactory.CreateMessage(delivery);
+                _game.EnsureRuntimeIdentifier(message);
                 message.CreatedTick = _game.CurrentTick;
                 delivery.Recipient.AddMessage(message);
                 MessageDeliveredResult delivered = new MessageDeliveredResult

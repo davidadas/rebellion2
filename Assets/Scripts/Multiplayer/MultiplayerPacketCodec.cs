@@ -18,6 +18,12 @@ namespace Rebellion.Multiplayer
         private static readonly byte[] _magic = { (byte)'R', (byte)'2', (byte)'M', (byte)'P' };
 
         /// <summary>
+        /// Gets the largest supported encoded packet, including its header.
+        /// </summary>
+        public static int MaximumPacketLength =>
+            _headerLength + _maximumMetadataLength + _maximumPayloadLength;
+
+        /// <summary>
         /// Writes one complete packet to a stream.
         /// </summary>
         /// <param name="stream">The destination stream.</param>

@@ -28,7 +28,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 () => new FactionTheme(),
                 _ => null,
-                _ => { }
+                _ => { },
+                TestPlayerActions.RejectAll()
             );
             _controller.Initialize(_actions);
         }
@@ -37,16 +38,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(null, () => null, _ => null, _ => { })
+                new StrategyHudController(
+                    null,
+                    () => null,
+                    _ => null,
+                    _ => { },
+                    TestPlayerActions.RejectAll()
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, null, _ => null, _ => { })
+                new StrategyHudController(
+                    () => null,
+                    null,
+                    _ => null,
+                    _ => { },
+                    TestPlayerActions.RejectAll()
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, () => null, null, _ => { })
+                new StrategyHudController(
+                    () => null,
+                    () => null,
+                    null,
+                    _ => { },
+                    TestPlayerActions.RejectAll()
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, () => null, _ => null, null)
+                new StrategyHudController(
+                    () => null,
+                    () => null,
+                    _ => null,
+                    null,
+                    TestPlayerActions.RejectAll()
+                )
             );
         }
 
@@ -118,6 +143,166 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void CreateViewData_RemoteSpeedProposal_ShowsCompactActionableRequest()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData(
+                    "42",
+                    "100",
+                    "200",
+                    TickSpeed.Medium,
+                    null,
+                    playerSpeeds: new[]
+                    {
+                        new StrategyHudPlayerSpeedSelection("First", TickSpeed.Fast),
+                        new StrategyHudPlayerSpeedSelection(
+                            "Second",
+                            TickSpeed.Medium,
+                            isLocal: true
+                        ),
+                    }
+                ),
+                new FactionTheme()
+            );
+
+            Assert.AreEqual("First is requesting Fast speed", data.SpeedAgreementText);
+            Assert.IsTrue(data.CanRespondToSpeedRequest);
+        }
+
+        [Test]
+        public void CreateViewData_MatchingParticipantSelections_DoesNotShowPendingAgreement()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData(
+                    "42",
+                    "100",
+                    "200",
+                    TickSpeed.Fast,
+                    null,
+                    playerSpeeds: new[]
+                    {
+                        new StrategyHudPlayerSpeedSelection("First", TickSpeed.Fast),
+                        new StrategyHudPlayerSpeedSelection("Second", TickSpeed.Fast),
+                    }
+                ),
+                new FactionTheme()
+            );
+
+            StringAssert.DoesNotContain("Waiting", data.SpeedAgreementText);
+        }
+
+        [Test]
+        public void CreateViewData_ConnectionInterrupted_PrioritizesActualConnectionNoticeWithoutSpeedControls()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData(
+                    "42",
+                    "100",
+                    "200",
+                    TickSpeed.Paused,
+                    null,
+                    connectionNotice: "Game paused. Waiting for Second to rejoin."
+                ),
+                new FactionTheme()
+            );
+
+            Assert.AreEqual("Game paused. Waiting for Second to rejoin.", data.SpeedAgreementText);
+            Assert.IsFalse(data.CanRespondToSpeedRequest);
+        }
+
+        [Test]
+        public void BuildSpeedMenuCommands_LocalSelectedSpeed_MarksOnlyLocalSelection()
+        {
+            var commands = StrategyHudController.BuildSpeedMenuCommands(TickSpeed.Slow);
+            Assert.AreEqual(1, commands.Count(command => command.Selected));
+            Assert.AreEqual(
+                StrategyMenuAction.GameSpeedSlow,
+                commands.Single(command => command.Selected).Action
+            );
+        }
+
+        [Test]
+        public void BuildSpeedMenuCommands_DifferentParticipantSpeeds_MarksBothFactionChoices()
+        {
+            Color32 local = new(255, 0, 0, 255);
+            Color32 remote = new(0, 255, 0, 255);
+            var commands = StrategyHudController.BuildSpeedMenuCommands(
+                TickSpeed.Slow,
+                new[]
+                {
+                    new StrategyHudPlayerSpeedSelection(
+                        "First",
+                        TickSpeed.Slow,
+                        isLocal: true,
+                        factionColor: local
+                    ),
+                    new StrategyHudPlayerSpeedSelection(
+                        "Second",
+                        TickSpeed.Fast,
+                        factionColor: remote
+                    ),
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { local },
+                commands
+                    .Single(command => command.Action == StrategyMenuAction.GameSpeedSlow)
+                    .SelectionColors
+            );
+            CollectionAssert.AreEqual(
+                new[] { remote },
+                commands
+                    .Single(command => command.Action == StrategyMenuAction.GameSpeedFast)
+                    .SelectionColors
+            );
+            Assert.AreEqual(2, commands.Count(command => command.SelectionColors.Count > 0));
+        }
+
+        [Test]
+        public void BuildSpeedMenuCommands_ParticipantsAgree_RetainsBothFactionColorsOnOneRow()
+        {
+            Color32 local = new(255, 0, 0, 255);
+            Color32 remote = new(0, 255, 0, 255);
+            var commands = StrategyHudController.BuildSpeedMenuCommands(
+                TickSpeed.Fast,
+                new[]
+                {
+                    new StrategyHudPlayerSpeedSelection(
+                        "First",
+                        TickSpeed.Fast,
+                        isLocal: true,
+                        factionColor: local
+                    ),
+                    new StrategyHudPlayerSpeedSelection(
+                        "Second",
+                        TickSpeed.Fast,
+                        factionColor: remote
+                    ),
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { local, remote },
+                commands
+                    .Single(command => command.Action == StrategyMenuAction.GameSpeedFast)
+                    .SelectionColors
+            );
+            Assert.AreEqual(1, commands.Count(command => command.SelectionColors.Count > 0));
+        }
+
+        [Test]
+        public void CreateViewData_SinglePlayer_HidesParticipantPanel()
+        {
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("42", "100", "200", TickSpeed.Fast, null),
+                new FactionTheme()
+            );
+
+            Assert.IsEmpty(data.SpeedAgreementText);
+        }
+
+        [Test]
         public void CreateViewData_ConfiguredButton_ResolvesReleasedAndPressedArtwork()
         {
             Texture2D upTexture = new Texture2D(2, 2);
@@ -128,7 +313,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => new Faction(),
                     () => new FactionTheme(),
                     path => path == "up" ? upTexture : pressedTexture,
-                    _ => { }
+                    _ => { },
+                    TestPlayerActions.RejectAll()
                 );
                 FactionTheme theme = new FactionTheme
                 {
@@ -441,8 +627,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             /// <summary>
             /// Processes advisor automation.
             /// </summary>
-            /// <param name="faction">The faction.</param>
-            public void ProcessAdvisorAutomation(Faction faction) { }
+            /// <param name="_">The unused faction.</param>
+            public void ProcessAdvisorAutomation(Faction _) { }
 
             /// <summary>
             /// Opens speed context menu.
@@ -463,6 +649,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
+
+            /// <summary>
+            /// Receives the displayed proposal response for the fixture.
+            /// </summary>
+            /// <param name="requestingFactionID">The proposing faction.</param>
+            /// <param name="speed">The displayed speed.</param>
+            /// <param name="revision">The proposal revision.</param>
+            /// <param name="accept">Whether the proposal is accepted.</param>
+            public void RespondToSpeedRequest(
+                string requestingFactionID,
+                TickSpeed speed,
+                long revision,
+                bool accept
+            ) { }
 
             /// <summary>
             /// Sets game speed.

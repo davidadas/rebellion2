@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -27,6 +28,10 @@ public sealed class ContextMenuCommandView
     [SerializeField]
     private TextMeshProUGUI commandTextField;
 
+    [SerializeField]
+    private UISelectionFrameView selectionFrame;
+
+    private readonly List<UISelectionFrameView> selectionFrames = new();
     private bool initialized;
     private RectInt rootTemplateRect;
     private RectInt iconPanelTemplateRect;
@@ -70,12 +75,14 @@ public sealed class ContextMenuCommandView
     /// <param name="hasIconColumn">Whether the panel reserves an icon column.</param>
     /// <param name="panelWidth">The current panel width in source units.</param>
     /// <param name="index">The zero-based row index.</param>
+    /// <param name="selectionColor">The owning faction selection color.</param>
     internal void Render(
         ContextMenuCommandItem commandItem,
         Color32 color,
         bool hasIconColumn,
         int panelWidth,
-        int index
+        int index,
+        Color32 selectionColor = default
     )
     {
         InitializeView();
@@ -124,8 +131,41 @@ public sealed class ContextMenuCommandView
         );
         commandTextField.text = item?.Text ?? string.Empty;
         commandTextField.color = color;
+        RenderSelections(item, selectionColor);
 
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Reuses nested frames to retain every selecting owner's color on an agreed row.
+    /// </summary>
+    /// <param name="commandItem">The row's current participant markers.</param>
+    /// <param name="defaultColor">The existing selection color for commands without owner markers.</param>
+    private void RenderSelections(ContextMenuCommandItem commandItem, Color32 defaultColor)
+    {
+        if (selectionFrame == null)
+            return;
+        if (selectionFrames.Count == 0)
+            selectionFrames.Add(selectionFrame);
+        IReadOnlyList<Color32> colors = commandItem?.SelectionColors;
+        int count =
+            commandItem?.SelectionState != null ? colors.Count
+            : colors?.Count > 0 ? colors.Count
+            : commandItem?.Selected == true ? 1
+            : 0;
+        while (selectionFrames.Count < count)
+        {
+            UISelectionFrameView frame = Instantiate(selectionFrame, transform);
+            frame.name = "SelectionFrame" + selectionFrames.Count;
+            RectTransform rectangle = (RectTransform)frame.transform;
+            Vector2 inset = Vector2.one * selectionFrames.Count;
+            rectangle.offsetMin = inset;
+            rectangle.offsetMax = -inset;
+            selectionFrames.Add(frame);
+        }
+        for (int index = 0; index < selectionFrames.Count; index++)
+            selectionFrames[index]
+                .Render(index < count, colors?.Count > index ? colors[index] : defaultColor);
     }
 
     /// <summary>

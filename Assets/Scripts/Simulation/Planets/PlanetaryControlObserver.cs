@@ -13,7 +13,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Routes garrison, support, and ownership changes to planetary control operations.
     /// </summary>
-    public sealed class PlanetaryControlObserver : IResultObserver, IDisposable
+    public sealed partial class PlanetaryControlObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly PlanetaryControlCommands _commands;

@@ -17,7 +17,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Executes movement orders, custody transfers, arrivals, and evacuation while owning queued movement results.
     /// </summary>
-    public class MovementCommands
+    public partial class MovementCommands
     {
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _fogOfWar;
@@ -347,7 +347,7 @@ namespace Rebellion.Simulation
             {
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
-                MovementGroupID = Guid.NewGuid().ToString("N"),
+                MovementGroupID = _game.GenerateRuntimeIdentifier(),
                 OriginPosition = origin.GetPosition(),
                 CurrentPosition = origin.GetPosition(),
             };
@@ -505,7 +505,7 @@ namespace Rebellion.Simulation
                 if (returningGroup.Count == 0)
                     continue;
 
-                string movementGroupID = Guid.NewGuid().ToString("N");
+                string movementGroupID = _game.GenerateRuntimeIdentifier();
                 int groupTransitTicks = CalculateGroupTransitTicks(
                     returningGroup,
                     Enumerable.Repeat(returnGroup.Key, returningGroup.Count).ToList()
@@ -896,7 +896,7 @@ namespace Rebellion.Simulation
                 return false;
 
             int groupTransitTicks = CalculateGroupTransitTicks(units, destinations);
-            string movementGroupID = Guid.NewGuid().ToString("N");
+            string movementGroupID = _game.GenerateRuntimeIdentifier();
             for (int index = 0; index < units.Count; index++)
             {
                 IMovable unit = units[index];
@@ -1976,7 +1976,7 @@ namespace Rebellion.Simulation
             bool? opposingBlockadeAtDeparture = null
         )
         {
-            movementGroupID ??= Guid.NewGuid().ToString("N");
+            movementGroupID ??= _game.GenerateRuntimeIdentifier();
             destination = _queries.ResolveLiveContainer(destination);
 
             if (

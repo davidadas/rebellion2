@@ -44,6 +44,11 @@ internal sealed class ContentLoadOperation
     internal bool RequiresContentRestart => _candidate != null;
 
     /// <summary>
+    /// Gets whether replacement content and its preferences have already committed successfully.
+    /// </summary>
+    internal bool HasCommittedContent => _state == LoadState.Ready && _candidate != null;
+
+    /// <summary>
     /// Gets whether this operation is recovering, has recovered, or cannot recover further.
     /// </summary>
     internal bool IsRecovering =>

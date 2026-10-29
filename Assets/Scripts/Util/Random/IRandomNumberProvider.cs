@@ -31,6 +31,11 @@ namespace Rebellion.Util.Random
         private readonly System.Random _rng;
 
         /// <summary>
+        /// Gets the seed actually used to initialize this stream, independently of mutable game settings.
+        /// </summary>
+        public int Seed { get; }
+
+        /// <summary>
         /// The number of underlying seeded draws consumed. Persist this with the
         /// seed to resume an RNG stream at the same position after a save/load.
         /// </summary>
@@ -44,6 +49,7 @@ namespace Rebellion.Util.Random
         /// <param name="advanceTo">Number of underlying draws to discard before use, restoring a previous call position.</param>
         public SystemRandomProvider(int seed, long advanceTo = 0)
         {
+            Seed = seed;
             _rng = new System.Random(seed);
             for (long i = 0; i < advanceTo; i++)
                 _rng.Next();

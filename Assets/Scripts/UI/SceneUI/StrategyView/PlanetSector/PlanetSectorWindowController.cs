@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -684,7 +685,7 @@ public sealed class PlanetSectorWindowController
     /// </summary>
     /// <param name="request">The completed context-menu request.</param>
     /// <param name="command">The selected context-menu command.</param>
-    public void OnContextMenuCommandSelected(
+    public async void OnContextMenuCommandSelected(
         ContextMenuRequest request,
         IContextMenuCommand command
     )
@@ -706,7 +707,7 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.DestroyPlanet:
             case StrategyMenuAction.PlanetaryAssault:
                 if (windowManager.TryGetWindowView(source.Window, out PlanetSectorWindowView view))
-                    TryExecutePlanetaryCombat(view, strategyCommand.Action);
+                    await TryExecutePlanetaryCombatAsync(view, strategyCommand.Action);
                 break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenPlanetSectorInfo(source.Target);
@@ -723,7 +724,7 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.WaypointMove
                 when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
                 targetingController.Cancel();
-                commandActions.ClearFleetWaypoints(source.Items);
+                await commandActions.ClearFleetWaypointsAsync(source.Items);
                 break;
             case StrategyMenuAction.CreateMission:
             case StrategyMenuAction.Move:
@@ -798,10 +799,10 @@ public sealed class PlanetSectorWindowController
     /// </summary>
     /// <param name="request">The active targeting request.</param>
     /// <returns>True when the complete route was committed.</returns>
-    public bool TrySubmitTargeting(TargetingRequest request)
+    public async Task<bool> TrySubmitTargetingAsync(TargetingRequest request)
     {
         return request?.Source is StrategyWindowTargetingSource source
-            && commandActions.TryCommitFleetWaypointPlan(source);
+            && await commandActions.TryCommitFleetWaypointPlanAsync(source);
     }
 
     /// <summary>
@@ -863,7 +864,10 @@ public sealed class PlanetSectorWindowController
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="action">The selected planetary combat action.</param>
     /// <returns>True when planetary combat was executed.</returns>
-    public bool TryExecutePlanetaryCombat(PlanetSectorWindowView view, StrategyMenuAction action)
+    public async Task<bool> TryExecutePlanetaryCombatAsync(
+        PlanetSectorWindowView view,
+        StrategyMenuAction action
+    )
     {
         if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return false;
@@ -873,7 +877,7 @@ public sealed class PlanetSectorWindowController
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
                 : new List<ISceneNode>();
-        CombatReport report = fleetCommandController.ExecutePlanetaryCombat(
+        CombatReport report = await fleetCommandController.ExecutePlanetaryCombatAsync(
             items,
             hit?.Planet,
             action

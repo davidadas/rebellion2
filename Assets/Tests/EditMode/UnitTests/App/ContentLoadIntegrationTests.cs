@@ -2,14 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Multiplayer;
+using Rebellion.Util.IO;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -36,7 +40,9 @@ namespace Rebellion.Tests.App
             SessionState.SetString(
                 _settingsBackupKey,
                 File.Exists(settingsPath)
-                    ? System.Convert.ToBase64String(File.ReadAllBytes(settingsPath))
+                    ? System.Convert.ToBase64String(
+                        Encoding.UTF8.GetBytes(AtomicTextFile.ReadAllText(settingsPath))
+                    )
                     : "-"
             );
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -76,7 +82,10 @@ namespace Rebellion.Tests.App
             if (settingsBackup == "-")
                 File.Delete(settingsPath);
             else
-                File.WriteAllBytes(settingsPath, System.Convert.FromBase64String(settingsBackup));
+                AtomicTextFile.WriteAllText(
+                    settingsPath,
+                    Encoding.UTF8.GetString(System.Convert.FromBase64String(settingsBackup))
+                );
             SessionState.EraseString(_settingsBackupKey);
         }
 
@@ -209,6 +218,274 @@ namespace Rebellion.Tests.App
             AssertCutscenePlayback(restored);
         }
 
+        [UnityTest]
+        public IEnumerator RecoverInterruptedMultiplayerLoad_CommittedReady_ReturnsToMenuWithCurrentContent()
+        {
+            yield return RecoverCommittedMultiplayerLoad(false);
+        }
+
+        [UnityTest]
+        public IEnumerator RecoverInterruptedMultiplayerLoad_ContinueDismissed_ReturnsToMenuWithCurrentContent()
+        {
+            yield return RecoverCommittedMultiplayerLoad(true);
+        }
+
+        /// <summary>
+        /// Interrupts initial multiplayer reconstruction at its actual application-destruction boundary.
+        /// </summary>
+        /// <returns>The recovery sequence verifying one service replacement and one menu navigation.</returns>
+        [UnityTest]
+        public IEnumerator RecoverInterruptedMultiplayerLoad_ReconstructingInitialLaunch_ReturnsToMenuOnce()
+        {
+            int menuLoads = 0;
+            int strategyLoads = 0;
+            bool recoveryAccepted = false;
+            BootstrapDestructionObserver observer = null;
+            System.Action requestRecovery = () =>
+                recoveryAccepted = AppBootstrap.RecoverInterruptedMultiplayerLoad();
+            List<AppBootstrap> replacements = new();
+            UnityAction<Scene, LoadSceneMode> observeScene = (scene, mode) =>
+            {
+                DisableSceneRendering(scene, mode);
+                if (scene.name == "MainMenu")
+                    menuLoads++;
+                if (scene.name == "StrategyView")
+                    strategyLoads++;
+            };
+            SceneManager.sceneLoaded += observeScene;
+            try
+            {
+                AppBootstrap previous = AppBootstrap.EnsureExists();
+                ContentPack previousPack = previous.GetContentPack();
+                ContentPack selected = ContentPackLoader.OpenExact(
+                    previousPack.ContentRootPath,
+                    previousPack.Definition.ID,
+                    previousPack.Scenario.ID,
+                    previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                );
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+                summary.GalaxySize = GameSize.Small;
+                string hostFactionID = selected.Scenario.DefaultPlayerFactionID;
+                string guestFactionID = selected.Scenario.PlayableFactionIDs.First(id =>
+                    id != hostFactionID
+                );
+                observer = previous.gameObject.AddComponent<BootstrapDestructionObserver>();
+                observer.Destroyed += requestRecovery;
+
+                LoadingScreenController.StartMultiplayer(
+                    previous,
+                    selected,
+                    new MultiplayerLaunchConfiguration(
+                        summary,
+                        hostFactionID,
+                        hostFactionID,
+                        guestFactionID
+                    )
+                );
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+
+                float deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    (
+                        !recoveryAccepted
+                        || SceneManager.GetActiveScene().name != "MainMenu"
+                        || LoadingScreenController.IsLoadInProgress
+                    )
+                    && Time.realtimeSinceStartup < deadline
+                )
+                {
+                    AppBootstrap current = AppBootstrap.Instance;
+                    if (
+                        current != null
+                        && !ReferenceEquals(current, previous)
+                        && !replacements.Any(item => ReferenceEquals(item, current))
+                    )
+                        replacements.Add(current);
+                    yield return null;
+                }
+
+                Assert.IsTrue(
+                    recoveryAccepted,
+                    "Reconstruction never reached its destruction boundary."
+                );
+                Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+                Assert.AreEqual("MainMenu", SceneManager.GetActiveScene().name);
+                Assert.AreEqual(1, replacements.Count);
+                Assert.AreEqual(1, menuLoads);
+                Assert.AreEqual(0, strategyLoads);
+                Assert.AreSame(previousPack, AppBootstrap.Instance.GetContentPack());
+                Assert.IsFalse(AppBootstrap.Instance.GetRuntime().HasActiveGame);
+                Assert.IsFalse(GameLaunchContext.IsMultiplayer);
+                Assert.IsFalse(GameLaunchContext.IsLoadGame);
+                Assert.IsNull(GameLaunchContext.LocalPlayerFactionID);
+                Assert.IsNull(GameLaunchContext.SaveFileName);
+            }
+            finally
+            {
+                if (observer != null)
+                    observer.Destroyed -= requestRecovery;
+                SceneManager.sceneLoaded -= observeScene;
+            }
+        }
+
+        /// <summary>
+        /// Interrupts an accepted Continue fade before its deferred gameplay activation can execute.
+        /// </summary>
+        /// <returns>The recovery sequence verifying obsolete activation callbacks remain invalid.</returns>
+        [UnityTest]
+        public IEnumerator RecoverInterruptedMultiplayerLoad_ContinueFading_DiscardsActivationCallback()
+        {
+            yield return RecoverCommittedMultiplayerLoad(true, true);
+        }
+
+        /// <summary>
+        /// Exercises committed-load interruption through the actual ready view and application scene router.
+        /// </summary>
+        /// <param name="dismissContinue">Whether the local player has already dismissed the loading view.</param>
+        /// <param name="interruptDuringFade">Whether recovery supersedes the accepted Continue before its exit fade finishes.</param>
+        /// <returns>The real scene-transition verification sequence.</returns>
+        private static IEnumerator RecoverCommittedMultiplayerLoad(
+            bool dismissContinue,
+            bool interruptDuringFade = false
+        )
+        {
+            SceneManager.sceneLoaded += DisableSceneRendering;
+            List<(FactionTheme Theme, string IntroPath)> introPaths = new();
+            try
+            {
+                AppBootstrap previous = AppBootstrap.EnsureExists();
+                ContentPack active = previous.GetContentPack();
+                ContentPack selected = ContentPackLoader.OpenExact(
+                    active.ContentRootPath,
+                    active.Definition.ID,
+                    active.Scenario.ID,
+                    previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                );
+                foreach (FactionTheme theme in selected.GameData.FactionThemes)
+                {
+                    introPaths.Add((theme, theme.IntroCutscenePath));
+                    theme.IntroCutscenePath = null;
+                }
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+                summary.GalaxySize = GameSize.Small;
+                LoadingScreenController.StartCustomGame(previous, selected, summary);
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+                Button continueButton = loading
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ContinueButton");
+                float deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    !continueButton.gameObject.activeInHierarchy
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+                Assert.IsTrue(
+                    continueButton.gameObject.activeInHierarchy,
+                    "The replacement strategy never became ready."
+                );
+                AppBootstrap current = AppBootstrap.Instance;
+                GameRuntime runtime = current.GetRuntime();
+                Assert.IsTrue(runtime.HasActiveGame);
+                runtime.GetActiveGameManager().ApplyGameSpeed(TickSpeed.Paused);
+                int activationCallbacks = 0;
+                int continueCallbacks = 0;
+                Assert.IsTrue(
+                    LoadingScreenController.CompletePendingLoad(
+                        current,
+                        () => activationCallbacks++,
+                        continueAccepted: () => continueCallbacks++
+                    )
+                );
+                if (dismissContinue)
+                {
+                    continueButton.onClick.Invoke();
+                    if (interruptDuringFade)
+                        Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
+                    else
+                    {
+                        deadline = Time.realtimeSinceStartup + 15f;
+                        while (
+                            LoadingScreenController.IsLoadInProgress
+                            && Time.realtimeSinceStartup < deadline
+                        )
+                            yield return null;
+                        Assert.IsFalse(
+                            LoadingScreenController.IsLoadInProgress,
+                            "Continue never released the loading presentation."
+                        );
+                    }
+                }
+                string packID = current.GetUserSettingsManager().Settings.Content.ActivePackID;
+                string scenarioID = current
+                    .GetUserSettingsManager()
+                    .Settings.Content.ActiveScenarioID;
+                string[] disabledMods = current
+                    .GetUserSettingsManager()
+                    .Settings.Content.DisabledModIDs.ToArray();
+                string hostFactionID = selected.Scenario.DefaultPlayerFactionID;
+                string guestFactionID = selected.Scenario.PlayableFactionIDs.First(id =>
+                    id != hostFactionID
+                );
+                GameLaunchContext.PrepareMultiplayer(
+                    new MultiplayerLaunchConfiguration(
+                        summary,
+                        hostFactionID,
+                        hostFactionID,
+                        guestFactionID
+                    )
+                );
+
+                Assert.IsTrue(AppBootstrap.RecoverInterruptedMultiplayerLoad());
+
+                Assert.IsFalse(runtime.HasActiveGame);
+                Assert.IsFalse(GameLaunchContext.IsMultiplayer);
+                Assert.IsFalse(GameLaunchContext.IsLoadGame);
+                Assert.IsNull(GameLaunchContext.LocalPlayerFactionID);
+                Assert.IsNull(GameLaunchContext.SaveFileName);
+                deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    (
+                        SceneManager.GetActiveScene().name != "MainMenu"
+                        || LoadingScreenController.IsLoadInProgress
+                    )
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+                Assert.AreEqual("MainMenu", SceneManager.GetActiveScene().name);
+                Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+                Assert.AreSame(current, AppBootstrap.Instance);
+                Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
+                Assert.AreEqual(
+                    packID,
+                    current.GetUserSettingsManager().Settings.Content.ActivePackID
+                );
+                Assert.AreEqual(
+                    scenarioID,
+                    current.GetUserSettingsManager().Settings.Content.ActiveScenarioID
+                );
+                CollectionAssert.AreEqual(
+                    disabledMods,
+                    current.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                );
+                Assert.IsFalse(current.GetRuntime().HasActiveGame);
+                Assert.AreEqual(
+                    dismissContinue && !interruptDuringFade ? 1 : 0,
+                    activationCallbacks
+                );
+                Assert.AreEqual(dismissContinue ? 1 : 0, continueCallbacks);
+            }
+            finally
+            {
+                foreach ((FactionTheme theme, string introPath) in introPaths)
+                    theme.IntroCutscenePath = introPath;
+                SceneManager.sceneLoaded -= DisableSceneRendering;
+            }
+        }
+
         /// <summary>
         /// Prevents scene rendering from adding GPU work to a load-lifecycle integration test.
         /// </summary>
@@ -263,6 +540,22 @@ namespace Rebellion.Tests.App
                 Object.Destroy(AudioManager.Instance.gameObject);
             if (AppBootstrap.Instance != null)
                 Object.Destroy(AppBootstrap.Instance.gameObject);
+        }
+
+        /// <summary>
+        /// Exposes the real destruction boundary of the bootstrap being replaced by a loading operation.
+        /// </summary>
+        private sealed class BootstrapDestructionObserver : MonoBehaviour
+        {
+            public event System.Action Destroyed;
+
+            /// <summary>
+            /// Notifies the integration test while the outgoing application's destruction completes.
+            /// </summary>
+            private void OnDestroy()
+            {
+                Destroyed?.Invoke();
+            }
         }
     }
 }

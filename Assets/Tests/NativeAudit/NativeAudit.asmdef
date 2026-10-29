@@ -1,0 +1,24 @@
+{
+    "name": "NativeAudit",
+    "rootNamespace": "Rebellion.Tests.NativeAudit",
+    "references": [
+        "GameAssembly",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "WindowsStandalone64"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR || REBELLION_NATIVE_AUDIT"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

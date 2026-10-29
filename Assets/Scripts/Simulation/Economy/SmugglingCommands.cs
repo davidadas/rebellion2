@@ -13,7 +13,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Maintains sector smuggling and redirects stolen resource output to its beneficiary.
     /// </summary>
-    public sealed class SmugglingCommands
+    public sealed partial class SmugglingCommands
     {
         private const int _percentScale = 100;
 

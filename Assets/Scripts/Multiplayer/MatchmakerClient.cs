@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -22,8 +23,13 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="baseUrl">The directory base URL.</param>
         /// <param name="game">The game registration.</param>
+        /// <param name="ownerToken">The secret that authorizes listing mutation.</param>
         /// <returns>The normalized listing returned by the directory.</returns>
-        public async Task<MatchmakerGame> RegisterAsync(string baseUrl, MatchmakerGame game)
+        public async Task<MatchmakerGame> RegisterAsync(
+            string baseUrl,
+            MatchmakerGame game,
+            string ownerToken
+        )
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
@@ -32,8 +38,13 @@ namespace Rebellion.Multiplayer
             {
                 id = game.id,
                 name = game.name,
+                transport = game.transport,
+                joinCode = game.joinCode,
                 address = game.address,
                 port = game.port,
+                currentPlayers = game.currentPlayers,
+                maxPlayers = game.maxPlayers,
+                state = game.state,
                 hostFaction = game.hostFaction,
                 contentFingerprint = game.contentFingerprint,
             };
@@ -42,7 +53,12 @@ namespace Rebellion.Multiplayer
                 Encoding.UTF8,
                 "application/json"
             );
-            using HttpResponseMessage response = await _httpClient.PostAsync(url, content);
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = content,
+            };
+            ApplyOwnerAuthorization(request, ownerToken);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request);
             string json = await response.Content.ReadAsStringAsync();
             response.EnsureSuccessStatusCode();
             return JsonUtility.FromJson<MatchmakerGame>(json);
@@ -65,14 +81,18 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="baseUrl">The directory base URL.</param>
         /// <param name="gameID">The listing identifier.</param>
+        /// <param name="ownerToken">The secret that authorizes listing removal.</param>
         /// <returns>A task representing the request.</returns>
-        public async Task RemoveAsync(string baseUrl, string gameID)
+        public async Task RemoveAsync(string baseUrl, string gameID, string ownerToken)
         {
             if (string.IsNullOrWhiteSpace(gameID))
                 return;
-            using HttpResponseMessage response = await _httpClient.DeleteAsync(
+            using HttpRequestMessage request = new HttpRequestMessage(
+                HttpMethod.Delete,
                 BuildUrl(baseUrl, $"games/{Uri.EscapeDataString(gameID)}")
             );
+            ApplyOwnerAuthorization(request, ownerToken);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request);
             if (response.StatusCode != System.Net.HttpStatusCode.NotFound)
                 response.EnsureSuccessStatusCode();
         }
@@ -96,6 +116,24 @@ namespace Rebellion.Multiplayer
             if (!Uri.TryCreate(baseUrl?.TrimEnd('/') + "/", UriKind.Absolute, out Uri root))
                 throw new ArgumentException("A valid matchmaker URL is required.", nameof(baseUrl));
             return new Uri(root, path).AbsoluteUri;
+        }
+
+        /// <summary>
+        /// Adds the private listing-owner credential to a mutation request.
+        /// </summary>
+        /// <param name="request">The outgoing directory mutation request.</param>
+        /// <param name="ownerToken">The secret listing-owner token.</param>
+        private static void ApplyOwnerAuthorization(HttpRequestMessage request, string ownerToken)
+        {
+            if (string.IsNullOrWhiteSpace(ownerToken))
+                throw new ArgumentException(
+                    "A listing owner token is required.",
+                    nameof(ownerToken)
+                );
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                ownerToken.Trim()
+            );
         }
     }
 }

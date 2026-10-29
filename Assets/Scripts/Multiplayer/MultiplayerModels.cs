@@ -40,23 +40,31 @@ namespace Rebellion.Multiplayer
         public string GuestFactionID { get; }
 
         /// <summary>
+        /// Gets the host's already verified saved state, or null for a new game or guest launch.
+        /// </summary>
+        public GameRoot RestoredGame { get; }
+
+        /// <summary>
         /// Creates a synchronized launch configuration.
         /// </summary>
         /// <param name="summary">The deterministic game settings.</param>
         /// <param name="localFactionID">The faction controlled locally.</param>
         /// <param name="hostFactionID">The host-controlled faction.</param>
         /// <param name="guestFactionID">The guest-controlled faction.</param>
+        /// <param name="restoredGame">The host's verified save, when resuming a game.</param>
         public MultiplayerLaunchConfiguration(
             GameSummary summary,
             string localFactionID,
             string hostFactionID,
-            string guestFactionID
+            string guestFactionID,
+            GameRoot restoredGame = null
         )
         {
             Summary = summary ?? throw new ArgumentNullException(nameof(summary));
             LocalFactionID = localFactionID;
             HostFactionID = hostFactionID;
             GuestFactionID = guestFactionID;
+            RestoredGame = restoredGame;
         }
     }
 
@@ -67,8 +75,11 @@ namespace Rebellion.Multiplayer
     internal sealed class MultiplayerHelloMessage
     {
         public int protocolVersion;
+        public string simulationBuild;
         public string playerName;
         public string contentFingerprint;
+        public string passwordProof;
+        public string recoveryCampaignID;
     }
 
     /// <summary>
@@ -78,10 +89,14 @@ namespace Rebellion.Multiplayer
     internal sealed class MultiplayerWelcomeMessage
     {
         public bool accepted;
+        public string simulationBuild;
+        public string gameplayContent;
         public string error;
         public string hostPlayerName;
         public string hostFactionID;
         public string guestFactionID;
+        public MultiplayerChatMessage[] chat;
+        public string initializationID;
     }
 
     /// <summary>
@@ -93,6 +108,29 @@ namespace Rebellion.Multiplayer
         public long revision;
         public long baseRevision;
         public string hash;
+        public string simulationFingerprint;
+        public bool runtimeRecovery;
+        public string initializationID;
+    }
+
+    /// <summary>
+    /// Identifies the specific initialization owning readiness and gameplay messages.
+    /// </summary>
+    [Serializable]
+    internal sealed class MultiplayerSessionIdentity
+    {
+        public string initializationID;
+        public string reason;
+
+        /// <summary>
+        /// Rejects traffic belonging to an outgoing initialization without admitting its payload.
+        /// </summary>
+        /// <param name="current">The initialization owned by the receiving session.</param>
+        /// <param name="received">The initialization attached to the incoming message.</param>
+        /// <returns>True for a message belonging to the current initialized game.</returns>
+        public static bool Matches(string current, string received) =>
+            !string.IsNullOrEmpty(current)
+            && string.Equals(current, received, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -103,11 +141,24 @@ namespace Rebellion.Multiplayer
     {
         public string id;
         public string name;
+        public string transport;
+        public string joinCode;
         public string address;
         public int port;
+        public int currentPlayers;
+        public int maxPlayers;
+        public string state;
         public string hostFaction;
         public string contentFingerprint;
         public long expiresAt;
+        public string packID;
+        public string packName;
+        public string packVersion;
+        public string scenarioID;
+        public string[] modIDs;
+        public string[] modVersions;
+        public bool passwordProtected;
+        public string campaignID;
     }
 
     /// <summary>
@@ -127,8 +178,13 @@ namespace Rebellion.Multiplayer
     {
         public string id;
         public string name;
+        public string transport;
+        public string joinCode;
         public string address;
         public int port;
+        public int currentPlayers;
+        public int maxPlayers;
+        public string state;
         public string hostFaction;
         public string contentFingerprint;
     }

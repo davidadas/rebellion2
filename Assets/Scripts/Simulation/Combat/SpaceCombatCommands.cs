@@ -20,12 +20,14 @@ namespace Rebellion.Simulation
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }
+        public bool? AttackerRetreatResponse { get; set; }
+        public bool? DefenderRetreatResponse { get; set; }
     }
 
     /// <summary>
     /// Detects and resolves hostile fleet encounters.
     /// </summary>
-    public class SpaceCombatCommands
+    public partial class SpaceCombatCommands
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
@@ -210,6 +212,7 @@ namespace Rebellion.Simulation
             if (withdrawalPlan == null)
                 return false;
 
+            result.ManualRetreatingFactionID = retreatingFactionInstanceId;
             result.Events = ApplyCombatResult(
                 result,
                 attackerFleets,

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -96,6 +97,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() =>
                 new FleetWindowController(
                     null,
+                    TestPlayerActions.Create(_session, () => _playerFactionId),
                     () => _uiContext,
                     _targetingController,
                     _windowLayer,
@@ -1050,6 +1052,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             return new FleetWindowController(
                 _fleetCommandController,
+                TestPlayerActions.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _targetingController,
                 _windowLayer,
@@ -1068,7 +1071,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             return new StrategyFleetCommandController(
                 _session,
-                () => _game.GetPlayerFaction().InstanceID
+                () => _game.GetPlayerFaction().InstanceID,
+                TestPlayerActions.Create(_session, () => _game.GetPlayerFaction().InstanceID)
             );
         }
 
@@ -1378,11 +1382,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="items">The selected items.</param>
             /// <param name="rank">The requested command rank.</param>
             /// <returns>True when the appointment changed.</returns>
-            public bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+            public Task<bool> TrySetOfficerCommandAsync(
+                IReadOnlyList<ISceneNode> items,
+                OfficerRank rank
+            )
             {
                 OfficerCommandCount++;
                 LastOfficerRank = rank;
-                return OfficerCommandResult;
+                return Task.FromResult(OfficerCommandResult);
             }
 
             /// <summary>
@@ -1402,13 +1409,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="target">The target.</param>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryExecuteMove(
+            public Task<bool> TryExecuteMoveAsync(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             )
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             /// <summary>
@@ -1439,7 +1446,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// </summary>
             /// <param name="source">The source.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+            public Task<bool> TryCommitFleetWaypointPlanAsync(
+                StrategyWindowTargetingSource source
+            ) => Task.FromResult(false);
 
             /// <summary>
             /// Attempts undo fleet waypoint plan.
@@ -1453,7 +1462,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items) =>
+                Task.FromResult(false);
         }
     }
 }

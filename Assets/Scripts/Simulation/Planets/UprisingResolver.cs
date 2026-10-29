@@ -16,7 +16,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingResolver
+    public partial class UprisingResolver
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

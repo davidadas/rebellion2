@@ -2169,7 +2169,7 @@ namespace Rebellion.Simulation
                     action.TypeID,
                     action.OwnerFactionInstanceID
                 );
-                unit.InstanceID = Guid.NewGuid().ToString("N");
+                unit.InstanceID = context.Game.GenerateRuntimeIdentifier();
                 yield return unit;
             }
         }

@@ -58,7 +58,7 @@ namespace Rebellion.Multiplayer
     /// <summary>
     /// Provides one reliable ordered TCP connection directly between two players.
     /// </summary>
-    public sealed class MultiplayerPeer : IDisposable
+    public sealed class MultiplayerPeer : IMultiplayerPeer
     {
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
         private readonly ConcurrentQueue<MultiplayerTransportEvent> _events = new();

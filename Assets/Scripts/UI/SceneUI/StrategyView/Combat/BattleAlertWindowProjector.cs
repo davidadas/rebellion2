@@ -118,7 +118,8 @@ internal sealed class BattleAlertWindowProjector
                 ? GetPendingSummary(uiContext, pending, pendingPlanet)
                 : string.Empty,
             rows,
-            CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId)
+            CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId),
+            GetResponseStatus(pending, playerFactionId)
         );
 
         return new BattleAlertWindowRenderData(
@@ -285,17 +286,37 @@ internal sealed class BattleAlertWindowProjector
         string playerFactionId
     )
     {
+        bool? choice =
+            pending.AttackerOwnerInstanceID == playerFactionId
+                ? pending.AttackerRetreatResponse
+                : pending.DefenderRetreatResponse;
         return new[]
         {
             CreateButton(
                 uiContext,
                 theme?.RetreatButton,
                 CanPlayerRetreat(pending, playerFactionId),
-                false
+                choice == true
             ),
-            CreateButton(uiContext, theme?.AutoResolveButton, true, false),
+            CreateButton(uiContext, theme?.AutoResolveButton, true, choice == false),
             CreateButton(uiContext, theme?.TakeCommandButton, false, false),
         };
+    }
+
+    /// <summary>
+    /// Shows response receipt without disclosing either participant's combat choice.
+    /// </summary>
+    /// <param name="pending">The shared encounter and receipt facts.</param>
+    /// <param name="playerFactionId">The locally presented participant.</param>
+    /// <returns>The local and opposing receipt status for a two-human encounter.</returns>
+    private static string GetResponseStatus(PendingCombatResult pending, string playerFactionId)
+    {
+        if (!pending.RequiresBothResponses)
+            return string.Empty;
+        bool attacker = pending.AttackerOwnerInstanceID == playerFactionId;
+        bool own = attacker ? pending.AttackerHasResponded : pending.DefenderHasResponded;
+        bool other = attacker ? pending.DefenderHasResponded : pending.AttackerHasResponded;
+        return own && !other ? "Waiting for player" : string.Empty;
     }
 
     /// <summary>
@@ -437,7 +458,9 @@ internal sealed class BattleAlertWindowProjector
             enabled,
             GetTexture(uiContext, normalPath),
             enabled ? GetTexture(uiContext, theme?.DownImagePath) : null,
-            GetSourceBounds(sourceLayout ?? theme?.SourceLayout)
+            GetSourceBounds(sourceLayout ?? theme?.SourceLayout),
+            selected,
+            uiContext?.GetPlayerFactionTheme()?.GetPrimaryColor() ?? Color.white
         );
     }
 

@@ -14,7 +14,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Manages unit and facility production orders.
     /// </summary>
-    public class ManufacturingCommands
+    public partial class ManufacturingCommands
     {
         private readonly GameRoot _game;
         private readonly ManufacturingQueries _queries;

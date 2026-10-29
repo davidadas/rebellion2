@@ -1,5 +1,4 @@
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 
 /// <summary>
@@ -44,12 +43,6 @@ public interface IStrategyHudActions
     void OpenMessagesTab(MessagesTab tab);
 
     /// <summary>
-    /// Immediately applies the current advisor automation choices for one faction.
-    /// </summary>
-    /// <param name="faction">The faction whose delegated work should run.</param>
-    void ProcessAdvisorAutomation(Faction faction);
-
-    /// <summary>
     /// Opens the speed context menu at a source-space pointer position.
     /// </summary>
     /// <param name="request">The HUD-owned menu request.</param>
@@ -75,4 +68,18 @@ public interface IStrategyHudActions
     /// Invalidates the current strategy HUD render.
     /// </summary>
     void RequestHudRender();
+
+    /// <summary>
+    /// Responds through the ordered action boundary to the exact displayed speed proposal.
+    /// </summary>
+    /// <param name="requestingFactionID">The faction owning the displayed proposal.</param>
+    /// <param name="speed">The displayed speed.</param>
+    /// <param name="revision">The displayed selection revision.</param>
+    /// <param name="accept">Whether the player accepts the proposal.</param>
+    void RespondToSpeedRequest(
+        string requestingFactionID,
+        TickSpeed speed,
+        long revision,
+        bool accept
+    );
 }
