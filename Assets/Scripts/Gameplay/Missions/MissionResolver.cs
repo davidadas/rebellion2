@@ -802,7 +802,10 @@ namespace Rebellion.Gameplay
             if (participant is SpecialForces specialForces)
             {
                 if (!evaded)
+                {
+                    mission.RemoveParticipant(specialForces);
                     DestroySpecialForces(specialForces, planet, results);
+                }
                 return evaded;
             }
 

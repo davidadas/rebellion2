@@ -444,6 +444,190 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(_childNode1.ParentInstanceID);
         }
 
+        /// <summary>
+        /// Rejects enabled ancestry cycles regardless of their length.
+        /// </summary>
+        /// <param name="length">The number of nodes in the cycle.</param>
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(8)]
+        [TestCase(33)]
+        public void IsActive_EnabledAncestryCycle_ThrowsInvalidOperationException(int length)
+        {
+            MockSceneNode[] nodes = Enumerable
+                .Range(0, length)
+                .Select(_ => new MockSceneNode())
+                .ToArray();
+            for (int index = 0; index < nodes.Length; index++)
+                nodes[index].SetParent(nodes[(index + 1) % nodes.Length]);
+
+            Assert.Throws<InvalidOperationException>(() => nodes[0].IsActive());
+        }
+
+        /// <summary>
+        /// Stops at a disabled ancestor before revisiting a node.
+        /// </summary>
+        [Test]
+        public void IsActive_DisabledAncestorInsideCycle_ReturnsFalse()
+        {
+            _childNode1.SetParent(_nodeA);
+            _nodeA.SetParent(_nodeB);
+            _nodeB.SetParent(_nodeA);
+            _nodeB.IsEnabled = false;
+
+            Assert.IsFalse(_childNode1.IsActive());
+        }
+
+        /// <summary>
+        /// Rejects cycles that do not include the requesting node.
+        /// </summary>
+        [Test]
+        public void GetParentOfType_AncestryCycleWithoutMatchingType_ThrowsInvalidOperationException()
+        {
+            _childNode1.SetParent(_childNode2);
+            _childNode2.SetParent(_rootNode);
+            _rootNode.SetParent(_childNode2);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _childNode1.GetParentOfType<MockSceneNodeA>()
+            );
+        }
+
+        /// <summary>
+        /// Returns the first matching ancestor even when later ancestry is cyclic.
+        /// </summary>
+        [Test]
+        public void GetParentOfType_MatchingAncestorInsideCycle_ReturnsFirstMatch()
+        {
+            _childNode1.SetParent(_childNode2);
+            _childNode2.SetParent(_rootNode);
+            _rootNode.SetParent(_nodeA);
+            _nodeA.SetParent(_childNode2);
+
+            Assert.AreSame(_nodeA, _childNode1.GetParentOfType<MockSceneNodeA>());
+        }
+
+        /// <summary>
+        /// Rejects the requesting node as its own matching ancestor.
+        /// </summary>
+        [Test]
+        public void GetParentOfType_SelfParentWithMatchingType_ThrowsInvalidOperationException()
+        {
+            _nodeA.SetParent(_nodeA);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _nodeA.GetParentOfType<MockSceneNodeA>()
+            );
+        }
+
+        /// <summary>
+        /// Traverses an enabled hierarchy without allocating ancestry bookkeeping.
+        /// </summary>
+        [Test]
+        public void IsActive_RepeatedEnabledHierarchyChecks_DoesNotAllocate()
+        {
+            _childNode1.SetParent(_nodeA);
+            _nodeA.SetParent(_nodeB);
+            for (int index = 0; index < 100; index++)
+                _childNode1.IsActive();
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int index = 0; index < 100; index++)
+                _childNode1.IsActive();
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.AreEqual(0, allocated);
+        }
+
+        /// <summary>
+        /// Resolves an ancestor without allocating a visited-node collection.
+        /// </summary>
+        [Test]
+        public void GetParentOfType_RepeatedAncestorLookups_DoesNotAllocate()
+        {
+            _childNode1.SetParent(_nodeB);
+            _nodeB.SetParent(_nodeA);
+            for (int index = 0; index < 100; index++)
+                _childNode1.GetParentOfType<MockSceneNodeA>();
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int index = 0; index < 100; index++)
+                _childNode1.GetParentOfType<MockSceneNodeA>();
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.AreEqual(0, allocated);
+        }
+
+        /// <summary>
+        /// Keeps the returned child snapshot independent of later containment changes.
+        /// </summary>
+        [Test]
+        public void GetChildren_TypedSnapshotBeforeChildRemoval_RetainsOriginalChildren()
+        {
+            _rootNode.AddChild(_nodeA);
+            _nodeA.SetParent(_rootNode);
+            IReadOnlyList<MockSceneNodeA> children = _rootNode.GetChildren<MockSceneNodeA>();
+
+            _rootNode.RemoveChild(_nodeA);
+
+            CollectionAssert.AreEqual(new[] { _nodeA }, children);
+        }
+
+        /// <summary>
+        /// Preserves activity validation for children outside the requested type.
+        /// </summary>
+        [Test]
+        public void GetChildren_NonMatchingChildWithCyclicAncestry_ThrowsInvalidOperationException()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_childNode1);
+
+            Assert.Throws<InvalidOperationException>(() => _rootNode.GetChildren<MockSceneNodeA>());
+        }
+
+        /// <summary>
+        /// Evaluates borrowed view children against their authoritative parent hierarchy.
+        /// </summary>
+        [Test]
+        public void GetChildren_BorrowedChildUnderDisabledParent_ExcludesChild()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_nodeA);
+            _nodeA.IsEnabled = false;
+
+            Assert.IsEmpty(_rootNode.GetChildren<MockSceneNode>());
+        }
+
+        /// <summary>
+        /// Does not retain activity results after the current snapshot query finishes.
+        /// </summary>
+        [Test]
+        public void GetChildren_AncestorDisabledBetweenQueries_ExcludesChildFromLaterSnapshot()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            Assert.AreEqual(1, _rootNode.GetChildren<MockSceneNode>().Count);
+
+            _rootNode.IsEnabled = false;
+
+            Assert.IsEmpty(_rootNode.GetChildren<MockSceneNode>());
+        }
+
+        /// <summary>
+        /// Skips disabled children before traversing their cyclic ancestry.
+        /// </summary>
+        [Test]
+        public void GetChildren_DisabledChildUnderCyclicContainer_ReturnsEmptySnapshot()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            _rootNode.SetParent(_rootNode);
+            _childNode1.IsEnabled = false;
+
+            Assert.IsEmpty(_rootNode.GetChildren<MockSceneNode>());
+        }
+
         // Mock implementation of BaseSceneNode for testing purposes
         private class MockSceneNode : BaseSceneNode
         {

@@ -9,14 +9,360 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        /// <summary>
+        /// Creates a bombardment fleet with a donor hull available for reinforcement.
+        /// </summary>
+        /// <param name="assaultBlocked">Whether an additional shield blocks the assault.</param>
+        /// <param name="donorBombardment">The donor hull's bombardment rating.</param>
+        /// <param name="receiver">Receives the fleet awaiting reinforcement.</param>
+        /// <param name="donor">Receives the available donor hull.</param>
+        /// <returns>The faction turn containing the fleets and their known targets.</returns>
+        public static AITurnContext CreateBombardmentDonorContext(
+            bool assaultBlocked,
+            int donorBombardment,
+            out Fleet receiver,
+            out CapitalShip donor
+        )
+        {
+            AITurnContext context = CreateBombardmentReinforcementContext(
+                true,
+                true,
+                out receiver,
+                out Fleet other,
+                out _
+            );
+            context.Game.DeleteNode(other);
+            Planet otherTarget = context.Game.GetSceneNodeByInstanceID<Planet>("other-target");
+            otherTarget.OwnerInstanceID = context.Faction.InstanceID;
+            RevealPlanet(context.Game, context.Faction, otherTarget);
+            context = AddReinforcementDonor(context, false, out donor);
+            donor.GetParentOfType<Fleet>().RoleType = FleetRoleType.Battle;
+            donor.RegimentCapacity = 0;
+            donor.StarfighterCapacity = 0;
+            donor.Bombardment = donorBombardment;
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>(
+                receiver.Order.TargetPlanetId
+            );
+            if (assaultBlocked)
+            {
+                Building shield = CreateBuildingTemplate("extra-shield", BuildingType.Defense);
+                shield.OwnerInstanceID = target.GetOwnerInstanceID();
+                shield.ShieldStrength = 2;
+                context.Game.AttachNode(shield, target);
+            }
+            RevealPlanet(context.Game, context.Faction, target);
+            return CreateContext(context.Game, context.Faction);
+        }
+
+        /// <summary>
+        /// Adds an independently stationed hull to an existing reinforcement scenario.
+        /// </summary>
+        /// <param name="context">The faction turn whose demands are preserved.</param>
+        /// <param name="carriesRegiment">Whether the donor carries a completed regiment.</param>
+        /// <param name="ship">Receives the donor hull.</param>
+        /// <returns>A refreshed turn context retaining the existing attack demands.</returns>
+        public static AITurnContext AddReinforcementDonor(
+            AITurnContext context,
+            bool carriesRegiment,
+            out CapitalShip ship
+        )
+        {
+            var demands = new List<AIAttackDemand>(context.AttackDemands);
+            Planet source = context.Assessment.OwnedPlanets[0];
+            Fleet donor = EntityFactory.CreateFleet("donor", context.Faction.InstanceID);
+            context.Game.AttachNode(donor, source);
+            CapitalShip anchor = CreateCapitalShip("donor-anchor", context.Faction.InstanceID, 100);
+            anchor.RegimentCapacity = 0;
+            context.Game.AttachNode(anchor, donor);
+            ship = CreateCapitalShip("donor-ship", context.Faction.InstanceID, 100);
+            ship.RegimentCapacity = carriesRegiment ? 1 : 6;
+            context.Game.AttachNode(ship, donor);
+            if (carriesRegiment)
+                context.Game.AttachNode(
+                    CreateRegiment("carried", context.Faction.InstanceID),
+                    ship
+                );
+            AITurnContext updated = CreateContext(context.Game, context.Faction);
+            updated.SetAttackDemands(demands);
+            return updated;
+        }
+
+        /// <summary>
+        /// Creates competing fleet requirements around a shared regiment source.
+        /// </summary>
+        /// <param name="shielded">Whether the bombardment target has a planetary shield.</param>
+        /// <param name="occupied">Whether the bombardment target has a defending regiment.</param>
+        /// <param name="bombardFleet">Receives the fleet assigned to the bombardment target.</param>
+        /// <param name="otherFleet">Receives the fleet assigned to the competing target.</param>
+        /// <param name="source">Receives the planet supplying spare regiments.</param>
+        /// <returns>The assessed faction turn for both targets.</returns>
+        public static AITurnContext CreateBombardmentReinforcementContext(
+            bool shielded,
+            bool occupied,
+            out Fleet bombardFleet,
+            out Fleet otherFleet,
+            out Planet source
+        )
+        {
+            GameRoot game = CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            game.Config.AI.Infrastructure.FleetAllocationUtility =
+                new GameConfig.AIFleetProductionAllocationUtilityConfig
+                {
+                    AttackRequirements = new GameConfig.AIConsiderationConfig
+                    {
+                        Weight = 1,
+                        SaturationValue = 6,
+                    },
+                };
+            PlanetSector sector = AddSector(game, "sector");
+            source = AddPlanet(game, sector, "source", faction.InstanceID);
+            source.IsColonized = false;
+            source.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < 3; index++)
+                game.AttachNode(CreateRegiment("spare-" + index, faction.InstanceID), source);
+            Planet bombardTarget = AddPlanet(
+                game,
+                sector,
+                "bombard-target",
+                enemy.InstanceID,
+                positionX: 100
+            );
+            Planet otherTarget = AddPlanet(
+                game,
+                sector,
+                "other-target",
+                enemy.InstanceID,
+                positionX: 100
+            );
+            foreach (Planet target in new[] { bombardTarget, otherTarget })
+            {
+                Regiment defender = CreateRegiment(
+                    target.InstanceID + "-defender",
+                    enemy.InstanceID
+                );
+                defender.DefenseRating = 100;
+                game.AttachNode(defender, target);
+            }
+            if (shielded)
+            {
+                Building shield = CreateBuildingTemplate("shield", BuildingType.Defense);
+                shield.OwnerInstanceID = enemy.InstanceID;
+                shield.ShieldStrength = 2;
+                game.AttachNode(shield, bombardTarget);
+            }
+            RevealPlanet(game, faction, bombardTarget);
+            RevealPlanet(game, faction, otherTarget);
+            bombardFleet = EntityFactory.CreateFleet("bombard-fleet", faction.InstanceID);
+            otherFleet = EntityFactory.CreateFleet("other-fleet", faction.InstanceID);
+            foreach (Fleet fleet in new[] { bombardFleet, otherFleet })
+            {
+                fleet.RoleType = FleetRoleType.Battle;
+                game.AttachNode(fleet, source);
+                CapitalShip ship = CreateCapitalShip(
+                    fleet.InstanceID + "-ship",
+                    faction.InstanceID,
+                    100
+                );
+                ship.Bombardment = fleet == bombardFleet ? 1 : 0;
+                ship.RegimentCapacity = fleet == bombardFleet ? 1 : 3;
+                game.AttachNode(ship, fleet);
+                if (occupied && fleet == bombardFleet)
+                    game.AttachNode(CreateRegiment("occupation", faction.InstanceID), ship);
+                fleet.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Attack,
+                    Status = FleetOrderStatus.Building,
+                    TargetPlanetId =
+                        fleet == bombardFleet ? bombardTarget.InstanceID : otherTarget.InstanceID,
+                };
+            }
+            return CreateContext(game, faction);
+        }
+
+        /// <summary>
+        /// Creates a known empty destination and a separately observed defended reference world.
+        /// </summary>
+        /// <param name="age">The age of the recorded intelligence.</param>
+        /// <returns>The faction turn used to evaluate mission risk.</returns>
+        public static AITurnContext CreateMissionDefenseContext(int age)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MissionDefenseIntelFullWeightTicks = 100;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackGroundDetectorCount = 0;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackOrbitalDetectorCount = 0;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackDetectionRating = 50;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackCommanderEspionage = 50;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackCommanderCombat = 50;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 50 } };
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.FleetDecoy = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
+            game.Config.Assassination.KillProbability = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Planet reference = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "reference",
+                rebels.InstanceID
+            );
+            Officer spy = EntityFactory.CreateOfficer("spy", empire.InstanceID);
+            spy.SetBaseRating(SkillRating.Espionage, 50);
+            spy.SetBaseRating(SkillRating.Combat, 50);
+            game.AttachNode(spy, origin);
+            for (int index = 0; index < 2; index++)
+                game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = "reference-" + index,
+                        OwnerInstanceID = rebels.InstanceID,
+                        DetectionRating = 100,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    reference
+                );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITestSceneBuilder.RevealPlanet(game, empire, reference);
+            game.CurrentTick = age;
+            return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        /// <summary>
+        /// Arranges a construction lane with a shield competing against industrial expansion.
+        /// </summary>
+        /// <param name="order">Receives the unfinished shield.</param>
+        /// <returns>The faction turn containing the current manufacturing order.</returns>
+        public static AITurnContext CreateProductionComparison(out Building order)
+        {
+            GameRoot game = CreateGame(out Faction faction, out _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.DemandUtility.SaturationValue = 100;
+            faction.RefinedMaterialStockpile = 10000;
+            PlanetSector sector = AddSector(game, "sector");
+            Planet producer = AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: 20
+            );
+            producer.SetPopularSupport(faction.InstanceID, 100);
+            AddProductionFacility(
+                game,
+                producer,
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            order = CreateBuildingTemplate("current-shield", BuildingType.Defense);
+            order.ConstructionCost = 100;
+            order.OwnerInstanceID = faction.InstanceID;
+            order.ShieldStrength = 80;
+            AITurnContext context = CreateContext(game, faction);
+            if (!context.Manufacturing.Enqueue(producer, order, producer))
+                throw new System.InvalidOperationException(
+                    "Could not arrange the existing shield order."
+                );
+            return CreateContext(game, faction);
+        }
+
+        /// <summary>
+        /// Creates and registers competing production needs for the arranged construction lane.
+        /// </summary>
+        /// <param name="context">The faction turn whose current state is assessed.</param>
+        /// <param name="order">The shield already in progress.</param>
+        /// <param name="competingDefenses">Whether both choices address an immediate defensive threat.</param>
+        /// <param name="continuationDemandPercent">The urgency of completing the shield.</param>
+        /// <param name="replacementDemandPercent">The urgency of the replacement.</param>
+        /// <returns>The continuation followed by the replacement action.</returns>
+        public static AIManufactureProposal[] CreateProductionChoices(
+            AITurnContext context,
+            Building order,
+            bool competingDefenses = false,
+            int continuationDemandPercent = 40,
+            int replacementDemandPercent = 100
+        )
+        {
+            Planet producer = context.Game.GetSceneNodeByInstanceID<Planet>(order.ProducerPlanetID);
+            BuildingType replacementType = competingDefenses
+                ? BuildingType.Weapon
+                : BuildingType.ConstructionFacility;
+            Building replacement = CreateBuildingTemplate("replacement", replacementType);
+            replacement.ConstructionCost = 100;
+            AIManufactureProposal continuation = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "continue",
+                    AIProductionDemandKind.PlanetaryDefense,
+                    ManufacturingType.Building,
+                    BuildingType.Defense,
+                    producer,
+                    1,
+                    targetCount: 1,
+                    baseDemandPercent: continuationDemandPercent,
+                    isEmergencyDefense: competingDefenses,
+                    existingOrder: order
+                ),
+                producer,
+                new Technology(order),
+                false
+            );
+            AIManufactureProposal next = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "replace",
+                    competingDefenses
+                        ? AIProductionDemandKind.PlanetaryDefense
+                        : AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    replacementType,
+                    producer,
+                    1,
+                    targetCount: competingDefenses ? 1 : 5,
+                    baseDemandPercent: replacementDemandPercent,
+                    isEmergencyDefense: competingDefenses
+                ),
+                producer,
+                new Technology(replacement),
+                false,
+                replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+            context.SetProductionDemands(new[] { continuation.Demand, next.Demand });
+            return new[] { continuation, next };
+        }
+
         /// <summary>
         /// Creates game.
         /// </summary>

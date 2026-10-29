@@ -197,17 +197,13 @@ namespace Rebellion.Gameplay
         {
             foreach (Faction faction in _game.GetFactions())
             {
-                foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
-                {
-                    foreach (
-                        Planet planet in sector
-                            .GetChildren<Planet>()
-                            .Where(planet => _queries.IsPlanetVisible(planet, faction))
-                    )
-                    {
-                        _commands.ObservePlanet(faction, planet);
-                    }
-                }
+                _commands.ObservePlanets(
+                    faction,
+                    _game
+                        .Galaxy.GetChildren<PlanetSector>()
+                        .SelectMany(sector => sector.GetChildren<Planet>())
+                        .Where(planet => _queries.IsPlanetVisible(planet, faction))
+                );
             }
         }
 

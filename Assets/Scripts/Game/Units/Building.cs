@@ -67,6 +67,7 @@ namespace Rebellion.Game.Units
         public long ManufacturingQueueSequence { get; set; }
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
+
         public ManufacturingType ProductionType { get; set; }
         public double ProductionCycleProgress { get; set; }
         public int ProductionCycleDuration { get; set; }

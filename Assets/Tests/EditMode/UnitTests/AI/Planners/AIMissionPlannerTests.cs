@@ -10,6 +10,7 @@ using Rebellion.AI.Scorers;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
@@ -22,6 +23,300 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIMissionPlannerTests
     {
+        [Test]
+        public void Plan_WithWeakSaboteurs_BuildsMultipleAttackerTeamAboveSuccessFloor()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            for (int index = 0; index < 4; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(proposals.All(proposal => proposal.MainParticipants.Count == 3));
+            Assert.IsTrue(proposals.All(proposal => proposal.DecoyParticipants.Count == 1));
+            Assert.IsTrue(
+                proposals.All(proposal =>
+                    context
+                        .MissionQueries.GetOperationalMissionOdds(
+                            proposal.CreateContext(),
+                            context.Assessment.GetMissionDetectors
+                        )
+                        .OverallSuccessProbability >= 60
+                )
+            );
+        }
+
+        [Test]
+        public void Plan_WithNoObservedDefenders_PreservesSabotageDecoyProtection()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 20;
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
+            for (int index = 0; index < 4; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(proposals.All(proposal => proposal.DecoyParticipants.Count > 0));
+        }
+
+        [Test]
+        public void Plan_WithLoneSaboteur_DoesNotProposeUnprotectedMission()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 20;
+            game.AttachNode(
+                CreateSpecialForces("agent", empire.InstanceID, MissionTypeIDs.Sabotage),
+                origin
+            );
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [Test]
+        public void Plan_WithSpecialForcesLeader_KeepsOfficersOutOfItsTeam()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            for (int index = 0; index < 4; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.IsMain = false;
+            officer.Ratings[SkillRating.Diplomacy] = 0;
+            officer.Ratings[SkillRating.Espionage] = 100;
+            officer.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(officer, origin);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(proposal =>
+                    proposal.MissionTypeID == MissionTypeIDs.Sabotage
+                    && proposal.Participant is SpecialForces
+                )
+                .ToArray();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(
+                proposals.All(proposal =>
+                    proposal.Participants.All(participant => participant is SpecialForces)
+                )
+            );
+        }
+
+        [TestCase(80)]
+        [TestCase(100)]
+        public void Plan_WithDefenders_PrefersDecoysWhenTheyImproveSabotageOdds(int foilPercent)
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet target
+            );
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 20;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, foilPercent },
+            };
+            Regiment defender = AITestSceneBuilder.CreateRegiment(
+                "defender",
+                target.OwnerInstanceID
+            );
+            defender.DetectionRating = 100;
+            game.AttachNode(defender, target);
+            for (int index = 0; index < 3; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(proposals.Any(proposal => proposal.DecoyParticipants.Count > 0));
+            Assert.IsTrue(
+                proposals.All(proposal =>
+                    context
+                        .MissionQueries.GetOperationalMissionOdds(
+                            proposal.CreateContext(),
+                            context.Assessment.GetMissionDetectors
+                        )
+                        .OverallSuccessProbability >= 20
+                )
+            );
+        }
+
+        [Test]
+        public void Plan_WithInsufficientSabotageOdds_DoesNotLaunchPoorAttempts()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { -1000, 1 },
+            };
+            for (int index = 0; index < 3; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [Test]
+        public void Plan_WithConfiguredSabotageTeamLimit_DoesNotExceedIt()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet _
+            );
+            game.Config.AI.MissionPlanning.MaximumSabotageTeamSize = 2;
+            for (int index = 0; index < 6; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [Test]
+        public void Plan_WithCompetingSabotageTargets_SelectionDoesNotReuseTeamMembers()
+        {
+            GameRoot game = CreateSabotageTeamScene(
+                out Faction empire,
+                out Planet origin,
+                out Planet target
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "second-yard",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            for (int index = 0; index < 4; index++)
+                game.AttachNode(
+                    CreateSpecialForces(
+                        "agent-" + index,
+                        empire.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    ),
+                    origin
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposals(new AIMissionPlanner().Plan(context));
+
+            new AISelectionPhase().Execute(context);
+
+            AIMissionProposal[] selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+            Assert.AreEqual(1, selected.Length);
+            Assert.AreEqual(3, selected[0].MainParticipants.Count);
+            Assert.AreEqual(
+                selected.Sum(proposal => proposal.Participants.Count),
+                selected.SelectMany(proposal => proposal.Participants).Distinct().Count()
+            );
+        }
+
         [Test]
         public void Plan_WithReconnaissanceTeam_AddsProposalForNearestUnexploredPlanet()
         {
@@ -274,6 +569,14 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Building building = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -307,11 +610,71 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithKnownTargetWithoutDefenderIntel_AddsSabotageProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building facility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            saboteur.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            empire.Fog.Snapshots[sector.InstanceID].Planets[target.InstanceID].RevealedCategories =
+                PlanetIntelligenceCategory.Planet | PlanetIntelligenceCategory.Buildings;
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(
+                proposals.All(proposal => proposal.SelectedTarget.InstanceID == facility.InstanceID)
+            );
+        }
+
+        [Test]
         public void Plan_WithDuplicateSabotageTargetTypes_OffersOneRepresentative()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Building first = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -355,6 +718,14 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Building building = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -400,6 +771,14 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Building activeTarget = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -463,8 +842,17 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithShieldBlockedAttack_PrioritizesBlockingShield()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet attackTarget = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
@@ -522,8 +910,17 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithAttackPreparationTargets_OffersOnlyHighestPriorityTargets()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.SetPopularSupport(rebels.InstanceID, 40);
             target.SetPopularSupport(empire.InstanceID, 60);
@@ -576,11 +973,20 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithMixedSabotageTargets_OffersOnlyShieldGenerators()
+        public void Plan_WithAttackTargetAndMixedSabotageTargets_OffersOnlyShieldGenerators()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Building shield = AddShield(game, target, "shield", rebels.InstanceID);
             Building battery = AITestSceneBuilder.CreateBuildingTemplate(
@@ -591,6 +997,13 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(battery, target);
             Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", rebels.InstanceID);
             game.AttachNode(regiment, target);
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
@@ -611,14 +1024,29 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithOnlyGarrisonedRegiment_AddsSabotageProposal()
+        public void Plan_WithAttackTargetAndOnlyGarrisonedRegiment_AddsSabotageProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", rebels.InstanceID);
             game.AttachNode(regiment, target);
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
@@ -635,6 +1063,402 @@ namespace Rebellion.Tests.AI.Planners
                 .Single(candidate => candidate.MissionTypeID == SabotageMission.MissionTypeID);
 
             Assert.AreEqual(regiment.InstanceID, proposal.SelectedTarget.InstanceID);
+        }
+
+        [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
+        [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
+        [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building)]
+        public void Plan_NoAttackWithProductionAndEconomicTargets_OffersOnlyProductionFacility(
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building facility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "facility",
+                buildingType,
+                productionType
+            );
+            foreach (
+                BuildingType economicType in new[] { BuildingType.Mine, BuildingType.Refinery }
+            )
+            {
+                Building economic = AITestSceneBuilder.CreateBuildingTemplate(
+                    economicType.ToString(),
+                    economicType
+                );
+                economic.OwnerInstanceID = rebels.InstanceID;
+                economic.ConstructionCost = facility.ConstructionCost * 10;
+                game.AttachNode(economic, target);
+            }
+            AddShield(game, target, "shield", rebels.InstanceID);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("regiment", rebels.InstanceID),
+                target
+            );
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            saboteur.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(saboteur, origin);
+            target.SetPopularSupport(rebels.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.AreEqual(1, proposals.Length);
+            Assert.AreEqual(facility.InstanceID, proposals[0].SelectedTarget.InstanceID);
+        }
+
+        [TestCase(BuildingType.Mine)]
+        [TestCase(BuildingType.Refinery)]
+        public void Plan_NoAttackWithoutProductionFacility_OffersEconomicTarget(BuildingType type)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building economic = AITestSceneBuilder.CreateBuildingTemplate("economic", type);
+            economic.OwnerInstanceID = rebels.InstanceID;
+            game.AttachNode(economic, target);
+            AddShield(game, target, "shield", rebels.InstanceID);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            saboteur.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AIMissionProposal proposal = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+
+            Assert.AreEqual(economic.InstanceID, proposal.SelectedTarget.InstanceID);
+        }
+
+        [TestCase(BuildingType.Mine)]
+        [TestCase(BuildingType.Refinery)]
+        public void Plan_AttackTargetWithOnlyEconomicFacility_OffersNoSabotage(BuildingType type)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building economic = AITestSceneBuilder.CreateBuildingTemplate("economic", type);
+            economic.OwnerInstanceID = rebels.InstanceID;
+            game.AttachNode(economic, target);
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [Test]
+        public void Plan_AttackTargetWithProductionAndEconomicFacilities_OffersOnlyProductionFacility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building facility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "facility",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate("mine", BuildingType.Mine);
+            mine.OwnerInstanceID = rebels.InstanceID;
+            mine.ConstructionCost = facility.ConstructionCost * 10;
+            game.AttachNode(mine, target);
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AIMissionProposal proposal = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+
+            Assert.AreEqual(facility.InstanceID, proposal.SelectedTarget.InstanceID);
+        }
+
+        [Test]
+        public void Plan_NoAttackWithOnlyMilitaryTargets_OffersNoSabotage()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            AddShield(game, target, "shield", rebels.InstanceID);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("regiment", rebels.InstanceID),
+                target
+            );
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [Test]
+        public void Plan_AttackTargetWithOrbitingCapitalShip_OffersExecutableShipProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", rebels.InstanceID);
+            game.AttachNode(hostileFleet, target);
+            game.AttachNode(ship, hostileFleet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("cargo-regiment", rebels.InstanceID),
+                ship
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateStarfighter("cargo-fighter", rebels.InstanceID),
+                ship
+            );
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal proposal = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+
+            Assert.AreEqual(ship.InstanceID, proposal.SelectedTarget.InstanceID);
+            Assert.IsTrue(proposal.CanExecute(context));
+            proposal.Execute(context);
+            Assert.AreEqual(
+                ship.InstanceID,
+                game.GetSceneNodesByType<SabotageMission>().Single().SabotageTargetInstanceID
+            );
+        }
+
+        [TestCase(ManufacturingStatus.Building, false)]
+        [TestCase(ManufacturingStatus.Delivering, false)]
+        [TestCase(ManufacturingStatus.Complete, true)]
+        public void Plan_AttackTargetWithUnavailableCapitalShip_OffersNoSabotage(
+            ManufacturingStatus status,
+            bool inTransit
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", rebels.InstanceID);
+            ship.ManufacturingStatus = status;
+            ship.Movement = inTransit ? new MovementState { TransitTicks = 10 } : null;
+            game.AttachNode(hostileFleet, target);
+            game.AttachNode(ship, hostileFleet);
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+            );
+        }
+
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        public void Plan_NoAttackWithUnfinishedProductionFacility_OffersEconomicFallback(
+            ManufacturingStatus status
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building facility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "facility",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            facility.ManufacturingStatus = status;
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate("mine", BuildingType.Mine);
+            mine.OwnerInstanceID = rebels.InstanceID;
+            game.AttachNode(mine, target);
+            SpecialForces saboteur = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            saboteur.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(saboteur, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AIMissionProposal proposal = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+
+            Assert.AreEqual(mine.InstanceID, proposal.SelectedTarget.InstanceID);
         }
 
         [Test]
@@ -760,6 +1584,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 EspionageMission.MissionTypeID
             );
+            leadSpy.Ratings[SkillRating.Espionage] = 100;
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
             officerDecoy.Ratings[SkillRating.Espionage] = 80;
             game.AttachNode(leadSpy, origin);
@@ -826,11 +1651,20 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithStaleEnemyIntel_AddsEspionageWithoutHostileMission()
+        public void Plan_WithStaleEnemyIntel_AllowsSabotageButStillExcludesUprisings()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -847,6 +1681,8 @@ namespace Rebellion.Tests.AI.Planners
                 SabotageMission.MissionTypeID,
                 InciteUprisingMission.MissionTypeID
             );
+            participant.Ratings[SkillRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Combat] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick =
@@ -862,7 +1698,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 proposals.Any(proposal => proposal.MissionTypeID == EspionageMission.MissionTypeID)
             );
-            Assert.IsFalse(
+            Assert.IsTrue(
                 proposals.Any(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
             );
             Assert.IsFalse(
@@ -872,15 +1708,25 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        [Test]
-        public void Plan_WithStaleShieldBlockedAttack_AddsSabotageProposal()
+        [TestCase(1)]
+        [TestCase(2)]
+        public void Plan_WithStaleAttackShield_AddsSabotageProposal(int shieldCount)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            AddShield(game, target, "shield-1", rebels.InstanceID);
-            AddShield(game, target, "shield-2", rebels.InstanceID);
+            for (int index = 0; index < shieldCount; index++)
+                AddShield(game, target, $"shield-{index}", rebels.InstanceID);
             Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
             attackFleet.Order = new FleetOrder
             {
@@ -915,6 +1761,56 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_StaleAttackSnapshot_OffersOnlyKnownCompletedShield()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 1;
+            SpecialForces decoy = CreateSpecialForces(
+                "sabotage-decoy",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            decoy.Ratings[SkillRating.Espionage] = 99;
+            game.AttachNode(decoy, origin);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building completed = AddShield(game, target, "completed", rebels.InstanceID);
+            Building unfinished = AddShield(game, target, "unfinished", rebels.InstanceID);
+            unfinished.ManufacturingStatus = ManufacturingStatus.Building;
+            Fleet fleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(
+                CreateSpecialForces("saboteur", empire.InstanceID, MissionTypeIDs.Sabotage),
+                origin
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            unfinished.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.CurrentTick =
+                game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks + 1;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            var proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToList();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(
+                proposals.All(proposal =>
+                    proposal.SelectedTarget.InstanceID == completed.InstanceID
+                )
+            );
+        }
+
+        [Test]
         public void Plan_WithMultipleSpies_OffersEveryDistinctTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -932,14 +1828,16 @@ namespace Rebellion.Tests.AI.Planners
                 "target-2",
                 rebels.InstanceID
             );
-            game.AttachNode(
-                CreateSpecialForces("spy-1", empire.InstanceID, EspionageMission.MissionTypeID),
-                origin
-            );
-            game.AttachNode(
-                CreateSpecialForces("spy-2", empire.InstanceID, EspionageMission.MissionTypeID),
-                origin
-            );
+            for (int index = 1; index <= 2; index++)
+            {
+                SpecialForces spy = CreateSpecialForces(
+                    $"spy-{index}",
+                    empire.InstanceID,
+                    EspionageMission.MissionTypeID
+                );
+                spy.Ratings[SkillRating.Espionage] = 100;
+                game.AttachNode(spy, origin);
+            }
             AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
@@ -1321,6 +2219,47 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             CollectionAssert.AreEqual(new[] { DiplomacyMission.MissionTypeID }, missionTypeIds);
+        }
+
+        /// <summary>
+        /// Creates a revealed hostile production target with explicit sabotage encounter odds.
+        /// </summary>
+        /// <param name="empire">Receives the acting faction.</param>
+        /// <param name="origin">Receives the friendly team assembly planet.</param>
+        /// <param name="target">Receives the hostile sabotage destination.</param>
+        /// <returns>The game used to compare sabotage team alternatives.</returns>
+        private static GameRoot CreateSabotageTeamScene(
+            out Faction empire,
+            out Planet origin,
+            out Planet target
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "team-sector");
+            origin = AITestSceneBuilder.AddPlanet(game, system, "team-origin", empire.InstanceID);
+            target = AITestSceneBuilder.AddPlanet(game, system, "team-target", rebels.InstanceID);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "team-yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            game.Config.AI.MissionPlanning.MaximumSabotageTeamSize = 4;
+            game.Config.AI.MissionPlanning.SabotageTeamCandidateCount = 6;
+            game.Config.AI.MissionPlanning.SabotageTeamAlternativesPerTarget = 2;
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 60;
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
+            {
+                { -1000, 30 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            return game;
         }
 
         /// <summary>

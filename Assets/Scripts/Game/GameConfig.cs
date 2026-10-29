@@ -148,7 +148,33 @@ namespace Rebellion.Game
 
             public int MinimumUprisingMissionSuccessPercent { get; set; }
 
+            public int MinimumSabotageSuccessPercent { get; set; }
+
+            public int MaximumSabotageTeamSize { get; set; }
+
+            public int MaximumSabotageMainParticipants { get; set; }
+
+            public int MaximumSabotageDecoyParticipants { get; set; }
+
+            public int SabotageTeamCandidateCount { get; set; }
+
+            public int SabotageTeamAlternativesPerTarget { get; set; }
+
             public int MaximumOfficerMissionLossProbability { get; set; }
+
+            public int EncounterCacheCapacity { get; set; }
+
+            public int MissionDefenseIntelFullWeightTicks { get; set; }
+
+            public int MissionDefenseFallbackGroundDetectorCount { get; set; }
+
+            public int MissionDefenseFallbackOrbitalDetectorCount { get; set; }
+
+            public int MissionDefenseFallbackDetectionRating { get; set; }
+
+            public int MissionDefenseFallbackCommanderEspionage { get; set; }
+
+            public int MissionDefenseFallbackCommanderCombat { get; set; }
 
             public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; }
 
@@ -190,12 +216,20 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
 
+            public AIConsiderationConfig TravelTime { get; set; }
+
+            public AIConsiderationConfig ExecutionDelay { get; set; }
+
+            public AIConsiderationConfig ParticipantTravelTime { get; set; }
+
             public AIConsiderationConfig OfficerRisk { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig IntelAge { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig AttackPreparationIntel { get; set; } =
                 new AIConsiderationConfig();
+
+            public AIConsiderationConfig BlockedAttackIntel { get; set; }
 
             public AIConsiderationConfig TrainingValue { get; set; } = new AIConsiderationConfig();
         }
@@ -221,6 +255,9 @@ namespace Rebellion.Game
             public AIConsiderationConfig Espionage { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig MobileHeadquartersEspionage { get; set; } =
+                new AIConsiderationConfig();
+
+            public AIConsiderationConfig ManufacturingEspionage { get; set; } =
                 new AIConsiderationConfig();
 
             public AIConsiderationConfig Diplomacy { get; set; } = new AIConsiderationConfig();
@@ -251,6 +288,8 @@ namespace Rebellion.Game
             public AIConsiderationConfig GarrisonStarfighter { get; set; } =
                 new AIConsiderationConfig();
 
+            public AIConsiderationConfig SpecialForces { get; set; } = new AIConsiderationConfig();
+
             public AIConsiderationConfig OtherUnit { get; set; } = new AIConsiderationConfig();
         }
 
@@ -260,9 +299,23 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIDiplomacyUtilityConfig
         {
+            public AIConsiderationConfig Competition { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig TravelTime { get; set; } = new AIConsiderationConfig();
+
             public AIConsiderationConfig SupportDeficit { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig CoreWorld { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig HeadquartersSector { get; set; } =
+                new AIConsiderationConfig();
+
+            public AIConsiderationConfig SystemPresence { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig Concentration { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig IndustrialOpportunity { get; set; } =
+                new AIConsiderationConfig();
 
             public AIConsiderationConfig ConstructionFacility { get; set; } =
                 new AIConsiderationConfig();
@@ -314,6 +367,8 @@ namespace Rebellion.Game
 
             public int HeadquartersDefenseCombatPercent { get; set; }
 
+            public int HeadquartersDefensePercentOfStrongestHostileFleet { get; set; }
+
             public int MinimumPlanetaryAssaultRegimentCount { get; set; }
 
             public int MinimumPlanetaryAssaultSuccessPercent { get; set; }
@@ -328,9 +383,16 @@ namespace Rebellion.Game
 
             public int StaleIntelReserveSaturationIntervals { get; set; }
 
+            public int AttackIntelAgeGraceTicks { get; set; }
+
+            public int HeadquartersAttackMaximumIntelAgeTicks { get; set; }
+
             public double AttackReadinessFloorWeight { get; set; }
 
             public AIAttackUtilityConfig AttackUtility { get; set; } = new AIAttackUtilityConfig();
+
+            public AIOfficerCommandUtilityConfig OfficerCommandUtility { get; set; } =
+                new AIOfficerCommandUtilityConfig();
 
             public int ExposedSectorMinimumOwnedPresencePercent { get; set; }
 
@@ -354,11 +416,27 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Utility considerations used to allocate officers to attack fleets.
+        /// </summary>
+        [PersistableObject]
+        public class AIOfficerCommandUtilityConfig
+        {
+            public AIConsiderationConfig ForceImprovement { get; set; } =
+                new AIConsiderationConfig();
+            public AIConsiderationConfig ReadinessGain { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig Ready { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
+        }
+
+        /// <summary>
         /// Utility considerations used to value fleet attacks and attack-fleet reinforcement.
         /// </summary>
         [PersistableObject]
         public class AIAttackUtilityConfig
         {
+            public AIConsiderationConfig TravelTime { get; set; } = new AIConsiderationConfig();
+
             public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig SectorSupport { get; set; } = new AIConsiderationConfig();
@@ -386,6 +464,9 @@ namespace Rebellion.Game
             public AIConsiderationConfig ExistingOrder { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig Headquarters { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig HeadquartersBuildupCost { get; set; } =
+                new AIConsiderationConfig();
 
             public AIConsiderationConfig OrbitalAdvantage { get; set; } =
                 new AIConsiderationConfig();
@@ -438,6 +519,11 @@ namespace Rebellion.Game
             public AIConsiderationConfig Base { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig SectorRisk { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig TravelTime { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig OpportunityCost { get; set; } =
+                new AIConsiderationConfig();
         }
 
         /// <summary>
@@ -473,6 +559,7 @@ namespace Rebellion.Game
             public AIConsiderationConfig DemandUtility { get; set; } = new AIConsiderationConfig();
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
+            public int PreferredInterdictionCountPerFleet { get; set; }
             public AITechnologySelectionUtilityConfig TechnologyUtility { get; set; } =
                 new AITechnologySelectionUtilityConfig();
             public int RefinedMaterialReservePercent { get; set; }
@@ -480,8 +567,29 @@ namespace Rebellion.Game
             public int RefinedMaterialCommitmentHorizonTicks { get; set; }
             public int MaintenanceHeadroomReserve { get; set; }
             public int MaintenanceHeadroomTarget { get; set; }
+
+            public AIMaintenanceRecoveryConfig MaintenanceRecovery { get; set; } =
+                new AIMaintenanceRecoveryConfig();
+
+            public int DiplomacyEconomyConfidencePercent { get; set; }
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
+        }
+
+        /// <summary>
+        /// Controls deliberate retirement of maintenance commitments during a shortage.
+        /// </summary>
+        [PersistableObject]
+        public class AIMaintenanceRecoveryConfig
+        {
+            public bool Enabled { get; set; }
+            public int TargetHeadroom { get; set; }
+            public double ReplacementCostWeight { get; set; }
+            public double DefenseWeight { get; set; }
+            public double AttackWeight { get; set; }
+            public double GarrisonWeight { get; set; }
+            public double AgentWeight { get; set; }
+            public double ProductionWeight { get; set; }
         }
 
         /// <summary>
@@ -560,9 +668,17 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIProductionUtilityConfig
         {
+            public AIConsiderationConfig CompletionTime { get; set; } = new AIConsiderationConfig();
+
+            public AIConsiderationConfig InterruptionCost { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig ColonyFoundation { get; set; } =
+                new AIConsiderationConfig();
+
+            public AIConsiderationConfig HeadquartersReinforcement { get; set; } =
                 new AIConsiderationConfig();
 
             public AIConsiderationConfig HeadroomRisk { get; set; } = new AIConsiderationConfig();
@@ -576,15 +692,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIInfrastructureConfig
         {
-            public int PlanetsPerConstructionFacility { get; set; }
-            public int MinimumConstructionFacilityLanes { get; set; }
             public int ConstructionFacilityTargetClearTicks { get; set; }
             public int ShipyardTargetClearTicks { get; set; }
             public int FleetProductionMinimumShipyardCount { get; set; }
+
+            public int CapitalShipMaximumBuildTicks { get; set; }
             public int TrainingFacilityTargetClearTicks { get; set; }
-            public int PlanetsPerShipyard { get; set; }
-            public int PlanetsPerTrainingFacility { get; set; }
-            public int TrainingDemandsPerFacility { get; set; }
             public int ConstructionFacilityPortfolioPercent { get; set; }
             public int ShipyardPortfolioPercent { get; set; }
             public int TrainingFacilityPortfolioPercent { get; set; }
@@ -593,11 +706,11 @@ namespace Rebellion.Game
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; }
-            public int FacilitySectorHubTargetCount { get; set; }
-            public int ShipyardSectorHubTargetCount { get; set; }
-            public int FacilitySectorHubMaximumCount { get; set; }
-            public int FacilityPlanetsPerSector { get; set; }
-            public int FacilitySectorSecondaryTargetCount { get; set; }
+            public int ConstructionFacilityPrimaryHubTargetCount { get; set; }
+            public int ConstructionFacilitySecondaryHubTargetCount { get; set; }
+            public int ShipyardPrimaryHubTargetCount { get; set; }
+            public int ShipyardSecondaryHubTargetCount { get; set; }
+            public int TrainingFacilityHubTargetCount { get; set; }
             public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
                 new AIInfrastructurePlacementUtilityConfig();
             public AIInfrastructureAllocationUtilityConfig AllocationUtility { get; set; } =
@@ -617,7 +730,17 @@ namespace Rebellion.Game
 
             public int MobileHeadquartersEspionageDemandPercent { get; set; }
 
+            public int ManufacturingEspionageDemandPercent { get; set; }
+
+            public int ManufacturingInterceptionAgentCount { get; set; }
+
+            public int ManufacturingInterceptionDemandPercent { get; set; }
+
             public int SpecialForcesMissionCoveragePercent { get; set; }
+
+            public int SaboteursPerEnemyDefense { get; set; }
+
+            public int SpiesPerEnemyPlanet { get; set; }
 
             public int StarfighterParentFillPercent { get; set; }
             public int StarfighterLocalReservePercent { get; set; }
@@ -627,8 +750,12 @@ namespace Rebellion.Game
             public int IdleShipyardFighterReserveCount { get; set; }
             public int IdleShipyardFighterDemandPercent { get; set; }
             public int PlanetaryWeaponTargetCount { get; set; }
+
+            public bool RequireEstablishedIndustryForStaticDefense { get; set; }
             public int PlanetaryDefenseSurplusBatchSize { get; set; }
             public int PlanetaryShieldDemandPercent { get; set; }
+
+            public int IndustrialShieldTargetCount { get; set; }
             public int PlanetaryWeaponDemandPercent { get; set; }
             public int PlanetaryGarrisonDemandPercent { get; set; }
             public int PlanetaryDefenseMaintenanceReservePercent { get; set; }
@@ -1250,6 +1377,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GameSpeedConfig
         {
+            public double TickWorkBudgetMilliseconds { get; set; }
+
             public float FastTickIntervalSeconds { get; set; }
 
             public float MediumTickIntervalSeconds { get; set; }

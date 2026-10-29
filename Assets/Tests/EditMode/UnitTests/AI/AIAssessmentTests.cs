@@ -9,10 +9,12 @@ using Rebellion.AI.Scorers;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI
@@ -20,10 +22,721 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(ManufacturingStatus.Building, true)]
+        [TestCase(ManufacturingStatus.Complete, false)]
+        public void GetReplaceableManufacturingOrder_SingleOrder_UsesManufacturingStatus(
+            ManufacturingStatus status,
+            bool expected
+        )
+        {
+            AITurnContext context = CreateProductionQueueContext(
+                status,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+
+            Assert.AreSame(
+                expected ? order : null,
+                context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [Test]
+        public void GetReplaceableManufacturingOrder_MixedQueue_PreservesAllWork()
+        {
+            AITurnContext context = CreateProductionQueueContext(
+                ManufacturingStatus.Building,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+            destination.EnergyCapacity = 2;
+            Building second = AITestSceneBuilder.CreateBuildingTemplate(
+                "required",
+                BuildingType.Defense
+            );
+            second.OwnerInstanceID = context.Faction.InstanceID;
+            second.ProducerPlanetID = producer.InstanceID;
+            second.ManufacturingStatus = ManufacturingStatus.Building;
+            context.Game.AttachNode(second, destination);
+            producer.AddToManufacturingQueue(second);
+
+            Assert.IsNull(
+                context.Assessment.GetReplaceableManufacturingOrder(
+                    producer,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [TestCase(ManufacturingStatus.Building, 1)]
+        [TestCase(ManufacturingStatus.Complete, 0)]
+        public void GetAvailableBuildingSpace_FullDestination_CountsOnlyReplaceableConstruction(
+            ManufacturingStatus status,
+            int expected
+        )
+        {
+            AITurnContext context = CreateProductionQueueContext(
+                status,
+                out Building order,
+                out Planet producer,
+                out Planet destination
+            );
+
+            Assert.AreEqual(0, destination.GetAvailableEnergy());
+            Assert.AreEqual(expected, context.Assessment.GetAvailableBuildingSpace(destination));
+        }
+
+        [TestCase(0, true, false)]
+        [TestCase(1, true, false)]
+        [TestCase(5, true, true)]
+        [TestCase(5, false, false)]
+        public void CanBombardDefenders_AdditionalBombardment_ReportsCapabilityWithoutChangingFleet(
+            int contribution,
+            bool hasDefenders,
+            bool expected
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                0,
+                out Fleet receiver,
+                out _
+            );
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>(
+                receiver.Order.TargetPlanetId
+            );
+            if (!hasDefenders)
+            {
+                foreach (Regiment regiment in target.GetAllRegiments().ToList())
+                    context.Game.DeleteNode(regiment);
+                AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+                context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            }
+
+            bool actual = context.Assessment.CanBombardDefenders(
+                receiver,
+                context.Assessment.GetKnownPlanet(target.InstanceID),
+                true,
+                contribution
+            );
+
+            Assert.AreEqual(expected, actual);
+            Assert.AreEqual(1, context.Assessment.GetProjectedFleetBombardmentStrength(receiver));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void CanBombardDefenders_UnfinishedShip_UsesOnlyRequestedReadiness(
+            bool projected,
+            bool expected
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                5,
+                out Fleet receiver,
+                out CapitalShip ship
+            );
+            context.Game.MoveNode(ship, receiver);
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            bool actual = context.Assessment.CanBombardDefenders(
+                receiver,
+                context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId),
+                projected
+            );
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestCase(1, 90, true, "active", false, 90)]
+        [TestCase(3, 90, true, "active", false, 270)]
+        [TestCase(3, 30, true, "active", false, 90)]
+        [TestCase(3, 0, true, "active", false, 0)]
+        [TestCase(3, 90, false, "active", false, 0)]
+        [TestCase(3, 90, true, "active", true, 0)]
+        [TestCase(3, 90, true, "captured", false, 0)]
+        [TestCase(3, 90, true, "killed", false, 0)]
+        [TestCase(3, 90, true, "retired", false, 0)]
+        [TestCase(3, 90, true, "disabled", false, 0)]
+        public void GetEnemyDiplomacyStrengthInSystem_ObservedOfficers_SumsOnlyActiveOpponents(
+            int count,
+            int rating,
+            bool revealed,
+            string state,
+            bool friendly,
+            double expected
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "competition");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "enemy-base",
+                friendly ? faction.InstanceID : enemy.InstanceID
+            );
+            for (int index = 0; index < count; index++)
+            {
+                Officer officer = EntityFactory.CreateOfficer(
+                    "diplomat-" + index,
+                    friendly ? faction.InstanceID : enemy.InstanceID
+                );
+                officer.SetBaseRating(SkillRating.Diplomacy, rating);
+                officer.IsCaptured = state == "captured";
+                officer.IsKilled = state == "killed";
+                officer.IsRetired = state == "retired";
+                officer.IsEnabled = state != "disabled";
+                game.AttachNode(officer, planet);
+            }
+            if (revealed)
+                AITestSceneBuilder.RevealPlanet(game, faction, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            double strength = context.Assessment.GetEnemyDiplomacyStrengthInSystem(
+                sector.InstanceID
+            );
+
+            Assert.AreEqual(expected, strength);
+            Assert.AreEqual(0, context.Assessment.GetEnemyDiplomacyStrengthInSystem("unknown"));
+        }
+
+        [TestCase(0, 100)]
+        [TestCase(50, 100)]
+        [TestCase(100, 100)]
+        [TestCase(0, 67)]
+        [TestCase(50, 67)]
+        [TestCase(100, 67)]
+        public void CanMeetOperationalMissionSuccess_FeasibleTeam_DoesNotReject(
+            int age,
+            int successPercent
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, successPercent },
+            };
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                },
+            };
+            MissionOdds exact = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            bool possible = context.Assessment.CanMeetOperationalMissionSuccess(
+                context.MissionQueries,
+                request,
+                exact.OverallSuccessProbability
+            );
+
+            Assert.IsTrue(possible);
+        }
+
+        [TestCase(0, 35d, 100)]
+        [TestCase(50, 35d, 100)]
+        [TestCase(100, 35d, 100)]
+        [TestCase(0, 100d, 100)]
+        [TestCase(50, 100d, 100)]
+        [TestCase(100, 100d, 100)]
+        [TestCase(0, null, 100)]
+        [TestCase(50, null, 100)]
+        [TestCase(100, null, 100)]
+        [TestCase(0, null, 67)]
+        [TestCase(50, null, 67)]
+        [TestCase(100, null, 67)]
+        public void TryGetOperationalMissionOdds_SuccessFloor_MatchesUnboundedDecision(
+            int age,
+            double? configuredFloor,
+            int successPercent
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, successPercent },
+            };
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                },
+            };
+            AIAssessment oracle = new(context.Game, context.Faction, context.FactionView);
+            MissionOdds complete = oracle.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            double floor = configuredFloor ?? complete.OverallSuccessProbability;
+
+            bool accepted = context.Assessment.TryGetOperationalMissionOdds(
+                context.MissionQueries,
+                request,
+                floor,
+                out MissionOdds bounded
+            );
+            MissionOdds unbounded = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.AreEqual(complete.OverallSuccessProbability >= floor, accepted);
+            if (accepted)
+                Assert.AreEqual(complete.FoilProbability, bounded.FoilProbability, 0.000000001);
+            else
+                Assert.IsNull(bounded);
+            Assert.AreEqual(complete.FoilProbability, unbounded.FoilProbability, 0.000000001);
+        }
+
+        [Test]
+        public void GetMissionOdds_EquivalentRequests_ReusesAssessmentResult()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            Planet target = context.Assessment.GetKnownPlanet("target");
+
+            MissionOdds first = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = target,
+                    MainParticipants = new List<IMissionParticipant> { spy },
+                }
+            );
+            MissionOdds second = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = target,
+                    MainParticipants = new List<IMissionParticipant> { spy },
+                }
+            );
+
+            Assert.IsNotNull(first);
+            Assert.AreSame(first, second);
+        }
+
+        [Test]
+        public void GetMissionOdds_NewAssessment_RecalculatesResult()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                },
+            };
+            MissionOdds first = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            AIAssessment next = new(context.Game, context.Faction, context.FactionView);
+
+            MissionOdds second = next.GetMissionOdds(context.MissionQueries, request);
+
+            Assert.IsNotNull(first);
+            Assert.IsNotNull(second);
+            Assert.AreNotSame(first, second);
+            Assert.AreEqual(
+                first.PersonnelLossProbability,
+                second.PersonnelLossProbability,
+                0.000000001
+            );
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_AfterCompleteEvaluation_KeepsPersonnelLossOmitted()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                },
+            };
+
+            MissionOdds complete = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            MissionOdds operational = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.AreNotSame(complete, operational);
+            Assert.Greater(complete.PersonnelLossProbability, 0);
+            Assert.AreEqual(0, operational.PersonnelLossProbability);
+            Assert.AreEqual(complete.FoilProbability, operational.FoilProbability, 0.000000001);
+        }
+
+        [TestCase(0, 0)]
+        [TestCase(50, 0.5)]
+        [TestCase(100, 1)]
+        [TestCase(400, 1)]
+        public void GetMissionOdds_AgingIntel_BlendsTowardObservedDefenseBaseline(
+            int age,
+            double baselineWeight
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            Planet target = context.Assessment.GetKnownPlanet("target");
+            Planet reference = context.Assessment.GetKnownPlanet("reference");
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = target,
+                MainParticipants = new List<IMissionParticipant> { spy },
+            };
+            MissionOdds referenceOdds = context.MissionQueries.GetMissionOdds(
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = reference,
+                    MainParticipants = new List<IMissionParticipant> { spy },
+                }
+            );
+
+            MissionOdds odds = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+
+            Assert.AreEqual(
+                referenceOdds.FoilProbability * baselineWeight,
+                odds.FoilProbability,
+                0.001
+            );
+            Assert.AreEqual(
+                referenceOdds.PersonnelLossProbability * baselineWeight,
+                odds.PersonnelLossProbability,
+                0.001
+            );
+        }
+
+        [Test]
+        public void GetMissionOdds_MissingDefenderIntel_UsesBaselineDespiteRecentPlanetReport()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(0);
+            Planet target = context.Assessment.GetKnownPlanet("target");
+            PlanetSector sector = target.GetParentOfType<PlanetSector>();
+            context
+                .Faction
+                .Fog
+                .Snapshots[sector.InstanceID]
+                .Planets[target.InstanceID]
+                .RevealedCategories = PlanetIntelligenceCategory.Planet;
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+
+            MissionOdds odds = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = target,
+                    MainParticipants = new List<IMissionParticipant> { spy },
+                }
+            );
+
+            Assert.Greater(odds.PersonnelLossProbability, 0);
+        }
+
+        [Test]
+        public void GetMissionOdds_HiddenReinforcements_DoNotLeakIntoBaseline()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet target = context.Assessment.GetKnownPlanet("target");
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = target,
+                MainParticipants = new List<IMissionParticipant> { spy },
+            };
+            MissionOdds before = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            Planet liveReference = context.Game.GetSceneNodeByInstanceID<Planet>("reference");
+            context.Game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "hidden",
+                    OwnerInstanceID = liveReference.OwnerInstanceID,
+                    DetectionRating = 1000,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                liveReference
+            );
+            AIAssessment refreshed = AITestSceneBuilder
+                .CreateContext(context.Game, context.Faction)
+                .Assessment;
+
+            MissionOdds after = refreshed.GetMissionOdds(context.MissionQueries, request);
+
+            Assert.AreEqual(before.FoilProbability, after.FoilProbability, 0.001);
+            Assert.AreEqual(before.PersonnelLossProbability, after.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_BaselineHasCommander_UsesReferenceCommanderRatings()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet liveReference = context.Game.GetSceneNodeByInstanceID<Planet>("reference");
+            foreach (Regiment regiment in liveReference.GetChildren<Regiment>())
+                regiment.DetectionRating = 0;
+            Officer commander = EntityFactory.CreateOfficer(
+                "general",
+                liveReference.OwnerInstanceID
+            );
+            commander.CurrentRank = OfficerRank.General;
+            commander.SetBaseRating(SkillRating.Espionage, 100);
+            context.Game.AttachNode(commander, liveReference);
+            context.Game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+                { 20, 0 },
+            };
+            context.Game.CurrentTick = 0;
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, liveReference);
+            context.Game.CurrentTick = 100;
+            AIAssessment assessment = AITestSceneBuilder
+                .CreateContext(context.Game, context.Faction)
+                .Assessment;
+
+            MissionOdds odds = assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = assessment.GetKnownPlanet("target"),
+                    MainParticipants = new List<IMissionParticipant>
+                    {
+                        context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                    },
+                }
+            );
+
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_NoObservedDefenses_UsesConfiguredFallback()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet reference = context.Game.GetSceneNodeByInstanceID<Planet>("reference");
+            foreach (Regiment regiment in reference.GetChildren<Regiment>().ToList())
+                context.Game.DetachNode(regiment);
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, reference);
+            context.Game.Config.AI.MissionPlanning.MissionDefenseFallbackGroundDetectorCount = 2;
+            AIAssessment assessment = AITestSceneBuilder
+                .CreateContext(context.Game, context.Faction)
+                .Assessment;
+
+            MissionOdds odds = assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = assessment.GetKnownPlanet("target"),
+                    MainParticipants = new List<IMissionParticipant>
+                    {
+                        context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                    },
+                }
+            );
+
+            Assert.Greater(odds.PersonnelLossProbability, 0);
+        }
+
+        [Test]
+        public void GetMissionOdds_SpecialForcesDecoy_ReducesUncertainOfficerRisk()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            SpecialForces decoy = new()
+            {
+                InstanceID = "decoy",
+                OwnerInstanceID = context.Faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Espionage },
+            };
+            context.Game.AttachNode(decoy, spy.GetParent());
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { spy },
+            };
+            MissionOdds unprotected = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                request
+            );
+            request.DecoyParticipants = new List<IMissionParticipant> { decoy };
+
+            MissionOdds protectedTeam = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.Less(
+                protectedTeam.PersonnelLossProbability,
+                unprotected.PersonnelLossProbability
+            );
+        }
+
+        [Test]
+        public void GetMissionOdds_WeakerBaseline_DoesNotReduceObservedRisk()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>("target");
+            for (int index = 0; index < 3; index++)
+                context.Game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = "target-" + index,
+                        OwnerInstanceID = target.OwnerInstanceID,
+                        DetectionRating = 0,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    target
+                );
+            context.Game.CurrentTick = 0;
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+            context.Game.CurrentTick = 100;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                },
+            };
+            MissionOdds observed = context.MissionQueries.GetMissionOdds(
+                request,
+                context.Assessment.GetMissionDetectors
+            );
+
+            MissionOdds adjusted = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                request
+            );
+
+            Assert.AreEqual(observed.FoilProbability, adjusted.FoilProbability, 0.001);
+            Assert.AreEqual(
+                observed.PersonnelLossProbability,
+                adjusted.PersonnelLossProbability,
+                0.001
+            );
+        }
+
+        [Test]
+        public void GetMissionOdds_AnotherEnemyHasStrongerDefenses_UsesTargetFactionBaseline()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
+            MissionContext request = new()
+            {
+                MissionTypeID = MissionTypeIDs.Espionage,
+                Location = context.Assessment.GetKnownPlanet("target"),
+                MainParticipants = new List<IMissionParticipant> { spy },
+            };
+            MissionOdds before = context.Assessment.GetMissionOdds(context.MissionQueries, request);
+            context.Game.GetFactions().Add(new Faction { InstanceID = "other-faction" });
+            Planet otherEnemy = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                context.Game.GetSceneNodeByInstanceID<PlanetSector>("sector"),
+                "other-enemy",
+                "other-faction"
+            );
+            for (int index = 0; index < 8; index++)
+                context.Game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = "other-" + index,
+                        OwnerInstanceID = otherEnemy.OwnerInstanceID,
+                        DetectionRating = 100,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    otherEnemy
+                );
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, otherEnemy);
+            AIAssessment assessment = AITestSceneBuilder
+                .CreateContext(context.Game, context.Faction)
+                .Assessment;
+
+            MissionOdds after = assessment.GetMissionOdds(context.MissionQueries, request);
+
+            Assert.AreEqual(before.FoilProbability, after.FoilProbability, 0.001);
+            Assert.AreEqual(before.PersonnelLossProbability, after.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_SeparateGroundAndOrbitalReferences_UsesBothDefenseGroups()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>("target");
+            Planet orbitalReference = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                context.Game.GetSceneNodeByInstanceID<PlanetSector>("sector"),
+                "orbital-reference",
+                target.OwnerInstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("reference-fleet", target.OwnerInstanceID);
+            context.Game.AttachNode(fleet, orbitalReference);
+            CapitalShip detector = AITestSceneBuilder.CreateCapitalShip(
+                "orbital-detector",
+                target.OwnerInstanceID
+            );
+            detector.DetectionRating = 100;
+            context.Game.AttachNode(detector, fleet);
+            context.Game.CurrentTick = 0;
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, orbitalReference);
+            context.Game.CurrentTick = 100;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            MissionOdds odds = context.Assessment.GetMissionOdds(
+                context.MissionQueries,
+                new MissionContext
+                {
+                    MissionTypeID = MissionTypeIDs.Espionage,
+                    Location = context.Assessment.GetKnownPlanet("target"),
+                    MainParticipants = new List<IMissionParticipant>
+                    {
+                        context.Game.GetSceneNodeByInstanceID<Officer>("spy"),
+                    },
+                }
+            );
+
+            Assert.AreEqual(87.5, odds.FoilProbability, 0.001);
+        }
+
         [TestCase("planet", "empire", true)]
         [TestCase("elsewhere", "empire", false)]
         [TestCase("planet", "rebels", false)]
-        public void Constructor_HoldPositionConditions_FilterOnlyMatchingOfficer(
+        public void Constructor_HoldPositionConditions_RestrictsOnlyMatchingOfficersDestination(
             string requiredParent,
             string requiredOwner,
             bool held
@@ -56,10 +769,13 @@ namespace Rebellion.Tests.AI
                 },
             };
 
+            Planet remote = AITestSceneBuilder.AddPlanet(game, sector, "remote", owner.InstanceID);
             AIAssessment assessment = new(game, owner, game.Galaxy, behaviors);
 
             Assert.AreEqual(held, assessment.IsOfficerHoldingPosition(officer));
-            Assert.AreEqual(!held, assessment.AvailableMissionParticipants.Contains(officer));
+            CollectionAssert.Contains(assessment.AvailableMissionParticipants, officer);
+            Assert.IsTrue(assessment.CanAssignOfficerToPlanet(officer, planet));
+            Assert.AreEqual(!held, assessment.CanAssignOfficerToPlanet(officer, remote));
             CollectionAssert.Contains(assessment.AvailableMissionParticipants, other);
         }
 
@@ -1269,6 +1985,9 @@ namespace Rebellion.Tests.AI
         public void IsFleetReadyToAttack_BombardmentCanRemoveDefenders_RequiresOccupationForce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -1301,7 +2020,7 @@ namespace Rebellion.Tests.AI
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             Assert.Greater(context.GetAttackDemand(target).RegimentCount, 1);
-            Assert.AreEqual(1, context.GetAttackDemand(target).OccupationRegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).OccupationRegimentCount);
             Assert.Zero(context.Assessment.GetFleetBombardmentStrength(groundFleet));
             Assert.AreEqual(1, context.Assessment.GetFleetBombardmentStrength(bombardmentFleet));
         }
@@ -1419,7 +2138,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, context.GetAttackDemand(target).OccupationRegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).OccupationRegimentCount);
         }
 
         [Test]
@@ -1463,7 +2182,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, context.GetAttackDemand(target).RegimentCount);
+            Assert.AreEqual(6, context.GetAttackDemand(target).RegimentCount);
         }
 
         [Test]
@@ -1540,6 +2259,9 @@ namespace Rebellion.Tests.AI
         public void GetRequiredAttackPackage_WithMultipleEnemyPlanets_UsesEachTargetsFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -1620,11 +2342,11 @@ namespace Rebellion.Tests.AI
             Planet secondTarget = assessment.GetKnownPlanet(secondEnemy.InstanceID);
 
             Assert.AreEqual(200, context.GetAttackDemand(firstTarget).CombatStrength);
-            Assert.AreEqual(4, context.GetAttackDemand(firstTarget).RegimentCount);
+            Assert.AreEqual(9, context.GetAttackDemand(firstTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(firstTarget).RegimentStrength);
             Assert.AreEqual(11, context.GetAttackDemand(firstTarget).BombardmentStrength);
             Assert.AreEqual(300, context.GetAttackDemand(secondTarget).CombatStrength);
-            Assert.AreEqual(3, context.GetAttackDemand(secondTarget).RegimentCount);
+            Assert.AreEqual(8, context.GetAttackDemand(secondTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(secondTarget).RegimentStrength);
             Assert.AreEqual(0, context.GetAttackDemand(secondTarget).BombardmentStrength);
         }
@@ -1886,6 +2608,47 @@ namespace Rebellion.Tests.AI
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Assert.AreEqual(130, assessment.GetKnownIncomingHostileFleetStrength(planet));
+        }
+
+        /// <summary>
+        /// Arranges an unfinished defense and its session-owned priority.
+        /// </summary>
+        /// <param name="status">The manufacturing status to inspect.</param>
+        /// <param name="order">Receives the queued defense.</param>
+        /// <param name="producer">Receives the construction planet.</param>
+        /// <param name="destination">Receives the full destination planet.</param>
+        /// <returns>A faction turn containing the arranged manufacturing queue.</returns>
+        private static AITurnContext CreateProductionQueueContext(
+            ManufacturingStatus status,
+            out Building order,
+            out Planet producer,
+            out Planet destination
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            producer = AITestSceneBuilder.AddPlanet(game, sector, "producer", faction.InstanceID);
+            destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                faction.InstanceID,
+                energyCapacity: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            order = AITestSceneBuilder.CreateBuildingTemplate("shield", BuildingType.Defense);
+            order.OwnerInstanceID = faction.InstanceID;
+            order.ProducerPlanetID = producer.InstanceID;
+            order.ManufacturingStatus = status;
+            game.AttachNode(order, destination);
+            producer.AddToManufacturingQueue(order);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
     }
 }

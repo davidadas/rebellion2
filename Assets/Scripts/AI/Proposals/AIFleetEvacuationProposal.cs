@@ -143,7 +143,7 @@ namespace Rebellion.AI.Proposals
         {
             if (hasHostileFleet)
             {
-                int required = context.GetAttackDemand(hostilePlanet)?.OrbitalStrength ?? 0;
+                int required = context.GetAttackDemand(hostilePlanet, fleet)?.OrbitalStrength ?? 0;
                 return required > 0
                     && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                         >= required;
@@ -156,7 +156,7 @@ namespace Rebellion.AI.Proposals
             )
                 return true;
 
-            AIAttackDemand demand = context.GetAttackDemand(hostilePlanet);
+            AIAttackDemand demand = context.GetAttackDemand(hostilePlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
             bool canBombardDefenders =

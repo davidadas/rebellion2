@@ -18,6 +18,54 @@ namespace Rebellion.Tests.AI.Fleets
     public class AITransferUnitProposalTests
     {
         [Test]
+        public void Execute_ReceivingFleetChangesTarget_KeepsDonorInOriginalFleet()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                5,
+                out Fleet receiver,
+                out CapitalShip donor
+            );
+            Fleet source = donor.GetParentOfType<Fleet>();
+            Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
+            AITransferUnitProposal proposal = new(source, receiver, donor, receiver, target);
+            Assert.IsTrue(proposal.CanExecute(context));
+            receiver.Order.TargetPlanetId = "other-target";
+
+            proposal.Execute(context);
+
+            Assert.AreSame(source, donor.GetParentOfType<Fleet>());
+            Assert.IsNull(donor.Movement);
+        }
+
+        [Test]
+        public void Execute_WithSpareHeadquartersDefender_PreservesDefenseOrder()
+        {
+            AITransferUnitProposal proposal = CreateDefenseTransfer(out AITurnContext context);
+            Fleet donor = (Fleet)proposal.SourceContainer;
+            FleetOrder order = donor.Order;
+
+            proposal.Execute(context);
+
+            Assert.AreSame(proposal.Destination, proposal.Unit.GetParent());
+            Assert.AreSame(order, donor.Order);
+            Assert.AreEqual(FleetOrderStatus.Ready, order.Status);
+        }
+
+        [Test]
+        public void Execute_AfterDonorLosesRequiredStrength_LeavesShipInDonor()
+        {
+            AITransferUnitProposal proposal = CreateDefenseTransfer(out AITurnContext context);
+            Fleet donor = (Fleet)proposal.SourceContainer;
+            Assert.IsTrue(proposal.CanSelect(context));
+            donor.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 1;
+
+            proposal.Execute(context);
+
+            Assert.AreSame(donor, proposal.Unit.GetParent());
+        }
+
+        [Test]
         public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -47,6 +95,10 @@ namespace Rebellion.Tests.AI.Fleets
             game.AttachNode(sourceFleet, staging);
             game.AttachNode(ship, sourceFleet);
             game.AttachNode(targetFleet, staging);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("anchor", empire.InstanceID, 1),
+                sourceFleet
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AITransferUnitProposal proposal = new AITransferUnitProposal(
                 sourceFleet,
@@ -94,6 +146,10 @@ namespace Rebellion.Tests.AI.Fleets
             game.AttachNode(sourceFleet, staging);
             game.AttachNode(ship, sourceFleet);
             game.AttachNode(targetFleet, staging);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("anchor", empire.InstanceID, 1),
+                sourceFleet
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AITransferUnitProposal proposal = new AITransferUnitProposal(
                 sourceFleet,
@@ -213,6 +269,52 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.AreSame(sourceFleet, reinforcement.GetParent());
             Assert.IsNull(reinforcement.Movement);
+        }
+
+        /// <summary>
+        /// Creates a valid transfer from a stationary headquarters defender to an attack fleet.
+        /// </summary>
+        /// <param name="context">The faction turn context.</param>
+        /// <returns>The transfer of the defender's spare hull.</returns>
+        private static AITransferUnitProposal CreateDefenseTransfer(out AITurnContext context)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "hq", faction.InstanceID);
+            planet.IsHeadquarters = true;
+            faction.HQInstanceID = planet.InstanceID;
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "enemy", enemy.InstanceID);
+            Fleet donor = EntityFactory.CreateFleet("donor", faction.InstanceID);
+            donor.RoleType = FleetRoleType.Battle;
+            donor.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = planet.InstanceID,
+            };
+            Fleet receiver = EntityFactory.CreateFleet("receiver", faction.InstanceID);
+            receiver.RoleType = FleetRoleType.Battle;
+            receiver.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(donor, planet);
+            game.AttachNode(receiver, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("anchor", faction.InstanceID, 1000),
+                donor
+            );
+            CapitalShip spare = AITestSceneBuilder.CreateCapitalShip(
+                "spare",
+                faction.InstanceID,
+                500
+            );
+            game.AttachNode(spare, donor);
+            context = AITestSceneBuilder.CreateContext(game, faction);
+            return new AITransferUnitProposal(donor, receiver, spare, receiver, target);
         }
     }
 }

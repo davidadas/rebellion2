@@ -23,6 +23,184 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetAttackProposalTests
     {
+        [TestCase(20, false)]
+        [TestCase(21, true)]
+        public void Execute_KnownEnemyReinforcement_UsesArrivalDemandForLaunch(
+            int inboundTicks,
+            bool expectedLaunch
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
+            game.Config.Movement.MinTransitTicks = 20;
+            game.Config.Movement.SameSectorMinTransitTicks = 20;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                enemy.InstanceID,
+                positionX: 1
+            );
+            Fleet attacker = AddBattleFleet(game, staging, faction.InstanceID, regimentCount: 6);
+            CapitalShip attackingShip = attacker.GetChildren<CapitalShip>().Single();
+            attackingShip.MaxHullStrength = 1000;
+            attackingShip.CurrentHullStrength = 1000;
+            foreach (PrimaryWeaponType weapon in attackingShip.PrimaryWeapons.Keys.ToArray())
+                attackingShip.PrimaryWeapons[weapon] = new int[5];
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                250,
+                250,
+                250,
+                250,
+                0,
+            };
+            Fleet defender = EntityFactory.CreateFleet("defender", enemy.InstanceID);
+            game.AttachNode(defender, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("ready", enemy.InstanceID, 100),
+                defender
+            );
+            CapitalShip inbound = AITestSceneBuilder.CreateCapitalShip(
+                "inbound",
+                enemy.InstanceID,
+                1000
+            );
+            inbound.Movement = new MovementState { TransitTicks = inboundTicks };
+            game.AttachNode(inbound, defender);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                attacker,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                context.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(expectedLaunch, attacker.Movement != null);
+        }
+
+        [TestCase(true, 50, 50, true)]
+        [TestCase(true, 51, 50, false)]
+        [TestCase(true, 51, 60, true)]
+        [TestCase(true, 31, 30, false)]
+        [TestCase(false, 51, 50, true)]
+        public void Execute_TargetIntelAge_EnforcesHeadquartersLimit(
+            bool headquarters,
+            int intelAge,
+            int maximumAge,
+            bool expectedLaunch
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks = maximumAge;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            target.IsHeadquarters = headquarters;
+            Fleet fleet = AddBattleFleet(game, staging, faction.InstanceID, regimentCount: 6);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            game.CurrentTick = intelAge;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                context.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(expectedLaunch, fleet.Movement != null);
+        }
+
+        [TestCase(FleetOrderStatus.Building, false, false)]
+        [TestCase(FleetOrderStatus.Returning, false, true)]
+        [TestCase(FleetOrderStatus.Readying, true, true)]
+        public void CanExecute_HeadquartersIntelExpires_RespectsCommittedMovementAndReturn(
+            FleetOrderStatus status,
+            bool travelling,
+            bool expected
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            target.IsHeadquarters = true;
+            Fleet fleet = AddBattleFleet(game, staging, faction.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = status,
+                TargetPlanetId = target.InstanceID,
+            };
+            if (travelling)
+                fleet.Movement = new MovementState { TransitTicks = 100 };
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            game.CurrentTick = 51;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                status,
+                context.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+
+            Assert.AreEqual(expected, proposal.CanExecute(context));
+        }
+
+        [Test]
+        public void CanSelect_HeadquartersIntelRefreshed_AllowsAttackAgain()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            target.IsHeadquarters = true;
+            Fleet fleet = AddBattleFleet(game, staging, faction.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            game.CurrentTick = 51;
+            AITurnContext staleContext = AITestSceneBuilder.CreateContext(game, faction);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                staleContext.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+            Assert.IsFalse(proposal.CanSelect(staleContext));
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            AITurnContext refreshedContext = AITestSceneBuilder.CreateContext(game, faction);
+
+            Assert.IsTrue(proposal.CanSelect(refreshedContext));
+        }
+
         [Test]
         public void Execute_WithFleetNotReady_AssignsBuildingOrder()
         {
@@ -90,7 +268,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetAfterFleet_WaitsAtStagingPlanet()
+        public void Execute_WithInboundShipArrivingAtTargetAfterFleet_LaunchesWithLaterArrival()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -127,12 +305,14 @@ namespace Rebellion.Tests.AI.Fleets
 
             proposal.Execute(context);
 
-            Assert.IsNull(fleet.Movement);
-            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsNotNull(inbound.Movement);
+            Assert.Greater(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_SynchronizesArrival()
+        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_PreservesEarlierArrival()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -171,7 +351,7 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.AreEqual(fleet.Movement.TransitTicks, inbound.Movement.TransitTicks);
+            Assert.Less(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
         }
 
         [Test]
@@ -217,7 +397,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithSharedTravelOfficerGroup_UsesGroupRetargetDuration()
+        public void Execute_WithSharedTravelOfficerGroup_PreservesIndependentArrivalTimes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -302,8 +482,9 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
-            Assert.AreEqual(fleet.Movement.TransitTicks, smuggler.Movement.TransitTicks);
-            Assert.AreEqual(fleet.Movement.TransitTicks, companion.Movement.TransitTicks);
+            Assert.AreEqual(fleetTransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, smuggler.Movement.TransitTicks);
+            Assert.AreEqual(groupTransitTicks, companion.Movement.TransitTicks);
         }
 
         [Test]
@@ -427,14 +608,26 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_BombardmentCapturesTarget_ClearsAttackOrderImmediately()
+        public void Execute_CaptureAndFollowOnAttack_DoesNotRevealFleetToFormerOwner()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, 60);
             target.SetPopularSupport(rebels.InstanceID, 40);
-            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            Planet nextTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "next-target",
+                rebels.InstanceID,
+                positionX: 10000
+            );
+            nextTarget.SetPopularSupport(empire.InstanceID, 0);
+            nextTarget.SetPopularSupport(rebels.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, nextTarget);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID, regimentCount: 1);
             fleet.GetChildren<CapitalShip>().Single().Bombardment = 1;
             fleet.Order = new FleetOrder
             {
@@ -467,7 +660,27 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.AreEqual(1, resolvedResults.OfType<BombardmentResult>().Count());
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderStatus.Staging, fleet.Order?.Status);
+            Assert.AreEqual(target.InstanceID, fleet.Order?.TargetPlanetId);
+            Assert.AreEqual(rebels.InstanceID, nextTarget.GetOwnerInstanceID());
+
+            AITurnContext nextTurn = AITestSceneBuilder.CreateContext(game, empire);
+            nextTurn.AddProposals(new AIFleetPlanner().Plan(nextTurn));
+            new AIScoringPhase().Execute(nextTurn);
+            new AISelectionPhase().Execute(nextTurn);
+            new AIExecutionPhase().Execute(nextTurn);
+            Planet remembered = new FogOfWarQueries(game)
+                .BuildFactionView(rebels)
+                .GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Single(planet => planet.InstanceID == target.InstanceID);
+
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(nextTarget.InstanceID, fleet.Order.TargetPlanetId);
+            Assert.IsFalse(
+                remembered.GetChildren<Fleet>().Any(item => item.InstanceID == fleet.InstanceID)
+            );
+            Assert.AreEqual(empire.InstanceID, remembered.GetOwnerInstanceID());
         }
 
         [Test]
@@ -535,6 +748,7 @@ namespace Rebellion.Tests.AI.Fleets
         public void Execute_WithSuccessfulPlanetaryAssault_DefersResultsUntilTurnCompletion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -571,10 +785,142 @@ namespace Rebellion.Tests.AI.Fleets
             );
         }
 
+        [TestCase(false, true, true, false)]
+        [TestCase(true, false, true, false)]
+        [TestCase(true, true, false, false)]
+        [TestCase(true, true, true, true)]
+        public void CanExecute_NeutralTarget_RequiresStationaryOccupationOrder(
+            bool ordered,
+            bool atTarget,
+            bool hasTroops,
+            bool expected
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", null);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            Fleet fleet = AddBattleFleet(
+                game,
+                atTarget ? target : origin,
+                faction.InstanceID,
+                hasTroops ? 1 : 0
+            );
+            if (ordered)
+                fleet.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Attack,
+                    Status = FleetOrderStatus.Ready,
+                    TargetPlanetId = target.InstanceID,
+                };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIFleetAttackProposal proposal = new(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            Assert.AreEqual(expected, proposal.CanExecute(context));
+        }
+
+        [Test]
+        public void Execute_BombardmentNeutralizesTarget_CompletesOccupationOnNextTurn()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            game.Config.AI.Garrison.SupportThreshold = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            Fleet fleet = AddBattleFleet(game, target, faction.InstanceID, regimentCount: 1);
+            fleet.GetChildren<CapitalShip>().Single().Bombardment = 1;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("defender", enemy.InstanceID),
+                target
+            );
+            game.Random = new SequenceRNG(intValues: new[] { 1, 0, 10 });
+            using GameSession session = new(game, TestGameData.Create(game.Config));
+            AITurnContext bombardment = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                bombardment: session.GetService<BombardmentCommands>(),
+                random: game.Random
+            );
+
+            new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            ).Execute(bombardment);
+
+            Assert.IsTrue(string.IsNullOrEmpty(target.GetOwnerInstanceID()));
+            Assert.IsNotNull(fleet.Order);
+            game.CurrentTick++;
+            AITurnContext occupation = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                movement: session.GetService<MovementCommands>(),
+                planetaryAssault: session.GetService<PlanetaryAssaultCommands>()
+            );
+            occupation.AddProposals(new AIFleetPlanner().Plan(occupation));
+            new AIScoringPhase().Execute(occupation);
+            new AISelectionPhase().Execute(occupation);
+            new AIExecutionPhase().Execute(occupation);
+            session.Pipeline.ProcessResults(occupation.Results, processMessages: false);
+
+            Assert.AreEqual(faction.InstanceID, target.GetOwnerInstanceID());
+            Regiment landed = target.GetAllRegiments().Single();
+            Assert.AreEqual(faction.InstanceID, landed.GetOwnerInstanceID());
+            Assert.IsNull(landed.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, landed.ManufacturingStatus);
+        }
+
+        [Test]
+        public void CanExecute_OccupationTroopsRemovedAfterAssessment_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", null);
+            Fleet fleet = AddBattleFleet(game, target, faction.InstanceID, regimentCount: 1);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            Assert.AreEqual(1, context.Assessment.GetReadyFleetRegimentCount(fleet));
+            game.DeleteNode(fleet.GetRegiments().Single());
+
+            bool canExecute = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            ).CanExecute(context);
+
+            Assert.IsFalse(canExecute);
+        }
+
         [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_RefreshesManufacturingBudget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(

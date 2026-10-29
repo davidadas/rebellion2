@@ -574,12 +574,15 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Calculate combat value.
+        /// Returns combat value at a supplied hull strength without changing the unit.
         /// </summary>
-        /// <param name="hullStrength">The current hull strength.</param>
+        /// <param name="hullStrength">The remaining hull strength used for the estimate.</param>
         /// <returns>The calculated value.</returns>
-        private int CalculateCombatValue(int hullStrength)
+        public int CalculateCombatValue(int hullStrength)
         {
+            if (MaxHullStrength > 0 && hullStrength <= 0)
+                return 0;
+
             int attackStrength = GetPrimaryWeaponStrength();
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, MaxShieldStrength);
             if (attackStrength <= 0 || durability <= 0)

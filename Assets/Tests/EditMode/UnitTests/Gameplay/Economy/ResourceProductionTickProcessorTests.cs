@@ -52,6 +52,87 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [TestCase(BuildingType.Mine)]
+        [TestCase(BuildingType.Refinery)]
+        public void ProcessTick_SaveReload_PreservesFacilityMaintenanceAllocations(
+            BuildingType type
+        )
+        {
+            Planet other = CreateOwnedPlanet("PLANET2");
+            _game.AttachNode(other, _planetSector);
+            _game.ChangeOwnership(_planet, "FACTION2");
+            _game.ChangeOwnership(_planet, _faction.InstanceID);
+            Building first = AddCompleteBuilding(_planet, type, processRate: 4);
+            Building second = AddCompleteBuilding(other, type, processRate: 4);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "regiment",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaintenanceCost = 1,
+                },
+                _planet
+            );
+            GameRoot loaded = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            loaded.SetConfig(_game.Config);
+            using GameSession session = new GameSession(loaded, TestGameData.Create(loaded.Config));
+            SmugglingCommands smuggling = new SmugglingCommands(loaded);
+            ResourceProductionTickProcessor resumed = new ResourceProductionTickProcessor(
+                new SmugglingTickProcessor(smuggling),
+                smuggling
+            );
+
+            _system.ProcessTick(_game);
+            resumed.ProcessTick(loaded);
+
+            CollectionAssert.AreEqual(
+                new[] { first.ResourceMaintenanceAllocation, second.ResourceMaintenanceAllocation },
+                new[]
+                {
+                    loaded
+                        .GetSceneNodeByInstanceID<Building>(first.InstanceID)
+                        .ResourceMaintenanceAllocation,
+                    loaded
+                        .GetSceneNodeByInstanceID<Building>(second.InstanceID)
+                        .ResourceMaintenanceAllocation,
+                }
+            );
+        }
+
+        [Test]
+        public void ProcessTick_SaveReload_PreservesNewRawMaterialRequestOrder()
+        {
+            Planet other = CreateOwnedPlanet("PLANET2");
+            _game.AttachNode(other, _planetSector);
+            _game.ChangeOwnership(_planet, "FACTION2");
+            _game.ChangeOwnership(_planet, _faction.InstanceID);
+            AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 4);
+            AddCompleteBuilding(other, BuildingType.Refinery, processRate: 4);
+            GameRoot loaded = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            loaded.SetConfig(_game.Config);
+            using GameSession session = new GameSession(loaded, TestGameData.Create(loaded.Config));
+            SmugglingCommands smuggling = new SmugglingCommands(loaded);
+            ResourceProductionTickProcessor resumed = new ResourceProductionTickProcessor(
+                new SmugglingTickProcessor(smuggling),
+                smuggling
+            );
+
+            _system.ProcessTick(_game);
+            resumed.ProcessTick(loaded);
+
+            CollectionAssert.AreEqual(
+                _faction.PendingRawMaterialFacilityIDs,
+                loaded
+                    .GetFactionByOwnerInstanceID(_faction.InstanceID)
+                    .PendingRawMaterialFacilityIDs
+            );
+        }
+
         [Test]
         public void ProcessTick_MineStartupCycle_ProducesAfterStartupDuration()
         {

@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Demands
@@ -27,6 +30,7 @@ namespace Rebellion.AI.Demands
         FleetSeedCapitalShip,
         ColonizationFleetSeedCapitalShip,
         BuildingUpgrade,
+        IdleSpecialForces,
     }
 
     /// <summary>
@@ -42,6 +46,19 @@ namespace Rebellion.AI.Demands
 
         Bombardment,
 
+        Interdiction,
+    }
+
+    internal enum AIFleetCapability
+    {
+        RegimentCapacity,
+        Bombardment,
+        CapitalFirepower,
+        CombatStrength,
+        StarfighterFirepower,
+        Escort,
+        StarfighterCapacity,
+        PlanetDestroyer,
         Interdiction,
     }
 
@@ -62,7 +79,15 @@ namespace Rebellion.AI.Demands
         public Building BuildingToReplace { get; }
 
         // Destination.
+        /// <summary>
+        /// Gets the container whose requirement this demand fulfills.
+        /// </summary>
         public ContainerNode Destination { get; }
+
+        /// <summary>
+        /// Gets the production delivery container, which may hold reinforcements before boarding.
+        /// </summary>
+        public ContainerNode DeliveryDestination { get; }
         public Planet DestinationPlanet => Destination as Planet;
         public Fleet DestinationFleet => Destination as Fleet;
 
@@ -72,6 +97,7 @@ namespace Rebellion.AI.Demands
         public int TargetCount { get; }
         public int BaseDemandPercent { get; }
         public int CapitalFirepowerDeficit { get; }
+        public int CombatStrengthDeficit { get; }
         public int StarfighterFirepowerDeficit { get; }
         public int StarfighterCapacityDeficit { get; }
         public int RegimentCapacityDeficit { get; }
@@ -83,7 +109,13 @@ namespace Rebellion.AI.Demands
         public int EscortDeficit { get; }
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
+        public bool IsEmergencyDefense { get; }
+        public IManufacturable ExistingOrder { get; }
+        public bool IsProductionFiller =>
+            Kind == AIProductionDemandKind.IdleSpecialForces
+            || Kind == AIProductionDemandKind.PlanetaryDefense && !IsEmergencyDefense;
         public bool UsesIdleShipyardCapacity { get; }
+        public int InfrastructureHubIndex { get; }
 
         // Reserve Policy.
         public bool CanUseRefinedMaterialReserve =>
@@ -111,7 +143,7 @@ namespace Rebellion.AI.Demands
         /// <param name="kind">Demand kind.</param>
         /// <param name="manufacturingType">Manufacturing type required for the demand.</param>
         /// <param name="buildingType">Building type required for building demands.</param>
-        /// <param name="destination">Container receiving the produced item.</param>
+        /// <param name="destination">Container whose requirement the produced item fulfills.</param>
         /// <param name="quantityNeeded">Amount of demand still needed.</param>
         /// <param name="productTypeId">Exact product type required by the demand.</param>
         /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
@@ -132,6 +164,11 @@ namespace Rebellion.AI.Demands
         /// <param name="embarkedRegimentDeficit">Unmet embarked-regiment count.</param>
         /// <param name="embarkedStarfighterDeficit">Unmet embarked-starfighter count.</param>
         /// <param name="escortDeficit">Unmet armed escort count.</param>
+        /// <param name="infrastructureHubIndex">Zero-based infrastructure hub position, or negative one when the demand is not for a hub.</param>
+        /// <param name="combatStrengthDeficit">Unmet durability-adjusted combat strength.</param>
+        /// <param name="isEmergencyDefense">Whether a known hostile fleet requires immediate static defense.</param>
+        /// <param name="existingOrder">The queued order whose continuation is being evaluated.</param>
+        /// <param name="deliveryDestination">The container receiving production before final fleet assignment, or null for direct delivery.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -157,7 +194,12 @@ namespace Rebellion.AI.Demands
             int interdictionDeficit = 0,
             int embarkedRegimentDeficit = 0,
             int embarkedStarfighterDeficit = 0,
-            int escortDeficit = 0
+            int escortDeficit = 0,
+            int infrastructureHubIndex = -1,
+            int combatStrengthDeficit = 0,
+            bool isEmergencyDefense = false,
+            IManufacturable existingOrder = null,
+            ContainerNode deliveryDestination = null
         )
         {
             Id = id;
@@ -165,17 +207,21 @@ namespace Rebellion.AI.Demands
             ManufacturingType = manufacturingType;
             BuildingType = buildingType;
             Destination = destination;
+            DeliveryDestination = deliveryDestination ?? destination;
             QuantityNeeded = quantityNeeded;
             DeficitCount = deficitCount > 0 ? deficitCount : quantityNeeded;
             TargetCount = targetCount;
             BaseDemandPercent = baseDemandPercent;
             ReferencePlanet = referencePlanet;
             EstablishesInitialShield = establishesInitialShield;
+            IsEmergencyDefense = isEmergencyDefense;
+            ExistingOrder = existingOrder;
             UsesIdleShipyardCapacity = usesIdleShipyardCapacity;
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
             BuildingToReplace = buildingToReplace;
             CapitalFirepowerDeficit = Math.Max(0, capitalFirepowerDeficit);
+            CombatStrengthDeficit = Math.Max(0, combatStrengthDeficit);
             StarfighterFirepowerDeficit = Math.Max(0, starfighterFirepowerDeficit);
             StarfighterCapacityDeficit = Math.Max(0, starfighterCapacityDeficit);
             RegimentCapacityDeficit = Math.Max(0, regimentCapacityDeficit);
@@ -185,6 +231,7 @@ namespace Rebellion.AI.Demands
             EmbarkedRegimentDeficit = Math.Max(0, embarkedRegimentDeficit);
             EmbarkedStarfighterDeficit = Math.Max(0, embarkedStarfighterDeficit);
             EscortDeficit = Math.Max(0, escortDeficit);
+            InfrastructureHubIndex = infrastructureHubIndex;
         }
 
         /// <summary>
@@ -219,7 +266,130 @@ namespace Rebellion.AI.Demands
                 InterdictionDeficit,
                 EmbarkedRegimentDeficit,
                 EmbarkedStarfighterDeficit,
-                EscortDeficit
+                EscortDeficit,
+                InfrastructureHubIndex,
+                CombatStrengthDeficit,
+                IsEmergencyDefense,
+                ExistingOrder,
+                DeliveryDestination
+            );
+        }
+
+        /// <summary>
+        /// Describes capital-ship contributions in the order unmet capabilities are filled.
+        /// </summary>
+        /// <param name="assessment">The current combat measurements.</param>
+        /// <returns>Capability deficits paired with their per-hull contributions.</returns>
+        internal IEnumerable<(
+            AIFleetCapability Capability,
+            int Deficit,
+            Func<CapitalShip, int> Contribution
+        )> GetCapitalShipRequirements(AIAssessment assessment)
+        {
+            yield return (
+                AIFleetCapability.RegimentCapacity,
+                RegimentCapacityDeficit,
+                ship => ship.RegimentCapacity
+            );
+            yield return (
+                AIFleetCapability.Bombardment,
+                BombardmentDeficit,
+                ship => ship.Bombardment
+            );
+            yield return (
+                AIFleetCapability.CapitalFirepower,
+                CapitalFirepowerDeficit,
+                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
+            );
+            yield return (
+                AIFleetCapability.CombatStrength,
+                CombatStrengthDeficit,
+                ReferencePlanet == null
+                    ? assessment.GetProjectedCapitalShipCombatValue
+                    : assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips
+            );
+            yield return (
+                AIFleetCapability.StarfighterFirepower,
+                StarfighterFirepowerDeficit,
+                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
+            );
+            yield return (
+                AIFleetCapability.Escort,
+                EscortDeficit,
+                ship => SpaceCombatStrengthCalculator.IsArmedEscort(ship) ? 1 : 0
+            );
+            yield return (
+                AIFleetCapability.StarfighterCapacity,
+                StarfighterCapacityDeficit,
+                ship => ship.StarfighterCapacity
+            );
+            yield return (
+                AIFleetCapability.PlanetDestroyer,
+                PlanetDestroyerDeficit,
+                ship => ship.CanDestroyPlanets ? 1 : 0
+            );
+            yield return (
+                AIFleetCapability.Interdiction,
+                InterdictionDeficit,
+                ship => ship.HasGravityWell ? 1 : 0
+            );
+        }
+
+        /// <summary>
+        /// Copies fleet requirements after accounting for hulls accepted during this selection pass.
+        /// </summary>
+        /// <param name="assessment">The current combat measurements.</param>
+        /// <param name="committed">Hulls already assigned to this fleet during selection.</param>
+        /// <returns>The remaining capability request, retaining its strategic identity.</returns>
+        internal AIProductionDemand WithoutCommittedShips(
+            AIAssessment assessment,
+            IReadOnlyList<CapitalShip> committed
+        )
+        {
+            if (committed.Count == 0)
+                return this;
+            var requirements = GetCapitalShipRequirements(assessment).ToArray();
+            Dictionary<AIFleetCapability, int> remaining = requirements.ToDictionary(
+                requirement => requirement.Capability,
+                requirement =>
+                    Math.Max(0, requirement.Deficit - committed.Sum(requirement.Contribution))
+            );
+            double unmet = requirements.Max(requirement =>
+                requirement.Deficit > 0
+                    ? remaining[requirement.Capability] / (double)requirement.Deficit
+                    : 0
+            );
+            return new AIProductionDemand(
+                Id,
+                Kind,
+                ManufacturingType,
+                BuildingType,
+                Destination,
+                QuantityNeeded,
+                ProductTypeId,
+                CapitalShipRole,
+                BuildingToReplace,
+                TargetCount,
+                BaseDemandPercent,
+                ReferencePlanet,
+                EstablishesInitialShield,
+                (int)Math.Ceiling(DeficitCount * unmet),
+                UsesIdleShipyardCapacity,
+                capitalFirepowerDeficit: remaining[AIFleetCapability.CapitalFirepower],
+                starfighterFirepowerDeficit: remaining[AIFleetCapability.StarfighterFirepower],
+                starfighterCapacityDeficit: remaining[AIFleetCapability.StarfighterCapacity],
+                regimentCapacityDeficit: remaining[AIFleetCapability.RegimentCapacity],
+                planetDestroyerDeficit: remaining[AIFleetCapability.PlanetDestroyer],
+                bombardmentDeficit: remaining[AIFleetCapability.Bombardment],
+                interdictionDeficit: remaining[AIFleetCapability.Interdiction],
+                embarkedRegimentDeficit: EmbarkedRegimentDeficit,
+                embarkedStarfighterDeficit: EmbarkedStarfighterDeficit,
+                escortDeficit: remaining[AIFleetCapability.Escort],
+                infrastructureHubIndex: InfrastructureHubIndex,
+                combatStrengthDeficit: remaining[AIFleetCapability.CombatStrength],
+                isEmergencyDefense: IsEmergencyDefense,
+                existingOrder: ExistingOrder,
+                deliveryDestination: DeliveryDestination
             );
         }
 

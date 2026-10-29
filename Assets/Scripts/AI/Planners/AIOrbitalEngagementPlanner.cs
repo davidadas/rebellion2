@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Plans favorable fleet engagements using faction-visible orbital intelligence.
+    /// Plans favorable fleet engagements supporting planet captures or using interdiction.
     /// </summary>
     public sealed class AIOrbitalEngagementPlanner : IAIProposalPlanner
     {
@@ -48,7 +48,15 @@ namespace Rebellion.AI.Planners
             {
                 Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
                 Planet origin = context.Assessment.GetKnownPlanet(fleet.Order.OriginPlanetId);
-                if (target != null)
+                if (
+                    target != null
+                    && (
+                        fleet.Order.Status == FleetOrderStatus.Returning
+                        || fleet.Movement != null
+                        || fleet.IsInCombat
+                        || context.Assessment.HasCurrentHeadquartersAttackIntel(target)
+                    )
+                )
                     proposals.Add(new AIOrbitalEngagementProposal(fleet, target, origin));
                 else
                     proposals.Add(new AIClearFleetOrderProposal(fleet, fleet.Order));
@@ -85,10 +93,15 @@ namespace Rebellion.AI.Planners
             if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 
+            bool hasGravityWell = SpaceCombatQueries
+                .GetActiveCapitalShips(fleet)
+                .Any(ship => ship.HasGravityWell);
             return context.Assessment.EnemyPlanets.Where(target =>
                 target.InstanceID != origin.InstanceID
+                && context.Assessment.HasCurrentHeadquartersAttackIntel(target)
+                && (context.Assessment.IsAttackPreparationTarget(target) || hasGravityWell)
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
-                && AIFleetProposalScorer.CanWinOrbitalCombat(context, fleet, target)
+                && context.CanWinOrbitalCombat(fleet, target)
             );
         }
     }

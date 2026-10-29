@@ -36,6 +36,35 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records an ordered refresh using one lookup of previously remembered locations.
+        /// </summary>
+        /// <param name="faction">The faction receiving the observations.</param>
+        /// <param name="planets">The distinct planets in observation order.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        internal void RecordPlanetSnapshots(
+            Faction faction,
+            IEnumerable<Planet> planets,
+            int currentTick
+        )
+        {
+            ILookup<string, string> rememberedLocations = faction.Fog.EntityLastSeenAt.ToLookup(
+                entry => entry.Value,
+                entry => entry.Key
+            );
+            foreach (Planet planet in planets)
+            {
+                RecordPlanetSnapshot(
+                    faction,
+                    planet,
+                    planet.GetParentOfType<PlanetSector>(),
+                    currentTick,
+                    false,
+                    rememberedLocations[planet.InstanceID]
+                );
+            }
+        }
+
+        /// <summary>
         /// Records the complete planet intelligence revealed by successful espionage.
         /// </summary>
         /// <param name="faction">The faction receiving the intelligence.</param>
@@ -920,12 +949,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
+        /// <param name="rememberedEntityIds">The initially remembered entities, or null for a single observation.</param>
         private void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
             PlanetSector sector,
             int currentTick,
-            bool includeEspionageIntelligence
+            bool includeEspionageIntelligence,
+            IEnumerable<string> rememberedEntityIds = null
         )
         {
             if (faction == null || planet == null || sector == null)
@@ -987,7 +1018,12 @@ namespace Rebellion.Game.FogOfWar
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
             }
 
-            ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
+            ReconcileEntityLocations(
+                faction,
+                planet.InstanceID,
+                planetSnapshot,
+                rememberedEntityIds
+            );
             sectorSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
@@ -1066,18 +1102,26 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction whose fog state is being updated.</param>
         /// <param name="planetId">The observed planet instance ID.</param>
         /// <param name="snapshot">The replacement snapshot for the observed planet.</param>
+        /// <param name="rememberedEntityIds">The initially remembered entities, or null to scan current locations.</param>
         private void ReconcileEntityLocations(
             Faction faction,
             string planetId,
-            PlanetSnapshot snapshot
+            PlanetSnapshot snapshot,
+            IEnumerable<string> rememberedEntityIds = null
         )
         {
             HashSet<string> snapshotEntityIds = GetSnapshotEntityIDs(snapshot);
-            List<string> absentEntityIds = faction
-                .Fog.EntityLastSeenAt.Where(entry =>
-                    entry.Value == planetId && !snapshotEntityIds.Contains(entry.Key)
+            List<string> absentEntityIds = (
+                rememberedEntityIds
+                ?? faction
+                    .Fog.EntityLastSeenAt.Where(entry => entry.Value == planetId)
+                    .Select(entry => entry.Key)
+            )
+                .Where(entityId =>
+                    faction.Fog.EntityLastSeenAt.TryGetValue(entityId, out string location)
+                    && location == planetId
+                    && !snapshotEntityIds.Contains(entityId)
                 )
-                .Select(entry => entry.Key)
                 .ToList();
 
             foreach (string entityId in absentEntityIds)

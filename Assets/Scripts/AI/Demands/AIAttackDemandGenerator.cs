@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Util.Mathematics;
 
@@ -20,7 +21,119 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         public void Generate(AITurnContext context)
         {
-            context?.SetAttackDemands(BuildDemands(context));
+            IReadOnlyList<AIAttackDemand> demands = BuildDemands(context);
+            context?.SetAttackDemands(demands);
+            if (context?.Assessment == null || context.MovementQueries == null)
+                return;
+            foreach (AIAttackDemand demand in demands)
+            {
+                bool hasInbound =
+                    context
+                        .Assessment.GetHostileFleets(demand.TargetPlanet)
+                        .Any(fleet =>
+                            fleet.Movement != null
+                            || fleet
+                                .GetChildren<CapitalShip>()
+                                .Any(ship =>
+                                    ship.Movement != null
+                                    || ship.GetChildren<Starfighter>()
+                                        .Any(fighter => fighter.Movement != null)
+                                )
+                        )
+                    || demand
+                        .TargetPlanet.GetAllBuildings()
+                        .Any(building =>
+                            building.IsPlanetaryShieldGenerator()
+                            && (
+                                building.ManufacturingStatus != ManufacturingStatus.Complete
+                                || building.Movement != null
+                            )
+                        )
+                    || demand
+                        .TargetPlanet.GetAllStarfighters()
+                        .Any(fighter => fighter.Movement != null);
+                if (!hasInbound)
+                    continue;
+                foreach (
+                    Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
+                        fleet.RoleType == FleetRoleType.Battle
+                    )
+                )
+                    context.SetFleetAttackDemand(fleet, BuildArrivalDemand(context, fleet, demand));
+            }
+        }
+
+        /// <summary>
+        /// Measures known defenders expected to be available when one fleet reaches its target.
+        /// </summary>
+        /// <param name="context">The current faction assessment.</param>
+        /// <param name="fleet">The prospective attacking fleet.</param>
+        /// <param name="demand">The target's current ground and orbital requirements.</param>
+        /// <returns>The requirements for this fleet's arrival, without changing any orders.</returns>
+        private static AIAttackDemand BuildArrivalDemand(
+            AITurnContext context,
+            Fleet fleet,
+            AIAttackDemand demand
+        )
+        {
+            Planet origin = context.Assessment.GetFleetPlanet(fleet);
+            if (origin == null)
+                return demand;
+            int arrivalTicks = fleet.Movement?.TicksRemaining() ?? 0;
+            if (origin.InstanceID != demand.TargetPlanet.InstanceID)
+                arrivalTicks = (int)
+                    Math.Min(
+                        int.MaxValue,
+                        (long)arrivalTicks
+                            + context.MovementQueries.CalculateTransitTicks(
+                                fleet,
+                                origin,
+                                demand.TargetPlanet
+                            )
+                    );
+            var defense = context.Assessment.GetHostileOrbitalCapabilitiesAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks
+            );
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            int orbital = IntegerMath.ScaleByPercent(
+                defense.Combat,
+                config.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            int combat = IntegerMath.ScaleByPercent(
+                Math.Max(config.MinimumAttackStrength, orbital),
+                GetIntelReservePercent(context, demand.TargetPlanet)
+            );
+            var shields = context.Assessment.GetPlanetaryShieldsAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks,
+                context.MovementQueries
+            );
+            bool blockedByShields =
+                shields.Count >= context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return new AIAttackDemand(
+                demand.TargetPlanet,
+                combat,
+                orbital,
+                IntegerMath.ScaleByPercent(
+                    defense.CapitalFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.FighterFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.Fighters,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                demand.RegimentStrength,
+                demand.RegimentCount,
+                demand.OccupationRegimentCount,
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength
+            );
         }
 
         /// <summary>
@@ -66,10 +179,13 @@ namespace Rebellion.AI.Demands
         {
             GameConfig config = context.Game.Config;
             AIAssessment assessment = context.Assessment;
-            bool blockedByShields = PlanetaryAssaultResolver.IsBlockedByShields(
+            var shields = assessment.GetPlanetaryShieldsAtArrival(
                 planet,
-                config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                0,
+                context.MovementQueries
             );
+            bool blockedByShields =
+                shields.Count >= config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
             int occupationCount = GetOccupationRegimentCount(context, planet);
             int defendingCount = assessment.GetDefendingRegimentCount(planet);
             int combatCount = defendingCount == 0 ? 0 : defendingCount + 1;
@@ -95,8 +211,9 @@ namespace Rebellion.AI.Demands
                 ),
                 combatCount + occupationCount,
                 occupationCount,
-                blockedByShields ? assessment.GetBombardmentShieldStrength(planet) + 1 : 0,
-                blockedByShields
+                blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
+                blockedByShields,
+                shields.Strength
             );
         }
 
@@ -208,7 +325,7 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
-        /// Calculates the regiment count needed to hold a captured planet.
+        /// Calculates the regiment count needed to hold a captured planet with no friendly support.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The target planet.</param>
@@ -224,7 +341,8 @@ namespace Rebellion.AI.Demands
             int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 faction,
-                config.AI.Garrison
+                config.AI.Garrison,
+                popularSupport: 0
             );
             int landingCapacity = config.Combat.PlanetaryAssault.CaptureGarrisonCount;
             return Math.Max(minimum, Math.Min(stabilityRequirement, landingCapacity));

@@ -16,8 +16,6 @@ namespace Rebellion.Gameplay
     /// </summary>
     internal sealed class ManufacturingTickProcessor : ITickProcessor
     {
-        private const int _productionRateScale = 100;
-
         private readonly ManufacturingCommands _commands;
         private readonly MovementCommands _movementSystem;
         private GameRoot _game;
@@ -303,20 +301,7 @@ namespace Rebellion.Gameplay
         /// <returns>The progress available after uprising and blockade effects.</returns>
         private double GetProductionCycleIncrement(Planet planet)
         {
-            if (planet.IsInUprising)
-                return 0;
-
-            GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeProductionModifier(
-                config.CapitalShipProductionPenaltyPercent,
-                config.FighterProductionPenaltyPercent
-            );
-            int difficultyPercent = _game
-                .GetDifficultyModifier(planet.GetOwnerInstanceID())
-                .ManufacturingSpeedPercent;
-            return (double)modifier
-                * difficultyPercent
-                / (_productionRateScale * _productionRateScale);
+            return ManufacturingQueries.GetProductionCycleIncrement(_game, planet);
         }
 
         /// <summary>

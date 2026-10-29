@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -39,6 +41,41 @@ namespace Rebellion.Tests.AI
             );
 
             Assert.AreSame(factionView, context.FactionView);
+        }
+
+        [Test]
+        public void SetProductionDemands_DeferredCurrentBatch_PreservesInput()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            );
+
+            context.SetProductionDemands(
+                context.ProductionDemands.Where(demand => demand.ExistingOrder != null)
+            );
+
+            CollectionAssert.AreEqual(new[] { choices[0].Demand }, context.ProductionDemands);
+        }
+
+        [Test]
+        public void SetProductionDemands_ReplacingBatch_PreservesPreviousSnapshot()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
+                out Building order
+            );
+            AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
+                context,
+                order
+            );
+            IReadOnlyList<AIProductionDemand> previous = context.ProductionDemands;
+
+            context.SetProductionDemands(Array.Empty<AIProductionDemand>());
+
+            CollectionAssert.AreEqual(choices.Select(choice => choice.Demand), previous);
         }
 
         [Test]

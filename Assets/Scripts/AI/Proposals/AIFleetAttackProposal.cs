@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -143,12 +142,12 @@ namespace Rebellion.AI.Proposals
             Planet liveTarget = ResolveLiveTarget(context);
             bool isAtTarget =
                 Fleet.GetParentOfType<Planet>()?.InstanceID == TargetPlanet.InstanceID;
-            if (isAtTarget && TryClearCompletedAttackOrder(context, liveTarget))
+            if (isAtTarget && TryCompleteAttackOrder(context, liveTarget))
                 return;
 
             if (!isAtTarget)
             {
-                if (!IsReadyToLaunch(context))
+                if (!CanLaunch(context))
                 {
                     Fleet.Order.Status = FleetOrderStatus.Building;
                     return;
@@ -158,7 +157,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (!IsLiveTargetHostile(context, liveTarget))
+            if (!CanEngageLiveTarget(context, liveTarget))
             {
                 ClearOrder();
                 return;
@@ -203,9 +202,9 @@ namespace Rebellion.AI.Proposals
 
             context.Bombardment.TryExecute(attackingFleets, liveTarget, BombardmentType.Military);
 
-            if (!TryClearCompletedAttackOrder(context, liveTarget))
+            if (!TryCompleteAttackOrder(context, liveTarget))
             {
-                if (!IsLiveTargetHostile(context, liveTarget))
+                if (!CanEngageLiveTarget(context, liveTarget))
                     ClearOrder();
             }
         }
@@ -227,16 +226,16 @@ namespace Rebellion.AI.Proposals
             context.AddResult(assaultResult);
             context.AddResults(assaultResult.Events);
             context.AddResult(assaultResult.OwnershipChange);
-            TryClearCompletedAttackOrder(context, liveTarget);
+            TryCompleteAttackOrder(context, liveTarget);
         }
 
         /// <summary>
-        /// Clears the attack order after the target changes ownership.
+        /// Finishes an attack after capture and stages the fleet for its next planning pass.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="liveTarget">The current scene-graph target.</param>
-        /// <returns>True if the order was cleared.</returns>
-        private bool TryClearCompletedAttackOrder(AITurnContext context, Planet liveTarget)
+        /// <returns>True when the attack has completed.</returns>
+        private bool TryCompleteAttackOrder(AITurnContext context, Planet liveTarget)
         {
             if (!IsOwnedBy(context, Fleet) || TargetPlanet == null)
                 return false;
@@ -252,7 +251,7 @@ namespace Rebellion.AI.Proposals
             if (liveTarget?.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
-            if (context.Assessment.IsCapturedEnemyHeadquarters(liveTarget))
+            if (context.Assessment.IsPriorityDefensePlanet(liveTarget))
             {
                 Fleet.Order = new FleetOrder
                 {
@@ -263,7 +262,7 @@ namespace Rebellion.AI.Proposals
             }
             else
             {
-                ClearOrder();
+                order.Status = FleetOrderStatus.Staging;
             }
 
             return true;
@@ -280,7 +279,7 @@ namespace Rebellion.AI.Proposals
                 return;
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestCoordinatedMove(Fleet, liveTarget);
+            context.Movement.RequestMove(Fleet, liveTarget);
         }
 
         /// <summary>
@@ -297,13 +296,15 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (context.GetAttackDemand(liveTarget)?.IsAssaultBlockedByShields != false)
+            if (context.GetAttackDemand(liveTarget, Fleet)?.IsAssaultBlockedByShields != false)
                 return false;
 
-            int requiredRegimentCount = GetRequiredRegimentCount(context, liveTarget);
+            int requiredRegimentCount = context
+                .GetAttackRegimentRequirements(liveTarget, Fleet)
+                .Count;
             return context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegimentCount
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= GetRequiredRegimentStrength(context, liveTarget)
+                    >= context.GetAttackRegimentRequirements(liveTarget, Fleet).Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
                 && context.PlanetaryAssaultQueries.CanExecute(new List<Fleet> { Fleet }, liveTarget)
@@ -315,146 +316,10 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>True if the fleet is ready to launch.</returns>
-        private bool IsReadyToLaunch(AITurnContext context)
+        internal bool CanLaunch(AITurnContext context)
         {
-            return context.StrategicPlan.CanFleetDepart(Fleet)
-                && IsReadyToAttack(context, TargetPlanet)
-                && !HasInboundUnitThatWouldArriveAfterFleet(context);
-        }
-
-        /// <summary>
-        /// Returns whether the fleet satisfies every live attack capability.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when the fleet is ready to attack.</returns>
-        private bool IsReadyToAttack(AITurnContext context, Planet targetPlanet)
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return false;
-            int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
-                Fleet
-            );
-            int requiredRegiments = GetRequiredRegimentCount(context, targetPlanet);
-            return Fleet?.HasOperationalCapitalShips() == true
-                && availableCombat > 0
-                && availableCombat >= demand.CombatStrength
-                && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= GetRequiredRegimentStrength(context, targetPlanet)
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    >= demand.BombardmentStrength
-                && (
-                    CanBombardMilitaryTargets(context, targetPlanet)
-                    || context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, targetPlanet)
-                        >= context
-                            .Game
-                            .Config
-                            .AI
-                            .FleetDeployment
-                            .MinimumPlanetaryAssaultSuccessPercent
-                );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required after current fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The current regiment count requirement.</returns>
-        private int GetRequiredRegimentCount(AITurnContext context, Planet targetPlanet)
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-            return CanBombardDefenders(context, targetPlanet)
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-        }
-
-        /// <summary>
-        /// Returns the regiment strength required after current fleet bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The current regiment strength requirement.</returns>
-        private int GetRequiredRegimentStrength(AITurnContext context, Planet targetPlanet)
-        {
-            return CanBombardDefenders(context, targetPlanet)
-                ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether fleet bombardment can remove defending regiments.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when bombardment can penetrate target shields.</returns>
-        private bool CanBombardDefenders(AITurnContext context, Planet targetPlanet)
-        {
-            return Fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
-        }
-
-        /// <summary>
-        /// Returns whether the fleet can immediately bombard hostile military targets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when hostile targets are exposed.</returns>
-        private bool CanBombardMilitaryTargets(AITurnContext context, Planet targetPlanet)
-        {
-            return Fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
-                && context.Assessment.HasBombardmentTargets(targetPlanet);
-        }
-
-        /// <summary>
-        /// Returns whether launching now would leave an inbound unit unable to reach the hostile
-        /// destination by the fleet's arrival tick.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when an inbound unit would arrive after the fleet.</returns>
-        private bool HasInboundUnitThatWouldArriveAfterFleet(AITurnContext context)
-        {
-            if (
-                context.MovementQueries == null
-                || !context.MovementQueries.TryGetTransitTicks(
-                    new List<IMovable> { Fleet },
-                    TargetPlanet,
-                    out int fleetTransitTicks
-                )
-            )
-                return false;
-
-            foreach (
-                IReadOnlyList<IMovable> inboundGroup in context.MovementQueries.GetInTransitFleetJoinerGroups(
-                    Fleet
-                )
-            )
-            {
-                if (
-                    context.MovementQueries.TryEstimateRetargetedTransitTicks(
-                        inboundGroup,
-                        TargetPlanet,
-                        out int inboundTransitTicks
-                    )
-                    && inboundTransitTicks > fleetTransitTicks
-                )
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            var readiness = context.GetAttackReadiness(Fleet, TargetPlanet);
+            return readiness.FleetReady && readiness.RegimentsReady;
         }
 
         /// <summary>
@@ -499,8 +364,20 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the attack target is still valid.</returns>
         private bool IsValidAttackOrder(AITurnContext context)
         {
+            if (
+                Status != FleetOrderStatus.Returning
+                && Fleet.Movement == null
+                && !Fleet.IsInCombat
+                && !context.Assessment.HasCurrentHeadquartersAttackIntel(TargetPlanet)
+            )
+                return false;
+
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId) || targetOwnerId == context.Faction.InstanceID)
+            if (
+                targetOwnerId == context.Faction.InstanceID
+                || string.IsNullOrEmpty(targetOwnerId)
+                    && !context.StrategicPlan.CanCompleteOccupation(Fleet, TargetPlanet)
+            )
                 return false;
 
             FleetOrder order = Fleet.Order;
@@ -529,15 +406,16 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether the live target remains hostile to the acting faction.
+        /// Returns whether the live target permits continuing the assigned attack or occupation.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="liveTarget">The current scene-graph target.</param>
-        /// <returns>True when the target has a different owner.</returns>
-        private bool IsLiveTargetHostile(AITurnContext context, Planet liveTarget)
+        /// <returns>True for an enemy target or a neutral target awaiting this fleet's occupation.</returns>
+        private bool CanEngageLiveTarget(AITurnContext context, Planet liveTarget)
         {
             string ownerId = liveTarget?.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(ownerId) && ownerId != context.Faction.InstanceID;
+            return !string.IsNullOrEmpty(ownerId) && ownerId != context.Faction.InstanceID
+                || context.StrategicPlan.CanCompleteOccupation(Fleet, liveTarget);
         }
 
         /// <summary>
