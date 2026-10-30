@@ -7,7 +7,7 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 using UnityEngine;
 
 /// <summary>

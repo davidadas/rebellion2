@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;

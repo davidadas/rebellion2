@@ -13,10 +13,10 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.Persistence;
+using Rebellion.PlayerRequests;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Gameplay

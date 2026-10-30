@@ -4,8 +4,9 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay;
 
-namespace Rebellion.Gameplay.PlayerRequests
+namespace Rebellion.PlayerRequests
 {
     public sealed partial class PlayerRequestExecutor
     {

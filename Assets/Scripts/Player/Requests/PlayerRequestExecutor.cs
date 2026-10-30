@@ -8,9 +8,10 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Gameplay.PlayerRequests
+namespace Rebellion.PlayerRequests
 {
     /// <summary>
     /// Executes explicit player requests through the active session's existing domain operations.

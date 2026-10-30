@@ -7,7 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {

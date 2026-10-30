@@ -13,10 +13,10 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Tests.Gameplay.PlayerRequests
+namespace Rebellion.Tests.PlayerRequests
 {
     [TestFixture]
     public sealed class PlayerRequestExecutorTests

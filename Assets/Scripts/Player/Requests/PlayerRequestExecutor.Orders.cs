@@ -8,9 +8,10 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Gameplay.PlayerRequests
+namespace Rebellion.PlayerRequests
 {
     public sealed partial class PlayerRequestExecutor
     {

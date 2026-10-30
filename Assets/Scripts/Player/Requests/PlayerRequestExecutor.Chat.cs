@@ -3,8 +3,9 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay;
 
-namespace Rebellion.Gameplay.PlayerRequests
+namespace Rebellion.PlayerRequests
 {
     /// <summary>
     /// Delivers ordered peer chat through the same durable message and notification pipeline.

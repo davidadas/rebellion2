@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 
 /// <summary>
 /// Creates explicit player-action execution boundaries for UI fixtures.

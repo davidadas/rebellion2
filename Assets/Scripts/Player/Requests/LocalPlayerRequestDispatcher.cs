@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
 
-namespace Rebellion.Gameplay.PlayerRequests
+namespace Rebellion.PlayerRequests
 {
     /// <summary>
     /// Executes single-player requests immediately through the same player-request boundary.

@@ -8,7 +8,7 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 

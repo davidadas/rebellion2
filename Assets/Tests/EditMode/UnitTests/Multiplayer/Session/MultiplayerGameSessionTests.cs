@@ -13,8 +13,8 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.Multiplayer;
+using Rebellion.PlayerRequests;
 using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer

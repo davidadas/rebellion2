@@ -1,6 +1,6 @@
 using Rebellion.Game;
-using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.Persistence;
+using Rebellion.PlayerRequests;
 
 namespace Rebellion.Gameplay
 {
