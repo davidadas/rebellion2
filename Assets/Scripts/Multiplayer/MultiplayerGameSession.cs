@@ -108,7 +108,7 @@ namespace Rebellion.Multiplayer
             _hostFactionID = hostFactionID;
             _guestFactionID = guestFactionID;
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            if (!session.CanCaptureRecoveryState)
+            if (!session.CanCaptureSettledState)
                 throw new InvalidOperationException(
                     "Ordered gameplay must start from a completed turn."
                 );

@@ -25,10 +25,10 @@ namespace Rebellion.Tests.Multiplayer
             game.GetFactions().Add(new Faction { InstanceID = "owner" });
             game.SetFactionController("owner", "participant", PlayerControllerType.Human);
             _source = new GameSession(game, TestGameData.Create(game.Config));
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_source);
-            _restored = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
+            _source.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            _restored = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_source.Game.Config)
             );
         }
@@ -90,9 +90,9 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void ComputeSimulation_DifferentActualRandomSeed_DetectsDifference()
         {
-            GameSessionRecoveryState state = _restored.CaptureRecoveryState();
-            state.RandomSeed = 456;
-            _restored.ApplyRecoveryState(state);
+            GameRoot state = _restored.Game;
+            state.Random = new SystemRandomProvider(456, state.RandomIndex);
+            _restored.ReplaceGame(state);
             Assert.AreEqual(_source.Game.Summary.Seed, _restored.Game.Summary.Seed);
             Assert.AreEqual(_source.Game.RandomIndex, _restored.Game.RandomIndex);
 
@@ -103,36 +103,36 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void VerifyRecovery_EquivalentContinuation_AdmitsRestoredSession()
+        public void VerifyLoadedGame_EquivalentContinuation_AdmitsRestoredSession()
         {
             string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
             Assert.AreEqual(
                 expected,
-                MultiplayerStateFingerprint.VerifyRecovery(_restored, expected)
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
 
         [Test]
-        public void VerifyRecovery_ChangedRestoredRule_RejectsBeforeGameplay()
+        public void VerifyLoadedGame_ChangedRestoredRule_RejectsBeforeGameplay()
         {
             string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
             _restored.Game.GetFactionByOwnerInstanceID("owner").Settings.BattleLossLoyaltyDivisor++;
             Assert.Throws<System.InvalidOperationException>(() =>
-                MultiplayerStateFingerprint.VerifyRecovery(_restored, expected)
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
 
         [TestCase(null)]
         [TestCase("")]
-        public void VerifyRecovery_MissingSourceFingerprint_RejectsBeforeGameplay(string expected)
+        public void VerifyLoadedGame_MissingSourceFingerprint_RejectsBeforeGameplay(string expected)
         {
             Assert.Throws<System.InvalidOperationException>(() =>
-                MultiplayerStateFingerprint.VerifyRecovery(_restored, expected)
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
 
         [Test]
-        public void VerifyRecovery_ActualSeedDiffersFromSummary_PreservesNextWideDraw()
+        public void VerifyLoadedGame_ActualSeedDiffersFromSummary_PreservesNextWideDraw()
         {
             _source.Dispose();
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -140,15 +140,14 @@ namespace Rebellion.Tests.Multiplayer
             game.Random = new SystemRandomProvider(456);
             game.Random.NextInt(int.MinValue, int.MaxValue);
             _source = new GameSession(game, TestGameData.Create(game.Config));
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_source);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
             _restored.Dispose();
-            _restored = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            _restored = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_source.Game.Config)
             );
 
-            MultiplayerStateFingerprint.VerifyRecovery(
+            MultiplayerStateFingerprint.VerifyLoadedGame(
                 _restored,
                 MultiplayerStateFingerprint.ComputeSimulation(_source)
             );
@@ -159,18 +158,17 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void VerifyRecovery_RepeatedRecoveryAndDraws_PreservesIndependentContinuation()
+        public void VerifyLoadedGame_RepeatedRecoveryAndDraws_PreservesIndependentContinuation()
         {
             for (int attempt = 0; attempt < 3; attempt++)
             {
-                MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_source);
+                MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
                 _restored.Dispose();
-                _restored = MultiplayerRecoverySnapshotCodec.Restore(
-                    snapshot.Payload,
-                    snapshot.Hash,
+                _restored = new GameSession(
+                    MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     TestGameData.Create(_source.Game.Config)
                 );
-                MultiplayerStateFingerprint.VerifyRecovery(
+                MultiplayerStateFingerprint.VerifyLoadedGame(
                     _restored,
                     MultiplayerStateFingerprint.ComputeSimulation(_source)
                 );
@@ -200,7 +198,7 @@ namespace Rebellion.Tests.Multiplayer
 
             MultiplayerStateFingerprint.Compute(prototype);
 
-            Assert.IsNull(prototype.GetRecoveryInstanceID());
+            Assert.IsNull(prototype.PeekInstanceID());
         }
     }
 }

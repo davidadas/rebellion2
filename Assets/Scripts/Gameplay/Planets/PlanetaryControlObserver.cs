@@ -13,7 +13,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Routes garrison, support, and ownership changes to planetary control operations.
     /// </summary>
-    public sealed partial class PlanetaryControlObserver : IResultObserver, IDisposable
+    public sealed class PlanetaryControlObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly PlanetaryControlCommands _commands;
@@ -24,9 +24,7 @@ namespace Rebellion.Gameplay
             PlanetOwnershipChangedResult,
             List<GameResult>
         > _transitionResults = new();
-        private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
         private IDisposable[] _subscriptions;
-        private int _controlShiftTick = -1;
         private int _pendingOwnershipChanges;
 
         /// <summary>
@@ -657,13 +655,10 @@ namespace Rebellion.Gameplay
             if (previousOwner == null)
                 return true;
 
-            if (_controlShiftTick != _game.CurrentTick)
-            {
-                _controlShiftTick = _game.CurrentTick;
-                _controlShiftedOwners.Clear();
-            }
-
-            return _controlShiftedOwners.Add(previousOwner.InstanceID);
+            if (previousOwner.LastControlSupportShiftTick == _game.CurrentTick)
+                return false;
+            previousOwner.LastControlSupportShiftTick = _game.CurrentTick;
+            return true;
         }
 
         /// <summary>

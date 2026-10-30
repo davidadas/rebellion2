@@ -23,7 +23,6 @@ namespace Rebellion.Multiplayer
         private Task _recoveryPublication = Task.CompletedTask;
         private MultiplayerRecoveryRecord _recoveryRecord;
         private MultiplayerSnapshot _recoverySnapshot;
-        private GameSessionRecoveryState _initialRecoveryState;
 
         /// <summary>
         /// Gets whether this authenticated account has a durable multiplayer continuation to reopen.
@@ -31,22 +30,18 @@ namespace Rebellion.Multiplayer
         public bool HasRecovery => _recoveryRecord != null && _launchConfiguration == null;
 
         /// <summary>
-        /// Consumes a verified runtime continuation before scene composition.
+        /// Gets whether scene startup is reopening an existing paused multiplayer campaign.
         /// </summary>
-        /// <returns>The verified continuation, or null for an ordinary launch.</returns>
-        internal GameSessionRecoveryState TakeInitialRecoveryState()
-        {
-            GameSessionRecoveryState state = _initialRecoveryState;
-            _initialRecoveryState = null;
-            return state;
-        }
+        public bool IsRejoining => _returningToRecovery || _waitingForRejoin;
 
         /// <summary>
         /// Opens the authenticated account's protected checkpoint store.
         /// </summary>
         /// <returns>The recovery store in the selected application save directory.</returns>
-        private static MultiplayerRecoveryStore GetRecoveryStore() =>
-            new MultiplayerRecoveryStore(SaveGameManager.Instance.GetSaveDirectoryPath());
+        private MultiplayerRecoveryStore GetRecoveryStore() =>
+            new MultiplayerRecoveryStore(
+                (_runtime?.GetSaveGameManager() ?? SaveGameManager.Instance).GetSaveDirectoryPath()
+            );
 
         /// <summary>
         /// Requests one continuation after an existing shared save or load completes.
@@ -125,10 +120,10 @@ namespace Rebellion.Multiplayer
                     throw new InvalidOperationException(
                         "The host has not reopened this campaign yet. Try Resume game again when they return."
                     );
-                GameSessionRecoveryState state = GetRecoveryStore().ReadState(_backend.LocalUserID);
+                GameRoot state = GetRecoveryStore().ReadState(_backend.LocalUserID);
                 record.ValidateState(state);
                 _role = role;
-                _hostSummary = state.Game.Summary;
+                _hostSummary = state.Summary;
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 _lobbyContent = await Task.Run(() =>
                     MultiplayerContentSelection.Open(active, _hostSummary)
@@ -251,7 +246,7 @@ namespace Rebellion.Multiplayer
             {
                 if (!session.CanExecuteCommands)
                     return;
-                if (!session.CanCaptureRecoveryState)
+                if (!session.CanCaptureSettledState)
                 {
                     try
                     {
@@ -279,7 +274,7 @@ namespace Rebellion.Multiplayer
                 if (ReferenceEquals(_readyPresentationSession, session))
                     _runtime.NotifyGameStateChanged();
             }
-            if (!session.CanCaptureRecoveryState)
+            if (!session.CanCaptureSettledState)
                 return;
             if (_waitingForRejoin && _backend.IsLobbyOwner && !_publishedRecoveryOwner)
             {
@@ -292,9 +287,7 @@ namespace Rebellion.Multiplayer
                 _checkpointPending = false;
                 try
                 {
-                    MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                        session
-                    );
+                    MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(session);
                     MultiplayerRecoveryRecord record = CreateRecoveryRecord(snapshot.Hash);
                     _recoverySnapshot = snapshot;
                     _recoveryRecord = record;
@@ -334,13 +327,10 @@ namespace Rebellion.Multiplayer
                 ?? throw new InvalidOperationException(
                     "No completed recovery checkpoint is available."
                 );
-            GameSessionRecoveryState state = MultiplayerRecoverySnapshotCodec.Deserialize(
-                snapshot.Payload,
-                snapshot.Hash
-            );
+            GameRoot state = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
             _recoveryRecord.ValidateState(state);
-            ConfigureGame(state.Game);
-            _runtime.ReplaceMultiplayerRecovery(state);
+            ConfigureGame(state);
+            _runtime.ReplaceMultiplayerGame(state);
         }
 
         /// <summary>
@@ -429,17 +419,24 @@ namespace Rebellion.Multiplayer
                         "The returning player's content selection does not match."
                     );
                 if (
-                    _runtime?.GetActiveGameSession()?.CanCaptureRecoveryState != true
+                    _runtime?.GetActiveGameSession()?.CanCaptureSettledState != true
                     || _recoveryPausePending
                 )
                 {
                     _pendingRejoinPacket = packet;
                     return;
                 }
-                MultiplayerSnapshot snapshot =
-                    _recoverySnapshot
-                    ?? MultiplayerRecoverySnapshotCodec.Capture(_runtime.GetActiveGameSession());
+                _recoveryRecord.UpdatePlayerNames(
+                    _backend.LocalUserID,
+                    _playerName,
+                    NormalizePlayerName(hello.playerName)
+                );
+                _hostPlayerName = _recoveryRecord.hostName;
+                _lobby?.UpdateDisplayNames(_recoveryRecord.hostName, _recoveryRecord.guestName);
                 BeginInitialization(Guid.NewGuid().ToString("N"));
+                MultiplayerSnapshot snapshot = PrepareInitialSnapshot(
+                    out MultiplayerSnapshotMessage metadata
+                );
                 _recoveryRecord = CreateRecoveryRecord(snapshot.Hash);
                 _recoveryOfferSent = true;
                 _rejectingGuest = false;
@@ -450,24 +447,12 @@ namespace Rebellion.Multiplayer
                             new MultiplayerRecoveryOffer
                             {
                                 record = _recoveryRecord,
-                                initializationID = _initializationID,
+                                snapshot = metadata,
                             }
                         ),
                         snapshot.Payload
                     )
                 );
-                if (_role == MultiplayerRole.Guest)
-                    QueueSend(
-                        new MultiplayerPacket(
-                            MultiplayerMessageType.Ready,
-                            JsonUtility.ToJson(
-                                new MultiplayerSessionIdentity
-                                {
-                                    initializationID = _initializationID,
-                                }
-                            )
-                        )
-                    );
                 SetStatus("The returning player is loading the paused game");
             }
             catch (Exception exception)
@@ -508,9 +493,13 @@ namespace Rebellion.Multiplayer
             _recoveryRecord.ValidateOffer(offer?.record);
             _recoveryRecord.ValidatePeer(_backend.LocalUserID, _backend.RemoteUserID);
             MultiplayerCompatibility.ValidateBuild(offer.record.simulationBuild);
-            if (!Guid.TryParseExact(offer.initializationID, "N", out _))
+            if (
+                offer.snapshot == null
+                || offer.snapshot.hash != offer.record.snapshotHash
+                || !Guid.TryParseExact(offer.snapshot.initializationID, "N", out _)
+            )
                 throw new InvalidDataException("The recovery has no initialization identity.");
-            GameSessionRecoveryState state = MultiplayerRecoverySnapshotCodec.Deserialize(
+            GameRoot state = MultiplayerSnapshotCodec.Restore(
                 packet.Payload,
                 offer.record.snapshotHash
             );
@@ -519,12 +508,21 @@ namespace Rebellion.Multiplayer
             _gameName = offer.record.gameName;
             _role = offer.record.GetRole(_backend.LocalUserID);
             _hostPlayerName = offer.record.hostName;
+            _lobby?.UpdateDisplayNames(offer.record.hostName, offer.record.guestName);
             _admittedGuestUserID = offer.record.guestUserID;
-            BeginInitialization(offer.initializationID);
+            BeginInitialization(offer.snapshot.initializationID);
+            if (
+                !_snapshotAdmission.Accepts(
+                    offer.snapshot.initializationID,
+                    offer.snapshot.revision
+                )
+            )
+                throw new InvalidDataException("The rejoin snapshot revision is invalid.");
+            _pendingRejoinSnapshot = offer.snapshot;
             if (livePeer)
             {
-                ConfigureGame(state.Game);
-                _runtime.ReplaceMultiplayerRecovery(state);
+                ConfigureGame(state);
+                _runtime.ReplaceMultiplayerGame(state);
                 _runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
                 _recoveryPausePending = false;
                 _checkpointPending = false;
@@ -540,14 +538,14 @@ namespace Rebellion.Multiplayer
         /// Resolves the exact installed content before restoring the offered continuation.
         /// </summary>
         /// <param name="state">The authenticated independently decoded runtime state.</param>
-        private async void PrepareRecoveryContent(GameSessionRecoveryState state)
+        private async void PrepareRecoveryContent(GameRoot state)
         {
             var cancellationToken = _sessionCancellation.Token;
             try
             {
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 ContentPack content = await Task.Run(() =>
-                    MultiplayerContentSelection.Open(active, state.Game.Summary)
+                    MultiplayerContentSelection.Open(active, state.Summary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
                 MultiplayerCompatibility.ValidateContent(
@@ -573,14 +571,13 @@ namespace Rebellion.Multiplayer
         /// Restores each account to its original faction and hands the continuation to scene composition.
         /// </summary>
         /// <param name="state">The verified saved or survivor-supplied continuation.</param>
-        private void LaunchRecovery(GameSessionRecoveryState state)
+        private void LaunchRecovery(GameRoot state)
         {
-            state.Game.SetGameSpeed(TickSpeed.Paused);
-            foreach (Player player in state.Game.GetPlayers())
+            state.SetGameSpeed(TickSpeed.Paused);
+            foreach (Player player in state.GetPlayers())
                 if (player.ControllerType == PlayerControllerType.Human)
                     player.RequestedGameSpeed = TickSpeed.Paused;
-            _hostSummary = state.Game.Summary;
-            _initialRecoveryState = state;
+            _hostSummary = state.Summary;
             _launchConfiguration = new MultiplayerLaunchConfiguration(
                 _hostSummary,
                 _role == MultiplayerRole.Host
@@ -588,7 +585,7 @@ namespace Rebellion.Multiplayer
                     : _recoveryRecord.guestFactionID,
                 _recoveryRecord.hostFactionID,
                 _recoveryRecord.guestFactionID,
-                state.Game
+                state
             );
             SetStatus("Rejoining the paused game");
             LaunchRequested?.Invoke(_launchConfiguration);
@@ -603,8 +600,8 @@ namespace Rebellion.Multiplayer
             _pendingRejoinPacket = null;
             _waitingForRejoin = _checkpointPending = _recoveryPausePending = false;
             _recoveryOfferSent = _returningToRecovery = _publishedRecoveryOwner = false;
-            _initialRecoveryState = null;
             _recoverySnapshot = null;
+            _pendingRejoinSnapshot = null;
         }
     }
 
@@ -615,6 +612,6 @@ namespace Rebellion.Multiplayer
     internal sealed class MultiplayerRecoveryOffer
     {
         public MultiplayerRecoveryRecord record;
-        public string initializationID;
+        public MultiplayerSnapshotMessage snapshot;
     }
 }

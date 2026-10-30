@@ -511,38 +511,29 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(_runtime.CanSave);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void StartLoadedGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn(
-            bool replace
-        )
+        [Test]
+        public void StartLoadedGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
         {
-            GameRoot game = CreateContestedGame();
-            if (replace)
-            {
-                _runtime.StartGame(CreateGame(), new TestSessionOwner());
-                _runtime.ReplaceMultiplayerGame(game);
-            }
-            else
-                _runtime.StartLoadedGame(game, new TestSessionOwner());
-            GameSession session = _runtime.GetActiveGameSession();
+            _runtime.StartLoadedGame(CreateContestedGame(), new TestSessionOwner());
+            AssertCoordinatedBattleWaitsForTurn();
+        }
 
-            Assert.That(session.Tick.IsSettled, Is.True);
-            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
-            Assert.That(_runtime.CanSave, Is.True);
-            session.Tick.ProcessTick();
-            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
-            Assert.That(_runtime.CanSave, Is.False);
+        [Test]
+        public void ReplaceMultiplayerGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
+        {
+            _runtime.StartGame(CreateGame(), new TestSessionOwner());
+            _runtime.ReplaceMultiplayerGame(CreateContestedGame());
+            AssertCoordinatedBattleWaitsForTurn();
         }
 
         [TestCase(false)]
         [TestCase(true)]
-        public void ReplaceMultiplayerRecovery_InterruptedBattle_RestoresCompletedWorldAndReopensSaving(
+        public void ReplaceMultiplayerGame_InterruptedBattle_RestoresCompletedWorldAndReopensSaving(
             bool incremental
         )
         {
             GameSession session = _runtime.StartGame(CreateContestedGame(), new TestSessionOwner());
-            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(session);
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(session);
             int completedTick = session.Game.CurrentTick;
             int replacements = 0;
             _runtime.GameReplaced += _ => replacements++;
@@ -552,7 +543,7 @@ namespace Rebellion.Tests.App
                 System.Collections.IEnumerator tick = session.Tick.ProcessTickIncrementally();
                 Assert.That(tick.MoveNext(), Is.True);
                 Assert.Throws<InvalidOperationException>(() =>
-                    MultiplayerRecoverySnapshotCodec.Capture(session)
+                    MultiplayerSnapshotCodec.Capture(session)
                 );
                 while (tick.MoveNext()) { }
                 (tick as IDisposable)?.Dispose();
@@ -562,8 +553,8 @@ namespace Rebellion.Tests.App
             Assert.That(session.Tick.IsSettled, Is.False);
             Assert.That(_runtime.CanSave, Is.False);
 
-            _runtime.ReplaceMultiplayerRecovery(
-                MultiplayerRecoverySnapshotCodec.Deserialize(checkpoint.Payload, checkpoint.Hash)
+            _runtime.ReplaceMultiplayerGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
             );
 
             Assert.That(_runtime.GetActiveGameSession(), Is.SameAs(session));
@@ -925,7 +916,7 @@ namespace Rebellion.Tests.App
 
         [TestCase(true)]
         [TestCase(false)]
-        public void ReplaceMultiplayerRecovery_CampaignOwnership_PreservesOnlyMatchingLocalUI(
+        public void ReplaceMultiplayerGame_CampaignOwnership_PreservesOnlyMatchingLocalUI(
             bool sameCampaign
         )
         {
@@ -945,7 +936,7 @@ namespace Rebellion.Tests.App
             var incomingGuestUI = incoming.GetFactionPlayer("FNEMP1").UIState;
             using GameSession source = new GameSession(incoming, _contentPack.GameData);
 
-            _runtime.ReplaceMultiplayerRecovery(source.CaptureRecoveryState());
+            _runtime.ReplaceMultiplayerGame(source.Game);
 
             Assert.AreSame(incoming, _runtime.GetActiveGame());
             Assert.AreSame(incomingHostUI, incoming.GetFactionPlayer("FNALL1").UIState);
@@ -954,6 +945,20 @@ namespace Rebellion.Tests.App
                 incoming.GetFactionPlayer("FNEMP1").UIState
             );
             Assert.AreEqual(120, _runtime.GetActiveGame().CurrentTick);
+        }
+
+        /// <summary>
+        /// Checks that coordinated loading leaves encounter detection to the next ordered turn.
+        /// </summary>
+        private void AssertCoordinatedBattleWaitsForTurn()
+        {
+            GameSession session = _runtime.GetActiveGameSession();
+            Assert.That(session.Tick.IsSettled, Is.True);
+            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
+            Assert.That(_runtime.CanSave, Is.True);
+            session.Tick.ProcessTick();
+            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
+            Assert.That(_runtime.CanSave, Is.False);
         }
 
         /// <summary>

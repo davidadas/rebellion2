@@ -105,6 +105,11 @@ namespace Rebellion.Game.Factions
         // Research Status.
         public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
 
+        /// <summary>
+        /// Gets or sets the last tick in which this faction's control loss shifted sector support.
+        /// </summary>
+        public int LastControlSupportShiftTick { get; set; } = -1;
+
         [PersistableIgnore]
         public Dictionary<
             ResearchDiscipline,

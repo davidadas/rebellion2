@@ -221,7 +221,10 @@ public static class MultiplayerNetworkSimulationRunner
         await WaitForEventAsync(guestPeer, MultiplayerTransportEventType.Connected);
 
         // Initialization is the only world snapshot transferred during this verification.
-        MultiplayerSnapshot initialSnapshot = MultiplayerRecoverySnapshotCodec.Capture(hostSession);
+        MultiplayerSnapshot initialSnapshot = MultiplayerSnapshotCodec.Capture(hostGame);
+        hostGame = MultiplayerSnapshotCodec.Restore(initialSnapshot.Payload, initialSnapshot.Hash);
+        hostGame.UseDeterministicRuntimeIdentifiers = true;
+        hostSession.ReplaceGame(hostGame);
         MultiplayerPacket initialPacket = new MultiplayerPacket(
             MultiplayerMessageType.SnapshotCommit,
             JsonUtility.ToJson(new SnapshotMetadata { hash = initialSnapshot.Hash }),
@@ -237,11 +240,12 @@ public static class MultiplayerNetworkSimulationRunner
         SnapshotMetadata initialMetadata = JsonUtility.FromJson<SnapshotMetadata>(
             initialEvent.Packet.Metadata
         );
-        using GameSession guestSession = MultiplayerRecoverySnapshotCodec.Restore(
+        GameRoot restoredGuest = MultiplayerSnapshotCodec.Restore(
             initialEvent.Packet.Payload,
-            initialMetadata.hash,
-            contentPack.GameData
+            initialMetadata.hash
         );
+        restoredGuest.UseDeterministicRuntimeIdentifiers = true;
+        using GameSession guestSession = new GameSession(restoredGuest, contentPack.GameData);
         GameRoot guestGame = guestSession.Game;
         if (
             ReferenceEquals(hostGame, guestGame)

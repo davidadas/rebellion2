@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Multiplayer
 
             GameplayContentIdentity.Compute(CreateData(prototype));
 
-            Assert.IsNull(prototype.GetRecoveryInstanceID());
+            Assert.IsNull(prototype.PeekInstanceID());
         }
 
         /// <summary>

@@ -120,19 +120,34 @@ batches with no relevant changes do not scan the world. Loading silently initial
 baseline. Resource diversion is computed once per producing planet per resource phase and does not
 depend on notification history. Uprising progression remains timed simulation work.
 
-Recovery transport initiation follows room ownership, while simulation authority retains the
-campaign's authenticated host role. The shared persistence channel is created after the agreed
-state handshake, rather than binding to a provisional recovery identity.
-Manual saves and recovery checkpoints require completed turn processing, including battle decisions.
-Disconnect recovery lets an executing tick finish. If it stops awaiting battle input, the survivor
-restores the last completed checkpoint and offers that world to the returning participant. Progress
-since that checkpoint is lost; both players respond again when the encounter occurs. Requested
-launch/save/load checkpoints are captured before another day starts. No full-world checkpoint is
-added to the per-day loop. Coordinated loads detect encounters in an agreed turn after synchronization.
-Recovery checks payload integrity and the restored completed state before opening gameplay.
-Completed days compare model and runtime fingerprints, including active RNG
-seed/position, identifiers, faction rules and support-shift history. Participant UI state is
-excluded. A mismatch or execution failure stops replay without retrying a potentially applied action.
+Rejoining follows room ownership while simulation authority retains the campaign's authenticated
+host role. The shared persistence channel is created after the agreed state handshake. Initial
+synchronization, shared loading, and rejoining use the same persisted world contract and ordinary
+loading methods. Both peers load the selected world before comparing loaded-state fingerprints;
+there is no separate simulation recovery envelope, loader, or reference-aware recovery codec.
+
+Manual saves and reconnect checkpoints require completed turn processing, including battle
+decisions. Disconnect handling lets an executing tick finish. If it stops awaiting battle input,
+the survivor restores the last completed checkpoint; progress since that checkpoint is lost.
+Both players respond again when the encounter occurs. Requested launch/save/load checkpoints are
+captured before another day starts; no full-world checkpoint is added to the per-day loop.
+Coordinated loads detect encounters in an agreed turn after synchronization.
+
+A rejoin offer transfers one ordinary world payload. Its receiver acknowledges the existing
+initial-state barrier after normal loading and presentation startup, using the same receipt checks
+as initial synchronization. The supplier can be either authenticated participant. The supplied
+world remains blocked against persistence until acknowledgment, so a local save cannot change its
+shared-save token during admission. The accepted rejoin names update the reserved host/guest names
+and retained lobby presentation without changing its approved setup. Rejoining code is in
+`MultiplayerCoordinator.Rejoin`.
+
+The active RNG seed and ID-generation mode are normal world properties; their positions/counters
+were already persisted. A faction saves its last control-loss support-shift tick through normal
+persistence, preserving the existing once-per-faction-per-tick rule across ordinary saves as well.
+Research timers were already saved normally. Loading keeps the same initialization and derived
+state rebuilding for both participants. Completed-day verification checks persisted state and
+runtime rules while excluding participant UI state and runtime parent-object caches.
+A mismatch or execution failure stops replay without retrying a potentially applied action.
 
 Simulation verification performs one graph traversal per completed multiplayer day per peer, after
 the tick iterator releases its execution boundary. The headless network runner measures its cost;

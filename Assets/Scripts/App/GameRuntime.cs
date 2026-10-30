@@ -169,25 +169,6 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Starts from a completed checkpoint without replaying gameplay or disk-load reconciliation.
-    /// </summary>
-    /// <param name="state">The independently decoded and content-verified continuation.</param>
-    /// <param name="owner">The execution and persistence owner chosen before recovery.</param>
-    /// <returns>The recovered active session.</returns>
-    internal GameSession StartRecoveredGame(
-        GameSessionRecoveryState state,
-        IGameSessionOwner owner = null
-    )
-    {
-        ValidateSessionOwner(state?.Game, owner);
-        if (_activeGameSession != null)
-            EndGame();
-        owner?.PrepareGame(state.Game);
-        ValidateGameContent(state.Game);
-        return BindSession(GameSession.RestoreRecoveryState(state, _contentPack.GameData), owner);
-    }
-
-    /// <summary>
     /// Connects application clock, player actions, and persistence to an initialized simulation owner.
     /// </summary>
     /// <param name="session">The initialized simulation session.</param>
@@ -318,7 +299,7 @@ public sealed class GameRuntime
     /// </summary>
     internal void ResumeMultiplayerOperations()
     {
-        if (_sessionOwner == null || _activeGameSession?.CanCaptureRecoveryState != true)
+        if (_sessionOwner == null || _activeGameSession?.CanCaptureSettledState != true)
             throw new InvalidOperationException("A settled coordinated session is required.");
         _operationsBlocked = false;
     }
@@ -632,33 +613,17 @@ public sealed class GameRuntime
             throw new InvalidOperationException("No active game can receive a multiplayer state.");
 
         ValidateGameContent(game);
-        ReconcileStaticContent(game);
-        _activeGameSession.ReplaceGame(game);
-        _gameManager.Reset();
-        GameReplaced?.Invoke(_activeGameSession.Game);
-        ReconcileLoadedSession();
-    }
-
-    /// <summary>
-    /// Applies a completed checkpoint without replaying a tick or disk-load migration.
-    /// </summary>
-    /// <param name="state">The independently decoded authoritative runtime boundary.</param>
-    internal void ReplaceMultiplayerRecovery(GameSessionRecoveryState state)
-    {
-        if (_activeGameSession == null)
-            throw new InvalidOperationException(
-                "No active game can receive a multiplayer continuation."
-            );
-        ValidateGameContent(state.Game);
-        LocalPlayerPresentationState localPresentation = LocalPlayerPresentationState.Capture(
+        LocalPlayerPresentationState presentation = LocalPlayerPresentationState.Capture(
             _activeGameSession.Game,
             _activeGameSession.Game.LocalPlayerFactionID
         );
-        localPresentation?.TryRestore(state.Game, state.Game.LocalPlayerFactionID);
-        _activeGameSession.ApplyRecoveryState(state);
+        presentation?.TryRestore(game, game.LocalPlayerFactionID);
+        ReconcileStaticContent(game);
+        _activeGameSession.ReplaceGame(game);
         _gameManager.Reset();
         _operationsBlocked = false;
         GameReplaced?.Invoke(_activeGameSession.Game);
+        ReconcileLoadedSession();
     }
 
     /// <summary>

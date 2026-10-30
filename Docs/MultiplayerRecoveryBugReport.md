@@ -2,7 +2,60 @@
 
 Date: October 28, 2026. Checkout: v5, local `multiplayer` branch.
 
-## October 29: implementation review and discussion list
+## October 30: ordinary loading and rejoin audit
+
+The separate gameplay recovery loader is removed. Initial synchronization, shared loads, and
+rejoining now use the existing persisted `GameRoot` contract and ordinary game-loading methods.
+Both participants load the same saved world before their loaded-state fingerprints are compared.
+There are no production `.Recovery.cs` files left.
+
+### Findings and changes
+
+| Inspected area | Evidence and resulting change |
+| --- | --- |
+| `GameSession.Recovery` | A controlled turn-1000 run using ordinary loading completed 20 days and 22 peer checks with identical gameplay outcomes to the baseline. Removing the alternative session loader, its state envelope, and the separate recovery snapshot codec. |
+| `PlanetaryControlObserver.Recovery` | A normal XML save between two support-driven control losses in the same tick lost the guard: a neighboring planet received 22 support instead of 20. Moving the last handled tick onto `Faction.LastControlSupportShiftTick`; the regression now uses ordinary XML persistence. The existing once-per-faction-per-tick rule is unchanged. |
+| Runtime generator settings | Saving the active RNG seed and ID-generation mode on `GameRoot` through normal persistence. The RNG position and ID counter were already saved and are not duplicated. Coverage checks the next wide random draw and next generated identity after an ordinary save/load. |
+| Rejoin startup | Removing `StartRecoveredGame`, `ReplaceMultiplayerRecovery`, the separate tick connection, raw model-restoration helpers, and the scene's recovery-envelope branch. The rejoin scene uses `StartLoadedGame`; graph replacement uses `ReplaceMultiplayerGame`. |
+| Duplicate world transfer | The reconnect offer sent a world, then the initial synchronization sent a world again. Reusing the initial-state receipt barrier for the first offer, including when the world supplier is the guest. The receiver checks initialization, revision, payload hash, and loaded-state fingerprint before opening gameplay. |
+| Mutation during handoff | Local saving changes `SharedSaveToken`. Blocking ordinary persistence while the offered initial world awaits acknowledgment keeps the supplied state fixed; the existing operations gate reopens after admission. Tests cover rejection without changing the token for either participant. |
+| Returning player names | Normal configuration could use an old lobby name while the returning client used its current authenticated name. Binding accepted greeting names to the reserved simulation roles and refreshing the retained lobby's presentation names keeps both worlds consistent without changing factions, readiness, or setup revisions. |
+| Coordinator organization | The remaining network rejoin behavior lives in `MultiplayerCoordinator.Rejoin`. The custom simulation save/load path underneath it is gone. Removing the extra initial recovery envelope and the `runtimeRecovery` protocol flag. |
+
+The coordinator still finds or recreates the reserved room, authenticates the two participants,
+checks code/content compatibility, waits for an executing tick to finish, pauses the campaign,
+selects a completed saved world, and exchanges the ordinary state receipt. Those operations are
+network-session responsibilities, not a reason to keep a second simulation loader. The durable
+store retains a small account/campaign/room header plus an ordinary multiplayer world payload.
+Its save directory follows the active runtime's save manager.
+
+Research timers were already included in normal faction serialization. The test that manually
+forced a timer to zero did not establish a missing-save failure; its separate recovery-only
+contract is removed. Ordinary loading retains its existing initialization behavior. Constructor
+settings normalized by normal loading are processed on both peers through that same path.
+
+The raw identifier read is consolidated into `PeekInstanceID`. Simulation fingerprints follow
+persisted state and runtime rules; runtime parent-object caches are not an additional save contract.
+Healing, ship repairs, and fighter replenishment in `RecoveryTickProcessor` are unaffected.
+
+### Evidence and limits
+
+The baseline and ordinary-load probe use seed 20261022, the same turn-1000 input, preserved
+Alliance AI and Empire human controllers, 20 completed days, and 22 peer-state checks. Their
+faction outcomes, battle responses, victory state, RNG position, and generated-ID count match.
+The control-loss regression failed with expected support 20 versus actual 22 before the model
+persistence change. The final automated checks and comparison are recorded in
+`C:/Users/David/AppData/Local/Temp/rebellion-normal-load-proof-20261029`.
+
+The fresh multiplayer measurements use TCP loopback. The changed coordinator handoff is covered
+by inspected sender/receiver paths and receipt-admission regressions; no fresh native Epic
+end-to-end reconnect run is claimed. These results do not establish a native FPS improvement.
+The earlier UI-builder consolidation and native verification-cost finding remain separate work.
+
+## October 29: implementation review (historical)
+
+The decisions below describe the preceding revision and are superseded by the October 30 audit.
+
 
 The recovery envelope was copying both missing gameplay history and data that normal persistence
 already owns. Those are different problems. The changes below remove the demonstrated duplication;

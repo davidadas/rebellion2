@@ -67,14 +67,8 @@ namespace Rebellion.SceneGraph
         /// <returns>The current identifier, or null.</returns>
         internal string PeekInstanceID()
         {
-            return _instanceId ?? string.Empty;
+            return _instanceId;
         }
-
-        /// <summary>
-        /// Reads the assigned identity without creating one or merging null and empty values.
-        /// </summary>
-        /// <returns>The exact assigned identity, including null when no identity was assigned.</returns>
-        internal string GetRecoveryInstanceID() => _instanceId;
 
         /// <summary>
         /// Returns the instance ID of the entity.

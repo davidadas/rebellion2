@@ -128,16 +128,21 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
-        [Test]
-        public async Task SaveGameAsync_PauseNotEstablished_RejectsWithoutPublicationAsync()
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public async Task SaveGameAsync_OperationsBlocked_RejectsWithoutChangingTokenAsync(
+            MultiplayerRole role
+        )
         {
-            StartWaitingGame(MultiplayerRole.Guest);
+            GameRoot game = StartWaitingGame(role);
+            string token = game.Metadata.SharedSaveToken;
             _runtime.BlockGameOperations();
 
             Assert.IsFalse(_runtime.CanRequestSave);
             Assert.IsFalse(await _runtime.SaveGameAsync("unsafe", "Unsafe"));
             Assert.IsEmpty(_store.GetSavedGames());
             Assert.AreEqual(0, _publications);
+            Assert.AreEqual(token, game.Metadata.SharedSaveToken);
         }
 
         [Test]

@@ -109,7 +109,6 @@ namespace Rebellion.Multiplayer
         public long baseRevision;
         public string hash;
         public string simulationFingerprint;
-        public bool runtimeRecovery;
         public string initializationID;
     }
 

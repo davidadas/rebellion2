@@ -98,29 +98,10 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Replaces the feature processors and runtime services used by subsequent ticks.
+        /// Connects the active world's processors and initializes any unscheduled research timers.
         /// </summary>
-        /// <param name="services">The newly constructed runtime service scope.</param>
+        /// <param name="services">The newly constructed session services.</param>
         internal void ConnectRuntime(IServiceLocator services)
-        {
-            ConnectRuntimeCore(services, initializeResearchTimers: true);
-        }
-
-        /// <summary>
-        /// Connects recovered services while retaining every captured research timer and random position.
-        /// </summary>
-        /// <param name="services">The recovered service scope.</param>
-        internal void ConnectRecoveryRuntime(IServiceLocator services)
-        {
-            ConnectRuntimeCore(services, initializeResearchTimers: false);
-        }
-
-        /// <summary>
-        /// Constructs stateless tick processors for the selected session initialization boundary.
-        /// </summary>
-        /// <param name="services">The owning service scope.</param>
-        /// <param name="initializeResearchTimers">Whether this is normal game initialization.</param>
-        private void ConnectRuntimeCore(IServiceLocator services, bool initializeResearchTimers)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -129,8 +110,7 @@ namespace Rebellion.Gameplay
             ResearchTickProcessor research = new ResearchTickProcessor(
                 services.GetService<Rebellion.Util.Random.IRandomNumberProvider>()
             );
-            if (initializeResearchTimers)
-                research.InitializeTimers(_game);
+            research.InitializeTimers(_game);
             _research = research;
 
             _movementCommands = services.GetService<MovementCommands>();

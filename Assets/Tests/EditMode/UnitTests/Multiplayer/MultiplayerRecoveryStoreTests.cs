@@ -59,6 +59,8 @@ namespace Rebellion.Tests.Multiplayer
             );
             game.Metadata.CampaignID = _record.campaignID;
             _session = new GameSession(game, TestGameData.Create(game.Config));
+            MultiplayerSnapshot initial = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(MultiplayerSnapshotCodec.Restore(initial.Payload, initial.Hash));
         }
 
         /// <summary>
@@ -83,11 +85,11 @@ namespace Rebellion.Tests.Multiplayer
         {
             _session.Game.Random.NextInt(int.MinValue, int.MaxValue);
             _session.Game.Random.NextDouble();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
             _record.snapshotHash = snapshot.Hash;
             await _store.WriteAsync("host", _record, snapshot);
-            GameSessionRecoveryState state = _store.ReadState("host");
-            using GameSession restored = GameSession.RestoreRecoveryState(
+            GameRoot state = _store.ReadState("host");
+            using GameSession restored = new GameSession(
                 state,
                 TestGameData.Create(_session.Game.Config)
             );
@@ -106,10 +108,7 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerRecoveryRecord record = restarted.ReadRecord("guest");
             Assert.AreEqual(_record.lobbyID, record.lobbyID);
             Assert.AreEqual(MultiplayerRole.Guest, record.GetRole("guest"));
-            Assert.AreEqual(
-                _record.campaignID,
-                restarted.ReadState("guest").Game.Metadata.CampaignID
-            );
+            Assert.AreEqual(_record.campaignID, restarted.ReadState("guest").Metadata.CampaignID);
         }
 
         [Test]
@@ -255,7 +254,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public async Task WriteAsync_ConcurrentAccountsAndManualSaves_PreservesEveryOwnedFileAsync()
         {
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
             _record.snapshotHash = snapshot.Hash;
             SaveGameManager manual = new(_directory);
 
@@ -268,8 +267,8 @@ namespace Rebellion.Tests.Multiplayer
 
             Assert.AreEqual(snapshot.Hash, _store.ReadRecord("host").snapshotHash);
             Assert.AreEqual(snapshot.Hash, _store.ReadRecord("guest").snapshotHash);
-            Assert.AreEqual(_record.campaignID, _store.ReadState("host").Game.Metadata.CampaignID);
-            Assert.AreEqual(_record.campaignID, _store.ReadState("guest").Game.Metadata.CampaignID);
+            Assert.AreEqual(_record.campaignID, _store.ReadState("host").Metadata.CampaignID);
+            Assert.AreEqual(_record.campaignID, _store.ReadState("guest").Metadata.CampaignID);
             Assert.AreEqual(
                 "Manual one",
                 manual.LoadGameData("manual-one").Metadata.SaveDisplayName
@@ -300,7 +299,7 @@ namespace Rebellion.Tests.Multiplayer
         /// <returns>The durable publication.</returns>
         private Task WriteCheckpointAsync(string userID)
         {
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
             _record.snapshotHash = snapshot.Hash;
             return _store.WriteAsync(userID, _record, snapshot);
         }

@@ -162,6 +162,17 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Refreshes authenticated presentation names without changing the campaign's approved setup.
+        /// </summary>
+        /// <param name="hostName">The normalized host display name accepted during rejoin.</param>
+        /// <param name="guestName">The normalized guest display name accepted during rejoin.</param>
+        public void UpdateDisplayNames(string hostName, string guestName)
+        {
+            _state.hostName = hostName;
+            _state.guestName = guestName;
+        }
+
+        /// <summary>
         /// Reopens the second slot after a guest leaves before launch.
         /// </summary>
         public void RemoveGuest()

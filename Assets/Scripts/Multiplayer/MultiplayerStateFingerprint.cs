@@ -10,6 +10,7 @@ using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Multiplayer
@@ -52,9 +53,20 @@ namespace Rebellion.Multiplayer
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
+            if (!session.CanCaptureSettledState || !session.CanExecuteCommands)
+                throw new InvalidOperationException(
+                    "Simulation verification requires a completed turn."
+                );
+            if (
+                session.GetService<IRandomNumberProvider>() is not SystemRandomProvider random
+                || !ReferenceEquals(random, session.Game.Random)
+            )
+                throw new InvalidOperationException(
+                    "Simulation verification requires the session's active random stream."
+                );
             VerificationState state = new()
             {
-                Continuation = session.CaptureRecoveryState(),
+                Game = session.Game,
                 RuntimeRules = session.Game.Config,
             };
             Accumulator accumulator = new();
@@ -68,7 +80,7 @@ namespace Rebellion.Multiplayer
         /// <param name="session">The restored session after local presentation is reapplied.</param>
         /// <param name="expected">The source simulation fingerprint.</param>
         /// <returns>The independently computed continuation fingerprint.</returns>
-        public static string VerifyRecovery(GameSession session, string expected)
+        public static string VerifyLoadedGame(GameSession session, string expected)
         {
             string actual = ComputeSimulation(session);
             if (
@@ -90,23 +102,6 @@ namespace Rebellion.Multiplayer
         private static TypePlan CreateSimulationPlan(Type type)
         {
             TypePlan plan = CreatePlan(type);
-            if (typeof(BaseSceneNode).IsAssignableFrom(type))
-                return new TypePlan(
-                    type,
-                    plan.Scalar,
-                    plan.Code,
-                    plan.Members.Concat(
-                            new[]
-                            {
-                                typeof(BaseSceneNode).GetProperty(nameof(BaseSceneNode.ParentNode)),
-                                typeof(BaseSceneNode).GetProperty(
-                                    nameof(BaseSceneNode.LastParentNode)
-                                ),
-                            }
-                        )
-                        .ToArray(),
-                    plan.InlineCollection
-                );
             return type == typeof(Player)
                 ? new TypePlan(
                     type,
@@ -186,7 +181,7 @@ namespace Rebellion.Multiplayer
                 {
                     MemberInfo member = plan.Members[index];
                     object child = plan.RawIdentity[index]
-                        ? ((BaseGameEntity)value).GetRecoveryInstanceID()
+                        ? ((BaseGameEntity)value).PeekInstanceID()
                         : plan.Getters[index].GetValue(value);
                     if (child == null)
                     {
@@ -209,7 +204,7 @@ namespace Rebellion.Multiplayer
         [PersistableObject]
         private sealed class VerificationState
         {
-            public GameSessionRecoveryState Continuation { get; set; }
+            public GameRoot Game { get; set; }
             public GameConfig RuntimeRules { get; set; }
         }
 

@@ -15,6 +15,7 @@ namespace Rebellion.Multiplayer
         private MultiplayerGameSession _gameSession;
         private bool _awaitingSnapshotReceipt;
         private string _initialSimulationFingerprint;
+        private MultiplayerSnapshotMessage _pendingRejoinSnapshot;
         private GameSession _readyPresentationSession;
         private string _readyPresentationInitializationID;
 
@@ -83,6 +84,13 @@ namespace Rebellion.Multiplayer
             _readyPresentationSession = runtime.GetActiveGameSession();
             _readyPresentationInitializationID = _initializationID;
             runtime.GetActiveGameManager().EnableCoordinatedSpeeds();
+            if (_pendingRejoinSnapshot != null)
+            {
+                MultiplayerSnapshotMessage metadata = _pendingRejoinSnapshot;
+                _pendingRejoinSnapshot = null;
+                AcceptInitialSnapshot(metadata);
+                return;
+            }
             if (_role == MultiplayerRole.Guest)
             {
                 QueueSend(
@@ -194,26 +202,56 @@ namespace Rebellion.Multiplayer
                 || Failure != null
             )
                 return;
-            if (!_runtime.GetActiveGameSession().CanCaptureRecoveryState)
+            if (!_runtime.GetActiveGameSession().CanCaptureSettledState)
                 return;
             try
             {
-                MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                    _runtime.GetActiveGameSession()
+                MultiplayerSnapshot snapshot = PrepareInitialSnapshot(
+                    out MultiplayerSnapshotMessage metadata
                 );
-                _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
-                    _runtime.GetActiveGameSession()
+                QueueSend(
+                    new MultiplayerPacket(
+                        MultiplayerMessageType.SnapshotCommit,
+                        JsonUtility.ToJson(metadata),
+                        snapshot.Payload
+                    )
                 );
-                long revision = _snapshotAdmission.NextRevision();
-                _lastAcceptedHash = snapshot.Hash;
-                _awaitingSnapshotReceipt = true;
-                SendSnapshot(MultiplayerMessageType.SnapshotCommit, snapshot, revision, 0);
                 SetStatus("Synchronizing the game");
             }
             catch (Exception exception)
             {
                 HandleGameplayFailure(exception);
             }
+        }
+
+        /// <summary>
+        /// Loads the selected saved world locally and prepares the ordinary initial-state receipt barrier.
+        /// </summary>
+        /// <param name="metadata">Receives the revision, payload hash, and loaded-state fingerprint.</param>
+        /// <returns>The one world payload supplied to the other participant.</returns>
+        private MultiplayerSnapshot PrepareInitialSnapshot(out MultiplayerSnapshotMessage metadata)
+        {
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
+                _runtime.GetActiveGameSession()
+            );
+            GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
+            ConfigureGame(game);
+            _runtime.ReplaceMultiplayerGame(game);
+            _runtime.BlockGameOperations();
+            _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
+                _runtime.GetActiveGameSession()
+            );
+            metadata = new MultiplayerSnapshotMessage
+            {
+                revision = _snapshotAdmission.NextRevision(),
+                baseRevision = 0,
+                hash = snapshot.Hash,
+                simulationFingerprint = _initialSimulationFingerprint,
+                initializationID = _initializationID,
+            };
+            _lastAcceptedHash = snapshot.Hash;
+            _awaitingSnapshotReceipt = true;
+            return snapshot;
         }
 
         /// <summary>
@@ -227,18 +265,20 @@ namespace Rebellion.Multiplayer
             );
             if (!MultiplayerSessionIdentity.Matches(_initializationID, metadata?.initializationID))
                 return;
-            if (!metadata.runtimeRecovery)
-                throw new InvalidOperationException(
-                    "The host did not supply a complete runtime continuation."
-                );
-            GameSessionRecoveryState state = MultiplayerRecoverySnapshotCodec.Deserialize(
-                packet.Payload,
-                metadata.hash
-            );
-            ConfigureGame(state.Game);
-            _runtime.ReplaceMultiplayerRecovery(state);
+            GameRoot state = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
+            ConfigureGame(state);
+            _runtime.ReplaceMultiplayerGame(state);
             CaptureLocalPresentation(_runtime.GetActiveGame());
-            metadata.simulationFingerprint = MultiplayerStateFingerprint.VerifyRecovery(
+            AcceptInitialSnapshot(metadata);
+        }
+
+        /// <summary>
+        /// Verifies a normally loaded world and acknowledges the shared initial-state barrier.
+        /// </summary>
+        /// <param name="metadata">The source's negotiated initial snapshot metadata.</param>
+        private void AcceptInitialSnapshot(MultiplayerSnapshotMessage metadata)
+        {
+            metadata.simulationFingerprint = MultiplayerStateFingerprint.VerifyLoadedGame(
                 _runtime.GetActiveGameSession(),
                 metadata.simulationFingerprint
             );
@@ -254,12 +294,12 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Opens the host day loop only after the guest confirms the initial complete state.
+        /// Opens ordered gameplay after the counterpart confirms the supplied initial world.
         /// </summary>
-        /// <param name="packet">The guest's verified initial-state receipt.</param>
+        /// <param name="packet">The counterpart's verified initial-state receipt.</param>
         private void HandleSnapshotReceipt(MultiplayerPacket packet)
         {
-            if (_role != MultiplayerRole.Host || !_awaitingSnapshotReceipt)
+            if (!_awaitingSnapshotReceipt)
                 return;
             MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
                 packet.Metadata
@@ -267,10 +307,11 @@ namespace Rebellion.Multiplayer
             if (!MultiplayerSessionIdentity.Matches(_initializationID, metadata?.initializationID))
                 return;
             if (
-                metadata == null
-                || metadata.revision != _snapshotAdmission.Revision
-                || metadata.hash != _lastAcceptedHash
-                || metadata.simulationFingerprint != _initialSimulationFingerprint
+                !_snapshotAdmission.AcceptsReceipt(
+                    metadata,
+                    _lastAcceptedHash,
+                    _initialSimulationFingerprint
+                )
             )
             {
                 HandleGameplayFailure(
@@ -395,6 +436,7 @@ namespace Rebellion.Multiplayer
             _gameSession = null;
             _awaitingSnapshotReceipt = false;
             _initialSimulationFingerprint = null;
+            _pendingRejoinSnapshot = null;
             _readyPresentationSession = null;
             _readyPresentationInitializationID = null;
             _runtime?.GetActiveGameManager()?.UnbindSpeedRequests();

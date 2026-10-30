@@ -76,6 +76,64 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(admission.Accepts(initialization, 1), Is.False);
         }
 
+        [Test]
+        public void AcceptsReceipt_MatchingLoadedWorld_ConfirmsInitialState()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization);
+            long revision = admission.NextRevision();
+            MultiplayerSnapshotMessage receipt = new()
+            {
+                initializationID = initialization,
+                revision = revision,
+                hash = "payload",
+                simulationFingerprint = "loaded-world",
+            };
+
+            Assert.That(admission.AcceptsReceipt(receipt, "payload", "loaded-world"), Is.True);
+        }
+
+        [TestCase("initialization")]
+        [TestCase("revision")]
+        [TestCase("payload")]
+        [TestCase("state")]
+        [TestCase("missing")]
+        public void AcceptsReceipt_DifferentInitialState_RejectsReceipt(string difference)
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization);
+            long revision = admission.NextRevision();
+            MultiplayerSnapshotMessage receipt = new()
+            {
+                initializationID = initialization,
+                revision = revision,
+                hash = "payload",
+                simulationFingerprint = "loaded-world",
+            };
+            switch (difference)
+            {
+                case "initialization":
+                    receipt.initializationID = Guid.NewGuid().ToString("N");
+                    break;
+                case "revision":
+                    receipt.revision++;
+                    break;
+                case "payload":
+                    receipt.hash = "another-payload";
+                    break;
+                case "state":
+                    receipt.simulationFingerprint = "another-world";
+                    break;
+                case "missing":
+                    receipt = null;
+                    break;
+            }
+
+            Assert.That(admission.AcceptsReceipt(receipt, "payload", "loaded-world"), Is.False);
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("invalid")]

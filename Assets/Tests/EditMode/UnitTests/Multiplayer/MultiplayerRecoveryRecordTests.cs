@@ -20,6 +20,39 @@ namespace Rebellion.Tests.Multiplayer
             Assert.AreEqual(role, record.GetRole(userID));
         }
 
+        [TestCase("host", "Current host", "Returning guest")]
+        [TestCase("guest", "Returning host", "Current guest")]
+        public void UpdatePlayerNames_EitherRoomOwner_UsesReservedSimulationRoles(
+            string localUserID,
+            string hostName,
+            string guestName
+        )
+        {
+            MultiplayerRecoveryRecord record = CreateRecord();
+            record.UpdatePlayerNames(
+                localUserID,
+                localUserID == "host" ? hostName : guestName,
+                localUserID == "host" ? guestName : hostName
+            );
+
+            Assert.That(record.hostName, Is.EqualTo(hostName));
+            Assert.That(record.guestName, Is.EqualTo(guestName));
+        }
+
+        [Test]
+        public void UpdatePlayerNames_UnreservedAccount_DoesNotChangeNames()
+        {
+            MultiplayerRecoveryRecord record = CreateRecord();
+            string hostName = record.hostName;
+            string guestName = record.guestName;
+
+            Assert.Throws<InvalidDataException>(() =>
+                record.UpdatePlayerNames("other", "Other", "Other peer")
+            );
+            Assert.That(record.hostName, Is.EqualTo(hostName));
+            Assert.That(record.guestName, Is.EqualTo(guestName));
+        }
+
         [Test]
         public void GetRole_UnrelatedAccount_RejectsReservation()
         {

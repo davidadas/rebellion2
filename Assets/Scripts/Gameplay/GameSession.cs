@@ -19,7 +19,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Constructs and connects runtime components for the active game graph.
     /// </summary>
-    public sealed partial class GameSession : IServiceLocator, IDisposable
+    public sealed class GameSession : IServiceLocator, IDisposable
     {
         private readonly GameDataCatalog _gameData;
         private readonly List<Action> _disconnect = new();
@@ -211,7 +211,7 @@ namespace Rebellion.Gameplay
             ServiceLocator previousServiceScope = _serviceScope;
             try
             {
-                InitializeComponents(Tick.ConnectRuntime);
+                InitializeComponents();
                 RebuildDerivedState();
                 SettlePendingGameplayResults();
             }
@@ -300,8 +300,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Constructs the runtime components and connects their explicit dependencies.
         /// </summary>
-        /// <param name="connectTick">Connects normal or recovered tick scheduling.</param>
-        private void InitializeComponents(Action<IServiceLocator> connectTick)
+        private void InitializeComponents()
         {
             MessageFactory messageFactory = new MessageFactory(
                 _gameData.MessageDefinitions.GetDeepCopy()
@@ -317,7 +316,7 @@ namespace Rebellion.Gameplay
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
-            connectTick(_serviceScope);
+            Tick.ConnectRuntime(_serviceScope);
             GameEventCommands = GetService<GameEventCommands>();
             GameEventCommands.ValidateEvents(Game.GetEventPool());
 

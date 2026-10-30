@@ -104,10 +104,9 @@ namespace Rebellion.Tests.Gameplay
             GameSession restored;
             if (recovery)
             {
-                MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(source);
-                restored = MultiplayerRecoverySnapshotCodec.Restore(
-                    snapshot.Payload,
-                    snapshot.Hash,
+                MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
+                restored = new GameSession(
+                    MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     catalog
                 );
             }

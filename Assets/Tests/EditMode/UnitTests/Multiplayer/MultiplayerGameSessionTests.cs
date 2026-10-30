@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void ApplyRecoveryState_RemovedUnitThenSameAddition_PreservesVerification()
+        public void ReplaceGame_RemovedUnitThenSameAddition_PreservesVerification()
         {
             using PeerPair peers = new();
             Planet planet = peers.HostGame.GetSceneNodeByInstanceID<Planet>("host-planet");
@@ -148,11 +148,9 @@ namespace Rebellion.Tests.Multiplayer
                 })
                 .GetAwaiter()
                 .GetResult();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                peers.HostSimulation
-            );
-            peers.GuestSimulation.ApplyRecoveryState(
-                MultiplayerRecoverySnapshotCodec.Deserialize(snapshot.Payload, snapshot.Hash)
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(peers.HostSimulation);
+            peers.GuestSimulation.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash)
             );
             foreach (GameRoot game in new[] { peers.HostGame, peers.GuestGame })
                 game.AttachNode(
@@ -173,7 +171,7 @@ namespace Rebellion.Tests.Multiplayer
                     .GetResult();
             peers.AssertSharedState();
             Assert.DoesNotThrow(() =>
-                MultiplayerStateFingerprint.VerifyRecovery(
+                MultiplayerStateFingerprint.VerifyLoadedGame(
                     peers.GuestSimulation,
                     MultiplayerStateFingerprint.ComputeSimulation(peers.HostSimulation)
                 )
@@ -1181,10 +1179,10 @@ namespace Rebellion.Tests.Multiplayer
             );
             peers.Flush();
             Assert.Throws<InvalidOperationException>(() =>
-                MultiplayerRecoverySnapshotCodec.Capture(peers.HostSimulation)
+                MultiplayerSnapshotCodec.Capture(peers.HostSimulation)
             );
             Assert.Throws<InvalidOperationException>(() =>
-                MultiplayerRecoverySnapshotCodec.Capture(peers.GuestSimulation)
+                MultiplayerSnapshotCodec.Capture(peers.GuestSimulation)
             );
             Task<PlayerActionResult> second = peers.Guest.ExecuteAsync(
                 new ResolveCombatPlayerAction
@@ -1234,7 +1232,7 @@ namespace Rebellion.Tests.Multiplayer
             foreach (GameRoot game in new[] { previous.HostGame, previous.GuestGame })
             foreach (Player player in game.GetPlayers())
                 player.RequestedGameSpeed = TickSpeed.Paused;
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
                 survivor == MultiplayerRole.Host
                     ? previous.HostSimulation
                     : previous.GuestSimulation
@@ -1287,7 +1285,7 @@ namespace Rebellion.Tests.Multiplayer
                         cycle % 2 == 0 ? firstSurvivor
                         : firstSurvivor == MultiplayerRole.Host ? MultiplayerRole.Guest
                         : MultiplayerRole.Host;
-                    MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+                    MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
                         survivor == MultiplayerRole.Host
                             ? peers.HostSimulation
                             : peers.GuestSimulation
@@ -1332,7 +1330,7 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair previous = new(contested: true);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
                 survivor == MultiplayerRole.Host
                     ? previous.HostSimulation
                     : previous.GuestSimulation
@@ -1359,7 +1357,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(Completed(initialResponse).Accepted);
             Assert.IsNull(Completed(initialResponse).SpaceCombatResult);
             Assert.Throws<InvalidOperationException>(() =>
-                MultiplayerRecoverySnapshotCodec.Capture(previous.HostSimulation)
+                MultiplayerSnapshotCodec.Capture(previous.HostSimulation)
             );
             previous.Host.Dispose();
             previous.Guest.Dispose();
@@ -1529,9 +1527,7 @@ namespace Rebellion.Tests.Multiplayer
                     {
                         GameSession survivor =
                             network.Next(2) == 0 ? peers.HostSimulation : peers.GuestSimulation;
-                        MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                            survivor
-                        );
+                        MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(survivor);
                         var gameData = TestGameData.Create(peers.HostGame.Config);
                         peers.Dispose();
                         peers = new PeerPair(snapshot, gameData);
@@ -1559,7 +1555,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             previous.Host.Pump();
             MultiplayerPacket oldCommit = previous.ToGuest.Dequeue();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
                 survivor == MultiplayerRole.Host
                     ? previous.HostSimulation
                     : previous.GuestSimulation
@@ -1692,14 +1688,12 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="content">The verified shared gameplay content.</param>
             public PeerPair(MultiplayerSnapshot snapshot, GameDataCatalog content)
             {
-                HostSimulation = MultiplayerRecoverySnapshotCodec.Restore(
-                    snapshot.Payload,
-                    snapshot.Hash,
+                HostSimulation = new GameSession(
+                    MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     content
                 );
-                GuestSimulation = MultiplayerRecoverySnapshotCodec.Restore(
-                    snapshot.Payload,
-                    snapshot.Hash,
+                GuestSimulation = new GameSession(
+                    MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                     content
                 );
                 HostGame.LocalPlayerFactionID = _hostFactionID;

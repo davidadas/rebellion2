@@ -77,10 +77,29 @@ namespace Rebellion.Game
         private IRandomNumberProvider _random;
 
         [PersistableIgnore]
+        private int? _restoredSeed;
+
+        [PersistableMember(Name = "RandomSeed")]
+        private int PersistedRandomSeed
+        {
+            get => (_random as SystemRandomProvider)?.Seed ?? _restoredSeed ?? Summary.Seed;
+            set
+            {
+                _restoredSeed = value;
+                if (_random is SystemRandomProvider current && current.Seed != value)
+                    _random = new SystemRandomProvider(value, _restoredIndex);
+            }
+        }
+
+        [PersistableIgnore]
         public IRandomNumberProvider Random
         {
-            get => _random ??= new SystemRandomProvider(Summary.Seed, _restoredIndex);
-            set => _random = value;
+            get => _random ??= new SystemRandomProvider(PersistedRandomSeed, _restoredIndex);
+            set
+            {
+                _random = value;
+                _restoredSeed = (value as SystemRandomProvider)?.Seed;
+            }
         }
 
         [PersistableIgnore]
@@ -94,7 +113,7 @@ namespace Rebellion.Game
             {
                 _restoredIndex = value;
                 if (_random is SystemRandomProvider srp && srp.CallCount != value)
-                    _random = new SystemRandomProvider(Summary.Seed, value);
+                    _random = new SystemRandomProvider(PersistedRandomSeed, value);
             }
         }
 
@@ -111,7 +130,6 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets or sets whether accepted runtime entities use the game's persisted identity sequence.
         /// </summary>
-        [PersistableIgnore]
         public bool UseDeterministicRuntimeIdentifiers { get; set; }
 
         /// <summary>
@@ -190,36 +208,6 @@ namespace Rebellion.Game
         {
             get => _galaxy;
             set => PersistedGalaxy = value;
-        }
-
-        /// <summary>
-        /// Assigns a recovered hierarchy without performing parent transitions or gameplay repairs.
-        /// </summary>
-        /// <param name="galaxy">The recovered hierarchy with its original object references.</param>
-        internal void SetRecoveryGalaxy(GalaxyMap galaxy)
-        {
-            _galaxy = galaxy ?? throw new ArgumentNullException(nameof(galaxy));
-        }
-
-        /// <summary>
-        /// Rebuilds node and faction ownership indexes from the restored hierarchy without changing identities,
-        /// ownership, parent history, or gameplay state.
-        /// </summary>
-        internal void RebuildNodeIndex()
-        {
-            NodesByInstanceID.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
-            ((BaseSceneNode)Galaxy).TraverseIncludingDisabled(node =>
-            {
-                string identity = ((BaseGameEntity)node).GetRecoveryInstanceID();
-                if (string.IsNullOrEmpty(identity))
-                    throw new InvalidOperationException(
-                        "A restored scene node has no assigned identity."
-                    );
-                NodesByInstanceID.Add(identity, node);
-                RegisterOwnedUnit(node);
-            });
         }
 
         /// <summary>

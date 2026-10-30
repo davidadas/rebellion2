@@ -3,7 +3,6 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Rebellion.Game;
-using Rebellion.Gameplay;
 using Rebellion.Util.IO;
 using UnityEngine;
 
@@ -43,6 +42,19 @@ namespace Rebellion.Multiplayer
             if (userID == guestUserID)
                 return MultiplayerRole.Guest;
             throw new InvalidDataException("This recovery belongs to different players.");
+        }
+
+        /// <summary>
+        /// Records the names accepted during rejoin according to each account's reserved simulation role.
+        /// </summary>
+        /// <param name="localUserID">The authenticated local participant.</param>
+        /// <param name="localName">The normalized local display name.</param>
+        /// <param name="remoteName">The normalized counterpart display name.</param>
+        public void UpdatePlayerNames(string localUserID, string localName, string remoteName)
+        {
+            MultiplayerRole role = GetRole(localUserID);
+            hostName = role == MultiplayerRole.Host ? localName : remoteName;
+            guestName = role == MultiplayerRole.Guest ? localName : remoteName;
         }
 
         /// <summary>
@@ -98,15 +110,15 @@ namespace Rebellion.Multiplayer
         /// Checks the decoded graph before it can replace a runtime or enter a loading scene.
         /// </summary>
         /// <param name="state">The complete independently decoded continuation.</param>
-        public void ValidateState(GameSessionRecoveryState state)
+        public void ValidateState(GameRoot state)
         {
             Validate();
-            if (state?.Game?.Metadata?.CampaignID != campaignID)
+            if (state?.Metadata?.CampaignID != campaignID)
                 throw new InvalidDataException(
                     "The recovery checkpoint belongs to another campaign."
                 );
             MultiplayerCampaignAdmission.ValidateSavedCampaign(
-                state.Game.Metadata.MultiplayerCampaign,
+                state.Metadata.MultiplayerCampaign,
                 new MultiplayerCampaignIdentity
                 {
                     HostUserID = hostUserID,
@@ -220,7 +232,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="userID">The authenticated account owning this local copy.</param>
         /// <returns>The decoded continuation matching the latest atomically published record.</returns>
-        public GameSessionRecoveryState ReadState(string userID)
+        public GameRoot ReadState(string userID)
         {
             return SerialFileOperations.Run(
                 _directory,
@@ -238,7 +250,7 @@ namespace Rebellion.Multiplayer
                         || reader.BaseStream.Length - reader.BaseStream.Position != length
                     )
                         throw new InvalidDataException("The recovery checkpoint is incomplete.");
-                    GameSessionRecoveryState state = MultiplayerRecoverySnapshotCodec.Deserialize(
+                    GameRoot state = MultiplayerSnapshotCodec.Restore(
                         reader.ReadBytes(length),
                         record.snapshotHash
                     );

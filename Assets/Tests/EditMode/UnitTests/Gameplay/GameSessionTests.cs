@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RestoreRecoveryState_QueuedProduction_RebuildsPriorityWithoutChangingSavedSequences()
+        public void ReplaceGame_QueuedProduction_RebuildsPriorityWithoutChangingSavedSequences()
         {
             _planet.EnergyCapacity = 2;
             Building first = new Building
@@ -109,10 +109,9 @@ namespace Rebellion.Tests.Gameplay
             _session.Pipeline.ResultsResolved += _ => published++;
 
             CompleteModelChanges(_session);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_game.Config)
             );
 
@@ -139,7 +138,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CaptureRecoveryState_ExecutingIncrementalTick_RejectsWithoutInterruptingIterator()
+        public void Capture_ExecutingIncrementalTick_RejectsWithoutInterruptingIterator()
         {
             _game.Config.AI.TickInterval = 1;
             _game.SetFactionController(_faction.InstanceID, "recovery-ai", PlayerControllerType.AI);
@@ -148,8 +147,10 @@ namespace Rebellion.Tests.Gameplay
             {
                 Assert.That(iterator.MoveNext(), Is.True);
 
-                Assert.That(_session.CanCaptureRecoveryState, Is.False);
-                Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+                Assert.That(_session.CanCaptureSettledState, Is.False);
+                Assert.Throws<InvalidOperationException>(() =>
+                    MultiplayerSnapshotCodec.Capture(_session)
+                );
                 Assert.That(_session.Tick.CanAcceptPlayerActions, Is.False);
             }
             finally
@@ -159,14 +160,16 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CaptureRecoveryState_ResultObserverDispatch_RejectsReentrantCapture()
+        public void Capture_ResultObserverDispatch_RejectsReentrantCapture()
         {
             bool observed = false;
             using IDisposable observation = _session.Results.Observe<GameResult>(_ =>
             {
                 observed = true;
-                Assert.That(_session.CanCaptureRecoveryState, Is.False);
-                Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+                Assert.That(_session.CanCaptureSettledState, Is.False);
+                Assert.Throws<InvalidOperationException>(() =>
+                    MultiplayerSnapshotCodec.Capture(_session)
+                );
             });
 
             _session.Pipeline.ProcessResults(
@@ -183,11 +186,11 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.That(observed, Is.True);
-            Assert.That(_session.CanCaptureRecoveryState, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.True);
         }
 
         [Test]
-        public void CaptureRecoveryState_PendingHumanCombat_RejectsWithoutChangingBattle()
+        public void Capture_PendingHumanCombat_RejectsWithoutChangingBattle()
         {
             Faction opponent = new Faction { InstanceID = "recovery-opponent" };
             _game.GetFactions().Add(opponent);
@@ -216,22 +219,24 @@ namespace Rebellion.Tests.Gameplay
             int tick = _game.CurrentTick;
             long randomPosition = _game.RandomIndex;
 
-            Assert.That(_session.CanCaptureRecoveryState, Is.False);
-            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.That(_session.CanCaptureSettledState, Is.False);
             Assert.Throws<InvalidOperationException>(() =>
-                MultiplayerRecoverySnapshotCodec.Capture(_session)
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
             );
             Assert.That(_session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
             Assert.That(first.IsInCombat && second.IsInCombat, Is.True);
             Assert.That(_game.CurrentTick, Is.EqualTo(tick));
             Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
             Assert.That(_session.Tick.IsSettled, Is.False);
-            Assert.That(_session.CanCaptureRecoveryState, Is.False);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
         }
 
         [TestCase(false)]
         [TestCase(true)]
-        public void RestoreRecoveryState_OwnershipTransfer_RebuildsFactionMembership(bool enabled)
+        public void ReplaceGame_OwnershipTransfer_RebuildsFactionMembership(bool enabled)
         {
             Faction opponent = new Faction { InstanceID = "recovery-transfer-owner" };
             _game.GetFactions().Add(opponent);
@@ -252,10 +257,10 @@ namespace Rebellion.Tests.Gameplay
             _game.ChangeOwnership(first, _faction.InstanceID);
 
             CompleteModelChanges(_session);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_game.Config)
             );
             Faction restoredFaction = recovered.Game.GetFactionByOwnerInstanceID(
@@ -278,7 +283,7 @@ namespace Rebellion.Tests.Gameplay
                 Is.Empty
             );
             Assert.That(
-                MultiplayerStateFingerprint.VerifyRecovery(
+                MultiplayerStateFingerprint.VerifyLoadedGame(
                     recovered,
                     MultiplayerStateFingerprint.ComputeSimulation(_session)
                 ),
@@ -288,7 +293,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        public void ApplyRecoveryState_PendingCombat_RestoresCompletedCheckpointAndAllowsNewDecision(
+        public void ReplaceGame_PendingCombat_RestoresCompletedCheckpointAndAllowsNewDecision(
             bool retreat
         )
         {
@@ -326,7 +331,10 @@ namespace Rebellion.Tests.Gameplay
                 100
             );
             CompleteModelChanges(_session);
-            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
+            );
             string fingerprint = MultiplayerStateFingerprint.ComputeSimulation(_session);
             int completedTick = _game.CurrentTick;
             int completed = 0;
@@ -334,8 +342,8 @@ namespace Rebellion.Tests.Gameplay
             _session.Tick.ProcessTick();
             Assert.That(_session.Tick.IsSettled, Is.False);
 
-            _session.ApplyRecoveryState(
-                MultiplayerRecoverySnapshotCodec.Deserialize(checkpoint.Payload, checkpoint.Hash)
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
             );
 
             Assert.That(_session.Tick.IsSettled, Is.True);
@@ -346,7 +354,7 @@ namespace Rebellion.Tests.Gameplay
                 Is.True
             );
             Assert.That(
-                MultiplayerStateFingerprint.VerifyRecovery(_session, fingerprint),
+                MultiplayerStateFingerprint.VerifyLoadedGame(_session, fingerprint),
                 Is.Not.Empty
             );
             _session.Tick.ProcessTick();
@@ -364,11 +372,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(_session.Tick.IsSettled, Is.True);
             Assert.That(_session.Game.CurrentTick, Is.EqualTo(completedTick + 1));
             Assert.That(completed, Is.EqualTo(1));
-            Assert.That(_session.CanCaptureRecoveryState, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.True);
         }
 
         [Test]
-        public void ApplyRecoveryState_DecodedBoundary_PreservesFacadesAndSubscriptionsWhileDetachingOldProducers()
+        public void ReplaceGame_DecodedBoundary_PreservesFacadesAndSubscriptionsWhileDetachingOldProducers()
         {
             Regiment regiment = new Regiment
             {
@@ -381,15 +389,12 @@ namespace Rebellion.Tests.Gameplay
             GameTickProcessor tick = _session.Tick;
             GameResultPipeline pipeline = _session.Pipeline;
             CompleteModelChanges(_session);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
-                snapshot.Payload,
-                snapshot.Hash
-            );
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            GameRoot decoded = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
             int observed = 0;
             pipeline.ResultsResolved += _ => observed++;
 
-            _session.ApplyRecoveryState(decoded);
+            _session.ReplaceGame(decoded);
             Assert.That(
                 previousCommands.TryScrap(new IManufacturable[] { regiment }, _faction.InstanceID),
                 Is.True
@@ -409,12 +414,12 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.That(_session.Tick, Is.SameAs(tick));
             Assert.That(_session.Pipeline, Is.SameAs(pipeline));
-            Assert.That(_session.Game, Is.SameAs(decoded.Game));
+            Assert.That(_session.Game, Is.SameAs(decoded));
             Assert.That(observed, Is.EqualTo(1));
         }
 
         [Test]
-        public void RestoreRecoveryState_SuppressionShipWithDetachedHistoricalParent_RebuildsMembershipWithoutReparenting()
+        public void ReplaceGame_SuppressionShipWithPreviousParentID_RebuildsMembership()
         {
             Fleet fleet = CreateCombatFleet(
                 _game,
@@ -431,11 +436,10 @@ namespace Rebellion.Tests.Gameplay
             ship.LastParentInstanceID = historicalParent.InstanceID;
             string parentID = ship.ParentInstanceID;
             CompleteModelChanges(_session);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
 
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_game.Config)
             );
 
@@ -446,12 +450,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(sector.GetSectorSuppressionDivisor(_faction.InstanceID), Is.EqualTo(7));
             Assert.That(restoredShip.ParentInstanceID, Is.EqualTo(parentID));
             Assert.That(restoredShip.LastParentInstanceID, Is.EqualTo(historicalParent.InstanceID));
-            Assert.That(restoredShip.LastParentNode, Is.Not.Null);
-            Assert.That(restoredShip.LastParentNode, Is.Not.SameAs(historicalParent));
-            Assert.That(
-                restoredShip.LastParentNode.InstanceID,
-                Is.EqualTo(historicalParent.InstanceID)
-            );
+            Assert.That(restoredShip.LastParentNode, Is.Null);
             Assert.That(
                 recovered.Game.GetSceneNodeByInstanceID<Fleet>(historicalParent.InstanceID),
                 Is.Null
@@ -459,7 +458,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RestoreRecoveryState_MissionRosterChanged_PreservesExistingAbortDetection()
+        public void ReplaceGame_MissionRosterChanged_PreservesExistingAbortDetection()
         {
             ReconnaissanceMission mission = new ReconnaissanceMission
             {
@@ -482,11 +481,10 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(second, mission);
             mission.Initiate(20);
             _game.MoveNode(first, _planet);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
 
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
                 TestGameData.Create(_game.Config)
             );
 
@@ -499,7 +497,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CaptureRecoveryState_UnpublishedOwnershipChange_RequiresCompletedReactions()
+        public void Capture_UnpublishedOwnershipChange_RequiresCompletedReactions()
         {
             Faction opponent = new() { InstanceID = "ownership-opponent" };
             _game.GetFactions().Add(opponent);
@@ -507,7 +505,9 @@ namespace Rebellion.Tests.Gameplay
                 .GetService<PlanetaryControlCommands>()
                 .TransferPlanet(_planet, opponent);
             Assert.That(_session.CanCaptureSettledState, Is.False);
-            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
 
             _session
                 .ExecuteCommandAsync(() =>
@@ -520,10 +520,12 @@ namespace Rebellion.Tests.Gameplay
                 })
                 .GetAwaiter()
                 .GetResult();
-            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                checkpoint.Payload,
-                checkpoint.Hash,
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
+            );
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash),
                 TestGameData.Create(_game.Config)
             );
 
@@ -535,26 +537,6 @@ namespace Rebellion.Tests.Gameplay
                 MultiplayerStateFingerprint.ComputeSimulation(recovered),
                 Is.EqualTo(MultiplayerStateFingerprint.ComputeSimulation(_session))
             );
-        }
-
-        [Test]
-        public void RestoreRecoveryState_ZeroResearchTimer_RetainsTimerAndRandomPositionUntilNormalResearchPhase()
-        {
-            _faction.ResearchState.NextRefreshTick = 0;
-            long randomPosition = _game.RandomIndex;
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
-                TestGameData.Create(_game.Config)
-            );
-
-            Assert.That(
-                recovered.Game.GetFactions().Single().ResearchState.NextRefreshTick,
-                Is.Zero
-            );
-            Assert.That(recovered.Game.RandomIndex, Is.EqualTo(randomPosition));
         }
 
         [TestCase(false)]
@@ -3176,10 +3158,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(creations, Is.EqualTo(1));
             Assert.That(_session.CanCaptureSettledState, Is.True);
             Assert.That(_session.GetService<ManufacturingCommands>().HasPendingResults, Is.False);
-            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                checkpoint.Payload,
-                checkpoint.Hash,
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash),
                 TestGameData.Create(_game.Config)
             );
             int replayedCreations = 0;
@@ -3207,7 +3188,9 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.That(_session.CanCaptureSettledState, Is.False);
-            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
             Assert.That(_session.ExecuteCommandAsync(() => true).Result, Is.True);
             Assert.That(_session.CanCaptureSettledState, Is.True);
         }
@@ -3224,7 +3207,9 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.That(command.IsFaulted, Is.True);
             Assert.That(_session.CanCaptureSettledState, Is.False);
-            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
         }
 
         [Test]

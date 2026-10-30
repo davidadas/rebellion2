@@ -40,7 +40,25 @@ namespace Rebellion.Multiplayer
             && revision >= Revision;
 
         /// <summary>
-        /// Issues the next host revision within the current initialization.
+        /// Confirms that the counterpart loaded the exact initial snapshot supplied in this initialization.
+        /// </summary>
+        /// <param name="receipt">The independently verified snapshot receipt.</param>
+        /// <param name="expectedHash">The hash of the supplied world payload.</param>
+        /// <param name="expectedFingerprint">The expected state after ordinary loading.</param>
+        /// <returns>Whether every identity, revision, and state check matches.</returns>
+        public bool AcceptsReceipt(
+            MultiplayerSnapshotMessage receipt,
+            string expectedHash,
+            string expectedFingerprint
+        ) =>
+            receipt != null
+            && MultiplayerSessionIdentity.Matches(InitializationID, receipt.initializationID)
+            && receipt.revision == Revision
+            && receipt.hash == expectedHash
+            && receipt.simulationFingerprint == expectedFingerprint;
+
+        /// <summary>
+        /// Issues the next source revision within the current initialization.
         /// </summary>
         /// <returns>The next snapshot revision.</returns>
         public long NextRevision() => ++Revision;

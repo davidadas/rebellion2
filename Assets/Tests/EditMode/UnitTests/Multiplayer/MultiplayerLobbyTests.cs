@@ -39,6 +39,24 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
+        public void UpdateDisplayNames_StartedCampaign_PreservesApprovedSetup()
+        {
+            MultiplayerLobby lobby = CreateReadyLobby();
+            lobby.BeginLaunch();
+            MultiplayerLobbyState before = lobby.State;
+
+            lobby.UpdateDisplayNames("Current host", "Returning guest");
+
+            MultiplayerLobbyState after = lobby.State;
+            Assert.That(after.hostName, Is.EqualTo("Current host"));
+            Assert.That(after.guestName, Is.EqualTo("Returning guest"));
+            Assert.That(after.hostFactionID, Is.EqualTo(before.hostFactionID));
+            Assert.That(after.guestFactionID, Is.EqualTo(before.guestFactionID));
+            Assert.That(after.hostReady && after.guestReady && after.launching, Is.True);
+            Assert.That(after.settingsRevision, Is.EqualTo(before.settingsRevision));
+        }
+
+        [Test]
         public void SelectFaction_AfterBothReady_ClearsBothApprovals()
         {
             MultiplayerLobby lobby = CreateReadyLobby();

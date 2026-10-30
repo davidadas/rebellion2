@@ -791,32 +791,6 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Sends one revisioned snapshot packet.
-        /// </summary>
-        /// <param name="type">The snapshot message type.</param>
-        /// <param name="snapshot">The captured state.</param>
-        /// <param name="revision">The resulting authoritative revision.</param>
-        /// <param name="baseRevision">The revision on which the state was based.</param>
-        private void SendSnapshot(
-            MultiplayerMessageType type,
-            MultiplayerSnapshot snapshot,
-            long revision,
-            long baseRevision
-        )
-        {
-            MultiplayerSnapshotMessage metadata = new MultiplayerSnapshotMessage
-            {
-                revision = revision,
-                baseRevision = baseRevision,
-                hash = snapshot.Hash,
-                simulationFingerprint = _initialSimulationFingerprint,
-                runtimeRecovery = true,
-                initializationID = _initializationID,
-            };
-            QueueSend(new MultiplayerPacket(type, JsonUtility.ToJson(metadata), snapshot.Payload));
-        }
-
-        /// <summary>
         /// Adopts snapshot ordering for a new initialization and discards its predecessor's pending state.
         /// </summary>
         /// <param name="initializationID">The identity agreed for the initialized game.</param>

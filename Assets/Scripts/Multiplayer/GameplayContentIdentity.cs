@@ -121,8 +121,7 @@ namespace Rebellion.Multiplayer
             /// </summary>
             /// <param name="target">The existing prototype.</param>
             /// <returns>The explicitly assigned identity, including null.</returns>
-            public object GetValue(object target) =>
-                ((BaseGameEntity)target).GetRecoveryInstanceID();
+            public object GetValue(object target) => ((BaseGameEntity)target).PeekInstanceID();
 
             /// <summary>
             /// Rejects mutation through this write-only hashing policy.

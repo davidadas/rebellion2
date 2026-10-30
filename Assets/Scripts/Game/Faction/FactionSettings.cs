@@ -105,13 +105,6 @@ namespace Rebellion.Game.Factions
             get => _headquarters ??= new HeadquartersSettings();
             set => _headquarters = value ?? new HeadquartersSettings();
         }
-
-        /// <summary>
-        /// Restores the existing processing rate, including the untouched constructor value.
-        /// </summary>
-        /// <param name="points">The exact captured backing value.</param>
-        internal void RestoreRecoveryResourceProcessingPoints(int points) =>
-            _resourceProcessingPointsPerFacility = points;
     }
 
     /// <summary>

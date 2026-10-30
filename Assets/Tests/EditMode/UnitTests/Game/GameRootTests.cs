@@ -139,11 +139,29 @@ namespace Rebellion.Tests.Game
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
                 SerializationHelper.Serialize(game)
             );
-            Assert.IsFalse(restored.UseDeterministicRuntimeIdentifiers);
-            restored.UseDeterministicRuntimeIdentifiers = true;
+            Assert.IsTrue(restored.UseDeterministicRuntimeIdentifiers);
 
             Assert.AreEqual(game.RuntimeIdentifierIndex, restored.RuntimeIdentifierIndex);
             Assert.AreEqual(game.GenerateRuntimeIdentifier(), restored.GenerateRuntimeIdentifier());
+        }
+
+        [Test]
+        public void Random_SerializedAlternateSeed_ContinuesSameStream()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(123);
+            game.Random = new SystemRandomProvider(456);
+            game.Random.NextInt(int.MinValue, int.MaxValue);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(game)
+            );
+
+            Assert.That(restored.Summary.Seed, Is.EqualTo(123));
+            Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
+            Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
+            Assert.That(
+                restored.Random.NextInt(int.MinValue, int.MaxValue),
+                Is.EqualTo(game.Random.NextInt(int.MinValue, int.MaxValue))
+            );
         }
 
         [Test]

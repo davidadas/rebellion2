@@ -326,17 +326,14 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        IGameSessionOwner owner = GameLaunchContext.IsMultiplayer
+        MultiplayerCoordinator multiplayer = GameLaunchContext.IsMultiplayer
             ? MultiplayerCoordinator.EnsureExists()
             : null;
-        GameSessionRecoveryState recovery = GameLaunchContext.IsMultiplayer
-            ? MultiplayerCoordinator.EnsureExists().TakeInitialRecoveryState()
-            : null;
-        GameSession session =
-            recovery != null ? runtime.StartRecoveredGame(recovery, owner)
-            : loadedGame ? runtime.StartLoadedGame(game, owner)
+        IGameSessionOwner owner = multiplayer;
+        GameSession session = loadedGame
+            ? runtime.StartLoadedGame(game, owner)
             : runtime.StartGame(game, owner);
-        if (recovery == null)
+        if (multiplayer?.IsRejoining != true)
             ApplyGameLaunchSpeed(
                 runtime.GetActiveGameManager(),
                 bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed

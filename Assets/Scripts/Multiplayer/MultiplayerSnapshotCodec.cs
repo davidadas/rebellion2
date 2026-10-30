@@ -3,6 +3,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using Rebellion.Game;
+using Rebellion.Gameplay;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Multiplayer
@@ -40,6 +42,29 @@ namespace Rebellion.Multiplayer
     public static class MultiplayerSnapshotCodec
     {
         private const int _maximumExpandedSnapshotLength = 512 * 1024 * 1024;
+
+        /// <summary>
+        /// Captures a completed simulation through the same persisted world contract used by ordinary snapshots.
+        /// </summary>
+        /// <param name="session">The completed session whose world is captured.</param>
+        /// <returns>The compressed world and its integrity hash.</returns>
+        public static MultiplayerSnapshot Capture(GameSession session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (!session.CanCaptureSettledState || !session.CanExecuteCommands)
+                throw new InvalidOperationException(
+                    "A snapshot requires a completed turn outside simulation execution."
+                );
+            if (
+                session.GetService<IRandomNumberProvider>() is not SystemRandomProvider random
+                || !ReferenceEquals(random, session.Game.Random)
+            )
+                throw new InvalidOperationException(
+                    "A snapshot requires the session's active deterministic random stream."
+                );
+            return Capture(session.Game);
+        }
 
         /// <summary>
         /// Serializes launch settings to their XML wire representation.

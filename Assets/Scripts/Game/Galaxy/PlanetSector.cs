@@ -117,11 +117,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Clears derived live membership before rebuilding it from a recovered hierarchy.
-        /// </summary>
-        internal void ClearRecoverySuppressionSources() => _suppressionSources.Clear();
-
-        /// <summary>
         /// Creates an empty planet-sector copy.
         /// </summary>
         /// <returns>An empty planet sector.</returns>
