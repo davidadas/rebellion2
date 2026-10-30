@@ -125,6 +125,8 @@ public sealed class FacilityWindowTabRenderData
 /// </summary>
 public sealed class FacilityInventoryItemRenderData
 {
+    public bool CanDrag { get; }
+
     public Texture Texture { get; }
 
     public bool Selected { get; }
@@ -134,10 +136,12 @@ public sealed class FacilityInventoryItemRenderData
     /// </summary>
     /// <param name="texture">The displayed facility or resource image.</param>
     /// <param name="selected">Whether the item is selected.</param>
-    public FacilityInventoryItemRenderData(Texture texture, bool selected)
+    /// <param name="canDrag">Whether the item may initiate a destination-change drag.</param>
+    public FacilityInventoryItemRenderData(Texture texture, bool selected, bool canDrag = false)
     {
         Texture = texture;
         Selected = selected;
+        CanDrag = canDrag;
     }
 }
 

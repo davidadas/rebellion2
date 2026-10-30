@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Mathematics;
 
@@ -18,6 +19,7 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIAssessment
     {
+        private readonly HashSet<string> _heldOfficerIDs;
         private readonly GameRoot _game;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
@@ -270,11 +272,18 @@ namespace Rebellion.AI
         /// <param name="game">The game being assessed.</param>
         /// <param name="faction">The faction being assessed.</param>
         /// <param name="factionView">The faction-visible galaxy state.</param>
-        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
+        /// <param name="officerBehaviors">Content-authored officer behaviors evaluated for this assessment.</param>
+        public AIAssessment(
+            GameRoot game,
+            Faction faction,
+            GalaxyMap factionView,
+            IReadOnlyDictionary<string, OfficerAIBehavior> officerBehaviors = null
+        )
         {
             _game = game;
             _faction = faction;
             _factionView = factionView;
+            _heldOfficerIDs = BuildHeldOfficerIDs(officerBehaviors);
             _opposingFactionIds =
                 game?.GetFactions()
                     .Where(candidate => candidate.InstanceID != faction?.InstanceID)
@@ -397,6 +406,50 @@ namespace Rebellion.AI
             }
             EngagementOrderedFleets = BuildEngagementOrderedFleets();
             ColonizationOrderedFleets = BuildColonizationOrderedFleets();
+        }
+
+        /// <summary>
+        /// Returns whether this assessment withholds an owned officer from new AI assignments.
+        /// </summary>
+        /// <param name="officer">The officer being considered.</param>
+        /// <returns>True when the officer's hold-position conditions matched.</returns>
+        public bool IsOfficerHoldingPosition(Officer officer) =>
+            officer != null
+            && officer.OwnerInstanceID == _faction?.InstanceID
+            && _heldOfficerIDs.Contains(officer.InstanceID);
+
+        /// <summary>
+        /// Evaluates the active catalog's hold-position conditions once for this faction turn.
+        /// </summary>
+        /// <param name="behaviors">The content-only configuration indexed by officer identity.</param>
+        /// <returns>The officers excluded from new assignments during this assessment.</returns>
+        private HashSet<string> BuildHeldOfficerIDs(
+            IReadOnlyDictionary<string, OfficerAIBehavior> behaviors
+        )
+        {
+            HashSet<string> held = new(StringComparer.Ordinal);
+            if (_game == null || _faction == null || behaviors == null)
+                return held;
+            foreach (KeyValuePair<string, OfficerAIBehavior> entry in behaviors)
+            {
+                Officer officer = _game.GetSceneNodeByInstanceID<Officer>(
+                    entry.Key,
+                    includeDisabled: true
+                );
+                if (officer == null || officer.OwnerInstanceID != _faction.InstanceID)
+                    continue;
+                if (entry.Value.Type != OfficerAIBehaviorType.HoldPosition)
+                    throw new InvalidOperationException(
+                        $"Unsupported officer AI behavior '{entry.Value.Type}'."
+                    );
+                if (
+                    entry.Value.Conditionals.All(condition =>
+                        GameConditionEvaluator.IsMet(condition, _game)
+                    )
+                )
+                    held.Add(officer.InstanceID);
+            }
+            return held;
         }
 
         /// <summary>
@@ -2666,7 +2719,12 @@ namespace Rebellion.AI
             if (_faction == null)
                 return new List<IMissionParticipant>();
 
-            return _faction.GetAvailableMissionParticipants();
+            return _faction
+                .GetAvailableMissionParticipants()
+                .Where(participant =>
+                    participant is not Officer officer || !IsOfficerHoldingPosition(officer)
+                )
+                .ToList();
         }
 
         /// <summary>

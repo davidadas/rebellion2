@@ -7,6 +7,8 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class StrategyMissionTarget : ITargetable
 {
+    public bool MissionCreationRequested { get; }
+
     public GalaxyMapPlanet Planet { get; }
 
     public ISceneNode Item { get; }
@@ -18,8 +20,14 @@ public sealed class StrategyMissionTarget : ITargetable
     /// </summary>
     /// <param name="planet">The selected galaxy-map planet.</param>
     /// <param name="item">The selected scene node.</param>
-    public StrategyMissionTarget(GalaxyMapPlanet planet, ISceneNode item)
+    /// <param name="missionCreationRequested">Whether the target was selected through a mission drop target.</param>
+    public StrategyMissionTarget(
+        GalaxyMapPlanet planet,
+        ISceneNode item,
+        bool missionCreationRequested = false
+    )
     {
+        MissionCreationRequested = missionCreationRequested;
         Planet = planet;
         Item = item;
     }

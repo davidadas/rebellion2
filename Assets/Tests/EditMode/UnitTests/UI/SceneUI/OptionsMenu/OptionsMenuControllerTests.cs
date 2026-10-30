@@ -311,6 +311,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyAlwaysOpen = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.KeepIdleBarOpen;
+            bool initiallyAboveWindows = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.KeepIdleBarAboveWindows;
             bool initiallyShowingStats = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowUnitCardStats;
@@ -326,6 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView pinRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarOpen
+            );
+            OptionsToggleRowView layerRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarAboveWindows
             );
             OptionsToggleRowView statsRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
@@ -344,6 +350,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyAlwaysOpen,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarOpen
+            );
+
+            GetField<Button>(layerRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyAboveWindows,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarAboveWindows
             );
 
             GetField<Button>(statsRow, "_button").onClick.Invoke();

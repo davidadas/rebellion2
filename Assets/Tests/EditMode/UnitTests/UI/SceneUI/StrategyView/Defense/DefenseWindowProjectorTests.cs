@@ -363,7 +363,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, data.Items.Count);
             Assert.IsNotNull(data.Items[0].EntityTexture);
             Assert.IsNotNull(data.Items[0].BackgroundTexture);
-            Assert.IsFalse(data.Items[0].CanDrag);
+            Assert.IsTrue(data.Items[0].CanDrag);
         }
 
         [TestCase(DefenseWindowTab.Personnel, "Personnel")]

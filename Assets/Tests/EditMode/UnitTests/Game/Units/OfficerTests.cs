@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -10,6 +11,30 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [Test]
+        public void Deserialize_HoldPositionConfiguration_ReadsSharedConditions()
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                "<Officer><AIBehavior Type=\"HoldPosition\"><Conditionals>"
+                    + "<HasParent UnitInstanceID=\"officer\" ParentInstanceID=\"planet\"/>"
+                    + "</Conditionals></AIBehavior></Officer>"
+            );
+
+            Assert.AreEqual(OfficerAIBehaviorType.HoldPosition, officer.AIBehavior.Type);
+            Assert.IsInstanceOf<HasParentConditional>(officer.AIBehavior.Conditionals[0]);
+        }
+
+        [Test]
+        public void Serialize_AIBehaviorConfiguration_ExcludesContentFromSavedOfficer()
+        {
+            Officer officer = new() { AIBehavior = new OfficerAIBehavior() };
+
+            string xml = SerializationHelper.Serialize(officer);
+
+            StringAssert.DoesNotContain("AIBehavior", xml);
+            Assert.IsNull(SerializationHelper.Deserialize<Officer>(xml).AIBehavior);
+        }
+
         [TestCase(OfficerRank.None, "Han Solo")]
         [TestCase(OfficerRank.Commander, "Commander Solo")]
         [TestCase(OfficerRank.Admiral, "Admiral Solo")]

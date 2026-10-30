@@ -11,6 +11,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
@@ -74,6 +75,67 @@ namespace Rebellion.Tests.Systems
                 new[] { $"start:{factionId}", $"complete:{factionId}" },
                 lifecycle
             );
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void ProcessFaction_CatalogHoldBehavior_ControlsAssignmentAfterReload(
+            bool hold,
+            bool reload
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction _);
+            game.CurrentTick = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", owner.InstanceID);
+            origin.SetPopularSupport(owner.InstanceID, 80);
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                null,
+                positionX: 1
+            );
+            target.SetPopularSupport(owner.InstanceID, 20);
+            Officer officer = EntityFactory.CreateOfficer("officer", owner.InstanceID);
+            officer.SetBaseRating(SkillRating.Diplomacy, 200);
+            game.AttachNode(officer, origin);
+            AITestSceneBuilder.RevealPlanet(game, owner, target);
+            Officer template = new()
+            {
+                InstanceID = officer.InstanceID,
+                AIBehavior = hold
+                    ? new OfficerAIBehavior
+                    {
+                        Conditionals = new List<GameConditional>
+                        {
+                            new HasParentConditional
+                            {
+                                UnitInstanceID = officer.InstanceID,
+                                ParentInstanceID = origin.InstanceID,
+                            },
+                        },
+                    }
+                    : null,
+            };
+            GameDataCatalog data = TestGameData.Create(game.Config, officers: new[] { template });
+            if (reload)
+            {
+                string ownerID = owner.InstanceID;
+                string officerID = officer.InstanceID;
+                game = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+                owner = game.GetFactions().Single(faction => faction.InstanceID == ownerID);
+                officer = game.GetSceneNodeByInstanceID<Officer>(officerID);
+            }
+            using GameSession session = new(game, data);
+
+            session.GetService<AIDirector>().ProcessFaction(owner, game.Galaxy);
+
+            Assert.AreEqual(!hold, officer.IsOnMission());
         }
 
         /// <summary>

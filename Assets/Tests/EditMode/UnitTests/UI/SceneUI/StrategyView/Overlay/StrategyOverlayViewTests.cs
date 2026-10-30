@@ -98,6 +98,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsTrue(right.gameObject.activeSelf);
             RawImage image = GetField<RawImage>("destinationCursorImage");
             Assert.AreSame(_itemTexture, image.texture);
+            Assert.AreEqual(Color.white, image.color);
             Assert.AreEqual(imageBounds, GetSourceRect(image.transform));
             Assert.IsTrue(image.enabled);
             Assert.IsTrue(image.gameObject.activeSelf);
@@ -111,6 +112,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
 
             Assert.IsTrue(GetField<Image>("dragFrameTopImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_FadedDragPreview_AppliesTranslucentColor()
+        {
+            DragPreview preview = DragPreviewTestFactory.Create(
+                _itemTexture,
+                new RectInt(30, 40, 24, 18)
+            );
+
+            _view.Render(new StrategyOverlayRenderData(null, preview, 0, 0, true));
+
+            RawImage image = GetField<RawImage>("destinationCursorImage");
+            Assert.AreEqual(new Color(1f, 1f, 1f, 0.65f), image.color);
         }
 
         [Test]
@@ -144,6 +159,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
         [Test]
         public void Show_TargetPosition_DisplaysGeneratedCursorAndOwnsCancellationSelection()
         {
+            _view.Render(
+                new StrategyOverlayRenderData(
+                    null,
+                    DragPreviewTestFactory.Create(_itemTexture, new RectInt(30, 40, 24, 18)),
+                    0,
+                    0,
+                    true
+                )
+            );
             GetField<RawImage>("destinationCursorImage").uvRect = new Rect(0.25f, 0f, 0.5f, 1f);
 
             _view.Show(250, 180);
@@ -151,6 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             RawImage cursor = GetField<RawImage>("destinationCursorImage");
             int size = GetField<int>("destinationCursorSize");
             Assert.IsNotNull(cursor.texture);
+            Assert.AreEqual(Color.white, cursor.color);
             Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), cursor.uvRect);
             Assert.AreEqual(FilterMode.Point, cursor.texture.filterMode);
             Assert.AreEqual(TextureWrapMode.Clamp, cursor.texture.wrapMode);

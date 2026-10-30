@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game

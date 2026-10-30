@@ -276,7 +276,8 @@ internal sealed class FacilityWindowProjector
             presentations.Add(
                 new FacilityInventoryItemRenderData(
                     GetInventoryTexture(uiContext, ownerFactionId, activeTab, item),
-                    item != null && session.SelectedBuildingIds.Contains(item.InstanceID)
+                    item != null && session.SelectedBuildingIds.Contains(item.InstanceID),
+                    StrategyContextMenuAvailability.CanRetargetBuilding(item)
                 )
             );
         }

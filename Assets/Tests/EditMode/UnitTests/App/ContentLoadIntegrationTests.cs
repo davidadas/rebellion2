@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -276,6 +276,39 @@ namespace Rebellion.Tests.App
             yield return null;
             AppBootstrap restored = AppBootstrap.EnsureExists(operation.Pack);
             AssertCutscenePlayback(restored);
+        }
+
+        [UnityTest]
+        public IEnumerator CutscenePlayback_SkippedVideo_ReleasesPlayerBeforeStartingNextVideo()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
+                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
+            );
+            Assert.IsNotNull(clip);
+            CutsceneManager manager = bootstrap.GetCutsceneManager();
+            CutscenePlayer firstPlayer = null;
+            bool firstPlayerReleasedBeforeCompletion = false;
+            manager.Play(
+                clip,
+                () =>
+                {
+                    firstPlayerReleasedBeforeCompletion = firstPlayer == null;
+                    manager.Play(clip, null);
+                }
+            );
+            firstPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(firstPlayer);
+
+            firstPlayer.Skip();
+
+            Assert.IsFalse(firstPlayerReleasedBeforeCompletion);
+            yield return null;
+
+            Assert.IsTrue(firstPlayerReleasedBeforeCompletion);
+            CutscenePlayer secondPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(secondPlayer);
+            Assert.AreNotSame(firstPlayer, secondPlayer);
         }
 
         /// <summary>
