@@ -44,6 +44,11 @@ namespace Rebellion.AI.Planners
         private List<Planet> _recruitmentCandidates;
         private List<Planet> _sabotageCandidates;
         private readonly List<IMissionParticipant> _sabotageParticipants = new();
+        private readonly List<AIMissionProposal> _sabotageTeams = new();
+        private readonly Dictionary<
+            Planet,
+            (Planet Target, double Score)
+        > _assemblingSabotageCampaigns = new();
 
         // Research Disciplines.
         private readonly ResearchDiscipline[] _researchDisciplines =
@@ -86,6 +91,8 @@ namespace Rebellion.AI.Planners
             _waitingCandidateSelector.Reset();
             _sabotageTargets.Clear();
             _sabotageParticipants.Clear();
+            _sabotageTeams.Clear();
+            _assemblingSabotageCampaigns.Clear();
             BuildActiveMissionIndexes(context.Assessment.ActiveMissions);
             _diplomacyCandidates = null;
             _preferredRecruiter = null;
@@ -97,9 +104,9 @@ namespace Rebellion.AI.Planners
             foreach (object step in CreateMissionProposals(context, proposals))
                 yield return step;
 
-            foreach (object step in CreateMissionStagingProposals(context, proposals))
-                yield return step;
             foreach (object step in CreateMissionWaitingProposals(context, proposals))
+                yield return step;
+            foreach (object step in CreateMissionStagingProposals(context, proposals))
                 yield return step;
         }
 
@@ -114,21 +121,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            HashSet<string> sustainedTargets = proposals
-                .OfType<AIMissionProposal>()
-                .Where(mission => mission.MissionTypeID == MissionTypeIDs.Sabotage)
-                .Select(mission => mission.TargetPlanet)
-                .Distinct()
-                .Where(planet => GetEligibleSabotageTargets(context, planet).Take(2).Count() > 1)
-                .Select(planet => planet.InstanceID)
-                .ToHashSet(StringComparer.Ordinal);
             foreach (
-                AIMissionProposal mission in proposals
-                    .OfType<AIMissionProposal>()
+                AIMissionProposal mission in _sabotageTeams
                     .Where(mission =>
                         mission.IsTeamFinal
                         && mission.MissionTypeID == MissionTypeIDs.Sabotage
-                        && sustainedTargets.Contains(mission.TargetPlanet.InstanceID)
                         && mission.CanSelect(context)
                         && context.Assessment.IsEnemyPlanet(mission.TargetPlanet)
                         && mission.Participants.All(participant =>
@@ -138,17 +135,28 @@ namespace Rebellion.AI.Planners
                     .ToArray()
             )
             {
-                List<(AIMissionStagingProposal Proposal, long Ticks)> candidates = new();
+                if (
+                    _assemblingSabotageCampaigns.Values.Any(campaign =>
+                        campaign.Target.InstanceID == mission.TargetPlanet.InstanceID
+                    )
+                )
+                    continue;
+                int missionCount = GetSabotageMissionCount(context, mission);
+                if (missionCount <= 1)
+                    continue;
+
+                List<(AIMissionStagingProposal Proposal, double Ticks)> candidates = new();
                 foreach (Planet planet in context.Assessment.OwnedPlanets)
                 {
                     if (planet.IsDestroyed || context.Assessment.HasKnownHostileFleet(planet))
                         continue;
-                    AIMissionStagingProposal candidate = new(mission, planet);
+                    AIMissionStagingProposal candidate = new(mission, planet, missionCount);
                     if (candidate.Participants.Count == 0)
                         continue;
                     (long direct, long staged) = candidate.EstimateTravelTicks(context);
-                    if (staged < direct)
-                        candidates.Add((candidate, staged));
+                    double perMission = candidate.GetTravelTicksPerMission(context, staged);
+                    if (perMission < direct)
+                        candidates.Add((candidate, perMission));
                 }
                 AIMissionStagingProposal best = candidates
                     .OrderBy(candidate => candidate.Ticks)
@@ -162,6 +170,29 @@ namespace Rebellion.AI.Planners
                     proposals.Add(best);
                 yield return mission;
             }
+        }
+
+        /// <summary>
+        /// Counts currently eligible objectives with at least the proposed target's priority.
+        /// </summary>
+        /// <param name="context">The current faction assessment.</param>
+        /// <param name="mission">The team and objective motivating preparation.</param>
+        /// <returns>The number of worthwhile objectives sharing the mission's target planet.</returns>
+        private int GetSabotageMissionCount(AITurnContext context, AIMissionProposal mission)
+        {
+            double targetValue = AIMissionProposalScorer.GetSabotageTargetValue(
+                context,
+                mission.TargetPlanet,
+                mission.SelectedTarget as IManufacturable
+            );
+            return GetEligibleSabotageTargets(context, mission.TargetPlanet)
+                .Count(target =>
+                    AIMissionProposalScorer.GetSabotageTargetValue(
+                        context,
+                        mission.TargetPlanet,
+                        target
+                    ) >= targetValue
+                );
         }
 
         /// <summary>
@@ -229,8 +260,6 @@ namespace Rebellion.AI.Planners
                         )
                     )
                     .ToList();
-                if (present.Count == 0)
-                    continue;
                 List<IMissionParticipant> candidates = present
                     .Concat(arrivals)
                     .OrderByDescending(participant =>
@@ -1082,11 +1111,12 @@ namespace Rebellion.AI.Planners
                 AIMissionStagingProposal waiting =
                     departure == null
                         ? null
-                        : AIMissionStagingProposal.WaitForArrivals(protectedTeam, departure);
-                if (
-                    waiting != null
-                    && (waiting.Participants.Count == 0 || waiting.WaitingTicks <= 0)
-                )
+                        : AIMissionStagingProposal.WaitForArrivals(
+                            protectedTeam,
+                            departure,
+                            GetSabotageMissionCount(context, protectedTeam)
+                        );
+                if (waiting != null && waiting.WaitingTicks <= 0)
                     continue;
                 MissionOdds odds = EvaluateSabotageTeam(context, protectedTeam, departure);
                 if (
@@ -1117,9 +1147,23 @@ namespace Rebellion.AI.Planners
                         continue;
                 }
                 if (departure == null)
+                {
+                    _sabotageTeams.Add(protectedTeam);
                     TryAddProposal(context, proposals, protectedTeam);
+                }
                 else
                 {
+                    double score = new AIMissionProposalScorer().Score(context, waiting);
+                    if (
+                        score > 0
+                        && (
+                            !_assemblingSabotageCampaigns.TryGetValue(departure, out var campaign)
+                            || score > campaign.Score
+                        )
+                    )
+                        _assemblingSabotageCampaigns[departure] = (planet, score);
+                    if (waiting.Participants.Count == 0)
+                        return true;
                     if (!waiting.CanSelect(context))
                         continue;
                     _waitingCandidateSelector.TryAdd(context, proposals, protectedTeam, waiting);

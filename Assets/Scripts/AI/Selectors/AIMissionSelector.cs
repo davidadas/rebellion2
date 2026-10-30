@@ -288,6 +288,13 @@ namespace Rebellion.AI.Selectors
                         AISelectionReservationKind.MissionOfficer,
                         staging.Mission.TargetOfficer.InstanceID
                     );
+                else if (staging.Mission.MissionTypeID == MissionTypeIDs.Sabotage)
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.MissionAtPlanet,
+                        staging.Mission.TargetPlanet.InstanceID,
+                        MissionTypeIDs.Sabotage
+                    );
                 return reservations;
             }
             if (proposal is AIAbortMissionProposal abort)

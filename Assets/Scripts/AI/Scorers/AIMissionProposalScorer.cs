@@ -172,7 +172,8 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
-            long outboundTicks = 0;
+            double outboundTicks = 0;
+            double missionTimeDiscount = 1;
             if (usesMissionTime && includeTravelTime)
             {
                 long completeTravelTicks =
@@ -188,7 +189,26 @@ namespace Rebellion.AI.Scorers
                             )
                     )
                     : missionProposal.EstimateOutboundTravelTicks(context);
-                AddMissionTimeCost(ref score, context, missionProposal, completeTravelTicks);
+                if (isSabotage)
+                {
+                    double scoredTravel =
+                        staging?.GetTravelTicksPerMission(context, completeTravelTicks)
+                        ?? completeTravelTicks;
+                    outboundTicks = Math.Max(
+                        0,
+                        scoredTravel
+                            - missionProposal.EstimateReturnTravelTicks(
+                                context,
+                                staging?.Destination
+                            )
+                    );
+                    missionTimeDiscount = GetElapsedDiscount(
+                        scoredTravel + EstimateExecutionTicks(context, missionProposal),
+                        utility.Objective.TravelTime ?? utility.Objective.TravelCost
+                    );
+                }
+                else
+                    AddMissionTimeCost(ref score, context, missionProposal, completeTravelTicks);
             }
 
             double value =
@@ -200,13 +220,20 @@ namespace Rebellion.AI.Scorers
                         score.RankValue
                     )
                     : score.RankValue;
+            if (isSabotage && value < context.Game.Config.AI.MissionPlanning.MinimumMissionScore)
+                return 0;
             if (usesMissionTime && includeTravelTime)
+            {
+                value *= missionTimeDiscount;
                 value *= GetElapsedDiscount(
                     outboundTicks + EstimateExecutionTicks(context, missionProposal),
                     utility.Objective.ExecutionDelay
                 );
+            }
             value *= interceptionConfidence;
-            return value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? value : 0;
+            return isSabotage || value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore
+                ? value
+                : 0;
         }
 
         /// <summary>
@@ -271,10 +298,9 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
-            if (
-                proposal.IsInterception
-                || proposal.MissionTypeID is MissionTypeIDs.Sabotage or MissionTypeIDs.Espionage
-            )
+            if (proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                return score.RankValue;
+            if (proposal.IsInterception || proposal.MissionTypeID == MissionTypeIDs.Espionage)
             {
                 IMissionParticipant leader = proposal.Participant;
                 Planet origin = departure ?? leader.GetParentOfType<Planet>();
@@ -1050,21 +1076,35 @@ namespace Rebellion.AI.Scorers
                 if (demand == null || !context.Game.Config.AI.EnablePlanetaryAssaults)
                     continue;
                 bool canBombard = context.Assessment.CanBombardMilitaryTargets(fleet, target);
+                bool bombardmentCoversTarget =
+                    mission.SelectedTarget is Regiment
+                    && context.Assessment.CanBombardDefenders(
+                        fleet,
+                        target,
+                        projected: false,
+                        shieldStrength: demand.ShieldStrength
+                    )
+                    && context.Assessment.GetReadyFleetRegimentCount(fleet)
+                        >= demand.OccupationRegimentCount;
                 if (
                     context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
                         >= demand.CombatStrength
                     && !demand.IsAssaultBlockedByShields
-                    && !canBombard
-                    && context.Assessment.GetReadyFleetRegimentCount(fleet) >= demand.RegimentCount
-                    && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                        >= demand.RegimentStrength
-                    && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, target)
-                        >= context
-                            .Game
-                            .Config
-                            .AI
-                            .FleetDeployment
-                            .MinimumPlanetaryAssaultSuccessPercent
+                    && (
+                        bombardmentCoversTarget
+                        || !canBombard
+                            && context.Assessment.GetReadyFleetRegimentCount(fleet)
+                                >= demand.RegimentCount
+                            && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                                >= demand.RegimentStrength
+                            && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, target)
+                                >= context
+                                    .Game
+                                    .Config
+                                    .AI
+                                    .FleetDeployment
+                                    .MinimumPlanetaryAssaultSuccessPercent
+                    )
                 )
                     return true;
             }

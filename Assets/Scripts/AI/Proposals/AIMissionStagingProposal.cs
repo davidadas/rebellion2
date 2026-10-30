@@ -22,6 +22,8 @@ namespace Rebellion.AI.Proposals
 
         public bool IsWaiting { get; }
 
+        public int ExpectedMissionCount { get; }
+
         public int WaitingTicks =>
             Mission.Participants.Max(participant =>
                 participant.GetTransitMovement()?.TicksRemaining() ?? 0
@@ -32,21 +34,28 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="mission">The mission opportunity motivating the relocation.</param>
         /// <param name="destination">The proposed friendly departure planet.</param>
-        public AIMissionStagingProposal(AIMissionProposal mission, Planet destination)
-            : this(mission, destination, false) { }
+        /// <param name="expectedMissionCount">The worthwhile objectives sharing this departure.</param>
+        public AIMissionStagingProposal(
+            AIMissionProposal mission,
+            Planet destination,
+            int expectedMissionCount = 1
+        )
+            : this(mission, destination, false, expectedMissionCount) { }
 
         /// <summary>
         /// Creates one turn of waiting for personnel already traveling to this departure planet.
         /// </summary>
         /// <param name="mission">The complete future mission team.</param>
         /// <param name="destination">The common assembly planet.</param>
+        /// <param name="expectedMissionCount">The worthwhile objectives sharing this departure.</param>
         /// <returns>A proposal claiming only the personnel already present.</returns>
         internal static AIMissionStagingProposal WaitForArrivals(
             AIMissionProposal mission,
-            Planet destination
+            Planet destination,
+            int expectedMissionCount = 1
         )
         {
-            return new AIMissionStagingProposal(mission, destination, true);
+            return new AIMissionStagingProposal(mission, destination, true, expectedMissionCount);
         }
 
         /// <summary>
@@ -55,14 +64,17 @@ namespace Rebellion.AI.Proposals
         /// <param name="mission">The assessed mission opportunity.</param>
         /// <param name="destination">The assembly planet.</param>
         /// <param name="isWaiting">Whether present personnel should await incoming teammates.</param>
+        /// <param name="expectedMissionCount">The worthwhile objectives sharing this departure.</param>
         private AIMissionStagingProposal(
             AIMissionProposal mission,
             Planet destination,
-            bool isWaiting
+            bool isWaiting,
+            int expectedMissionCount = 1
         )
         {
             Mission = mission;
             Destination = destination;
+            ExpectedMissionCount = Math.Max(1, expectedMissionCount);
             IsWaiting =
                 isWaiting
                 || mission?.IsInterception == true
@@ -100,7 +112,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when relocation is valid and improves the mission round trip.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return TryGetTravelTicks(context, out _, out _);
+            return Participants.Count > 0 && TryGetTravelTicks(context, out _, out _);
         }
 
         /// <summary>
@@ -173,7 +185,7 @@ namespace Rebellion.AI.Proposals
                 context.MovementQueries == null
                 || Mission.MissionTypeID != MissionTypeIDs.Sabotage
                 || !Mission.IsTeamFinal
-                || Participants.Count == 0
+                || Participants.Count == 0 && !IsWaiting
                 || Participants.Any(participant =>
                     participant.IsOnMission() || participant.GetTransitMovement() != null
                 )
@@ -237,7 +249,23 @@ namespace Rebellion.AI.Proposals
 
             directTicks = Mission.EstimateTravelTicks(context);
             stagedTicks = relocationTicks + Mission.EstimateTravelTicks(context, Destination);
-            return stagedTicks < directTicks;
+            return GetTravelTicksPerMission(context, stagedTicks) < directTicks;
+        }
+
+        /// <summary>
+        /// Spreads relocation over the current objectives without shortening actual movement estimates.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="stagedTicks">The actual preparation and first mission travel duration.</param>
+        /// <returns>The average travel cost per objective at this departure planet.</returns>
+        internal double GetTravelTicksPerMission(AITurnContext context, long stagedTicks)
+        {
+            if (ExpectedMissionCount == 1)
+                return stagedTicks;
+
+            long missionTicks = Mission.EstimateTravelTicks(context, Destination);
+            return missionTicks
+                + Math.Max(0, stagedTicks - missionTicks) / (double)ExpectedMissionCount;
         }
 
         /// <summary>
