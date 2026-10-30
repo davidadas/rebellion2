@@ -422,30 +422,44 @@ namespace Rebellion.Gameplay
                 .Except(freeParticipants.Cast<IMovable>())
                 .Distinct()
                 .ToList();
-            List<IMissionParticipant> localParticipants =
-                additionalPassengers.Count == 0
-                    ? freeParticipants
-                        .Where(participant =>
-                            (
-                                mission.SuccessfulParticipantsRemainAtLocation
-                                && completedResult?.Outcome == MissionOutcome.Success
-                            ) || CanRemainAtMissionLocation(participant, missionPlanet)
-                        )
-                        .ToList()
-                    : new List<IMissionParticipant>();
+            List<IMissionParticipant> localParticipants = freeParticipants
+                .Where(participant =>
+                    (
+                        mission.SuccessfulParticipantsRemainAtLocation
+                        && completedResult?.Outcome == MissionOutcome.Success
+                    ) || CanRemainAtMissionLocation(participant, missionPlanet)
+                )
+                .ToList();
+            List<IMovable> localPassengers = new List<IMovable>();
+            if (additionalPassengers.Count > 0)
+            {
+                List<IMovable> localGroup = freeParticipants
+                    .Cast<IMovable>()
+                    .Concat(additionalPassengers)
+                    .ToList();
+                bool canRemainTogether =
+                    localParticipants.Count == freeParticipants.Count
+                    && localGroup.All(unit => CanRemainAtMissionLocation(unit, missionPlanet))
+                    && MovementQueries.HasRequiredCapturedOfficerEscorts(localGroup, out _);
+                if (canRemainTogether)
+                    localPassengers.AddRange(additionalPassengers);
+                else
+                    localParticipants.Clear();
+            }
             List<IMissionParticipant> returnParticipants = freeParticipants
                 .Except(localParticipants)
                 .ToList();
+            List<IMovable> returnPassengers = additionalPassengers.Except(localPassengers).ToList();
 
             MoveNonReturningParticipantsToPlanet(mission, missionPlanet, results);
             List<IMovable> strandedUnits = _movementManager.CompleteMissionAtLocation(
-                localParticipants,
+                localParticipants.Cast<IMovable>().Concat(localPassengers).ToList(),
                 missionPlanet,
                 results
             );
             List<IMovable> failedReturns = _movementManager.ReturnFromMission(
                 returnParticipants,
-                additionalPassengers,
+                returnPassengers,
                 out Planet returnLocation,
                 results
             );
@@ -469,10 +483,7 @@ namespace Rebellion.Gameplay
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
         /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
-        private bool CanRemainAtMissionLocation(
-            IMissionParticipant participant,
-            Planet missionPlanet
-        )
+        private bool CanRemainAtMissionLocation(IMovable participant, Planet missionPlanet)
         {
             return _movementQueries.CanUseSafeRelocationDestination(
                 participant,

@@ -491,13 +491,10 @@ namespace Rebellion.Gameplay
                 resolvedDestinations.Add(resolvedDestination);
             }
 
-            foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
+            if (!HasRequiredCapturedOfficerEscorts(units, out Officer unescortedCapturedOfficer))
             {
-                if (HasEscortForCapturedOfficer(capturedOfficer, units))
-                    continue;
-
                 GameLogger.Warning(
-                    $"RequestMove rejected: {capturedOfficer.GetDisplayName()} has no captor escort."
+                    $"RequestMove rejected: {unescortedCapturedOfficer.GetDisplayName()} has no captor escort."
                 );
                 return false;
             }
@@ -918,12 +915,36 @@ namespace Rebellion.Gameplay
         /// <returns>True if the group includes an escort from the captor faction.</returns>
         private static bool HasEscortForCapturedOfficer(
             Officer capturedOfficer,
-            List<IMovable> units
+            IReadOnlyCollection<IMovable> units
         )
         {
             string captorId = capturedOfficer.CaptorInstanceID;
             return !string.IsNullOrEmpty(captorId)
                 && units.Any(escort => CanEscortCapturedOfficer(escort, capturedOfficer));
+        }
+
+        /// <summary>
+        /// Returns whether every captured officer in a group has an escort from the captor faction.
+        /// </summary>
+        /// <param name="units">The units being kept or moved together.</param>
+        /// <param name="unescortedCapturedOfficer">Receives the first captured officer without an escort.</param>
+        /// <returns>True when every captured officer has a valid escort.</returns>
+        internal static bool HasRequiredCapturedOfficerEscorts(
+            IReadOnlyCollection<IMovable> units,
+            out Officer unescortedCapturedOfficer
+        )
+        {
+            foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
+            {
+                if (HasEscortForCapturedOfficer(capturedOfficer, units))
+                    continue;
+
+                unescortedCapturedOfficer = capturedOfficer;
+                return false;
+            }
+
+            unescortedCapturedOfficer = null;
+            return true;
         }
 
         /// <summary>
