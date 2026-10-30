@@ -228,6 +228,32 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Converts a planet-image position in this window back into a galaxy-coordinate offset.
+    /// </summary>
+    /// <param name="position">The planet image's source-space top-left position.</param>
+    /// <returns>The corresponding integer offset from the sector origin.</returns>
+    public Vector2Int UnprojectPlanetPosition(Vector2 position)
+    {
+        Rect bounds = ((RectTransform)transform).rect;
+        return new Vector2Int(
+            Mathf.RoundToInt(
+                position.x
+                    * sectorCoordinateRange
+                    / (sectorCoordinateScaleX * bounds.width)
+                    * galaxyProjectionWidth
+                    / galaxyProjectionSourceRange
+            ),
+            Mathf.RoundToInt(
+                (position.y - planetPositionOffsetY)
+                    * sectorCoordinateRange
+                    / (sectorCoordinateScaleY * bounds.height)
+                    * galaxyProjectionHeight
+                    / galaxyProjectionSourceRange
+            )
+        );
+    }
+
+    /// <summary>
     /// Reverses one projected galaxy coordinate delta using authored projection geometry.
     /// </summary>
     /// <param name="delta">The projected coordinate delta.</param>

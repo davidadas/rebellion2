@@ -66,7 +66,7 @@ jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
-    needs: [lint, resolve-media]
+    needs: [test, resolve-media]
     environment: production
     permissions:
       contents: read
@@ -161,6 +161,29 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
           buildMethod: StandalonePlayerBuild.Build
+          buildName: rebellion2
+          buildsPath: build
+
+      - name: Package verified desktop bundle
+        shell: bash
+        run: |
+          extension="tar.gz"
+          if [ "${{ matrix.targetPlatform }}" = "StandaloneWindows64" ]; then
+            extension="zip"
+          fi
+          python3 Tools/package_desktop.py \
+            --platform "${{ matrix.targetPlatform }}" \
+            --build-dir "build/${{ matrix.targetPlatform }}" \
+            --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
+
+      - name: Upload desktop bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebellion2-${{ matrix.targetPlatform }}
+          path: dist/rebellion2-${{ matrix.targetPlatform }}.*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
       - name: Reset package files
         run: |
@@ -193,6 +216,9 @@ jobs:
 
       - name: Format check
         run: dotnet csharpier check Assets/
+
+      - name: Test desktop packaging
+        run: python3 -m unittest discover -s Tools/tests -v
 
       - name: Extract Unity managed assemblies
         run: |

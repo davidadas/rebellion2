@@ -357,6 +357,10 @@ do_build() {
         exit 1
     fi
 
+    require_command "${PYTHON:-python3}"
+    "${PYTHON:-python3}" "$PROJECT_PATH/Tools/package_desktop.py" \
+        --platform "$build_target" --build-dir "$(dirname "$resolved_player_path")"
+
     echo "Build complete: $resolved_player_path"
 }
 

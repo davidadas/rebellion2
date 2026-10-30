@@ -1,0 +1,1375 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Schema;
+using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Game.Messages;
+using Rebellion.Util.Serialization;
+
+/// <summary>
+/// Owns the editable documents and validation state for one authored content pack.
+/// </summary>
+public sealed class ContentPackEditorProject
+{
+    private const string _packDefinitionAddress = "Pack/pack.xml";
+    private const int _mediaFrameBudgetMilliseconds = 8;
+
+    private List<ContentPackEditorDocument> documents;
+    private ContentPackEditorHistory history;
+    private IReadOnlyList<ContentPackEditorCatalog> catalogs;
+
+    public string ContentRootPath { get; }
+
+    public string PackRootPath { get; }
+
+    public bool IsInstalled => IsInstalledPath(ContentRootPath, PackRootPath);
+
+    public ContentPackDefinition Definition { get; private set; }
+
+    public IReadOnlyList<ContentPackEditorDocument> Documents =>
+        documents.Where(document => !document.IsRemoved).ToArray();
+
+    internal IEnumerable<string> RemovedDocumentPaths =>
+        documents.Where(document => document.IsRemoved).Select(document => document.TargetPath);
+
+    public bool IsDirty => documents.Any(document => document.IsDirty);
+    public bool CanUndo => history.CanUndo;
+    public bool CanRedo => history.CanRedo;
+    public string UndoDescription => history.UndoDescription;
+    public string RedoDescription => history.RedoDescription;
+
+    /// <summary>
+    /// Identifies managed pack and application data directories that authoring must preserve.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="folder">The proposed project folder.</param>
+    /// <returns>Whether the folder overlaps installed content.</returns>
+    private static bool IsInstalledPath(string contentRootPath, string folder)
+    {
+        string root = Path.GetFullPath(contentRootPath);
+        string target = Path.GetFullPath(folder)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        foreach (string name in new[] { "Packs", "Application" })
+        {
+            string protectedRoot = Path.Combine(root, name);
+            if (
+                string.Equals(target, protectedRoot, StringComparison.OrdinalIgnoreCase)
+                || target.StartsWith(
+                    protectedRoot + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                return true;
+        }
+        return string.Equals(
+            target,
+            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
+
+    /// <summary>
+    /// Prevents a working project from modifying installed pack or application content.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="folder">The proposed project folder.</param>
+    private static void VerifyWorkingFolder(string contentRootPath, string folder)
+    {
+        if (IsInstalledPath(contentRootPath, folder))
+            throw new IOException(
+                "Installed content is read-only. Create a new content pack in your own folder."
+            );
+    }
+
+    /// <summary>
+    /// Groups a continuous gesture or multi-field operation into one undoable edit.
+    /// </summary>
+    /// <param name="description">The operation shown in the edit menu.</param>
+    /// <returns>The scope to dispose when the operation ends.</returns>
+    public IDisposable BeginEdit(string description)
+    {
+        return history.BeginEdit(description);
+    }
+
+    /// <summary>
+    /// Restores the preceding edit and rebuilds catalog wrappers from the restored documents.
+    /// </summary>
+    /// <returns>True when an edit was undone.</returns>
+    public bool Undo()
+    {
+        if (!history.Undo())
+            return false;
+        catalogs = null;
+        RefreshDefinition();
+        return true;
+    }
+
+    /// <summary>
+    /// Reapplies an undone edit and rebuilds catalog wrappers from the restored documents.
+    /// </summary>
+    /// <returns>True when an edit was reapplied.</returns>
+    public bool Redo()
+    {
+        if (!history.Redo())
+            return false;
+        catalogs = null;
+        RefreshDefinition();
+        return true;
+    }
+
+    /// <summary>
+    /// Moves an owned map definition, preserving a sector's relative planet positions.
+    /// </summary>
+    /// <param name="record">The project-owned map record.</param>
+    /// <param name="x">The horizontal source coordinate.</param>
+    /// <param name="y">The vertical source coordinate.</param>
+    public void Move(ContentPackEditorRecord record, int x, int y)
+    {
+        if (record == null)
+            throw new ArgumentNullException(nameof(record));
+        RequireOwnedRecord(record);
+        record.Catalog.Move(record, x, y);
+    }
+
+    /// <summary>
+    /// Applies a field edit together with any manifest link needed for a local rules override.
+    /// </summary>
+    /// <param name="field">The project-owned field.</param>
+    /// <param name="value">The proposed value.</param>
+    public void SetField(ContentPackEditorField field, string value)
+    {
+        RequireOwnedRecord(field.Record);
+        ValidateFieldValues(field, new[] { value });
+        using (BeginEdit(field.Name))
+        {
+            field.SetValue(value);
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Applies a scalar-list edit as one reversible project operation.
+    /// </summary>
+    /// <param name="field">The project-owned collection.</param>
+    /// <param name="values">The complete ordered values.</param>
+    public void SetFieldValues(ContentPackEditorField field, IEnumerable<string> values)
+    {
+        RequireOwnedRecord(field.Record);
+        string[] replacement = values.ToArray();
+        ValidateFieldValues(field, replacement);
+        using (BeginEdit(field.Name))
+        {
+            field.SetListValues(replacement);
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Checks media address scope and containment through the production resolver before editing.
+    /// </summary>
+    /// <param name="field">The edited member.</param>
+    /// <param name="values">The proposed scalar or collection values.</param>
+    private void ValidateFieldValues(ContentPackEditorField field, IEnumerable<string> values)
+    {
+        ValidateFieldValues(
+            field,
+            values,
+            field.IsMedia
+                ? ContentPackLoader.CreateFolderResolver(ContentRootPath, PackRootPath, Definition)
+                : null,
+            field.IsFactionReference ? GetFactionOptions() : null,
+            field.IsTraitReference ? GetTraitOptions() : null
+        );
+    }
+
+    /// <summary>
+    /// Checks an existing field without changing its document or edit history.
+    /// </summary>
+    /// <param name="field">The project-owned field.</param>
+    public void ValidateField(ContentPackEditorField field)
+    {
+        RequireOwnedRecord(field.Record);
+        ValidateFieldValues(field, field.Values);
+    }
+
+    /// <summary>
+    /// Validates authored values against one shared set of content layers and faction choices.
+    /// </summary>
+    /// <param name="field">The edited field.</param>
+    /// <param name="values">The proposed values.</param>
+    /// <param name="resolver">The media resolver, when needed.</param>
+    /// <param name="factions">The faction choices, when needed.</param>
+    /// <param name="traits">The trait choices, when needed.</param>
+    private void ValidateFieldValues(
+        ContentPackEditorField field,
+        IEnumerable<string> values,
+        ContentFileResolver resolver,
+        IReadOnlyDictionary<string, string> factions,
+        IReadOnlyDictionary<string, string> traits
+    )
+    {
+        string[] authored = values.ToArray();
+        field.ValidateValues(authored);
+        string[] nonempty = authored.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+        if (field.IsFactionReference)
+        {
+            if (nonempty.Any(value => !factions.ContainsKey(value)))
+                throw new ArgumentException("Choose a listed faction.");
+        }
+        if (field.IsTraitReference && nonempty.Any(value => !traits.ContainsKey(value)))
+            throw new ArgumentException("Choose a listed trait.");
+        if (
+            field.MemberName == "DisallowedMissionTypeIDs"
+            && nonempty.Any(value => !ContentPackEditorFieldSchema.MissionIDs.Contains(value))
+        )
+            throw new ArgumentException("Choose a listed mission.");
+        if (
+            field.IsIdentity
+            && nonempty.Any(value => value != field.Value)
+            && GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Element != field.Record.Element)
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element))
+                .Any(nonempty.Contains)
+        )
+            throw new ArgumentException("ID already in use.");
+        if (!field.IsMedia)
+            return;
+        foreach (string value in nonempty)
+        {
+            string address = field.GetMediaAddress(value);
+            try
+            {
+                string file = field.IsMediaDirectory
+                    ? null
+                    : resolver.ResolveFile(address, field.MediaExtensions);
+                bool exists = field.IsMediaDirectory
+                    ? resolver.DirectoryExists(address)
+                    : file != null;
+                if (
+                    file != null
+                    && !field.MediaExtensions.Contains(
+                        Path.GetExtension(file),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                )
+                    throw new ArgumentException("Unsupported file type.");
+                if (!exists)
+                    throw new ArgumentException(
+                        field.IsMediaDirectory ? "Folder not found." : "File not found. Use Import."
+                    );
+            }
+            catch (ArgumentException exception) when (exception.ParamName != null)
+            {
+                throw new ArgumentException("Use a Pack/ or Application/ path, or Import.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets faction identities and labels from the current authored data.
+    /// </summary>
+    /// <returns>The faction choices keyed by instance ID.</returns>
+    public IReadOnlyDictionary<string, string> GetFactionOptions()
+    {
+        IReadOnlyList<ContentPackEditorCatalog> current = GetCatalogs();
+        HashSet<string> factionData = new HashSet<string>(
+            Definition
+                .FactionPaths.Select(path =>
+                    current.FirstOrDefault(catalog =>
+                        catalog.Document.Address == "Pack/" + path.Replace('\\', '/')
+                    )
+                )
+                .Where(catalog => catalog != null)
+                .Select(catalog => catalog.DocumentRecord.Element.Element("FactionDataPath")?.Value)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => "Pack/" + path.Replace('\\', '/')),
+            StringComparer.Ordinal
+        );
+        return GetCatalogs()
+            .Where(catalog => factionData.Contains(catalog.Document.Address))
+            .SelectMany(catalog => catalog.Records)
+            .Where(record =>
+                record.Kind == "Faction"
+                && !string.IsNullOrWhiteSpace(record.Element.Element("InstanceID")?.Value)
+            )
+            .ToDictionary(
+                record => record.Element.Element("InstanceID").Value,
+                record => record.Name,
+                StringComparer.Ordinal
+            );
+    }
+
+    /// <summary>
+    /// Gets traits from the effective inherited and locally edited definitions.
+    /// </summary>
+    /// <returns>The selection labels keyed by the exact trait IDs stored on officers.</returns>
+    public IReadOnlyDictionary<string, string> GetTraitOptions() =>
+        GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .Where(record => record.Kind == "Trait" && !string.IsNullOrWhiteSpace(record.ID))
+            .ToDictionary(
+                record => record.ID,
+                record => ContentPackEditorField.FormatName(record.Name.Replace('-', ' ')),
+                StringComparer.Ordinal
+            );
+
+    /// <summary>
+    /// Enumerates the inherited and local files available to a directory media field.
+    /// </summary>
+    /// <param name="field">The directory field.</param>
+    /// <returns>The matching content addresses in stable order.</returns>
+    public IReadOnlyList<string> GetMediaFiles(ContentPackEditorField field)
+    {
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        return field
+            .Values.Where(value => !string.IsNullOrWhiteSpace(value))
+            .SelectMany(value => resolver.EnumerateFileAddresses(field.GetMediaAddress(value)))
+            .Where(address =>
+                field.MediaExtensions.Contains(
+                    Path.GetExtension(address),
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+            .OrderBy(address => address, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Adds a blank unit without faction assignments to the destination catalog.
+    /// </summary>
+    /// <param name="catalog">The destination unit catalog.</param>
+    /// <returns>The newly created definition.</returns>
+    public ContentPackEditorRecord AddUnit(ContentPackEditorCatalog catalog)
+    {
+        RequireOwnedCatalog(catalog);
+        HashSet<string> identities = new HashSet<string>(
+            GetCatalogs()
+                .SelectMany(item =>
+                    item.Records.Concat(item.Records.SelectMany(record => record.Planets))
+                )
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Add unit"))
+            return catalog.AddUnit(identities);
+    }
+
+    /// <summary>
+    /// Adds an independent faction and empty unit catalogs without changing scenario membership.
+    /// </summary>
+    /// <returns>The new faction's editable gameplay record.</returns>
+    public ContentPackEditorRecord AddFaction()
+    {
+        VerifyWorkingFolder(ContentRootPath, PackRootPath);
+        HashSet<string> identities = GetCatalogs()
+            .SelectMany(catalog =>
+                catalog.Records.Concat(catalog.Records.SelectMany(record => record.Planets))
+            )
+            .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element))
+            .ToHashSet(StringComparer.Ordinal);
+        int suffix = 1;
+        string id;
+        string folder;
+        do
+        {
+            id = "NEW_FACTION" + (suffix == 1 ? "" : "_" + suffix);
+            folder = "Factions/NewFaction" + (suffix == 1 ? "" : suffix.ToString());
+            suffix++;
+        } while (
+            identities.Contains(id)
+            || Documents.Any(document =>
+                document.Address.StartsWith("Pack/" + folder + "/", StringComparison.Ordinal)
+            )
+            || Directory.Exists(Path.Combine(PackRootPath, folder))
+        );
+
+        ContentPackEditorDocument manifest = Documents.Single(document =>
+            document.Address == _packDefinitionAddress
+        );
+        XDocument xml = XDocument.Parse(manifest.Text);
+        string neutralPath = xml.Root.Element("NeutralThemePath")?.Value;
+        XElement neutral = GetCatalogs()
+            .FirstOrDefault(catalog => catalog.Document.Address == "Pack/" + neutralPath)
+            ?.Records.FirstOrDefault(record => record.Kind == "FactionTheme")
+            ?.Element;
+        IReadOnlyDictionary<string, XElement> additions = ContentEditorFactionFactory.Create(
+            id,
+            folder,
+            neutral
+        );
+        using (BeginEdit("Add faction"))
+        {
+            foreach (var addition in additions)
+            {
+                string address = "Pack/" + addition.Key;
+                ContentPackEditorDocument document = documents.FirstOrDefault(candidate =>
+                    candidate.Address == address
+                );
+                if (document == null)
+                {
+                    document = new ContentPackEditorDocument(
+                        address,
+                        Path.Combine(PackRootPath, addition.Key)
+                    );
+                    documents.Add(document);
+                    history.Track(document);
+                }
+                document.SetText(addition.Value.ToString());
+            }
+            XElement paths = xml.Root.Element("FactionPaths");
+            if (paths == null)
+                xml.Root.Add(paths = new XElement("FactionPaths"));
+            paths.Add(new XElement("Path", folder + "/faction.xml"));
+            manifest.SetText(xml.ToString());
+        }
+        catalogs = null;
+        RefreshDefinition();
+        return GetCatalogs()
+            .Single(catalog => catalog.Document.Address == "Pack/" + folder + "/Data/faction.xml")
+            .Records.Single();
+    }
+
+    /// <summary>
+    /// Refreshes manifest references after a structural edit or its undo.
+    /// </summary>
+    private void RefreshDefinition() =>
+        Definition = ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
+            documents.Single(document => document.Address == _packDefinitionAddress).Text
+        );
+
+    /// <summary>
+    /// Applies advanced XML edits without bypassing project ownership or edit history.
+    /// </summary>
+    /// <param name="document">The project-owned document.</param>
+    /// <param name="text">The proposed complete XML.</param>
+    public void SetDocumentText(ContentPackEditorDocument document, string text)
+    {
+        RequireOwnedDocument(document);
+        XDocument.Parse(text);
+        using (BeginEdit(document.DisplayName))
+        {
+            document.SetText(text);
+            LinkRulesOverride(document);
+            catalogs = null;
+        }
+    }
+
+    /// <summary>
+    /// Validates and replaces one object-local XML block while preserving all sibling definitions.
+    /// </summary>
+    /// <param name="scope">The block selected in the inspector.</param>
+    /// <param name="text">The proposed replacement element.</param>
+    /// <returns>The current owning record after replacement.</returns>
+    public ContentPackEditorRecord SetXml(ContentEditorXmlScope scope, string text)
+    {
+        if (scope == null)
+            throw new ArgumentNullException(nameof(scope));
+        ContentPackEditorRecord source = scope.Record;
+        RequireOwnedRecord(source);
+        if (source.Kind == "GameEvent")
+            return SetEventXml(source, text);
+        XElement replacement = XElement.Parse(text);
+        if (replacement.Name != scope.Element.Name)
+            throw new InvalidDataException(
+                "Enter one " + scope.Element.Name.LocalName + " element."
+            );
+        if (XNode.DeepEquals(scope.Element, replacement))
+            return source;
+        XDocument candidate = XDocument.Parse(source.Catalog.Document.Text);
+        XElement owner = ContentEditorXmlScope.FindInCopy(source.Element, candidate);
+        XElement target = ContentEditorXmlScope.FindInCopy(scope.Element, candidate);
+        if (owner == target)
+            owner = replacement;
+        target.ReplaceWith(replacement);
+        Type type = ContentPackEditorFieldSchema.GetRecordType(owner);
+        if (type != null)
+        {
+            using StringReader reader = new StringReader(owner.ToString());
+            if (type.IsDefined(typeof(PersistableObjectAttribute), true))
+                new GameSerializer(
+                    type,
+                    new GameSerializerSettings { RootName = owner.Name.LocalName }
+                ).Deserialize(reader);
+            else
+            {
+                System.Xml.Serialization.XmlSerializer serializer =
+                    new System.Xml.Serialization.XmlSerializer(type);
+                serializer.UnknownElement += (_, args) =>
+                    throw new InvalidDataException("Unknown field: " + args.Element.Name);
+                serializer.UnknownAttribute += (_, args) =>
+                    throw new InvalidDataException("Unknown field: " + args.Attr.Name);
+                serializer.Deserialize(reader);
+            }
+        }
+        foreach (string identity in ContentPackEditorCatalog.GetIdentityValues(owner))
+            if (
+                !ContentPackEditorCatalog.GetIdentityValues(source.Element).Contains(identity)
+                && GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Element != source.Element)
+                    .SelectMany(record =>
+                        ContentPackEditorCatalog.GetIdentityValues(record.Element)
+                    )
+                    .Contains(identity)
+            )
+                throw new InvalidDataException("ID already in use.");
+        SetDocumentText(source.Catalog.Document, candidate.ToString());
+        ContentPackEditorCatalog current = GetCatalogs()
+            .Single(catalog => catalog.Document == source.Catalog.Document);
+        return new ContentPackEditorRecord(
+            current,
+            ContentEditorXmlScope.FindInCopy(owner, current.DocumentRecord.Element.Document)
+        );
+    }
+
+    /// <summary>
+    /// Creates a blank officer trait using the project's normal edit history.
+    /// </summary>
+    /// <param name="catalog">The project-owned traits catalog.</param>
+    /// <returns>The attached new trait.</returns>
+    public ContentPackEditorRecord AddTrait(ContentPackEditorCatalog catalog)
+    {
+        RequireOwnedCatalog(catalog);
+        HashSet<string> identities = new HashSet<string>(
+            GetCatalogs()
+                .SelectMany(item => item.Records)
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Add trait"))
+            return catalog.AddTrait(identities);
+    }
+
+    /// <summary>
+    /// Creates a starting faction message through the project's normal reversible history.
+    /// </summary>
+    /// <param name="faction">The project-owned faction definition.</param>
+    /// <param name="type">The category in the initial message list.</param>
+    /// <returns>The title field to focus in the inspector.</returns>
+    public ContentPackEditorField AddFactionMessage(
+        ContentPackEditorRecord faction,
+        MessageType type
+    )
+    {
+        RequireOwnedRecord(faction);
+        if (!Enum.IsDefined(typeof(MessageType), type))
+            throw new ArgumentOutOfRangeException(nameof(type));
+        using (BeginEdit("Add starting message"))
+            return faction.Catalog.AddFactionMessage(faction, type);
+    }
+
+    /// <summary>
+    /// Adds a blank sector through the project's reversible edit history.
+    /// </summary>
+    /// <param name="catalog">The project-owned galaxy catalog.</param>
+    /// <param name="x">The horizontal map coordinate.</param>
+    /// <param name="y">The vertical map coordinate.</param>
+    /// <returns>The attached sector definition.</returns>
+    public ContentPackEditorRecord AddSector(ContentPackEditorCatalog catalog, int x, int y)
+    {
+        RequireOwnedCatalog(catalog);
+        HashSet<string> identities = new(
+            GetCatalogs()
+                .SelectMany(item =>
+                    item.Records.Concat(item.Records.SelectMany(record => record.Planets))
+                )
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Add sector"))
+            return catalog.AddSector(identities, x, y);
+    }
+
+    /// <summary>
+    /// Creates a blank planet in an owned sector through the project's reversible edit history.
+    /// </summary>
+    /// <param name="sector">The project-owned destination sector.</param>
+    /// <param name="x">The absolute horizontal coordinate.</param>
+    /// <param name="y">The absolute vertical coordinate.</param>
+    /// <returns>The attached new planet.</returns>
+    public ContentPackEditorRecord AddPlanet(ContentPackEditorRecord sector, int x, int y)
+    {
+        if (sector == null)
+            throw new ArgumentNullException(nameof(sector));
+        RequireOwnedRecord(sector);
+        HashSet<string> identities = new(
+            GetCatalogs()
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(record => record.Planets))
+                )
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Add planet"))
+            return sector.Catalog.AddPlanet(sector, identities, x, y);
+    }
+
+    /// <summary>
+    /// Creates a blank event through the same ownership and undo history as other authored records.
+    /// </summary>
+    /// <param name="catalog">The project-owned events catalog.</param>
+    /// <returns>The newly attached event.</returns>
+    public ContentPackEditorRecord AddEvent(ContentPackEditorCatalog catalog)
+    {
+        RequireOwnedCatalog(catalog);
+        HashSet<string> identities = new HashSet<string>(
+            GetCatalogs()
+                .SelectMany(item => item.Records)
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Add event"))
+            return catalog.AddEvent(identities);
+    }
+
+    /// <summary>
+    /// Validates one complete event with the runtime serializer and schema before replacing its XML.
+    /// </summary>
+    /// <param name="source">The event being edited.</param>
+    /// <param name="text">The replacement GameEvent element.</param>
+    /// <returns>The validated, attached replacement event.</returns>
+    public ContentPackEditorRecord SetEventXml(ContentPackEditorRecord source, string text)
+    {
+        RequireOwnedRecord(source);
+        if (!source.Catalog.CanAddEvent)
+            throw new ArgumentException("Choose a current game event.", nameof(source));
+        XElement replacement = XElement.Parse(text);
+        if (replacement.Name != "GameEvent")
+            throw new InvalidDataException("Enter one GameEvent element.");
+        XmlSchemaSet schemas = new XmlSchemaSet();
+        string schema = Path.Combine(ContentRootPath, "Application", "Schemas", "game-events.xsd");
+        using (XmlReader reader = XmlReader.Create(schema))
+            schemas.Add(null, reader);
+        using StringReader document = new StringReader("<GameEvents>\n" + text + "\n</GameEvents>");
+        new GameSerializer(
+            typeof(GameEvent[]),
+            new GameSerializerSettings { RootName = "GameEvents", Schemas = schemas }
+        ).Deserialize(document);
+        string identity = replacement.Element("InstanceID")?.Value;
+        if (
+            GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Element != source.Element)
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element))
+                .Contains(identity, StringComparer.Ordinal)
+        )
+            throw new InvalidDataException("ID already in use.");
+        using (BeginEdit("Edit event"))
+            return source.Catalog.Replace(source, replacement);
+    }
+
+    /// <summary>
+    /// Rejects a catalog from another project or a discarded document revision.
+    /// </summary>
+    /// <param name="catalog">The catalog to edit.</param>
+    private void RequireOwnedCatalog(ContentPackEditorCatalog catalog)
+    {
+        if (catalog == null)
+            throw new ArgumentNullException(nameof(catalog));
+        RequireOwnedDocument(catalog.Document);
+        if (!GetCatalogs().Contains(catalog))
+            throw new ArgumentException("Choose a current object.", nameof(catalog));
+    }
+
+    /// <summary>
+    /// Rejects detached or stale record handles before they can overwrite restored documents.
+    /// </summary>
+    /// <param name="record">The record to edit.</param>
+    private void RequireOwnedRecord(ContentPackEditorRecord record)
+    {
+        if (record == null)
+            throw new ArgumentNullException(nameof(record));
+        RequireOwnedCatalog(record.Catalog);
+        if (record.Element.Document != record.Catalog.DocumentRecord.Element.Document)
+            throw new ArgumentException("Choose a current object.", nameof(record));
+    }
+
+    /// <summary>
+    /// Removes one owned definition as a single reversible edit.
+    /// </summary>
+    /// <param name="record">The attached definition to remove.</param>
+    public void RemoveRecord(ContentPackEditorRecord record)
+    {
+        RequireOwnedRecord(record);
+        using (BeginEdit("Delete " + record.Name))
+            record.Catalog.Remove(record);
+    }
+
+    /// <summary>
+    /// Rejects an edit directed at another open project's document.
+    /// </summary>
+    /// <param name="document">The document to verify.</param>
+    private void RequireOwnedDocument(ContentPackEditorDocument document)
+    {
+        VerifyWorkingFolder(ContentRootPath, PackRootPath);
+        if (!documents.Contains(document) || document.IsRemoved)
+            throw new ArgumentException(
+                "The edited field is not part of this project.",
+                nameof(document)
+            );
+    }
+
+    /// <summary>
+    /// Links the application-default rules document only when the author edits its local override.
+    /// </summary>
+    /// <param name="document">The edited document.</param>
+    private void LinkRulesOverride(ContentPackEditorDocument document)
+    {
+        if (
+            !document.IsDirty
+            || document.Address != "Pack/Shared/Data/game-config.xml"
+            || !document.SourcePath.StartsWith(
+                Path.Combine(ContentRootPath, "Application") + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            return;
+        ContentPackEditorDocument manifest = documents.Single(candidate =>
+            candidate.Address == _packDefinitionAddress
+        );
+        XDocument xml = XDocument.Parse(manifest.Text);
+        if (!string.IsNullOrWhiteSpace(xml.Root.Element("GameConfigPath")?.Value))
+            return;
+        xml.Root.SetElementValue("GameConfigPath", "Shared/Data/game-config.xml");
+        manifest.SetText(xml.ToString());
+    }
+
+    /// <summary>
+    /// Opens the pack's catalogs as named-record editors, including inherited data.
+    /// </summary>
+    /// <returns>The catalogs ordered by editor category and faction.</returns>
+    public IReadOnlyList<ContentPackEditorCatalog> GetCatalogs()
+    {
+        return catalogs ??= Documents
+            .Select(document => new ContentPackEditorCatalog(document))
+            .OrderBy(catalog => catalog.Name, StringComparer.Ordinal)
+            .ThenBy(catalog => catalog.Faction, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Creates an asset store for this pack's current inheritance chain.
+    /// </summary>
+    /// <returns>The owned asset store.</returns>
+    public ContentAssets CreateAssets()
+    {
+        return new ContentAssets(
+            ContentPackLoader.CreateFolderResolver(ContentRootPath, PackRootPath, Definition)
+        );
+    }
+
+    /// <summary>
+    /// Creates a named entry without colliding with identities elsewhere in the working pack.
+    /// </summary>
+    /// <param name="source">The project-owned entry to use as a template.</param>
+    /// <returns>The new editable entry.</returns>
+    public ContentPackEditorRecord DuplicateRecord(ContentPackEditorRecord source)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+        RequireOwnedRecord(source);
+        HashSet<string> identities = new HashSet<string>(
+            GetCatalogs()
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(record => record.Planets))
+                )
+                .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element)),
+            StringComparer.Ordinal
+        );
+        using (BeginEdit("Duplicate " + source.Name))
+            return source.Catalog.Duplicate(source, identities);
+    }
+
+    /// <summary>
+    /// Imports a media file into this pack without replacing another authored asset.
+    /// </summary>
+    /// <param name="sourcePath">The local media file.</param>
+    /// <returns>The imported pack-scoped content address.</returns>
+    public string ImportAsset(string sourcePath)
+    {
+        return ImportAssetToFolder(sourcePath, "Pack/Assets");
+    }
+
+    /// <summary>
+    /// Imports media using the destination and storage convention declared by the field.
+    /// </summary>
+    /// <param name="sourcePath">The selected source file.</param>
+    /// <param name="field">The target field.</param>
+    /// <returns>The value to store in the field.</returns>
+    public string ImportAsset(string sourcePath, ContentPackEditorField field)
+    {
+        RequireOwnedRecord(field.Record);
+        if (field.IsMediaDirectory || !field.IsMedia)
+            throw new ArgumentException("Choose a media file field.");
+        if (
+            !field.MediaExtensions.Contains(
+                Path.GetExtension(sourcePath),
+                StringComparer.OrdinalIgnoreCase
+            )
+        )
+            throw new ArgumentException("Unsupported file type.");
+        string root = field.MediaRoot;
+        string address = ImportAssetToFolder(sourcePath, root ?? "Pack/Assets");
+        return root == null ? address : address[(root.TrimEnd('/').Length + 1)..];
+    }
+
+    /// <summary>
+    /// Copies a file to a pack directory without overwriting an existing asset.
+    /// </summary>
+    /// <param name="sourcePath">The selected source file.</param>
+    /// <param name="directoryAddress">The pack-scoped destination folder.</param>
+    /// <returns>The imported content address.</returns>
+    private string ImportAssetToFolder(string sourcePath, string directoryAddress)
+    {
+        VerifyWorkingFolder(ContentRootPath, PackRootPath);
+        string source = Path.GetFullPath(sourcePath);
+        if (!File.Exists(source))
+            throw new FileNotFoundException("The selected media file does not exist.", source);
+        if (!directoryAddress.StartsWith("Pack/", StringComparison.Ordinal))
+            throw new ArgumentException("Import requires a folder inside your pack.");
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        resolver.ResolveFile(directoryAddress);
+        string directory = Path.GetFullPath(directoryAddress[5..], PackRootPath);
+        Directory.CreateDirectory(directory);
+        string fileName = Path.GetFileName(source);
+        string target = Path.Combine(directory, fileName);
+        int suffix = 2;
+        while (File.Exists(target))
+        {
+            using SHA256 hash = SHA256.Create();
+            using FileStream original = File.OpenRead(source);
+            using FileStream existing = File.OpenRead(target);
+            if (hash.ComputeHash(original).SequenceEqual(hash.ComputeHash(existing)))
+                return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
+            target = Path.Combine(
+                directory,
+                Path.GetFileNameWithoutExtension(fileName)
+                    + "-"
+                    + suffix++
+                    + Path.GetExtension(fileName)
+            );
+        }
+        File.Copy(source, target);
+        return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
+    }
+
+    /// <summary>
+    /// Opens one installed pack through its inheritance chain.
+    /// </summary>
+    /// <param name="contentRootPath">The external Content directory.</param>
+    /// <param name="packID">The pack identifier to open.</param>
+    /// <returns>The editable project.</returns>
+    public static ContentPackEditorProject Open(string contentRootPath, string packID)
+    {
+        ContentFileResolver resolver = ContentPackLoader.CreatePackResolver(
+            contentRootPath,
+            packID
+        );
+        ContentPackDefinition definition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                Path.Combine(resolver.PackRootPath, "pack.xml")
+            );
+        return new ContentPackEditorProject(resolver, definition);
+    }
+
+    /// <summary>
+    /// Opens an authored pack folder while resolving inherited assets from installed content.
+    /// </summary>
+    /// <param name="contentRootPath">The installed application Content directory.</param>
+    /// <param name="packRootPath">The authored directory containing pack.xml.</param>
+    /// <returns>The editable project.</returns>
+    public static ContentPackEditorProject OpenFolder(string contentRootPath, string packRootPath)
+    {
+        VerifyWorkingFolder(contentRootPath, packRootPath);
+        ContentPackDefinition definition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                Path.Combine(packRootPath, "pack.xml")
+            );
+        return new ContentPackEditorProject(
+            ContentPackLoader.CreateFolderResolver(contentRootPath, packRootPath, definition),
+            definition
+        );
+    }
+
+    /// <summary>
+    /// Creates a derived pack that initially inherits every authored document from a base pack.
+    /// </summary>
+    /// <param name="contentRootPath">The external Content directory.</param>
+    /// <param name="basePackID">The installed base-pack identifier.</param>
+    /// <param name="packID">The new stable pack identifier.</param>
+    /// <param name="displayName">The new user-facing name.</param>
+    /// <param name="version">The initial pack version.</param>
+    /// <returns>The newly created editable project.</returns>
+    public static ContentPackEditorProject Create(
+        string contentRootPath,
+        string basePackID,
+        string packID,
+        string displayName,
+        string version
+    )
+    {
+        ValidateIdentity(packID, displayName, version);
+        return CreateInFolder(
+            contentRootPath,
+            basePackID,
+            Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRootPath), packID),
+            packID,
+            displayName,
+            version
+        );
+    }
+
+    /// <summary>
+    /// Creates a derived pack in a chosen working folder without modifying installed base content.
+    /// </summary>
+    /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <param name="basePackID">The installed pack to inherit.</param>
+    /// <param name="packRootPath">The new working folder.</param>
+    /// <param name="packID">The new stable identifier.</param>
+    /// <param name="displayName">The new display name.</param>
+    /// <param name="version">The initial version.</param>
+    /// <returns>The newly opened project.</returns>
+    public static ContentPackEditorProject CreateInFolder(
+        string contentRootPath,
+        string basePackID,
+        string packRootPath,
+        string packID,
+        string displayName,
+        string version
+    )
+    {
+        ValidateIdentity(packID, displayName, version);
+        ContentFileResolver baseResolver = ContentPackLoader.CreatePackResolver(
+            contentRootPath,
+            basePackID
+        );
+        ContentPackDefinition baseDefinition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                Path.Combine(baseResolver.PackRootPath, "pack.xml")
+            );
+
+        VerifyWorkingFolder(contentRootPath, packRootPath);
+        string packRoot = Path.GetFullPath(packRootPath);
+        bool directoryExisted = Directory.Exists(packRoot);
+        if (
+            File.Exists(packRoot)
+            || directoryExisted && Directory.EnumerateFileSystemEntries(packRoot).Any()
+        )
+            throw new IOException("Choose a new or empty content-pack folder.");
+        foreach (string inheritedRoot in baseResolver.PackRootPaths)
+        {
+            if (
+                packRoot.StartsWith(
+                    inheritedRoot.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar
+                    ) + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                throw new IOException(
+                    "Choose a working folder outside the inherited content pack."
+                );
+        }
+        if (
+            ContentPackLoader
+                .DiscoverPacks(contentRootPath)
+                .Any(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal))
+        )
+            throw new InvalidDataException($"A content pack already declares ID '{packID}'.");
+
+        ContentPackDefinition definition = CloneDefinition(
+            baseDefinition,
+            packID.Trim(),
+            displayName.Trim(),
+            version.Trim()
+        );
+        try
+        {
+            Directory.CreateDirectory(packRoot);
+            ContentDefinitionSerializer.Serialize(Path.Combine(packRoot, "pack.xml"), definition);
+            return OpenFolder(contentRootPath, packRoot);
+        }
+        catch
+        {
+            string manifestPath = Path.Combine(packRoot, "pack.xml");
+            if (File.Exists(manifestPath))
+                File.Delete(manifestPath);
+            if (
+                !directoryExisted
+                && Directory.Exists(packRoot)
+                && !Directory.EnumerateFileSystemEntries(packRoot).Any()
+            )
+                Directory.Delete(packRoot);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates a project from a selected pack and its resolver.
+    /// </summary>
+    /// <param name="resolver">The selected pack's layered resolver.</param>
+    /// <param name="definition">The selected pack definition.</param>
+    private ContentPackEditorProject(ContentFileResolver resolver, ContentPackDefinition definition)
+    {
+        ContentRootPath = resolver.ContentRootPath;
+        PackRootPath = resolver.PackRootPath;
+        Definition = definition ?? throw new ArgumentNullException(nameof(definition));
+        documents = CreateDocuments(resolver, definition);
+        history = new ContentPackEditorHistory(documents);
+    }
+
+    /// <summary>
+    /// Saves every changed document and refreshes the in-memory pack definition.
+    /// </summary>
+    public void Save()
+    {
+        VerifyWorkingFolder(ContentRootPath, PackRootPath);
+        ContentPackEditorDocument[] dirtyDocuments = documents
+            .Where(document => document.IsDirty)
+            .ToArray();
+        foreach (ContentPackEditorDocument document in dirtyDocuments)
+        {
+            document.Validate();
+            document.VerifyUnchangedTarget();
+        }
+        ContentPackDefinition nextDefinition =
+            ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
+                documents.Single(document => document.Address == _packDefinitionAddress).Text
+            );
+        ValidateIdentity(nextDefinition.ID, nextDefinition.DisplayName, nextDefinition.Version);
+        ContentFileResolver nextResolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            nextDefinition
+        );
+        bool baseChanged = !string.Equals(
+            Definition.BasePackID,
+            nextDefinition.BasePackID,
+            StringComparison.Ordinal
+        );
+        foreach (ContentPackEditorDocument document in dirtyDocuments)
+            document.Save();
+
+        Definition = nextDefinition;
+        if (baseChanged)
+        {
+            documents = CreateDocuments(nextResolver, nextDefinition);
+            catalogs = null;
+            history = new ContentPackEditorHistory(documents);
+        }
+    }
+
+    /// <summary>
+    /// Writes the current working project to a new folder with a separate pack identity.
+    /// </summary>
+    /// <param name="folder">The new destination folder.</param>
+    /// <param name="packID">The copy's identifier.</param>
+    /// <param name="displayName">The copy's display name.</param>
+    /// <param name="version">The copy's version.</param>
+    /// <returns>The independently opened project copy.</returns>
+    public ContentPackEditorProject SaveAs(
+        string folder,
+        string packID,
+        string displayName,
+        string version
+    )
+    {
+        ValidateIdentity(packID, displayName, version);
+        VerifyWorkingFolder(ContentRootPath, folder);
+        ContentPackEditorExporter.WriteFolder(this, folder, packID, displayName, version);
+        return OpenFolder(ContentRootPath, folder);
+    }
+
+    /// <summary>
+    /// Validates and exports a snapshot while allowing the UI to update and cancel the operation.
+    /// </summary>
+    /// <param name="filePath">The destination zip file.</param>
+    /// <param name="progress">Optional status reporting for the current validation check.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of validation and archive creation.</returns>
+    public Task ExportAsync(
+        string filePath,
+        Action<string> progress = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return ContentPackEditorExporter.WriteArchiveAsync(
+            this,
+            filePath,
+            progress,
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Checks authored references, campaign startup, and media decoding while keeping authoring responsive.
+    /// </summary>
+    /// <param name="progress">Optional status reporting for the current validation check.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of all validation checks.</returns>
+    public async Task ValidateAsync(
+        Action<string> progress = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.Yield();
+        foreach (var check in GetStartupChecks())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Invoke(
+                $"Checking scenario: {check.Pack.Scenario.ID} ({check.Summary.PlayerFactionID}, {check.Summary.GalaxySize}, {check.Summary.Difficulty}, {check.Summary.ResourceAvailability})"
+            );
+            ContentEditorPackValidator.ValidateStartup(check.Pack, check.Summary);
+            await Task.Yield();
+        }
+        await ValidateMediaAsync(progress, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    /// Decodes referenced media once per resolved file while releasing each asset before continuing.
+    /// </summary>
+    /// <param name="progress">Optional status reporting for the current asset.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of referenced-media validation.</returns>
+    private async Task ValidateMediaAsync(
+        Action<string> progress,
+        CancellationToken cancellationToken
+    )
+    {
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        HashSet<string> checkedFiles = new HashSet<string>(StringComparer.Ordinal);
+        Stopwatch batch = Stopwatch.StartNew();
+        foreach (
+            ContentPackEditorField field in GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => new[] { record }.Concat(record.Planets))
+                .OrderBy(record => record.Catalog.Document.IsInherited)
+                .SelectMany(record => record.GetFields())
+                .Where(field => field.IsMedia)
+        )
+        foreach (string value in field.Values.Where(value => !string.IsNullOrWhiteSpace(value)))
+        {
+            string address = field.GetMediaAddress(value);
+            IEnumerable<string> addresses = field.IsMediaDirectory
+                ? resolver
+                    .EnumerateFileAddresses(address)
+                    .Where(candidate =>
+                        field.MediaExtensions.Contains(
+                            Path.GetExtension(candidate),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                    )
+                : new[] { address };
+            foreach (string candidate in addresses)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string file =
+                    resolver.ResolveFile(candidate, field.MediaExtensions)
+                    ?? throw new FileNotFoundException("Media not found: " + candidate);
+                if (!checkedFiles.Add(file))
+                    continue;
+                progress?.Invoke("Checking media: " + candidate);
+                await ContentEditorMediaValidator.ValidateAsync(
+                    resolver,
+                    candidate,
+                    field.MediaType,
+                    cancellationToken
+                );
+                if (batch.ElapsedMilliseconds >= _mediaFrameBudgetMilliseconds)
+                {
+                    await Task.Yield();
+                    batch.Restart();
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates authored fields and loads the scenarios needed by the startup checks.
+    /// </summary>
+    /// <returns>The loaded catalog and launch configuration for each startup check.</returns>
+    private IEnumerable<(ContentPack Pack, GameSummary Summary)> GetStartupChecks()
+    {
+        if (IsDirty)
+            throw new InvalidOperationException("Save the content pack before validating it.");
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        IReadOnlyDictionary<string, string> factions = GetFactionOptions();
+        IReadOnlyDictionary<string, string> traits = GetTraitOptions();
+        foreach (
+            ContentPackEditorRecord record in GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => new[] { record }.Concat(record.Planets))
+        )
+        foreach (ContentPackEditorField field in record.GetFields())
+            ValidateFieldValues(field, field.Values, resolver, factions, traits);
+        string[] scenarios = Definition
+            .ScenarioPaths.Select(path =>
+                ContentDefinitionSerializer
+                    .Deserialize<ContentScenarioDefinition>(
+                        resolver.ResolveFile("Pack/" + path)
+                            ?? throw new FileNotFoundException("Scenario not found: " + path)
+                    )
+                    .ID
+            )
+            .Append(Definition.DefaultScenarioID)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (string scenario in scenarios)
+        {
+            ContentPack pack = ContentPackLoader.LoadPack(resolver, Definition, scenario);
+            ContentEditorPackValidator.ValidateDefinitions(pack);
+            foreach (
+                GameSummary summary in ContentEditorPackValidator.GetStartupConfigurations(pack)
+            )
+                yield return (pack, summary);
+        }
+    }
+
+    /// <summary>
+    /// Creates the editable XML document collection in stable path order.
+    /// </summary>
+    /// <param name="resolver">The selected pack's layered resolver.</param>
+    /// <param name="definition">The selected pack manifest.</param>
+    /// <returns>The editable documents.</returns>
+    private static List<ContentPackEditorDocument> CreateDocuments(
+        ContentFileResolver resolver,
+        ContentPackDefinition definition
+    )
+    {
+        IEnumerable<string> addresses = resolver
+            .EnumerateFileAddresses("Pack/")
+            .Where(address => address.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            .Append(_packDefinitionAddress)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(address => address, StringComparer.Ordinal);
+
+        List<ContentPackEditorDocument> result = addresses
+            .Select(address =>
+            {
+                string relativePath = address[5..];
+                string sourcePath =
+                    address == _packDefinitionAddress
+                        ? Path.Combine(resolver.PackRootPath, "pack.xml")
+                        : resolver.ResolveFile(address)
+                            ?? throw new FileNotFoundException(
+                                $"Content document not found: {address}"
+                            );
+                string targetPath = Path.GetFullPath(relativePath, resolver.PackRootPath);
+                return new ContentPackEditorDocument(address, sourcePath, targetPath);
+            })
+            .ToList();
+        if (
+            string.IsNullOrWhiteSpace(definition.GameConfigPath)
+            && !result.Any(document => document.Address == "Pack/Shared/Data/game-config.xml")
+        )
+        {
+            string defaultRules = resolver.ResolveFile("Application/Rules/game.xml");
+            if (defaultRules != null)
+                result.Add(
+                    new ContentPackEditorDocument(
+                        "Pack/Shared/Data/game-config.xml",
+                        defaultRules,
+                        Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml")
+                    )
+                );
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Copies the base manifest while assigning the new pack identity.
+    /// </summary>
+    /// <param name="source">The base manifest.</param>
+    /// <param name="packID">The new pack identifier.</param>
+    /// <param name="displayName">The new display name.</param>
+    /// <param name="version">The new version.</param>
+    /// <returns>The derived manifest.</returns>
+    private static ContentPackDefinition CloneDefinition(
+        ContentPackDefinition source,
+        string packID,
+        string displayName,
+        string version
+    )
+    {
+        return new ContentPackDefinition
+        {
+            ID = packID,
+            BasePackID = source.ID,
+            Version = version,
+            DisplayName = displayName,
+            DefaultScenarioID = source.DefaultScenarioID,
+            MainMenuMusicPath = source.MainMenuMusicPath,
+            GameConfigPath = source.GameConfigPath,
+            PlanetSectorsPath = source.PlanetSectorsPath,
+            BuildingsPath = source.BuildingsPath,
+            OfficerTraitsPath = source.OfficerTraitsPath,
+            GameEventsPath = source.GameEventsPath,
+            MessageDefinitionsPath = source.MessageDefinitionsPath,
+            EncyclopediaEntriesPath = source.EncyclopediaEntriesPath,
+            NeutralThemePath = source.NeutralThemePath,
+            FactionPaths = new List<string>(source.FactionPaths),
+            ScenarioPaths = new List<string>(source.ScenarioPaths),
+            Preloads = source.Preloads.ConvertAll(preload => new ContentPreloadDefinition
+            {
+                ID = preload.ID,
+                Path = preload.Path,
+            }),
+        };
+    }
+
+    /// <summary>
+    /// Rejects incomplete content-pack identity fields before touching disk.
+    /// </summary>
+    /// <param name="packID">The proposed stable identifier.</param>
+    /// <param name="displayName">The proposed display name.</param>
+    /// <param name="version">The proposed version.</param>
+    private static void ValidateIdentity(string packID, string displayName, string version)
+    {
+        if (string.IsNullOrWhiteSpace(packID))
+            throw new ArgumentException("A content-pack ID is required.", nameof(packID));
+        if (string.IsNullOrWhiteSpace(displayName))
+            throw new ArgumentException("A display name is required.", nameof(displayName));
+        if (string.IsNullOrWhiteSpace(version))
+            throw new ArgumentException("A version is required.", nameof(version));
+        if (
+            packID.Any(character =>
+                !(char.IsLower(character) || char.IsDigit(character) || character == '-')
+            )
+            || packID[0] == '-'
+            || packID[^1] == '-'
+            || packID.Contains("--", StringComparison.Ordinal)
+        )
+            throw new ArgumentException(
+                "Content-pack IDs must use lowercase letters or digits separated by single hyphens.",
+                nameof(packID)
+            );
+    }
+}

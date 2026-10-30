@@ -31,6 +31,7 @@ Unity_lic.alf
 package.json
 yarn.lock
 node_modules
+**/__pycache__/
 
 # VS Extensions
 **/*.vs
@@ -44,6 +45,8 @@ Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
+/Assets/Mods/
+/Assets/Mods.meta
 
 # Local captures
 /_recordings/
@@ -96,3 +99,4 @@ Assets/Art/Models/MainMenu/
 
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
+/Assets/GameIcon.meta

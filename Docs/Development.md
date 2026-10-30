@@ -5,6 +5,7 @@
 - Unity 6000.4.12f1
 - .NET SDK
 - A Bash-compatible shell
+- Python 3.11 or later for desktop packaging
 - Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam
 - Access to the separate `rebellion2-media` repository
 
@@ -37,7 +38,7 @@ CI installs clean media mirrors automatically with `rsync --delete` before Unity
 ./build.sh lint       # Run static analysis
 ./build.sh test       # Run Unity EditMode tests
 ./build.sh coverage   # Run tests with coverage thresholds
-./build.sh build      # Build the standalone player
+./build.sh build      # Build and verify the game and content-pack editor
 ./build.sh clean      # Remove build artifacts
 ./build.sh all        # Run the complete local verification suite
 ```
@@ -53,3 +54,39 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
+
+## Content-pack editor and packaging
+
+Windows and Linux builds include `rebellion2-editor` beside `rebellion2`. The macOS editor is a
+helper app inside the game app's `Contents/Helpers` folder, so game installers and updates carry it
+with the game. Both apps use the same external Content directory. Launch the editor to create or open
+a pack in the installation's `Mods` folder. A new pack inherits its selected base; saving writes
+only edited XML files and imported assets. Export creates a zip of those local files after
+checking every declared scenario through the content loader, reference checks, campaign generation,
+runtime initialization, and referenced media decoding. Progress shows the current check; Escape
+cancels validation or export without replacing an existing archive.
+
+Package a completed Windows build with:
+
+```bash
+python3 Tools/package_desktop.py --platform StandaloneWindows64 \
+  --build-dir build/content-editor --output dist/rebellion2-windows.zip
+```
+
+Use `StandaloneLinux64` or `StandaloneOSX` and an output ending in `.tar.gz` for Linux or macOS.
+Without `--output`, the command only verifies the build. The shared desktop layout requires Mono
+players. Use `--game-name Rebellion2` for release builds that use that executable base name.
+Set `PYTHON` when `build.sh` should use a
+different Python executable.
+
+`--stage-dir <new-folder>` creates the same clean runtime file tree for installer packaging without
+making an archive. Release installers use this stage to exclude Unity debug output and local files.
+
+Archives contain both players, their runtimes, native file dialogs, dependency notices, and a
+`bundle.json` inventory with file hashes. A `.sha256` file accompanies each archive. Installed
+content, local mods, and debug output are excluded. The installer must supply the existing external
+`Content` folder beside the players; this archive does not replace the content distribution.
+
+CI runs packaging tests during lint, waits for the game tests before building, then verifies and
+uploads a desktop bundle for each build target. These are downloadable CI artifacts retained for
+seven days; creating them does not publish a release or update an installation.

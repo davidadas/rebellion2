@@ -51,16 +51,8 @@ public static class ContentPackLoader
     /// <returns>The discovered pack definitions in stable directory order.</returns>
     internal static IReadOnlyList<ContentPackDefinition> DiscoverPacks(string contentRootPath)
     {
-        string packsRoot = Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName);
-        if (!Directory.Exists(packsRoot))
-            return Array.Empty<ContentPackDefinition>();
-
-        return Directory
-            .EnumerateDirectories(packsRoot)
-            .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
-            .Select(path => Path.Combine(path, _packFileName))
-            .Where(File.Exists)
-            .Select(DeserializeXml<ContentPackDefinition>)
+        return ReadPackDefinitions(contentRootPath)
+            .Select(item => item.Definition)
             .Where(pack => !string.IsNullOrWhiteSpace(pack.ID))
             .ToArray();
     }
@@ -94,10 +86,7 @@ public static class ContentPackLoader
         IEnumerable<string> disabledModIDs
     )
     {
-        IReadOnlyList<string> packRoots = ResolvePackRoots(
-            Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
-            packID
-        );
+        IReadOnlyList<string> packRoots = ResolvePackRoots(contentRootPath, packID);
         ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
             Path.Combine(packRoots[0], _packFileName)
         );
@@ -108,6 +97,81 @@ public static class ContentPackLoader
             pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
+        );
+    }
+
+    /// <summary>
+    /// Creates an unmodified resolver for one installed pack and its inherited pack chain.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <param name="packID">The selected content-pack identifier.</param>
+    /// <returns>A resolver over the selected pack and its inherited packs.</returns>
+    internal static ContentFileResolver CreatePackResolver(string contentRootPath, string packID)
+    {
+        string absoluteContentRoot = Path.GetFullPath(
+            contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
+        );
+        IReadOnlyList<string> packRoots = ResolvePackRoots(absoluteContentRoot, packID);
+        return new ContentFileResolver(
+            absoluteContentRoot,
+            packRoots[0],
+            fallbackPackRootPaths: packRoots.Skip(1)
+        );
+    }
+
+    /// <summary>
+    /// Resolves an explicit authored folder over its installed base-pack chain.
+    /// </summary>
+    /// <param name="contentRootPath">The installed application content root.</param>
+    /// <param name="packRootPath">The authored content-pack folder.</param>
+    /// <param name="definition">The manifest from that folder.</param>
+    /// <returns>The resolver without unrelated installed mod overrides.</returns>
+    internal static ContentFileResolver CreateFolderResolver(
+        string contentRootPath,
+        string packRootPath,
+        ContentPackDefinition definition
+    )
+    {
+        if (definition == null)
+            throw new ArgumentNullException(nameof(definition));
+        IReadOnlyList<string> inheritedRoots = string.IsNullOrWhiteSpace(definition.BasePackID)
+            ? Array.Empty<string>()
+            : CreatePackResolver(contentRootPath, definition.BasePackID).PackRootPaths;
+        foreach (string inheritedRoot in inheritedRoots)
+        {
+            ContentPackDefinition inherited = DeserializeXml<ContentPackDefinition>(
+                Path.Combine(inheritedRoot, "pack.xml")
+            );
+            if (inherited.ID == definition.ID)
+                throw new InvalidDataException("The content pack cannot inherit from itself.");
+        }
+        return new ContentFileResolver(
+            contentRootPath,
+            packRootPath,
+            fallbackPackRootPaths: inheritedRoots
+        );
+    }
+
+    /// <summary>
+    /// Loads an exact content-pack folder without registering it or changing saved preferences.
+    /// </summary>
+    /// <param name="contentRootPath">The installed application and base-pack content.</param>
+    /// <param name="packRootPath">The folder containing the requested pack.xml.</param>
+    /// <param name="scenarioID">The scenario, or null to use the authored default.</param>
+    /// <returns>The loaded content and scenario.</returns>
+    internal static ContentPack OpenFolder(
+        string contentRootPath,
+        string packRootPath,
+        string scenarioID = null
+    )
+    {
+        ContentPackDefinition definition = DeserializeXml<ContentPackDefinition>(
+            Path.Combine(Path.GetFullPath(packRootPath), "pack.xml")
+        );
+        return LoadPack(
+            CreateFolderResolver(contentRootPath, packRootPath, definition),
+            definition,
+            scenarioID
         );
     }
 
@@ -247,10 +311,7 @@ public static class ContentPackLoader
         IEnumerable<string> disabledModIDs
     )
     {
-        IReadOnlyList<string> packRoots = ResolvePackRoots(
-            Path.Combine(absoluteContentRoot, _packsDirectoryName),
-            packID
-        );
+        IReadOnlyList<string> packRoots = ResolvePackRoots(absoluteContentRoot, packID);
         string packRoot = packRoots[0];
         ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
             Path.Combine(packRoot, _packFileName)
@@ -271,6 +332,26 @@ public static class ContentPackLoader
             packRoots.Skip(1)
         );
 
+        return LoadPack(fileResolver, pack, scenarioID);
+    }
+
+    /// <summary>
+    /// Loads a complete pack from an explicit resolver and manifest.
+    /// </summary>
+    /// <param name="fileResolver">The pack and its inherited content layers.</param>
+    /// <param name="pack">The selected manifest.</param>
+    /// <param name="scenarioID">The scenario to load, or empty for the manifest default.</param>
+    /// <returns>The validated pack and its game-data catalogs.</returns>
+    internal static ContentPack LoadPack(
+        ContentFileResolver fileResolver,
+        ContentPackDefinition pack,
+        string scenarioID
+    )
+    {
+        if (fileResolver == null)
+            throw new ArgumentNullException(nameof(fileResolver));
+        if (pack == null)
+            throw new ArgumentNullException(nameof(pack));
         List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
             fileResolver,
             pack.FactionPaths
@@ -293,8 +374,8 @@ public static class ContentPackLoader
         ValidateDefinitions(pack, factions, scenarios, scenario);
         GameDataCatalog gameData = LoadGameData(fileResolver, pack, factions, scenario);
         return new ContentPack(
-            absoluteContentRoot,
-            packRoot,
+            fileResolver.ContentRootPath,
+            fileResolver.PackRootPath,
             fileResolver,
             pack,
             scenario,
@@ -344,7 +425,7 @@ public static class ContentPackLoader
                 StringComparison.OrdinalIgnoreCase
             )
         )
-            return dataDirectory.Parent.Parent;
+            return ResolveAppInstallationDirectory(dataDirectory.Parent);
 
         DirectoryInfo resourcesDirectory = dataDirectory.Parent;
         DirectoryInfo contentsDirectory = resourcesDirectory?.Parent;
@@ -355,9 +436,30 @@ public static class ContentPackLoader
             && string.Equals(contentsDirectory?.Name, "Contents", StringComparison.Ordinal)
             && string.Equals(appDirectory?.Extension, ".app", StringComparison.OrdinalIgnoreCase);
         if (platform == RuntimePlatform.OSXPlayer || hasMacBundleLayout)
-            return appDirectory?.Parent;
+            return ResolveAppInstallationDirectory(appDirectory);
 
         return dataDirectory.Parent;
+    }
+
+    /// <summary>
+    /// Resolves a macOS app's installation root, sharing the host's content with nested helper apps.
+    /// </summary>
+    /// <param name="appDirectory">The app bundle that owns the player data.</param>
+    /// <returns>The host app's installation directory, or null for an incomplete path.</returns>
+    private static DirectoryInfo ResolveAppInstallationDirectory(DirectoryInfo appDirectory)
+    {
+        DirectoryInfo directory = appDirectory?.Parent;
+        while (
+            string.Equals(directory?.Name, "Helpers", StringComparison.Ordinal)
+            && string.Equals(directory.Parent?.Name, "Contents", StringComparison.Ordinal)
+            && string.Equals(
+                directory.Parent.Parent?.Extension,
+                ".app",
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            directory = directory.Parent.Parent.Parent;
+        return directory;
     }
 
     /// <summary>
@@ -866,12 +968,16 @@ public static class ContentPackLoader
     /// <summary>
     /// Resolves the selected pack and its inherited packs in fallback order.
     /// </summary>
-    /// <param name="packsRootPath">The directory containing installed packs.</param>
+    /// <param name="contentRootPath">The installed Content directory.</param>
     /// <param name="packID">The stable pack ID selected by the catalog.</param>
     /// <returns>The absolute pack roots from the selected pack through its furthest ancestor.</returns>
-    private static IReadOnlyList<string> ResolvePackRoots(string packsRootPath, string packID)
+    private static IReadOnlyList<string> ResolvePackRoots(string contentRootPath, string packID)
     {
-        if (!Directory.Exists(packsRootPath))
+        string packsRootPath = Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName);
+        if (
+            !Directory.Exists(packsRootPath)
+            && !Directory.Exists(ContentFileResolver.ResolveModsRootPath(contentRootPath))
+        )
             throw new DirectoryNotFoundException(
                 $"Content packs directory not found: {packsRootPath}"
             );
@@ -880,13 +986,9 @@ public static class ContentPackLoader
             new Dictionary<string, List<(string Root, ContentPackDefinition Definition)>>(
                 StringComparer.Ordinal
             );
-        foreach (string candidateRoot in Directory.EnumerateDirectories(packsRootPath))
+        foreach (var (definitionPath, candidate) in ReadPackDefinitions(contentRootPath))
         {
-            string definitionPath = Path.Combine(candidateRoot, _packFileName);
-            if (!File.Exists(definitionPath))
-                continue;
-
-            ContentPackDefinition candidate = DeserializeXml<ContentPackDefinition>(definitionPath);
+            string candidateRoot = Path.GetDirectoryName(definitionPath);
             if (string.IsNullOrWhiteSpace(candidate.ID))
                 continue;
             if (!packs.TryGetValue(candidate.ID, out var matches))
@@ -936,10 +1038,70 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Reads installed definitions while isolating malformed authored drafts from unrelated packs.
+    /// </summary>
+    /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <returns>The readable definitions and their manifest paths.</returns>
+    private static IEnumerable<(string Path, ContentPackDefinition Definition)> ReadPackDefinitions(
+        string contentRootPath
+    )
+    {
+        string modsRoot = ContentFileResolver.ResolveModsRootPath(contentRootPath);
+        foreach (string path in EnumeratePackDefinitions(contentRootPath))
+        {
+            ContentPackDefinition definition;
+            try
+            {
+                definition = DeserializeXml<ContentPackDefinition>(path);
+            }
+            catch (Exception exception)
+                when (string.Equals(
+                        Path.GetDirectoryName(Path.GetDirectoryName(path)),
+                        modsRoot,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    && exception
+                        is InvalidOperationException
+                            or XmlException
+                            or IOException
+                            or UnauthorizedAccessException
+                )
+            {
+                Debug.LogWarning($"Content pack could not be loaded: {path}. {exception.Message}");
+                continue;
+            }
+            yield return (path, definition);
+        }
+    }
+
+    /// <summary>
+    /// Enumerates installed packs and authored packs in Mods using the same discovery order.
+    /// </summary>
+    /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <returns>The existing pack manifests in stable root and directory order.</returns>
+    private static IEnumerable<string> EnumeratePackDefinitions(string contentRootPath)
+    {
+        string[] roots =
+        {
+            Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
+            ContentFileResolver.ResolveModsRootPath(contentRootPath),
+        };
+        return roots
+            .Where(Directory.Exists)
+            .SelectMany(root =>
+                Directory
+                    .EnumerateDirectories(root)
+                    .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            )
+            .Select(path => Path.Combine(path, _packFileName))
+            .Where(File.Exists);
+    }
+
+    /// <summary>
     /// Resolves the external content root for the editor or current player platform.
     /// </summary>
     /// <returns>The absolute external content root.</returns>
-    private static string ResolveContentRootPath()
+    internal static string ResolveContentRootPath()
     {
         string commandLinePath = GetCommandLineContentPath();
         if (commandLinePath != null)

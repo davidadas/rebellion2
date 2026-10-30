@@ -1,0 +1,597 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// Presents one validated property with the shared input or checkbox control.
+/// </summary>
+public sealed class ContentEditorFieldView : MonoBehaviour
+{
+    [SerializeField]
+    private TextMeshProUGUI label;
+
+    [SerializeField]
+    private TMP_InputField input;
+
+    [SerializeField]
+    private UICheckboxView checkbox;
+
+    [SerializeField]
+    private TextMeshProUGUI error;
+
+    [SerializeField]
+    private Button importButton;
+
+    [SerializeField]
+    private TMP_Dropdown choiceDropdown;
+
+    [SerializeField]
+    private Button previewButton;
+
+    [SerializeField]
+    private ContentEditorFieldHelp help;
+    private ContentPackEditorField field;
+    private ContentPackEditorProject project;
+    private Action changed;
+    private Action<ContentPackEditorField> importRequested;
+    private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
+    private Action<ContentPackEditorField, string> previewRequested;
+    private bool bound;
+    private bool rendering;
+    private IReadOnlyList<string> choiceValues = Array.Empty<string>();
+    private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
+
+    public event Action<string> ValidationFailed;
+
+    public int Height =>
+        field == null ? 56
+        : field.IsMediaDirectory ? (field.IsList ? 160 : 96)
+        : field.IsList
+        && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
+            ? Math.Max(56, choiceValues.Count * 32 + 20)
+        : field.IsMultiline || field.IsList ? 152
+        : 56;
+
+    public bool HasError => error != null && !string.IsNullOrEmpty(error.text);
+    public bool HasOpenChoice => choiceDropdown.IsExpanded;
+    public ContentPackEditorField Field => field;
+
+    /// <summary>
+    /// Applies the owning form's background palette to the editable value.
+    /// </summary>
+    /// <param name="role">The background's semantic palette role.</param>
+    public void SetBackgroundRole(ContentEditorColorRole role) =>
+        input.GetComponent<ContentEditorColorBinding>().SetRole(role);
+
+    /// <summary>
+    /// Centers a compact numeric control and its text within the owning table cell.
+    /// </summary>
+    public void SetCellLayout()
+    {
+        RectTransform value = (RectTransform)input.transform;
+        value.anchorMin = value.anchorMax = value.pivot = new Vector2(0.5f, 0.5f);
+        value.anchoredPosition = Vector2.zero;
+        value.sizeDelta = new Vector2(((RectTransform)transform).rect.width - 8, 32);
+        UILayout.ConfigureCenteredNumericInput(
+            input,
+            input.textComponent.color,
+            input.textComponent.fontSize,
+            10,
+            6
+        );
+    }
+
+    /// <summary>
+    /// Fits one shared field into a compact unit form or a full-width configuration form.
+    /// </summary>
+    /// <param name="bounds">The content-space field bounds.</param>
+    /// <param name="labelWidth">The space reserved for its label, or zero for a skill value cell.</param>
+    /// <returns>The row height, including the complete wrapped caption.</returns>
+    public int SetLayout(Rect bounds, float labelWidth)
+    {
+        float valueLeft = Mathf.Max(4, labelWidth);
+        label.textWrappingMode = TextWrappingModes.Normal;
+        label.overflowMode = TextOverflowModes.Overflow;
+        int labelHeight =
+            labelWidth > 0
+                ? Mathf.Max(
+                    32,
+                    Mathf.CeilToInt(
+                        label
+                            .GetPreferredValues(
+                                label.text,
+                                Mathf.Max(1, labelWidth - 12),
+                                float.PositiveInfinity
+                            )
+                            .y
+                    ) + 2
+                )
+                : 0;
+        float labelExtra = Mathf.Max(0, labelHeight - 32) * 0.5f;
+        int height = Mathf.Max(Mathf.CeilToInt(bounds.height + labelExtra), labelHeight + 24);
+        bool multiline = field.IsMultiline || field.IsList && input.gameObject.activeSelf;
+        if (multiline && input.gameObject.activeSelf && !field.IsMediaDirectory)
+        {
+            float textWidth = Mathf.Max(1, bounds.width - valueLeft - 28);
+            float textHeight = input
+                .textComponent.GetPreferredValues(input.text, textWidth, float.PositiveInfinity)
+                .y;
+            height = Mathf.Max(height, Mathf.CeilToInt(textHeight + labelExtra + 52));
+        }
+        bounds.height = height;
+        RectTransform root = (RectTransform)transform;
+        UILayout.SetSourceRect(
+            root,
+            Mathf.RoundToInt(bounds.x),
+            Mathf.RoundToInt(bounds.y),
+            Mathf.RoundToInt(bounds.width),
+            Mathf.RoundToInt(bounds.height)
+        );
+        label.gameObject.SetActive(labelWidth > 0);
+        UILayout.SetSourceRect(
+            label.rectTransform,
+            4,
+            4,
+            Mathf.RoundToInt(Mathf.Max(0, labelWidth - 12)),
+            labelHeight
+        );
+        bool stackedMedia = field.IsMedia && bounds.width < 600;
+        float valueTop = stackedMedia ? 0 : 4 + labelExtra;
+        float valueHeight =
+            field.IsMediaDirectory ? (field.IsList ? 96 : 32)
+            : multiline ? bounds.height - valueTop - 20
+            : 32;
+        RectTransform value = (RectTransform)input.transform;
+        value.anchorMin = new Vector2(0, 1);
+        value.anchorMax = Vector2.one;
+        value.pivot = Vector2.up;
+        value.offsetMin = new Vector2(valueLeft, -valueTop - valueHeight);
+        value.offsetMax = new Vector2(
+            field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? -190 : -8,
+            -valueTop
+        );
+        input.textComponent.alignment =
+            multiline ? TextAlignmentOptions.TopLeft
+            : field.IsNumber ? TextAlignmentOptions.MidlineRight
+            : TextAlignmentOptions.MidlineLeft;
+        RectTransform choice = (RectTransform)choiceDropdown.transform;
+        choice.anchorMin = new Vector2(0, 1);
+        choice.anchorMax = Vector2.one;
+        float choiceTop = field.IsMediaDirectory ? (field.IsList ? 104 : 40) + valueTop : valueTop;
+        choice.offsetMin = new Vector2(valueLeft, -choiceTop - 32);
+        choice.offsetMax = new Vector2(field.IsMediaDirectory ? -104 : -8, -choiceTop);
+        error.rectTransform.offsetMin = new Vector2(valueLeft, 0);
+        UILayout.SetSourceRect(
+            (RectTransform)checkbox.transform,
+            Mathf.RoundToInt(valueLeft),
+            Mathf.RoundToInt(valueTop + 4),
+            Mathf.RoundToInt(bounds.width - labelWidth - 8),
+            24
+        );
+        checkbox.GetComponentInChildren<TextMeshProUGUI>(true).text = string.Empty;
+        for (int i = 0; i < choices.Count; i++)
+            UILayout.SetSourceRect(
+                (RectTransform)choices[i].transform,
+                Mathf.RoundToInt(valueLeft),
+                Mathf.RoundToInt(valueTop + 4) + i * 32,
+                Mathf.RoundToInt(bounds.width - labelWidth - 8),
+                24
+            );
+        if (stackedMedia)
+        {
+            RectTransform preview = (RectTransform)previewButton.transform;
+            RectTransform import = (RectTransform)importButton.transform;
+            UILayout.SetSourceRect(preview, 0, Mathf.RoundToInt(bounds.height - 54), 90, 32);
+            UILayout.SetSourceRect(import, 100, Mathf.RoundToInt(bounds.height - 54), 90, 32);
+        }
+        else
+        {
+            RectTransform preview = (RectTransform)previewButton.transform;
+            RectTransform import = (RectTransform)importButton.transform;
+            preview.anchorMin = preview.anchorMax = preview.pivot = new Vector2(1, 1);
+            preview.anchoredPosition = field.IsMediaDirectory
+                ? new Vector2(-4, -choiceTop)
+                : new Vector2(-96, -valueTop);
+            preview.sizeDelta = new Vector2(86, 32);
+            import.anchorMin = import.anchorMax = import.pivot = new Vector2(1, 1);
+            import.anchoredPosition = new Vector2(-4, -valueTop);
+            import.sizeDelta = new Vector2(86, 32);
+        }
+        return height;
+    }
+
+    /// <summary>
+    /// Binds the authored controls once.
+    /// </summary>
+    private void Awake()
+    {
+        BindControls();
+    }
+
+    /// <summary>
+    /// Connects authored controls once for runtime and native preview rendering.
+    /// </summary>
+    private void BindControls()
+    {
+        if (bound)
+            return;
+        if (
+            label == null
+            || input == null
+            || checkbox == null
+            || error == null
+            || importButton == null
+            || choiceDropdown == null
+            || previewButton == null
+            || help == null
+        )
+            throw new MissingReferenceException(name + " has incomplete field references.");
+        bound = true;
+        input.onEndEdit.AddListener(ApplyText);
+        importButton.onClick.AddListener(() => importRequested?.Invoke(field));
+        choiceDropdown.onValueChanged.AddListener(index =>
+        {
+            if (!rendering && field?.IsMediaDirectory == false && index < choiceValues.Count)
+                ApplyText(choiceValues[index]);
+        });
+        previewButton.onClick.AddListener(PreviewSelectedMedia);
+        checkbox.ValueChanged += ApplyBoolean;
+    }
+
+    /// <summary>
+    /// Releases the shared checkbox listener.
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (bound)
+            checkbox.ValueChanged -= ApplyBoolean;
+    }
+
+    /// <summary>
+    /// Displays the selected member and configures its input type.
+    /// </summary>
+    /// <param name="value">The member to edit.</param>
+    /// <param name="onChanged">The notification after a valid edit.</param>
+    /// <param name="onImport">The media-file selection request.</param>
+    /// <param name="owner">The owning project.</param>
+    /// <param name="onPreview">The media preview request.</param>
+    public void Render(
+        ContentPackEditorField value,
+        Action onChanged,
+        Action<ContentPackEditorField> onImport,
+        ContentPackEditorProject owner,
+        Action<ContentPackEditorField, string> onPreview
+    )
+    {
+        rendering = true;
+        try
+        {
+            BindControls();
+            SetBackgroundRole(ContentEditorColorRole.Input);
+            field = value;
+            help.Configure(field.HelpText, input);
+            project = owner;
+            IReadOnlyDictionary<string, string> referenceLabels =
+                field.IsFactionReference ? project.GetFactionOptions()
+                : field.IsTraitReference ? project.GetTraitOptions()
+                : null;
+            choiceValues =
+                referenceLabels != null
+                    ? referenceLabels
+                        .Keys.Concat(field.Values.Where(item => !string.IsNullOrWhiteSpace(item)))
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray()
+                : field.IsList && field.Choices.Count > 0
+                    ? field.Choices.Concat(field.Values).Distinct(StringComparer.Ordinal).ToArray()
+                : field.Choices;
+            changed = onChanged;
+            importRequested = onImport;
+            previewRequested = onPreview;
+            previewButton.GetComponentInChildren<TextMeshProUGUI>().text =
+                field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
+            label.text = field.Caption;
+            error.text = string.Empty;
+            importButton.gameObject.SetActive(field.IsMedia && !field.IsMediaDirectory);
+            previewButton.gameObject.SetActive(
+                field.MediaType
+                    is ContentPackEditorMediaType.Image
+                        or ContentPackEditorMediaType.Audio
+            );
+            previewButton.interactable = field.Values.Any(address =>
+                !string.IsNullOrWhiteSpace(address)
+            );
+            bool isChoice = !field.IsList && choiceValues.Count > 0;
+            if (isChoice && !choiceValues.Contains(field.Value))
+                choiceValues = new[] { field.Value }.Concat(choiceValues).ToArray();
+            bool isChecklist = field.IsList && (choiceValues.Count > 0 || referenceLabels != null);
+            bool booleanValue = false;
+            bool showBoolean = field.IsBoolean && bool.TryParse(field.Value, out booleanValue);
+            bool emptyReference = referenceLabels != null && choiceValues.Count == 0;
+            choiceDropdown.gameObject.SetActive(
+                isChoice || field.IsMediaDirectory || emptyReference
+            );
+            choiceDropdown.interactable = true;
+            if (emptyReference)
+            {
+                choiceDropdown.ClearOptions();
+                choiceDropdown.AddOptions(
+                    new List<string>
+                    {
+                        field.IsTraitReference ? "No traits defined" : "No factions defined",
+                    }
+                );
+                choiceDropdown.SetValueWithoutNotify(0);
+                choiceDropdown.RefreshShownValue();
+                choiceDropdown.interactable = false;
+            }
+            if (isChoice)
+            {
+                choiceDropdown.ClearOptions();
+                choiceDropdown.AddOptions(
+                    choiceValues.Select(ContentPackEditorField.FormatName).ToList()
+                );
+                choiceDropdown.SetValueWithoutNotify(
+                    Array.IndexOf(choiceValues.ToArray(), field.Value)
+                );
+                choiceDropdown.RefreshShownValue();
+            }
+            input.gameObject.SetActive(!showBoolean && !isChoice && !isChecklist);
+            checkbox.gameObject.SetActive(showBoolean);
+            foreach (UICheckboxView choice in choices)
+                choice.gameObject.SetActive(false);
+            if (isChecklist)
+            {
+                for (int i = 0; i < choiceValues.Count; i++)
+                {
+                    int index = i;
+                    if (choices.Count <= i)
+                    {
+                        UICheckboxView choice = Instantiate(checkbox, transform);
+                        choices.Add(choice);
+                        choice.ValueChanged += enabled => ApplyChoice(index, enabled);
+                    }
+                    UICheckboxView control = choices[i];
+                    control.GetComponentInChildren<TextMeshProUGUI>(true).text =
+                        referenceLabels != null
+                            ? (
+                                referenceLabels.TryGetValue(
+                                    choiceValues[i],
+                                    out string referenceName
+                                )
+                                    ? referenceName
+                                    : (
+                                        field.IsTraitReference
+                                            ? "Unknown trait: "
+                                            : "Unknown faction: "
+                                    ) + choiceValues[i]
+                            )
+                            : ContentPackEditorField.FormatName(choiceValues[i]);
+                    UILayout.SetSourceRect(
+                        (RectTransform)control.transform,
+                        244,
+                        9 + i * 32,
+                        300,
+                        26
+                    );
+                    control.SetIsCheckedWithoutNotify(field.Values.Contains(choiceValues[i]));
+                    control.gameObject.SetActive(true);
+                }
+            }
+            if (showBoolean)
+                checkbox.SetIsCheckedWithoutNotify(booleanValue);
+            else
+            {
+                input.contentType = TMP_InputField.ContentType.Standard;
+                input.characterValidation = TMP_InputField.CharacterValidation.None;
+                input.lineType =
+                    field.IsMultiline || field.IsList
+                        ? TMP_InputField.LineType.MultiLineNewline
+                        : TMP_InputField.LineType.SingleLine;
+                input.textComponent.textWrappingMode =
+                    field.IsMultiline || field.IsList
+                        ? TextWrappingModes.Normal
+                        : TextWrappingModes.NoWrap;
+                input.textComponent.alignment =
+                    field.IsMultiline || field.IsList
+                        ? TextAlignmentOptions.TopLeft
+                        : TextAlignmentOptions.MidlineLeft;
+                input.SetTextWithoutNotify(
+                    field.IsList ? string.Join("\n", field.Values) : field.Value
+                );
+                RectTransform rect = (RectTransform)input.transform;
+                rect.offsetMin = new Vector2(244, 22);
+                rect.offsetMax = new Vector2(field.IsMedia ? -190 : -14, -8);
+            }
+            if (field.IsMediaDirectory)
+                RenderMediaFiles();
+            input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+            gameObject.SetActive(true);
+        }
+        finally
+        {
+            rendering = false;
+        }
+    }
+
+    /// <summary>
+    /// Releases bindings before a pooled field is hidden or assigned to another project.
+    /// </summary>
+    public void Clear()
+    {
+        field = null;
+        project = null;
+        changed = null;
+        importRequested = null;
+        previewRequested = null;
+        choiceValues = mediaFiles = Array.Empty<string>();
+        help.Configure(null, input);
+        input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Commits a pending text edit before an operation changes selection.
+    /// </summary>
+    public void Commit()
+    {
+        if (field != null && input.gameObject.activeSelf)
+            ApplyText(input.text);
+        else if (field != null)
+            try
+            {
+                project.ValidateField(field);
+                error.text = string.Empty;
+            }
+            catch (ArgumentException exception)
+            {
+                ShowError(exception);
+            }
+    }
+
+    /// <summary>
+    /// Validates a text edit and keeps any error beside the responsible field.
+    /// </summary>
+    /// <param name="text">The proposed value.</param>
+    private void ApplyText(string text)
+    {
+        if (field == null || rendering)
+            return;
+        try
+        {
+            bool modified = text != (field.IsList ? string.Join("\n", field.Values) : field.Value);
+            if (!modified)
+            {
+                project.ValidateField(field);
+                error.text = string.Empty;
+                return;
+            }
+            if (field.IsList)
+                project.SetFieldValues(
+                    field,
+                    text.Split('\n')
+                        .Select(value => value.TrimEnd('\r'))
+                        .Where(value => value.Length > 0)
+                );
+            else
+                project.SetField(field, text);
+            input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+            error.text = string.Empty;
+            if (field.IsMediaDirectory)
+                RenderMediaFiles();
+            if (modified)
+                changed?.Invoke();
+        }
+        catch (ArgumentException exception)
+        {
+            ShowError(exception);
+        }
+    }
+
+    /// <summary>
+    /// Applies a checkbox state through the same validated field contract.
+    /// </summary>
+    /// <param name="value">The checked state.</param>
+    private void ApplyBoolean(bool value)
+    {
+        ApplyText(value ? "true" : "false");
+    }
+
+    /// <summary>
+    /// Applies one enum checklist choice while preserving declaration order.
+    /// </summary>
+    /// <param name="index">The changed option.</param>
+    /// <param name="enabled">Whether the option is enabled.</param>
+    private void ApplyChoice(int index, bool enabled)
+    {
+        if (field == null || rendering)
+            return;
+        HashSet<string> selected = new HashSet<string>(field.Values);
+        if (enabled)
+            selected.Add(choiceValues[index]);
+        else
+            selected.Remove(choiceValues[index]);
+        try
+        {
+            project.SetFieldValues(field, choiceValues.Where(selected.Contains));
+            error.text = string.Empty;
+            changed?.Invoke();
+        }
+        catch (ArgumentException exception)
+        {
+            choices[index].SetIsCheckedWithoutNotify(field.Values.Contains(choiceValues[index]));
+            ShowError(exception);
+        }
+    }
+
+    /// <summary>
+    /// Lists files inside an authored media directory using the shared selector.
+    /// </summary>
+    private void RenderMediaFiles()
+    {
+        try
+        {
+            mediaFiles = project.GetMediaFiles(field);
+        }
+        catch (ArgumentException)
+        {
+            mediaFiles = Array.Empty<string>();
+            error.text = "Check the folder path.";
+        }
+        choiceDropdown.ClearOptions();
+        string root = field.Value.TrimEnd('/') + "/";
+        choiceDropdown.AddOptions(
+            mediaFiles
+                .Select(address =>
+                    address.StartsWith(root, StringComparison.Ordinal)
+                        ? address[root.Length..]
+                        : address
+                )
+                .ToList()
+        );
+        choiceDropdown.SetValueWithoutNotify(0);
+        choiceDropdown.RefreshShownValue();
+        previewButton.interactable = mediaFiles.Count > 0;
+        choiceDropdown.interactable = mediaFiles.Count > 0;
+    }
+
+    /// <summary>
+    /// Presents a concise field error and forwards the complete notice to the workspace.
+    /// </summary>
+    /// <param name="exception">The rejected edit.</param>
+    private void ShowError(ArgumentException exception)
+    {
+        string message = exception.Message.Split('\n')[0];
+        if (error.text != message)
+            ValidationFailed?.Invoke(field.Name + ": " + message);
+        error.text = message;
+    }
+
+    /// <summary>
+    /// Previews the media line containing the caret, retaining punctuation within file names.
+    /// </summary>
+    private void PreviewSelectedMedia()
+    {
+        if (field?.IsMedia != true)
+            return;
+        Commit();
+        if (HasError)
+            return;
+        if (field.IsMediaDirectory)
+        {
+            string selected = mediaFiles.ElementAtOrDefault(choiceDropdown.value);
+            if (selected != null)
+                previewRequested?.Invoke(field, selected);
+            return;
+        }
+        int line = field.IsList
+            ? input
+                .text.Take(Math.Min(input.caretPosition, input.text.Length))
+                .Count(character => character == '\n')
+            : 0;
+        string address = field.Values.ElementAtOrDefault(line) ?? field.Values.FirstOrDefault();
+        previewRequested?.Invoke(field, address);
+    }
+}

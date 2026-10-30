@@ -1,0 +1,3484 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+using NUnit.Framework;
+using Rebellion.SceneGraph;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Rebellion.Tests.ContentEditor.UI
+{
+    [TestFixture]
+    public sealed class ContentPackEditorViewTests
+    {
+        private ContentPackEditorProject project;
+        private ContentAssets assets;
+        private ContentPackEditorView view;
+        private string folder;
+
+        /// <summary>
+        /// Opens a fixture-owned pack copy in the generated workspace.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            string contentRoot = ContentPackLoader.ResolveContentRootPath();
+            ContentPackDefinition source = ContentPackLoader
+                .DiscoverPacks(contentRoot)
+                .First(pack => string.IsNullOrEmpty(pack.BasePackID));
+            folder = Path.Combine(
+                Path.GetTempPath(),
+                "content-editor-ui-" + Guid.NewGuid().ToString("N")
+            );
+            project = ContentPackEditorProject.CreateInFolder(
+                contentRoot,
+                source.ID,
+                folder,
+                "editor-test-" + Guid.NewGuid().ToString("N"),
+                "Editor test",
+                "1.0.0"
+            );
+            assets = project.CreateAssets();
+            view = UIComponentTestHelper.InstantiatePrefabComponent<ContentPackEditorView>(
+                "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab"
+            );
+            Canvas canvas = view.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            ((RectTransform)view.transform).sizeDelta = new Vector2(1600, 900);
+            Canvas.ForceUpdateCanvases();
+            view.Initialize(new[] { source }, contentRoot);
+            view.RenderProject(project, assets);
+        }
+
+        /// <summary>
+        /// Releases the workspace and removes the fixture-owned copy.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            if (view != null)
+                UnityEngine.Object.DestroyImmediate(view.gameObject);
+            assets?.Dispose();
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RenderProject_AddFaction_CreatesAndOpensCombinedFactionPage(bool fromMenu)
+        {
+            int before = project.GetFactionOptions().Count;
+            if (fromMenu)
+            {
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "AddUnit")
+                    .onClick.Invoke();
+                view.GetComponentsInChildren<ContextMenuCommandView>()
+                    .Single(command =>
+                        command
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label => label.text == "Faction")
+                    )
+                    .OnPointerClick(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            else
+            {
+                view.GetComponentsInChildren<TMP_InputField>(true)
+                    .Single(input => input.name == "Search")
+                    .text = "Add faction";
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node.Caption == "+ Add faction")
+                    .OnPointerDown(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            Assert.AreEqual(before + 1, project.GetFactionOptions().Count);
+            ContentEditorRecordRowView row =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(item =>
+                        item.Node.Record?.Element.Element("InstanceID")?.Value == "NEW_FACTION"
+                    );
+            Assert.AreEqual(3, row.Node.RelatedRecords.Count);
+            Assert.AreEqual("New faction", row.Node.Caption);
+            Assert.AreEqual(
+                row.Node.Caption,
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field.MemberName == "DisplayName")
+            );
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual(before, project.GetFactionOptions().Count);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(item => item.Node.Record?.ID == "NEW_FACTION")
+            );
+        }
+
+        [Test]
+        public void RenderProject_MenuCommands_ReplaceTheRedundantToolbar()
+        {
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Transform>(true).Any(item => item.name == "Toolbar")
+            );
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "File")
+                .onClick.Invoke();
+            string[] fileItems = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
+                .Select(label => label.text)
+                .ToArray();
+            CollectionAssert.Contains(fileItems, "Save pack");
+            CollectionAssert.Contains(fileItems, "Validate pack");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Edit")
+                .onClick.Invoke();
+            string[] editItems = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
+                .Select(label => label.text)
+                .ToArray();
+            foreach (string item in new[] { "Undo", "Redo" })
+                CollectionAssert.Contains(editItems, item);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "View")
+                .onClick.Invoke();
+            string[] viewItems = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
+                .Select(label => label.text)
+                .ToArray();
+            foreach (string item in new[] { "Zoom", "Theme" })
+                CollectionAssert.Contains(viewItems, item);
+            view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Single(command =>
+                    command.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Zoom")
+                )
+                .OnPointerEnter(new PointerEventData(EventSystem.current));
+            view.GetComponentInChildren<ContextMenuView>(true).RenderCurrent();
+            string[] zoomItems = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
+                .Select(label => label.text)
+                .ToArray();
+            CollectionAssert.Contains(zoomItems, "Zoom in");
+            CollectionAssert.Contains(zoomItems, "Zoom out");
+            CollectionAssert.DoesNotContain(viewItems, "Expand all");
+            Assert.IsNotNull(
+                view.GetComponentsInChildren<Button>().Single(button => button.name == "ExpandAll")
+            );
+            Assert.IsNotNull(
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "CollapseAll")
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>(true).Any(button => button.name == "Help")
+            );
+        }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        public void RenderProject_AppearanceMenu_CentersAReadableCheckmarkInTheSelectedRow(
+            ContentEditorColorMode mode
+        )
+        {
+            view.SetColorMode(mode);
+            string[] modes = Enum.GetNames(typeof(ContentEditorColorMode));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "View")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Single(command =>
+                    command.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Theme")
+                )
+                .OnPointerEnter(new PointerEventData(EventSystem.current));
+            view.GetComponentInChildren<ContextMenuView>(true).RenderCurrent();
+            RawImage mark = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Where(command =>
+                    command
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => modes.Contains(label.text))
+                )
+                .SelectMany(command => command.GetComponentsInChildren<RawImage>())
+                .Single(image => image.texture != null);
+            RectTransform row =
+                mark.GetComponentInParent<ContextMenuCommandView>().transform as RectTransform;
+            CollectionAssert.Contains(
+                row.GetComponentsInChildren<TMP_Text>().Select(label => label.text).ToArray(),
+                mode.ToString()
+            );
+            Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                row,
+                mark.rectTransform
+            );
+            Assert.That(bounds.size.x, Is.InRange(12f, 20f));
+            Assert.That(bounds.size.y, Is.InRange(12f, 20f));
+            Assert.That(bounds.center.y, Is.EqualTo(row.rect.center.y).Within(1f));
+            TMP_Dropdown selector = view.GetComponentsInChildren<TMP_Dropdown>(true).First();
+            Image selectedGlyph = (Image)
+                selector.template.GetComponentInChildren<Toggle>(true).graphic;
+            Assert.AreSame(selectedGlyph.sprite.texture, mark.texture);
+            RawImage checkboxGlyph = view.GetComponentsInChildren<UICheckboxView>(true)
+                .First()
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "Tick");
+            Assert.AreSame(mark.texture, checkboxGlyph.texture);
+            Assert.AreEqual(mark.uvRect, checkboxGlyph.uvRect);
+            RectTransform submenu = (RectTransform)row.parent;
+            RectTransform parentPanel = (RectTransform)
+                view.GetComponentsInChildren<ContextMenuCommandView>()
+                    .Single(command =>
+                        command
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label => label.text == "Theme")
+                    )
+                    .transform.parent;
+            Assert.Greater(submenu.position.x, parentPanel.position.x);
+        }
+
+        [Test]
+        public void ShowAlphaNotice_ConfirmationRequired_ConsumesEscapeAndAcknowledgesOnlyOnConfirm()
+        {
+            bool acknowledged = false;
+            view.ShowAlphaNotice(() => acknowledged = true);
+            ContentEditorConfirmationView prompt =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsTrue(prompt.TryCancel());
+            Assert.IsTrue(prompt.gameObject.activeSelf);
+            Assert.IsFalse(acknowledged);
+            Button confirm = prompt.GetComponentsInChildren<Button>().Single();
+            Assert.AreEqual("Confirm", confirm.GetComponentInChildren<TMP_Text>().text);
+            TMP_Text heading = prompt
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(text => text.text == "WARNING");
+            Assert.IsTrue(heading.fontStyle.HasFlag(FontStyles.Bold));
+            Assert.AreNotEqual(heading.color, heading.transform.parent.GetComponent<Image>().color);
+            StringAssert.Contains(
+                "not guaranteed",
+                prompt
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Single(text => text.text.Contains("alpha"))
+                    .text
+            );
+            confirm.onClick.Invoke();
+            Assert.IsTrue(acknowledged);
+            Assert.IsFalse(prompt.gameObject.activeSelf);
+            prompt.Show("Discard changes?", "Discard", () => { });
+            Assert.IsFalse(heading.transform.parent.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RenderProject_StackedInput_OutlinesRemainInsideTheFieldAndScrollMask()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "EncyclopediaTab")
+                .onClick.Invoke();
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.name == "EncyclopediadescriptionField");
+            field.SetLayout(new Rect(0, 0, 340, field.Height), 0);
+            Canvas.ForceUpdateCanvases();
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                field.transform,
+                input.transform
+            );
+            float border = Mathf.Abs(input.GetComponent<Outline>().effectDistance.x);
+            Assert.GreaterOrEqual(
+                bounds.min.x - border,
+                ((RectTransform)field.transform).rect.xMin
+            );
+        }
+
+        [Test]
+        public void RenderProject_FactionMissionRestrictions_UsesNamedCheckboxesForTheAuthoredSelection()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/Alliance");
+            SelectPage(page);
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field =>
+                    field
+                        .GetComponentsInChildren<TMP_Text>(true)
+                        .Any(label => label.name == "Label" && label.text == "Disabled missions")
+                );
+            Assert.IsNull(control.GetComponentInChildren<TMP_InputField>());
+            UICheckboxView checkbox = control
+                .GetComponentsInChildren<UICheckboxView>()
+                .Single(choice =>
+                    choice.GetComponentsInChildren<TMP_Text>().Any(text => text.text == "Diplomacy")
+                );
+            ContentPackEditorField field = page.Fields.Single(item =>
+                item.MemberName == "DisallowedMissionTypeIDs"
+            );
+            Assert.AreEqual(field.Values.Contains("Diplomacy"), checkbox.IsChecked);
+            Assert.AreEqual(
+                field.Choices.Count,
+                control.GetComponentsInChildren<UICheckboxView>().Length
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_FitMap_ResetsPanAndZoomWithoutChangingPlanetCoordinates()
+        {
+            SelectRecord(project.GetCatalogs().First(catalog => catalog.IsMap).Records.First());
+            ContentEditorMapViewport viewport =
+                view.GetComponentInChildren<ContentEditorMapViewport>();
+            Button fit = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "FitMap");
+            Assert.IsFalse(fit.interactable);
+            RectTransform rect = (RectTransform)viewport.transform;
+            Vector2 point = RectTransformUtility.WorldToScreenPoint(
+                null,
+                rect.TransformPoint(rect.rect.center)
+            );
+            viewport.OnScroll(
+                new PointerEventData(EventSystem.current)
+                {
+                    position = point,
+                    scrollDelta = Vector2.up,
+                }
+            );
+            Assert.IsFalse(viewport.IsFitted);
+            Assert.IsTrue(fit.interactable);
+            fit.onClick.Invoke();
+            Assert.IsTrue(viewport.IsFitted);
+            Assert.IsFalse(fit.interactable);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_FactionIconPreview_UsesEachFactionsArtworkWithoutEditingThePack()
+        {
+            SelectRecord(project.GetCatalogs().First(catalog => catalog.IsMap).Records.First());
+            TMP_Dropdown chooser = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "PreviewFaction");
+            Assert.GreaterOrEqual(chooser.options.Count, 3);
+            foreach (int index in new[] { 1, 2 })
+            {
+                chooser.value = index;
+                FactionTheme theme = ContentEditorPresentation
+                    .GetFactionThemes(project)[index - 1]
+                    .Theme;
+                Texture2D expected = assets.GetTexture(
+                    theme.PlanetOverlayTheme.PlanetOverlayIcons.Fleets.NormalImagePath
+                );
+                Assert.IsTrue(
+                    view.GetComponentsInChildren<PlanetSectorPlanetView>()
+                        .First()
+                        .GetComponentsInChildren<RawImage>()
+                        .Any(image => image.texture == expected)
+                );
+            }
+            chooser.value = 0;
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_TypingASearchMatchingTheSelectedRecord_RetainsInputFocus()
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            GameObject events = new GameObject("Search focus test", typeof(EditModeEventSystem));
+            try
+            {
+                EventSystem.current = events.GetComponent<EditModeEventSystem>();
+                EventSystem.current.SetSelectedGameObject(search.gameObject);
+                search.text = "a";
+                Assert.AreSame(search.gameObject, EventSystem.current.currentSelectedGameObject);
+                Assert.IsFalse(project.IsDirty);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(events);
+            }
+        }
+
+        [Test]
+        public void RenderProject_CommittingAField_KeepsFocusOnTheNextControl()
+        {
+            GameObject events = new GameObject(
+                "Field commit focus test",
+                typeof(EditModeEventSystem)
+            );
+            try
+            {
+                EventSystem.current = events.GetComponent<EditModeEventSystem>();
+                Button next = view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Test");
+                EventSystem.current.SetSelectedGameObject(next.gameObject);
+                TMP_InputField input = SkillInput();
+                input.SetTextWithoutNotify(input.text == "101" ? "102" : "101");
+                input.onEndEdit.Invoke(input.text);
+                Assert.IsTrue(project.IsDirty);
+                Assert.AreSame(next.gameObject, EventSystem.current.currentSelectedGameObject);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(events);
+            }
+        }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        public void SetColorMode_EditingATextDraft_RecolorsTheFormWithoutChangingItsValueOrHistory(
+            ContentEditorColorMode mode
+        )
+        {
+            TMP_InputField input = SkillInput();
+            input.onSelect.Invoke(input.text);
+            input.text = "Uncommitted draft";
+            ContentEditorTextHistory history = input.GetComponent<ContentEditorTextHistory>();
+            Image background = view.GetComponent<Image>();
+            view.SetColorMode(mode);
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Background),
+                background.color
+            );
+            Assert.AreEqual("Uncommitted draft", input.text);
+            Assert.IsTrue(history.CanUndo);
+            Assert.IsFalse(project.IsDirty);
+            Assert.Greater(input.textComponent.color.a, 0.9f);
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Text),
+                input.textComponent.color
+            );
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.TextSelection),
+                input.selectionColor
+            );
+            Button button = view.GetComponentsInChildren<Button>()
+                .Single(control => control.name == "Duplicate");
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Button),
+                button.targetGraphic.color
+            );
+            Assert.AreEqual(
+                ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.ButtonText),
+                button.GetComponentInChildren<TMP_Text>().color
+            );
+            view.SetColorMode(ContentEditorColorMode.Dark);
+            Assert.AreEqual("Uncommitted draft", input.text);
+            Assert.IsTrue(history.CanUndo);
+            Assert.Greater(input.textComponent.color.grayscale, 0.6f);
+        }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        public void RenderProject_NewControlsAfterChangingAppearance_UseTheSelectedPalette(
+            ContentEditorColorMode mode
+        )
+        {
+            view.SetColorMode(mode);
+            SelectRecord(
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Starfighters")
+                    .Records.First()
+            );
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.IsNotEmpty(fields);
+            foreach (
+                TMP_InputField input in fields.SelectMany(field =>
+                    field.GetComponentsInChildren<TMP_InputField>()
+                )
+            )
+            {
+                Assert.AreEqual(
+                    ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Input),
+                    input.GetComponent<Image>().color
+                );
+                Assert.AreEqual(
+                    ContentEditorAppearance.ColorFor(mode, ContentEditorColorRole.Text),
+                    input.textComponent.color
+                );
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_RunMenu_UsesScenarioFactionsAndLargeMediumDefaults()
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Test")
+                .onClick.Invoke();
+            string[] captions = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
+                .Select(label => label.text)
+                .ToArray();
+            foreach (string faction in project.GetFactionOptions().Values)
+                CollectionAssert.Contains(captions, "Play as " + faction);
+            CollectionAssert.Contains(captions, "Galaxy size: Large");
+            CollectionAssert.Contains(captions, "Difficulty: Medium");
+            ContentEditorPlayOptions? requested = null;
+            view.PlayRequested += options => requested = options;
+            ContextMenuCommandView command = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .First(item =>
+                    item.GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text.StartsWith("Play as ", StringComparison.Ordinal))
+                );
+            command.OnPointerClick(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+            Assert.IsTrue(requested.HasValue);
+            Assert.AreEqual(Rebellion.Game.GameSize.Large, requested.Value.GalaxySize);
+            Assert.AreEqual(Rebellion.Game.GameDifficulty.Medium, requested.Value.Difficulty);
+            Assert.AreEqual(project.Definition.DefaultScenarioID, requested.Value.ScenarioID);
+            Assert.IsTrue(project.GetFactionOptions().ContainsKey(requested.Value.FactionID));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_SelectedEvent_ShowsOnlyItsOwnXmlWithoutFlattenedActionFields()
+        {
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .First(catalog => catalog.CanAddEvent)
+                .Records.First();
+            SelectRecord(record);
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            Assert.AreEqual(record.Element.ToString(), xml.text);
+            Assert.AreEqual("GameEvent", System.Xml.Linq.XElement.Parse(xml.text).Name.LocalName);
+            Assert.IsEmpty(view.GetComponentsInChildren<ContentEditorFieldView>());
+            Assert.IsTrue(view.CommitFields());
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_ApplyingUnchangedEventXml_PreservesInheritanceAndSelection()
+        {
+            ContentPackEditorRecord original = project
+                .GetCatalogs()
+                .First(catalog => catalog.CanAddEvent)
+                .Records.First();
+            SelectRecord(original);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ApplyXml")
+                .onClick.Invoke();
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            Assert.AreEqual(original.Element.ToString(), xml.text);
+            Assert.IsEmpty(view.GetComponentsInChildren<ContentEditorFieldView>());
+        }
+
+        [Test]
+        public void RenderProject_PlanetEncyclopedia_EditsEmbeddedDataBeforeTheStandaloneArticle()
+        {
+            ContentPackEditorRecord article = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "EncyclopediaEntry"
+                    && record.Element.Element("Category")?.Value == "System"
+                );
+            ContentPackEditorRecord planet = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(sector => sector.Planets)
+                .Single(record => record.ID == article.ID);
+            SelectRecord(planet);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "EncyclopediaTab")
+                .onClick.Invoke();
+            TMP_InputField description = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "EncyclopediadescriptionField")
+                .GetComponentInChildren<TMP_InputField>();
+            string articleBefore = article.Catalog.Document.Text;
+            description.SetTextWithoutNotify("New planet article");
+            description.onEndEdit.Invoke(description.text);
+            Assert.AreEqual("New planet article", planet.GetField("EncyclopediaDescription").Value);
+            Assert.AreEqual(articleBefore, article.Catalog.Document.Text);
+            Assert.IsTrue(project.Undo());
+        }
+
+        [Test]
+        public void RenderProject_MissionPages_CombineFactionArticlesAndExcludeAiWeights()
+        {
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentEditorTreeNode[] pages = navigation
+                .GetRows(string.Empty)
+                .Where(node => node.Fields != null)
+                .ToArray();
+            ContentEditorTreeNode[] rules = pages
+                .Where(page => page.Key.Contains("#rules/"))
+                .ToArray();
+            Assert.IsNotEmpty(rules);
+            Assert.IsFalse(rules.SelectMany(page => page.Fields).Any(field => field.Group == "AI"));
+            Assert.IsTrue(
+                rules
+                    .Single(page => page.Caption == "Difficulty")
+                    .Fields.Any(field => field.MemberName == "MissionSuccessChancePoints")
+            );
+            ContentEditorTreeNode research = pages.Single(page => page.MissionID == "Diplomacy");
+            Assert.IsTrue(research.Fields.Any(field => field.SectionPath.Contains("Diplomacy")));
+            Assert.IsFalse(research.Fields.Any(field => field.Group == "AI"));
+            Assert.AreEqual(2, research.RelatedRecords.Count);
+            Assert.IsEmpty(research.Children);
+            SelectPage(research);
+            foreach (ContentPackEditorRecord article in research.RelatedRecords)
+                Assert.IsTrue(
+                    view.GetComponentsInChildren<RawImage>()
+                        .Any(image => image.texture == assets.GetTexture(article.ImageAddress))
+                );
+            Assert.AreEqual(
+                1,
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Count(row => row.GetComponent<RawImage>().color.a > 0)
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_UndoingAMessageEdit_RetainsTheSelectedMessageWithoutAnIdField()
+        {
+            ContentPackEditorRecord message = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "MessageDefinition")
+                .Skip(1)
+                .First();
+            SelectRecord(message);
+            string name = message.Name;
+            TMP_InputField subject = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "SubjectField")
+                .GetComponentInChildren<TMP_InputField>();
+            string before = subject.text;
+            subject.SetTextWithoutNotify("Changed subject");
+            subject.onEndEdit.Invoke(subject.text);
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual(
+                name,
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            Assert.AreEqual(
+                before,
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.name == "SubjectField")
+                    .GetComponentInChildren<TMP_InputField>()
+                    .text
+            );
+        }
+
+        [Test]
+        public void CommitFields_TypedValue_TransfersUndoToDocumentHistory()
+        {
+            TMP_InputField input = SkillInput();
+            string original = input.text;
+            ContentEditorTextHistory history = input.GetComponent<ContentEditorTextHistory>();
+            input.onSelect.Invoke(input.text);
+            input.text = original == "123" ? "124" : "123";
+            Assert.IsTrue(history.CanUndo);
+            Assert.IsTrue(view.CommitFields());
+            Assert.IsFalse(history.CanUndo);
+            Assert.IsTrue(project.CanUndo);
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual(original, SkillInput().text);
+        }
+
+        [Test]
+        public void RenderProject_RulesAndMissionPages_KeepAllNonAiRulesAccessible()
+        {
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentPackEditorField[] original = project
+                .GetCatalogs()
+                .Where(catalog => catalog.Name == "Rules")
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.GetFields())
+                .Where(field => field.Group != "AI")
+                .ToArray();
+            ContentPackEditorField[] projected = navigation
+                .GetRows(string.Empty)
+                .Where(node => node.Fields != null)
+                .SelectMany(node => node.Fields)
+                .Where(field => field.Record.Kind == "GameConfig")
+                .ToArray();
+            CollectionAssert.AreEqual(
+                original.Select(FieldIdentity).OrderBy(value => value, StringComparer.Ordinal),
+                projected
+                    .Select(FieldIdentity)
+                    .Distinct()
+                    .OrderBy(value => value, StringComparer.Ordinal)
+            );
+        }
+
+        [Test]
+        public void RenderProject_SeveralCommittedEdits_SupportsRepeatedUndoAndRedo()
+        {
+            string initial = SkillInput().text;
+            foreach (string value in new[] { "101", "102", "103" })
+            {
+                TMP_InputField input = SkillInput();
+                input.SetTextWithoutNotify(value);
+                input.onEndEdit.Invoke(value);
+            }
+            foreach (string expected in new[] { "102", "101", initial })
+            {
+                Assert.IsTrue(project.Undo());
+                view.RenderProject(project, assets);
+                Assert.AreEqual(expected, SkillInput().text);
+            }
+            foreach (string expected in new[] { "101", "102", "103" })
+            {
+                Assert.IsTrue(project.Redo());
+                view.RenderProject(project, assets);
+                Assert.AreEqual(expected, SkillInput().text);
+            }
+        }
+
+        [Test]
+        public void ZoomContent_PendingDraft_PreservesItsValueAndLeavesTheMenuUnscaled()
+        {
+            TMP_InputField input = SkillInput();
+            input.onSelect.Invoke(input.text);
+            input.text = "Pending draft";
+            Transform menu = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "File")
+                .transform.parent;
+            view.ZoomContent(0.2f);
+            Assert.AreEqual("Pending draft", input.text);
+            Assert.AreEqual(Vector3.one, menu.localScale);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_AdvancedUnit_ShowsOnlyTheSelectedOfficer()
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            TMP_InputField input = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(field => field.name == "AdvancedXml");
+            Assert.AreEqual("Officer", System.Xml.Linq.XElement.Parse(input.text).Name.LocalName);
+        }
+
+        [Test]
+        public void RenderProject_MissionRules_UsesOnlyItsOwnSettingsAndCenteredSuccessTable()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("missions/Diplomacy");
+            SelectPage(page);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Mission rules")
+            );
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab5")
+                .onClick.Invoke();
+            ContentEditorNumericGrid grid = new(
+                page.Fields.Where(field => field.Record.Kind == "GameConfig").ToArray(),
+                page.MissionID
+            );
+            TMP_Text tablesHeading = view.GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.text == "Probability tables");
+            Assert.AreEqual("Probability tables", tablesHeading.text);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Shared settings")
+            );
+            CollectionAssert.AreEqual(new[] { "Success" }, grid.Columns);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text.Contains(" / Game modifier / "))
+            );
+            int column = grid.Columns.ToList().IndexOf("Success");
+            Assert.GreaterOrEqual(column, 0);
+            Assert.IsNull(grid.GetCell(-20, column));
+            foreach (int score in grid.Scores)
+                for (int table = 0; table < grid.Columns.Count; table++)
+                {
+                    ContentEditorFieldView cell =
+                        view.GetComponentsInChildren<ContentEditorFieldView>()
+                            .Single(item =>
+                                item.name == "Probability" + table + "Score" + score + "Field"
+                            );
+                    TMP_InputField value = cell.GetComponentInChildren<TMP_InputField>();
+                    Assert.IsTrue(value.interactable);
+                    Assert.IsFalse(value.readOnly);
+                    Assert.AreEqual(grid.GetCell(score, table).Value, value.text);
+                    RectTransform rect = (RectTransform)cell.transform;
+                    Bounds control = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                        rect,
+                        value.transform
+                    );
+                    Assert.That(control.center.x, Is.EqualTo(rect.rect.center.x).Within(0.01f));
+                    Assert.That(control.center.y, Is.EqualTo(rect.rect.center.y).Within(0.01f));
+                    Assert.AreEqual(TextAlignmentOptions.Center, value.textComponent.alignment);
+                }
+            Assert.IsFalse(project.IsDirty);
+            ContentPackEditorField target = grid.GetCell(0, column);
+            string before = target.Value;
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "Probability" + column + "Score0Field")
+                .GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("43");
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual("43", target.Value);
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            page = navigation.Find("missions/Diplomacy");
+            ContentPackEditorRecord rules = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Rules")
+                .Records.Single();
+            Assert.AreEqual(
+                before,
+                rules
+                    .Element.Element("ProbabilityTables")
+                    .Element("Mission")
+                    .Element("Diplomacy")
+                    .Elements("Entry")
+                    .Single(entry => entry.Element("Key").Value == "0")
+                    .Element("Value")
+                    .Value
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label =>
+                        label.text == "GameConfig" || label.text.Contains("Inherited from")
+                    )
+            );
+        }
+
+        [TestCase("0")]
+        [TestCase("37")]
+        public void RenderProject_EmptyProbabilityCell_SavesAndReloadsAnEnteredValue(string value)
+        {
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            int column = grid.Columns.ToList().IndexOf("Foil");
+            Assert.AreEqual(string.Empty, grid.GetCell(0, column).Value);
+            TMP_InputField input = ProbabilityInput(0, column);
+            input.SetTextWithoutNotify(value);
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual(value, ProbabilityValue(0));
+            project.Save();
+            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+                project.ContentRootPath,
+                folder
+            );
+            Assert.AreEqual(
+                value,
+                reopened
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Name == "Rules")
+                    .Records.Single()
+                    .Element.Element("ProbabilityTables")
+                    .Element("Mission")
+                    .Element("Foil")
+                    .Elements("Entry")
+                    .Single(entry => entry.Element("Key").Value == "0")
+                    .Element("Value")
+                    .Value
+            );
+        }
+
+        [TestCase("text")]
+        [TestCase("3.5")]
+        [TestCase("2147483648")]
+        public void RenderProject_EmptyProbabilityCell_RejectsInvalidNumbersWithoutAddingAnEntry(
+            string value
+        )
+        {
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            int column = grid.Columns.ToList().IndexOf("Foil");
+            TMP_InputField input = ProbabilityInput(0, column);
+            input.SetTextWithoutNotify(value);
+            input.onEndEdit.Invoke(input.text);
+            Assert.IsTrue(input.GetComponentInParent<ContentEditorFieldView>().HasError);
+            Assert.AreEqual(string.Empty, ProbabilityValue(0));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_OptionalProbabilityCell_ClearsRetypesAndRestoresThroughHistory()
+        {
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            int column = grid.Columns.ToList().IndexOf("Foil");
+            string before = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Rules")
+                .Document.Text;
+            TMP_InputField input = ProbabilityInput(0, column);
+            foreach (string value in new[] { "37", "", "64" })
+            {
+                input.SetTextWithoutNotify(value);
+                input.onEndEdit.Invoke(input.text);
+                Assert.IsFalse(input.GetComponentInParent<ContentEditorFieldView>().HasError);
+                Assert.AreEqual(value, ProbabilityValue(0));
+            }
+            Assert.AreEqual(
+                1,
+                project
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Name == "Rules")
+                    .Records.Single()
+                    .Element.Element("ProbabilityTables")
+                    .Element("Mission")
+                    .Element("Foil")
+                    .Elements("Entry")
+                    .Count(entry => entry.Element("Key").Value == "0")
+            );
+            for (int step = 0; step < 3; step++)
+                Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project.GetCatalogs().Single(catalog => catalog.Name == "Rules").Document.Text
+            );
+            for (int step = 0; step < 3; step++)
+                Assert.IsTrue(project.Redo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual("64", SelectSharedMissionRules().GetCell(0, column).Value);
+        }
+
+        [Test]
+        public void RenderProject_EmptyProbabilityColumn_RemainsAvailableForNewValues()
+        {
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            int column = grid.Columns.ToList().IndexOf("Foil");
+            foreach (
+                int score in grid.Scores.Where(score =>
+                    grid.GetCell(score, column).Value.Length > 0
+                )
+            )
+                project.SetField(grid.GetCell(score, column), string.Empty);
+            view.RenderProject(project, assets);
+            grid = SelectSharedMissionRules();
+            column = grid.Columns.ToList().IndexOf("Foil");
+            Assert.GreaterOrEqual(column, 0);
+            Assert.IsTrue(grid.Scores.All(score => grid.GetCell(score, column).Value.Length == 0));
+            TMP_InputField input = ProbabilityInput(0, column);
+            input.SetTextWithoutNotify("45");
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual("45", ProbabilityValue(0));
+        }
+
+        [Test]
+        public void ZoomContent_ClearedProbability_RetainsItsEditableRowAndCorrectBinding()
+        {
+            ContentEditorNumericGrid grid = SelectSharedMissionRules();
+            int column = grid.Columns.ToList().IndexOf("Foil");
+            int score = grid.Scores.First(value => grid.GetCell(value, column).Value.Length > 0);
+            TMP_InputField input = ProbabilityInput(score, column);
+            input.SetTextWithoutNotify(string.Empty);
+            input.onEndEdit.Invoke(input.text);
+            view.ZoomContent(0.1f);
+            Canvas.ForceUpdateCanvases();
+            input = ProbabilityInput(score, column);
+            Assert.AreEqual(string.Empty, input.text);
+            input.SetTextWithoutNotify("58");
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual("58", ProbabilityValue(score));
+        }
+
+        [TestCase(EventModifiers.Control)]
+        [TestCase(EventModifiers.Command)]
+        public void HandleKeyboardShortcut_SeveralXmlDraftEdits_UndoesAndRedoesEveryStep(
+            EventModifiers modifier
+        )
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            string baseline = xml.text;
+            xml.onSelect.Invoke(xml.text);
+            foreach (
+                string suffix in new[]
+                {
+                    "\n<!-- First -->",
+                    "\n<!-- Second -->",
+                    "\n<!-- Third -->",
+                }
+            )
+                xml.text = baseline + suffix;
+            view.UndoRequested += () => view.UndoText();
+            view.RedoRequested += () => view.RedoText();
+            foreach (string suffix in new[] { "\n<!-- Second -->", "\n<!-- First -->", "" })
+            {
+                Assert.IsTrue(
+                    view.HandleKeyboardShortcut(
+                        new Event
+                        {
+                            type = EventType.KeyDown,
+                            keyCode = KeyCode.Z,
+                            modifiers = modifier,
+                        }
+                    )
+                );
+                Assert.AreEqual(baseline + suffix, xml.text);
+            }
+            foreach (
+                string suffix in new[]
+                {
+                    "\n<!-- First -->",
+                    "\n<!-- Second -->",
+                    "\n<!-- Third -->",
+                }
+            )
+            {
+                Assert.IsTrue(
+                    view.HandleKeyboardShortcut(
+                        new Event
+                        {
+                            type = EventType.KeyDown,
+                            keyCode = KeyCode.Z,
+                            modifiers = modifier | EventModifiers.Shift,
+                        }
+                    )
+                );
+                Assert.AreEqual(baseline + suffix, xml.text);
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(0.2f)]
+        [TestCase(0.35f)]
+        public void RenderProject_GalaxyPreview_RendersEveryAuthoredPlanetThroughGameplayStars(
+            float split
+        )
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Galaxy";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Key == "galaxy")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            ContentEditorMapMarker[] clusters =
+                view.GetComponentsInChildren<ContentEditorMapMarker>();
+            view.GetComponentInChildren<ContentEditorWorkbenchLayout>().SetSplit(split);
+            Canvas.ForceUpdateCanvases();
+            Assert.IsNotEmpty(clusters);
+            foreach (ContentEditorMapMarker cluster in clusters)
+            {
+                PlanetSectorClusterView gameplay = cluster.GetComponent<PlanetSectorClusterView>();
+                Assert.IsNotNull(gameplay);
+                Assert.AreEqual(
+                    cluster.Record.Planets.Count,
+                    gameplay
+                        .GetComponentsInChildren<RawImage>()
+                        .Count(image =>
+                            image.name.StartsWith("Star", StringComparison.Ordinal)
+                            && image.name != "StarImageTemplate"
+                        )
+                );
+                RectTransform map = (RectTransform)
+                    cluster.GetComponentInParent<ContentEditorGalaxyPreview>().transform.parent;
+                Texture background = map.GetComponent<RawImage>().texture;
+                float scale = map.rect.width / UILayout.GetTextureSourceWidth(background);
+                RawImage[] stars = gameplay
+                    .GetComponentsInChildren<RawImage>()
+                    .Where(image =>
+                        image.name.StartsWith("Star", StringComparison.Ordinal)
+                        && image.name != "StarImageTemplate"
+                    )
+                    .ToArray();
+                cluster.OnPointerEnter(new PointerEventData(EventSystem.current));
+                for (int index = 0; index < stars.Length; index++)
+                {
+                    RawImage star = stars[index];
+                    ContentPackEditorRecord planet = cluster.Record.Planets[index];
+                    Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                        map,
+                        star.rectTransform
+                    );
+                    Vector2Int source = UILayout.GetTextureSourceSize(star.texture);
+                    Assert.That(
+                        bounds.size.x,
+                        Is.EqualTo(source.x * scale).Within(0.1f),
+                        planet.Name
+                            + " star width; rect="
+                            + star.rectTransform.rect
+                            + "; starScale="
+                            + star.transform.localScale
+                            + "; clusterScale="
+                            + cluster.transform.localScale
+                            + "; map="
+                            + map.rect
+                            + "; texture="
+                            + star.texture.width
+                            + "x"
+                            + star.texture.height
+                    );
+                    Assert.That(
+                        bounds.center.x,
+                        Is.EqualTo(map.rect.xMin + (planet.X + source.x / 2f) * scale).Within(0.1f),
+                        planet.Name + " star position"
+                    );
+                    Assert.That(
+                        bounds.center.y,
+                        Is.EqualTo(map.rect.yMax - (planet.Y + source.y / 2f) * scale).Within(0.1f),
+                        planet.Name + " star vertical position"
+                    );
+                }
+                cluster.OnPointerExit(new PointerEventData(EventSystem.current));
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_CatalogCreateRow_AddsABlankRecordToThatCatalog()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Officers";
+            int count = catalog.Records.Count;
+            ContentEditorRecordRowView add =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row =>
+                        row.Node.CreationCatalog == catalog
+                        && row.Node.Key.EndsWith("#add", StringComparison.Ordinal)
+                    );
+            add.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+            Assert.AreEqual(count + 1, catalog.Records.Count);
+            Assert.AreEqual("New officer", catalog.Records.Last().Name);
+            Assert.IsTrue(project.Undo());
+        }
+
+        [Test]
+        public void RenderProject_FactionReferenceArticle_EditsItsOwnDocumentAndSupportsUndo()
+        {
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/Alliance");
+            ContentPackEditorRecord article = page.RelatedRecords.Single(record =>
+                record.Kind == "EncyclopediaEntry" && record.ID == "FLEET"
+            );
+            string before = article.Element.Element("Description").Value;
+            SelectPage(page);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab8")
+                .onClick.Invoke();
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Fleet encyclopedia")
+            );
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "DescriptionField");
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("Edited fleet article");
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual("Edited fleet article", article.Element.Element("Description").Value);
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual(
+                before,
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.name == "DescriptionField")
+                    .GetComponentInChildren<TMP_InputField>()
+                    .text
+            );
+            Assert.IsTrue(project.Redo());
+            view.RenderProject(project, assets);
+            Assert.AreEqual(
+                "Edited fleet article",
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.name == "DescriptionField")
+                    .GetComponentInChildren<TMP_InputField>()
+                    .text
+            );
+        }
+
+        [TestCase("General", "Tab0")]
+        [TestCase("Rules", "Tab5")]
+        [TestCase("Ship names", "Tab6")]
+        [TestCase("Messages", "Tab7")]
+        [TestCase("Artwork", "Tab1")]
+        [TestCase("Encyclopedia", "Tab8")]
+        public void RenderProject_FactionTabs_SeparateAuthoringTasks(string section, string tab)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/Alliance");
+            SelectPage(page);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == tab)
+                .onClick.Invoke();
+            ContentPackEditorField[] fields = page
+                .Fields.Where(field =>
+                    ContentEditorContentSections.FactionSection(field) == section
+                )
+                .Where(field =>
+                    field.Record.Kind != "EncyclopediaEntry"
+                    || field.MemberName
+                        is not ("TypeID" or "Category" or "VisibleFactionInstanceID")
+                )
+                .ToArray();
+            Assert.IsNotEmpty(fields);
+            Assert.AreEqual(
+                fields.Length,
+                view.GetComponentsInChildren<ContentEditorFieldView>().Length
+            );
+            string[] headings = view.GetComponentsInChildren<TMP_Text>()
+                .Select(text => text.text)
+                .ToArray();
+            Assert.IsFalse(
+                headings.Any(text =>
+                    text.StartsWith("Array of message", StringComparison.OrdinalIgnoreCase)
+                )
+            );
+            if (section == "Ship names")
+            {
+                Assert.IsTrue(
+                    headings.Any(text => text.StartsWith("Pool ") && text.Contains(" — "))
+                );
+                Assert.IsFalse(headings.Any(text => text.StartsWith("Name pool 1")));
+            }
+            if (section == "Encyclopedia")
+            {
+                RawImage[] images = view.GetComponentsInChildren<RawImage>()
+                    .Where(image =>
+                        image.name.StartsWith("ArticleImageTemplate", StringComparison.Ordinal)
+                    )
+                    .ToArray();
+                Assert.IsNotEmpty(images);
+                foreach (RawImage image in images)
+                {
+                    Assert.IsNull(image.GetComponent<AspectRatioFitter>());
+                    Assert.That(
+                        image.rectTransform.rect.width / image.rectTransform.rect.height,
+                        Is.EqualTo((float)image.texture.width / image.texture.height).Within(0.02f)
+                    );
+                }
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(ContentEditorColorMode.Dark)]
+        [TestCase(ContentEditorColorMode.Light)]
+        [TestCase(ContentEditorColorMode.Empire)]
+        [TestCase(ContentEditorColorMode.Rebels)]
+        public void SetColorMode_Scrollbars_KeepOpaqueContrastingHandlesWithoutContentTextures(
+            ContentEditorColorMode mode
+        )
+        {
+            view.SetColorMode(mode);
+            Scrollbar[] bars = view.GetComponentsInChildren<Scrollbar>(true);
+            Assert.IsNotEmpty(bars);
+            foreach (Scrollbar bar in bars)
+            {
+                Graphic handle = bar.targetGraphic;
+                Assert.AreEqual(1, handle.color.a);
+                Assert.AreNotEqual(bar.GetComponent<Image>().color, handle.color);
+                if (handle is RawImage image)
+                {
+                    Assert.IsNull(image.texture);
+                    Assert.IsNull(image.GetComponent<ContentTextureBinding>());
+                }
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase("Galaxy", 0)]
+        [TestCase("Officers", 1)]
+        [TestCase("Buildings", 2)]
+        [TestCase("Units", 3)]
+        [TestCase("Resources", 4)]
+        [TestCase("Support", 5)]
+        [TestCase("Balance", 6)]
+        public void RenderProject_GenerationTabs_ShowOnlyTheSelectedTask(string section, int index)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab" + index)
+                .onClick.Invoke();
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.IsNotEmpty(fields);
+            Assert.IsTrue(
+                fields.All(field => field.Field.XmlElement.Document != null),
+                "Generation controls must edit authored pack data."
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    ContentEditorContentSections.GenerationSection(field.Field) == section
+                )
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_AdvancedXml_ProvidesAConnectedScrollbar()
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            Assert.IsNotNull(xml.verticalScrollbar);
+            Assert.IsTrue(xml.verticalScrollbar.gameObject.activeInHierarchy);
+            Assert.Less(xml.textViewport.rect.width, ((RectTransform)xml.transform).rect.width);
+        }
+
+        [Test]
+        public void RenderProject_AddStartingMessage_OpensABlankMessageAndSupportsUndo()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/Alliance");
+            ContentPackEditorRecord faction = page.RelatedRecords.Single(record =>
+                record.Kind == "Faction" && record.Element.Element("InstanceID") != null
+            );
+            int before = faction.Element.Descendants("Message").Count();
+            SelectPage(page);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab7")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddFactionMessage")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Single(item =>
+                    item.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Advice")
+                )
+                .OnPointerClick(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            Assert.AreEqual(before + 1, faction.Element.Descendants("Message").Count());
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field =>
+                        field.Field.MemberName == "Title" && field.Field.Value == "New message"
+                    )
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record =>
+                        record.Kind == "Faction"
+                        && record.Element.Element("InstanceID")?.Value == faction.ID
+                    )
+                    .Element.Descendants("Message")
+                    .Count()
+            );
+        }
+
+        [TestCase(900, 1f)]
+        [TestCase(1600, 1f)]
+        [TestCase(1600, 1.5f)]
+        public void RenderProject_MapHintWrapping_KeepsToolbarAndPreviewInSeparateRows(
+            int width,
+            float zoom
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            view.ZoomContent(zoom - 1);
+            Canvas.ForceUpdateCanvases();
+            SelectRecord(project.GetCatalogs().First(catalog => catalog.IsMap).Records.First());
+            Canvas.ForceUpdateCanvases();
+            TMP_Text hint = view.GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.name == "Hint");
+            RectTransform hintRect = hint.rectTransform;
+            RectTransform toolbar = (RectTransform)hint.transform.parent.Find("MapToolbar");
+            RectTransform viewport = (RectTransform)hint.transform.parent.Find("MapViewport");
+            RectTransform tabs = (RectTransform)
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Tab0")
+                    .transform.parent;
+            Assert.Less(
+                hintRect.TransformPoint(hintRect.rect.max).y,
+                toolbar.TransformPoint(toolbar.rect.min).y
+            );
+            Assert.GreaterOrEqual(
+                hintRect.rect.height + 1,
+                hint.GetPreferredValues(hint.text, hintRect.rect.width, float.PositiveInfinity).y
+            );
+            Assert.Less(
+                viewport.TransformPoint(viewport.rect.max).y,
+                hintRect.TransformPoint(hintRect.rect.min).y
+            );
+            PlanetSectorWindowView sector = view.GetComponentInChildren<PlanetSectorWindowView>();
+            RectTransform sectorRect = (RectTransform)sector.transform;
+            Assert.Less(
+                sectorRect.TransformPoint(sectorRect.rect.max).y,
+                tabs.TransformPoint(tabs.rect.min).y
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_SectorPreview_UsesGameplayPlanetsAndNeutralStatistics()
+        {
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            string before = sector.Catalog.Document.Text;
+            SelectRecord(sector);
+            RawImage backdrop = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "Map");
+            Assert.IsNull(backdrop.texture);
+            Assert.AreEqual(Color.black, backdrop.color);
+            PlanetSectorWindowView window = view.GetComponentInChildren<PlanetSectorWindowView>();
+            Assert.IsNotNull(window);
+            RectTransform mapBack = (RectTransform)
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Galaxy")
+                    .transform;
+            RectTransform heading = view.GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.name == "RecordInfo")
+                .rectTransform;
+            Assert.Less(
+                mapBack.TransformPoint(mapBack.rect.max).y,
+                heading.TransformPoint(heading.rect.min).y
+            );
+            PlanetSectorPlanetView[] planets =
+                window.GetComponentsInChildren<PlanetSectorPlanetView>();
+            Assert.AreEqual(sector.Planets.Count, planets.Length);
+            ContentPackEditorRecord[] records = sector.Planets.ToArray();
+            int maximumEnergy = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "GameGenerationConfig")
+                .SelectMany(record => record.Element.Descendants("EnergyMax"))
+                .Max(element => int.Parse(element.Value));
+            for (int i = 0; i < planets.Length; i++)
+            {
+                Assert.IsTrue(
+                    planets[i]
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == records[i].Name)
+                );
+                Image support = planets[i]
+                    .transform.Find("SupportBar/BackgroundImage")
+                    .GetComponent<Image>();
+                Assert.AreEqual(
+                    ContentEditorPresentation.GetNeutralTheme(project).GetPrimaryColor(),
+                    support.color
+                );
+                Assert.AreEqual(
+                    maximumEnergy,
+                    planets[i]
+                        .transform.Find("EnergyBar")
+                        .GetComponentsInChildren<Image>()
+                        .Count(image => image.name.StartsWith("Segment", StringComparison.Ordinal))
+                );
+                RectInt imageRect = planets[i].GetRenderedPlanetImageSourceRect();
+                Vector2Int offset = window.UnprojectPlanetPosition(
+                    new Vector2(imageRect.x, imageRect.y)
+                );
+                Assert.That(offset.x, Is.EqualTo(records[i].X - sector.X).Within(1));
+                Assert.That(offset.y, Is.EqualTo(records[i].Y - sector.Y).Within(1));
+            }
+            Assert.AreEqual(before, sector.Catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_ReturningToGalaxy_RestoresTheOverviewBackground()
+        {
+            SelectRecord(project.GetCatalogs().First(catalog => catalog.IsMap).Records.First());
+            RawImage backdrop = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "Map");
+            Assert.IsNull(backdrop.texture);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Galaxy")
+                .onClick.Invoke();
+            Assert.IsNotNull(backdrop.texture);
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = string.Empty;
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.Record?.Kind == "PlanetSector")
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AddPlanet_SectorCreateActions_AddsToTheSelectedSectorAndSupportsUndo(bool menu)
+        {
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            int before = sector.Planets.Count;
+            SelectRecord(sector);
+            if (menu)
+            {
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "AddUnit")
+                    .onClick.Invoke();
+                view.GetComponentsInChildren<ContextMenuCommandView>()
+                    .Single(command =>
+                        command
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label => label.text == "Planet")
+                    )
+                    .OnPointerClick(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            else
+            {
+                TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                    .Single(input => input.name == "Search");
+                search.SetTextWithoutNotify(string.Empty);
+                search.onValueChanged.Invoke(string.Empty);
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node.CreationParent?.Element == sector.Element)
+                    .OnPointerDown(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            ContentPackEditorRecord updated = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            Assert.AreEqual(before + 1, updated.Planets.Count);
+            ContentPackEditorRecord created = updated.Planets.Last();
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node.Record?.Element == created.Element)
+            );
+            PlanetSectorWindowView window = view.GetComponentInChildren<PlanetSectorWindowView>();
+            PlanetSectorPlanetView createdView = window
+                .GetComponentsInChildren<PlanetSectorPlanetView>()
+                .Last();
+            RectInt image = createdView.GetRenderedPlanetImageSourceRect();
+            RectInt bounds = UILayout.GetSourceRect((RectTransform)window.transform);
+            Assert.Greater(image.x, 0);
+            Assert.Greater(image.y, 0);
+            Assert.Less(image.xMax, bounds.width);
+            Assert.Less(image.yMax, bounds.height);
+            Assert.AreEqual(
+                "New planet",
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            Assert.AreEqual(
+                before + 1,
+                view.GetComponentsInChildren<PlanetSectorPlanetView>().Length
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project.GetCatalogs().First(catalog => catalog.IsMap).Records.First().Planets.Count
+            );
+        }
+
+        [Test]
+        public void RenderProject_Galaxy_SelectsOverviewAndListsSectorsDirectly()
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Galaxy";
+            ContentEditorRecordRowView galaxy =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node.Key == "galaxy");
+            Assert.IsTrue(
+                galaxy
+                    .Node.Children.Where(node => node.Record != null)
+                    .All(node => node.Depth == 1 && node.Record.Kind == "PlanetSector")
+            );
+            galaxy.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+            Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            Assert.AreEqual(
+                "Galaxy",
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            search.text = string.Empty;
+            view.RenderProject(project, assets);
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.Record?.Kind == "PlanetSector")
+            );
+        }
+
+        [TestCase(EventModifiers.Control)]
+        [TestCase(EventModifiers.Command)]
+        public void HandleKeyboardShortcut_SaveWithCreationRowFocused_DoesNotCreatePlanets(
+            EventModifiers modifier
+        )
+        {
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            ContentPackEditorRecord last = sector.Planets.Last();
+            int before = sector.Planets.Count;
+            SelectRecord(last);
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = string.Empty;
+            ContentEditorRecordRowView row =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(item => item.Node?.Record?.Element == last.Element);
+            row.OnMove(new AxisEventData(EventSystem.current) { moveDir = MoveDirection.Down });
+            Assert.AreEqual(
+                before,
+                sector.Planets.Count,
+                "Navigating onto Add planet must not execute it."
+            );
+            int saves = 0;
+            view.SaveRequested += () => saves++;
+            for (int i = 0; i < 5; i++)
+                Assert.IsTrue(
+                    view.HandleKeyboardShortcut(
+                        new Event
+                        {
+                            type = EventType.KeyDown,
+                            keyCode = KeyCode.S,
+                            modifiers = modifier,
+                        }
+                    )
+                );
+            Assert.AreEqual(5, saves);
+            Assert.AreEqual(before, sector.Planets.Count);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_GalaxyAndSectorRowClicks_ExpandAndCollapseTheirChildren()
+        {
+            view.ClearProject();
+            view.RenderProject(project, assets);
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            PointerEventData pointer = new(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            ContentEditorRecordRowView galaxy =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Key == "galaxy");
+            galaxy.OnPointerDown(pointer);
+            Assert.AreEqual(
+                "Galaxy",
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            ContentEditorRecordRowView sectorRow =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Record?.Element == sector.Element);
+            sectorRow.OnPointerDown(pointer);
+            Assert.IsNotNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.CreationParent?.Element == sector.Element)
+            );
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.Record?.Element == sector.Element)
+                .OnPointerDown(pointer);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.CreationParent?.Element == sector.Element)
+            );
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.Key == "galaxy")
+                .OnPointerDown(pointer);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.Record?.Kind == "PlanetSector")
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AddSector_MenuOrGalaxyRow_CreatesAndOpensAnEmptySector(bool menu)
+        {
+            ContentPackEditorCatalog galaxy = project.GetCatalogs().First(catalog => catalog.IsMap);
+            int before = galaxy.Records.Count;
+            if (menu)
+            {
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "AddUnit")
+                    .onClick.Invoke();
+                view.GetComponentsInChildren<ContextMenuCommandView>()
+                    .Single(command =>
+                        command
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label => label.text == "Planet sector")
+                    )
+                    .OnPointerClick(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            else
+            {
+                view.GetComponentsInChildren<TMP_InputField>(true)
+                    .Single(input => input.name == "Search")
+                    .text = "Galaxy";
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Key == "galaxy/add-sector")
+                    .OnPointerDown(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+            }
+            ContentPackEditorRecord created = galaxy.Records.Last();
+            Assert.AreEqual(before + 1, galaxy.Records.Count);
+            Assert.AreEqual("New sector", created.Name);
+            Assert.IsEmpty(created.Planets);
+            Assert.IsNotNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.CreationParent?.Element == created.Element)
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project.GetCatalogs().First(catalog => catalog.IsMap).Records.Count
+            );
+        }
+
+        [Test]
+        public void RenderProject_CreationRowKeyboardSubmit_AddsExactlyOnePlanet()
+        {
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First();
+            int before = sector.Planets.Count;
+            SelectRecord(sector.Planets.Last());
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = string.Empty;
+            ContentEditorRecordRowView row =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Record?.Element == sector.Planets.Last().Element);
+            row.OnMove(new AxisEventData(EventSystem.current) { moveDir = MoveDirection.Down });
+            Assert.AreEqual(before, sector.Planets.Count);
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.CreationParent?.Element == sector.Element)
+                .OnSubmit(new BaseEventData(EventSystem.current));
+            Assert.AreEqual(before + 1, sector.Planets.Count);
+        }
+
+        [Test]
+        public void RenderProject_GalaxyMarker_SelectsWithoutOpeningAndRequiresADoubleClickToOpen()
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Galaxy";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Key == "galaxy")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            ContentEditorMapMarker marker = view.GetComponentsInChildren<ContentEditorMapMarker>()
+                .First();
+            PointerEventData pointer = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            marker.OnBeginDrag(pointer);
+            Assert.IsTrue(marker.gameObject.activeInHierarchy);
+            Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            marker.OnEndDrag(pointer);
+            Canvas.ForceUpdateCanvases();
+            Vector3 position = marker.transform.position;
+            Vector3 scale = marker.transform.lossyScale;
+            pointer.clickCount = 1;
+            marker.OnPointerClick(pointer);
+            Canvas.ForceUpdateCanvases();
+            Assert.Less(Vector3.Distance(position, marker.transform.position), 0.1f);
+            Assert.Less(Vector3.Distance(scale, marker.transform.lossyScale), 0.01f);
+            Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            Assert.IsTrue(marker.gameObject.activeInHierarchy);
+            string sectorKey = marker.Record.Key;
+            view.RenderProject(project, assets);
+            Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            marker = view.GetComponentsInChildren<ContentEditorMapMarker>()
+                .Single(item => item.Record.Key == sectorKey);
+            pointer.dragging = true;
+            pointer.clickCount = 2;
+            marker.OnPointerClick(pointer);
+            Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+            pointer.dragging = false;
+            marker.OnPointerClick(pointer);
+            Assert.IsNotNull(view.GetComponentInChildren<PlanetSectorWindowView>());
+        }
+
+        [TestCase("Officers", "Encyclopedia", 1000)]
+        [TestCase("Officers", "Encyclopedia", 1800)]
+        [TestCase("Officers", "Artwork", 1000)]
+        [TestCase("Officers", "Artwork", 1800)]
+        [TestCase("Capital ships", "Encyclopedia", 1000)]
+        [TestCase("Capital ships", "Artwork", 1800)]
+        public void RenderProject_MediaTabAfterGeneral_KeepsTheImageAboveEveryField(
+            string category,
+            string tabName,
+            int width
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            view.RenderProject(project, assets);
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == category)
+                .Records.First();
+            SelectRecord(record);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == tabName)
+                .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+            RawImage image = view.GetComponentsInChildren<RawImage>()
+                .Single(control => control.name == "Portrait");
+            RectTransform content = (RectTransform)image.transform.parent.parent.parent;
+            Bounds imageBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                content,
+                image.transform
+            );
+            foreach (
+                ContentEditorFieldView field in view.GetComponentsInChildren<ContentEditorFieldView>()
+            )
+            {
+                Bounds fieldBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                    content,
+                    field.transform
+                );
+                Assert.LessOrEqual(fieldBounds.max.y, imageBounds.min.y - 8, field.name);
+            }
+            if (tabName == "Encyclopedia")
+            {
+                ContentPackEditorField art = ContentEditorContentSections
+                    .EncyclopediaFields(record, project.GetCatalogs())
+                    .First(field => field.MediaType == ContentPackEditorMediaType.Image);
+                Assert.AreSame(assets.GetTexture(art.Value), image.texture);
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_OfficerTraits_ShowsNamedSelectionsAndRetainsTheAuthoredSet()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            string traitID = project.GetTraitOptions().Keys.First();
+            project.SetFieldValues(officer.GetField("Traits"), new[] { traitID });
+            view.RenderProject(project, assets);
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
+            );
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.name == "TraitsField");
+            Assert.IsFalse(
+                field.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf
+            );
+            UICheckboxView[] choices = field.GetComponentsInChildren<UICheckboxView>();
+            Assert.AreEqual(project.GetTraitOptions().Count, choices.Length);
+            Assert.AreEqual(1, choices.Count(choice => choice.IsChecked));
+            CollectionAssert.AreEquivalent(
+                project.GetTraitOptions().Values,
+                choices.Select(choice => choice.GetComponentInChildren<TMP_Text>().text)
+            );
+        }
+
+        [Test]
+        public void RenderProject_LeavingXmlDraft_OffersDiscardAndPreservesDraftOnCancel()
+        {
+            ContentPackEditorRecord other = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.Skip(1)
+                .First();
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            TMP_InputField xml = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "AdvancedXml");
+            string draft = xml.text + "\n<!-- Pending edit -->";
+            xml.text = draft;
+            SelectRecord(other);
+            ContentEditorConfirmationView confirmation =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsNotNull(confirmation);
+            Assert.IsTrue(confirmation.TryCancel());
+            Assert.AreEqual(draft, xml.text);
+            SelectRecord(other);
+            confirmation = view.GetComponentInChildren<ContentEditorConfirmationView>();
+            confirmation
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Discard")
+                .onClick.Invoke();
+            Assert.AreEqual(
+                other.Name,
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordName")
+                    .text
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void AddUnit_OfficerTraitChoice_CreatesABlankTraitWithoutSelectingATemplate()
+        {
+            int count = project.GetCatalogs().Single(catalog => catalog.CanAddTrait).Records.Count;
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddUnit")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Single(command =>
+                    command
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == "Officer trait")
+                )
+                .OnPointerClick(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            ContentPackEditorCatalog traits = project
+                .GetCatalogs()
+                .Single(catalog => catalog.CanAddTrait);
+            Assert.AreEqual(count + 1, traits.Records.Count);
+            Assert.AreEqual(
+                "100",
+                traits.Records.Last().GetField("PersonnelTravelTimePercent").Value
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                count,
+                project.GetCatalogs().Single(catalog => catalog.CanAddTrait).Records.Count
+            );
+        }
+
+        [Test]
+        public void RenderProject_RecruitingFactions_UsesNamedCheckboxesAndStoresTheSelectedID()
+        {
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control =>
+                    control
+                        .GetComponentsInChildren<TMP_Text>(true)
+                        .Any(label =>
+                            label.name == "Label"
+                            && label.text.StartsWith("Recruiting faction", StringComparison.Ordinal)
+                        )
+                );
+            var faction = project.GetFactionOptions().First();
+            UICheckboxView choice = field
+                .GetComponentsInChildren<UICheckboxView>()
+                .Single(control =>
+                    control.GetComponentInChildren<TMP_Text>().text == faction.Value
+                );
+            UIComponentTestHelper.InvokeLifecycle(choice, "Awake");
+            choice.GetComponent<Toggle>().isOn = true;
+            Assert.IsFalse(field.GetComponentsInChildren<TMP_InputField>().Any());
+            Assert.IsTrue(
+                project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.First()
+                    .GetField("RecruitingFactionInstanceIDs")
+                    .Values.Contains(faction.Key)
+            );
+        }
+
+        [Test]
+        public void RenderProject_DirectoryPreview_OffersInheritedFilesWithoutEditingTheRoot()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Records.Any(record => record.Kind == "FactionTheme"));
+            ContentPackEditorField field = catalog
+                .Records.First()
+                .GetFields()
+                .Single(item => item.Name.Contains("advisor / Animation image root"));
+            string original = field.Value;
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .First();
+            control.Render(field, () => { }, _ => { }, project, (_, _) => { });
+            MenuDropdown selector = control.GetComponentInChildren<MenuDropdown>();
+            Assert.IsNotNull(selector);
+            Assert.Greater(selector.options.Count, 1);
+            selector.value = 1;
+            Assert.AreEqual(original, field.Value);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void AddUnit_UnrelatedRecordSelected_CreatesAnUnassignedUnitAndSupportsUndo()
+        {
+            ContentPackEditorCatalog roster = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers");
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Buildings").Records.First()
+            );
+            int count = roster.Records.Count;
+            ChooseUnitCategory(roster);
+            Assert.AreEqual(count + 1, roster.Records.Count);
+            Assert.AreEqual("New officer", roster.Records.Last().Name);
+            Assert.AreEqual("false", roster.Records.Last().GetField("IsMain").Value);
+            Assert.IsEmpty(roster.Records.Last().GetField("RecruitingFactionInstanceIDs").Values);
+            StringAssert.Contains(
+                "Unassigned",
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordInfo")
+                    .text
+            );
+            StringAssert.Contains(
+                "Unsaved changes",
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "RecordInfo")
+                    .text
+            );
+            Assert.IsEmpty(
+                view.GetComponentsInChildren<TMP_InputField>(true)
+                    .Single(input => input.name == "Search")
+                    .text
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.Record?.Element == roster.Records.Last().Element)
+            );
+            Assert.IsTrue(view.CommitFields());
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                count,
+                project
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Document == roster.Document)
+                    .Records.Count
+            );
+        }
+
+        [TestCase("Officers")]
+        [TestCase("Starfighters")]
+        [TestCase("Capital ships")]
+        [TestCase("Troops")]
+        [TestCase("Special forces")]
+        [TestCase("Buildings")]
+        public void AddUnit_EmptyCatalog_CreatesFreshFieldsWithoutAnExistingUnit(string category)
+        {
+            ContentPackEditorCatalog roster = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == category);
+            string root = System.Xml.Linq.XDocument.Parse(roster.Document.Text).Root.Name.LocalName;
+            project.SetDocumentText(roster.Document, "<" + root + " />");
+            view.RenderProject(project, assets);
+            roster = project.GetCatalogs().Single(catalog => catalog.Document == roster.Document);
+
+            ChooseUnitCategory(roster);
+
+            ContentPackEditorRecord unit = roster.Records.Single();
+            Assert.IsEmpty(unit.GetField("DisplayImagePath").Value);
+            Assert.IsEmpty(unit.GetField("SmallDisplayImagePath").Value);
+            Assert.IsEmpty(unit.GetField("EncyclopediaImagePath").Value);
+            Assert.IsEmpty(unit.GetField("Description").Value);
+            Assert.IsTrue(view.GetComponentsInChildren<ContentEditorFieldView>().Any());
+            Assert.IsTrue(view.CommitFields());
+        }
+
+        [Test]
+        public void AddUnit_BeforeChoosingACategory_LeavesTheProjectUnchanged()
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddUnit")
+                .onClick.Invoke();
+
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsTrue(view.GetComponentsInChildren<ContextMenuCommandView>().Any());
+        }
+
+        [Test]
+        public void AddUnit_Menu_UsesSingularNamesForEveryCreationAction()
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddUnit")
+                .onClick.Invoke();
+            ContextMenuCommandView[] commands =
+                view.GetComponentsInChildren<ContextMenuCommandView>();
+            string[] expected =
+            {
+                "Building",
+                "Capital ship",
+                "Officer",
+                "Special forces unit",
+                "Starfighter",
+                "Regiment",
+                "Game event",
+                "Officer trait",
+                "Faction",
+                "Planet sector",
+            };
+            Assert.AreEqual(expected.Length, commands.Length);
+            foreach (string caption in expected)
+                Assert.AreEqual(
+                    1,
+                    commands.Count(command =>
+                        command
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label => label.text == caption)
+                    ),
+                    caption
+                );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase("Officers", "+ Add officer", "RecruitingFactionInstanceIDs")]
+        [TestCase("Capital ships", "+ Add capital ship", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Starfighters", "+ Add starfighter", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Special forces", "+ Add special forces unit", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs")]
+        public void AddUnit_FactionGroupAction_CreatesAnUnassignedUnitAndSupportsUndo(
+            string category,
+            string caption,
+            string member
+        )
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == category);
+            int before = catalog.Records.Count;
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = category;
+            ContentEditorRecordRowView add =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Where(row => row.Node?.CreationCatalog?.Name == category)
+                    .OrderByDescending(row => row.Node.Depth)
+                    .First();
+            ContentEditorTreeNode group = view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Children.Contains(add.Node))
+                .Node;
+            Assert.AreEqual(caption, add.Node.Caption);
+            Assert.AreSame(add.Node, group.Children.Last());
+            Assert.AreEqual(group.Depth + 1, add.Node.Depth);
+            add.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+
+            Assert.AreEqual(before + 1, catalog.Records.Count);
+            ContentPackEditorRecord created = catalog.Records.Last();
+            Assert.IsEmpty(created.GetField(member).Values);
+            Assert.IsTrue(string.IsNullOrEmpty(created.Element.Element("OwnerInstanceID")?.Value));
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node?.Record?.Element == created.Element)
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project
+                    .GetCatalogs()
+                    .Single(item => item.Document == catalog.Document)
+                    .Records.Count
+            );
+        }
+
+        [TestCase("Officers", "RecruitingFactionInstanceIDs")]
+        [TestCase("Starfighters", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Capital ships", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Troops", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Special forces", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Buildings", "ManufacturingFactionInstanceIDs")]
+        public void AddUnit_NewDefinition_LetsTheAuthorChooseEitherOrBothFactions(
+            string category,
+            string member
+        )
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == category);
+            ChooseUnitCategory(catalog);
+            ContentPackEditorRecord unit = catalog.Records.Last();
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == member);
+            UICheckboxView[] choices = field.GetComponentsInChildren<UICheckboxView>();
+            Assert.AreEqual(project.GetFactionOptions().Count, choices.Length);
+            Assert.IsTrue(choices.All(choice => !choice.GetComponent<Toggle>().isOn));
+            Assert.IsEmpty(unit.GetField(member).Values);
+            var other = project.GetFactionOptions().Last();
+            UICheckboxView selected = choices.Single(choice =>
+                choice.GetComponentInChildren<TMP_Text>().text == other.Value
+            );
+            UIComponentTestHelper.InvokeLifecycle(selected, "Awake");
+            selected.GetComponent<Toggle>().isOn = true;
+            CollectionAssert.AreEqual(new[] { other.Key }, unit.GetField(member).Values);
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node.Record == unit)
+            );
+            foreach (UICheckboxView choice in choices.Where(choice => choice != selected))
+            {
+                UIComponentTestHelper.InvokeLifecycle(choice, "Awake");
+                choice.GetComponent<Toggle>().isOn = true;
+            }
+            CollectionAssert.AreEquivalent(
+                project.GetFactionOptions().Keys,
+                unit.GetField(member).Values
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node.Record == unit)
+            );
+            Assert.IsTrue(view.CommitFields());
+        }
+
+        [TestCase("Officers")]
+        [TestCase("Starfighters")]
+        [TestCase("Capital ships")]
+        [TestCase("Troops")]
+        [TestCase("Special forces")]
+        [TestCase("Buildings")]
+        public void AddUnit_AuthoredDefinition_LoadsInTheRuntimeCatalog(string category)
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == category);
+            ContentPackEditorRecord unit = project.AddUnit(catalog);
+
+            string member =
+                category == "Officers"
+                    ? "RecruitingFactionInstanceIDs"
+                    : "ManufacturingFactionInstanceIDs";
+            string faction = project.GetFactionOptions().Last().Key;
+            project.SetFieldValues(unit.GetField(member), new[] { faction });
+
+            project.Save();
+
+            ContentFileResolver source = ContentPackLoader.CreatePackResolver(
+                project.ContentRootPath,
+                project.Definition.BasePackID
+            );
+            ContentFileResolver resolver = new ContentFileResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                fallbackPackRootPaths: new[] { source.PackRootPath }
+            );
+            ContentPack loaded = ContentPackLoader.LoadPack(
+                resolver,
+                project.Definition,
+                project.Definition.DefaultScenarioID
+            );
+            var definitions = loaded
+                .GameData.Buildings.Cast<ISceneNode>()
+                .Concat(loaded.GameData.CapitalShips)
+                .Concat(loaded.GameData.Starfighters)
+                .Concat(loaded.GameData.Regiments)
+                .Concat(loaded.GameData.SpecialForces)
+                .Concat(loaded.GameData.Officers);
+            ISceneNode created = definitions.Single(definition =>
+                definition.TypeID == unit.ID && definition.DisplayName == unit.Name
+            );
+            CollectionAssert.AreEqual(
+                new[] { faction },
+                created is Rebellion.Game.Units.Officer officer
+                    ? officer.RecruitingFactionInstanceIDs
+                    : (
+                        (Rebellion.Game.Units.IManufacturable)created
+                    ).ManufacturingFactionInstanceIDs
+            );
+        }
+
+        [Test]
+        public async Task ValidateAsync_MissingStartingOfficer_RejectsContentThatCannotStartAGameAsync()
+        {
+            ContentPackEditorCatalog generation = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Starting setup");
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(
+                generation.Document.Text
+            );
+            xml.Descendants("OfficerInstanceID").First().Value = "missing-starting-officer";
+            project.SetDocumentText(generation.Document, xml.ToString());
+            project.Save();
+
+            Exception error = await GetValidationErrorAsync();
+
+            StringAssert.Contains("missing-starting-officer", error.Message);
+        }
+
+        [Test]
+        public async Task ValidateAsync_PlanetWithMissingArtwork_RejectsTheNestedReferenceAsync()
+        {
+            ContentPackEditorCatalog map = project.GetCatalogs().First(catalog => catalog.IsMap);
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(map.Document.Text);
+            xml.Descendants("Planet")
+                .First()
+                .SetElementValue("DisplayImagePath", "Pack/missing-planet-art.png");
+            project.SetDocumentText(map.Document, xml.ToString());
+            project.Save();
+
+            Exception error = await GetValidationErrorAsync();
+
+            StringAssert.Contains("File not found", error.Message);
+        }
+
+        [TestCase("weighted unit")]
+        [TestCase("weighted building")]
+        [TestCase("fleet cargo")]
+        [TestCase("fleet ship")]
+        [TestCase("fleet destination")]
+        public async Task ValidateAsync_UnselectedGenerationReference_RejectsTheMissingTargetAsync(
+            string location
+        )
+        {
+            ContentPackEditorCatalog generation = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Starting setup");
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(
+                generation.Document.Text
+            );
+            System.Xml.Linq.XElement target = location switch
+            {
+                "weighted unit" => xml.Descendants("WeightedUnitEntry")
+                    .First()
+                    .Descendants("TypeID")
+                    .First(),
+                "weighted building" => xml.Descendants("WeightedFacilityEntry")
+                    .First(entry => entry.Element("TypeID") != null)
+                    .Element("TypeID"),
+                "fleet cargo" => xml.Descendants("Cargo").First().Descendants("TypeID").First(),
+                "fleet ship" => xml.Descendants("FixedFleetShip").First().Element("TypeID"),
+                _ => xml.Descendants("FixedFleet").First().Element("PlanetTypeID"),
+            };
+            target.Value = "missing-generation-reference";
+            project.SetDocumentText(generation.Document, xml.ToString());
+            project.Save();
+
+            Exception error = await GetValidationErrorAsync();
+
+            StringAssert.Contains("missing-generation-reference", error.Message);
+        }
+
+        [Test]
+        public async Task ValidateAsync_CrossCategoryDuplicateUnitType_RejectsTheAmbiguousFactoryLookupAsync()
+        {
+            ContentPackEditorCatalog fighters = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Starfighters");
+            string shipType = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Capital ships")
+                .Records.First()
+                .ID;
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(fighters.Document.Text);
+            xml.Descendants("Starfighter").First().SetElementValue("TypeID", shipType);
+            project.SetDocumentText(fighters.Document, xml.ToString());
+            project.Save();
+
+            Exception error = await GetValidationErrorAsync();
+
+            StringAssert.Contains("Duplicate unit TypeID", error.Message);
+        }
+
+        [Test]
+        public void ConfirmDiscard_InvalidField_AllowsDiscardWithoutCommittingIt()
+        {
+            ContentPackEditorCatalog roster = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers");
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.name == "TypeIDField");
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            input.text = roster.Records[1].ID;
+            input.onEndEdit.Invoke(input.text);
+            Assert.IsFalse(view.CommitFields());
+            Assert.IsTrue(
+                field
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "ID already in use.")
+            );
+            bool discarded = false;
+            view.ConfirmDiscard(() => discarded = true);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Primary")
+                .onClick.Invoke();
+            Assert.IsTrue(discarded);
+        }
+
+        [Test]
+        public void RenderProject_AudioPreview_HasAnEnabledListenerAndTwoDimensionalSource()
+        {
+            Assert.AreEqual(1, view.GetComponentsInChildren<AudioListener>().Length);
+            Assert.IsTrue(view.GetComponent<AudioListener>().enabled);
+            Assert.AreEqual(0, view.GetComponent<AudioSource>().spatialBlend);
+        }
+
+        [Test]
+        public void RenderProject_ChangingAnEnum_UsesTheSharedSelectorAndUpdatesTheDocument()
+        {
+            var candidate = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .Select(record => new
+                {
+                    Record = record,
+                    Field = record
+                        .GetFields()
+                        .FirstOrDefault(field =>
+                            !field.IsList
+                            && !field.IsMedia
+                            && field.Choices.Count > 1
+                            && field.Choices.Contains(field.Value)
+                        ),
+                })
+                .First(item => item.Field != null);
+            SelectRecord(candidate.Record);
+            ContentEditorFieldView fieldView =
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .First(field =>
+                        field
+                            .GetComponentsInChildren<TMP_Text>()
+                            .Any(label =>
+                                label.name == "Label" && label.text == candidate.Field.Caption
+                            )
+                    );
+            TMP_Dropdown selector = fieldView.GetComponentInChildren<MenuDropdown>();
+            Assert.IsNotNull(selector);
+            string next = candidate.Field.Choices.First(choice => choice != candidate.Field.Value);
+            selector.value = Array.IndexOf(candidate.Field.Choices.ToArray(), next);
+            Assert.AreEqual(next, candidate.Field.Value);
+            Assert.IsTrue(project.IsDirty);
+        }
+
+        [Test]
+        public void ShowNewPackDialog_SelectingABasePack_UsesTheSelectedSourceWhenCreating()
+        {
+            view.Initialize(
+                new[]
+                {
+                    new ContentPackDefinition { ID = "first", DisplayName = "First" },
+                    new ContentPackDefinition { ID = "second", DisplayName = "Second" },
+                },
+                project.ContentRootPath
+            );
+            view.ShowNewPackDialog();
+            view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "DisplayName")
+                .text = "New pack";
+            view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "PackID")
+                .text = "new-pack";
+            MenuDropdown selector = view.GetComponentsInChildren<MenuDropdown>()
+                .Single(item => item.name == "PackChoice");
+            selector.value = 1;
+            string chosen = null;
+            view.CreateRequested += (source, _, _, _, _) => chosen = source;
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Confirm")
+                .onClick.Invoke();
+            Assert.AreEqual("second", chosen);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_NewlyOpenedPack_ShowsInheritedOfficersImmediately()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            Assert.IsTrue(view.GetComponentsInChildren<ContentEditorFieldView>().Any());
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>().Any(label => label.text == officer.Name)
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row => row.Node.Record == officer)
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ToggleBranch_ScrolledTree_PreservesScrollAndInspector(bool disclosure)
+        {
+            ContentEditorRecordRowView branch =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Caption == "Special forces");
+            ScrollAreaView scroll = view.GetComponentsInChildren<ContentEditorScrollLayout>()
+                .Single(layout => layout.name == "ContentTree")
+                .ScrollArea;
+            string selectedTitle = view.GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.name == "RecordName")
+                .text;
+            scroll.RevealContentRect(branch.Index * 36, scroll.ViewportHeight);
+            float offset = scroll.ContentRoot.anchoredPosition.y;
+            Assert.Greater(offset, 0);
+
+            for (int toggle = 0; toggle < 2; toggle++)
+            {
+                if (disclosure)
+                    branch.GetComponentInChildren<Button>().onClick.Invoke();
+                else
+                    branch.OnPointerDown(
+                        new PointerEventData(EventSystem.current)
+                        {
+                            button = PointerEventData.InputButton.Left,
+                        }
+                    );
+                Canvas.ForceUpdateCanvases();
+
+                Assert.That(scroll.ContentRoot.anchoredPosition.y, Is.EqualTo(offset).Within(0.1f));
+                Assert.AreEqual(
+                    selectedTitle,
+                    view.GetComponentsInChildren<TMP_Text>()
+                        .Single(label => label.name == "RecordName")
+                        .text
+                );
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ShowNewPackDialog_WindowsLocation_DisplaysTheLiteralPath()
+        {
+            view.ShowNewPackDialog();
+            TMP_InputField location = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "Location");
+            location.text = @"C:\new\rebellion2\Mods";
+            Canvas.ForceUpdateCanvases();
+            location.textComponent.ForceMeshUpdate();
+            Assert.AreEqual(
+                location.text,
+                location.textComponent.GetParsedText().TrimEnd('\u200B')
+            );
+        }
+
+        [Test]
+        public void ShowNewPackDialog_EnteringAName_GeneratesThePackFolderUnderMods()
+        {
+            view.ShowNewPackDialog();
+            TMP_InputField name = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "DisplayName");
+            name.text = "My New Pack!";
+            TMP_InputField id = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "PackID");
+            TMP_InputField location = view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "Location");
+            Assert.AreEqual("my-new-pack", id.text);
+            Assert.AreEqual(
+                Path.Combine(Directory.GetParent(project.ContentRootPath).FullName, "Mods"),
+                location.text
+            );
+            string destination = null;
+            view.CreateRequested += (_, _, _, _, folderPath) => destination = folderPath;
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Confirm")
+                .onClick.Invoke();
+            Assert.AreEqual(location.text, destination);
+            StringAssert.Contains(
+                Path.Combine(location.text, "my-new-pack"),
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "PackFolder")
+                    .text
+            );
+            id.text = "custom-id";
+            name.text = "Different display name";
+            Assert.AreEqual("custom-id", id.text);
+        }
+
+        [Test]
+        public void ShowNewPackDialog_RequiredFieldsEmpty_DisablesCreation()
+        {
+            view.ShowNewPackDialog();
+            Button confirm = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Confirm");
+            Assert.IsFalse(confirm.interactable);
+        }
+
+        [Test]
+        public void RenderProject_SelectingEveryCatalogPage_OpensFormsWithoutCreatingOverrides()
+        {
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            foreach (
+                ContentEditorTreeNode node in navigation
+                    .GetRows(string.Empty)
+                    .Where(node => node.Record != null)
+                    .GroupBy(node => node.Fields != null ? node.Key : node.Catalog.Document.Address)
+                    .Select(group => group.First())
+            )
+            {
+                SelectPage(node);
+                Assert.IsTrue(view.CommitFields(), node.Key);
+                Assert.IsFalse(project.IsDirty, node.Key);
+            }
+
+            Assert.IsFalse(project.IsDirty);
+            Assert.AreEqual(
+                1,
+                Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Count()
+            );
+        }
+
+        [Test]
+        public void RenderProject_EditingASkillAndUndoing_RestoresTheVisibleValue()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            SelectRecord(officer);
+            TMP_InputField input = SkillInput();
+            string previous = input.text;
+            string replacement = previous == "123" ? "124" : "123";
+            input.SetTextWithoutNotify(replacement);
+            input.onEndEdit.Invoke(replacement);
+
+            Assert.IsTrue(project.IsDirty);
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+
+            Assert.AreEqual(previous, SkillInput().text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ShowNewPackDialog_OpeningTheWorkflow_LeavesTheWorkingPackUnchanged()
+        {
+            view.ShowNewPackDialog();
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "New content pack")
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ClearProject_ReturnsToStartScreen_OffersOnlyExplicitNewAndOpen()
+        {
+            view.ClearProject();
+            Assert.IsTrue(
+                view.GetComponentsInChildren<Button>().Any(button => button.name == "NewPack")
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<Button>().Any(button => button.name == "OpenPack")
+            );
+            Assert.IsFalse(view.GetComponentsInChildren<ContentEditorFieldView>().Any());
+            Assert.IsTrue(
+                view.GetComponentsInChildren<Button>().Any(button => button.name == "View")
+            );
+        }
+
+        [Test]
+        public void RenderProject_DifferentImageShapes_KeepTheirAuthoredAspectRatios()
+        {
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
+            );
+            Canvas.ForceUpdateCanvases();
+            int imageCount = 0;
+            foreach (
+                ContentEditorRecordRowView row in view.GetComponentsInChildren<ContentEditorRecordRowView>()
+            )
+            {
+                RawImage image = row.GetComponentsInChildren<RawImage>()
+                    .FirstOrDefault(item => item.name == "Thumbnail");
+                if (image?.texture == null)
+                    continue;
+                imageCount++;
+                float expected = (float)image.texture.width / image.texture.height;
+                Assert.That(
+                    image.GetComponent<AspectRatioFitter>().aspectRatio,
+                    Is.EqualTo(expected).Within(0.001),
+                    row.Node.Caption
+                );
+                Assert.AreEqual(
+                    AspectRatioFitter.AspectMode.FitInParent,
+                    image.GetComponent<AspectRatioFitter>().aspectMode
+                );
+            }
+            Assert.Greater(imageCount, 0);
+        }
+
+        [Test]
+        public void RenderProject_ClickingDisclosure_ExpandsBranchWithoutReplacingSelection()
+        {
+            view.ClearProject();
+            view.RenderProject(project, assets);
+            ContentEditorRecordRowView units =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Caption == "Units");
+            Button disclosure = units.GetComponentsInChildren<Button>(true).Single();
+            int before = view.GetComponentsInChildren<ContentEditorRecordRowView>().Length;
+            disclosure.onClick.Invoke();
+            int after = view.GetComponentsInChildren<ContentEditorRecordRowView>().Length;
+            Assert.AreNotEqual(before, after);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_BooleanAndTextControls_AlignToTheSameRowCenter()
+        {
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
+            );
+            ContentEditorFieldView boolean = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .First(field => field.GetComponentInChildren<UICheckboxView>() != null);
+            RectTransform label = boolean
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(item => item.name == "Label")
+                .rectTransform;
+            RectTransform frame = boolean
+                .GetComponentsInChildren<RawImage>()
+                .Single(item => item.name == "Frame")
+                .rectTransform;
+            Assert.That(
+                frame.TransformPoint(frame.rect.center).y,
+                Is.EqualTo(label.TransformPoint(label.rect.center).y).Within(0.5)
+            );
+        }
+
+        [Test]
+        public void RenderProject_TraitsAndSharedRules_GroupsControlsByTheirActualScope()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            string[] roots = navigation
+                .GetRows(string.Empty)
+                .Where(node => node.Depth == 0)
+                .Select(node => node.Caption)
+                .ToArray();
+            Assert.Less(
+                Array.IndexOf(roots, "Officer traits"),
+                Array.IndexOf(roots, "Starting setup")
+            );
+            Assert.AreEqual("Officer traits", roots[Array.IndexOf(roots, "Units") + 1]);
+            Assert.AreEqual("Starting setup", roots[roots.Length - 2]);
+            navigation.SetExpanded(true);
+            ContentEditorTreeNode[] pages = navigation.GetRows(string.Empty).ToArray();
+            ContentEditorTreeNode difficulty = pages.Single(node => node.Caption == "Difficulty");
+            Assert.IsTrue(
+                difficulty.Fields.Any(field => field.MemberName == "MissionSuccessChancePoints")
+            );
+            Assert.IsFalse(
+                pages
+                    .Where(node => node.MissionID != null)
+                    .SelectMany(node => node.Fields)
+                    .Any(field => field.Group == "DifficultyModifiers")
+            );
+            Assert.IsNotNull(
+                navigation
+                    .GetRows("Mission success chance points")
+                    .SingleOrDefault(node => node.Key == difficulty.Key)
+            );
+        }
+
+        [TestCase(900, 0.4f)]
+        [TestCase(1600, 0f)]
+        public void RenderProject_RulesAndMissionPages_KeepsWrappedTextAndControlsInsideTheirRows(
+            int width,
+            float zoom
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            view.ZoomContent(zoom);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentEditorTreeNode[] pages = navigation
+                .GetRows(string.Empty)
+                .Where(node =>
+                    node.Fields != null && (node.Key.Contains("#rules/") || node.MissionID != null)
+                )
+                .Concat(
+                    navigation
+                        .GetRows(string.Empty)
+                        .Where(node =>
+                            node.Record?.Kind
+                                is "Officer"
+                                    or "SpecialForce"
+                                    or "Regiment"
+                                    or "CapitalShip"
+                                    or "Starfighter"
+                                    or "Building"
+                                    or "GameGenerationConfig"
+                                    or "OfficerTrait"
+                                    or "Faction"
+                        )
+                        .GroupBy(node => node.Record.Kind)
+                        .Select(group => group.First())
+                )
+                .ToArray();
+            foreach (ContentEditorTreeNode page in pages)
+            {
+                SelectPage(page);
+                if (
+                    page.MissionID != null
+                    && page.Fields.Any(field => field.Record.Kind == "GameConfig")
+                )
+                    view.GetComponentsInChildren<Button>()
+                        .Single(button => button.name == "Tab5")
+                        .onClick.Invoke();
+                Canvas.ForceUpdateCanvases();
+                foreach (
+                    ContentEditorFieldView control in view.GetComponentsInChildren<ContentEditorFieldView>()
+                )
+                {
+                    RectTransform rect = (RectTransform)control.transform;
+                    foreach (
+                        TMP_InputField input in control.GetComponentsInChildren<TMP_InputField>()
+                    )
+                    {
+                        Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                            rect,
+                            input.transform
+                        );
+                        Assert.LessOrEqual(
+                            bounds.max.x,
+                            rect.rect.xMax + 1,
+                            page.Caption + "/" + control.name
+                        );
+                        Assert.GreaterOrEqual(
+                            bounds.min.x,
+                            rect.rect.xMin - 1,
+                            page.Caption + "/" + control.name
+                        );
+                        Assert.GreaterOrEqual(
+                            bounds.min.y,
+                            rect.rect.yMin - 1,
+                            page.Caption + "/" + control.name
+                        );
+                    }
+                }
+                foreach (
+                    TMP_Text label in view.GetComponentsInChildren<TMP_Text>()
+                        .Where(text =>
+                            text.name.StartsWith("GroupTemplate", StringComparison.Ordinal)
+                            || text.name == "Label"
+                                && text.transform.parent.GetComponent<ContentEditorFieldView>()
+                                    != null
+                        )
+                )
+                {
+                    if (label.text is "Score" or "Threshold")
+                    {
+                        label.ForceMeshUpdate();
+                        Assert.AreEqual(
+                            1,
+                            label.textInfo.lineCount,
+                            page.Caption + ": " + label.text
+                        );
+                    }
+                    Assert.LessOrEqual(
+                        label
+                            .GetPreferredValues(
+                                label.text,
+                                label.rectTransform.rect.width,
+                                float.PositiveInfinity
+                            )
+                            .y,
+                        label.rectTransform.rect.height + 1,
+                        page.Caption + ": " + label.text
+                    );
+                }
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(340)]
+        [TestCase(700)]
+        public void SetLayout_LongDescription_GrowsToShowAllWrappedText(int width)
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            ContentPackEditorField description = officer.GetField("EncyclopediaDescription");
+            project.SetField(
+                description,
+                string.Join(
+                    " ",
+                    Enumerable.Repeat(
+                        "A long description that must remain readable at any window size.",
+                        45
+                    )
+                )
+            );
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "EncyclopediaTab")
+                .onClick.Invoke();
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "EncyclopediadescriptionField");
+            int height = control.SetLayout(new Rect(0, 0, width, control.Height), 0);
+            Canvas.ForceUpdateCanvases();
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
+            Assert.Greater(height, 152);
+            Assert.LessOrEqual(
+                input
+                    .textComponent.GetPreferredValues(
+                        input.text,
+                        input.textViewport.rect.width,
+                        float.PositiveInfinity
+                    )
+                    .y,
+                input.textViewport.rect.height + 1
+            );
+        }
+
+        [TestCase(900)]
+        [TestCase(1600)]
+        public void RenderProject_NestedGeneration_ShowsSeparateSectionsAndCompleteFieldCaptions(
+            int width
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "GameGenerationConfig");
+
+            SelectRecord(theme);
+            Canvas.ForceUpdateCanvases();
+
+            string[] headings = view.GetComponentsInChildren<TMP_Text>()
+                .Where(label => label.name.StartsWith("GroupTemplate", StringComparison.Ordinal))
+                .Select(label => label.text)
+                .ToArray();
+            Assert.Greater(headings.Length, 3);
+            Assert.IsFalse(headings.Any(heading => heading.Contains(" / ")));
+            foreach (
+                ContentEditorFieldView control in view.GetComponentsInChildren<ContentEditorFieldView>()
+            )
+            {
+                TMP_Text label = control
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Single(text =>
+                        text.name == "Label" && text.transform.parent == control.transform
+                    );
+                Assert.IsFalse(label.text.Contains(" / "), label.text);
+                Assert.LessOrEqual(
+                    label
+                        .GetPreferredValues(
+                            label.text,
+                            label.rectTransform.rect.width,
+                            float.PositiveInfinity
+                        )
+                        .y,
+                    label.rectTransform.rect.height + 0.1f,
+                    label.text
+                );
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void SetLayout_LongFieldCaption_WrapsAndExpandsTheRow()
+        {
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .First(field =>
+                    field
+                        .GetComponentsInChildren<TMP_Text>(true)
+                        .Any(text =>
+                            text.name == "Label"
+                            && text.text.StartsWith("Recruiting faction", StringComparison.Ordinal)
+                        )
+                );
+            int height = control.SetLayout(new Rect(0, 0, 340, control.Height), 70);
+            Canvas.ForceUpdateCanvases();
+            TMP_Text label = control
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(text => text.name == "Label");
+            label.ForceMeshUpdate();
+
+            Assert.Greater(height, control.Height);
+            Assert.Greater(label.textInfo.lineCount, 1);
+            Assert.IsFalse(label.isTextTruncated);
+            Assert.LessOrEqual(label.preferredHeight, label.rectTransform.rect.height);
+            Assert.AreEqual(height, ((RectTransform)control.transform).rect.height, 0.1f);
+        }
+
+        [Test]
+        public void RenderProject_InvalidAuthoredBoolean_AllowsRepairThroughTheTextInput()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            xml.Root.Elements().First().SetElementValue("CanBetray", "not-a-bool");
+            project.SetDocumentText(catalog.Document, xml.ToString());
+
+            Assert.DoesNotThrow(() => view.RenderProject(project, assets));
+            SelectRecord(
+                project.GetCatalogs().First(item => item.Name == "Officers").Records.First()
+            );
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "CanbetrayField")
+                .GetComponentInChildren<TMP_InputField>();
+            Assert.AreEqual("not-a-bool", input.text);
+            input.SetTextWithoutNotify("true");
+            input.onEndEdit.Invoke("true");
+
+            Assert.IsTrue(view.CommitFields());
+            StringAssert.Contains("<CanBetray>true</CanBetray>", catalog.Document.Text);
+        }
+
+        [Test]
+        public void RenderProject_InvalidArtworkAddress_LeavesTheReferenceEditable()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(catalog.Document.Text);
+            xml.Root.Elements()
+                .First()
+                .SetElementValue("EncyclopediaImagePath", "unscoped/image.png");
+            project.SetDocumentText(catalog.Document, xml.ToString());
+
+            Assert.DoesNotThrow(() => view.RenderProject(project, assets));
+            SelectRecord(
+                project.GetCatalogs().First(item => item.Name == "Officers").Records.First()
+            );
+            view.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+                .Single(button => button.name == "EncyclopediaTab")
+                .onClick.Invoke();
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "EncyclopediaimagepathField")
+                .GetComponentInChildren<TMP_InputField>();
+
+            Assert.AreEqual("unscoped/image.png", input.text);
+        }
+
+        [Test]
+        public void RenderProject_ApplyingUnchangedXml_KeepsTheEditorOpenWithoutCreatingAnOverride()
+        {
+            SelectRecord(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
+            );
+            view.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+                .Single(button => button.name == "Tab3")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+                .Single(button => button.name == "ApplyXml")
+                .onClick.Invoke();
+
+            Assert.IsTrue(
+                view.GetComponentsInChildren<UnityEngine.UI.Button>()
+                    .Any(button => button.name is "ApplyXml" or "DiscardXml")
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ClearProject_FocusedFieldEndEdit_CannotWriteToTheClosedProject()
+        {
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .First(item => item.Field.MemberName == "DisplayName");
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            string before = field.Field.Document.Text;
+            ContentPackEditorDocument document = field.Field.Document;
+            view.ClearProject();
+            input.onEndEdit.Invoke("Late edit");
+            Assert.IsNull(field.Field);
+            Assert.AreEqual(before, document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void ClearProject_GalaxyDragInProgress_CompletesOneUndoableEdit()
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Galaxy";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Key == "galaxy")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            Canvas.ForceUpdateCanvases();
+            ContentEditorMapMarker marker = view.GetComponentsInChildren<ContentEditorMapMarker>()
+                .First();
+            ContentPackEditorDocument document = marker.Record.Catalog.Document;
+            string before = document.Text;
+            PointerEventData pointer = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(null, marker.transform.position),
+            };
+            marker.OnBeginDrag(pointer);
+            pointer.position += new Vector2(20, 10);
+            marker.OnDrag(pointer);
+            Assert.AreNotEqual(before, document.Text);
+            view.ClearProject();
+            Assert.IsTrue(project.CanUndo);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(before, document.Text);
+            Assert.IsFalse(project.CanUndo);
+        }
+
+        [Test]
+        public void HandleKeyboardShortcut_EscapeWithNewPackDialog_ClosesOnlyTheDialog()
+        {
+            view.RenderStatus("Keep this status.", false);
+            view.ShowNewPackDialog();
+            Event key = new Event { type = EventType.KeyDown, keyCode = KeyCode.Escape };
+            Assert.IsTrue(view.HandleKeyboardShortcut(key));
+            Assert.AreEqual(EventType.Used, key.type);
+            Assert.IsFalse(view.GetComponentInChildren<ContentEditorPackDialogView>(true).IsOpen);
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Keep this status.")
+            );
+        }
+
+        [Test]
+        public void RenderProject_InvalidEnum_OffersTheTypedSelectorAndKeepsTheDraftUnchanged()
+        {
+            ContentPackEditorRecord building = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Buildings")
+                .Records.First();
+            XDocument xml = XDocument.Parse(building.Catalog.Document.Text);
+            xml.Root.Elements().First().SetElementValue("BuildingType", "InvalidKind");
+            project.SetDocumentText(building.Catalog.Document, xml.ToString());
+            view.RenderProject(project, assets);
+            building = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Buildings")
+                .Records.First();
+            SelectRecord(building);
+            ContentEditorFieldView row = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "BuildingType");
+            TMP_Dropdown selector = row.GetComponentInChildren<TMP_Dropdown>();
+            Assert.IsNotNull(selector);
+            Assert.Greater(selector.options.Count, 1);
+            row.Commit();
+            Assert.IsTrue(row.HasError);
+            Assert.AreEqual("InvalidKind", building.GetField("BuildingType").Value);
+        }
+
+        [Test]
+        public void RenderProject_DeleteSelectedOfficer_RebindsTheNextRecordAndSupportsUndo()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            string removed = catalog.Records.First().ID;
+            SelectRecord(catalog.Records.First());
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Delete")
+                .onClick.Invoke();
+            ContentEditorConfirmationView confirmation =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            confirmation
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Delete")
+                .onClick.Invoke();
+            Assert.IsFalse(catalog.Records.Any(record => record.ID == removed));
+            Assert.IsTrue(view.CommitFields());
+            Assert.IsTrue(view.GetComponentsInChildren<ContentEditorFieldView>().Any());
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.IsTrue(
+                project
+                    .GetCatalogs()
+                    .First(item => item.Document == catalog.Document)
+                    .Records.Any(record => record.ID == removed)
+            );
+        }
+
+        [Test]
+        public void RenderProject_GalaxyOverview_ShowsOnlyTheMapEditingTab()
+        {
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = "Galaxy";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Key == "galaxy")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            CollectionAssert.AreEqual(
+                new[] { "General" },
+                view.GetComponentsInChildren<Button>()
+                    .Where(button => button.name.StartsWith("Tab", StringComparison.Ordinal))
+                    .Select(button => button.GetComponentInChildren<TMP_Text>().text)
+            );
+        }
+
+        [Test]
+        public void RenderProject_ReferenceOnlyMission_OmitsTheEmptyRulesTab()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Encyclopedia entries");
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
+            xml.Root.Add(
+                new XElement(
+                    "EncyclopediaEntry",
+                    new XElement("TypeID", "reference-only-mission"),
+                    new XElement("DisplayName", "Reference only mission"),
+                    new XElement("Category", "Mission"),
+                    new XElement("Description", "Reference text.")
+                )
+            );
+            project.SetDocumentText(catalog.Document, xml.ToString());
+            view.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("missions/reference-only-mission"));
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>()
+                    .Any(button => button.GetComponentInChildren<TMP_Text>()?.text == "Rules")
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field.MemberName == "Description")
+            );
+        }
+
+        /// <summary>
+        /// Captures a validation failure through the asynchronous public API.
+        /// </summary>
+        /// <returns>The validation exception.</returns>
+        private async Task<Exception> GetValidationErrorAsync()
+        {
+            try
+            {
+                await project.ValidateAsync();
+            }
+            catch (Exception exception)
+            {
+                return exception;
+            }
+            Assert.Fail("Validation must reject the invalid pack.");
+            return null;
+        }
+
+        /// <summary>
+        /// Adds a unit directly through the visible category menu.
+        /// </summary>
+        /// <param name="roster">A catalog identifying the unit category.</param>
+        private void ChooseUnitCategory(ContentPackEditorCatalog roster)
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "AddUnit")
+                .onClick.Invoke();
+            ContextMenuCommandView category = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Single(command =>
+                    command
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == roster.ItemName)
+                );
+            PointerEventData click = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            category.OnPointerClick(click);
+        }
+
+        /// <summary>
+        /// Selects a named entry through its visible tree row.
+        /// </summary>
+        /// <param name="record">The entry to select.</param>
+        private void SelectRecord(ContentPackEditorRecord record)
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.SetTextWithoutNotify(record.ID);
+            search.onValueChanged.Invoke(record.ID);
+            ContentEditorRecordRowView row =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(item =>
+                        item.Node?.Record?.Element == record.Element
+                        && (record.Kind != "GameConfig" || item.Node.Key.Contains("#rules/"))
+                    );
+            row.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Selects one logical page through its visible navigation row.
+        /// </summary>
+        /// <param name="node">The page to select.</param>
+        private void SelectPage(ContentEditorTreeNode node)
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.SetTextWithoutNotify(node.Caption);
+            search.onValueChanged.Invoke(node.Caption);
+            ContentEditorRecordRowView[] matches =
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Where(item => item.Node?.Key == node.Key)
+                    .ToArray();
+            Assert.AreEqual(1, matches.Length, node.Key);
+            ContentEditorRecordRowView row = matches.Single();
+            row.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Identifies a projected property including its repeated-entry context.
+        /// </summary>
+        /// <param name="field">The projected property.</param>
+        /// <returns>The comparable authored field identity.</returns>
+        private static string FieldIdentity(ContentPackEditorField field)
+        {
+            return field.Group + "|" + string.Join("/", field.SectionPath) + "|" + field.Name;
+        }
+
+        /// <summary>
+        /// Finds the visible diplomacy control in the dedicated officer form.
+        /// </summary>
+        /// <returns>The shared text input.</returns>
+        private TMP_InputField SkillInput()
+        {
+            return view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "DiplomacyField")
+                .GetComponentInChildren<TMP_InputField>(true);
+        }
+
+        /// <summary>
+        /// Opens shared detection rules through their visible navigation row.
+        /// </summary>
+        /// <returns>The current editable probability grid.</returns>
+        private ContentEditorNumericGrid SelectSharedMissionRules()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentEditorTreeNode page = navigation
+                .GetRows(string.Empty)
+                .Single(node => node.Caption == "Shared mission rules");
+            SelectPage(page);
+            return new ContentEditorNumericGrid(page.Fields);
+        }
+
+        /// <summary>
+        /// Finds a visible shared input by its probability-table coordinates.
+        /// </summary>
+        /// <param name="score">The row threshold.</param>
+        /// <param name="column">The probability column.</param>
+        /// <returns>The editable input.</returns>
+        private TMP_InputField ProbabilityInput(int score, int column) =>
+            view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.name == "Probability" + column + "Score" + score + "Field")
+                .GetComponentInChildren<TMP_InputField>();
+
+        /// <summary>
+        /// Reads the authored value directly from the project's current rules document.
+        /// </summary>
+        /// <param name="score">The success-table threshold.</param>
+        /// <returns>The serialized value, or empty when no entry exists.</returns>
+        private string ProbabilityValue(int score) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Rules")
+                .Records.Single()
+                .Element.Element("ProbabilityTables")
+                .Element("Mission")
+                .Element("Foil")
+                .Elements("Entry")
+                .SingleOrDefault(entry =>
+                    entry.Element("Key").Value
+                    == score.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                )
+                ?.Element("Value")
+                ?.Value
+            ?? string.Empty;
+
+        [ExecuteAlways]
+        private sealed class EditModeEventSystem : EventSystem { }
+    }
+}
