@@ -119,7 +119,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<Officer> officers
         )
         {
-            if (candidate == null || !IsHeadquartersOwnedByFaction(candidate.InstanceID))
+            if (
+                candidate is not { HasLostHeadquarters: false }
+                || !IsHeadquartersOwnedByFaction(candidate.InstanceID)
+            )
                 return false;
 
             List<Faction> opponents = _game

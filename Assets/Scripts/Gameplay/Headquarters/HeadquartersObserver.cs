@@ -6,11 +6,12 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Routes arrival and ownership result batches to headquarters operations.
+    /// Routes headquarters lifecycle result batches to headquarters operations.
     /// </summary>
     public sealed class HeadquartersObserver : IResultObserver, IDisposable
     {
@@ -27,9 +28,9 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Registers arrival and ownership callbacks with the result bus.
+        /// Registers headquarters lifecycle callbacks with the result bus.
         /// </summary>
-        /// <param name="results">The bus that delivers arrivals and ownership changes.</param>
+        /// <param name="results">The bus that delivers headquarters lifecycle changes.</param>
         public void Connect(GameResultBus results)
         {
             if (_subscriptions != null)
@@ -41,11 +42,13 @@ namespace Rebellion.Gameplay
             {
                 results.Subscribe<UnitArrivedResult>(HandleResults),
                 results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
+                results.Subscribe<GameObjectDestroyedResult>(HandleResults),
+                results.Subscribe<UnitOwnershipChangedResult>(HandleResults),
             };
         }
 
         /// <summary>
-        /// Stops receiving arrivals and ownership changes.
+        /// Stops receiving headquarters lifecycle changes.
         /// </summary>
         public void Dispose()
         {
@@ -87,6 +90,47 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Applies mobile headquarters destruction from sabotage, arrival rejection, and other
+        /// unit lifecycle operations.
+        /// </summary>
+        /// <param name="results">The completed unit destructions.</param>
+        /// <returns>The headquarters losses caused by the destructions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectDestroyedResult> results)
+        {
+            List<GameResult> reactions = new();
+            foreach (
+                GameObjectDestroyedResult result in results
+                    ?? Array.Empty<GameObjectDestroyedResult>()
+            )
+            {
+                HeadquartersDestroyedResult destroyed = ApplyDestruction(result);
+                if (destroyed != null)
+                    reactions.Add(destroyed);
+            }
+            return reactions;
+        }
+
+        /// <summary>
+        /// Applies mobile headquarters losses caused by direct unit ownership transfers.
+        /// </summary>
+        /// <param name="results">The completed unit ownership changes.</param>
+        /// <returns>The headquarters losses caused by the transfers.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<UnitOwnershipChangedResult> results)
+        {
+            List<GameResult> reactions = new();
+            foreach (
+                UnitOwnershipChangedResult result in results
+                    ?? Array.Empty<UnitOwnershipChangedResult>()
+            )
+            {
+                HeadquartersCapturedResult captured = ApplyUnitOwnershipChange(result);
+                if (captured != null)
+                    reactions.Add(captured);
+            }
+            return reactions;
+        }
+
+        /// <summary>
         /// Applies the headquarters marker for an arriving mobile headquarters.
         /// </summary>
         /// <param name="headquarters">The arriving headquarters building.</param>
@@ -107,6 +151,105 @@ namespace Rebellion.Gameplay
             destination.IsHeadquarters = true;
             faction.HQInstanceID = destination.InstanceID;
             faction.HasLostHeadquarters = false;
+        }
+
+        /// <summary>
+        /// Marks the owner of a destroyed mobile headquarters as having lost it.
+        /// </summary>
+        /// <param name="result">The completed destruction.</param>
+        /// <returns>The headquarters destruction result, or null when the unit was not an active headquarters.</returns>
+        private HeadquartersDestroyedResult ApplyDestruction(GameObjectDestroyedResult result)
+        {
+            if (result?.DestroyedObject is not Building headquarters)
+                return null;
+
+            Faction owner = _game
+                .GetFactions()
+                .FirstOrDefault(faction =>
+                    faction.InstanceID == headquarters.OwnerInstanceID
+                    && IsMobileHeadquarters(headquarters, faction)
+                );
+            if (owner is not { HasLostHeadquarters: false })
+                return null;
+
+            Planet planet = result.Context as Planet ?? headquarters.GetParentOfType<Planet>();
+            MarkHeadquartersLost(owner, planet);
+            Faction attacker = result.DestroyedBy is ISceneNode destroyer
+                ? _game
+                    .GetFactions()
+                    .FirstOrDefault(faction => faction.InstanceID == destroyer.GetOwnerInstanceID())
+                : null;
+            return new HeadquartersDestroyedResult
+            {
+                Headquarters = headquarters,
+                Planet = planet,
+                Defender = owner,
+                Attacker = attacker,
+                Tick = result.Tick,
+            };
+        }
+
+        /// <summary>
+        /// Marks a mobile headquarters as lost when ownership of its building changes directly.
+        /// </summary>
+        /// <param name="result">The completed unit ownership change.</param>
+        /// <returns>The headquarters capture result, or null when the unit was not an active headquarters.</returns>
+        private HeadquartersCapturedResult ApplyUnitOwnershipChange(
+            UnitOwnershipChangedResult result
+        )
+        {
+            if (
+                result?.Unit is not Building headquarters
+                || result.PreviousOwner == null
+                || result.NewOwner == null
+                || result.PreviousOwner == result.NewOwner
+                || result.PreviousOwner.HasLostHeadquarters
+                || !IsMobileHeadquarters(headquarters, result.PreviousOwner)
+            )
+                return null;
+
+            Planet planet = headquarters.GetParentOfType<Planet>();
+            MarkHeadquartersLost(result.PreviousOwner, planet);
+            return new HeadquartersCapturedResult
+            {
+                Planet = planet,
+                Defender = result.PreviousOwner,
+                Attacker = result.NewOwner,
+                Tick = result.Tick,
+            };
+        }
+
+        /// <summary>
+        /// Determines whether a building represents a faction's mobile headquarters.
+        /// </summary>
+        /// <param name="building">The headquarters candidate.</param>
+        /// <param name="faction">The faction whose configuration is evaluated.</param>
+        /// <returns>True when the building matches the faction's mobile headquarters.</returns>
+        private static bool IsMobileHeadquarters(Building building, Faction faction)
+        {
+            return building?.BuildingType == BuildingType.Headquarters
+                && faction?.Settings?.Headquarters?.IsMobile == true
+                && (
+                    string.IsNullOrEmpty(faction.Settings.Headquarters.FacilityTypeID)
+                    || building.TypeID == faction.Settings.Headquarters.FacilityTypeID
+                );
+        }
+
+        /// <summary>
+        /// Clears a faction's headquarters marker and records its loss.
+        /// </summary>
+        /// <param name="faction">The faction losing its headquarters.</param>
+        /// <param name="location">The headquarters location, when available.</param>
+        private void MarkHeadquartersLost(Faction faction, Planet location)
+        {
+            Planet markedPlanet = _game.GetSceneNodeByInstanceID<Planet>(faction.HQInstanceID);
+            if (markedPlanet != null)
+                markedPlanet.IsHeadquarters = false;
+            if (location != null)
+                location.IsHeadquarters = false;
+
+            faction.HQInstanceID = null;
+            faction.HasLostHeadquarters = true;
         }
 
         /// <summary>

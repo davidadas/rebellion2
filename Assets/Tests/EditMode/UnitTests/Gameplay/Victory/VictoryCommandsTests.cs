@@ -260,6 +260,21 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_CandidateHasLostHeadquarters_DoesNotDeclareVictory()
+        {
+            (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
+                GameVictoryCondition.Headquarters
+            );
+            rebels.HasLostHeadquarters = true;
+            List<VictoryResult> published = new List<VictoryResult>();
+            system.ResultsProduced += published.AddRange;
+
+            CreateTickProcessor(game, system).ProcessTick(game);
+
+            Assert.IsEmpty(published);
+        }
+
+        [Test]
         public void ProcessTick_EnemyHeadquartersRemains_DoesNotDeclareVictory()
         {
             (

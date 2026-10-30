@@ -172,7 +172,7 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A fixed headquarters planet was captured by an opposing faction.
+    /// A faction's headquarters was captured by an opposing faction.
     /// </summary>
     public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
 
