@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Presents authored sectors through the gameplay sector window with neutral preview statistics.
 /// </summary>
+[ExecuteAlways]
 public sealed class ContentEditorSectorPreview : UIBehaviour
 {
     [SerializeField]
@@ -106,6 +107,55 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
         Rect bounds = ((RectTransform)window.transform).rect;
         return window.UnprojectPlanetPosition(
             new Vector2(bounds.width * 0.5f, bounds.height * 0.5f)
+        );
+    }
+
+    /// <summary>
+    /// Captures complete planet presentations in the sector's saved integer-coordinate frame.
+    /// </summary>
+    /// <param name="sector">The displayed sector and its coordinate origin.</param>
+    /// <returns>The planet records and their quantization-safe occupied geometry.</returns>
+    internal ContentEditorMapLayout CreateLayout(ContentPackEditorRecord sector)
+    {
+        ContentPackEditorRecord[] planets = sector.Planets.ToArray();
+        PlanetSectorPlanetView[] views = window.GetComponentsInChildren<PlanetSectorPlanetView>();
+        var ordered = planets
+            .Select((planet, i) => (Planet: planet, View: views[i]))
+            .OrderBy(item => item.Planet.Key, StringComparer.Ordinal)
+            .ToArray();
+        Rect bounds = window.UnprojectPlanetBounds(window.GetPlanetAreaSourceRect());
+        Rect unit = window.UnprojectPlanetBounds(new Rect(0, 0, 1, 1));
+        RectangleLayoutItem[] items = ordered
+            .Select(item =>
+            {
+                Vector2Int position = new(
+                    checked(item.Planet.X - sector.X),
+                    checked(item.Planet.Y - sector.Y)
+                );
+                RectInt image = item.View.GetRenderedPlanetImageSourceRect();
+                return new RectangleLayoutItem(
+                    position,
+                    item.View.GetLayoutSourceRects()
+                        .Select(rect =>
+                        {
+                            return new Rect(
+                                (rect.x - image.x - 1) * unit.width,
+                                (rect.y - image.y - 1) * unit.height,
+                                (rect.width + 1) * unit.width,
+                                (rect.height + 1) * unit.height
+                            );
+                        })
+                );
+            })
+            .ToArray();
+        // Projection floors the image anchor, so reserve its possible one-pixel shift toward the top-left.
+        return new ContentEditorMapLayout(
+            ordered.Select(item => item.Planet),
+            items,
+            bounds,
+            unit.size * 2,
+            new Vector2(1 / unit.width, 1 / unit.height),
+            new Vector2Int(sector.X, sector.Y)
         );
     }
 

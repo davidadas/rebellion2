@@ -176,6 +176,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action<ContentPackEditorField> ImportRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
+    public event Action<ContentEditorMapLayout> MapLayoutRequested;
     public event Action UndoRequested;
     public event Action RedoRequested;
     public event Action ExportRequested;
@@ -399,6 +400,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         packDialog.BrowseRequested += ForwardBrowseRequest;
         dismissNoticeButton.onClick.AddListener(() => notice.SetActive(false));
         map.BackRequested += ReturnToGalaxy;
+        map.ArrangeRequested += ArrangeMap;
         map.Selected += SelectMapRecord;
         map.Opened += OpenMapRecord;
         map.DragStarted += BeginMapDrag;
@@ -455,6 +457,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
             map.BackRequested -= ReturnToGalaxy;
+            map.ArrangeRequested -= ArrangeMap;
             map.Selected -= SelectMapRecord;
             map.Opened -= OpenMapRecord;
             map.DragStarted -= BeginMapDrag;
@@ -1875,6 +1878,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Refreshes moved coordinates without resetting map zoom, selection, or faction presentation.
+    /// </summary>
+    internal void ShowArrangedMap()
+    {
+        RefreshProjectState();
+        RenderMap();
+        RenderFields();
+    }
+
+    /// <summary>
     /// Returns from a sector preview to the galaxy.
     /// </summary>
     private void ReturnToGalaxy()
@@ -1882,6 +1895,18 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         mapSector = null;
         ContentEditorTreeNode galaxy = navigation.Find("galaxy");
         SelectRecord(galaxy.Catalog.DocumentRecord, galaxy);
+    }
+
+    /// <summary>
+    /// Commits the visible form before capturing a cancellable map-layout request.
+    /// </summary>
+    private void ArrangeMap()
+    {
+        FinishMapEdit();
+        if (!ResolveXmlDraft(ArrangeMap) || !CommitFields())
+            return;
+        RenderMap();
+        MapLayoutRequested?.Invoke(map.CreateLayout());
     }
 
     /// <summary>

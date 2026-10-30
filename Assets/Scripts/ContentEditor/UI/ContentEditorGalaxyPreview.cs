@@ -92,6 +92,30 @@ public sealed class ContentEditorGalaxyPreview : UIBehaviour
     }
 
     /// <summary>
+    /// Captures each sector's rigid star geometry in the galaxy's authored coordinate frame.
+    /// </summary>
+    /// <param name="sourceSize">The galaxy background dimensions.</param>
+    /// <returns>The records and their occupied source geometry.</returns>
+    internal ContentEditorMapLayout CreateLayout(Vector2Int sourceSize)
+    {
+        ContentEditorMapMarker[] visible = markers
+            .Where(marker => marker.gameObject.activeSelf)
+            .OrderBy(marker => marker.Record.Key, StringComparer.Ordinal)
+            .ToArray();
+        return new ContentEditorMapLayout(
+            visible.Select(marker => marker.Record),
+            visible.Select(marker => new RectangleLayoutItem(
+                new Vector2Int(marker.Record.X, marker.Record.Y),
+                marker.GetLayoutFootprints()
+            )),
+            new Rect(2, 2, sourceSize.x - 4, sourceSize.y - 4),
+            new Vector2(2, 2),
+            Vector2.one,
+            Vector2Int.zero
+        );
+    }
+
+    /// <summary>
     /// Refits clusters after the stretched map surface receives its actual layout dimensions.
     /// </summary>
     protected override void OnRectTransformDimensionsChange()

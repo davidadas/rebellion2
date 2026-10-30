@@ -207,6 +207,64 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Gets occupied source rectangles, reserving icon and bar slots even when their contents are absent.
+    /// </summary>
+    /// <returns>The artwork, icon, bar, and actual text footprints within the parent window.</returns>
+    public IReadOnlyList<Rect> GetLayoutSourceRects()
+    {
+        RectInt root = GetRenderedSourceRect();
+        List<Rect> result = new();
+        foreach (
+            RectTransform slot in new[]
+            {
+                planetImage.rectTransform,
+                facilityImage.rectTransform,
+                defenseImage.rectTransform,
+                fleetImage.rectTransform,
+                missionImage.rectTransform,
+                energyBarRoot,
+                rawBarRoot,
+                supportBarRoot,
+            }
+        )
+        {
+            RectInt rect = UILayout.GetSourceRect(slot);
+            result.Add(new Rect(root.x + rect.x, root.y + rect.y, rect.width, rect.height));
+        }
+        if (!string.IsNullOrEmpty(planetNameTextField.text))
+        {
+            planetNameTextField.ForceMeshUpdate(true);
+            Bounds text = planetNameTextField.textBounds;
+            Vector3 textMinimum = text.min;
+            Vector3 textMaximum = text.max;
+            Shadow shadow = planetNameTextField.GetComponent<Shadow>();
+            if (shadow?.enabled == true && shadow.effectColor.a > 0)
+            {
+                Vector2 distance = shadow.effectDistance;
+                textMinimum += new Vector3(Mathf.Min(0, distance.x), Mathf.Min(0, distance.y));
+                textMaximum += new Vector3(Mathf.Max(0, distance.x), Mathf.Max(0, distance.y));
+            }
+            RectTransform rect = (RectTransform)transform;
+            Vector3 minimum = rect.InverseTransformPoint(
+                planetNameTextField.transform.TransformPoint(textMinimum)
+            );
+            Vector3 maximum = rect.InverseTransformPoint(
+                planetNameTextField.transform.TransformPoint(textMaximum)
+            );
+            if (maximum.x > minimum.x && maximum.y > minimum.y)
+                result.Add(
+                    new Rect(
+                        root.x + minimum.x - rect.rect.xMin,
+                        root.y + rect.rect.yMax - maximum.y,
+                        maximum.x - minimum.x,
+                        maximum.y - minimum.y
+                    )
+                );
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Tries to resolve a visible icon's authored transform.
     /// </summary>
     /// <param name="icon">The requested planet icon.</param>

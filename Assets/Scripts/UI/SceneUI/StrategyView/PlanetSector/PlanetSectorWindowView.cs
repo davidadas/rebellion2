@@ -267,6 +267,46 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the usable planet area below the title and inside the window frame.
+    /// </summary>
+    /// <returns>The source-space interior available to complete planet presentations.</returns>
+    public Rect GetPlanetAreaSourceRect()
+    {
+        Rect bounds = ((RectTransform)transform).rect;
+        float top =
+            -sectorNameTextField.rectTransform.anchoredPosition.y
+            - sectorNameTextField.rectTransform.rect.yMin
+            + 2;
+        return Rect.MinMaxRect(2, top, bounds.width - 2, bounds.height - 2);
+    }
+
+    /// <summary>
+    /// Converts a source-space rectangle into continuous sector-relative coordinates.
+    /// </summary>
+    /// <param name="bounds">The window source-space rectangle.</param>
+    /// <returns>The matching sector-relative rectangle before coordinate rounding.</returns>
+    public Rect UnprojectPlanetBounds(Rect bounds)
+    {
+        Rect windowBounds = ((RectTransform)transform).rect;
+        float xScale =
+            sectorCoordinateRange
+            / (sectorCoordinateScaleX * windowBounds.width)
+            * galaxyProjectionWidth
+            / galaxyProjectionSourceRange;
+        float yScale =
+            sectorCoordinateRange
+            / (sectorCoordinateScaleY * windowBounds.height)
+            * galaxyProjectionHeight
+            / galaxyProjectionSourceRange;
+        return new Rect(
+            bounds.x * xScale,
+            (bounds.y - planetPositionOffsetY) * yScale,
+            bounds.width * xScale,
+            bounds.height * yScale
+        );
+    }
+
+    /// <summary>
     /// Tries to resolve a semantic planet hit from a pointer event.
     /// </summary>
     /// <param name="eventData">The pointer event.</param>

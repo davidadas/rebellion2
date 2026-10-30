@@ -43,6 +43,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
         view.ValidateRequested += ValidatePack;
+        view.MapLayoutRequested += ArrangeMap;
         view.UndoRequested += Undo;
         view.RedoRequested += Redo;
         view.CloseRequested += ClosePack;
@@ -138,6 +139,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
             view.ValidateRequested -= ValidatePack;
+            view.MapLayoutRequested -= ArrangeMap;
             view.UndoRequested -= Undo;
             view.RedoRequested -= Redo;
             view.CloseRequested -= ClosePack;
@@ -468,6 +470,25 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 cancellationToken
             );
             view.RenderStatus("Content pack validated successfully.", false);
+        });
+    }
+
+    /// <summary>
+    /// Runs map-layout calculations without blocking rendering or cancellation input.
+    /// </summary>
+    /// <param name="layout">The captured source geometry and requested records.</param>
+    private async void ArrangeMap(ContentEditorMapLayout layout)
+    {
+        await RunOperationAsync(async cancellationToken =>
+        {
+            view.RenderStatus("Arranging map. Press Escape to cancel.", false);
+            int moved = await workspace.ArrangeMapAsync(layout, cancellationToken);
+            view.RenderStatus(
+                moved == 0
+                    ? "No layout changes needed."
+                    : "Map arranged. Undo to restore the previous positions.",
+                false
+            );
         });
     }
 

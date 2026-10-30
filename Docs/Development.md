@@ -113,6 +113,11 @@ file access, while validation and export have their own owners. General input, t
 preview, scrolling, and divider behavior lives in `UI/Components` and has no editor dependency.
 Shared menu builders support textured and flat control styles.
 
+The map's **Fit to view** command changes zoom and pan only. **Auto arrange** adjusts saved
+coordinates to clear overlaps and the window frame, moving planets in a sector or whole sector
+clusters on the galaxy map. Layout runs off the UI thread, supports Escape to cancel, and applies
+as one undoable edit after the complete placement is valid.
+
 ## Game scripting
 
 `GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.

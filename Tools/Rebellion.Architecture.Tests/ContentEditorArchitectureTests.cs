@@ -93,7 +93,11 @@ namespace Rebellion.Architecture.Tests
                 .Or()
                 .HaveFullName("MenuBarHeadingView")
                 .Or()
-                .HaveFullName("ShortcutNavigationInput");
+                .HaveFullName("ShortcutNavigationInput")
+                .Or()
+                .HaveFullName("RectangleLayout")
+                .Or()
+                .HaveFullName("RectangleLayoutItem");
             IArchRule rule = Types()
                 .That()
                 .Are(controls)

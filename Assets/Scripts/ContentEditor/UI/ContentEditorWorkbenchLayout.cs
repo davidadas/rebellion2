@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Owns the editor's pane widths and content zoom independently of its application menu.
 /// </summary>
+[ExecuteAlways]
 public sealed class ContentEditorWorkbenchLayout : UIBehaviour
 {
     [SerializeField]

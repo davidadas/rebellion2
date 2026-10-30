@@ -32,6 +32,9 @@ public sealed class ContentEditorMapView : MonoBehaviour
     private Button mapFitButton;
 
     [SerializeField]
+    private Button mapArrangeButton;
+
+    [SerializeField]
     private TMP_Dropdown mapFactionDropdown;
 
     [SerializeField]
@@ -52,6 +55,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
     public bool HasOpenChoice => mapFactionDropdown.IsExpanded;
 
     public event Action BackRequested;
+    public event Action ArrangeRequested;
     public event Action<ContentPackEditorRecord> Selected;
     public event Action<ContentPackEditorRecord> Opened;
     public event Action<ContentPackEditorRecord> DragStarted;
@@ -78,6 +82,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
             || mapViewport == null
             || mapBackButton == null
             || mapFitButton == null
+            || mapArrangeButton == null
             || mapFactionDropdown == null
             || mapHint == null
         )
@@ -85,6 +90,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
         bound = true;
         mapBackButton.onClick.AddListener(RequestBack);
         mapFitButton.onClick.AddListener(mapViewport.ResetView);
+        mapArrangeButton.onClick.AddListener(RequestArrange);
         mapFactionDropdown.onValueChanged.AddListener(ChangeFaction);
         mapViewport.ViewChanged += RefreshFitButton;
         galaxyPreview.Selected += SelectMarker;
@@ -107,6 +113,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
             return;
         mapBackButton.onClick.RemoveListener(RequestBack);
         mapFitButton.onClick.RemoveListener(mapViewport.ResetView);
+        mapArrangeButton.onClick.RemoveListener(RequestArrange);
         mapFactionDropdown.onValueChanged.RemoveListener(ChangeFaction);
         mapViewport.ViewChanged -= RefreshFitButton;
         galaxyPreview.Selected -= SelectMarker;
@@ -211,6 +218,20 @@ public sealed class ContentEditorMapView : MonoBehaviour
     /// </summary>
     /// <returns>The center of the galaxy's authored coordinate frame.</returns>
     public Vector2Int GetGalaxyPlacementPosition() => GetGalaxySourceSize() / 2;
+
+    /// <summary>
+    /// Captures the currently visible frame without changing authored coordinates.
+    /// </summary>
+    /// <returns>The sector or galaxy geometry snapshot for a layout request.</returns>
+    internal ContentEditorMapLayout CreateLayout() =>
+        sector == null
+            ? galaxyPreview.CreateLayout(sourceSize)
+            : sectorPreview.CreateLayout(sector);
+
+    /// <summary>
+    /// Requests a coordinate layout independently of the viewport's zoom and pan.
+    /// </summary>
+    private void RequestArrange() => ArrangeRequested?.Invoke();
 
     /// <summary>
     /// Resolves the galaxy coordinate frame through the opened pack's background artwork.

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Rebellion.Game.Messages;
 using UnityEngine;
 
@@ -71,6 +73,64 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.ClearProject();
         session.Open(null);
         assets = null;
+    }
+
+    /// <summary>
+    /// Computes an integer layout off-thread and commits only a complete result as one undoable edit.
+    /// </summary>
+    /// <param name="layout">The captured record positions and rendered footprints.</param>
+    /// <param name="cancellationToken">Cancellation before any authored coordinates are changed.</param>
+    /// <returns>The number of moved map records.</returns>
+    public async Task<int> ArrangeMapAsync(
+        ContentEditorMapLayout layout,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (layout == null)
+            throw new ArgumentNullException(nameof(layout));
+        ContentPackEditorProject current =
+            Project ?? throw new InvalidOperationException("Open a content pack first.");
+        Vector2Int[] positions = await Task.Run(
+            () =>
+                RectangleLayout.Arrange(
+                    layout.Items,
+                    layout.Bounds,
+                    layout.Gap,
+                    layout.CoordinateScale,
+                    cancellationToken
+                ),
+            cancellationToken
+        );
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Project != current)
+            throw new OperationCanceledException("The map workspace was replaced.");
+        Vector2Int[] authoredPositions = positions
+            .Select(position => new Vector2Int(
+                checked(position.x + layout.Origin.x),
+                checked(position.y + layout.Origin.y)
+            ))
+            .ToArray();
+        for (int i = 0; i < layout.Records.Count; i++)
+        {
+            ContentPackEditorRecord record = layout.Records[i];
+            current.RequireOwnedRecord(record);
+            if (
+                (long)record.X - layout.Origin.x != layout.Items[i].Position.x
+                || (long)record.Y - layout.Origin.y != layout.Items[i].Position.y
+            )
+                throw new ArgumentException("The map changed. Try arranging it again.");
+        }
+        int moved = 0;
+        using (current.BeginEdit("Auto arrange map"))
+            for (int i = 0; i < layout.Records.Count; i++)
+                if (positions[i] != layout.Items[i].Position)
+                {
+                    current.Move(layout.Records[i], authoredPositions[i].x, authoredPositions[i].y);
+                    moved++;
+                }
+        if (moved > 0)
+            view.ShowArrangedMap();
+        return moved;
     }
 
     /// <summary>

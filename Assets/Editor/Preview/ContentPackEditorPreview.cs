@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -76,23 +77,13 @@ public static class ContentPackEditorPreview
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
                 .First(record => record.Kind == "Officer");
-            TMPro.TMP_InputField search = view.GetComponentsInChildren<TMPro.TMP_InputField>(true)
-                .Single(input => input.name == "Search");
-            search.SetTextWithoutNotify(officer.ID);
-            search.onValueChanged.Invoke(officer.ID);
-            view.GetComponentsInChildren<ContentEditorRecordRowView>()
-                .Single(row => row.Node?.Record?.Key == officer.Key)
-                .OnPointerDown(
-                    new PointerEventData(EventSystem.current)
-                    {
-                        button = PointerEventData.InputButton.Left,
-                    }
-                );
+            SelectRecord(view, officer);
             foreach (ContentEditorColorMode mode in Enum.GetValues(typeof(ContentEditorColorMode)))
             {
                 view.SetColorMode(mode);
                 SavePreview(preview, root, "_screenshots/ContentEditor/" + mode + ".png");
             }
+            ExportMapLayout(preview, root, view, workspace, project, assets);
         }
         finally
         {
@@ -100,6 +91,89 @@ public static class ContentPackEditorPreview
             if (Directory.Exists(workingFolder))
                 Directory.Delete(workingFolder, true);
         }
+    }
+
+    /// <summary>
+    /// Renders before and after layouts in a temporary derived project without saving its documents.
+    /// </summary>
+    /// <param name="preview">The active preview renderer.</param>
+    /// <param name="root">The live workspace canvas.</param>
+    /// <param name="view">The workspace presentation.</param>
+    /// <param name="workspace">The bound workspace controller.</param>
+    /// <param name="project">The temporary derived project.</param>
+    /// <param name="assets">Its borrowed asset store.</param>
+    private static void ExportMapLayout(
+        PreviewRenderUtility preview,
+        GameObject root,
+        ContentPackEditorView view,
+        ContentPackEditorWorkspaceController workspace,
+        ContentPackEditorProject project,
+        ContentAssets assets
+    )
+    {
+        ContentPackEditorRecord sector = project
+            .GetCatalogs()
+            .First(catalog => catalog.IsMap)
+            .Records.First(record => record.Planets.Count >= 2);
+        ContentPackEditorRecord first = sector.Planets[0];
+        project.Move(sector.Planets[1], first.X, first.Y);
+        workspace.RenderProject(project, assets);
+        view.SetColorMode(ContentEditorColorMode.Dark);
+        SelectRecord(view, sector);
+        Canvas.ForceUpdateCanvases();
+        SavePreview(preview, root, "_screenshots/ContentEditor/Sector-before.png");
+        ContentEditorMapLayout layout = null;
+        Action<ContentEditorMapLayout> capture = requested => layout = requested;
+        view.MapLayoutRequested += capture;
+        try
+        {
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ArrangeMap")
+                .onClick.Invoke();
+        }
+        finally
+        {
+            view.MapLayoutRequested -= capture;
+        }
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
+        Vector2Int[] positions = RectangleLayout.Arrange(
+            layout.Items,
+            layout.Bounds,
+            layout.Gap,
+            layout.CoordinateScale,
+            timeout.Token
+        );
+        using (project.BeginEdit("Auto arrange map"))
+            for (int i = 0; i < positions.Length; i++)
+                if (positions[i] != layout.Items[i].Position)
+                    project.Move(
+                        layout.Records[i],
+                        checked(positions[i].x + layout.Origin.x),
+                        checked(positions[i].y + layout.Origin.y)
+                    );
+        workspace.RenderProject(project, assets);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Sector-after.png");
+    }
+
+    /// <summary>
+    /// Opens one definition through the workspace's visible navigation controls.
+    /// </summary>
+    /// <param name="view">The workspace presentation.</param>
+    /// <param name="record">The definition to reveal.</param>
+    private static void SelectRecord(ContentPackEditorView view, ContentPackEditorRecord record)
+    {
+        TMPro.TMP_InputField search = view.GetComponentsInChildren<TMPro.TMP_InputField>(true)
+            .Single(input => input.name == "Search");
+        search.SetTextWithoutNotify(record.ID);
+        search.onValueChanged.Invoke(record.ID);
+        view.GetComponentsInChildren<ContentEditorRecordRowView>()
+            .Single(row => row.Node?.Record?.Key == record.Key)
+            .OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
     }
 
     /// <summary>

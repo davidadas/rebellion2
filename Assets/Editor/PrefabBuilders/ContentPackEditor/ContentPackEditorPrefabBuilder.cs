@@ -507,30 +507,39 @@ public static class ContentPackEditorPrefabBuilder
         toolbarLayout.childAlignment = TextAnchor.UpperLeft;
         toolbarLayout.childControlWidth = toolbarLayout.childControlHeight = true;
         toolbarLayout.childForceExpandWidth = toolbarLayout.childForceExpandHeight = false;
-        Button back = Button("Galaxy", toolbar, "Galaxy");
-        Rect((RectTransform)back.transform, 0, 0, 176, 34);
-        LayoutElement backSize = back.gameObject.AddComponent<LayoutElement>();
-        backSize.minWidth = 64;
-        backSize.preferredWidth = 176;
-        backSize.preferredHeight = 34;
-        Button fit = Button("FitMap", toolbar, "Fit map");
-        Rect((RectTransform)fit.transform, 188, 0, 96, 34);
+        Button fit = Button("FitMap", toolbar, "Fit to view");
+        Rect((RectTransform)fit.transform, 0, 0, 108, 34);
         LayoutElement fitSize = fit.gameObject.AddComponent<LayoutElement>();
-        fitSize.minWidth = 72;
-        fitSize.preferredWidth = 96;
+        fitSize.minWidth = 96;
+        fitSize.preferredWidth = 108;
         fitSize.preferredHeight = 34;
         Assign(mapView, "mapFitButton", fit);
         fit.gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Fit the whole map in the view without changing saved positions.");
+        Button arrange = Button("ArrangeMap", toolbar, "Auto arrange");
+        Rect((RectTransform)arrange.transform, 120, 0, 116, 34);
+        LayoutElement arrangeSize = arrange.gameObject.AddComponent<LayoutElement>();
+        arrangeSize.minWidth = 108;
+        arrangeSize.preferredWidth = 116;
+        arrangeSize.preferredHeight = 34;
+        Assign(mapView, "mapArrangeButton", arrange);
+        arrange
+            .gameObject.AddComponent<HelpTooltipView>()
             .Configure(
-                "Reset zoom and pan to show the whole map. Planet coordinates are unchanged."
+                "Move planets, or whole sectors on the galaxy map, to clear overlaps and the frame. One undo restores all positions."
             );
         RectTransform previewRow = Layer("PreviewOptions", pane);
         HorizontalLayoutGroup previewLayout =
             previewRow.gameObject.AddComponent<HorizontalLayoutGroup>();
         previewLayout.childControlWidth = previewLayout.childControlHeight = true;
         previewLayout.childForceExpandWidth = previewLayout.childForceExpandHeight = false;
+        previewLayout.spacing = 12;
         LayoutElement previewRowSize = previewRow.gameObject.AddComponent<LayoutElement>();
         previewRowSize.minHeight = previewRowSize.preferredHeight = 34;
+        Button back = Button("Galaxy", previewRow, "Galaxy");
+        LayoutElement backSize = back.gameObject.AddComponent<LayoutElement>();
+        backSize.minWidth = backSize.preferredWidth = 70;
+        backSize.preferredHeight = 34;
         TMP_Dropdown previewFaction = Dropdown("PreviewFaction", previewRow);
         Rect((RectTransform)previewFaction.transform, 296, 0, 220, 34);
         LayoutElement previewSize = previewFaction.gameObject.AddComponent<LayoutElement>();

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -89,6 +91,24 @@ public sealed class ContentEditorMapMarker
         rect.anchorMin = rect.anchorMax = position;
         rect.pivot = Vector2.up;
         rect.anchoredPosition = Vector2.zero;
+    }
+
+    /// <summary>
+    /// Captures the individual occupied stars while preserving this sector as a rigid group.
+    /// </summary>
+    /// <returns>The source-space star rectangles relative to the sector anchor.</returns>
+    internal IReadOnlyList<Rect> GetLayoutFootprints()
+    {
+        return presentation.Stars.Count == 0
+            ? new[] { new Rect(0, 0, 1, 1) }
+            : Enumerable
+                .Range(0, presentation.Stars.Count)
+                .Select(index =>
+                {
+                    RectInt rect = cluster.GetRenderedStarSourceRect(index);
+                    return new Rect(rect.x - 1, rect.y - 1, rect.width + 2, rect.height + 2);
+                })
+                .ToArray();
     }
 
     /// <summary>
