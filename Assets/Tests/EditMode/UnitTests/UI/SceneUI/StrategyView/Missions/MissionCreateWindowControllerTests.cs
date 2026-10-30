@@ -133,6 +133,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void CanOpen_ReconnaissanceParticipantAndUnvisitedEnemyPlanet_ReturnsTrue()
+        {
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsTrue(canOpen);
+        }
+
+        [Test]
+        public void CanOpen_ReconnaissanceParticipantAndFriendlyPlanet_ReturnsFalse()
+        {
+            _target.Planet.Planet.OwnerInstanceID = _playerFactionId;
+
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsFalse(canOpen);
+        }
+
+        [Test]
         public void Open_ValidSelection_CreatesNamedModalWindowAtAuthoredPosition()
         {
             MissionCreateWindowView view = OpenWindow(out UIWindow window);

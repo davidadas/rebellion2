@@ -71,6 +71,7 @@ public sealed class PlanetSectorWindowController
 
     private readonly HashSet<PlanetSectorWindowView> boundViews =
         new HashSet<PlanetSectorWindowView>();
+    private readonly Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission;
     private readonly Action<UIWindow, bool> closeWindow;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Func<GalacticInformationFilterMode> getFilterMode;
@@ -105,6 +106,7 @@ public sealed class PlanetSectorWindowController
     /// <param name="getWindowPosition">Returns the authored position for a sector slot.</param>
     /// <param name="closeWindow">Closes a registered window through the screen lifecycle.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="canCreateMission">Returns whether the active selection has a mission available for a target.</param>
     /// <param name="getFilterMode">Returns the active galactic-information filter.</param>
     /// <param name="getSelectedFleetInstanceIds">Returns fleets selected across strategy windows.</param>
     public PlanetSectorWindowController(
@@ -117,6 +119,7 @@ public sealed class PlanetSectorWindowController
         Func<int, Vector2Int> getWindowPosition,
         Action<UIWindow, bool> closeWindow,
         Action markDirty,
+        Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission,
         Func<GalacticInformationFilterMode> getFilterMode = null,
         Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null
     )
@@ -135,6 +138,8 @@ public sealed class PlanetSectorWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.canCreateMission =
+            canCreateMission ?? throw new ArgumentNullException(nameof(canCreateMission));
         this.getFilterMode = getFilterMode ?? (() => GalacticInformationFilterMode.DisplayOff);
         this.getSelectedFleetInstanceIds =
             getSelectedFleetInstanceIds ?? (() => Array.Empty<string>());
@@ -471,8 +476,9 @@ public sealed class PlanetSectorWindowController
     /// <returns>The hovered planet identifier, or null when the active drag cannot create missions.</returns>
     private string GetMissionDropPlanetInstanceId(PlanetSectorWindowSession session)
     {
+        PlanetSectorWindowHit hit = session?.GetHoveredHit();
         if (
-            string.IsNullOrEmpty(session?.HoveredPlanetInstanceId)
+            hit?.Planet == null
             || targetingController.ActiveRequest
                 is not {
                     Receiver: StrategyWindowItemDragController,
@@ -484,10 +490,8 @@ public sealed class PlanetSectorWindowController
         )
             return null;
 
-        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
-        return StrategyContextMenuAvailability.CanCreateMission(source.Items, playerFactionId)
-            ? session.HoveredPlanetInstanceId
-            : null;
+        StrategyMissionTarget target = new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.Planet);
+        return canCreateMission(target, source.Items) ? hit.Planet.InstanceID : null;
     }
 
     /// <summary>
@@ -1577,6 +1581,19 @@ public sealed class PlanetSectorWindowController
         public PlanetSectorWindowHit GetSelectedHit()
         {
             return GetStoredHit(SelectedPlanetInstanceId, SelectedIcon, false);
+        }
+
+        /// <summary>
+        /// Resolves the stored hover identity against the current sector projection.
+        /// </summary>
+        /// <returns>The current hovered hit, or null.</returns>
+        public PlanetSectorWindowHit GetHoveredHit()
+        {
+            return GetStoredHit(
+                HoveredPlanetInstanceId,
+                HoveredIcon,
+                HoveredIcon == PlanetIcon.None
+            );
         }
 
         /// <summary>

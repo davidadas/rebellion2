@@ -37,6 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
         private GameSession _session;
+        private bool _missionCreationAvailable;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -54,6 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             _dirtyCount = 0;
             _filterMode = GalacticInformationFilterMode.DisplayOff;
+            _missionCreationAvailable = true;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -97,7 +99,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     () => new[] { _sector },
                     GetWindowPosition,
                     CloseWindow,
-                    MarkDirty
+                    MarkDirty,
+                    (_, _) => true
                 )
             );
         }
@@ -215,31 +218,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
             );
             Assert.IsFalse(_controller.IsMissionDropTargetVisible());
-            StrategyWindowItemDragController dragReceiver = new StrategyWindowItemDragController(
-                _targetingController,
-                new DragController(5),
-                _ => Array.Empty<ISceneNode>(),
-                (UIWindow _, int _, int _, out DragPreview preview) =>
-                {
-                    preview = null;
-                    return false;
-                },
-                _ => null,
-                _actions
-            );
-            _targetingController.Begin(
-                new TargetingRequest(
-                    "Move",
-                    new StrategyWindowTargetingSource(
-                        null,
-                        StrategyMenuAction.Move,
-                        0,
-                        0,
-                        new ISceneNode[] { officer }
-                    ),
-                    dragReceiver
-                )
-            );
+            BeginMissionItemDrag(officer);
 
             planetView.OnPointerEnter(
                 CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left)
@@ -269,6 +248,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsTrue(_actions.LastTarget.MissionCreationRequested);
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, _actions.LastItems);
+        }
+
+        [Test]
+        public void RenderWindow_MissionCapableDragWithoutDestinationMission_HidesMissionDropTarget()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(officer, _planet.Planet);
+            _missionCreationAvailable = false;
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            BeginMissionItemDrag(officer);
+
+            planetView.OnPointerEnter(
+                CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+            _controller.RenderWindow(view, window);
+
+            Assert.IsFalse(
+                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
+            );
+            Assert.IsFalse(_controller.IsMissionDropTargetVisible());
         }
 
         [Test]
@@ -961,6 +968,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         /// <summary>
+        /// Begins an item drag whose selection can be routed to mission creation.
+        /// </summary>
+        /// <param name="item">The dragged mission participant.</param>
+        private void BeginMissionItemDrag(ISceneNode item)
+        {
+            StrategyWindowItemDragController dragReceiver = new StrategyWindowItemDragController(
+                _targetingController,
+                new DragController(5),
+                _ => Array.Empty<ISceneNode>(),
+                (UIWindow _, int _, int _, out DragPreview preview) =>
+                {
+                    preview = null;
+                    return false;
+                },
+                _ => null,
+                _actions
+            );
+            _targetingController.Begin(
+                new TargetingRequest(
+                    "Move",
+                    new StrategyWindowTargetingSource(
+                        null,
+                        StrategyMenuAction.Move,
+                        0,
+                        0,
+                        new[] { item }
+                    ),
+                    dragReceiver
+                )
+            );
+        }
+
+        /// <summary>
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
@@ -976,6 +1016,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 GetWindowPosition,
                 CloseWindow,
                 MarkDirty,
+                (_, _) => _missionCreationAvailable,
                 () => _filterMode
             );
         }

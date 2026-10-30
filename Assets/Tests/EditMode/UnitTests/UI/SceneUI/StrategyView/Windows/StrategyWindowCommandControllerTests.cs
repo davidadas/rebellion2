@@ -469,6 +469,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteItemDrop_MissionTargetWithoutDestinationOption_ExecutesMove()
+        {
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(
+                    _destination,
+                    _destination.Planet,
+                    missionCreationRequested: true
+                ),
+                new ISceneNode[] { _specialForces }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNotNull(_specialForces.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(0, _invalidOrderRejectionCount);
+        }
+
+        [Test]
         public void ExecuteItemDrop_EnemyFleet_DoesNotOpenMissionCreateWindow()
         {
             Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(

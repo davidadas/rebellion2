@@ -254,7 +254,7 @@ internal sealed class PlanetSectorWindowProjector
             ownerFactionId
         );
         if (
-            showPlanetDetails
+            planet?.IsDestroyed != true
             && string.IsNullOrEmpty(missionFactionId)
             && !string.IsNullOrEmpty(missionDropPlanetInstanceId)
             && string.Equals(

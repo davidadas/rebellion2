@@ -799,6 +799,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_UnexploredMissionDropPlanet_ReturnsOnlyMissionAffordance()
+        {
+            Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);
+            planet.IsUnexploredView = true;
+            planet.IsInUprising = true;
+            planet.IsHeadquarters = true;
+            planet.AddTestChild(CreateBuilding(BuildingType.Mine));
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorPlanetRenderData presentation = _projector
+                .CreateRenderData(
+                    sector,
+                    null,
+                    PlanetIcon.None,
+                    null,
+                    PlanetIcon.None,
+                    missionDropPlanetInstanceId: planet.InstanceID
+                )
+                .Planets[0];
+
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
+                ),
+                presentation.MissionTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    playerTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
+                ),
+                presentation.MissionPressedTexture
+            );
+            Assert.IsNull(presentation.FacilityTexture);
+            Assert.IsNull(presentation.DefenseTexture);
+            Assert.IsNull(presentation.HeadquartersTexture);
+            Assert.IsNull(presentation.UprisingTexture);
+            Assert.IsFalse(presentation.EnergyBar.Visible);
+            Assert.IsFalse(presentation.RawResourceBar.Visible);
+            Assert.IsFalse(presentation.SupportBar.Visible);
+        }
+
+        [Test]
         public void CreateRenderData_EmptyCapacities_ReturnsContinuousEmptyBars()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
