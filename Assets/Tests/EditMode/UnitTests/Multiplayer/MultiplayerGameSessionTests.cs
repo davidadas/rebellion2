@@ -1162,7 +1162,7 @@ namespace Rebellion.Tests.Multiplayer
 
         [TestCase(false)]
         [TestCase(true)]
-        public void Pump_RecoveryAfterOneCombatResponse_PreservesWaitingResponse(bool retreat)
+        public void Pump_OneCombatResponsePending_RejectsRecoveryCheckpoint(bool retreat)
         {
             using PeerPair peers = new(contested: true);
             BeginPendingBattle(peers);
@@ -1180,30 +1180,11 @@ namespace Rebellion.Tests.Multiplayer
                 }
             );
             peers.Flush();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                peers.HostSimulation
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerRecoverySnapshotCodec.Capture(peers.HostSimulation)
             );
-            peers.GuestSimulation.ApplyRecoveryState(
-                MultiplayerRecoverySnapshotCodec.Deserialize(snapshot.Payload, snapshot.Hash)
-            );
-            peers.GuestGame.LocalPlayerFactionID = _guestFactionID;
-            Assert.IsTrue(
-                peers
-                    .GuestSimulation.GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult restored)
-            );
-
-            Assert.AreEqual(
-                pending.AttackerOwnerInstanceID == _hostFactionID,
-                restored.AttackerHasResponded
-            );
-            Assert.AreEqual(
-                pending.DefenderOwnerInstanceID == _hostFactionID,
-                restored.DefenderHasResponded
-            );
-            MultiplayerStateFingerprint.VerifyRecovery(
-                peers.GuestSimulation,
-                MultiplayerStateFingerprint.ComputeSimulation(peers.HostSimulation)
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerRecoverySnapshotCodec.Capture(peers.GuestSimulation)
             );
             Task<PlayerActionResult> second = peers.Guest.ExecuteAsync(
                 new ResolveCombatPlayerAction
@@ -1219,50 +1200,26 @@ namespace Rebellion.Tests.Multiplayer
             peers.AssertSharedState();
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Pump_RecoveredPendingCombat_CompletesCurrentDayBeforeStartingAnother(
-            bool retreat
-        )
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void Constructor_PendingBattle_RejectsNewOrderingOwner(MultiplayerRole role)
         {
-            using PeerPair peers = new(contested: true, recoverPendingCombat: true);
-            Assert.IsTrue(
-                peers
-                    .GuestSimulation.GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult pending)
+            using PeerPair peers = new(contested: true);
+            BeginPendingBattle(peers);
+            GameSession session =
+                role == MultiplayerRole.Host ? peers.HostSimulation : peers.GuestSimulation;
+            GameManager clock = role == MultiplayerRole.Host ? peers.HostClock : peers.GuestClock;
+            Assert.Throws<InvalidOperationException>(() =>
+                new MultiplayerGameSession(
+                    role,
+                    _hostFactionID,
+                    _guestFactionID,
+                    session,
+                    clock,
+                    _ => { },
+                    Guid.NewGuid().ToString("N")
+                )
             );
-            Assert.IsFalse(peers.Host.TryBeginTick(true));
-            Assert.IsFalse(peers.Guest.TryBeginTick(false));
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new ResolveCombatPlayerAction
-                {
-                    PlanetID = pending.PlanetInstanceID,
-                    Tick = pending.Tick,
-                    Retreat = retreat,
-                }
-            );
-
-            peers.Flush();
-
-            Assert.IsTrue(Completed(request).Accepted);
-            Assert.AreEqual(pending.Tick, peers.HostGame.CurrentTick);
-            Assert.AreEqual(pending.Tick, peers.GuestGame.CurrentTick);
-            Assert.IsFalse(peers.HostSimulation.Tick.IsSettled);
-            peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
-                {
-                    PlanetID = pending.PlanetInstanceID,
-                    Tick = pending.Tick,
-                    Retreat = false,
-                }
-            );
-            peers.Flush();
-            Assert.IsTrue(peers.HostSimulation.Tick.IsSettled);
-            Assert.IsTrue(peers.GuestSimulation.Tick.IsSettled);
-            Assert.IsNull(peers.Host.Failure, peers.Host.Failure?.ToString());
-            Assert.IsNull(peers.Guest.Failure, peers.Guest.Failure?.ToString());
-            Assert.IsTrue(peers.Host.CanBeginHostTick);
-            peers.AssertSharedState();
         }
 
         [TestCase(MultiplayerRole.Host)]
@@ -1302,53 +1259,6 @@ namespace Rebellion.Tests.Multiplayer
                 recovered.Flush();
                 recovered.AssertSharedState();
             }
-        }
-
-        [TestCase(MultiplayerRole.Host)]
-        [TestCase(MultiplayerRole.Guest)]
-        public void Pump_RecoveryAfterFirstBattleResponse_WaitsForAndAcceptsSecondResponse(
-            MultiplayerRole survivor
-        )
-        {
-            using PeerPair previous = new(contested: true);
-            BeginPendingBattle(previous);
-            Assert.IsTrue(
-                previous
-                    .HostSimulation.GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult pending)
-            );
-            previous.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
-                {
-                    PlanetID = pending.PlanetInstanceID,
-                    Tick = pending.Tick,
-                    Retreat = false,
-                }
-            );
-            previous.Flush();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                survivor == MultiplayerRole.Host
-                    ? previous.HostSimulation
-                    : previous.GuestSimulation
-            );
-            previous.Host.Dispose();
-            previous.Guest.Dispose();
-            using PeerPair recovered = new(snapshot, TestGameData.Create(previous.HostGame.Config));
-            Assert.IsFalse(recovered.HostSimulation.Tick.IsSettled);
-            Assert.IsFalse(recovered.Host.TryBeginTick(true));
-            Task<PlayerActionResult> response = recovered.Guest.ExecuteAsync(
-                new ResolveCombatPlayerAction
-                {
-                    PlanetID = pending.PlanetInstanceID,
-                    Tick = pending.Tick,
-                    Retreat = false,
-                }
-            );
-            recovered.Flush();
-            Assert.IsTrue(Completed(response).Accepted);
-            Assert.IsTrue(recovered.HostSimulation.Tick.IsSettled);
-            Assert.IsTrue(recovered.GuestSimulation.Tick.IsSettled);
-            recovered.AssertSharedState();
         }
 
         [TestCase(MultiplayerRole.Host)]
@@ -1414,7 +1324,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void Pump_RecoveryAfterEitherBattleResponse_PreservesChoicesAndFinishesDay(
+        public void Pump_RecoveryDuringBattle_ReturnsToCompletedCheckpointAndRequiresBothNewResponses(
             [Values(MultiplayerRole.Host, MultiplayerRole.Guest)] MultiplayerRole survivor,
             [Values] bool guestRespondsFirst,
             [Values] bool hostRetreat,
@@ -1422,6 +1332,12 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair previous = new(contested: true);
+            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+                survivor == MultiplayerRole.Host
+                    ? previous.HostSimulation
+                    : previous.GuestSimulation
+            );
+            int checkpointTick = previous.HostGame.CurrentTick;
             BeginPendingBattle(previous);
             Assert.IsTrue(
                 previous
@@ -1436,41 +1352,46 @@ namespace Rebellion.Tests.Multiplayer
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
-                    Retreat = guestRespondsFirst ? guestRetreat : hostRetreat,
+                    Retreat = !(guestRespondsFirst ? guestRetreat : hostRetreat),
                 }
             );
             previous.Flush();
             Assert.IsTrue(Completed(initialResponse).Accepted);
             Assert.IsNull(Completed(initialResponse).SpaceCombatResult);
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
-                survivor == MultiplayerRole.Host
-                    ? previous.HostSimulation
-                    : previous.GuestSimulation
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerRecoverySnapshotCodec.Capture(previous.HostSimulation)
             );
             previous.Host.Dispose();
             previous.Guest.Dispose();
             using PeerPair recovered = new(snapshot, TestGameData.Create(previous.HostGame.Config));
+            Assert.That(recovered.HostGame.CurrentTick, Is.EqualTo(checkpointTick));
+            Assert.That(recovered.GuestGame.CurrentTick, Is.EqualTo(checkpointTick));
+            Assert.That(
+                recovered.HostSimulation.Tick.IsSettled && recovered.GuestSimulation.Tick.IsSettled,
+                Is.True
+            );
+            BeginPendingBattle(recovered);
             Assert.IsTrue(
                 recovered
                     .HostSimulation.GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult restored)
             );
-            string firstFaction = guestRespondsFirst ? _guestFactionID : _hostFactionID;
-            bool firstIsAttacker = restored.AttackerOwnerInstanceID == firstFaction;
-            Assert.AreEqual(
-                guestRespondsFirst ? guestRetreat : hostRetreat,
-                firstIsAttacker
-                    ? restored.AttackerRetreatResponse
-                    : restored.DefenderRetreatResponse
+            Assert.That(restored.AttackerHasResponded || restored.DefenderHasResponded, Is.False);
+            MultiplayerGameSession firstAgain = guestRespondsFirst
+                ? recovered.Guest
+                : recovered.Host;
+            Task<PlayerActionResult> newResponse = firstAgain.ExecuteAsync(
+                new ResolveCombatPlayerAction
+                {
+                    PlanetID = restored.PlanetInstanceID,
+                    Tick = restored.Tick,
+                    Retreat = guestRespondsFirst ? guestRetreat : hostRetreat,
+                }
             );
-            Assert.IsNull(
-                firstIsAttacker
-                    ? restored.DefenderRetreatResponse
-                    : restored.AttackerRetreatResponse
-            );
-            Assert.IsFalse(recovered.Host.TryBeginTick(true));
-            Assert.IsFalse(recovered.Guest.TryBeginTick(false));
-
+            recovered.Flush();
+            Assert.That(Completed(newResponse).Accepted, Is.True);
+            Assert.That(Completed(newResponse).SpaceCombatResult, Is.Null);
+            Assert.That(recovered.HostSimulation.Tick.IsSettled, Is.False);
             MultiplayerGameSession second = guestRespondsFirst ? recovered.Host : recovered.Guest;
             Task<PlayerActionResult> finalResponse = second.ExecuteAsync(
                 new ResolveCombatPlayerAction
@@ -1723,8 +1644,7 @@ namespace Rebellion.Tests.Multiplayer
             /// Builds matching graphs from one in-memory snapshot and attaches independent services.
             /// </summary>
             /// <param name="contested">Whether opposing fleets initially share the host planet.</param>
-            /// <param name="recoverPendingCombat">Whether to recover the guest and create ordering owners during a pending battle.</param>
-            public PeerPair(bool contested = false, bool recoverPendingCombat = false)
+            public PeerPair(bool contested = false)
             {
                 GameRoot source = CreateSource(contested);
                 MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(source);
@@ -1743,21 +1663,6 @@ namespace Rebellion.Tests.Multiplayer
                 GameDataCatalog content = TestGameData.Create(source.Config);
                 HostSimulation = new GameSession(hostGame, content);
                 GuestSimulation = new GameSession(guestGame, content);
-                if (recoverPendingCombat)
-                {
-                    HostSimulation.Tick.ProcessTick();
-                    Assert.IsFalse(HostSimulation.Tick.IsSettled);
-                    MultiplayerSnapshot recovery = MultiplayerRecoverySnapshotCodec.Capture(
-                        HostSimulation
-                    );
-                    GuestSimulation.ApplyRecoveryState(
-                        MultiplayerRecoverySnapshotCodec.Deserialize(
-                            recovery.Payload,
-                            recovery.Hash
-                        )
-                    );
-                    GuestGame.LocalPlayerFactionID = _guestFactionID;
-                }
                 HostClock = new GameManager(() => HostGame, HostSimulation.Tick);
                 GuestClock = new GameManager(() => GuestGame, GuestSimulation.Tick);
                 Host = new MultiplayerGameSession(

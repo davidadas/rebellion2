@@ -13,7 +13,7 @@ namespace Rebellion.Multiplayer
     public sealed partial class MultiplayerCoordinator
     {
         private string _admittedGuestUserID;
-        private MultiplayerPacket _pendingRejoinHello;
+        private MultiplayerPacket _pendingRejoinPacket;
         private bool _waitingForRejoin;
         private bool _checkpointPending;
         private bool _recoveryPausePending;
@@ -163,7 +163,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Blocks new orders and lets an already executing tick unwind before capturing recovery.
+        /// Blocks new orders while an executing tick finishes or returns to the last completed checkpoint.
         /// </summary>
         private void EndForPeerDeparture()
         {
@@ -189,9 +189,8 @@ namespace Rebellion.Multiplayer
             _publishedRecoveryOwner = false;
             _recoveryPausePending = true;
             _checkpointPending = true;
-            _pendingRejoinHello = null;
+            _pendingRejoinPacket = null;
             _rejectingGuest = false;
-            _recoverySnapshot = null;
             _pendingCommits.Clear();
             _snapshotAdmission.Clear();
             _remoteReady = false;
@@ -246,10 +245,25 @@ namespace Rebellion.Multiplayer
         private void ProcessRejoinRecovery()
         {
             GameSession session = _runtime?.GetActiveGameSession();
-            if (session?.CanCaptureRecoveryState != true)
+            if (session == null)
                 return;
             if (_recoveryPausePending)
             {
+                if (!session.CanExecuteCommands)
+                    return;
+                if (!session.CanCaptureRecoveryState)
+                {
+                    try
+                    {
+                        RestoreCompletedRecoveryCheckpoint();
+                    }
+                    catch (Exception exception)
+                    {
+                        _recoveryPausePending = false;
+                        HandleGameplayFailure(exception);
+                        return;
+                    }
+                }
                 _recoveryPausePending = false;
                 _runtime.GetActiveGameManager().ApplyGameSpeed(TickSpeed.Paused);
                 foreach (Player player in session.Game.GetPlayers())
@@ -265,6 +279,8 @@ namespace Rebellion.Multiplayer
                 if (ReferenceEquals(_readyPresentationSession, session))
                     _runtime.NotifyGameStateChanged();
             }
+            if (!session.CanCaptureRecoveryState)
+                return;
             if (_waitingForRejoin && _backend.IsLobbyOwner && !_publishedRecoveryOwner)
             {
                 _publishedRecoveryOwner = true;
@@ -276,8 +292,12 @@ namespace Rebellion.Multiplayer
                 _checkpointPending = false;
                 try
                 {
-                    _recoverySnapshot = MultiplayerRecoverySnapshotCodec.Capture(session);
-                    _recoveryRecord = CreateRecoveryRecord(_recoverySnapshot.Hash);
+                    MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(
+                        session
+                    );
+                    MultiplayerRecoveryRecord record = CreateRecoveryRecord(snapshot.Hash);
+                    _recoverySnapshot = snapshot;
+                    _recoveryRecord = record;
                     _recoveryPublication = PublishRecoveryAsync(
                         _backend.LocalUserID,
                         _recoveryRecord,
@@ -286,19 +306,41 @@ namespace Rebellion.Multiplayer
                 }
                 catch (Exception exception)
                 {
-                    Debug.LogException(exception);
+                    HandleGameplayFailure(exception);
                     SetStatus(
-                        "The game is paused, but its recovery checkpoint could not be saved: "
-                            + exception.Message
+                        "The recovery checkpoint could not be prepared: " + exception.Message
                     );
+                    return;
                 }
             }
-            if (_waitingForRejoin && _pendingRejoinHello != null && _peer?.IsConnected == true)
+            if (_waitingForRejoin && _pendingRejoinPacket != null && _peer?.IsConnected == true)
             {
-                MultiplayerPacket packet = _pendingRejoinHello;
-                _pendingRejoinHello = null;
-                HandleRecoveryHello(packet);
+                MultiplayerPacket packet = _pendingRejoinPacket;
+                _pendingRejoinPacket = null;
+                if (packet.Type == MultiplayerMessageType.RecoveryWelcome)
+                    HandleRecoveryWelcome(packet);
+                else
+                    HandleRecoveryHello(packet);
             }
+        }
+
+        /// <summary>
+        /// Discards an interrupted turn and restores the retained completed world before negotiating rejoin.
+        /// </summary>
+        private void RestoreCompletedRecoveryCheckpoint()
+        {
+            MultiplayerSnapshot snapshot =
+                _recoverySnapshot
+                ?? throw new InvalidOperationException(
+                    "No completed recovery checkpoint is available."
+                );
+            GameSessionRecoveryState state = MultiplayerRecoverySnapshotCodec.Deserialize(
+                snapshot.Payload,
+                snapshot.Hash
+            );
+            _recoveryRecord.ValidateState(state);
+            ConfigureGame(state.Game);
+            _runtime.ReplaceMultiplayerRecovery(state);
         }
 
         /// <summary>
@@ -365,7 +407,7 @@ namespace Rebellion.Multiplayer
                 return;
             if (_recoveryPausePending || _checkpointPending)
             {
-                _pendingRejoinHello = packet;
+                _pendingRejoinPacket = packet;
                 return;
             }
             MultiplayerHelloMessage hello = JsonUtility.FromJson<MultiplayerHelloMessage>(
@@ -391,7 +433,7 @@ namespace Rebellion.Multiplayer
                     || _recoveryPausePending
                 )
                 {
-                    _pendingRejoinHello = packet;
+                    _pendingRejoinPacket = packet;
                     return;
                 }
                 MultiplayerSnapshot snapshot =
@@ -455,6 +497,11 @@ namespace Rebellion.Multiplayer
             bool livePeer = _waitingForRejoin && !_recoveryOfferSent && _runtime != null;
             if ((!_returningToRecovery && !livePeer) || _recoveryRecord == null)
                 throw new InvalidOperationException("No campaign recovery is being negotiated.");
+            if (livePeer && !_runtime.GetActiveGameSession().CanExecuteCommands)
+            {
+                _pendingRejoinPacket = packet;
+                return;
+            }
             MultiplayerRecoveryOffer offer = JsonUtility.FromJson<MultiplayerRecoveryOffer>(
                 packet.Metadata
             );
@@ -553,7 +600,7 @@ namespace Rebellion.Multiplayer
         private void ResetRecovery()
         {
             _admittedGuestUserID = null;
-            _pendingRejoinHello = null;
+            _pendingRejoinPacket = null;
             _waitingForRejoin = _checkpointPending = _recoveryPausePending = false;
             _recoveryOfferSent = _returningToRecovery = _publishedRecoveryOwner = false;
             _initialRecoveryState = null;

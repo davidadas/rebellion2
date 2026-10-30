@@ -15,6 +15,7 @@ using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
+using Rebellion.Multiplayer;
 using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.App
@@ -508,6 +509,81 @@ namespace Rebellion.Tests.App
             );
             Assert.IsTrue(File.Exists(autosavePath));
             Assert.IsTrue(_runtime.CanSave);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void StartLoadedGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn(
+            bool replace
+        )
+        {
+            GameRoot game = CreateContestedGame();
+            if (replace)
+            {
+                _runtime.StartGame(CreateGame(), new TestSessionOwner());
+                _runtime.ReplaceMultiplayerGame(game);
+            }
+            else
+                _runtime.StartLoadedGame(game, new TestSessionOwner());
+            GameSession session = _runtime.GetActiveGameSession();
+
+            Assert.That(session.Tick.IsSettled, Is.True);
+            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
+            Assert.That(_runtime.CanSave, Is.True);
+            session.Tick.ProcessTick();
+            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
+            Assert.That(_runtime.CanSave, Is.False);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ReplaceMultiplayerRecovery_InterruptedBattle_RestoresCompletedWorldAndReopensSaving(
+            bool incremental
+        )
+        {
+            GameSession session = _runtime.StartGame(CreateContestedGame(), new TestSessionOwner());
+            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(session);
+            int completedTick = session.Game.CurrentTick;
+            int replacements = 0;
+            _runtime.GameReplaced += _ => replacements++;
+            _runtime.BlockGameOperations();
+            if (incremental)
+            {
+                System.Collections.IEnumerator tick = session.Tick.ProcessTickIncrementally();
+                Assert.That(tick.MoveNext(), Is.True);
+                Assert.Throws<InvalidOperationException>(() =>
+                    MultiplayerRecoverySnapshotCodec.Capture(session)
+                );
+                while (tick.MoveNext()) { }
+                (tick as IDisposable)?.Dispose();
+            }
+            else
+                session.Tick.ProcessTick();
+            Assert.That(session.Tick.IsSettled, Is.False);
+            Assert.That(_runtime.CanSave, Is.False);
+
+            _runtime.ReplaceMultiplayerRecovery(
+                MultiplayerRecoverySnapshotCodec.Deserialize(checkpoint.Payload, checkpoint.Hash)
+            );
+
+            Assert.That(_runtime.GetActiveGameSession(), Is.SameAs(session));
+            Assert.That(session.Game.CurrentTick, Is.EqualTo(completedTick));
+            Assert.That(session.Tick.IsSettled, Is.True);
+            Assert.That(session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
+            Assert.That(_runtime.CanSave, Is.True);
+            Assert.That(replacements, Is.EqualTo(1));
+            session.Tick.ProcessTick();
+            Assert.That(
+                session
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pending),
+                Is.True
+            );
+            Assert.That(pending.AttackerHasResponded || pending.DefenderHasResponded, Is.False);
+            Assert.That(_runtime.CanSave, Is.False);
+            session.Tick.ResolveCombat(autoResolve: true);
+            Assert.That(_runtime.CanSave, Is.True);
+            Assert.That(session.Game.CurrentTick, Is.EqualTo(completedTick + 1));
         }
 
         [Test]

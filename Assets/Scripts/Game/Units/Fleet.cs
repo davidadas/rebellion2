@@ -103,12 +103,6 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Restores an existing combat flag without issuing a new combat transition.
-        /// </summary>
-        /// <param name="isInCombat">The captured flag.</param>
-        internal void RestoreRecoveryCombatState(bool isInCombat) => IsInCombat = isInCombat;
-
-        /// <summary>
         /// Replaces the fleet's child collection while constructing a detached projection.
         /// </summary>
         /// <param name="capitalShips">The capital ships to retain in the projection.</param>

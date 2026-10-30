@@ -28,8 +28,8 @@ the remaining decisions concern ownership of specific state, not a second genera
 - Removing the copied manufacturing queues and lane DTOs. Rebuilding uses saved producer IDs
   and queue sequence values. The shared builder now preserves those numeric values instead of
   renumbering them; queue priority is unchanged.
-- Removing the per-fleet combat-flag DTOs. The pending encounter already identifies its fleets;
-  restoring that encounter reconstructs their flags without clearing their orders.
+- Removing the per-fleet combat-flag DTOs and the combat-flag recovery setter. Checkpoints are
+  captured only after turn processing and battle decisions finish.
 
 - Saving a mission's starting roster as unit IDs and a baseline-present flag on `Mission` through
   ordinary persistence; removing its separate recovery DTO and capture/restore methods.
@@ -50,6 +50,16 @@ the remaining decisions concern ownership of specific state, not a second genera
 - Removing the saved per-faction ownership lists and their capture/restore methods. Recovery rebuilds
   faction membership from the existing hierarchy. Automatic scrapping orders eligible units by
   ordinal ID before its random draw, so both peers choose consistently without acquisition history.
+- Removing the tick and combat recovery adapters, scheduler-phase DTO, saved battle responses,
+  and serialized deferred messages/blockade results. The live scheduler still holds these facts
+  while a battle is unresolved; saving and checkpoint capture reject that state.
+- Retaining the last completed checkpoint across a disconnect. An executing tick finishes first;
+  if it stops awaiting battle input, the survivor restores the retained completed checkpoint before
+  rejoining. Both participants reopen the same world and make fresh responses when that battle occurs.
+  Progress since that checkpoint is lost. Checkpoints retain their launch/save/load/disconnect cadence;
+  this does not add a full-world snapshot per tick.
+- Requiring a completed turn before initial network ordering begins. A requested checkpoint is
+  captured before another day starts. Coordinated loads defer encounter detection to an agreed turn.
 
 The generic registry-order/slot persistence removed in the preceding revision remains removed.
 Acquisition order is not preserved. The random scrap target may differ from earlier revisions;
@@ -59,8 +69,7 @@ eligibility, draw count, shortfall timing, and the number of units scrapped are 
 
 | Item | Demonstrated reason it remains | Decision still open |
 | --- | --- | --- |
-| Unfinished turn and combat | A turn can stop awaiting a human encounter. Its phase, selected fleets, both responses, deferred message facts and blockade reactions determine how that turn finishes. | Keep the explicit continuation for this genuinely incomplete turn. |
-| In-turn support-shift history | Control shifts are suppressed once per displaced faction per tick, including across the pause for human combat input. | Keep the current tick and already-handled faction IDs as part of the unfinished turn; transient observer associations are no longer saved. |
+| In-turn support-shift history | The existing rule suppresses repeated control-loss support shifts by a displaced faction within the same tick. | The current tick and handled faction IDs remain; changing this rule to a per-cascade scope is a separate decision. Transient observer associations are not saved. |
 | RNG seed and generated-ID mode | Normal campaigns use `Summary.Seed`, but injected streams can have a different seed. A runtime flag also chooses counter-based versus random IDs. Both counters are already saved normally. | Keep the actual seed and mode until each has one explicit owner; neither counter is duplicated. |
 
 The earlier shared-control builder consolidation remains unfinished: preview/proposal tools were
@@ -69,10 +78,10 @@ removed, but `MenuControlPrefabBuilder` still adds a shared authoring layer alon
 
 ### Serialization contract issues
 
-The reference-aware JSON codec remains temporarily necessary for the current continuation contract:
-deferred results, live units, and historical combat references share object identity. Replacing it with an ordinary XML world save currently loses those associations. That
-establishes a need to preserve identity for unfinished work; it does not establish that two complete
-serialization implementations are the right permanent design.
+The reference-aware JSON codec now transfers only completed worlds and runtime settings. Its
+result-type registrations and battle-decision registration are removed. Deferred gameplay facts
+are not serialized. Model parent/history reference handling remains in the codec; this change does
+not establish that a separate serialization policy is the right permanent design.
 
 Three recovery accessors still bypass model setter side effects: assigning the decoded galaxy,
 reading/writing already assigned IDs, and restoring the faction processing rate. Parent and previous
@@ -89,14 +98,15 @@ that these were generally missing from saves.
 ### Evidence and limits
 
 Inspected producers, consumers, and restoration paths include `GameSession.Recovery`,
-`GameTickProcessor.Recovery`, `GameRoot`, `Faction`, `ManufacturingObserver`, `MaintenanceCommands`,
+`GameTickProcessor`, `GameRoot`, `Faction`, `ManufacturingObserver`, `MaintenanceCommands`,
 `MovementCommands`, `ManufacturingCommands`, `SmugglingCommands`, `UprisingResolver`,
 `PlanetaryControlObserver`, `FogOfWarObserver`, `Mission`, `VictoryCommands`,
 `SpaceCombatCommands`, `MultiplayerRecoverySnapshotCodec`, and `MultiplayerStateFingerprint`.
 Regression coverage includes ordinary save/load of an active maintenance timer, recovery followed
 by real automatic scrapping after an ownership transfer through both ordinary load and recovery,
 covering the first and last random indices without saving ownership order; production priority with sequence gaps,
-and continuation of pending combat with its derived flags. Additional coverage verifies normal
+and rollback from an interrupted battle to a completed checkpoint with both responses reset.
+Additional coverage verifies normal
 mission-roster serialization contains only IDs for its baseline, creation callbacks finish before
 saving and do not replay after recovery, callback failures prevent later checkpoints, support changes
 need no tick poll, unrelated planets are not scanned, deletion/relocation is observed, and suppression

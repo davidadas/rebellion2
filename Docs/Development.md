@@ -123,9 +123,15 @@ depend on notification history. Uprising progression remains timed simulation wo
 Recovery transport initiation follows room ownership, while simulation authority retains the
 campaign's authenticated host role. The shared persistence channel is created after the agreed
 state handshake, rather than binding to a provisional recovery identity.
-Recovery checks both payload integrity and the restored simulation continuation before opening
-gameplay. Completed days compare model and runtime continuation fingerprints, including active RNG
-seed/position, identifiers, faction rules and pending simulation facts. Participant UI state is
+Manual saves and recovery checkpoints require completed turn processing, including battle decisions.
+Disconnect recovery lets an executing tick finish. If it stops awaiting battle input, the survivor
+restores the last completed checkpoint and offers that world to the returning participant. Progress
+since that checkpoint is lost; both players respond again when the encounter occurs. Requested
+launch/save/load checkpoints are captured before another day starts. No full-world checkpoint is
+added to the per-day loop. Coordinated loads detect encounters in an agreed turn after synchronization.
+Recovery checks payload integrity and the restored completed state before opening gameplay.
+Completed days compare model and runtime fingerprints, including active RNG
+seed/position, identifiers, faction rules and support-shift history. Participant UI state is
 excluded. A mismatch or execution failure stops replay without retrying a potentially applied action.
 
 Simulation verification performs one graph traversal per completed multiplayer day per peer, after

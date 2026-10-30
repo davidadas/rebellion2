@@ -7,7 +7,6 @@ using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -15,14 +14,14 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Transfers one writable runtime boundary while retaining live, historical, and observed object aliases.
+    /// Transfers one completed world and its runtime settings while retaining model reference identity.
     /// </summary>
     internal static class MultiplayerRecoverySnapshotCodec
     {
         private static readonly JsonSerializerSettings _settings = CreateSettings();
 
         /// <summary>
-        /// Captures the complete continuation at an idle or pending-decision boundary.
+        /// Captures the completed world after all turn processing and battle decisions finish.
         /// </summary>
         /// <param name="session">The paused authoritative simulation.</param>
         /// <returns>The compressed, authenticated continuation envelope.</returns>
@@ -69,21 +68,14 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Admits explicit result types and retains reference identity across the whole continuation envelope.
+        /// Retains reference identity across the completed world and its runtime settings.
         /// </summary>
         /// <returns>The strict continuation schema policy.</returns>
         private static JsonSerializerSettings CreateSettings()
         {
-            IEnumerable<Type> results = typeof(GameResult)
-                .Assembly.GetTypes()
-                .Where(type => typeof(GameResult).IsAssignableFrom(type));
             JsonSerializerSettings settings = MultiplayerSnapshotSerializer.CreateSettings(
                 new RecoveryContracts(),
-                new MultiplayerSnapshotSerializer.SnapshotTypes(
-                    results.Concat(
-                        new[] { typeof(GameSessionRecoveryState), typeof(SpaceCombatDecision) }
-                    )
-                )
+                new MultiplayerSnapshotSerializer.SnapshotTypes()
             );
             settings.PreserveReferencesHandling = PreserveReferencesHandling.All;
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Serialize;

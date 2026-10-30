@@ -123,7 +123,7 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Starts a game session from deserialized state and reconstructs unresolved runtime decisions.
+    /// Starts a loaded session, leaving coordinated encounter detection to its ordered game turns.
     /// </summary>
     /// <param name="game">The loaded game instance to manage.</param>
     /// <param name="owner">The coordinated owner, required for multiplayer campaigns.</param>
@@ -131,8 +131,17 @@ public sealed class GameRuntime
     public GameSession StartLoadedGame(GameRoot game, IGameSessionOwner owner = null)
     {
         GameSession session = ReplaceSession(game, owner);
-        session.Tick.ReconcileLoadedState();
+        ReconcileLoadedSession();
         return session;
+    }
+
+    /// <summary>
+    /// Reconciles local encounters immediately while coordinated sessions wait for an agreed turn.
+    /// </summary>
+    private void ReconcileLoadedSession()
+    {
+        if (_sessionOwner == null)
+            _activeGameSession.Tick.ReconcileLoadedState();
     }
 
     /// <summary>
@@ -160,7 +169,7 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Starts from an exact runtime continuation without replaying a saved game's loading phases.
+    /// Starts from a completed checkpoint without replaying gameplay or disk-load reconciliation.
     /// </summary>
     /// <param name="state">The independently decoded and content-verified continuation.</param>
     /// <param name="owner">The execution and persistence owner chosen before recovery.</param>
@@ -609,7 +618,7 @@ public sealed class GameRuntime
         _activeGameSession.ReplaceGame(loadedGame);
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
-        _activeGameSession.Tick.ReconcileLoadedState();
+        ReconcileLoadedSession();
     }
 
     /// <summary>
@@ -627,11 +636,11 @@ public sealed class GameRuntime
         _activeGameSession.ReplaceGame(game);
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
-        _activeGameSession.Tick.ReconcileLoadedState();
+        ReconcileLoadedSession();
     }
 
     /// <summary>
-    /// Applies an exact writable continuation without replaying a tick or disk-load migration.
+    /// Applies a completed checkpoint without replaying a tick or disk-load migration.
     /// </summary>
     /// <param name="state">The independently decoded authoritative runtime boundary.</param>
     internal void ReplaceMultiplayerRecovery(GameSessionRecoveryState state)

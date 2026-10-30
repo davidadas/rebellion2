@@ -187,7 +187,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void CaptureRecoveryState_PendingHumanCombat_PreservesSelectedEncounterAndDeferredFacts()
+        public void CaptureRecoveryState_PendingHumanCombat_RejectsWithoutChangingBattle()
         {
             Faction opponent = new Faction { InstanceID = "recovery-opponent" };
             _game.GetFactions().Add(opponent);
@@ -216,25 +216,17 @@ namespace Rebellion.Tests.Gameplay
             int tick = _game.CurrentTick;
             long randomPosition = _game.RandomIndex;
 
-            GameSessionRecoveryState state = _session.CaptureRecoveryState();
-
-            Assert.That(state.Tick.Phase, Is.EqualTo(GameTickRecoveryPhase.AwaitingCombatDecision));
-            Assert.That(state.PendingCombat.PlanetInstanceID, Is.EqualTo(_planet.InstanceID));
-            CollectionAssert.AreEquivalent(
-                new[] { first.InstanceID, second.InstanceID },
-                state.PendingCombat.AttackerFleetInstanceIDs.Concat(
-                    state.PendingCombat.DefenderFleetInstanceIDs
-                )
+            Assert.That(_session.CanCaptureRecoveryState, Is.False);
+            Assert.Throws<InvalidOperationException>(() => _session.CaptureRecoveryState());
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerRecoverySnapshotCodec.Capture(_session)
             );
-            Assert.That(
-                state.Tick.DeferredMessageResults.OfType<PendingCombatResult>().Count(),
-                Is.EqualTo(1)
-            );
+            Assert.That(_session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
             Assert.That(first.IsInCombat && second.IsInCombat, Is.True);
             Assert.That(_game.CurrentTick, Is.EqualTo(tick));
             Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
             Assert.That(_session.Tick.IsSettled, Is.False);
-            Assert.That(_session.CanCaptureRecoveryState, Is.True);
+            Assert.That(_session.CanCaptureRecoveryState, Is.False);
         }
 
         [TestCase(false)]
@@ -296,7 +288,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        public void RestoreRecoveryState_PendingCombat_ContinuesSameTickAndMatchesUninterruptedOutcome(
+        public void ApplyRecoveryState_PendingCombat_RestoresCompletedCheckpointAndAllowsNewDecision(
             bool retreat
         )
         {
@@ -333,48 +325,46 @@ namespace Rebellion.Tests.Gameplay
                 1000,
                 100
             );
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot checkpoint = MultiplayerRecoverySnapshotCodec.Capture(_session);
+            string fingerprint = MultiplayerStateFingerprint.ComputeSimulation(_session);
+            int completedTick = _game.CurrentTick;
+            int completed = 0;
+            _session.Tick.TickCompleted += () => completed++;
             _session.Tick.ProcessTick();
-            int pendingTick = _game.CurrentTick;
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-            using GameSession recovered = MultiplayerRecoverySnapshotCodec.Restore(
-                snapshot.Payload,
-                snapshot.Hash,
-                TestGameData.Create(_game.Config)
+            Assert.That(_session.Tick.IsSettled, Is.False);
+
+            _session.ApplyRecoveryState(
+                MultiplayerRecoverySnapshotCodec.Deserialize(checkpoint.Payload, checkpoint.Hash)
             );
+
+            Assert.That(_session.Tick.IsSettled, Is.True);
+            Assert.That(_session.Game.CurrentTick, Is.EqualTo(completedTick));
+            Assert.That(_session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
             Assert.That(
-                recovered.Game.GetSceneNodesByType<Fleet>().All(fleet => fleet.IsInCombat),
+                _session.Game.GetSceneNodesByType<Fleet>().All(fleet => !fleet.IsInCombat),
                 Is.True
             );
-
-            MultiplayerStateFingerprint.VerifyRecovery(
-                recovered,
-                MultiplayerStateFingerprint.ComputeSimulation(_session)
+            Assert.That(
+                MultiplayerStateFingerprint.VerifyRecovery(_session, fingerprint),
+                Is.Not.Empty
             );
-            int originalCompleted = 0;
-            int recoveredCompleted = 0;
-            _session.Tick.TickCompleted += () => originalCompleted++;
-            recovered.Tick.TickCompleted += () => recoveredCompleted++;
-
-            SpaceCombatResult originalResult = retreat
+            _session.Tick.ProcessTick();
+            Assert.That(
+                _session
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pending),
+                Is.True
+            );
+            Assert.That(pending.AttackerHasResponded || pending.DefenderHasResponded, Is.False);
+            SpaceCombatResult result = retreat
                 ? _session.Tick.ResolveCombatRetreat(_faction.InstanceID)
                 : _session.Tick.ResolveCombat(autoResolve: true);
-            SpaceCombatResult recoveredResult = retreat
-                ? recovered.Tick.ResolveCombatRetreat(_faction.InstanceID)
-                : recovered.Tick.ResolveCombat(autoResolve: true);
-
-            Assert.That(originalResult, Is.Not.Null);
-            Assert.That(recoveredResult, Is.Not.Null);
-            Assert.That(recovered.Game, Is.Not.SameAs(_game));
-            Assert.That(recovered.Game.Random, Is.Not.SameAs(_game.Random));
-            Assert.That(originalCompleted, Is.EqualTo(1));
-            Assert.That(recoveredCompleted, Is.EqualTo(1));
-            Assert.That(recovered.Game.CurrentTick, Is.EqualTo(pendingTick));
-            Assert.That(recovered.Tick.IsSettled, Is.True);
-            using StringWriter originalXml = new StringWriter();
-            using StringWriter recoveredXml = new StringWriter();
-            new GameSerializer(typeof(GameRoot)).Serialize(originalXml, _game);
-            new GameSerializer(typeof(GameRoot)).Serialize(recoveredXml, recovered.Game);
-            Assert.That(recoveredXml.ToString(), Is.EqualTo(originalXml.ToString()));
+            Assert.That(result, Is.Not.Null);
+            Assert.That(_session.Tick.IsSettled, Is.True);
+            Assert.That(_session.Game.CurrentTick, Is.EqualTo(completedTick + 1));
+            Assert.That(completed, Is.EqualTo(1));
+            Assert.That(_session.CanCaptureRecoveryState, Is.True);
         }
 
         [Test]
@@ -421,95 +411,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.That(_session.Pipeline, Is.SameAs(pipeline));
             Assert.That(_session.Game, Is.SameAs(decoded.Game));
             Assert.That(observed, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void RestoreRecoveryState_PriorAutomaticCombat_PreservesLiveDetachedAndRepeatedResultReferences()
-        {
-            Faction firstAI = new Faction { InstanceID = "recovery-first-ai" };
-            Faction secondAI = new Faction { InstanceID = "recovery-second-ai" };
-            _game.GetFactions().Add(firstAI);
-            _game.GetFactions().Add(secondAI);
-            _game.SetFactionController(
-                _faction.InstanceID,
-                "recovery-identity-human",
-                PlayerControllerType.Human
-            );
-            _game.UseDeterministicRuntimeIdentifiers = true;
-            ISceneNode sector = _planet.GetParent();
-            _game.DetachNode(_planet);
-            Planet automaticPlanet = new Planet
-            {
-                InstanceID = "recovery-automatic-planet",
-                IsColonized = true,
-            };
-            _game.AttachNode(automaticPlanet, sector);
-            _game.AttachNode(_planet, sector);
-            Fleet automaticWinner = CreateCombatFleet(
-                _game,
-                "recovery-automatic-winner",
-                firstAI.InstanceID,
-                automaticPlanet,
-                10000,
-                10000
-            );
-            Fleet automaticLoser = CreateCombatFleet(
-                _game,
-                "recovery-automatic-loser",
-                secondAI.InstanceID,
-                automaticPlanet,
-                1,
-                0
-            );
-            string survivingShipID = automaticWinner.GetChildren<CapitalShip>().Single().InstanceID;
-            string destroyedShipID = automaticLoser.GetChildren<CapitalShip>().Single().InstanceID;
-            CreateCombatFleet(
-                _game,
-                "recovery-pending-human",
-                _faction.InstanceID,
-                _planet,
-                1000,
-                100
-            );
-            CreateCombatFleet(_game, "recovery-pending-ai", firstAI.InstanceID, _planet, 1000, 100);
-            _session.Tick.ProcessTick();
-            MultiplayerSnapshot snapshot = MultiplayerRecoverySnapshotCodec.Capture(_session);
-
-            GameSessionRecoveryState decoded = MultiplayerRecoverySnapshotCodec.Deserialize(
-                snapshot.Payload,
-                snapshot.Hash
-            );
-
-            using GameSession recovered = GameSession.RestoreRecoveryState(
-                decoded,
-                TestGameData.Create(_game.Config)
-            );
-            SpaceCombatResult combat = decoded
-                .Tick.DeferredMessageResults.OfType<SpaceCombatResult>()
-                .Single();
-            CombatUnitSnapshot observedSurvivor = combat
-                .AttackingUnits.Concat(combat.DefendingUnits)
-                .Single(item => item.Unit.InstanceID == survivingShipID);
-            Assert.That(
-                observedSurvivor.Unit,
-                Is.Not.SameAs(decoded.Game.GetSceneNodeByInstanceID<CapitalShip>(survivingShipID))
-            );
-            Assert.That(
-                combat.Planet,
-                Is.SameAs(decoded.Game.GetSceneNodeByInstanceID<Planet>(automaticPlanet.InstanceID))
-            );
-            Assert.That(
-                decoded.Game.GetSceneNodeByInstanceID<CapitalShip>(destroyedShipID),
-                Is.Null
-            );
-            GameObjectDestroyedResult destruction = combat
-                .Events.OfType<GameObjectDestroyedResult>()
-                .Single(item => item.DestroyedObject.InstanceID == destroyedShipID);
-            Assert.That(
-                decoded.Tick.DeferredMessageResults.Any(item => ReferenceEquals(item, destruction)),
-                Is.True
-            );
-            Assert.That(destruction.DestroyedObject.InstanceID, Is.EqualTo(destroyedShipID));
         }
 
         [Test]

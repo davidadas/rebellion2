@@ -143,6 +143,7 @@ namespace Rebellion.Multiplayer
             return _launchConfiguration == null
                 || _synchronizationReady
                     && _gameSession != null
+                    && !_checkpointPending
                     && _persistence?.BlocksNewTicks != true;
         }
 
@@ -156,6 +157,7 @@ namespace Rebellion.Multiplayer
             if (
                 !_synchronizationReady
                 || _gameSession == null
+                || _checkpointPending
                 || _persistence?.BlocksNewTicks == true
             )
                 return false;

@@ -15,7 +15,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Executes the ordered tick phases and suspends or resumes them around player combat decisions.
     /// </summary>
-    public sealed partial class GameTickProcessor
+    public sealed class GameTickProcessor
     {
         /// <summary>
         /// Identifies whether tick execution is idle, advancing a tick, or waiting for combat input.

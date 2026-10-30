@@ -13,20 +13,19 @@ namespace Rebellion.Gameplay
     public sealed partial class GameSession
     {
         /// <summary>
-        /// Gets whether a complete writable session boundary can be captured without interrupting dispatch.
+        /// Gets whether a completed turn can be captured outside command and tick execution.
         /// </summary>
-        internal bool CanCaptureRecoveryState =>
-            CanExecuteCommands && !HasPendingGameplayResults && !HasPendingOwnershipChanges;
+        internal bool CanCaptureRecoveryState => CanCaptureSettledState && CanExecuteCommands;
 
         /// <summary>
-        /// Captures the graph and its existing runtime continuation without publishing or consuming facts.
+        /// Captures a completed world and its runtime settings without publishing or consuming facts.
         /// </summary>
         /// <returns>A single-reference-graph envelope for an independent recovery decode.</returns>
         internal GameSessionRecoveryState CaptureRecoveryState()
         {
             if (!CanCaptureRecoveryState)
                 throw new InvalidOperationException(
-                    "An executing simulation operation cannot be captured for recovery."
+                    "Recovery checkpoints require a completed turn outside simulation execution."
                 );
             if (
                 _randomProvider is not SystemRandomProvider random
@@ -40,14 +39,12 @@ namespace Rebellion.Gameplay
                 Game = Game,
                 UseDeterministicRuntimeIdentifiers = Game.UseDeterministicRuntimeIdentifiers,
                 RandomSeed = random.Seed,
-                Tick = Tick.CaptureRecoveryState(),
-                PendingCombat = GetService<SpaceCombatCommands>().CaptureRecoveryDecision(),
                 PlanetaryControl = GetService<PlanetaryControlObserver>().CaptureRecoveryState(),
             };
         }
 
         /// <summary>
-        /// Constructs services against an independently decoded graph and reinstates its exact writable phase.
+        /// Constructs services against an independently decoded completed world at an idle turn boundary.
         /// No gameplay phase, migration, queue normalization, or intelligence refresh is performed.
         /// </summary>
         /// <param name="state">The complete independently decoded recovery envelope.</param>
@@ -87,6 +84,7 @@ namespace Rebellion.Gameplay
             Game.Random = new SystemRandomProvider(state.RandomSeed, Game.RandomIndex);
             Game.RebuildNodeIndex();
             RestoreModelRecoveryFacts(state);
+            Tick.Reset();
             _randomProvider = Game.Random;
             Action[] previousConnections = _disconnect.ToArray();
             ServiceLocator previousServiceScope = _serviceScope;
@@ -96,8 +94,6 @@ namespace Rebellion.Gameplay
                 RebuildContentBindings();
                 GetService<ManufacturingObserver>().RebuildQueues();
                 GetService<PlanetaryControlObserver>().RestoreRecoveryState(state.PlanetaryControl);
-                GetService<SpaceCombatCommands>().RestoreRecoveryDecision(state.PendingCombat);
-                Tick.RestoreRecoveryState(state.Tick);
             }
             catch
             {
@@ -134,7 +130,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "A recovered random position cannot be negative."
                 );
-            if (state.Game == null || state.Tick == null || state.PlanetaryControl == null)
+            if (state.Game == null || state.PlanetaryControl == null)
                 throw new ArgumentException(
                     "Complete session recovery facts are required.",
                     nameof(state)

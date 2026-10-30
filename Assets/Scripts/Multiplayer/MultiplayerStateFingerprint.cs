@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
-using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -90,10 +89,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The simulation-specific cached member plan.</returns>
         private static TypePlan CreateSimulationPlan(Type type)
         {
-            TypePlan plan =
-                typeof(GameResult).IsAssignableFrom(type) || type == typeof(SpaceCombatDecision)
-                    ? CreateObjectPlan(type)
-                    : CreatePlan(type);
+            TypePlan plan = CreatePlan(type);
             if (typeof(BaseSceneNode).IsAssignableFrom(type))
                 return new TypePlan(
                     type,

@@ -108,26 +108,15 @@ namespace Rebellion.Multiplayer
             _hostFactionID = hostFactionID;
             _guestFactionID = guestFactionID;
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            if (!session.CanExecuteCommands)
+            if (!session.CanCaptureRecoveryState)
                 throw new InvalidOperationException(
-                    "An executing simulation operation cannot enter ordered gameplay."
+                    "Ordered gameplay must start from a completed turn."
                 );
             _executor = new PlayerActionExecutor(session, clock);
             clock.EnableCoordinatedSpeeds();
             _send = send ?? throw new ArgumentNullException(nameof(send));
             _nextRequestID = role == MultiplayerRole.Host ? 1 : 2000000001;
             _expectedTick = session.Game.CurrentTick;
-            if (!session.Tick.IsSettled)
-            {
-                if (
-                    !session.CanExecuteCommands
-                    || !session.GetService<SpaceCombatCommands>().HasPendingDecision
-                )
-                    throw new InvalidOperationException(
-                        "An executing simulation phase cannot enter ordered gameplay."
-                    );
-                StartDay(session.Game.CurrentTick);
-            }
             _session.Tick.TickCompleted += HandleTickCompleted;
         }
 
