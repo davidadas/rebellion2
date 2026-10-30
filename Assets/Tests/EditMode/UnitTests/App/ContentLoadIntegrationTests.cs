@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Multiplayer;
 using Rebellion.Util.IO;
 using Rebellion.Util.Reflection;

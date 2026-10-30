@@ -124,6 +124,26 @@ public sealed class MissionCreateWindowController
     }
 
     /// <summary>
+    /// Determines whether a participant selection has at least one mission available for a target.
+    /// </summary>
+    /// <param name="target">The selected mission target.</param>
+    /// <param name="sourceItems">The source selection in visual order.</param>
+    /// <param name="playerFactionId">The active player's faction identifier.</param>
+    /// <returns>True when the selection can open a mission creation session for the target.</returns>
+    public bool CanOpen(
+        StrategyMissionTarget target,
+        IReadOnlyList<ISceneNode> sourceItems,
+        string playerFactionId
+    )
+    {
+        List<IMissionParticipant> participants = GetMissionSourceParticipants(
+            sourceItems,
+            playerFactionId
+        );
+        return participants.Count > 0 && BuildMissionChoices(participants, target).Count > 0;
+    }
+
+    /// <summary>
     /// Starts a Mission Create session from one valid strategy selection.
     /// </summary>
     /// <param name="view">The destination Mission Create view.</param>

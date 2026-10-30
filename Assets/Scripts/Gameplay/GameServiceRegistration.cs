@@ -3,8 +3,8 @@ using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
-using Rebellion.Gameplay.Scripting.Events;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -29,7 +29,7 @@ namespace Rebellion.Gameplay
             typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
-            typeof(FactionAutomationObserver),
+            typeof(AdvisorAutomationObserver),
             typeof(PlanetNotificationObserver),
         };
 
@@ -100,16 +100,13 @@ namespace Rebellion.Gameplay
             services.AddSingleton<ResourceProductionQueries>();
             services.AddSingleton<NamingCommands>();
             services.AddSingleton<CaptiveCommands>();
-            services.AddSingleton<GarrisonAutomationCommands>();
-            services.AddSingleton<FactionAutomationCommands>();
+            services.AddSingleton<AdvisorAutomationCommands>();
             services.AddSingleton<MaintenanceCommands>();
             services.AddSingleton<SmugglingCommands>();
             services.AddSingleton<PlanetaryControlQueries>();
             services.AddSingleton<PlanetaryControlCommands>();
             services.AddSingleton<UprisingResolver>();
             services.AddSingleton<JediCommands>();
-            services.AddSingleton<OfficerCommandCommands>();
-            services.AddSingleton<OfficerLoyaltyCommands>();
             services.AddSingleton<MissionQueries>();
             services.AddSingleton<MissionBetrayalResolver>();
             services.AddSingleton<MissionResolver>(locator => new MissionResolver(
@@ -126,7 +123,7 @@ namespace Rebellion.Gameplay
                 locator.GetService<GameRoot>(),
                 locator.GetService<MissionQueries>(),
                 locator.GetService<MissionResolver>(),
-                locator.GetService<OfficerCommandCommands>()
+                locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
             services.AddSingleton<SpaceCombatCommands>();

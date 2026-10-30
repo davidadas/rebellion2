@@ -106,7 +106,7 @@ namespace Rebellion.Gameplay.PlayerRequests
                 AssaultRequest request => Assault(actor, request),
                 SetOfficerRankRequest request => Complete(
                     _session
-                        .GetService<OfficerCommandCommands>()
+                        .GetService<PersonnelCommands>()
                         .TrySetRank(request.OfficerID, request.Rank, actor.InstanceID)
                 ),
                 RenameRequest request => Rename(actor, request),

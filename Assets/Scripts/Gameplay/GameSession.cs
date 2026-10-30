@@ -8,7 +8,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay.Scripting.Events;
+using Rebellion.Gameplay.GameEvents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
@@ -356,7 +356,7 @@ namespace Rebellion.Gameplay
             MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
             maintenanceSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);
-            OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
+            PersonnelCommands officerCommandSystem = GetService<PersonnelCommands>();
             officerCommandSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
             CaptiveCommands captiveSystem = GetService<CaptiveCommands>();

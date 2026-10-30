@@ -46,7 +46,7 @@ namespace Rebellion.Gameplay.PlayerRequests
             }
             if (processAutomation)
             {
-                _session.GetService<FactionAutomationCommands>().ProcessFaction(actor);
+                _session.GetService<AdvisorAutomationCommands>().ProcessFaction(actor);
                 _session.GetService<NamingCommands>().ProcessFaction(actor);
             }
             return new PlayerRequestOutcome(true);
