@@ -90,3 +90,28 @@ content, local mods, and debug output are excluded. The installer must supply th
 CI runs packaging tests during lint, waits for the game tests before building, then verifies and
 uploads a desktop bundle for each build target. These are downloadable CI artifacts retained for
 seven days; creating them does not publish a release or update an installation.
+## Code organization
+
+`Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.
+
+`Gameplay` contains the operations, queries, calculations, and reactions used to run a campaign. Both player-facing controllers and AI use these services. Supporting request and result types stay with the feature that owns them.
+
+| Area | Ownership |
+| --- | --- |
+| `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
+| `Game/GameEvents` | Event definitions, schedules, and saved activation history. |
+| `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
+| `Gameplay/GameEvents` | Event validation, activation, and campaign tick/result integration. |
+| `Gameplay` (root) | Session construction, service registration, tick scheduling, and result delivery. |
+
+Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
+
+## Game scripting
+
+`GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.
+
+`GameEvaluationContext` holds bindings, source attribution, the triggering result, and results produced during an activation. `GameConditionContext` supplies condition-evaluation inputs. `GameActionContext` collects action results and deferred operations. These temporary contexts stay within the scripting subsystem.
+
+Actions retain their authored order. Capture cleanup remains immediate; queued command requests execute after the full action batch. Event scheduling, activation history, XML names, and save fields retain their existing contracts.
+
+See the [scripting reference](Modding/Scripting/Index.md) for authored XML.

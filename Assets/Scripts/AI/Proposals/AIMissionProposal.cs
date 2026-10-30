@@ -107,7 +107,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsStillValid();
+            return IsStillValid()
+                && !Participants
+                    .OfType<Officer>()
+                    .Any(officer => context?.Assessment?.IsOfficerHoldingPosition(officer) == true);
         }
 
         /// <summary>
@@ -117,7 +120,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission can still be created.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            if (context?.Missions == null || !IsStillValid())
+            if (context?.Missions == null || !CanSelect(context))
                 return false;
 
             return context.MissionQueries.CanCreateMission(CreateContext());

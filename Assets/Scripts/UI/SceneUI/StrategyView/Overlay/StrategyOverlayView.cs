@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICancelHandler
 {
     private const int _sharedCursorImageCount = 1;
+    private static readonly Color _dragPreviewColor = new Color(1f, 1f, 1f, 0.65f);
 
     [SerializeField]
     private RawImage targetingInputImage;
@@ -169,6 +170,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
             destinationCursorSize,
             destinationCursorRadius
         );
+        destinationCursorImage.color = Color.white;
         destinationCursorImage.uvRect = new Rect(0f, 0f, 1f, 1f);
         destinationCursorImage.raycastTarget = false;
         UILayout.SetSourceRect(
@@ -210,6 +212,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
 
             RawImage image = GetOrCreateDragImage(renderedImageCount);
             image.texture = previewImage.Texture;
+            image.color = data.FadeDragPreview ? _dragPreviewColor : Color.white;
             image.uvRect = previewImage.UvRect;
             image.raycastTarget = false;
             RectInt bounds = previewImage.Bounds;
@@ -481,6 +484,11 @@ public sealed class StrategyOverlayRenderData
     public RectInt? DragFrameBounds { get; }
 
     /// <summary>
+    /// Gets whether the item-drag preview should reveal the active drop target beneath it.
+    /// </summary>
+    public bool FadeDragPreview { get; }
+
+    /// <summary>
     /// Gets the optional ordered item-drag preview.
     /// </summary>
     public DragPreview DragPreview { get; }
@@ -521,16 +529,19 @@ public sealed class StrategyOverlayRenderData
     /// <param name="dragPreview">The optional ordered item-drag preview.</param>
     /// <param name="dragPointerX">The current source-space horizontal pointer coordinate.</param>
     /// <param name="dragPointerY">The current source-space vertical pointer coordinate.</param>
+    /// <param name="fadeDragPreview">Whether the drag preview should be translucent.</param>
     public StrategyOverlayRenderData(
         RectInt? dragFrameBounds,
         DragPreview dragPreview,
         int dragPointerX,
-        int dragPointerY
+        int dragPointerY,
+        bool fadeDragPreview = false
     )
     {
         DragFrameBounds = dragFrameBounds;
         DragPreview = dragPreview;
         DragPointerX = dragPointerX;
         DragPointerY = dragPointerY;
+        FadeDragPreview = fadeDragPreview;
     }
 }

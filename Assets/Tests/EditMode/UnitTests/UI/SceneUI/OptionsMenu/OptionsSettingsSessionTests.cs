@@ -227,6 +227,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
             Assert.AreEqual(0, _session.Video.FrameRateLimit);
             Assert.IsTrue(_session.Video.VerticalSync);
+            Assert.AreEqual((int)FullScreenMode.FullScreenWindow, _session.Video.FullScreenMode);
         }
 
         [Test]
@@ -247,7 +248,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.AreEqual(1, _displayApplicationCount);
             Assert.AreEqual(new Vector2Int(1280, 720), _appliedResolution);
-            Assert.AreEqual(FullScreenMode.FullScreenWindow, _appliedFullScreenMode);
+            Assert.AreEqual(FullScreenMode.Windowed, _appliedFullScreenMode);
         }
 
         [Test]
@@ -278,6 +279,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
+            _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarAboveWindows);
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
             _session.ToggleUserInterface(UserInterfaceOption.ShowFrameRate);
             _session.SetIdleBarLocation(IdleBarLocation.BottomLeft);
@@ -287,6 +289,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsTrue(_session.UserInterface.ShowIdleBar);
             Assert.IsFalse(_session.UserInterface.KeepIdleBarOpen);
+            Assert.IsFalse(_session.UserInterface.KeepIdleBarAboveWindows);
             Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
             Assert.IsFalse(_session.UserInterface.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);

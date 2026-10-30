@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.GameEvents;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -179,8 +179,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         string[] captions =
         {
             "GAME SETUP",
-            "DIFFICULTY MODIFIERS",
-            "WORLD GENERATION",
+            "DIFFICULTY",
+            "WORLD SETTINGS",
             "FACTION MODIFIERS",
             "SAVE / LOAD",
         };
@@ -255,7 +255,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         rowActiveSprite = ContentBindings.RequireSprite(contentAssets, _rowActiveAddress, border);
         foreach (OptionsToggleRowView row in eventToggleRows.Values)
             row.InitializeContent(contentAssets);
-        presetSaveList?.InitializeContent(contentAssets);
+        if (presetSaveList != null)
+            ContentBindings.Apply(presetSaveList.gameObject, contentAssets);
         presetConfirmDialog?.InitializeContent(contentAssets);
     }
 
@@ -1011,7 +1012,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         if (heading != null)
             heading.text = "CUSTOM GAME PRESETS";
         if (contentAssets != null)
-            presetSaveList.InitializeContent(contentAssets);
+            ContentBindings.Apply(presetPage, contentAssets);
 
         ConfirmationDialogView confirmTemplate =
             optionsMenuPrefab.GetComponentInChildren<ConfirmationDialogView>(true);

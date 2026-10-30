@@ -7,7 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 

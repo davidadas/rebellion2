@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 
 /// <summary>
 /// Checks that a loaded authored scenario can construct and initialize a playable campaign.

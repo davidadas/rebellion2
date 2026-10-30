@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 

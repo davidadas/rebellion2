@@ -8,7 +8,8 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Simulation;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
@@ -18,6 +19,7 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIDirector
     {
+        private readonly IReadOnlyDictionary<string, OfficerAIBehavior> _officerBehaviors;
         private readonly GameRoot _game;
         private readonly FogOfWarQueries _fogOfWar;
         private readonly IRandomNumberProvider _random;
@@ -66,6 +68,7 @@ namespace Rebellion.AI
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         /// <param name="results">Completed game changes that can invalidate incremental execution state.</param>
+        /// <param name="gameData">The active content catalog supplying officer AI configuration.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -76,10 +79,20 @@ namespace Rebellion.AI
             IRandomNumberProvider random,
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
-            GameResultBus results = null
+            GameResultBus results = null,
+            GameDataCatalog gameData = null
         )
         {
             _game = game;
+            _officerBehaviors =
+                gameData
+                    ?.Officers.Where(officer => officer.AIBehavior != null)
+                    .ToDictionary(
+                        officer => officer.InstanceID,
+                        officer => officer.AIBehavior,
+                        StringComparer.Ordinal
+                    )
+                ?? new Dictionary<string, OfficerAIBehavior>(StringComparer.Ordinal);
             _fogOfWar = game == null ? null : new FogOfWarQueries(game);
             _random = random;
             _missions = missions;
@@ -184,7 +197,12 @@ namespace Rebellion.AI
             AITurnContext context;
             try
             {
-                AIAssessment assessment = new AIAssessment(_game, faction, factionView);
+                AIAssessment assessment = new AIAssessment(
+                    _game,
+                    faction,
+                    factionView,
+                    _officerBehaviors
+                );
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
                 context = new AITurnContext(
                     _game,

@@ -17,6 +17,7 @@ namespace Rebellion.Tests.UserSettings
             settings.UserInterface.KeepIdleBarOpen = true;
             settings.UserInterface.ShowUnitCardStats = true;
             settings.UserInterface.ShowFrameRate = true;
+            settings.UserInterface.KeepIdleBarAboveWindows = true;
             settings.Gameplay.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.Gameplay.ShowMissionOdds = false;
 
@@ -31,6 +32,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
             Assert.IsTrue(restored.UserInterface.ShowUnitCardStats);
             Assert.IsTrue(restored.UserInterface.ShowFrameRate);
+            Assert.IsTrue(restored.UserInterface.KeepIdleBarAboveWindows);
             Assert.AreEqual(GameLaunchSpeed.Fast, restored.Gameplay.GameLaunchSpeed);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
@@ -87,6 +89,7 @@ namespace Rebellion.Tests.UserSettings
                 KeepIdleBarOpen = true,
                 ShowUnitCardStats = true,
                 ShowFrameRate = true,
+                KeepIdleBarAboveWindows = true,
                 IdleBarLocation = IdleBarLocation.BottomLeft,
             };
 
@@ -96,6 +99,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.KeepIdleBarOpen);
             Assert.IsFalse(settings.ShowUnitCardStats);
             Assert.IsFalse(settings.ShowFrameRate);
+            Assert.IsFalse(settings.KeepIdleBarAboveWindows);
             Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
         }
 

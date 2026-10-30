@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Results;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {

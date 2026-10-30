@@ -300,6 +300,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { building }, _session.GetSelectedBuildings());
         }
 
+        [TestCase(BuildingType.Shipyard, FacilityWindowTab.Shipyards)]
+        [TestCase(BuildingType.TrainingFacility, FacilityWindowTab.Training)]
+        [TestCase(BuildingType.ConstructionFacility, FacilityWindowTab.Construction)]
+        [TestCase(BuildingType.Refinery, FacilityWindowTab.Refineries)]
+        [TestCase(BuildingType.Mine, FacilityWindowTab.Mines)]
+        public void CanDragSelectedBuildings_UnderConstructionFacility_ReturnsTrue(
+            BuildingType buildingType,
+            FacilityWindowTab tab
+        )
+        {
+            Building building = CreateBuilding("building", "Building", buildingType);
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(tab);
+
+            _session.SelectBuildingForDrag(0);
+
+            CollectionAssert.AreEqual(new[] { 0 }, _session.GetSelectedBuildingIndexes());
+            Assert.IsTrue(_session.CanDragSelectedBuildings());
+        }
+
+        [Test]
+        public void CanDragSelectedBuildings_CompletedFacility_ReturnsFalse()
+        {
+            Building building = CreateBuilding("building", "Building", BuildingType.Shipyard);
+            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+
+            _session.SelectBuildingForDrag(0);
+
+            Assert.IsFalse(_session.CanDragSelectedBuildings());
+        }
+
         [Test]
         public void SelectBuilding_KnownBuilding_NavigatesToInventoryTab()
         {

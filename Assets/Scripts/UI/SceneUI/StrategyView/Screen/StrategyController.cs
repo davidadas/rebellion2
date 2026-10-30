@@ -10,8 +10,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -603,6 +603,20 @@ public sealed class StrategyController
             MarkDirty,
             getSelectionModifiers
         );
+        missionCreateWindowController = new MissionCreateWindowController(
+            session,
+            () => uiContext,
+            PlaySfx,
+            strategyWindowLayerView,
+            strategyWindowManager,
+            windowPlacementController.GetMissionCreateWindowPosition,
+            CloseWindow,
+            MarkDirty,
+            getSelectionModifiers,
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
+            GetShowMissionOdds,
+            SetShowMissionOdds
+        );
         planetSectorWindowController = new PlanetSectorWindowController(
             fleetCommandController,
             () => uiContext,
@@ -613,6 +627,8 @@ public sealed class StrategyController
             windowPlacementController.GetSectorWindowPosition,
             CloseWindow,
             MarkDirty,
+            (target, items) =>
+                missionCreateWindowController.CanOpen(target, items, PlayerFactionId),
             () =>
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
@@ -723,20 +739,6 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
-        missionCreateWindowController = new MissionCreateWindowController(
-            session,
-            () => uiContext,
-            PlaySfx,
-            strategyWindowLayerView,
-            strategyWindowManager,
-            windowPlacementController.GetMissionCreateWindowPosition,
-            CloseWindow,
-            MarkDirty,
-            () => bootstrap.GetInputManager().GetSelectionModifierState(),
-            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
-            GetShowMissionOdds,
-            SetShowMissionOdds
-        );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
             PlaySfx,
@@ -780,7 +782,14 @@ public sealed class StrategyController
     private void BindWindowControllerActions()
     {
         constructionWindowController.Initialize(this);
-        facilityWindowController.Initialize(this, windowCommandController, idleBarController);
+        facilityWindowController.Initialize(
+            this,
+            windowCommandController,
+            idleBarController,
+            inputController.StartItemDrag,
+            inputController.OnDrag,
+            inputController.CompleteItemDrag
+        );
         fleetWindowController.Initialize(
             this,
             windowCommandController,
@@ -1339,8 +1348,13 @@ public sealed class StrategyController
         RequireRectTransform(idleBar, "IdleBar");
         if (idleBar.GetComponent<UIWindow>() != null)
             throw new MissingReferenceException("IdleBar must not use a strategy-window shell.");
-        if (idleBar.transform.parent != transform)
-            throw new MissingReferenceException("IdleBar must be a direct strategy-view layer.");
+        if (
+            strategyWindowLayerView == null
+            || idleBar.transform.parent != strategyWindowLayerView.transform
+        )
+            throw new MissingReferenceException(
+                "IdleBar must belong to the strategy-window hierarchy."
+            );
     }
 
     /// <summary>
@@ -1506,6 +1520,12 @@ public sealed class StrategyController
     /// </summary>
     private void RenderWindows()
     {
+        strategyWindowLayerView.RenderIdleBarLayer(
+            AppBootstrap
+                .Instance?.GetUserSettingsManager()
+                ?.Settings?.UserInterface?.KeepIdleBarAboveWindows
+                ?? false
+        );
         RenderWindowContent();
     }
 
@@ -1703,7 +1723,13 @@ public sealed class StrategyController
         }
 
         strategyOverlay.Render(
-            new StrategyOverlayRenderData(dragFrameBounds, dragPreview, dragPointerX, dragPointerY)
+            new StrategyOverlayRenderData(
+                dragFrameBounds,
+                dragPreview,
+                dragPointerX,
+                dragPointerY,
+                planetSectorWindowController?.IsMissionDropTargetVisible() == true
+            )
         );
     }
 
@@ -2203,7 +2229,7 @@ public sealed class StrategyController
     /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
-        session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
+        session?.GetService<AdvisorAutomationCommands>()?.ProcessFaction(faction);
         session?.GetService<NamingCommands>()?.ProcessFaction(faction);
         RefreshStrategyState();
     }
@@ -2344,7 +2370,7 @@ public sealed class StrategyController
             return false;
 
         return session
-                ?.GetService<OfficerCommandCommands>()
+                ?.GetService<PersonnelCommands>()
                 ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
     }
 
@@ -2970,6 +2996,8 @@ public sealed class StrategyController
     /// <returns>The selected scene nodes in presentation order.</returns>
     private IReadOnlyList<ISceneNode> GetContextItems(UIWindow window)
     {
+        if (strategyWindowManager.TryGetWindowView(window, out FacilityWindowView _))
+            return facilityWindowController.GetContextItems(window);
         if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView _))
             return fleetWindowController.GetContextItems(window);
         if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView _))
@@ -3001,6 +3029,13 @@ public sealed class StrategyController
     )
     {
         preview = null;
+        if (strategyWindowManager.TryGetWindowView(window, out FacilityWindowView _))
+            return facilityWindowController.TryGetDragPreview(
+                window,
+                sourceX,
+                sourceY,
+                out preview
+            );
         if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView _))
             return fleetWindowController.TryGetDragPreview(window, sourceX, sourceY, out preview);
         if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView _))

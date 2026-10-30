@@ -10,7 +10,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using Rebellion.Game;
-using Rebellion.Game.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Util.Serialization;
 

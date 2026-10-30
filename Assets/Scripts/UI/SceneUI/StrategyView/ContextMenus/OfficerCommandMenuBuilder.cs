@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 
 /// <summary>
 /// Builds the command-rank submenu shared by stationed and fleet personnel views.
@@ -22,7 +22,7 @@ internal static class OfficerCommandMenuBuilder
         bool commandMenuEnabled =
             playerControlsOfficer
             && hasCommandChoice
-            && OfficerCommandQueries.CanChangeCommand(officer, OfficerRank.None);
+            && PersonnelQueries.CanChangeCommand(officer, OfficerRank.None);
 
         return new StrategyMenuCommand(
             StrategyMenuAction.Command,
@@ -82,7 +82,7 @@ internal static class OfficerCommandMenuBuilder
         return new StrategyMenuCommand(
             action,
             text,
-            canChangeCommand && OfficerCommandQueries.CanChangeCommand(officer, rank),
+            canChangeCommand && PersonnelQueries.CanChangeCommand(officer, rank),
             officer.CurrentRank == rank
                 ? StrategyContextMenuIconKeys.CheckMark
                 : StrategyContextMenuIconKeys.None
