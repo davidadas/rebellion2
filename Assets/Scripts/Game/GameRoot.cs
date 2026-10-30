@@ -950,12 +950,20 @@ namespace Rebellion.Game
                         AddSceneNodeByInstanceID(node);
 
                     foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
+                    {
+                        string previousParentID = child.LastParentInstanceID;
                         child.SetParent(node);
+                        child.LastParentInstanceID = previousParentID;
+                    }
 
                     if (node.OwnerInstanceID != null)
                         RegisterOwnedUnit(node);
                 }
             );
+            foreach (ISceneNode node in NodesByInstanceID.Values)
+                node.LastParentNode = string.IsNullOrEmpty(node.LastParentInstanceID)
+                    ? null
+                    : GetSceneNodeByInstanceID<ISceneNode>(node.LastParentInstanceID, true);
         }
     }
 }

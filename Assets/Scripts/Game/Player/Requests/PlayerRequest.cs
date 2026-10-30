@@ -4,6 +4,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.PlayerRequests
 {
@@ -57,6 +58,7 @@ namespace Rebellion.Game.PlayerRequests
     /// <summary>
     /// Describes a player request without carrying or claiming the issuing player's identity.
     /// </summary>
+    [PersistableObject]
     public abstract class PlayerRequest
     {
         public abstract PlayerRequestKind Kind { get; }
@@ -147,6 +149,8 @@ namespace Rebellion.Game.PlayerRequests
         public override PlayerRequestKind Kind => PlayerRequestKind.StartMission;
         public string MissionTypeID { get; set; }
         public Planet ObservedLocation { get; set; }
+
+        [PersistableMember(UseTypeName = true)]
         public ISceneNode ObservedTarget { get; set; }
         public string[] MainParticipantIDs { get; set; }
         public string[] DecoyParticipantIDs { get; set; }

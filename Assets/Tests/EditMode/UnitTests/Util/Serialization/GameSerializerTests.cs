@@ -298,6 +298,88 @@ namespace Rebellion.Tests.Util.Serialization
     [TestFixture]
     public class GameSerializerTests
     {
+        [Test]
+        public void Deserialize_RuntimeTypeNamedMember_RestoresConcreteValue()
+        {
+            GameSerializer serializer = new(typeof(ItemWithRuntimeTypeName));
+            ItemWithRuntimeTypeName source = new()
+            {
+                Value = new SimpleItem { Name = "concrete value", Value = 42 },
+            };
+
+            ItemWithRuntimeTypeName restored = (ItemWithRuntimeTypeName)DeserializeFromString(
+                serializer,
+                SerializeToString(serializer, source)
+            );
+
+            Assert.That(restored.Value, Is.TypeOf<SimpleItem>());
+            Assert.That(((SimpleItem)restored.Value).Name, Is.EqualTo("concrete value"));
+            Assert.That(((SimpleItem)restored.Value).Value, Is.EqualTo(42));
+        }
+
+        [Test]
+        public void Serialize_MemberValueProvider_OverridesNestedValuesWithoutChangingSource()
+        {
+            NestedItem source = new()
+            {
+                Items = new List<SimpleItem>
+                {
+                    new SimpleItem { Name = "source", AttributeVariable = "source" },
+                },
+            };
+            GameSerializer serializer = new(
+                typeof(NestedItem),
+                new GameSerializerSettings
+                {
+                    MemberValueProvider = (member, target) =>
+                        member.Name
+                            is nameof(SimpleItem.Name)
+                                or nameof(SimpleItem.AttributeVariable)
+                            ? "encoded"
+                            : ReflectionHelper.GetMemberValue(member, target),
+                }
+            );
+
+            NestedItem restored = (NestedItem)DeserializeFromString(
+                serializer,
+                SerializeToString(serializer, source)
+            );
+
+            Assert.That(restored.Items[0].Name, Is.EqualTo("encoded"));
+            Assert.That(restored.Items[0].AttributeVariable, Is.EqualTo("encoded"));
+            Assert.That(source.Items[0].Name, Is.EqualTo("source"));
+            Assert.That(source.Items[0].AttributeVariable, Is.EqualTo("source"));
+        }
+
+        [Test]
+        public void Serialize_MemberValueProviderReturnsNull_OmitsValue()
+        {
+            GameSerializer serializer = new(
+                typeof(SimpleItem),
+                new GameSerializerSettings
+                {
+                    MemberValueProvider = (member, target) =>
+                        member.Name == nameof(SimpleItem.Name)
+                            ? null
+                            : ReflectionHelper.GetMemberValue(member, target),
+                }
+            );
+
+            string xml = SerializeToString(serializer, new SimpleItem { Name = "source" });
+
+            Assert.That(LoadDocument(xml).DocumentElement.SelectSingleNode("Name"), Is.Null);
+        }
+
+        [Test]
+        public void Deserialize_SecondRoot_RejectsDocument()
+        {
+            GameSerializer serializer = new(typeof(SimpleItem));
+
+            Assert.Throws<XmlException>(() =>
+                DeserializeFromString(serializer, "<SimpleItem /><SimpleItem />")
+            );
+        }
+
         [TestCase(true)]
         [TestCase(false)]
         public void Serialize_LineBreakPreservationEnabled_RoundTripsTextAndAttributeValues(

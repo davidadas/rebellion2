@@ -23,7 +23,7 @@ namespace Rebellion.Multiplayer
                 throw new InvalidDataException(
                     "The player request does not match its declared kind."
                 );
-            return MultiplayerSnapshotSerializer.SerializeValue(request, expected);
+            return MultiplayerSnapshotCodec.Serialize(expected, request);
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace Rebellion.Multiplayer
         public static PlayerRequest Deserialize(PlayerRequestKind kind, byte[] payload)
         {
             return (PlayerRequest)
-                MultiplayerSnapshotSerializer.DeserializeValue(payload, GetRequestType(kind));
+                MultiplayerSnapshotCodec.Deserialize(GetRequestType(kind), payload);
         }
 
         /// <summary>

@@ -1,8 +1,8 @@
 using System;
+using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+using System.Xml;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -20,12 +20,6 @@ namespace Rebellion.Multiplayer
     /// </summary>
     internal static class GameplayContentIdentity
     {
-        private static readonly JsonSerializerSettings _settings =
-            MultiplayerSnapshotSerializer.CreateSettings(
-                new ContentContracts(),
-                new MultiplayerSnapshotSerializer.SnapshotTypes()
-            );
-
         /// <summary>
         /// Hashes the actual composed definitions without allocating identities on unit prototypes.
         /// This operation belongs to content admission, never the browser's rendering loop.
@@ -53,13 +47,20 @@ namespace Rebellion.Multiplayer
                 Events = data.GameEvents,
                 Messages = data.MessageDefinitions,
             };
-            byte[] bytes = MultiplayerSnapshotSerializer.SerializeValue(
-                state,
+            using MemoryStream stream = new();
+            new GameSerializer(
                 typeof(ContentState),
-                _settings
-            );
+                new GameSerializerSettings
+                {
+                    Idendent = false,
+                    NewLineHandling = NewLineHandling.Entitize,
+                    MemberValueProvider = ReadContentMember,
+                }
+            ).Serialize(stream, state);
             using SHA256 hash = SHA256.Create();
-            return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", string.Empty);
+            return BitConverter
+                .ToString(hash.ComputeHash(stream.ToArray()))
+                .Replace("-", string.Empty);
         }
 
         /// <summary>
@@ -85,51 +86,18 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reuses the model schema with side-effect-free prototype identity access.
+        /// Reads assigned prototype identities without generating identifiers during content hashing.
         /// </summary>
-        private sealed class ContentContracts : MultiplayerSnapshotSerializer.SnapshotContracts
+        /// <param name="member">The persisted definition member.</param>
+        /// <param name="target">The definition containing the member.</param>
+        /// <returns>The assigned identity or the ordinary persisted member value.</returns>
+        private static object ReadContentMember(MemberInfo member, object target)
         {
-            /// <summary>
-            /// Reads assigned prototype identities without invoking lazy identifier generation.
-            /// </summary>
-            /// <param name="member">The existing model member.</param>
-            /// <param name="memberSerialization">The selected serialization policy.</param>
-            /// <returns>The read-only content contract.</returns>
-            protected override JsonProperty CreateProperty(
-                MemberInfo member,
-                MemberSerialization memberSerialization
-            )
-            {
-                JsonProperty property = base.CreateProperty(member, memberSerialization);
-                if (
-                    member.DeclaringType == typeof(BaseGameEntity)
-                    && member.Name == nameof(BaseGameEntity.InstanceID)
-                )
-                    property.ValueProvider = new AssignedIdentity();
-                property.Writable = false;
-                return property;
-            }
-        }
-
-        /// <summary>
-        /// Reads the existing identity while leaving unassigned template identities untouched.
-        /// </summary>
-        private sealed class AssignedIdentity : IValueProvider
-        {
-            /// <summary>
-            /// Reads the raw model identity without generating a new value.
-            /// </summary>
-            /// <param name="target">The existing prototype.</param>
-            /// <returns>The explicitly assigned identity, including null.</returns>
-            public object GetValue(object target) => ((BaseGameEntity)target).PeekInstanceID();
-
-            /// <summary>
-            /// Rejects mutation through this write-only hashing policy.
-            /// </summary>
-            /// <param name="target">The unsupported destination.</param>
-            /// <param name="value">The unsupported decoded identity.</param>
-            public void SetValue(object target, object value) =>
-                throw new NotSupportedException("Content identity does not decode model values.");
+            return
+                member.DeclaringType == typeof(BaseGameEntity)
+                && member.Name == nameof(BaseGameEntity.InstanceID)
+                ? ((BaseGameEntity)target).PeekInstanceID()
+                : ReflectionHelper.GetMemberValue(member, target);
         }
     }
 }

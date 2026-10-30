@@ -66,7 +66,7 @@ namespace Rebellion.Util.Serialization
         {
             using (XmlReader reader = XmlReader.Create(stream, _settings.CreateReaderSettings()))
             {
-                return DeserializeFromXmlReader(reader);
+                return Deserialize(reader);
             }
         }
 
@@ -81,7 +81,7 @@ namespace Rebellion.Util.Serialization
                 XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings())
             )
             {
-                return DeserializeFromXmlReader(reader);
+                return Deserialize(reader);
             }
         }
 
@@ -97,7 +97,7 @@ namespace Rebellion.Util.Serialization
                 XmlReader reader = XmlReader.Create(nodeReader, _settings.CreateReaderSettings())
             )
             {
-                return DeserializeFromXmlReader(reader);
+                return Deserialize(reader);
             }
         }
 
@@ -161,6 +161,19 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
+        /// Deserializes one complete document from a caller-owned XML reader.
+        /// </summary>
+        /// <param name="reader">The XmlReader to use for deserialization.</param>
+        /// <returns>The deserialized object.</returns>
+        public object Deserialize(XmlReader reader)
+        {
+            reader.MoveToContent();
+            object value = XmlDeserializer.ReadValue(_type, reader, _settings);
+            reader.MoveToContent();
+            return value;
+        }
+
+        /// <summary>
         /// Helper method to serialize an object to XML using an XmlWriter.
         /// </summary>
         /// <param name="writer">The XmlWriter to use for serialization.</param>
@@ -168,19 +181,8 @@ namespace Rebellion.Util.Serialization
         private void SerializeToXmlWriter(XmlWriter writer, object obj)
         {
             writer.WriteStartDocument();
-            XmlSerializer.WriteValue(obj, writer, _settings.RootName);
+            XmlSerializer.WriteValue(obj, writer, _settings, _settings.RootName);
             writer.WriteEndDocument();
-        }
-
-        /// <summary>
-        /// Helper method to deserialize an object from XML using an XmlReader.
-        /// </summary>
-        /// <param name="reader">The XmlReader to use for deserialization.</param>
-        /// <returns>The deserialized object.</returns>
-        private object DeserializeFromXmlReader(XmlReader reader)
-        {
-            reader.MoveToContent();
-            return XmlDeserializer.ReadValue(_type, reader, _settings);
         }
 
         /// <summary>
@@ -331,8 +333,14 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="obj">The object to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
+        /// <param name="settings">The member-value policy for this write.</param>
         /// <param name="name">The optional name for the XML element.</param>
-        public static void WriteValue(object obj, XmlWriter writer, string name = null)
+        public static void WriteValue(
+            object obj,
+            XmlWriter writer,
+            GameSerializerSettings settings,
+            string name = null
+        )
         {
             if (obj == null)
             {
@@ -351,15 +359,15 @@ namespace Rebellion.Util.Serialization
             }
             else if (obj is IDictionary dictionary)
             {
-                WriteDictionary(dictionary, writer, name);
+                WriteDictionary(dictionary, writer, settings, name);
             }
             else if (obj is IEnumerable enumerable)
             {
-                WriteCollection(enumerable, writer, name);
+                WriteCollection(enumerable, writer, settings, name);
             }
             else if (IsPersistableType(objType))
             {
-                WritePersistable(obj, writer, name);
+                WritePersistable(obj, writer, settings, name);
             }
             else
             {
@@ -441,10 +449,12 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="dictionary">The dictionary to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
+        /// <param name="settings">The member-value policy for this write.</param>
         /// <param name="name">The optional name for the XML element.</param>
         private static void WriteDictionary(
             IDictionary dictionary,
             XmlWriter writer,
+            GameSerializerSettings settings,
             string name = null
         )
         {
@@ -460,10 +470,10 @@ namespace Rebellion.Util.Serialization
             {
                 writer.WriteStartElement("Entry");
                 writer.WriteStartElement("Key");
-                WriteValue(key, writer);
+                WriteValue(key, writer, settings);
                 writer.WriteEndElement();
                 writer.WriteStartElement("Value");
-                WriteValue(dictionary[key], writer);
+                WriteValue(dictionary[key], writer, settings);
                 writer.WriteEndElement();
                 writer.WriteEndElement();
             }
@@ -475,11 +485,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="collection">The collection to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
+        /// <param name="settings">The member-value policy for this write.</param>
         /// <param name="name">The optional name for the XML element.</param>
         /// <param name="itemName">The optional element name for each collection item.</param>
         private static void WriteCollection(
             IEnumerable collection,
             XmlWriter writer,
+            GameSerializerSettings settings,
             string name = null,
             string itemName = null
         )
@@ -499,6 +511,7 @@ namespace Rebellion.Util.Serialization
                 WriteValue(
                     item,
                     writer,
+                    settings,
                     itemName ?? ReflectionHelper.GetPersistableElementName(item.GetType())
                 );
             }
@@ -510,8 +523,14 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="obj">The persistable object to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
+        /// <param name="settings">The member-value policy for this write.</param>
         /// <param name="key">The optional key for the XML element.</param>
-        private static void WritePersistable(object obj, XmlWriter writer, string key = null)
+        private static void WritePersistable(
+            object obj,
+            XmlWriter writer,
+            GameSerializerSettings settings,
+            string key = null
+        )
         {
             Type objType = obj.GetType();
             PersistableWriteMetadata metadata = GetPersistableWriteMetadata(objType);
@@ -527,7 +546,9 @@ namespace Rebellion.Util.Serialization
                     attribute,
                     _attributeCache
                 );
-                object attributeValue = ReflectionHelper.GetMemberValue(attribute, obj);
+                object attributeValue = settings.MemberValueProvider is { } attributeProvider
+                    ? attributeProvider(attribute, obj)
+                    : ReflectionHelper.GetMemberValue(attribute, obj);
 
                 if (attributeValue != null)
                 {
@@ -542,7 +563,9 @@ namespace Rebellion.Util.Serialization
             for (int index = 0; index < members.Count; index++)
             {
                 MemberInfo member = members[index];
-                object value = ReflectionHelper.GetMemberValue(member, obj);
+                object value = settings.MemberValueProvider is { } memberProvider
+                    ? memberProvider(member, obj)
+                    : ReflectionHelper.GetMemberValue(member, obj);
                 bool isInlineCollection = member == inlineCollectionMember;
 
                 if (isInlineCollection && value == null)
@@ -564,6 +587,7 @@ namespace Rebellion.Util.Serialization
                             WriteValue(
                                 item,
                                 writer,
+                                settings,
                                 ReflectionHelper.GetPersistableElementName(item.GetType())
                             );
                         }
@@ -581,11 +605,17 @@ namespace Rebellion.Util.Serialization
                             throw new InvalidOperationException(
                                 $"Collection member '{member.Name}' requires an item element name."
                             );
-                        WriteCollection(collection, writer, elementName, collectionItem.Name);
+                        WriteCollection(
+                            collection,
+                            writer,
+                            settings,
+                            elementName,
+                            collectionItem.Name
+                        );
                     }
                     else
                     {
-                        WriteValue(value, writer, elementName);
+                        WriteValue(value, writer, settings, elementName);
                     }
                 }
             }
@@ -737,7 +767,10 @@ namespace Rebellion.Util.Serialization
                 {
                     return ReadCollection(objType, reader, settings);
                 }
-                else if (TypeHelper.HasAttribute<PersistableObjectAttribute>(objType))
+                else if (
+                    TypeHelper.HasAttribute<PersistableObjectAttribute>(objType)
+                    || attributes.MemberAttribute?.UseTypeName == true
+                )
                 {
                     return ReadPersistable(objType, reader, settings, attributes);
                 }
@@ -997,7 +1030,7 @@ namespace Rebellion.Util.Serialization
             string actualTypeName = reader.Name;
             Type actualType = objType;
 
-            if (objType.IsInterface || objType.IsAbstract)
+            if (objType.IsInterface || objType.IsAbstract || objType == typeof(object))
             {
                 actualType = ResolveActualType(objType, actualTypeName, objAttributes);
             }
@@ -1659,7 +1692,20 @@ namespace Rebellion.Util.Serialization
                     }
                     if (memberAttribute.UseTypeName)
                     {
-                        AddElementName(lookup, GetMemberType(member).Name, member);
+                        Type memberType = GetMemberType(member);
+                        AddElementName(lookup, memberType.Name, member);
+                        if (
+                            memberType.IsInterface
+                            || memberType.IsAbstract
+                            || memberType == typeof(object)
+                        )
+                        {
+                            foreach (Type candidate in GetPersistableObjectMap().Values.Distinct())
+                            {
+                                if (memberType.IsAssignableFrom(candidate))
+                                    AddElementName(lookup, candidate.Name, member);
+                            }
+                        }
                     }
                 }
 

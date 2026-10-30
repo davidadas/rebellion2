@@ -366,9 +366,9 @@ namespace Rebellion.Multiplayer
 
                 publication = runtime.SaveGameLocallyAsync(fileName, displayName);
             }
-            byte[] metadataPayload = MultiplayerSnapshotSerializer.SerializeValue(
-                current.Metadata,
-                typeof(GameMetadata)
+            byte[] metadataPayload = MultiplayerSnapshotCodec.Serialize(
+                typeof(GameMetadata),
+                current.Metadata
             );
             if (!await publication)
                 throw new InvalidOperationException(
@@ -437,10 +437,7 @@ namespace Rebellion.Multiplayer
             }
 
             GameMetadata metadata = (GameMetadata)
-                MultiplayerSnapshotSerializer.DeserializeValue(
-                    checkpoint.Payload,
-                    typeof(GameMetadata)
-                );
+                MultiplayerSnapshotCodec.Deserialize(typeof(GameMetadata), checkpoint.Payload);
             ValidateCampaignIdentity(metadata.MultiplayerCampaign);
             GameRoot current = _runtime.GetActiveGame();
             if (

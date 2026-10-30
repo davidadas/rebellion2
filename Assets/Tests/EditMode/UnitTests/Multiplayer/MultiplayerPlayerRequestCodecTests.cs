@@ -29,10 +29,11 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(restored.DestinationID, Is.EqualTo(action.DestinationID));
         }
 
-        [Test]
-        public void Deserialize_Rename_PreservesLiteralUnicodeText()
+        [TestCase("\u00c9toile <ship> & \"name\"")]
+        [TestCase(" \t\r\n ")]
+        public void Deserialize_Rename_PreservesLiteralUnicodeText(string text)
         {
-            RenameRequest action = new() { EntityID = "ship", Name = "\u00c9toile \"$type\"" };
+            RenameRequest action = new() { EntityID = "ship", Name = text };
 
             RenameRequest restored = (RenameRequest)
                 MultiplayerPlayerRequestCodec.Deserialize(
@@ -76,22 +77,24 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Throws<InvalidDataException>(() =>
                 MultiplayerPlayerRequestCodec.Deserialize(
                     (PlayerRequestKind)9999,
-                    Encoding.UTF8.GetBytes("{}")
+                    Encoding.UTF8.GetBytes("<UnknownRequest />")
                 )
             );
         }
 
-        [TestCase("{\"EntityID\":\"ship\",\"actorFactionID\":\"opponent\"}")]
-        [TestCase("{\"$type\":\"System.IO.FileInfo, mscorlib\"}")]
-        [TestCase("{} {}")]
-        [TestCase("null")]
-        public void Deserialize_ParametersOutsideSchema_RejectsRequest(string json)
+        [TestCase(
+            "<RenameRequest><EntityID>ship</EntityID><actorFactionID>opponent</actorFactionID></RenameRequest>"
+        )]
+        [TestCase("<FileInfo />")]
+        [TestCase("<RenameRequest /><RenameRequest />")]
+        [TestCase("<MoveRequest />")]
+        public void Deserialize_ParametersOutsideSchema_RejectsRequest(string xml)
         {
             Assert.That(
                 () =>
                     MultiplayerPlayerRequestCodec.Deserialize(
                         PlayerRequestKind.Rename,
-                        Encoding.UTF8.GetBytes(json)
+                        Encoding.UTF8.GetBytes(xml)
                     ),
                 Throws.Exception
             );

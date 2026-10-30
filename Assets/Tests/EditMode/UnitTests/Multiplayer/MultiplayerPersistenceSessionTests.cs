@@ -586,9 +586,9 @@ namespace Rebellion.Tests.Multiplayer
                 }
                 HostMetadata.SharedSaveToken = command.token;
                 HostMetadata.LastSavedUtc = new DateTime(2026, 10, 27, 1, 2, 3, DateTimeKind.Utc);
-                byte[] payload = MultiplayerSnapshotSerializer.SerializeValue(
-                    HostMetadata,
-                    typeof(GameMetadata)
+                byte[] payload = MultiplayerSnapshotCodec.Serialize(
+                    typeof(GameMetadata),
+                    HostMetadata
                 );
                 string logicalName = command.automatic ? "autosave_0000000040" : command.fileName;
                 HostFiles[
@@ -621,10 +621,7 @@ namespace Rebellion.Tests.Multiplayer
                     return;
                 }
                 GuestMetadata = (GameMetadata)
-                    MultiplayerSnapshotSerializer.DeserializeValue(
-                        checkpoint.Payload,
-                        typeof(GameMetadata)
-                    );
+                    MultiplayerSnapshotCodec.Deserialize(typeof(GameMetadata), checkpoint.Payload);
                 if (checkpoint.Command.automatic)
                     return;
                 GuestWrites++;

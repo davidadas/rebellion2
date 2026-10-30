@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Xml;
 using System.Xml.Schema;
 
@@ -9,7 +10,16 @@ namespace Rebellion.Util.Serialization
     /// </summary>
     public class GameSerializerSettings
     {
+        /// <summary>
+        /// Overrides the written root element name.
+        /// </summary>
         public string RootName { get; set; }
+
+        /// <summary>
+        /// Optionally reads persisted member values without invoking their usual accessors.
+        /// Null uses the member's normal field or property access.
+        /// </summary>
+        public Func<MemberInfo, object, object> MemberValueProvider { get; set; }
 
         /// <summary>
         /// Controls formatting whitespace between serialized XML elements.

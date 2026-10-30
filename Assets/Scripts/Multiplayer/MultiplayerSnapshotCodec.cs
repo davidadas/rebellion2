@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Xml;
 using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.Util.Random;
@@ -101,7 +102,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Captures a complete game through cached wire contracts and hashes its uncompressed bytes.
+        /// Captures a complete game through the save serializer and hashes its uncompressed XML.
         /// </summary>
         /// <param name="game">The game to capture.</param>
         /// <returns>The compressed snapshot and canonical state hash.</returns>
@@ -110,7 +111,7 @@ namespace Rebellion.Multiplayer
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
-            byte[] state = MultiplayerSnapshotSerializer.Serialize(game);
+            byte[] state = Serialize(typeof(GameRoot), game);
             return CapturePayload(state);
         }
 
@@ -132,9 +133,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The restored game.</returns>
         public static GameRoot Restore(byte[] snapshot, string expectedHash)
         {
-            return MultiplayerSnapshotSerializer.Deserialize(
-                RestorePayload(snapshot, expectedHash)
-            );
+            return (GameRoot)Deserialize(typeof(GameRoot), RestorePayload(snapshot, expectedHash));
         }
 
         /// <summary>
@@ -163,10 +162,18 @@ namespace Rebellion.Multiplayer
         /// <param name="type">The persisted root type.</param>
         /// <param name="value">The value to serialize.</param>
         /// <returns>The serialized XML bytes.</returns>
-        private static byte[] Serialize(Type type, object value)
+        internal static byte[] Serialize(Type type, object value)
         {
             using MemoryStream stream = new MemoryStream();
-            new GameSerializer(type).Serialize(stream, value);
+            new GameSerializer(
+                type,
+                new GameSerializerSettings
+                {
+                    RootName = type.Name,
+                    Idendent = false,
+                    NewLineHandling = NewLineHandling.Entitize,
+                }
+            ).Serialize(stream, value);
             return stream.ToArray();
         }
 
@@ -176,12 +183,18 @@ namespace Rebellion.Multiplayer
         /// <param name="type">The persisted root type.</param>
         /// <param name="payload">The serialized XML bytes.</param>
         /// <returns>The restored object.</returns>
-        private static object Deserialize(Type type, byte[] payload)
+        internal static object Deserialize(Type type, byte[] payload)
         {
             if (payload == null || payload.Length == 0)
                 throw new InvalidDataException("The multiplayer payload is empty.");
             using MemoryStream stream = new MemoryStream(payload, writable: false);
-            return new GameSerializer(type).Deserialize(stream);
+            using XmlReader reader = XmlReader.Create(stream);
+            reader.MoveToContent();
+            if (reader.Name != type.Name)
+                throw new InvalidDataException(
+                    $"Expected XML root '{type.Name}', received '{reader.Name}'."
+                );
+            return new GameSerializer(type).Deserialize(reader);
         }
 
         /// <summary>

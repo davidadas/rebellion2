@@ -1288,6 +1288,28 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void RebuildSceneState_DeserializedPreviousParent_PreservesHistoryAndResolvesReference()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _fleet.LastParentInstanceID = _planetSector.InstanceID;
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+
+            restored.RebuildSceneState();
+
+            Fleet fleet = restored.GetSceneNodeByInstanceID<Fleet>(_fleet.InstanceID);
+            Assert.That(fleet.ParentInstanceID, Is.EqualTo(_planet.InstanceID));
+            Assert.That(fleet.LastParentInstanceID, Is.EqualTo(_planetSector.InstanceID));
+            Assert.That(
+                fleet.LastParentNode,
+                Is.SameAs(restored.GetSceneNodeByInstanceID<PlanetSector>(_planetSector.InstanceID))
+            );
+        }
+
+        [Test]
         public void RebuildSceneState_SerializedDestroyedPlanet_ClearsControlAndPreservesOrbitingFleet()
         {
             _game.AttachNode(_planetSector, _game.Galaxy);
