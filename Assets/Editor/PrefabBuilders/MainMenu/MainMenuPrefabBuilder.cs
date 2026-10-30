@@ -529,64 +529,171 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(dimmer.GetComponent<RectTransform>());
         Image dimmerImage = dimmer.GetComponent<Image>();
-        dimmerImage.color = new Color(0f, 0f, 0f, 0.9f);
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.985f);
         dimmerImage.raycastTarget = true;
 
         GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
-        UILayout.SetSourceRect((RectTransform)page.transform, 260, 25, 333, 430);
-        RawImage background = MenuPrefabBuilder.CreateRawImage(
+        UILayout.SetSourceRect((RectTransform)page.transform, 199, 122, 456, 236);
+
+        GameObject panelFill = NewChild(
+            "PanelFill",
+            page.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)panelFill.transform, 2, 2, 452, 232);
+        Image panelFillImage = panelFill.GetComponent<Image>();
+        panelFillImage.color = new Color(0.008f, 0.025f, 0.045f, 0.985f);
+        panelFillImage.raycastTarget = false;
+
+        GameObject backgroundObject = NewChild(
             "Background",
             page.transform,
-            "Application/MainMenu/UI/ui_mainmenu_analytics_background",
-            0,
-            0,
-            333,
-            430
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
         );
+        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 456, 236);
+        Image background = backgroundObject.GetComponent<Image>();
+        background.color = Color.clear;
         background.raycastTarget = true;
 
+        Color borderColor = new Color(0.88f, 0.91f, 0.94f, 0.58f);
+        GameObject topBorder = NewChild(
+            "TopBorder",
+            backgroundObject.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)topBorder.transform, 0, 0, 456, 1);
+        topBorder.GetComponent<Image>().color = borderColor;
+        topBorder.GetComponent<Image>().raycastTarget = false;
+
+        GameObject bottomBorder = NewChild(
+            "BottomBorder",
+            backgroundObject.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)bottomBorder.transform, 0, 235, 456, 1);
+        bottomBorder.GetComponent<Image>().color = borderColor;
+        bottomBorder.GetComponent<Image>().raycastTarget = false;
+
+        GameObject leftBorder = NewChild(
+            "LeftBorder",
+            backgroundObject.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)leftBorder.transform, 0, 1, 1, 234);
+        leftBorder.GetComponent<Image>().color = borderColor;
+        leftBorder.GetComponent<Image>().raycastTarget = false;
+
+        GameObject rightBorder = NewChild(
+            "RightBorder",
+            backgroundObject.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)rightBorder.transform, 455, 1, 1, 234);
+        rightBorder.GetComponent<Image>().color = borderColor;
+        rightBorder.GetComponent<Image>().raycastTarget = false;
+
         TextMeshProUGUI heading = MenuPrefabBuilder.CreateTextLabel("Heading", page.transform);
-        heading.text = "ANALYTICS";
-        heading.color = new Color(0.875f, 0.910f, 0.941f);
-        heading.fontSize = 20;
+        heading.text = "Help Us Improve";
+        heading.color = new Color(0.925f, 0.945f, 0.965f);
+        heading.fontSize = 19;
+        heading.characterSpacing = 0.5f;
         heading.alignment = TextAlignmentOptions.Midline;
-        UILayout.SetSourceRect(heading.rectTransform, 34, 58, 265, 28);
+        UILayout.SetSourceRect(heading.rectTransform, 47, 18, 362, 30);
+
+        TextMeshProUGUI plea = MenuPrefabBuilder.CreateTextLabel("Plea", page.transform);
+        plea.text = "Please";
+        plea.color = new Color(0.925f, 0.945f, 0.965f);
+        plea.fontSize = 10.5f;
+        plea.characterSpacing = 0.4f;
+        plea.alignment = TextAlignmentOptions.MidlineRight;
+        UILayout.SetSourceRect(plea.rectTransform, 165, 49, 69, 18);
+
+        RawImage sobEmoji = MenuPrefabBuilder.CreateRawImage(
+            "SobEmoji",
+            page.transform,
+            "Application/MainMenu/UI/ui_mainmenu_analytics_sob",
+            236,
+            48,
+            18,
+            18
+        );
+        sobEmoji.raycastTarget = false;
+
+        GameObject accentLine = NewChild(
+            "AccentLine",
+            page.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)accentLine.transform, 201, 76, 54, 2);
+        Image accentLineImage = accentLine.GetComponent<Image>();
+        accentLineImage.color = new Color(0.25f, 0.82f, 0.88f);
+        accentLineImage.raycastTarget = false;
 
         TextMeshProUGUI body = MenuPrefabBuilder.CreateTextLabel("Body", page.transform);
         body.text =
-            "Allow collection of gameplay and device analytics to help us find problems and improve the game.\n\nYou can change this at any time in Settings.";
-        body.color = new Color(0.875f, 0.910f, 0.941f);
-        body.fontSize = 13;
-        body.alignment = TextAlignmentOptions.TopLeft;
+            "We're a small team, and analytics help us understand how the game performs across different PCs. That lets us spend more time fixing the things that matter.\n\nIf you're comfortable opting in, we'd genuinely appreciate it. You can change this any time in Settings.";
+        body.color = new Color(0.760f, 0.800f, 0.840f);
+        body.fontSize = 8.5f;
+        body.lineSpacing = 2f;
+        body.alignment = TextAlignmentOptions.Midline;
         body.textWrappingMode = TextWrappingModes.Normal;
-        body.overflowMode = TextOverflowModes.Ellipsis;
-        UILayout.SetSourceRect(body.rectTransform, 45, 128, 243, 126);
-
-        TextMeshProUGUI prompt = MenuPrefabBuilder.CreateTextLabel("Prompt", page.transform);
-        prompt.text = "SHARE ANALYTICS?";
-        prompt.color = new Color(0.373f, 0.659f, 0.925f);
-        prompt.fontSize = 13;
-        prompt.alignment = TextAlignmentOptions.Midline;
-        UILayout.SetSourceRect(prompt.rectTransform, 45, 290, 243, 22);
+        body.overflowMode = TextOverflowModes.Overflow;
+        UILayout.SetSourceRect(body.rectTransform, 42, 88, 372, 66);
 
         Button allowButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
             "AllowButton",
-            "ALLOW",
+            "ALLOW ANALYTICS",
             0,
-            new Color(0.875f, 0.910f, 0.941f),
-            112
+            new Color(0.035f, 0.075f, 0.095f),
+            184
         );
-        UILayout.SetSourceRect((RectTransform)allowButton.transform, 45, 330, 112, 28);
+        UILayout.SetSourceRect((RectTransform)allowButton.transform, 36, 169, 184, 34);
+        allowButton.transform.Find("SurfaceMask/Surface").GetComponent<Image>().color = new Color(
+            0.25f,
+            0.78f,
+            0.84f,
+            1f
+        );
+        TextMeshProUGUI allowLabel = allowButton
+            .transform.Find("Label")
+            .GetComponent<TextMeshProUGUI>();
+        allowLabel.fontSize = 11;
+        allowLabel.characterSpacing = 1.5f;
+
         Button declineButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
             "DeclineButton",
             "NO THANKS",
             0,
-            new Color(0.875f, 0.910f, 0.941f),
-            112
+            new Color(0.820f, 0.850f, 0.880f),
+            184
         );
-        UILayout.SetSourceRect((RectTransform)declineButton.transform, 176, 330, 112, 28);
+        UILayout.SetSourceRect((RectTransform)declineButton.transform, 236, 169, 184, 34);
+        declineButton.transform.Find("SurfaceMask/Surface").GetComponent<Image>().color = new Color(
+            0.055f,
+            0.075f,
+            0.095f,
+            1f
+        );
+        TextMeshProUGUI declineLabel = declineButton
+            .transform.Find("Label")
+            .GetComponent<TextMeshProUGUI>();
+        declineLabel.characterSpacing = 1.5f;
 
         AnalyticsConsentView view = overlay.GetComponent<AnalyticsConsentView>();
         AssignReference(view, "_allowButton", allowButton);

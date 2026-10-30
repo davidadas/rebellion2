@@ -111,13 +111,47 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(consentView);
             Assert.DoesNotThrow(consentView.VerifyReferences);
             Assert.IsTrue(overlay.Find("InputBlocker").GetComponent<Image>().raycastTarget);
-            ContentTextureBinding background = overlay
-                .Find("ConsentPage/Background")
-                .GetComponent<ContentTextureBinding>();
             Assert.AreEqual(
-                "Application/MainMenu/UI/ui_mainmenu_analytics_background",
-                background.Address
+                new Color(0f, 0f, 0f, 0.985f),
+                overlay.Find("InputBlocker").GetComponent<Image>().color
             );
+            RectTransform page = (RectTransform)overlay.Find("ConsentPage");
+            Assert.AreEqual(new Vector2(456f, 236f), page.sizeDelta);
+            Assert.IsNotNull(page.Find("PanelFill").GetComponent<Image>());
+
+            Transform backgroundTransform = page.Find("Background");
+            Assert.AreEqual(Color.clear, backgroundTransform.GetComponent<Image>().color);
+            Assert.IsNull(backgroundTransform.GetComponent<Outline>());
+            Assert.AreEqual(
+                new Color(0.88f, 0.91f, 0.94f, 0.58f),
+                backgroundTransform.Find("TopBorder").GetComponent<Image>().color
+            );
+            Assert.AreEqual(
+                new Vector2(456f, 1f),
+                ((RectTransform)backgroundTransform.Find("TopBorder")).sizeDelta
+            );
+            Assert.AreEqual(
+                new Vector2(456f, 1f),
+                ((RectTransform)backgroundTransform.Find("BottomBorder")).sizeDelta
+            );
+            Assert.AreEqual(
+                new Vector2(1f, 234f),
+                ((RectTransform)backgroundTransform.Find("LeftBorder")).sizeDelta
+            );
+            Assert.AreEqual(
+                new Vector2(1f, 234f),
+                ((RectTransform)backgroundTransform.Find("RightBorder")).sizeDelta
+            );
+            Assert.AreEqual("Please", page.Find("Plea").GetComponent<TextMeshProUGUI>().text);
+
+            ContentTextureBinding sobEmoji = page.Find("SobEmoji")
+                .GetComponent<ContentTextureBinding>();
+            Assert.AreEqual("Application/MainMenu/UI/ui_mainmenu_analytics_sob", sobEmoji.Address);
+
+            RectTransform allowButton = (RectTransform)page.Find("AllowButton");
+            RectTransform declineButton = (RectTransform)page.Find("DeclineButton");
+            Assert.AreEqual(allowButton.anchoredPosition.y, declineButton.anchoredPosition.y);
+            Assert.AreEqual(allowButton.sizeDelta, declineButton.sizeDelta);
         }
 
         [Test]

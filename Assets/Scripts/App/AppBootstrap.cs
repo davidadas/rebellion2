@@ -207,7 +207,8 @@ public sealed class AppBootstrap : MonoBehaviour
         );
         _runtime = new GameRuntime(
             _contentPack,
-            getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
+            getGameplaySettings: () => _userSettingsManager.Settings.Gameplay,
+            analyticsSink: _analyticsManager
         );
         if (inputController == null)
             inputController = CreateInputController();
@@ -428,6 +429,9 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void OnApplicationQuit()
     {
+        _runtime?.EndGame();
+        if (_analyticsManager is IAnalyticsEventSink analyticsSink)
+            analyticsSink.Flush();
         _userSettingsManager?.Save();
     }
 
