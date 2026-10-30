@@ -4,59 +4,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Multiplayer;
 
-namespace Rebellion.Multiplayer
+namespace Rebellion.Tests.NativeAudit
 {
     /// <summary>
-    /// Identifies an event emitted by the direct peer transport.
-    /// </summary>
-    public enum MultiplayerTransportEventType
-    {
-        Connected,
-        PacketReceived,
-        Disconnected,
-    }
-
-    /// <summary>
-    /// Describes one transport event for main-thread processing.
-    /// </summary>
-    public sealed class MultiplayerTransportEvent
-    {
-        /// <summary>
-        /// Gets the event type.
-        /// </summary>
-        public MultiplayerTransportEventType Type { get; }
-
-        /// <summary>
-        /// Gets the received packet, when applicable.
-        /// </summary>
-        public MultiplayerPacket Packet { get; }
-
-        /// <summary>
-        /// Gets the disconnect reason, when applicable.
-        /// </summary>
-        public string Error { get; }
-
-        /// <summary>
-        /// Creates a transport event.
-        /// </summary>
-        /// <param name="type">The event type.</param>
-        /// <param name="packet">The received packet.</param>
-        /// <param name="error">The disconnect reason.</param>
-        public MultiplayerTransportEvent(
-            MultiplayerTransportEventType type,
-            MultiplayerPacket packet = null,
-            string error = null
-        )
-        {
-            Type = type;
-            Packet = packet;
-            Error = error;
-        }
-    }
-
-    /// <summary>
-    /// Provides one reliable ordered TCP connection directly between two players.
+    /// Provides a reliable ordered TCP connection for verification tools.
     /// </summary>
     public sealed class MultiplayerPeer : IMultiplayerPeer
     {

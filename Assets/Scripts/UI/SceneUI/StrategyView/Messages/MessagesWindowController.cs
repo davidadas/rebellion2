@@ -17,6 +17,11 @@ using UnityEngine.EventSystems;
 public interface IMessagesWindowActions
 {
     /// <summary>
+    /// Gets whether the current player can submit a message to the other player.
+    /// </summary>
+    bool CanSendPeerChat { get; }
+
+    /// <summary>
     /// Opens a combat report in the battle-result view.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
@@ -42,6 +47,13 @@ public interface IMessagesWindowActions
     /// <param name="missionInstanceId">The active mission identifier.</param>
     /// <returns>A task containing true when the mission was aborted.</returns>
     Task<bool> TryAbortMissionAsync(string missionInstanceId);
+
+    /// <summary>
+    /// Submits entered chat text through the active session without changing its whitespace.
+    /// </summary>
+    /// <param name="rawText">The unmodified multiline message.</param>
+    /// <returns>True when the session accepted the submission.</returns>
+    Task<bool> SendPeerChatAsync(string rawText);
 }
 
 /// <summary>
@@ -67,7 +79,6 @@ public sealed class MessagesWindowController
     private readonly UIWindowManager windowManager;
     private readonly MessagesPlayerActions messageActions;
     private IMessagesWindowActions actions;
-    private IMessagesPeerChatActions peerChatActions;
 
     /// <summary>
     /// Gets whether a Messages window is currently registered.
@@ -127,7 +138,6 @@ public sealed class MessagesWindowController
     public void Initialize(IMessagesWindowActions actions)
     {
         this.actions = actions ?? throw new ArgumentNullException(nameof(actions));
-        peerChatActions = actions as IMessagesPeerChatActions;
     }
 
     /// <summary>
@@ -351,7 +361,7 @@ public sealed class MessagesWindowController
                 window.X,
                 window.Y,
                 missionContinuationChoiceVisible,
-                peerChatActions?.CanSendPeerChat == true,
+                actions?.CanSendPeerChat == true,
                 session.ComposerVisible ? session.ComposerDraft : null,
                 session.SendingPeerChat,
                 session.ComposerStatus
@@ -578,7 +588,7 @@ public sealed class MessagesWindowController
     {
         if (
             !TryGetSession(view, out MessagesWindowSession session)
-            || peerChatActions?.CanSendPeerChat != true
+            || actions?.CanSendPeerChat != true
         )
             return;
 
@@ -622,7 +632,7 @@ public sealed class MessagesWindowController
     {
         if (
             !TryGetSession(view, out MessagesWindowSession session)
-            || peerChatActions?.CanSendPeerChat != true
+            || actions?.CanSendPeerChat != true
             || !session.BeginPeerChatSubmission()
         )
             return;
@@ -633,7 +643,7 @@ public sealed class MessagesWindowController
         bool accepted;
         try
         {
-            accepted = await peerChatActions.SendPeerChatAsync(rawText);
+            accepted = await actions.SendPeerChatAsync(rawText);
         }
         catch (Exception exception)
         {

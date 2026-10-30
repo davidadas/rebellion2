@@ -19,6 +19,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
+using Rebellion.Tests.NativeAudit;
 using Rebellion.Util.Serialization;
 using UnityEditor;
 using UnityEngine;
@@ -396,7 +397,7 @@ public static class MultiplayerNetworkSimulationRunner
             GameRoot loaded = new SaveGameManager(isolatedDirectory).LoadGameData(
                 Path.GetFileNameWithoutExtension(file)
             );
-            contentPack = MultiplayerContentSelection.Open(contentPack, loaded.Summary);
+            contentPack = SaveContentResolver.Open(contentPack, loaded.Summary);
             return loaded;
         }
 

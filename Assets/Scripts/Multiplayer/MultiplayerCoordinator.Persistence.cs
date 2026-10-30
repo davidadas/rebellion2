@@ -407,7 +407,7 @@ namespace Rebellion.Multiplayer
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 var cancellationToken = _sessionCancellation.Token;
                 ContentPack content = await Task.Run(() =>
-                    MultiplayerContentSelection.Open(active, game.Summary)
+                    SaveContentResolver.Open(active, game.Summary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!ReferenceEquals(_persistence, owner))

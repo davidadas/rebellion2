@@ -1048,7 +1048,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .onClick.Invoke();
         }
 
-        private sealed class TestActions : IMessagesWindowActions, IMessagesPeerChatActions
+        private sealed class TestActions : IMessagesWindowActions
         {
             public bool CanSendPeerChat { get; set; }
 

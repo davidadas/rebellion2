@@ -319,7 +319,7 @@ namespace Rebellion.Multiplayer
                     {
                         ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                         ContentPack opened = await Task.Run(() =>
-                            MultiplayerContentSelection.Open(active, summary)
+                            SaveContentResolver.Open(active, summary)
                         );
                         cancellationToken.ThrowIfCancellationRequested();
                         _lobbyContent = opened;

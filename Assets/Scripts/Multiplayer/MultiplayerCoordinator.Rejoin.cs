@@ -126,7 +126,7 @@ namespace Rebellion.Multiplayer
                 _hostSummary = state.Summary;
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 _lobbyContent = await Task.Run(() =>
-                    MultiplayerContentSelection.Open(active, _hostSummary)
+                    SaveContentResolver.Open(active, _hostSummary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
                 MultiplayerCompatibility.ValidateContent(
@@ -544,7 +544,7 @@ namespace Rebellion.Multiplayer
             {
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 ContentPack content = await Task.Run(() =>
-                    MultiplayerContentSelection.Open(active, state.Summary)
+                    SaveContentResolver.Open(active, state.Summary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
                 MultiplayerCompatibility.ValidateContent(

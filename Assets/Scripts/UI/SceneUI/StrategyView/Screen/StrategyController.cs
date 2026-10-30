@@ -42,7 +42,6 @@ public sealed class StrategyController
         IMissionsWindowActions,
         IMissionCreateWindowActions,
         IMessagesWindowActions,
-        IMessagesPeerChatActions,
         IStatusWindowActions,
         IBattleAlertWindowActions
 {
@@ -163,7 +162,7 @@ public sealed class StrategyController
     /// <summary>
     /// Gets whether the active session has a connected peer available for strategy chat.
     /// </summary>
-    bool IMessagesPeerChatActions.CanSendPeerChat =>
+    bool IMessagesWindowActions.CanSendPeerChat =>
         MultiplayerCoordinator.Instance?.CanSendPeerChat == true;
 
     /// <summary>
@@ -2639,7 +2638,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="rawText">The nonempty text exactly as submitted.</param>
     /// <returns>True when the connected session accepted the message for delivery.</returns>
-    Task<bool> IMessagesPeerChatActions.SendPeerChatAsync(string rawText)
+    Task<bool> IMessagesWindowActions.SendPeerChatAsync(string rawText)
     {
         MultiplayerCoordinator coordinator = MultiplayerCoordinator.Instance;
         return coordinator == null

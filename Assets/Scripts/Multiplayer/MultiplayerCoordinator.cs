@@ -242,7 +242,7 @@ namespace Rebellion.Multiplayer
                 );
                 ValidatePlayableFactions(_hostSummary);
                 _password = password ?? string.Empty;
-                _lobbyContent = MultiplayerContentSelection.Open(
+                _lobbyContent = SaveContentResolver.Open(
                     AppBootstrap.EnsureExists().GetContentPack(),
                     _hostSummary
                 );

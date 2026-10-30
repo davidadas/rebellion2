@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Tests.NativeAudit;
 using UnityEngine;
 
 namespace Rebellion.Tests.Multiplayer
