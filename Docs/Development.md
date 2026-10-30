@@ -89,7 +89,7 @@ polling at five hertz. Keep both audit clients on the same compiled build and us
 
 `GameRuntime` selects the session owner before constructing simulation services. Multiplayer
 campaigns require an `IGameSessionOwner`; presentation reports readiness for that specific session
-and never replaces its execution owner. Local and network player actions use the session's writable
+and never replaces its execution owner. Local and network player requests use the session's writable
 command boundary. Commands wait while a tick executes, and network commands also wait for the
 completed day's verification barrier.
 
@@ -180,6 +180,9 @@ continuation and survive recovery.
 
 | Area | Ownership |
 | --- | --- |
+| `Game/Player/Requests` | Player request parameters, request kinds, and execution outcomes. |
+| `Gameplay/PlayerRequests` | Request execution against the active session and its gameplay commands. |
+| `App/PlayerRequests` | Local delivery and rejection of requests from an ended or replaced session. |
 | `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
 | `Game/Scripting/Events` | Event definitions, schedules, and saved activation history. |
 | `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |

@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -23,7 +23,7 @@ public sealed class StrategyWindowCommandController
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly IServiceLocator services;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly IRandomNumberProvider presentationRandom = new SystemRandomProvider(
         Environment.TickCount
     );
@@ -42,7 +42,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="services">Resolves commands and queries for the active game.</param>
-    /// <param name="playerActions">Completes player orders through the session action boundary.</param>
+    /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
     /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
@@ -55,7 +55,7 @@ public sealed class StrategyWindowCommandController
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
         IServiceLocator services,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<string> getPlayerFactionId,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
@@ -73,8 +73,8 @@ public sealed class StrategyWindowCommandController
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
         this.services = services ?? throw new ArgumentNullException(nameof(services));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.getPlayerFactionId =
             getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
@@ -287,8 +287,8 @@ public sealed class StrategyWindowCommandController
         if (
             source?.Action != StrategyMenuAction.WaypointMove
             || !(
-                await playerActions.ExecuteAsync(
-                    new SetFleetRoutePlayerAction
+                await playerRequests.ExecuteAsync(
+                    new SetFleetRouteRequest
                     {
                         ItemIDs = source.Items.Select(item => item?.InstanceID).ToArray(),
                         WaypointPlanetIDs = source.WaypointPlanetIds.ToArray(),
@@ -325,8 +325,8 @@ public sealed class StrategyWindowCommandController
     {
         if (
             !(
-                await playerActions.ExecuteAsync(
-                    new ClearFleetRoutePlayerAction
+                await playerRequests.ExecuteAsync(
+                    new ClearFleetRouteRequest
                     {
                         ItemIDs = items?.Select(item => item?.InstanceID).ToArray(),
                     }
@@ -390,8 +390,8 @@ public sealed class StrategyWindowCommandController
                 if (
                     manufacturables.Count == sourceItems.Count
                     && (
-                        await playerActions.ExecuteAsync(
-                            new ScrapPlayerAction
+                        await playerRequests.ExecuteAsync(
+                            new ScrapRequest
                             {
                                 ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
                             }
@@ -430,8 +430,8 @@ public sealed class StrategyWindowCommandController
                 if (
                     manufacturables.Count == sourceItems.Count
                     && (
-                        await playerActions.ExecuteAsync(
-                            new CancelManufacturingPlayerAction
+                        await playerRequests.ExecuteAsync(
+                            new CancelManufacturingRequest
                             {
                                 ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
                             }
@@ -465,8 +465,8 @@ public sealed class StrategyWindowCommandController
             {
                 if (
                     (
-                        await playerActions.ExecuteAsync(
-                            new RetirePersonnelPlayerAction
+                        await playerRequests.ExecuteAsync(
+                            new RetirePersonnelRequest
                             {
                                 ItemIDs = sourceItems.Select(item => item?.InstanceID).ToArray(),
                             }
@@ -521,19 +521,19 @@ public sealed class StrategyWindowCommandController
             return false;
 
         Building headquarters = items?.Count == 1 ? items[0] as Building : null;
-        PlayerAction action =
+        PlayerRequest action =
             headquarters?.BuildingType == BuildingType.Headquarters
-                ? new RelocateHeadquartersPlayerAction
+                ? new RelocateHeadquartersRequest
                 {
                     HeadquartersID = headquarters.InstanceID,
                     DestinationPlanetID = target?.Planet?.Planet?.InstanceID,
                 }
-                : new MovePlayerAction
+                : new MoveRequest
                 {
                     ItemIDs = items?.Select(item => item?.InstanceID).ToArray(),
                     DestinationID = destination?.InstanceID,
                 };
-        bool moved = (await playerActions.ExecuteAsync(action)).Accepted;
+        bool moved = (await playerRequests.ExecuteAsync(action)).Accepted;
         if (moved)
             PlayMoveVoice(items);
 
@@ -661,8 +661,8 @@ public sealed class StrategyWindowCommandController
         string voicePath = GetMissionAbortVoicePath(missions);
         if (
             !(
-                await playerActions.ExecuteAsync(
-                    new AbortMissionsPlayerAction { ItemIDs = missionInstanceIds.ToArray() }
+                await playerRequests.ExecuteAsync(
+                    new AbortMissionsRequest { ItemIDs = missionInstanceIds.ToArray() }
                 )
             ).Accepted
         )

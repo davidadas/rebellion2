@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -52,7 +52,7 @@ public sealed class FleetWindowController
 {
     private readonly HashSet<FleetWindowView> boundViews = new HashSet<FleetWindowView>();
     private readonly StrategyFleetCommandController fleetCommandController;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
@@ -76,7 +76,7 @@ public sealed class FleetWindowController
     /// Creates the fleet feature controller with its shared interaction dependencies.
     /// </summary>
     /// <param name="fleetCommandController">Executes shared fleet mutations.</param>
-    /// <param name="playerActions">Completes player orders through the session action boundary.</param>
+    /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="targetingController">Owns the active strategy targeting request.</param>
     /// <param name="windowLayer">Provides the authored fleet prefab and normal window layer.</param>
@@ -87,7 +87,7 @@ public sealed class FleetWindowController
     /// <param name="renderSelectionRoutes">Refreshes waypoint overlays after fleet selection changes.</param>
     public FleetWindowController(
         StrategyFleetCommandController fleetCommandController,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
         StrategyWindowLayerView windowLayer,
@@ -101,8 +101,8 @@ public sealed class FleetWindowController
         this.fleetCommandController =
             fleetCommandController
             ?? throw new ArgumentNullException(nameof(fleetCommandController));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         projector = new FleetWindowProjector(
             getUIContext,
@@ -1367,8 +1367,8 @@ public sealed class FleetWindowController
 
         if (session.RenameTarget != null && !string.IsNullOrEmpty(value))
         {
-            PlayerActionResult result = await playerActions.ExecuteAsync(
-                new RenamePlayerAction { EntityID = session.RenameTarget.InstanceID, Name = value }
+            PlayerRequestOutcome result = await playerRequests.ExecuteAsync(
+                new RenameRequest { EntityID = session.RenameTarget.InstanceID, Name = value }
             );
             if (!result.Accepted)
                 return;

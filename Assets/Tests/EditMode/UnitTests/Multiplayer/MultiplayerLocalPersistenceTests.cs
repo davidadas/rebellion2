@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using UnityEngine;
@@ -288,8 +288,8 @@ namespace Rebellion.Tests.Multiplayer
             /// </summary>
             /// <param name="action">The requested player action.</param>
             /// <returns>The rejected action result.</returns>
-            public Task<PlayerActionResult> ExecuteAsync(PlayerAction action) =>
-                TestPlayerActions.RejectAll().ExecuteAsync(action);
+            public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action) =>
+                TestPlayerRequests.RejectAll().ExecuteAsync(action);
 
             /// <summary>
             /// Leaves writes to the separately assigned local persistence owner.

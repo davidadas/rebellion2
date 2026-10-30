@@ -1,28 +1,16 @@
 using System;
 using System.Threading.Tasks;
-using Rebellion.App.PlayerActions;
+using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay.PlayerRequests;
 
-namespace Rebellion.App
+namespace Rebellion.App.PlayerRequests
 {
     /// <summary>
-    /// Reports ordered domain execution or an explicitly unknown outcome after a connection ends.
+    /// Executes single-player requests immediately through the same player-request boundary.
     /// </summary>
-    public interface IPlayerActionDispatcher
+    internal sealed class LocalPlayerRequestDispatcher : IPlayerRequestDispatcher
     {
-        /// <summary>
-        /// Submits a request from the player bound to this dispatcher.
-        /// </summary>
-        /// <param name="action">The typed player request.</param>
-        /// <returns>The execution outcome, which can be unconfirmed after disconnection.</returns>
-        Task<PlayerActionResult> ExecuteAsync(PlayerAction action);
-    }
-
-    /// <summary>
-    /// Executes single-player requests immediately through the same player-action boundary.
-    /// </summary>
-    internal sealed class LocalPlayerActionDispatcher : IPlayerActionDispatcher
-    {
-        private readonly PlayerActionExecutor _executor;
+        private readonly PlayerRequestExecutor _executor;
         private readonly Func<string> _getActorFactionID;
         private readonly Action _stateChanged;
 
@@ -32,8 +20,8 @@ namespace Rebellion.App
         /// <param name="executor">The active session's domain executor.</param>
         /// <param name="getActorFactionID">The application's local player binding.</param>
         /// <param name="stateChanged">Invalidates projections after accepted execution.</param>
-        public LocalPlayerActionDispatcher(
-            PlayerActionExecutor executor,
+        public LocalPlayerRequestDispatcher(
+            PlayerRequestExecutor executor,
             Func<string> getActorFactionID,
             Action stateChanged = null
         )
@@ -47,18 +35,21 @@ namespace Rebellion.App
         /// <summary>
         /// Resolves the local actor and completes after execution at a writable session boundary.
         /// </summary>
-        /// <param name="action">The typed player request.</param>
+        /// <param name="request">The typed player request.</param>
         /// <returns>The completed execution outcome.</returns>
-        public async Task<PlayerActionResult> ExecuteAsync(PlayerAction action)
+        public async Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest request)
         {
-            PlayerActionResult result;
+            PlayerRequestOutcome result;
             try
             {
-                result = await _executor.ExecuteAsync(_getActorFactionID(), action);
+                result = await _executor.ExecuteAsync(_getActorFactionID(), request);
             }
             catch (OperationCanceledException)
             {
-                return new PlayerActionResult(false, "The action was cancelled before execution.");
+                return new PlayerRequestOutcome(
+                    false,
+                    "The request was cancelled before execution."
+                );
             }
             if (result.Accepted)
                 _stateChanged?.Invoke();

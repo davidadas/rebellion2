@@ -10,10 +10,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -291,14 +291,14 @@ public static class MultiplayerNetworkSimulationRunner
 
                 if (!report.peerProposalApplied && index >= report.ticksRequested / 2)
                 {
-                    Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                        new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+                    Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                        new SetSpeedRequest { Speed = TickSpeed.Fast }
                     );
                     await peers.WaitUntilAsync(
                         () => request.IsCompleted && peers.Host.CanBeginHostTick,
                         "the guest speed request and host receipt"
                     );
-                    PlayerActionResult result = await request;
+                    PlayerRequestOutcome result = await request;
                     if (!result.Accepted)
                         throw new InvalidOperationException(
                             "The guest speed request was rejected: " + result.RejectionReason
@@ -940,7 +940,7 @@ public static class MultiplayerNetworkSimulationRunner
             {
                 if (!submission.Completion.IsCompleted)
                     return false;
-                PlayerActionResult result = submission.Completion.GetAwaiter().GetResult();
+                PlayerRequestOutcome result = submission.Completion.GetAwaiter().GetResult();
                 submission.Sample.accepted = result.Accepted;
                 submission.Sample.rejectionReason = result.RejectionReason;
                 submission = null;
@@ -978,7 +978,7 @@ public static class MultiplayerNetworkSimulationRunner
             {
                 Sample = sample,
                 Completion = ordered.ExecuteAsync(
-                    new ResolveCombatPlayerAction
+                    new ResolveCombatRequest
                     {
                         PlanetID = pending.PlanetInstanceID,
                         Tick = pending.Tick,
@@ -1336,7 +1336,7 @@ public static class MultiplayerNetworkSimulationRunner
     /// </summary>
     private sealed class CombatSubmission
     {
-        public Task<PlayerActionResult> Completion;
+        public Task<PlayerRequestOutcome> Completion;
         public CombatResponseSample Sample;
     }
 

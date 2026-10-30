@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
 using UnityEngine;
 
@@ -34,8 +34,8 @@ namespace Rebellion.Multiplayer
         {
             if (!CanSendPeerChat)
                 return false;
-            PlayerActionResult result = await ExecuteAsync(
-                new SendPeerChatPlayerAction { Text = rawText }
+            PlayerRequestOutcome result = await ExecuteAsync(
+                new SendPeerChatRequest { Text = rawText }
             );
             return result.Accepted;
         }
@@ -133,11 +133,11 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="action">The typed operation.</param>
         /// <returns>The completed operation, or a rejection while synchronization is unavailable.</returns>
-        public Task<PlayerActionResult> ExecuteAsync(PlayerAction action)
+        public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action)
         {
             if (!_synchronizationReady || _gameSession == null)
                 return Task.FromResult(
-                    new PlayerActionResult(false, "Waiting for the other player.")
+                    new PlayerRequestOutcome(false, "Waiting for the other player.")
                 );
             return _gameSession.ExecuteAsync(action);
         }
@@ -367,7 +367,7 @@ namespace Rebellion.Multiplayer
         {
             try
             {
-                await ExecuteAsync(new SetSpeedPlayerAction { Speed = speed });
+                await ExecuteAsync(new SetSpeedRequest { Speed = speed });
             }
             catch (OperationCanceledException) { }
             catch (Exception exception)

@@ -648,7 +648,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowController CreateController()
         {
             return new FacilityWindowController(
-                TestPlayerActions.Create(_session, () => _playerFactionId),
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 _constructionController,
                 () => _uiContext,
                 _targetingController,
@@ -669,7 +669,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             return new ConstructionWindowController(
                 _session,
-                TestPlayerActions.Create(_session, () => _playerFactionId),
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,

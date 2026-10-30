@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -77,7 +77,7 @@ public sealed class MessagesWindowController
     /// <summary>
     /// Creates the Messages feature controller with current presentation-resource access.
     /// </summary>
-    /// <param name="playerActions">The active player action execution boundary.</param>
+    /// <param name="playerRequests">The active player action execution boundary.</param>
     /// <param name="playSfx">Plays a strategy sound effect path.</param>
     /// <param name="playSfxInstance">Plays an independently controllable sound effect path.</param>
     /// <param name="getUIContext">Resolves the current theme and texture context.</param>
@@ -88,7 +88,7 @@ public sealed class MessagesWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the active list-selection modifiers.</param>
     public MessagesWindowController(
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Action<string> playSfx,
         Func<string, AudioPlaybackHandle> playSfxInstance,
         Func<UIContext> getUIContext,
@@ -114,7 +114,7 @@ public sealed class MessagesWindowController
         this.getSelectionModifiers =
             getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
         messageActions = new MessagesPlayerActions(
-            playerActions,
+            playerRequests,
             () => getUIContext()?.Game?.GetPlayerFaction()
         );
         this.windowManager.WindowClosed += HandleWindowClosed;

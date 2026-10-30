@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -16,21 +16,21 @@ using Rebellion.Util.DependencyInjection;
 public sealed class ConstructionOrderController
 {
     private readonly IServiceLocator services;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
 
     /// <summary>
     /// Creates a construction order controller.
     /// </summary>
     /// <param name="services">Resolves the active game's commands and queries.</param>
-    /// <param name="playerActions">Completes production requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes production requests through the session action boundary.</param>
     public ConstructionOrderController(
         IServiceLocator services,
-        IPlayerActionDispatcher playerActions
+        IPlayerRequestDispatcher playerRequests
     )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
     }
 
     /// <summary>
@@ -151,8 +151,8 @@ public sealed class ConstructionOrderController
     {
         if (selected == null)
             return false;
-        PlayerActionResult result = await playerActions.ExecuteAsync(
-            new SetManufacturingOrderPlayerAction
+        PlayerRequestOutcome result = await playerRequests.ExecuteAsync(
+            new SetManufacturingOrderRequest
             {
                 ProducerPlanetID = producer?.InstanceID,
                 DestinationID = destination?.InstanceID,

@@ -97,7 +97,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() =>
                 new FleetWindowController(
                     null,
-                    TestPlayerActions.Create(_session, () => _playerFactionId),
+                    TestPlayerRequests.Create(_session, () => _playerFactionId),
                     () => _uiContext,
                     _targetingController,
                     _windowLayer,
@@ -1052,7 +1052,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             return new FleetWindowController(
                 _fleetCommandController,
-                TestPlayerActions.Create(_session, () => _playerFactionId),
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _targetingController,
                 _windowLayer,
@@ -1072,7 +1072,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return new StrategyFleetCommandController(
                 _session,
                 () => _game.GetPlayerFaction().InstanceID,
-                TestPlayerActions.Create(_session, () => _game.GetPlayerFaction().InstanceID)
+                TestPlayerRequests.Create(_session, () => _game.GetPlayerFaction().InstanceID)
             );
         }
 

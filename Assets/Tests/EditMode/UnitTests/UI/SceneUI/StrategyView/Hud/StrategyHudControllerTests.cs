@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new FactionTheme(),
                 _ => null,
                 _ => { },
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
             _controller.Initialize(_actions);
         }
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => null,
                     _ => null,
                     _ => { },
-                    TestPlayerActions.RejectAll()
+                    TestPlayerRequests.RejectAll()
                 )
             );
             Assert.Throws<ArgumentNullException>(() =>
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     null,
                     _ => null,
                     _ => { },
-                    TestPlayerActions.RejectAll()
+                    TestPlayerRequests.RejectAll()
                 )
             );
             Assert.Throws<ArgumentNullException>(() =>
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => null,
                     null,
                     _ => { },
-                    TestPlayerActions.RejectAll()
+                    TestPlayerRequests.RejectAll()
                 )
             );
             Assert.Throws<ArgumentNullException>(() =>
@@ -70,7 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => null,
                     _ => null,
                     null,
-                    TestPlayerActions.RejectAll()
+                    TestPlayerRequests.RejectAll()
                 )
             );
         }
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => new FactionTheme(),
                     path => path == "up" ? upTexture : pressedTexture,
                     _ => { },
-                    TestPlayerActions.RejectAll()
+                    TestPlayerRequests.RejectAll()
                 );
                 FactionTheme theme = new FactionTheme
                 {

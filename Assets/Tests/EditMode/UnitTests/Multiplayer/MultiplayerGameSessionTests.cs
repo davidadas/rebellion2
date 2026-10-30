@@ -6,11 +6,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -30,7 +31,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair previous = new();
             previous.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Previous initialization" }
+                new RenameRequest { EntityID = "host-ship", Name = "Previous initialization" }
             );
             previous.Host.Pump();
             MultiplayerPacket delayed = previous.ToGuest.Dequeue();
@@ -182,27 +183,27 @@ namespace Rebellion.Tests.Multiplayer
         public async Task Pump_ExistingWindowDispatchers_ReplicatesBothActorsAcrossTwentyDaysAsync()
         {
             using PeerPair peers = new();
-            SessionPlayerActionDispatcher hostBinding = new(peers.Host, () => true);
-            SessionPlayerActionDispatcher guestBinding = new(peers.Guest, () => true);
-            IPlayerActionDispatcher hostWindow = hostBinding;
-            IPlayerActionDispatcher guestWindow = guestBinding;
+            SessionPlayerRequestDispatcher hostBinding = new(peers.Host, () => true);
+            SessionPlayerRequestDispatcher guestBinding = new(peers.Guest, () => true);
+            IPlayerRequestDispatcher hostWindow = hostBinding;
+            IPlayerRequestDispatcher guestWindow = guestBinding;
 
-            Task<PlayerActionResult> hostOrder = hostWindow.ExecuteAsync(
-                new CreateFleetPlayerAction { ItemIDs = new[] { "host-ship" } }
+            Task<PlayerRequestOutcome> hostOrder = hostWindow.ExecuteAsync(
+                new CreateFleetRequest { ItemIDs = new[] { "host-ship" } }
             );
-            Task<PlayerActionResult> guestOrder = guestWindow.ExecuteAsync(
-                new CreateFleetPlayerAction { ItemIDs = new[] { "guest-ship" } }
+            Task<PlayerRequestOutcome> guestOrder = guestWindow.ExecuteAsync(
+                new CreateFleetRequest { ItemIDs = new[] { "guest-ship" } }
             );
             peers.Flush();
             Assert.IsTrue((await hostOrder).Accepted);
             Assert.IsTrue((await guestOrder).Accepted);
             peers.AssertSharedState();
 
-            Task<PlayerActionResult> hostChat = hostWindow.ExecuteAsync(
-                new SendPeerChatPlayerAction { Text = "Host window message" }
+            Task<PlayerRequestOutcome> hostChat = hostWindow.ExecuteAsync(
+                new SendPeerChatRequest { Text = "Host window message" }
             );
-            Task<PlayerActionResult> guestChat = guestWindow.ExecuteAsync(
-                new SendPeerChatPlayerAction { Text = "Guest window message" }
+            Task<PlayerRequestOutcome> guestChat = guestWindow.ExecuteAsync(
+                new SendPeerChatRequest { Text = "Guest window message" }
             );
             peers.Flush();
             Assert.IsTrue((await hostChat).Accepted);
@@ -229,8 +230,8 @@ namespace Rebellion.Tests.Multiplayer
         public void ExecuteAsync_HostRequestBeforePump_DoesNotMutateOrComplete()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Host order" }
+            Task<PlayerRequestOutcome> request = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Host order" }
             );
 
             Assert.IsFalse(request.IsCompleted);
@@ -245,8 +246,8 @@ namespace Rebellion.Tests.Multiplayer
         public void ExecuteAsync_DelayedGuestRequest_CompletesOnlyAfterGuestExecutesCommit()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "guest-ship", Name = "Guest order" }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new RenameRequest { EntityID = "guest-ship", Name = "Guest order" }
             );
             Assert.IsFalse(request.IsCompleted);
             peers.DeliverToHost();
@@ -282,11 +283,11 @@ namespace Rebellion.Tests.Multiplayer
             CapitalShip retainedGuestShip = guestGraph.GetSceneNodeByInstanceID<CapitalShip>(
                 "guest-ship"
             );
-            Task<PlayerActionResult> guestRequest = peers.Guest.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "guest-ship", Name = "Guest name" }
+            Task<PlayerRequestOutcome> guestRequest = peers.Guest.ExecuteAsync(
+                new RenameRequest { EntityID = "guest-ship", Name = "Guest name" }
             );
-            Task<PlayerActionResult> hostRequest = peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Host name" }
+            Task<PlayerRequestOutcome> hostRequest = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Host name" }
             );
 
             peers.Flush();
@@ -316,8 +317,8 @@ namespace Rebellion.Tests.Multiplayer
             {
                 Assert.IsTrue(hostTick.MoveNext());
                 Assert.IsTrue(guestTick.MoveNext());
-                Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                    new RenamePlayerAction { EntityID = "guest-ship", Name = "After tick" }
+                Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                    new RenameRequest { EntityID = "guest-ship", Name = "After tick" }
                 );
                 peers.Flush();
 
@@ -356,8 +357,8 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_GuestTargetsHostEntity_RejectsWithoutStoppingSession()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Unauthorized" }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Unauthorized" }
             );
 
             peers.Flush();
@@ -376,8 +377,8 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_RejectedDomainOutcome_CommitsAndWaitsForReplayReceipt()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Unauthorized" }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Unauthorized" }
             );
             peers.DeliverToHost();
             peers.Host.Pump();
@@ -400,8 +401,8 @@ namespace Rebellion.Tests.Multiplayer
         public void Receive_GuestClaimsHostRole_UsesAuthenticatedGuestOwnership()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Unauthorized" }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Unauthorized" }
             );
             MultiplayerPacket packet = peers.ToHost.Dequeue();
             PacketMetadata metadata = JsonUtility.FromJson<PacketMetadata>(packet.Metadata);
@@ -424,13 +425,13 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_CreateFleet_ReplaysSameIdentityAndParentRelationships()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new CreateFleetPlayerAction { ItemIDs = new[] { "guest-ship" } }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new CreateFleetRequest { ItemIDs = new[] { "guest-ship" } }
             );
 
             peers.Flush();
 
-            PlayerActionResult result = Completed(request);
+            PlayerRequestOutcome result = Completed(request);
             Assert.IsTrue(result.Accepted);
             string fleetID = result.CreatedEntityID;
             Assert.IsNotEmpty(fleetID);
@@ -453,8 +454,8 @@ namespace Rebellion.Tests.Multiplayer
                 .GuestGame.GetFactionByOwnerInstanceID(_guestFactionID)
                 .Messages[MessageType.Advice]
                 .Single();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new ReadMessagesPlayerAction { MessageIDs = new[] { "guest-message" } }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new ReadMessagesRequest { MessageIDs = new[] { "guest-message" } }
             );
 
             peers.Flush();
@@ -488,16 +489,16 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             using PeerPair peers = new();
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
-            peers.Guest.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
+            peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Flush();
             MultiplayerGameSession proposer = hostProposes ? peers.Host : peers.Guest;
             MultiplayerGameSession responder = hostProposes ? peers.Guest : peers.Host;
             string faction = hostProposes ? _hostFactionID : _guestFactionID;
-            proposer.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Fast });
+            proposer.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             peers.Flush();
             var response = responder.ExecuteAsync(
-                new RespondToSpeedPlayerAction
+                new RespondToSpeedRequest
                 {
                     RequestingFactionID = faction,
                     Speed = TickSpeed.Fast,
@@ -520,18 +521,18 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_ReplacedSpeedProposal_RejectsOldAcceptanceOnBothPeers()
         {
             using PeerPair peers = new();
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
-            peers.Guest.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
+            peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Flush();
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Fast });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             peers.Flush();
             long revision = peers
                 .HostGame.GetFactionPlayer(_hostFactionID)
                 .GameSpeedSelectionRevision;
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Slow });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Slow });
             peers.Flush();
             var response = peers.Guest.ExecuteAsync(
-                new RespondToSpeedPlayerAction
+                new RespondToSpeedRequest
                 {
                     RequestingFactionID = _hostFactionID,
                     Speed = TickSpeed.Fast,
@@ -550,11 +551,11 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_SlowerGuestSelection_AppliesToBothPeersWithoutMatchingHostVote()
         {
             using PeerPair peers = new();
-            peers.Guest.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.VerySlow });
+            peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.VerySlow });
             peers.Flush();
             Assert.AreEqual(TickSpeed.VerySlow, peers.HostClock.GetGameSpeed());
             Assert.AreEqual(TickSpeed.VerySlow, peers.GuestClock.GetGameSpeed());
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.VerySlow });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.VerySlow });
             peers.Flush();
 
             Assert.AreEqual(TickSpeed.VerySlow, peers.HostClock.GetGameSpeed());
@@ -568,7 +569,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair peers = new();
             (role == MultiplayerRole.Host ? peers.Host : peers.Guest).ExecuteAsync(
-                new SetSpeedPlayerAction { Speed = TickSpeed.Paused }
+                new SetSpeedRequest { Speed = TickSpeed.Paused }
             );
 
             peers.Flush();
@@ -582,11 +583,11 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_OtherParticipantRequestsFast_DoesNotReleasePlayerPause()
         {
             using PeerPair peers = new();
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Flush();
-            peers.Guest.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Paused });
+            peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Paused });
             peers.Flush();
-            peers.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Fast });
+            peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             peers.Flush();
 
             Assert.AreEqual(TickSpeed.Paused, peers.HostClock.GetGameSpeed());
@@ -619,9 +620,7 @@ namespace Rebellion.Tests.Multiplayer
         public void TryBeginTick_UnacknowledgedAction_BlocksNextDay()
         {
             using PeerPair peers = new();
-            peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Ordered" }
-            );
+            peers.Host.ExecuteAsync(new RenameRequest { EntityID = "host-ship", Name = "Ordered" });
             peers.Host.Pump();
 
             Assert.IsFalse(peers.Host.TryBeginTick(true));
@@ -682,8 +681,8 @@ namespace Rebellion.Tests.Multiplayer
         public void Receive_DuplicateGuestRequest_CreatesFleetOnce()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new CreateFleetPlayerAction { ItemIDs = new[] { "guest-ship" } }
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new CreateFleetRequest { ItemIDs = new[] { "guest-ship" } }
             );
             MultiplayerPacket packet = peers.ToHost.Dequeue();
             peers.Host.Receive(packet);
@@ -701,7 +700,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair peers = new();
             peers.Host.ExecuteAsync(
-                new ToggleAdvisorOptionPlayerAction { Option = PlayerAdvisorOption.AgentAdvice }
+                new ToggleAdvisorOptionRequest { Option = PlayerAdvisorOption.AgentAdvice }
             );
             peers.Host.Pump();
             MultiplayerPacket commit = peers.ToGuest.Dequeue();
@@ -728,9 +727,7 @@ namespace Rebellion.Tests.Multiplayer
         public void Receive_CommitSkipsSequence_FailsBeforeApplyingMutation()
         {
             using PeerPair peers = new();
-            peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Skipped" }
-            );
+            peers.Host.ExecuteAsync(new RenameRequest { EntityID = "host-ship", Name = "Skipped" });
             peers.Host.Pump();
             MultiplayerPacket commit = peers.ToGuest.Dequeue();
             PacketMetadata metadata = JsonUtility.FromJson<PacketMetadata>(commit.Metadata);
@@ -775,15 +772,15 @@ namespace Rebellion.Tests.Multiplayer
             using PeerPair peers = new();
             MultiplayerGameSession protocol =
                 role == MultiplayerRole.Host ? peers.Host : peers.Guest;
-            Task<PlayerActionResult> request = protocol.ExecuteAsync(
-                new MarkAllMessagesReadPlayerAction()
+            Task<PlayerRequestOutcome> request = protocol.ExecuteAsync(
+                new MarkAllMessagesReadRequest()
             );
 
             protocol.Dispose();
 
             Assert.IsFalse(Completed(request).OutcomeKnown);
             Assert.Throws<ObjectDisposedException>(() =>
-                protocol.ExecuteAsync(new MarkAllMessagesReadPlayerAction())
+                protocol.ExecuteAsync(new MarkAllMessagesReadRequest())
             );
         }
 
@@ -797,8 +794,8 @@ namespace Rebellion.Tests.Multiplayer
                 observerCalls++;
                 throw new InvalidOperationException("Observer failed after mutation.");
             };
-            Task<PlayerActionResult> request = peers.Host.ExecuteAsync(
-                new SetSpeedPlayerAction { Speed = TickSpeed.Paused }
+            Task<PlayerRequestOutcome> request = peers.Host.ExecuteAsync(
+                new SetSpeedRequest { Speed = TickSpeed.Paused }
             );
 
             peers.Host.Pump();
@@ -819,12 +816,8 @@ namespace Rebellion.Tests.Multiplayer
             peers.RejectHostSends = true;
             int failures = 0;
             peers.Host.Faulted += _ => failures++;
-            Task<PlayerActionResult> request = peers.Host.ExecuteAsync(
-                new RenamePlayerAction
-                {
-                    EntityID = "host-ship",
-                    Name = "Applied before disconnect",
-                }
+            Task<PlayerRequestOutcome> request = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Applied before disconnect" }
             );
 
             Assert.DoesNotThrow(peers.Host.Pump);
@@ -844,8 +837,8 @@ namespace Rebellion.Tests.Multiplayer
             using PeerPair peers = new();
             peers.RejectGuestSends = true;
 
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new MarkAllMessagesReadPlayerAction()
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new MarkAllMessagesReadRequest()
             );
 
             Assert.IsFalse(Completed(request).OutcomeKnown);
@@ -857,11 +850,11 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_HostCommitSendFails_DoesNotExecuteFollowingQueuedAction()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> first = peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "First mutation" }
+            Task<PlayerRequestOutcome> first = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "First mutation" }
             );
-            Task<PlayerActionResult> second = peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Must remain queued" }
+            Task<PlayerRequestOutcome> second = peers.Host.ExecuteAsync(
+                new RenameRequest { EntityID = "host-ship", Name = "Must remain queued" }
             );
             peers.RejectHostSends = true;
 
@@ -881,10 +874,10 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair peers = new();
             peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "First mutation" }
+                new RenameRequest { EntityID = "host-ship", Name = "First mutation" }
             );
             peers.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Must remain queued" }
+                new RenameRequest { EntityID = "host-ship", Name = "Must remain queued" }
             );
             peers.Host.Pump();
             peers.DeliverToGuest();
@@ -915,8 +908,8 @@ namespace Rebellion.Tests.Multiplayer
         public void ReportFailure_PendingRemoteRequest_LeavesOutcomeUnknownWithoutRetry()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new MarkAllMessagesReadPlayerAction()
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new MarkAllMessagesReadRequest()
             );
             InvalidOperationException failure = new("The tick could not complete.");
 
@@ -952,11 +945,11 @@ namespace Rebellion.Tests.Multiplayer
         public void Pump_ActionQueuedInsideTickCompletion_WaitsUntilIteratorReleasesGuard()
         {
             using PeerPair peers = new();
-            Task<PlayerActionResult> request = null;
+            Task<PlayerRequestOutcome> request = null;
             peers.HostSimulation.Tick.TickCompleted += () =>
             {
                 request = peers.Host.ExecuteAsync(
-                    new RenamePlayerAction { EntityID = "host-ship", Name = "After day" }
+                    new RenameRequest { EntityID = "host-ship", Name = "After day" }
                 );
                 peers.Host.Pump();
                 Assert.IsFalse(request.IsCompleted);
@@ -994,8 +987,8 @@ namespace Rebellion.Tests.Multiplayer
                     .GuestSimulation.GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
-            Task<PlayerActionResult> request = peers.Guest.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1009,7 +1002,7 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(Completed(request).Accepted);
             Assert.IsFalse(peers.HostSimulation.Tick.IsSettled);
             peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1042,8 +1035,8 @@ namespace Rebellion.Tests.Multiplayer
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
             long before = peers.HostGame.RandomIndex;
-            Task<PlayerActionResult> first = peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> first = peers.Host.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1057,8 +1050,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsFalse(peers.HostSimulation.Tick.IsSettled);
             Assert.IsFalse(peers.GuestSimulation.Tick.IsSettled);
             Assert.AreEqual(before, peers.HostGame.RandomIndex);
-            Task<PlayerActionResult> second = peers.Guest.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> second = peers.Guest.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1100,8 +1093,8 @@ namespace Rebellion.Tests.Multiplayer
                     .HostSimulation.GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
-            Task<PlayerActionResult> request = peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> request = peers.Host.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1141,8 +1134,8 @@ namespace Rebellion.Tests.Multiplayer
                     .HostSimulation.GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
-            Task<PlayerActionResult> request = peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> request = peers.Host.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1170,7 +1163,7 @@ namespace Rebellion.Tests.Multiplayer
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
             peers.Host.ExecuteAsync(
-                new ResolveCombatPlayerAction
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1184,8 +1177,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerSnapshotCodec.Capture(peers.GuestSimulation)
             );
-            Task<PlayerActionResult> second = peers.Guest.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> second = peers.Guest.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1240,10 +1233,10 @@ namespace Rebellion.Tests.Multiplayer
             previous.Host.Dispose();
             previous.Guest.Dispose();
             using PeerPair recovered = new(snapshot, TestGameData.Create(previous.HostGame.Config));
-            recovered.Host.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Fast });
+            recovered.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             recovered.Flush();
             Assert.AreEqual(TickSpeed.Paused, recovered.HostClock.GetGameSpeed());
-            recovered.Guest.ExecuteAsync(new SetSpeedPlayerAction { Speed = TickSpeed.Fast });
+            recovered.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
             recovered.Flush();
             Assert.AreEqual(TickSpeed.Fast, recovered.HostClock.GetGameSpeed());
             for (int day = 0; day < 20; day++)
@@ -1294,14 +1287,14 @@ namespace Rebellion.Tests.Multiplayer
                     peers.Dispose();
                     peers = new PeerPair(snapshot, content);
                     peers.Host.ExecuteAsync(
-                        new RenamePlayerAction
+                        new RenameRequest
                         {
                             EntityID = "host-ship",
                             Name = "Host recovery " + cycle,
                         }
                     );
                     peers.Guest.ExecuteAsync(
-                        new RenamePlayerAction
+                        new RenameRequest
                         {
                             EntityID = "guest-ship",
                             Name = "Guest recovery " + cycle,
@@ -1345,8 +1338,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(pending.AttackerCanRetreat);
             Assert.IsTrue(pending.DefenderCanRetreat);
             MultiplayerGameSession first = guestRespondsFirst ? previous.Guest : previous.Host;
-            Task<PlayerActionResult> initialResponse = first.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> initialResponse = first.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -1378,8 +1371,8 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerGameSession firstAgain = guestRespondsFirst
                 ? recovered.Guest
                 : recovered.Host;
-            Task<PlayerActionResult> newResponse = firstAgain.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> newResponse = firstAgain.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = restored.PlanetInstanceID,
                     Tick = restored.Tick,
@@ -1391,8 +1384,8 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(Completed(newResponse).SpaceCombatResult, Is.Null);
             Assert.That(recovered.HostSimulation.Tick.IsSettled, Is.False);
             MultiplayerGameSession second = guestRespondsFirst ? recovered.Host : recovered.Guest;
-            Task<PlayerActionResult> finalResponse = second.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            Task<PlayerRequestOutcome> finalResponse = second.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = restored.PlanetInstanceID,
                     Tick = restored.Tick,
@@ -1401,7 +1394,7 @@ namespace Rebellion.Tests.Multiplayer
             );
             recovered.Flush();
 
-            PlayerActionResult completed = Completed(finalResponse);
+            PlayerRequestOutcome completed = Completed(finalResponse);
             Assert.IsTrue(completed.Accepted);
             Assert.IsNotNull(completed.SpaceCombatResult);
             Assert.IsTrue(recovered.HostSimulation.Tick.IsSettled);
@@ -1442,14 +1435,10 @@ namespace Rebellion.Tests.Multiplayer
             {
                 for (int cycle = 0; cycle < 12; cycle++)
                 {
-                    List<Task<PlayerActionResult>> start = new()
+                    List<Task<PlayerRequestOutcome>> start = new()
                     {
-                        peers.Host.ExecuteAsync(
-                            new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
-                        ),
-                        peers.Guest.ExecuteAsync(
-                            new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
-                        ),
+                        peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast }),
+                        peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast }),
                     };
                     peers.FlushWithJitter(start, network);
                     Assert.IsTrue(peers.Host.TryBeginTick(true));
@@ -1468,7 +1457,7 @@ namespace Rebellion.Tests.Multiplayer
                         TickSpeed? expectedGuest = peers
                             .HostGame.GetFactionPlayer(_guestFactionID)
                             .RequestedGameSpeed;
-                        List<Task<PlayerActionResult>> requests = new();
+                        List<Task<PlayerRequestOutcome>> requests = new();
                         for (int request = 0; request < 24; request++)
                         {
                             TickSpeed speed = speeds[network.Next(speeds.Length)];
@@ -1479,12 +1468,12 @@ namespace Rebellion.Tests.Multiplayer
                                 expectedHost = speed;
                             requests.Add(
                                 (guest ? peers.Guest : peers.Host).ExecuteAsync(
-                                    new SetSpeedPlayerAction { Speed = speed }
+                                    new SetSpeedRequest { Speed = speed }
                                 )
                             );
                         }
                         peers.FlushWithJitter(requests, network, hostTick, guestTick);
-                        foreach (Task<PlayerActionResult> request in requests)
+                        foreach (Task<PlayerRequestOutcome> request in requests)
                             Assert.IsTrue(Completed(request).Accepted);
                         Assert.AreEqual(
                             expectedHost,
@@ -1501,14 +1490,10 @@ namespace Rebellion.Tests.Multiplayer
                         (hostTick as IDisposable)?.Dispose();
                         (guestTick as IDisposable)?.Dispose();
                     }
-                    List<Task<PlayerActionResult>> resume = new()
+                    List<Task<PlayerRequestOutcome>> resume = new()
                     {
-                        peers.Host.ExecuteAsync(
-                            new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
-                        ),
-                        peers.Guest.ExecuteAsync(
-                            new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
-                        ),
+                        peers.Host.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast }),
+                        peers.Guest.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast }),
                     };
                     peers.FlushWithJitter(resume, network);
                     Assert.AreEqual(TickSpeed.Fast, peers.HostClock.GetGameSpeed());
@@ -1520,7 +1505,7 @@ namespace Rebellion.Tests.Multiplayer
                         Assert.IsTrue(peers.Guest.TryBeginTick(false));
                         peers.HostSimulation.Tick.ProcessTick();
                         peers.GuestSimulation.Tick.ProcessTick();
-                        peers.FlushWithJitter(Array.Empty<Task<PlayerActionResult>>(), network);
+                        peers.FlushWithJitter(Array.Empty<Task<PlayerRequestOutcome>>(), network);
                         peers.AssertSharedState();
                     }
                     if (cycle % 3 == 2)
@@ -1551,7 +1536,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             using PeerPair previous = new();
             previous.Host.ExecuteAsync(
-                new RenamePlayerAction { EntityID = "host-ship", Name = "Unreceived commit" }
+                new RenameRequest { EntityID = "host-ship", Name = "Unreceived commit" }
             );
             previous.Host.Pump();
             MultiplayerPacket oldCommit = previous.ToGuest.Dequeue();
@@ -1577,7 +1562,7 @@ namespace Rebellion.Tests.Multiplayer
         /// </summary>
         /// <param name="request">The request whose completion is required.</param>
         /// <returns>The completed domain outcome.</returns>
-        private static PlayerActionResult Completed(Task<PlayerActionResult> request)
+        private static PlayerRequestOutcome Completed(Task<PlayerRequestOutcome> request)
         {
             Assert.AreEqual(TaskStatus.RanToCompletion, request.Status);
             return request.Result;
@@ -1593,7 +1578,7 @@ namespace Rebellion.Tests.Multiplayer
             public string stateFingerprint;
             public long requestID;
             public long sequence;
-            public PlayerActionKind kind;
+            public PlayerRequestKind kind;
             public MultiplayerRole actor;
             public bool accepted;
             public string reason;
@@ -1763,7 +1748,7 @@ namespace Rebellion.Tests.Multiplayer
             /// <param name="hostTick">The optional already-started host tick iterator.</param>
             /// <param name="guestTick">The optional already-started guest tick iterator.</param>
             public void FlushWithJitter(
-                IReadOnlyCollection<Task<PlayerActionResult>> requests,
+                IReadOnlyCollection<Task<PlayerRequestOutcome>> requests,
                 System.Random network,
                 IEnumerator hostTick = null,
                 IEnumerator guestTick = null

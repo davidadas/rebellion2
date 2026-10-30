@@ -79,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             try
             {
                 MessagesWindowController controller = new MessagesWindowController(
-                    TestPlayerActions.RejectAll(),
+                    TestPlayerRequests.RejectAll(),
                     _ => { },
                     path =>
                     {
@@ -513,7 +513,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
-                    TestPlayerActions.Create(game, () => faction.InstanceID),
+                    TestPlayerRequests.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -576,7 +576,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
-                    TestPlayerActions.Create(game, () => faction.InstanceID),
+                    TestPlayerRequests.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -634,7 +634,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     root.GetComponentInChildren<StrategyWindowLayerView>(true);
                 UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
                 MessagesWindowController controller = new MessagesWindowController(
-                    TestPlayerActions.Create(game, () => faction.InstanceID),
+                    TestPlayerRequests.Create(game, () => faction.InstanceID),
                     _ => { },
                     _ => null,
                     () => uiContext,
@@ -999,7 +999,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 root.GetComponentInChildren<StrategyWindowLayerView>(true);
             UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
             MessagesWindowController controller = new MessagesWindowController(
-                TestPlayerActions.Create(game, () => faction.InstanceID),
+                TestPlayerRequests.Create(game, () => faction.InstanceID),
                 _ => { },
                 _ => null,
                 () => uiContext,

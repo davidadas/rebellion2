@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
@@ -16,7 +16,7 @@ using UnityEngine;
 public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
     private readonly Func<Faction> getPlayerFaction;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
@@ -53,7 +53,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getPlayerFaction">Resolves the current player faction.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
-    /// <param name="playerActions">Completes advisor requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes advisor requests through the session action boundary.</param>
     /// <param name="selectRandomIndex">Selects a zero-based index below the supplied count.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
@@ -61,7 +61,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<int, int> selectRandomIndex = null,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
         Func<string, float> getAudioDuration = null
@@ -71,8 +71,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.playSfxInstance = playSfxInstance;
         this.getAudioDuration = getAudioDuration ?? (_ => 0f);
         this.selectRandomIndex = selectRandomIndex ?? (count => UnityEngine.Random.Range(0, count));
@@ -704,26 +704,26 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (faction == null)
             return;
 
-        PlayerAction playerRequest = menuCommand.Action switch
+        PlayerRequest playerRequest = menuCommand.Action switch
         {
-            StrategyMenuAction.AdvisorMarkAllMessagesRead => new MarkAllMessagesReadPlayerAction(),
-            StrategyMenuAction.AdvisorManageGarrisons => new ToggleAdvisorOptionPlayerAction
+            StrategyMenuAction.AdvisorMarkAllMessagesRead => new MarkAllMessagesReadRequest(),
+            StrategyMenuAction.AdvisorManageGarrisons => new ToggleAdvisorOptionRequest
             {
                 Option = PlayerAdvisorOption.ManageGarrisons,
             },
-            StrategyMenuAction.AdvisorManageProduction => new ToggleAdvisorOptionPlayerAction
+            StrategyMenuAction.AdvisorManageProduction => new ToggleAdvisorOptionRequest
             {
                 Option = PlayerAdvisorOption.ManageProduction,
             },
-            StrategyMenuAction.AdvisorManageNaming => new ToggleAdvisorOptionPlayerAction
+            StrategyMenuAction.AdvisorManageNaming => new ToggleAdvisorOptionRequest
             {
                 Option = PlayerAdvisorOption.ManageNaming,
             },
-            StrategyMenuAction.AdvisorTranslateCounterpart => new ToggleAdvisorOptionPlayerAction
+            StrategyMenuAction.AdvisorTranslateCounterpart => new ToggleAdvisorOptionRequest
             {
                 Option = PlayerAdvisorOption.TranslateCounterpart,
             },
-            StrategyMenuAction.AdvisorAgentAdvice => new ToggleAdvisorOptionPlayerAction
+            StrategyMenuAction.AdvisorAgentAdvice => new ToggleAdvisorOptionRequest
             {
                 Option = PlayerAdvisorOption.AgentAdvice,
             },
@@ -733,8 +733,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             playerRequest == null
             && TryGetMessageType(menuCommand.Action, out MessageType messageType)
         )
-            playerRequest = new ToggleMessageNotificationPlayerAction { MessageType = messageType };
-        if (playerRequest == null || !(await playerActions.ExecuteAsync(playerRequest)).Accepted)
+            playerRequest = new ToggleMessageNotificationRequest { MessageType = messageType };
+        if (playerRequest == null || !(await playerRequests.ExecuteAsync(playerRequest)).Accepted)
             return;
 
         actions.RequestHudRender();

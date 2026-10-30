@@ -1,12 +1,12 @@
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Game.PlayerRequests
 {
     /// <summary>
     /// Reports completed execution separately from request delivery or queuing.
     /// </summary>
-    public sealed class PlayerActionResult
+    public sealed class PlayerRequestOutcome
     {
         public bool Accepted { get; }
         public bool OutcomeKnown { get; }
@@ -24,7 +24,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="combatReport">The actor-visible planetary combat report.</param>
         /// <param name="spaceCombatResult">The completed pending space battle.</param>
         /// <param name="outcomeKnown">Whether the execution outcome was confirmed before the connection ended.</param>
-        public PlayerActionResult(
+        public PlayerRequestOutcome(
             bool accepted,
             string rejectionReason = null,
             string createdEntityID = null,

@@ -1,11 +1,11 @@
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Game.PlayerRequests
 {
     /// <summary>
     /// Sends unchanged multiline text to the other human participant's durable chat messages.
     /// </summary>
-    public sealed class SendPeerChatPlayerAction : PlayerAction
+    public sealed class SendPeerChatRequest : PlayerRequest
     {
-        public override PlayerActionKind Kind => PlayerActionKind.SendPeerChat;
+        public override PlayerRequestKind Kind => PlayerRequestKind.SendPeerChat;
         public string Text { get; set; }
     }
 }

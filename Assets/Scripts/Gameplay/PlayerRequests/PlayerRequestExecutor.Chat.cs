@@ -2,14 +2,14 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
-using Rebellion.Gameplay;
+using Rebellion.Game.PlayerRequests;
 
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Gameplay.PlayerRequests
 {
     /// <summary>
     /// Delivers ordered peer chat through the same durable message and notification pipeline.
     /// </summary>
-    public sealed partial class PlayerActionExecutor
+    public sealed partial class PlayerRequestExecutor
     {
         /// <summary>
         /// Delivers raw text only to the opposite human participant, without adding sender history.
@@ -17,7 +17,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The authenticated sending faction.</param>
         /// <param name="request">The unchanged text submitted by its composer.</param>
         /// <returns>The completed delivery outcome.</returns>
-        private PlayerActionResult SendPeerChat(Faction actor, SendPeerChatPlayerAction request)
+        private PlayerRequestOutcome SendPeerChat(Faction actor, SendPeerChatRequest request)
         {
             if (string.IsNullOrEmpty(request.Text))
                 return Reject("Enter a message to send.");
@@ -54,7 +54,7 @@ namespace Rebellion.App.PlayerActions
                         }
                     )
             );
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
     }
 }

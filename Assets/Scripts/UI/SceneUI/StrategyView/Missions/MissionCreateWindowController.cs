@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -40,7 +40,7 @@ public sealed class MissionCreateWindowController
         new HashSet<MissionCreateWindowView>();
     private readonly Action<UIWindow> closeWindow;
     private readonly IServiceLocator services;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly IRandomNumberProvider presentationRandom = new SystemRandomProvider(
         Environment.TickCount
     );
@@ -63,7 +63,7 @@ public sealed class MissionCreateWindowController
     /// Creates the Mission Create feature controller.
     /// </summary>
     /// <param name="services">Resolves the active game's mission commands and queries.</param>
-    /// <param name="playerActions">Completes mission requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes mission requests through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="playSfx">Plays a resolved mission acknowledgment sound.</param>
     /// <param name="windowLayer">Provides the authored Mission Create prefab and modal layer.</param>
@@ -77,7 +77,7 @@ public sealed class MissionCreateWindowController
     /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
     public MissionCreateWindowController(
         IServiceLocator services,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         StrategyWindowLayerView windowLayer,
@@ -92,8 +92,8 @@ public sealed class MissionCreateWindowController
     )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -623,8 +623,8 @@ public sealed class MissionCreateWindowController
         if (
             !services.GetService<MissionQueries>().CanCreateMission(context)
             || !(
-                await playerActions.ExecuteAsync(
-                    new StartMissionPlayerAction
+                await playerRequests.ExecuteAsync(
+                    new StartMissionRequest
                     {
                         MissionTypeID = context.MissionTypeID,
                         ObservedLocation = context.Location as Planet,

@@ -4,11 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Reflection;
 using UnityEngine;
@@ -25,7 +26,7 @@ public sealed class GameRuntime
     private GameManager _gameManager;
     private bool _operationsBlocked;
     private IGamePersistenceCoordinator _persistenceCoordinator;
-    private SessionPlayerActionDispatcher _playerActions;
+    private SessionPlayerRequestDispatcher _playerRequests;
     private IGameSessionOwner _sessionOwner;
 
     /// <summary>
@@ -36,7 +37,7 @@ public sealed class GameRuntime
     /// <summary>
     /// Gets the active player's ordered application action boundary.
     /// </summary>
-    public IPlayerActionDispatcher PlayerActions => _playerActions;
+    public IPlayerRequestDispatcher PlayerRequests => _playerRequests;
 
     public event Action<GameRoot> GameReplaced;
 
@@ -182,11 +183,11 @@ public sealed class GameRuntime
         _operationsBlocked = false;
         _sessionOwner = owner;
         _persistenceCoordinator = owner;
-        _playerActions = new SessionPlayerActionDispatcher(
+        _playerRequests = new SessionPlayerRequestDispatcher(
             owner
-                ?? (IPlayerActionDispatcher)
-                    new LocalPlayerActionDispatcher(
-                        new PlayerActionExecutor(session, clock),
+                ?? (IPlayerRequestDispatcher)
+                    new LocalPlayerRequestDispatcher(
+                        new PlayerRequestExecutor(session, clock),
                         () => session.Game.GetPlayerFaction()?.InstanceID,
                         () =>
                         {
@@ -273,7 +274,7 @@ public sealed class GameRuntime
             _activeGameSession.Dispose();
             _activeGameSession = null;
             _gameManager = null;
-            _playerActions = null;
+            _playerRequests = null;
             _persistenceCoordinator = null;
         }
     }

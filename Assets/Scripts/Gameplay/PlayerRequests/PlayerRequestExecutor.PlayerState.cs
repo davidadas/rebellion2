@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
-using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using Rebellion.Gameplay;
+using Rebellion.Game.PlayerRequests;
 
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Gameplay.PlayerRequests
 {
-    public sealed partial class PlayerActionExecutor
+    public sealed partial class PlayerRequestExecutor
     {
         /// <summary>
         /// Toggles one persisted advisor setting and runs newly enabled delegated work.
@@ -17,9 +15,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The setting to toggle.</param>
         /// <returns>The completed setting-change outcome.</returns>
-        private PlayerActionResult ToggleAdvisorOption(
+        private PlayerRequestOutcome ToggleAdvisorOption(
             Faction actor,
-            ToggleAdvisorOptionPlayerAction request
+            ToggleAdvisorOptionRequest request
         )
         {
             bool processAutomation = false;
@@ -51,7 +49,7 @@ namespace Rebellion.App.PlayerActions
                 _session.GetService<FactionAutomationCommands>().ProcessFaction(actor);
                 _session.GetService<NamingCommands>().ProcessFaction(actor);
             }
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
 
         /// <summary>
@@ -80,10 +78,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The messages that were presented.</param>
         /// <returns>The completed read-state outcome.</returns>
-        private static PlayerActionResult ReadMessages(
-            Faction actor,
-            ReadMessagesPlayerAction request
-        )
+        private static PlayerRequestOutcome ReadMessages(Faction actor, ReadMessagesRequest request)
         {
             List<Message> messages = FindMessages(actor, request.MessageIDs);
             foreach (Message message in messages)
@@ -96,10 +91,10 @@ namespace Rebellion.App.PlayerActions
         /// </summary>
         /// <param name="actor">The issuing faction.</param>
         /// <returns>The completed read-state outcome.</returns>
-        private static PlayerActionResult MarkAllMessagesRead(Faction actor)
+        private static PlayerRequestOutcome MarkAllMessagesRead(Faction actor)
         {
             actor.MarkAllMessagesRead();
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
 
         /// <summary>
@@ -108,9 +103,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The message identities to remove.</param>
         /// <returns>The completed removal outcome.</returns>
-        private static PlayerActionResult RemoveMessages(
+        private static PlayerRequestOutcome RemoveMessages(
             Faction actor,
-            RemoveMessagesPlayerAction request
+            RemoveMessagesRequest request
         )
         {
             List<Message> messages = FindMessages(actor, request.MessageIDs);
@@ -125,9 +120,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The messages whose notifications were presented.</param>
         /// <returns>The completed acknowledgment outcome.</returns>
-        private static PlayerActionResult AcknowledgeMessages(
+        private static PlayerRequestOutcome AcknowledgeMessages(
             Faction actor,
-            AcknowledgeMessagesPlayerAction request
+            AcknowledgeMessagesRequest request
         )
         {
             bool changed = false;
@@ -147,9 +142,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The category, or null to toggle all categories.</param>
         /// <returns>The completed notification-setting outcome.</returns>
-        private static PlayerActionResult ToggleMessageNotification(
+        private static PlayerRequestOutcome ToggleMessageNotification(
             Faction actor,
-            ToggleMessageNotificationPlayerAction request
+            ToggleMessageNotificationRequest request
         )
         {
             if (!request.MessageType.HasValue)
@@ -158,7 +153,7 @@ namespace Rebellion.App.PlayerActions
                 actor.ToggleAdvisorMessageNotification(request.MessageType.Value);
             else
                 return Reject("The message category is unsupported.");
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
 
         /// <summary>
@@ -167,59 +162,16 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The delivered report carrying the choice.</param>
         /// <returns>The completed continuation-choice outcome.</returns>
-        private static PlayerActionResult ConsumeMissionContinuation(
+        private static PlayerRequestOutcome ConsumeMissionContinuation(
             Faction actor,
-            ConsumeMissionContinuationPlayerAction request
+            ConsumeMissionContinuationRequest request
         )
         {
             Message message = FindMessages(actor, new[] { request.MessageID }).FirstOrDefault();
             if (message?.MissionContinuationPending != true)
                 return Reject("The report has no pending mission choice.");
             message.MissionContinuationPending = false;
-            return new PlayerActionResult(true);
-        }
-
-        /// <summary>
-        /// Executes controlled fleet bombardment and captures the actor-visible report once.
-        /// </summary>
-        /// <param name="actor">The issuing faction.</param>
-        /// <param name="request">The selected fleets, visible target, and bombardment profile.</param>
-        /// <returns>The completed combat report or an explicit rejection.</returns>
-        private PlayerActionResult Bombard(Faction actor, BombardPlayerAction request)
-        {
-            if (
-                !Enum.IsDefined(typeof(BombardmentType), request.Type)
-                || !TryResolveSelection(request.ItemIDs, out List<Fleet> fleets)
-                || !OwnsSelection(actor, fleets)
-            )
-                return Reject("The selected fleets cannot execute this bombardment.");
-            CombatReport report = _session
-                .GetService<BombardmentCommands>()
-                .TryExecuteReport(fleets, request.ObservedTarget, request.Type, actor.InstanceID);
-            return report == null
-                ? Reject("The bombardment is unavailable.")
-                : new PlayerActionResult(true, combatReport: report);
-        }
-
-        /// <summary>
-        /// Executes controlled fleet assault and captures the actor-visible report once.
-        /// </summary>
-        /// <param name="actor">The issuing faction.</param>
-        /// <param name="request">The selected fleets and observed target state.</param>
-        /// <returns>The completed combat report or an explicit rejection.</returns>
-        private PlayerActionResult Assault(Faction actor, AssaultPlayerAction request)
-        {
-            if (
-                !TryResolveSelection(request.ItemIDs, out List<Fleet> fleets)
-                || !OwnsSelection(actor, fleets)
-            )
-                return Reject("The selected fleets cannot execute this assault.");
-            CombatReport report = _session
-                .GetService<PlanetaryAssaultCommands>()
-                .TryExecuteReport(fleets, request.ObservedTarget, actor.InstanceID);
-            return report == null
-                ? Reject("The assault is unavailable.")
-                : new PlayerActionResult(true, combatReport: report);
+            return new PlayerRequestOutcome(true);
         }
     }
 }

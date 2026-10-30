@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
@@ -339,7 +339,7 @@ public sealed class StrategyController
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
             PlaySfx,
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             PlaySfxInstance,
             audioManager.GetLoadedSfxDuration
         );
@@ -443,7 +443,7 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
             session,
             () => uiContext.GetPlayerFactionInstanceID(),
-            runtime.PlayerActions
+            runtime.PlayerRequests
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -580,7 +580,7 @@ public sealed class StrategyController
             AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(
             fleetCommandController,
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             () => uiContext,
             targetingController,
             strategyWindowLayerView,
@@ -592,7 +592,7 @@ public sealed class StrategyController
         );
         constructionWindowController = new ConstructionWindowController(
             session,
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,
@@ -603,7 +603,7 @@ public sealed class StrategyController
             galaxyMapController.FindVisibleNode
         );
         facilityWindowController = new FacilityWindowController(
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             constructionWindowController,
             () => uiContext,
             targetingController,
@@ -649,7 +649,7 @@ public sealed class StrategyController
             MarkDirty
         );
         messagesWindowController = new MessagesWindowController(
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             PlaySfx,
             resourcePath => AudioManager.EnsureExists().PlaySfxInstance(resourcePath),
             () => uiContext,
@@ -750,7 +750,7 @@ public sealed class StrategyController
         );
         missionCreateWindowController = new MissionCreateWindowController(
             session,
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             () => uiContext,
             PlaySfx,
             strategyWindowLayerView,
@@ -789,7 +789,7 @@ public sealed class StrategyController
             missionCreateWindowController,
             confirmDialogWindowController,
             session,
-            runtime.PlayerActions,
+            runtime.PlayerRequests,
             () => uiContext.GetPlayerFactionInstanceID(),
             PlaySfx,
             ClearWindowSelection,
@@ -1176,8 +1176,8 @@ public sealed class StrategyController
                 .TryGetPendingCombat(out PendingCombatResult pending)
         )
             return null;
-        PlayerActionResult result = await runtime.PlayerActions.ExecuteAsync(
-            new ResolveCombatPlayerAction
+        PlayerRequestOutcome result = await runtime.PlayerRequests.ExecuteAsync(
+            new ResolveCombatRequest
             {
                 PlanetID = pending.PlanetInstanceID,
                 Tick = pending.Tick,
@@ -2305,8 +2305,8 @@ public sealed class StrategyController
     {
         try
         {
-            await runtime.PlayerActions.ExecuteAsync(
-                new RespondToSpeedPlayerAction
+            await runtime.PlayerRequests.ExecuteAsync(
+                new RespondToSpeedRequest
                 {
                     RequestingFactionID = requestingFactionID,
                     Speed = speed,
@@ -2475,12 +2475,8 @@ public sealed class StrategyController
             return false;
 
         return (
-            await runtime.PlayerActions.ExecuteAsync(
-                new SetOfficerRankPlayerAction
-                {
-                    OfficerID = selectedOfficer.InstanceID,
-                    Rank = rank,
-                }
+            await runtime.PlayerRequests.ExecuteAsync(
+                new SetOfficerRankRequest { OfficerID = selectedOfficer.InstanceID, Rank = rank }
             )
         ).Accepted;
     }

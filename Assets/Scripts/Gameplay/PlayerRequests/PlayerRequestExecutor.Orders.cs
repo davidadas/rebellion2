@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Gameplay.PlayerRequests
 {
-    public sealed partial class PlayerActionExecutor
+    public sealed partial class PlayerRequestExecutor
     {
         /// <summary>
         /// Requests normal movement using the existing complete-selection ownership policy.
@@ -18,7 +20,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected unit identities and destination.</param>
         /// <returns>The completed movement outcome.</returns>
-        private PlayerActionResult Move(Faction actor, MovePlayerAction request)
+        private PlayerRequestOutcome Move(Faction actor, MoveRequest request)
         {
             if (!TryResolveSelection(request.ItemIDs, out List<ISceneNode> items))
                 return Reject("The movement selection is unavailable.");
@@ -51,9 +53,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The headquarters, destination, and accompanying selection.</param>
         /// <returns>The completed relocation outcome.</returns>
-        private PlayerActionResult RelocateHeadquarters(
+        private PlayerRequestOutcome RelocateHeadquarters(
             Faction actor,
-            RelocateHeadquartersPlayerAction request
+            RelocateHeadquartersRequest request
         )
         {
             Building headquarters = FindNode<Building>(request.HeadquartersID);
@@ -84,7 +86,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The fleet selection and ordered route.</param>
         /// <returns>The completed route outcome.</returns>
-        private PlayerActionResult SetFleetRoute(Faction actor, SetFleetRoutePlayerAction request)
+        private PlayerRequestOutcome SetFleetRoute(Faction actor, SetFleetRouteRequest request)
         {
             return Complete(
                 TryResolveSelection(request.ItemIDs, out List<ISceneNode> items)
@@ -104,10 +106,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected fleet identities.</param>
         /// <returns>The completed route-clearing outcome.</returns>
-        private PlayerActionResult ClearFleetRoute(
-            Faction actor,
-            ClearFleetRoutePlayerAction request
-        )
+        private PlayerRequestOutcome ClearFleetRoute(Faction actor, ClearFleetRouteRequest request)
         {
             return Complete(
                 TryResolveSelection(request.ItemIDs, out List<ISceneNode> items)
@@ -123,7 +122,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected manufacturable identities.</param>
         /// <returns>The completed scrap outcome.</returns>
-        private PlayerActionResult Scrap(Faction actor, ScrapPlayerAction request)
+        private PlayerRequestOutcome Scrap(Faction actor, ScrapRequest request)
         {
             return Complete(
                 TryResolveSelection(request.ItemIDs, out List<IManufacturable> items)
@@ -137,9 +136,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected production identities.</param>
         /// <returns>The completed cancellation outcome.</returns>
-        private PlayerActionResult CancelManufacturing(
+        private PlayerRequestOutcome CancelManufacturing(
             Faction actor,
-            CancelManufacturingPlayerAction request
+            CancelManufacturingRequest request
         )
         {
             List<IManufacturable> items = (request.ItemIDs ?? Array.Empty<string>())
@@ -159,10 +158,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected personnel identities.</param>
         /// <returns>The completed retirement outcome.</returns>
-        private PlayerActionResult RetirePersonnel(
-            Faction actor,
-            RetirePersonnelPlayerAction request
-        )
+        private PlayerRequestOutcome RetirePersonnel(Faction actor, RetirePersonnelRequest request)
         {
             return Complete(
                 TryResolveSelection(request.ItemIDs, out List<ISceneNode> items)
@@ -176,7 +172,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected mission identities.</param>
         /// <returns>The completed abort outcome.</returns>
-        private PlayerActionResult AbortMissions(Faction actor, AbortMissionsPlayerAction request)
+        private PlayerRequestOutcome AbortMissions(Faction actor, AbortMissionsRequest request)
         {
             return Complete(
                 TryResolveSelection(request.ItemIDs, out List<Mission> missions)
@@ -194,7 +190,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The planned mission and observed target data.</param>
         /// <returns>The completed mission-start outcome.</returns>
-        private PlayerActionResult StartMission(Faction actor, StartMissionPlayerAction request)
+        private PlayerRequestOutcome StartMission(Faction actor, StartMissionRequest request)
         {
             if (
                 !TryResolveSelection(request.MainParticipantIDs, out List<IMissionParticipant> main)
@@ -234,14 +230,14 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The selected capital ship identities.</param>
         /// <returns>The created fleet identity or an explicit rejection.</returns>
-        private PlayerActionResult CreateFleet(Faction actor, CreateFleetPlayerAction request)
+        private PlayerRequestOutcome CreateFleet(Faction actor, CreateFleetRequest request)
         {
             Fleet fleet = TryResolveSelection(request.ItemIDs, out List<CapitalShip> ships)
                 ? _session.GetService<FleetCommands>().CreateFleet(ships, actor.InstanceID)
                 : null;
             return fleet == null
                 ? Reject("The selected ships cannot form a fleet.")
-                : new PlayerActionResult(true, createdEntityID: fleet.InstanceID);
+                : new PlayerRequestOutcome(true, createdEntityID: fleet.InstanceID);
         }
 
         /// <summary>
@@ -250,9 +246,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The lane, product, delivery location, and unfinished quantity.</param>
         /// <returns>The completed production-order outcome.</returns>
-        private PlayerActionResult SetManufacturingOrder(
+        private PlayerRequestOutcome SetManufacturingOrder(
             Faction actor,
-            SetManufacturingOrderPlayerAction request
+            SetManufacturingOrderRequest request
         )
         {
             if (!IsManufacturingType(request.ManufacturingType))
@@ -281,9 +277,9 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The producer, lane, and requested destination.</param>
         /// <returns>The completed delivery-change outcome.</returns>
-        private PlayerActionResult RetargetManufacturing(
+        private PlayerRequestOutcome RetargetManufacturing(
             Faction actor,
-            RetargetManufacturingPlayerAction request
+            RetargetManufacturingRequest request
         )
         {
             return Complete(
@@ -297,6 +293,49 @@ namespace Rebellion.App.PlayerActions
                             actor.InstanceID
                         )
             );
+        }
+
+        /// <summary>
+        /// Executes controlled fleet bombardment and captures the actor-visible report once.
+        /// </summary>
+        /// <param name="actor">The issuing faction.</param>
+        /// <param name="request">The selected fleets, visible target, and bombardment profile.</param>
+        /// <returns>The completed combat report or an explicit rejection.</returns>
+        private PlayerRequestOutcome Bombard(Faction actor, BombardRequest request)
+        {
+            if (
+                !Enum.IsDefined(typeof(BombardmentType), request.Type)
+                || !TryResolveSelection(request.ItemIDs, out List<Fleet> fleets)
+                || !OwnsSelection(actor, fleets)
+            )
+                return Reject("The selected fleets cannot execute this bombardment.");
+            CombatReport report = _session
+                .GetService<BombardmentCommands>()
+                .TryExecuteReport(fleets, request.ObservedTarget, request.Type, actor.InstanceID);
+            return report == null
+                ? Reject("The bombardment is unavailable.")
+                : new PlayerRequestOutcome(true, combatReport: report);
+        }
+
+        /// <summary>
+        /// Executes controlled fleet assault and captures the actor-visible report once.
+        /// </summary>
+        /// <param name="actor">The issuing faction.</param>
+        /// <param name="request">The selected fleets and observed target state.</param>
+        /// <returns>The completed combat report or an explicit rejection.</returns>
+        private PlayerRequestOutcome Assault(Faction actor, AssaultRequest request)
+        {
+            if (
+                !TryResolveSelection(request.ItemIDs, out List<Fleet> fleets)
+                || !OwnsSelection(actor, fleets)
+            )
+                return Reject("The selected fleets cannot execute this assault.");
+            CombatReport report = _session
+                .GetService<PlanetaryAssaultCommands>()
+                .TryExecuteReport(fleets, request.ObservedTarget, actor.InstanceID);
+            return report == null
+                ? Reject("The assault is unavailable.")
+                : new PlayerRequestOutcome(true, combatReport: report);
         }
     }
 }

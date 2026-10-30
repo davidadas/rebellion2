@@ -408,7 +408,7 @@ reported as a pass. This audit has not established a late-game simulation desync
 
 The verification tool now subscribes to decision events. Its optional
 `-networkSimFightHumanBattles` flag submits a Fight response only for the participant whose
-human faction is involved and has not responded, using `ResolveCombatPlayerAction` through
+human faction is involved and has not responded, using `ResolveCombatRequest` through
 `MultiplayerGameSession.ExecuteAsync`. Every submission and accepted/rejected result is
 recorded. The presentation query runs once per decision event outside simulation steps;
 no scene scan was added to an AI or simulation hot path. The change is confined to the

@@ -64,7 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             container.AddSingletonInstance(new ManufacturingQueries(game));
             ConstructionOrderController controller = new ConstructionOrderController(
                 container.BuildServiceLocator(),
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(tab, ownerId);
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             using GameSession session = TestContent.CreateGameSession(game);
             ConstructionOrderController controller = new ConstructionOrderController(
                 session,
-                TestPlayerActions.Create(session, () => ownerId)
+                TestPlayerRequests.Create(session, () => ownerId)
             );
 
             bool started = await controller.TrySetConstructionOrderAsync(
@@ -319,7 +319,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             container.AddSingletonInstance(new ManufacturingQueries(game));
             return new ConstructionOrderController(
                 container.BuildServiceLocator(),
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
         }
 

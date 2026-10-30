@@ -5,28 +5,30 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Tests.App.PlayerActions
+namespace Rebellion.Tests.Gameplay.PlayerRequests
 {
     [TestFixture]
-    public sealed class PlayerActionExecutorTests
+    public sealed class PlayerRequestExecutorTests
     {
         private const string _ownerID = "FNALL1";
         private const string _opponentID = "FNEMP1";
 
         private Faction _actor;
         private Planet _destination;
-        private PlayerActionExecutor _executor;
+        private PlayerRequestExecutor _executor;
         private GameRoot _game;
         private GameManager _gameManager;
         private Faction _opponent;
@@ -56,7 +58,7 @@ namespace Rebellion.Tests.App.PlayerActions
             _opponentPlanet = CreatePlanet("opponent", _opponentID, sector, 200);
             _session = TestContent.CreateGameSession(_game);
             _gameManager = new GameManager(() => _session.Game, _session.Tick);
-            _executor = new PlayerActionExecutor(_session, _gameManager);
+            _executor = new PlayerRequestExecutor(_session, _gameManager);
         }
 
         /// <summary>
@@ -78,9 +80,9 @@ namespace Rebellion.Tests.App.PlayerActions
             try
             {
                 Assert.IsTrue(tick.MoveNext());
-                LocalPlayerActionDispatcher dispatcher = new(_executor, () => _ownerID);
-                Task<PlayerActionResult> action = dispatcher.ExecuteAsync(
-                    new RenamePlayerAction { EntityID = fleet.InstanceID, Name = "Queued name" }
+                LocalPlayerRequestDispatcher dispatcher = new(_executor, () => _ownerID);
+                Task<PlayerRequestOutcome> action = dispatcher.ExecuteAsync(
+                    new RenameRequest { EntityID = fleet.InstanceID, Name = "Queued name" }
                 );
                 Assert.IsFalse(action.IsCompleted);
                 Assert.AreEqual(originalName, fleet.DisplayName);
@@ -105,9 +107,9 @@ namespace Rebellion.Tests.App.PlayerActions
             try
             {
                 Assert.IsTrue(tick.MoveNext());
-                PlayerActionResult result = _executor.Execute(
+                PlayerRequestOutcome result = _executor.Execute(
                     _ownerID,
-                    new RenamePlayerAction { EntityID = fleet.InstanceID, Name = "Forbidden" }
+                    new RenameRequest { EntityID = fleet.InstanceID, Name = "Forbidden" }
                 );
                 Assert.IsFalse(result.Accepted);
                 Assert.AreEqual(originalName, fleet.DisplayName);
@@ -122,7 +124,7 @@ namespace Rebellion.Tests.App.PlayerActions
         public void Constructor_NullSession_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new PlayerActionExecutor(null, _gameManager)
+                new PlayerRequestExecutor(null, _gameManager)
             );
         }
 
@@ -131,9 +133,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Fleet fleet = CreateFleet("fleet", _ownerID, _origin, out _);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 "unbound",
-                new RenamePlayerAction { EntityID = fleet.InstanceID, Name = "Changed" }
+                new RenameRequest { EntityID = fleet.InstanceID, Name = "Changed" }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -144,7 +146,7 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_NullAction_ReturnsExplicitRejection()
         {
-            PlayerActionResult result = _executor.Execute(_ownerID, null);
+            PlayerRequestOutcome result = _executor.Execute(_ownerID, null);
 
             Assert.IsFalse(result.Accepted);
             Assert.IsNotEmpty(result.RejectionReason);
@@ -155,9 +157,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Fleet fleet = CreateFleet("opponent fleet", _opponentID, _opponentPlanet, out _);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _opponentID,
-                new RenamePlayerAction { EntityID = fleet.InstanceID, Name = "Guest fleet" }
+                new RenameRequest { EntityID = fleet.InstanceID, Name = "Guest fleet" }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -171,9 +173,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Fleet fleet = CreateFleet("opponent fleet", _opponentID, _opponentPlanet, out _);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new RenamePlayerAction { EntityID = fleet.InstanceID, Name = "Changed" }
+                new RenameRequest { EntityID = fleet.InstanceID, Name = "Changed" }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -194,9 +196,9 @@ namespace Rebellion.Tests.App.PlayerActions
                 }
             );
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new RenamePlayerAction { EntityID = ship.InstanceID, Name = "Manual" }
+                new RenameRequest { EntityID = ship.InstanceID, Name = "Manual" }
             );
             _session.GetService<NamingCommands>().ProcessFaction(_actor);
 
@@ -212,9 +214,9 @@ namespace Rebellion.Tests.App.PlayerActions
             int published = 0;
             _session.Pipeline.ResultsResolved += results => published += results.Count;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new MovePlayerAction
+                new MoveRequest
                 {
                     ItemIDs = new[] { officer.InstanceID },
                     DestinationID = _destination.InstanceID,
@@ -233,9 +235,9 @@ namespace Rebellion.Tests.App.PlayerActions
             List<GameResult> published = new List<GameResult>();
             _session.Pipeline.ResultsResolved += published.AddRange;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new MovePlayerAction
+                new MoveRequest
                 {
                     ItemIDs = new[] { officer.InstanceID },
                     DestinationID = _destination.InstanceID,
@@ -252,9 +254,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Officer officer = CreateOfficer("officer", _ownerID, _origin);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new MovePlayerAction
+                new MoveRequest
                 {
                     ItemIDs = new[] { officer.InstanceID, "missing" },
                     DestinationID = _destination.InstanceID,
@@ -280,9 +282,9 @@ namespace Rebellion.Tests.App.PlayerActions
             };
             _game.AttachNode(headquarters, _origin);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new MovePlayerAction
+                new MoveRequest
                 {
                     ItemIDs = new[] { headquarters.InstanceID },
                     DestinationID = _destination.InstanceID,
@@ -299,9 +301,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Fleet source = CreateFleet("source", _ownerID, _origin, out CapitalShip ship);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new CreateFleetPlayerAction { ItemIDs = new[] { ship.InstanceID } }
+                new CreateFleetRequest { ItemIDs = new[] { ship.InstanceID } }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -316,9 +318,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Regiment first = CreateRegiment("owned", _ownerID, _origin);
             Regiment second = CreateRegiment("other", _opponentID, _opponentPlanet);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ScrapPlayerAction { ItemIDs = new[] { first.InstanceID, second.InstanceID } }
+                new ScrapRequest { ItemIDs = new[] { first.InstanceID, second.InstanceID } }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -332,9 +334,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Regiment owned = CreateQueuedRegiment("owned", _ownerID, _origin);
             Regiment other = CreateQueuedRegiment("other", _opponentID, _opponentPlanet);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new CancelManufacturingPlayerAction
+                new CancelManufacturingRequest
                 {
                     ItemIDs = new[] { owned.InstanceID, "missing", other.InstanceID },
                 }
@@ -352,9 +354,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Officer owned = CreateOfficer("owned", _ownerID, _origin);
             Officer other = CreateOfficer("other", _opponentID, _opponentPlanet);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new RetirePersonnelPlayerAction
+                new RetirePersonnelRequest
                 {
                     ItemIDs = new[] { owned.InstanceID, other.InstanceID },
                 }
@@ -371,9 +373,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Officer other = CreateOfficer("other", _opponentID, _opponentPlanet);
             Regiment target = CreateRegiment("target", _opponentID, _opponentPlanet);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new StartMissionPlayerAction
+                new StartMissionRequest
                 {
                     MissionTypeID = SabotageMission.MissionTypeID,
                     ObservedLocation = _opponentPlanet,
@@ -402,9 +404,9 @@ namespace Rebellion.Tests.App.PlayerActions
             };
             observedTarget.SetParent(observedPlanet);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new StartMissionPlayerAction
+                new StartMissionRequest
                 {
                     MissionTypeID = SabotageMission.MissionTypeID,
                     ObservedLocation = observedPlanet,
@@ -430,9 +432,9 @@ namespace Rebellion.Tests.App.PlayerActions
             };
             _game.AttachNode(mission, _origin);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new AbortMissionsPlayerAction { ItemIDs = new[] { mission.InstanceID } }
+                new AbortMissionsRequest { ItemIDs = new[] { mission.InstanceID } }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -445,9 +447,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Officer officer = CreateOfficer("officer", _opponentID, _opponentPlanet);
             officer.CurrentRank = OfficerRank.General;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SetOfficerRankPlayerAction
+                new SetOfficerRankRequest
                 {
                     OfficerID = officer.InstanceID,
                     Rank = OfficerRank.None,
@@ -472,12 +474,9 @@ namespace Rebellion.Tests.App.PlayerActions
                 }
             );
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ToggleAdvisorOptionPlayerAction
-                {
-                    Option = PlayerAdvisorOption.ManageProduction,
-                }
+                new ToggleAdvisorOptionRequest { Option = PlayerAdvisorOption.ManageProduction }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -488,9 +487,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_ToggleOtherActorAdvisorOption_ChangesOnlyBoundActor()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _opponentID,
-                new ToggleAdvisorOptionPlayerAction { Option = PlayerAdvisorOption.AgentAdvice }
+                new ToggleAdvisorOptionRequest { Option = PlayerAdvisorOption.AgentAdvice }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -503,9 +502,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Message message = AddMessage(_opponent, "other message");
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ReadMessagesPlayerAction { MessageIDs = new[] { message.InstanceID } }
+                new ReadMessagesRequest { MessageIDs = new[] { message.InstanceID } }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -517,9 +516,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Message message = AddMessage(_actor, "message");
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ReadMessagesPlayerAction { MessageIDs = new[] { message.InstanceID } }
+                new ReadMessagesRequest { MessageIDs = new[] { message.InstanceID } }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -532,9 +531,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             Message message = AddMessage(_actor, "message");
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new AcknowledgeMessagesPlayerAction { MessageIDs = new[] { message.InstanceID } }
+                new AcknowledgeMessagesRequest { MessageIDs = new[] { message.InstanceID } }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -549,9 +548,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Message second = AddMessage(_actor, "second");
             Message other = AddMessage(_opponent, "other");
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new MarkAllMessagesReadPlayerAction()
+                new MarkAllMessagesReadRequest()
             );
 
             Assert.IsTrue(result.Accepted);
@@ -566,9 +565,9 @@ namespace Rebellion.Tests.App.PlayerActions
             Message own = AddMessage(_actor, "own");
             Message other = AddMessage(_opponent, "other");
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new RemoveMessagesPlayerAction
+                new RemoveMessagesRequest
                 {
                     MessageIDs = new[] { own.InstanceID, other.InstanceID },
                 }
@@ -584,9 +583,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             _actor.AdvisorMessageNotifications[MessageType.Fleet] = false;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ToggleMessageNotificationPlayerAction { MessageType = null }
+                new ToggleMessageNotificationRequest { MessageType = null }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -603,9 +602,9 @@ namespace Rebellion.Tests.App.PlayerActions
             selected.MissionContinuationPending = true;
             other.MissionContinuationPending = true;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ConsumeMissionContinuationPlayerAction { MessageID = selected.InstanceID }
+                new ConsumeMissionContinuationRequest { MessageID = selected.InstanceID }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -619,9 +618,9 @@ namespace Rebellion.Tests.App.PlayerActions
             int speedChanges = 0;
             _gameManager.GameSpeedChanged += () => speedChanges++;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _opponentID,
-                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+                new SetSpeedRequest { Speed = TickSpeed.Fast }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -637,9 +636,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             TickSpeed before = _gameManager.GetGameSpeed();
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SetSpeedPlayerAction { Speed = (TickSpeed)999 }
+                new SetSpeedRequest { Speed = (TickSpeed)999 }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -649,9 +648,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_UnknownManufacturingTemplate_DoesNotCreateProductionItems()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SetManufacturingOrderPlayerAction
+                new SetManufacturingOrderRequest
                 {
                     ProducerPlanetID = _origin.InstanceID,
                     DestinationID = _origin.InstanceID,
@@ -668,9 +667,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_ReserveOtherFactionManufacturing_DoesNotChangeReservation()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ToggleManufacturingReservationPlayerAction
+                new ToggleManufacturingReservationRequest
                 {
                     ProducerPlanetID = _opponentPlanet.InstanceID,
                     ManufacturingType = ManufacturingType.Ship,
@@ -684,9 +683,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_NoPendingCombat_RejectsWithoutThrowing()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ResolveCombatPlayerAction { PlanetID = _origin.InstanceID, Tick = 0 }
+                new ResolveCombatRequest { PlanetID = _origin.InstanceID, Tick = 0 }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -697,9 +696,9 @@ namespace Rebellion.Tests.App.PlayerActions
         public void Execute_ClearCommittedFleetRoute_PreservesCurrentTransit()
         {
             Fleet fleet = CreateFleet("fleet", _ownerID, _origin, out _);
-            PlayerActionResult set = _executor.Execute(
+            PlayerRequestOutcome set = _executor.Execute(
                 _ownerID,
-                new SetFleetRoutePlayerAction
+                new SetFleetRouteRequest
                 {
                     ItemIDs = new[] { fleet.InstanceID },
                     WaypointPlanetIDs = new[] { _destination.InstanceID, _origin.InstanceID },
@@ -707,9 +706,9 @@ namespace Rebellion.Tests.App.PlayerActions
             );
             MovementState currentLeg = fleet.Movement;
 
-            PlayerActionResult clear = _executor.Execute(
+            PlayerRequestOutcome clear = _executor.Execute(
                 _ownerID,
-                new ClearFleetRoutePlayerAction { ItemIDs = new[] { fleet.InstanceID } }
+                new ClearFleetRouteRequest { ItemIDs = new[] { fleet.InstanceID } }
             );
 
             Assert.IsTrue(set.Accepted);
@@ -728,9 +727,9 @@ namespace Rebellion.Tests.App.PlayerActions
             List<GameResult> results = new List<GameResult>();
             _session.Pipeline.ResultsResolved += results.AddRange;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SetOfficerRankPlayerAction
+                new SetOfficerRankRequest
                 {
                     OfficerID = replacement.InstanceID,
                     Rank = OfficerRank.General,
@@ -746,9 +745,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_ReserveOwnManufacturingLane_ChangesOnlySelectedLane()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ToggleManufacturingReservationPlayerAction
+                new ToggleManufacturingReservationRequest
                 {
                     ProducerPlanetID = _origin.InstanceID,
                     ManufacturingType = ManufacturingType.Ship,
@@ -763,9 +762,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [Test]
         public void Execute_RetargetEmptyProductionLane_AcceptsExistingDomainNoOp()
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new RetargetManufacturingPlayerAction
+                new RetargetManufacturingRequest
                 {
                     ProducerPlanetID = _origin.InstanceID,
                     DestinationID = _destination.InstanceID,
@@ -789,9 +788,9 @@ namespace Rebellion.Tests.App.PlayerActions
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new ResolveCombatPlayerAction
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick - 1,
@@ -816,9 +815,9 @@ namespace Rebellion.Tests.App.PlayerActions
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 "observer",
-                new ResolveCombatPlayerAction
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,
@@ -833,9 +832,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [TestCase(" \t\r\n ")]
         public void Execute_SendPeerChatRawText_PreservesSubmittedBody(string text)
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SendPeerChatPlayerAction { Text = text }
+                new SendPeerChatRequest { Text = text }
             );
 
             Assert.IsTrue(result.Accepted);
@@ -846,9 +845,9 @@ namespace Rebellion.Tests.App.PlayerActions
         [TestCase("")]
         public void Execute_SendPeerChatEmptyText_RejectsWithoutDelivery(string text)
         {
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SendPeerChatPlayerAction { Text = text }
+                new SendPeerChatRequest { Text = text }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -865,9 +864,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             _game.CurrentTick = 37;
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 senderID,
-                new SendPeerChatPlayerAction { Text = "Peer message" }
+                new SendPeerChatRequest { Text = "Peer message" }
             );
 
             Faction sender = _game.GetFactionByOwnerInstanceID(senderID);
@@ -892,7 +891,7 @@ namespace Rebellion.Tests.App.PlayerActions
             _game.GetFactionPlayer(_ownerID).DisplayName = playerName;
             _actor.DisplayName = factionName;
 
-            _executor.Execute(_ownerID, new SendPeerChatPlayerAction { Text = "Message" });
+            _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message" });
 
             Assert.AreEqual(expectedTitle, _opponent.Messages[MessageType.Chat].Single().Title);
         }
@@ -902,9 +901,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             _game.SetFactionController(_opponentID, "computer", PlayerControllerType.AI);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SendPeerChatPlayerAction { Text = "Message" }
+                new SendPeerChatRequest { Text = "Message" }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -917,9 +916,9 @@ namespace Rebellion.Tests.App.PlayerActions
         {
             _game.SetFactionController(_ownerID, "computer", PlayerControllerType.AI);
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SendPeerChatPlayerAction { Text = "Message" }
+                new SendPeerChatRequest { Text = "Message" }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -938,9 +937,9 @@ namespace Rebellion.Tests.App.PlayerActions
                 PlayerControllerType.Human
             );
 
-            PlayerActionResult result = _executor.Execute(
+            PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,
-                new SendPeerChatPlayerAction { Text = "Message" }
+                new SendPeerChatRequest { Text = "Message" }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -954,7 +953,7 @@ namespace Rebellion.Tests.App.PlayerActions
             List<MessageDeliveredResult> delivered = new List<MessageDeliveredResult>();
             _session.Pipeline.MessageDelivered += delivered.Add;
 
-            _executor.Execute(_ownerID, new SendPeerChatPlayerAction { Text = "Message" });
+            _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message" });
 
             Assert.AreEqual(1, delivered.Count);
             Assert.AreSame(_opponent, delivered[0].Recipient);
@@ -968,7 +967,7 @@ namespace Rebellion.Tests.App.PlayerActions
             long identityBefore = _game.RuntimeIdentifierIndex;
             long randomBefore = _game.RandomIndex;
 
-            _executor.Execute(_ownerID, new SendPeerChatPlayerAction { Text = "Message" });
+            _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message" });
 
             Message message = _opponent.Messages[MessageType.Chat].Single();
             Assert.AreEqual(identityBefore + 1, _game.RuntimeIdentifierIndex);
@@ -986,17 +985,14 @@ namespace Rebellion.Tests.App.PlayerActions
             );
             copy.UseDeterministicRuntimeIdentifiers = true;
             using GameSession otherSession = TestContent.CreateGameSession(copy);
-            PlayerActionExecutor other = new PlayerActionExecutor(
+            PlayerRequestExecutor other = new PlayerRequestExecutor(
                 otherSession,
                 new GameManager(() => otherSession.Game, otherSession.Tick)
             );
-            SendPeerChatPlayerAction action = new SendPeerChatPlayerAction
-            {
-                Text = "Same message",
-            };
+            SendPeerChatRequest action = new SendPeerChatRequest { Text = "Same message" };
 
-            PlayerActionResult first = _executor.Execute(_ownerID, action);
-            PlayerActionResult second = other.Execute(_ownerID, action);
+            PlayerRequestOutcome first = _executor.Execute(_ownerID, action);
+            PlayerRequestOutcome second = other.Execute(_ownerID, action);
 
             Assert.IsTrue(first.Accepted);
             Assert.IsTrue(second.Accepted);

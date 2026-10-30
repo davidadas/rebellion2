@@ -1,3 +1,4 @@
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 
 namespace Rebellion.App
@@ -6,7 +7,7 @@ namespace Rebellion.App
     /// Owns coordinated execution and persistence from session creation through release.
     /// Presentation reports readiness without replacing the session's execution authority.
     /// </summary>
-    public interface IGameSessionOwner : IPlayerActionDispatcher, IGamePersistenceCoordinator
+    public interface IGameSessionOwner : IPlayerRequestDispatcher, IGamePersistenceCoordinator
     {
         /// <summary>
         /// Establishes participant ownership before simulation services are constructed.

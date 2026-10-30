@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -15,18 +16,18 @@ namespace Rebellion.Multiplayer
     /// Orders player requests and day barriers without replacing the live game or presentation.
     /// The host validates requests; each peer executes committed requests once on its own session.
     /// </summary>
-    internal sealed class MultiplayerGameSession : IPlayerActionDispatcher, IDisposable
+    internal sealed class MultiplayerGameSession : IPlayerRequestDispatcher, IDisposable
     {
         private readonly MultiplayerRole _role;
         private readonly string _hostFactionID;
         private readonly string _guestFactionID;
         private readonly string _initializationID;
         private readonly GameSession _session;
-        private readonly PlayerActionExecutor _executor;
+        private readonly PlayerRequestExecutor _executor;
         private readonly Action<MultiplayerPacket> _send;
         private readonly Queue<ReceivedEvent> _events = new();
         private readonly Queue<Envelope> _dayReceipts = new();
-        private readonly Dictionary<long, TaskCompletionSource<PlayerActionResult>> _requests =
+        private readonly Dictionary<long, TaskCompletionSource<PlayerRequestOutcome>> _requests =
             new();
         private readonly Dictionary<long, Envelope> _awaitingReceipts = new();
         private readonly Dictionary<long, ReceivedEvent> _completedRequests = new();
@@ -112,7 +113,7 @@ namespace Rebellion.Multiplayer
                 throw new InvalidOperationException(
                     "Ordered gameplay must start from a completed turn."
                 );
-            _executor = new PlayerActionExecutor(session, clock);
+            _executor = new PlayerRequestExecutor(session, clock);
             clock.EnableCoordinatedSpeeds();
             _send = send ?? throw new ArgumentNullException(nameof(send));
             _nextRequestID = role == MultiplayerRole.Host ? 1 : 2000000001;
@@ -125,17 +126,17 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="action">The local player's typed operation.</param>
         /// <returns>The execution result, or an unknown outcome when the connection is lost.</returns>
-        public Task<PlayerActionResult> ExecuteAsync(PlayerAction action)
+        public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action)
         {
             ThrowIfUnavailable();
-            byte[] payload = MultiplayerPlayerActionCodec.Serialize(action);
+            byte[] payload = MultiplayerPlayerRequestCodec.Serialize(action);
             long requestID = _nextRequestID;
             if (_role == MultiplayerRole.Host && requestID >= 2000000001)
                 throw new InvalidOperationException(
                     "The host request identity range is exhausted."
                 );
             _nextRequestID = checked(_nextRequestID + 1);
-            TaskCompletionSource<PlayerActionResult> completion = new(
+            TaskCompletionSource<PlayerRequestOutcome> completion = new(
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
             _requests.Add(requestID, completion);
@@ -194,7 +195,7 @@ namespace Rebellion.Multiplayer
                         RequireRole(MultiplayerRole.Guest);
                         CompleteRequest(
                             envelope.requestID,
-                            new PlayerActionResult(false, envelope.reason)
+                            new PlayerRequestOutcome(false, envelope.reason)
                         );
                         break;
                     case MultiplayerMessageType.PlayerActionReceipt:
@@ -357,11 +358,11 @@ namespace Rebellion.Multiplayer
                 envelope.actor == MultiplayerRole.Host ? _lastHostRequestID : _lastGuestRequestID;
             if (envelope.requestID <= appliedRequestID)
                 return;
-            PlayerAction action = MultiplayerPlayerActionCodec.Deserialize(
+            PlayerRequest action = MultiplayerPlayerRequestCodec.Deserialize(
                 envelope.kind,
                 item.Payload
             );
-            PlayerActionResult result = _executor.Execute(GetFaction(envelope.actor), action);
+            PlayerRequestOutcome result = _executor.Execute(GetFaction(envelope.actor), action);
             envelope.accepted = result.Accepted;
             envelope.reason = result.RejectionReason;
             envelope.createdEntityID = result.CreatedEntityID ?? string.Empty;
@@ -392,11 +393,11 @@ namespace Rebellion.Multiplayer
             }
             if (envelope.sequence != _lastAppliedSequence + 1)
                 throw new InvalidDataException("The ordered game event sequence is incomplete.");
-            PlayerAction action = MultiplayerPlayerActionCodec.Deserialize(
+            PlayerRequest action = MultiplayerPlayerRequestCodec.Deserialize(
                 envelope.kind,
                 item.Payload
             );
-            PlayerActionResult result = _executor.Execute(GetFaction(envelope.actor), action);
+            PlayerRequestOutcome result = _executor.Execute(GetFaction(envelope.actor), action);
             if (
                 result.Accepted != envelope.accepted
                 || !string.Equals(
@@ -573,10 +574,13 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="requestID">The original player request identity.</param>
         /// <param name="result">The completed outcome.</param>
-        private void CompleteRequest(long requestID, PlayerActionResult result)
+        private void CompleteRequest(long requestID, PlayerRequestOutcome result)
         {
             if (
-                _requests.Remove(requestID, out TaskCompletionSource<PlayerActionResult> completion)
+                _requests.Remove(
+                    requestID,
+                    out TaskCompletionSource<PlayerRequestOutcome> completion
+                )
             )
                 completion.TrySetResult(result);
         }
@@ -662,11 +666,11 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void CompleteUnconfirmedRequests()
         {
-            List<TaskCompletionSource<PlayerActionResult>> pending = new(_requests.Values);
+            List<TaskCompletionSource<PlayerRequestOutcome>> pending = new(_requests.Values);
             _requests.Clear();
-            foreach (TaskCompletionSource<PlayerActionResult> completion in pending)
+            foreach (TaskCompletionSource<PlayerRequestOutcome> completion in pending)
                 completion.TrySetResult(
-                    new PlayerActionResult(
+                    new PlayerRequestOutcome(
                         false,
                         "The connection ended before the action outcome was confirmed.",
                         outcomeKnown: false
@@ -683,7 +687,7 @@ namespace Rebellion.Multiplayer
             public string initializationID;
             public long requestID;
             public long sequence;
-            public PlayerActionKind kind;
+            public PlayerRequestKind kind;
             public MultiplayerRole actor;
             public bool accepted;
             public string reason;

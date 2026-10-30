@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.App;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -43,7 +43,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="getPlayerTheme">Returns the current player faction theme.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
-    /// <param name="playerActions">Completes advisor requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes advisor requests through the session action boundary.</param>
     /// <param name="playSfxInstance">Plays an independently stoppable advisor response.</param>
     /// <param name="getAudioDuration">Gets the duration of a loaded advisor response.</param>
     public StrategyHudController(
@@ -51,7 +51,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
         Action<string> playSfx,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<string, AudioPlaybackHandle> playSfxInstance = null,
         Func<string, float> getAudioDuration = null
     )
@@ -67,7 +67,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getPlayerFaction,
             getTexture,
             playSfx,
-            playerActions,
+            playerRequests,
             playSfxInstance: playSfxInstance,
             getAudioDuration: getAudioDuration
         );

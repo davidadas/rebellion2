@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -19,25 +19,25 @@ public sealed class StrategyFleetCommandController
 {
     private readonly IServiceLocator services;
     private readonly Func<string> getPlayerFactionId;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="services">Resolves services for the active game.</param>
     /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
-    /// <param name="playerActions">Completes player orders through the session action boundary.</param>
+    /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
     public StrategyFleetCommandController(
         IServiceLocator services,
         Func<string> getPlayerFactionId,
-        IPlayerActionDispatcher playerActions
+        IPlayerRequestDispatcher playerRequests
     )
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.getPlayerFactionId =
             getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
     }
 
     /// <summary>
@@ -55,8 +55,8 @@ public sealed class StrategyFleetCommandController
             && ships.Count > 0
             && ships.Count == sourceItems.Count
             && (
-                await playerActions.ExecuteAsync(
-                    new CreateFleetPlayerAction
+                await playerRequests.ExecuteAsync(
+                    new CreateFleetRequest
                     {
                         ItemIDs = ships.Select(ship => ship.InstanceID).ToArray(),
                     }
@@ -109,23 +109,23 @@ public sealed class StrategyFleetCommandController
         if (string.IsNullOrEmpty(playerFactionId))
             return null;
 
-        PlayerAction request;
+        PlayerRequest request;
         if (action.TryGetBombardmentType(out BombardmentType type))
-            request = new BombardPlayerAction
+            request = new BombardRequest
             {
                 ItemIDs = fleets.Select(fleet => fleet.InstanceID).ToArray(),
                 ObservedTarget = targetPlanet,
                 Type = type,
             };
         else if (action == StrategyMenuAction.PlanetaryAssault)
-            request = new AssaultPlayerAction
+            request = new AssaultRequest
             {
                 ItemIDs = fleets.Select(fleet => fleet.InstanceID).ToArray(),
                 ObservedTarget = targetPlanet,
             };
         else
             return null;
-        PlayerActionResult result = await playerActions.ExecuteAsync(request);
+        PlayerRequestOutcome result = await playerRequests.ExecuteAsync(request);
         return result.Accepted ? result.CombatReport : null;
     }
 

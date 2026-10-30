@@ -659,7 +659,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 () => factionTheme,
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                 _ => { },
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
             hudController.Initialize(new TestHudActions());
             StrategyHudView hudView = rootObject.GetComponentInChildren<StrategyHudView>(true);

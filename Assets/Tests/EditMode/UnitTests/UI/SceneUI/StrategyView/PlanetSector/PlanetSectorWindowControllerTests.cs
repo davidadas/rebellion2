@@ -900,7 +900,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return new StrategyFleetCommandController(
                 _session,
                 () => _game.GetPlayerFaction().InstanceID,
-                TestPlayerActions.Create(_session, () => _game.GetPlayerFaction().InstanceID)
+                TestPlayerRequests.Create(_session, () => _game.GetPlayerFaction().InstanceID)
             );
         }
 

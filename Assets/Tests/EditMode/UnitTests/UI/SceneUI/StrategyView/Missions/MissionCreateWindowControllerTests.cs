@@ -94,7 +94,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() =>
                 new MissionCreateWindowController(
                     null,
-                    TestPlayerActions.RejectAll(),
+                    TestPlayerRequests.RejectAll(),
                     () => _uiContext,
                     _ => { },
                     _windowLayer,
@@ -322,7 +322,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             return new MissionCreateWindowController(
                 _session,
-                TestPlayerActions.Create(_session, () => _playerFactionId),
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _ => { },
                 _windowLayer,

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.App;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -67,7 +67,7 @@ public sealed class ConstructionWindowController
     /// Creates a construction feature controller.
     /// </summary>
     /// <param name="services">Resolves the active game's commands and queries.</param>
-    /// <param name="playerActions">Completes production requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes production requests through the session action boundary.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="windowLayer">Provides the authored construction prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -78,7 +78,7 @@ public sealed class ConstructionWindowController
     /// <param name="findVisibleNode">Finds a node in the faction-filtered galaxy view.</param>
     public ConstructionWindowController(
         IServiceLocator services,
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
@@ -104,7 +104,7 @@ public sealed class ConstructionWindowController
             ?? throw new ArgumentNullException(nameof(getUtilityWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        orderController = new ConstructionOrderController(services, playerActions);
+        orderController = new ConstructionOrderController(services, playerRequests);
         projector = new ConstructionWindowProjector(getUIContext);
     }
 

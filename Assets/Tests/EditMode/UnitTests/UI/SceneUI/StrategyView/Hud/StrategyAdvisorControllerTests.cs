@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 _ => null,
                 _ => { },
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
             TestActions actions = new TestActions();
             controller.Initialize(actions);
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => null,
                 _ => null,
                 _ => { },
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
             TestActions actions = new TestActions();
             controller.Initialize(actions);
@@ -300,12 +300,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             Faction faction = new Faction();
             TestActions actions = new TestActions();
-            RecordingPlayerActionDispatcher playerActions = CreatePlayerActions(faction);
+            RecordingPlayerRequestDispatcher playerRequests = CreatePlayerActions(faction);
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => faction,
                 _ => null,
                 _ => { },
-                playerActions
+                playerRequests
             );
             controller.Initialize(actions);
 
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(faction.ManageProduction);
             Assert.AreEqual(
                 PlayerAdvisorOption.ManageProduction,
-                ((ToggleAdvisorOptionPlayerAction)playerActions.Requests.Single()).Option
+                ((ToggleAdvisorOptionRequest)playerRequests.Requests.Single()).Option
             );
         }
 
@@ -323,12 +323,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             Faction faction = new Faction();
             TestActions actions = new TestActions();
-            RecordingPlayerActionDispatcher playerActions = CreatePlayerActions(faction);
+            RecordingPlayerRequestDispatcher playerRequests = CreatePlayerActions(faction);
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => faction,
                 _ => null,
                 _ => { },
-                playerActions
+                playerRequests
             );
             controller.Initialize(actions);
 
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(faction.ManageNaming);
             Assert.AreEqual(
                 PlayerAdvisorOption.ManageNaming,
-                ((ToggleAdvisorOptionPlayerAction)playerActions.Requests.Single()).Option
+                ((ToggleAdvisorOptionRequest)playerRequests.Requests.Single()).Option
             );
         }
 
@@ -567,7 +567,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     () => new Faction(),
                     _ => null,
                     _ => { },
-                    TestPlayerActions.RejectAll(),
+                    TestPlayerRequests.RejectAll(),
                     playSfxInstance: path =>
                     {
                         AudioPlaybackHandle playback = audioManager.PlaySfxInstance(clips[path]);
@@ -1319,7 +1319,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                 _ => { },
-                TestPlayerActions.RejectAll(),
+                TestPlayerRequests.RejectAll(),
                 selectRandomIndex
             );
             TestActions actions = new TestActions();
@@ -1407,7 +1407,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 _ => frame,
                 _ => { },
-                TestPlayerActions.RejectAll()
+                TestPlayerRequests.RejectAll()
             );
             controller.Initialize(new TestActions());
             controller.BindNotificationContext(() => playerState, getTick);
@@ -1452,14 +1452,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         /// </summary>
         /// <param name="faction">The same faction displayed by the advisor.</param>
         /// <returns>The recording boundary backed by real domain execution.</returns>
-        private RecordingPlayerActionDispatcher CreatePlayerActions(Faction faction)
+        private RecordingPlayerRequestDispatcher CreatePlayerActions(Faction faction)
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
             GameSession session = TestContent.CreateGameSession(game);
             actionSessions.Add(session);
-            var localActions = TestPlayerActions.Create(session, () => faction.InstanceID);
-            return new RecordingPlayerActionDispatcher(localActions.ExecuteAsync);
+            var localActions = TestPlayerRequests.Create(session, () => faction.InstanceID);
+            return new RecordingPlayerRequestDispatcher(localActions.ExecuteAsync);
         }
 
         /// <summary>

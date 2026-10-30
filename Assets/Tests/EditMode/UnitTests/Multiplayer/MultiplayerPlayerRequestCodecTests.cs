@@ -1,28 +1,28 @@
 using System.IO;
 using System.Text;
 using NUnit.Framework;
-using Rebellion.App.PlayerActions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Multiplayer;
 
 namespace Rebellion.Tests.Multiplayer
 {
-    public sealed class MultiplayerPlayerActionCodecTests
+    public sealed class MultiplayerPlayerRequestCodecTests
     {
         [Test]
         public void Deserialize_Move_PreservesOrderedSelectionAndDestination()
         {
-            MovePlayerAction action = new()
+            MoveRequest action = new()
             {
                 ItemIDs = new[] { "ship-b", "ship-a" },
                 DestinationID = "destination",
             };
 
-            MovePlayerAction restored = (MovePlayerAction)
-                MultiplayerPlayerActionCodec.Deserialize(
+            MoveRequest restored = (MoveRequest)
+                MultiplayerPlayerRequestCodec.Deserialize(
                     action.Kind,
-                    MultiplayerPlayerActionCodec.Serialize(action)
+                    MultiplayerPlayerRequestCodec.Serialize(action)
                 );
 
             Assert.That(restored.ItemIDs, Is.EqualTo(action.ItemIDs));
@@ -32,12 +32,12 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void Deserialize_Rename_PreservesLiteralUnicodeText()
         {
-            RenamePlayerAction action = new() { EntityID = "ship", Name = "\u00c9toile \"$type\"" };
+            RenameRequest action = new() { EntityID = "ship", Name = "\u00c9toile \"$type\"" };
 
-            RenamePlayerAction restored = (RenamePlayerAction)
-                MultiplayerPlayerActionCodec.Deserialize(
+            RenameRequest restored = (RenameRequest)
+                MultiplayerPlayerRequestCodec.Deserialize(
                     action.Kind,
-                    MultiplayerPlayerActionCodec.Serialize(action)
+                    MultiplayerPlayerRequestCodec.Serialize(action)
                 );
 
             Assert.That(restored.Name, Is.EqualTo(action.Name));
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void Deserialize_Mission_PreservesObservedTargetInsteadOfResolvingHiddenState()
         {
-            StartMissionPlayerAction action = new()
+            StartMissionRequest action = new()
             {
                 MissionTypeID = "mission",
                 ObservedLocation = new Planet { InstanceID = "location" },
@@ -56,10 +56,10 @@ namespace Rebellion.Tests.Multiplayer
                 IsRepeating = true,
             };
 
-            StartMissionPlayerAction restored = (StartMissionPlayerAction)
-                MultiplayerPlayerActionCodec.Deserialize(
+            StartMissionRequest restored = (StartMissionRequest)
+                MultiplayerPlayerRequestCodec.Deserialize(
                     action.Kind,
-                    MultiplayerPlayerActionCodec.Serialize(action)
+                    MultiplayerPlayerRequestCodec.Serialize(action)
                 );
 
             Assert.That(restored.ObservedTarget, Is.TypeOf<Officer>());
@@ -74,8 +74,8 @@ namespace Rebellion.Tests.Multiplayer
         public void Deserialize_UnknownKind_RejectsRequest()
         {
             Assert.Throws<InvalidDataException>(() =>
-                MultiplayerPlayerActionCodec.Deserialize(
-                    (PlayerActionKind)9999,
+                MultiplayerPlayerRequestCodec.Deserialize(
+                    (PlayerRequestKind)9999,
                     Encoding.UTF8.GetBytes("{}")
                 )
             );
@@ -89,8 +89,8 @@ namespace Rebellion.Tests.Multiplayer
         {
             Assert.That(
                 () =>
-                    MultiplayerPlayerActionCodec.Deserialize(
-                        PlayerActionKind.Rename,
+                    MultiplayerPlayerRequestCodec.Deserialize(
+                        PlayerRequestKind.Rename,
                         Encoding.UTF8.GetBytes(json)
                     ),
                 Throws.Exception

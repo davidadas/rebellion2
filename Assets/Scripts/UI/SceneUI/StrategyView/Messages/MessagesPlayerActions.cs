@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using UnityEngine;
 
 /// <summary>
@@ -14,7 +14,7 @@ using UnityEngine;
 /// </summary>
 internal sealed class MessagesPlayerActions
 {
-    private readonly IPlayerActionDispatcher dispatcher;
+    private readonly IPlayerRequestDispatcher dispatcher;
     private readonly Func<Faction> getFaction;
     private readonly SemaphoreSlim mutationGate = new SemaphoreSlim(1, 1);
 
@@ -23,7 +23,7 @@ internal sealed class MessagesPlayerActions
     /// </summary>
     /// <param name="dispatcher">The session's completed-action dispatcher.</param>
     /// <param name="getFaction">Returns the currently displayed player faction.</param>
-    public MessagesPlayerActions(IPlayerActionDispatcher dispatcher, Func<Faction> getFaction)
+    public MessagesPlayerActions(IPlayerRequestDispatcher dispatcher, Func<Faction> getFaction)
     {
         this.dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
@@ -42,7 +42,7 @@ internal sealed class MessagesPlayerActions
             Message current = GetMessages()
                 .FirstOrDefault(candidate => candidate.InstanceID == messageID);
             return current?.Read == false
-                ? new ReadMessagesPlayerAction { MessageIDs = new[] { messageID } }
+                ? new ReadMessagesRequest { MessageIDs = new[] { messageID } }
                 : null;
         });
     }
@@ -65,7 +65,7 @@ internal sealed class MessagesPlayerActions
                 .ToArray();
             return pending.Length == 0
                 ? null
-                : new AcknowledgeMessagesPlayerAction { MessageIDs = pending };
+                : new AcknowledgeMessagesRequest { MessageIDs = pending };
         });
     }
 
@@ -79,7 +79,7 @@ internal sealed class MessagesPlayerActions
         string[] selected = GetIDs(messageIDs).ToArray();
         return selected.Length == 0
             ? Task.FromResult(false)
-            : ExecuteAsync(() => new RemoveMessagesPlayerAction { MessageIDs = selected });
+            : ExecuteAsync(() => new RemoveMessagesRequest { MessageIDs = selected });
     }
 
     /// <summary>
@@ -95,7 +95,7 @@ internal sealed class MessagesPlayerActions
             Message current = GetMessages()
                 .FirstOrDefault(candidate => candidate.InstanceID == messageID);
             return current?.MissionContinuationPending == true
-                ? new ConsumeMissionContinuationPlayerAction { MessageID = messageID }
+                ? new ConsumeMissionContinuationRequest { MessageID = messageID }
                 : null;
         });
     }
@@ -108,7 +108,7 @@ internal sealed class MessagesPlayerActions
     public Task<bool> ToggleNotificationAsync(MessagesTab tab)
     {
         return ExecuteAsync(() =>
-            new ToggleMessageNotificationPlayerAction
+            new ToggleMessageNotificationRequest
             {
                 MessageType = MessagesTabCatalog.GetMessageType(tab),
             }
@@ -120,12 +120,12 @@ internal sealed class MessagesPlayerActions
     /// </summary>
     /// <param name="createRequest">Rechecks current durable state and returns any remaining request.</param>
     /// <returns>True when no change remains or domain execution accepted the request.</returns>
-    private async Task<bool> ExecuteAsync(Func<PlayerAction> createRequest)
+    private async Task<bool> ExecuteAsync(Func<PlayerRequest> createRequest)
     {
         await mutationGate.WaitAsync();
         try
         {
-            PlayerAction request = createRequest();
+            PlayerRequest request = createRequest();
             return request == null || (await dispatcher.ExecuteAsync(request)).Accepted;
         }
         catch (Exception exception)

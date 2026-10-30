@@ -4,10 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
@@ -34,14 +35,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             Faction faction = new Faction();
             Message message = AddMessage(faction, MessageType.Fleet, "fleet");
-            RecordingPlayerActionDispatcher dispatcher = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher dispatcher = TestPlayerRequests.RejectAll();
             MessagesPlayerActions actions = new MessagesPlayerActions(dispatcher, () => faction);
 
             bool accepted = await actions.MarkReadAsync(message);
 
             Assert.IsFalse(accepted);
             Assert.IsFalse(message.Read);
-            Assert.IsInstanceOf<ReadMessagesPlayerAction>(dispatcher.Requests.Single());
+            Assert.IsInstanceOf<ReadMessagesRequest>(dispatcher.Requests.Single());
         }
 
         [Test]
@@ -50,7 +51,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             var fixture = CreateFixture();
             Message message = AddMessage(fixture.faction, MessageType.Fleet, "fleet");
             TaskCompletionSource<bool> release = new TaskCompletionSource<bool>();
-            RecordingPlayerActionDispatcher dispatcher = new RecordingPlayerActionDispatcher(
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(
                 async action =>
                 {
                     await release.Task;
@@ -98,7 +99,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Faction faction = new Faction();
             Message message = AddMessage(faction, MessageType.Fleet, "fleet");
             message.NotificationAcknowledged = true;
-            RecordingPlayerActionDispatcher dispatcher = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher dispatcher = TestPlayerRequests.RejectAll();
             MessagesPlayerActions actions = new MessagesPlayerActions(dispatcher, () => faction);
 
             bool accepted = await actions.AcknowledgeAsync(new[] { message });
@@ -130,7 +131,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public async Task RemoveAsync_EmptySelection_DoesNotSubmitRequestAsync()
         {
-            RecordingPlayerActionDispatcher dispatcher = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher dispatcher = TestPlayerRequests.RejectAll();
             MessagesPlayerActions actions = new MessagesPlayerActions(
                 dispatcher,
                 () => new Faction()
@@ -161,7 +162,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             Faction faction = new Faction();
             Message message = AddMessage(faction, MessageType.Mission, "mission");
-            RecordingPlayerActionDispatcher dispatcher = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher dispatcher = TestPlayerRequests.RejectAll();
             MessagesPlayerActions actions = new MessagesPlayerActions(dispatcher, () => faction);
 
             bool accepted = await actions.ConsumeContinuationAsync(message);
@@ -200,14 +201,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// <returns>The receiving faction, action dispatcher, and message action collaborator.</returns>
         private static (
             Faction faction,
-            IPlayerActionDispatcher dispatcher,
+            IPlayerRequestDispatcher dispatcher,
             MessagesPlayerActions actions
         ) CreateFixture()
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
-            IPlayerActionDispatcher dispatcher = TestPlayerActions.Create(
+            IPlayerRequestDispatcher dispatcher = TestPlayerRequests.Create(
                 game,
                 () => faction.InstanceID
             );

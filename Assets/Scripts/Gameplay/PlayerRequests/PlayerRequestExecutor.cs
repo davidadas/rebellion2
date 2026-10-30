@@ -5,28 +5,28 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.App.PlayerActions
+namespace Rebellion.Gameplay.PlayerRequests
 {
     /// <summary>
     /// Executes explicit player requests through the active session's existing domain operations.
     /// The caller owns ordering and tick boundaries and supplies the authenticated actor separately.
     /// </summary>
-    public sealed partial class PlayerActionExecutor
+    public sealed partial class PlayerRequestExecutor
     {
         private readonly GameSession _session;
         private readonly GameManager _gameManager;
 
         /// <summary>
-        /// Binds player action execution to one session and its clock.
+        /// Binds player request execution to one session and its clock.
         /// </summary>
         /// <param name="session">The authoritative session receiving requests.</param>
         /// <param name="gameManager">The clock controlling that session.</param>
-        public PlayerActionExecutor(GameSession session, GameManager gameManager)
+        public PlayerRequestExecutor(GameSession session, GameManager gameManager)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
@@ -36,28 +36,33 @@ namespace Rebellion.App.PlayerActions
         /// Executes a request using the actor established by the caller's player binding.
         /// </summary>
         /// <param name="authenticatedActorFactionID">The faction authorized to issue the request.</param>
-        /// <param name="action">The typed request to execute.</param>
+        /// <param name="playerRequest">The typed request to execute.</param>
         /// <returns>The completed domain outcome; delivering or queuing a request is not acceptance.</returns>
-        public PlayerActionResult Execute(string authenticatedActorFactionID, PlayerAction action)
+        public PlayerRequestOutcome Execute(
+            string authenticatedActorFactionID,
+            PlayerRequest playerRequest
+        )
         {
             if (!_session.CanExecuteCommands)
                 return Reject("The simulation is not at a writable command boundary.");
-            return ExecuteAsync(authenticatedActorFactionID, action).GetAwaiter().GetResult();
+            return ExecuteAsync(authenticatedActorFactionID, playerRequest)
+                .GetAwaiter()
+                .GetResult();
         }
 
         /// <summary>
         /// Defers a local request until this session can execute it and report its real outcome.
         /// </summary>
         /// <param name="authenticatedActorFactionID">The faction authorized at submission.</param>
-        /// <param name="action">The typed request to execute.</param>
+        /// <param name="playerRequest">The typed request to execute.</param>
         /// <returns>The completed result, cancellation on replacement, or execution failure.</returns>
-        public Task<PlayerActionResult> ExecuteAsync(
+        public Task<PlayerRequestOutcome> ExecuteAsync(
             string authenticatedActorFactionID,
-            PlayerAction action
+            PlayerRequest playerRequest
         )
         {
             return _session.ExecuteCommandAsync(() =>
-                ExecuteCore(authenticatedActorFactionID, action)
+                ExecuteCore(authenticatedActorFactionID, playerRequest)
             );
         }
 
@@ -65,11 +70,11 @@ namespace Rebellion.App.PlayerActions
         /// Applies one request within the session-owned command boundary.
         /// </summary>
         /// <param name="authenticatedActorFactionID">The faction authorized to issue this request.</param>
-        /// <param name="action">The typed request to apply.</param>
+        /// <param name="playerRequest">The typed request to apply.</param>
         /// <returns>The completed domain result.</returns>
-        private PlayerActionResult ExecuteCore(
+        private PlayerRequestOutcome ExecuteCore(
             string authenticatedActorFactionID,
-            PlayerAction action
+            PlayerRequest playerRequest
         )
         {
             Faction actor = _session
@@ -85,42 +90,42 @@ namespace Rebellion.App.PlayerActions
             if (actor == null)
                 return Reject("The issuing faction is unavailable.");
 
-            return action switch
+            return playerRequest switch
             {
-                MovePlayerAction request => Move(actor, request),
-                RelocateHeadquartersPlayerAction request => RelocateHeadquarters(actor, request),
-                SetFleetRoutePlayerAction request => SetFleetRoute(actor, request),
-                ClearFleetRoutePlayerAction request => ClearFleetRoute(actor, request),
-                ScrapPlayerAction request => Scrap(actor, request),
-                CancelManufacturingPlayerAction request => CancelManufacturing(actor, request),
-                RetirePersonnelPlayerAction request => RetirePersonnel(actor, request),
-                AbortMissionsPlayerAction request => AbortMissions(actor, request),
-                StartMissionPlayerAction request => StartMission(actor, request),
-                CreateFleetPlayerAction request => CreateFleet(actor, request),
-                BombardPlayerAction request => Bombard(actor, request),
-                AssaultPlayerAction request => Assault(actor, request),
-                SetOfficerRankPlayerAction request => Complete(
+                MoveRequest request => Move(actor, request),
+                RelocateHeadquartersRequest request => RelocateHeadquarters(actor, request),
+                SetFleetRouteRequest request => SetFleetRoute(actor, request),
+                ClearFleetRouteRequest request => ClearFleetRoute(actor, request),
+                ScrapRequest request => Scrap(actor, request),
+                CancelManufacturingRequest request => CancelManufacturing(actor, request),
+                RetirePersonnelRequest request => RetirePersonnel(actor, request),
+                AbortMissionsRequest request => AbortMissions(actor, request),
+                StartMissionRequest request => StartMission(actor, request),
+                CreateFleetRequest request => CreateFleet(actor, request),
+                BombardRequest request => Bombard(actor, request),
+                AssaultRequest request => Assault(actor, request),
+                SetOfficerRankRequest request => Complete(
                     _session
                         .GetService<OfficerCommandCommands>()
                         .TrySetRank(request.OfficerID, request.Rank, actor.InstanceID)
                 ),
-                RenamePlayerAction request => Rename(actor, request),
-                ToggleAdvisorOptionPlayerAction request => ToggleAdvisorOption(actor, request),
-                ReadMessagesPlayerAction request => ReadMessages(actor, request),
-                MarkAllMessagesReadPlayerAction => MarkAllMessagesRead(actor),
-                RemoveMessagesPlayerAction request => RemoveMessages(actor, request),
-                AcknowledgeMessagesPlayerAction request => AcknowledgeMessages(actor, request),
-                ToggleMessageNotificationPlayerAction request => ToggleMessageNotification(
+                RenameRequest request => Rename(actor, request),
+                ToggleAdvisorOptionRequest request => ToggleAdvisorOption(actor, request),
+                ReadMessagesRequest request => ReadMessages(actor, request),
+                MarkAllMessagesReadRequest => MarkAllMessagesRead(actor),
+                RemoveMessagesRequest request => RemoveMessages(actor, request),
+                AcknowledgeMessagesRequest request => AcknowledgeMessages(actor, request),
+                ToggleMessageNotificationRequest request => ToggleMessageNotification(
                     actor,
                     request
                 ),
-                ConsumeMissionContinuationPlayerAction request => ConsumeMissionContinuation(
+                ConsumeMissionContinuationRequest request => ConsumeMissionContinuation(
                     actor,
                     request
                 ),
-                ResolveCombatPlayerAction request => ResolveCombat(actor, request),
-                SetSpeedPlayerAction request => SetSpeed(actor, request),
-                RespondToSpeedPlayerAction request => Complete(
+                ResolveCombatRequest request => ResolveCombat(actor, request),
+                SetSpeedRequest request => SetSpeed(actor, request),
+                RespondToSpeedRequest request => Complete(
                     _gameManager.TryRespondToGameSpeed(
                         actor.InstanceID,
                         request.RequestingFactionID,
@@ -129,10 +134,10 @@ namespace Rebellion.App.PlayerActions
                         request.Accept
                     )
                 ),
-                SendPeerChatPlayerAction request => SendPeerChat(actor, request),
-                SetManufacturingOrderPlayerAction request => SetManufacturingOrder(actor, request),
-                RetargetManufacturingPlayerAction request => RetargetManufacturing(actor, request),
-                ToggleManufacturingReservationPlayerAction request => Complete(
+                SendPeerChatRequest request => SendPeerChat(actor, request),
+                SetManufacturingOrderRequest request => SetManufacturingOrder(actor, request),
+                RetargetManufacturingRequest request => RetargetManufacturing(actor, request),
+                ToggleManufacturingReservationRequest request => Complete(
                     IsManufacturingType(request.ManufacturingType)
                         && _session
                             .GetService<ManufacturingCommands>()
@@ -142,7 +147,7 @@ namespace Rebellion.App.PlayerActions
                                 actor.InstanceID
                             )
                 ),
-                _ => Reject("The player action is unsupported."),
+                _ => Reject("The player request is unsupported."),
             };
         }
 
@@ -201,10 +206,10 @@ namespace Rebellion.App.PlayerActions
         /// </summary>
         /// <param name="accepted">Whether the existing operation accepted the request.</param>
         /// <returns>The accepted outcome or an explicit rejection.</returns>
-        private static PlayerActionResult Complete(bool accepted)
+        private static PlayerRequestOutcome Complete(bool accepted)
         {
             return accepted
-                ? new PlayerActionResult(true)
+                ? new PlayerRequestOutcome(true)
                 : Reject("The order is no longer available.");
         }
 
@@ -213,9 +218,9 @@ namespace Rebellion.App.PlayerActions
         /// </summary>
         /// <param name="reason">The reason for rejection.</param>
         /// <returns>The rejected outcome.</returns>
-        private static PlayerActionResult Reject(string reason)
+        private static PlayerRequestOutcome Reject(string reason)
         {
-            return new PlayerActionResult(false, rejectionReason: reason);
+            return new PlayerRequestOutcome(false, rejectionReason: reason);
         }
 
         /// <summary>
@@ -235,7 +240,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The target identity and submitted name.</param>
         /// <returns>The completed rename outcome.</returns>
-        private PlayerActionResult Rename(Faction actor, RenamePlayerAction request)
+        private PlayerRequestOutcome Rename(Faction actor, RenameRequest request)
         {
             ISceneNode node = FindNode<ISceneNode>(request.EntityID);
             if (
@@ -250,7 +255,7 @@ namespace Rebellion.App.PlayerActions
                 ship.AssignName(request.Name);
             else
                 node.DisplayName = request.Name;
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
 
         /// <summary>
@@ -259,12 +264,12 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The participant whose preference is changing.</param>
         /// <param name="request">The requested speed.</param>
         /// <returns>The completed speed-change outcome.</returns>
-        private PlayerActionResult SetSpeed(Faction actor, SetSpeedPlayerAction request)
+        private PlayerRequestOutcome SetSpeed(Faction actor, SetSpeedRequest request)
         {
             if (!Enum.IsDefined(typeof(TickSpeed), request.Speed))
                 return Reject("The requested game speed is unsupported.");
             _gameManager.ApplyPlayerGameSpeed(actor.InstanceID, request.Speed);
-            return new PlayerActionResult(true);
+            return new PlayerRequestOutcome(true);
         }
 
         /// <summary>
@@ -273,7 +278,7 @@ namespace Rebellion.App.PlayerActions
         /// <param name="actor">The issuing faction.</param>
         /// <param name="request">The displayed encounter identity and decision.</param>
         /// <returns>An accepted response with an optional resolved battle, or an explicit rejection.</returns>
-        private PlayerActionResult ResolveCombat(Faction actor, ResolveCombatPlayerAction request)
+        private PlayerRequestOutcome ResolveCombat(Faction actor, ResolveCombatRequest request)
         {
             if (
                 !_session
@@ -292,7 +297,7 @@ namespace Rebellion.App.PlayerActions
                 out SpaceCombatResult result
             )
                 ? Reject("The battle decision was unavailable.")
-                : new PlayerActionResult(true, spaceCombatResult: result);
+                : new PlayerRequestOutcome(true, spaceCombatResult: result);
         }
     }
 }

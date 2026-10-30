@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -43,7 +43,7 @@ public sealed class FacilityWindowController
 {
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
-    private readonly IPlayerActionDispatcher playerActions;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<string, ISceneNode> findVisibleNode;
@@ -66,7 +66,7 @@ public sealed class FacilityWindowController
     /// <summary>
     /// Creates a facility feature controller.
     /// </summary>
-    /// <param name="playerActions">Completes production requests through the session action boundary.</param>
+    /// <param name="playerRequests">Completes production requests through the session action boundary.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -77,7 +77,7 @@ public sealed class FacilityWindowController
     /// <param name="findVisibleNode">Finds a node in the faction-filtered galaxy view.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
-        IPlayerActionDispatcher playerActions,
+        IPlayerRequestDispatcher playerRequests,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -89,8 +89,8 @@ public sealed class FacilityWindowController
         Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
-        this.playerActions =
-            playerActions ?? throw new ArgumentNullException(nameof(playerActions));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.findVisibleNode =
             findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
@@ -442,8 +442,8 @@ public sealed class FacilityWindowController
         Planet planet = session.Planet?.Planet;
         if (
             !(
-                await playerActions.ExecuteAsync(
-                    new ToggleManufacturingReservationPlayerAction
+                await playerRequests.ExecuteAsync(
+                    new ToggleManufacturingReservationRequest
                     {
                         ProducerPlanetID = planet?.InstanceID,
                         ManufacturingType = manufacturingType.Value,
@@ -876,8 +876,8 @@ public sealed class FacilityWindowController
             destination == null
             || producer == null
             || !(
-                await playerActions.ExecuteAsync(
-                    new RetargetManufacturingPlayerAction
+                await playerRequests.ExecuteAsync(
+                    new RetargetManufacturingRequest
                     {
                         ProducerPlanetID = producer.InstanceID,
                         DestinationID = destination.InstanceID,

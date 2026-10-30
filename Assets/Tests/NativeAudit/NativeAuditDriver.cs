@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.App.PlayerActions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
@@ -267,8 +267,8 @@ namespace Rebellion.Tests.NativeAudit
                     .TryGetPendingCombat(out PendingCombatResult pending)
             )
                 return false;
-            PlayerActionResult result = await MultiplayerCoordinator.Instance.ExecuteAsync(
-                new ResolveCombatPlayerAction
+            PlayerRequestOutcome result = await MultiplayerCoordinator.Instance.ExecuteAsync(
+                new ResolveCombatRequest
                 {
                     PlanetID = pending.PlanetInstanceID,
                     Tick = pending.Tick,

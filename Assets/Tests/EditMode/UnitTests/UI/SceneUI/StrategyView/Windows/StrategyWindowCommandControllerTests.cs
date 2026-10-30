@@ -4,12 +4,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -90,7 +91,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
                 _session,
-                TestPlayerActions.Create(_session, () => _playerFactionId),
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -101,7 +102,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
             _missionCreateController.Initialize(new MissionCreateActions());
             _controller = CreateController(
-                TestPlayerActions.Create(_session, () => _playerFactionId)
+                TestPlayerRequests.Create(_session, () => _playerFactionId)
             );
         }
 
@@ -132,7 +133,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     null,
                     confirmController,
                     _session,
-                    TestPlayerActions.Create(_session, () => _playerFactionId),
+                    TestPlayerRequests.Create(_session, () => _playerFactionId),
                     () => _playerFactionId,
                     _ => { },
                     _ => { },
@@ -561,9 +562,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void OpenScrapConfirmWindow_UnconfirmedExecution_KeepsSelectionAndConfirmationWithoutRefresh()
         {
-            RecordingPlayerActionDispatcher dispatcher = new RecordingPlayerActionDispatcher(_ =>
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
                 Task.FromResult(
-                    new PlayerActionResult(false, "Connection ended", outcomeKnown: false)
+                    new PlayerRequestOutcome(false, "Connection ended", outcomeKnown: false)
                 )
             );
             _controller = CreateController(dispatcher);
@@ -787,9 +788,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public async Task TryExecuteMoveAsync_PendingExecution_WaitsBeforeClearingSelectionOrPlayingVoiceAsync()
         {
-            TaskCompletionSource<PlayerActionResult> completion =
-                new TaskCompletionSource<PlayerActionResult>();
-            RecordingPlayerActionDispatcher dispatcher = new RecordingPlayerActionDispatcher(_ =>
+            TaskCompletionSource<PlayerRequestOutcome> completion =
+                new TaskCompletionSource<PlayerRequestOutcome>();
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
                 completion.Task
             );
             _controller = CreateController(dispatcher);
@@ -805,7 +806,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(pending.IsCompleted);
             Assert.IsNull(_clearedWindow);
             Assert.AreEqual(0, _playedSfxCount);
-            completion.SetResult(new PlayerActionResult(true));
+            completion.SetResult(new PlayerRequestOutcome(true));
             Assert.IsTrue(await pending);
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _playedSfxCount);
@@ -815,9 +816,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public async Task TryExecuteMoveAsync_RejectedExecution_PreservesSelectionAndPresentationAsync()
         {
-            TaskCompletionSource<PlayerActionResult> completion =
-                new TaskCompletionSource<PlayerActionResult>();
-            RecordingPlayerActionDispatcher dispatcher = new RecordingPlayerActionDispatcher(_ =>
+            TaskCompletionSource<PlayerRequestOutcome> completion =
+                new TaskCompletionSource<PlayerRequestOutcome>();
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
                 completion.Task
             );
             _controller = CreateController(dispatcher);
@@ -827,11 +828,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new ISceneNode[] { _officer }
             );
 
-            MovePlayerAction request = dispatcher.Requests.Single() as MovePlayerAction;
+            MoveRequest request = dispatcher.Requests.Single() as MoveRequest;
             Assert.IsNotNull(request);
             CollectionAssert.AreEqual(new[] { _officer.InstanceID }, request.ItemIDs);
             Assert.AreEqual(_destination.Planet.InstanceID, request.DestinationID);
-            completion.SetResult(new PlayerActionResult(false, "Unavailable"));
+            completion.SetResult(new PlayerRequestOutcome(false, "Unavailable"));
 
             Assert.IsFalse(await pending);
             Assert.IsNull(_clearedWindow);
@@ -842,10 +843,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         /// <summary>
         /// Creates the shared controller with an explicit execution-completion boundary.
         /// </summary>
-        /// <param name="playerActions">Completes the fixture's player requests.</param>
+        /// <param name="playerRequests">Completes the fixture's player requests.</param>
         /// <returns>The initialized shared command controller.</returns>
         private StrategyWindowCommandController CreateController(
-            IPlayerActionDispatcher playerActions
+            IPlayerRequestDispatcher playerRequests
         )
         {
             ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
@@ -861,7 +862,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _missionCreateController,
                 confirmController,
                 _session,
-                playerActions,
+                playerRequests,
                 () => _playerFactionId,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,

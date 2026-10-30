@@ -57,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 new StrategyFleetCommandController(
                     null,
                     () => _playerFactionId,
-                    TestPlayerActions.Create(_session, () => _playerFactionId)
+                    TestPlayerRequests.Create(_session, () => _playerFactionId)
                 )
             );
         }
@@ -285,7 +285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             return new StrategyFleetCommandController(
                 _session,
                 () => _playerFactionId,
-                TestPlayerActions.Create(_session, () => _playerFactionId)
+                TestPlayerRequests.Create(_session, () => _playerFactionId)
             );
         }
 

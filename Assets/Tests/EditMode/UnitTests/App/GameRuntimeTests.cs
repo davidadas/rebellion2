@@ -5,11 +5,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.App;
-using Rebellion.App.PlayerActions;
+using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
@@ -141,10 +142,10 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
-            RecordingPlayerActionDispatcher negotiatedOwner = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher negotiatedOwner = TestPlayerRequests.RejectAll();
             _runtime.StartGame(game, new TestSessionOwner(negotiatedOwner));
-            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
-            SetSpeedPlayerAction action = new() { Speed = TickSpeed.Fast };
+            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
+            SetSpeedRequest action = new() { Speed = TickSpeed.Fast };
 
             await capturedByWindow.ExecuteAsync(action);
 
@@ -158,11 +159,9 @@ namespace Rebellion.Tests.App
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
             _runtime.StartGame(game, new TestSessionOwner());
             _runtime.GetActiveGameManager().SetGameSpeed(TickSpeed.Paused);
-            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
+            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
 
-            await capturedByWindow.ExecuteAsync(
-                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
-            );
+            await capturedByWindow.ExecuteAsync(new SetSpeedRequest { Speed = TickSpeed.Fast });
 
             Assert.That(game.GetGameSpeed(), Is.EqualTo(TickSpeed.Paused));
         }
@@ -172,13 +171,13 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
             ConfigureMultiplayerPresentation(game, Guid.NewGuid().ToString("N"));
-            RecordingPlayerActionDispatcher owner = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher owner = TestPlayerRequests.RejectAll();
             _runtime.StartGame(game, new TestSessionOwner(owner));
-            IPlayerActionDispatcher capturedByWindow = _runtime.PlayerActions;
+            IPlayerRequestDispatcher capturedByWindow = _runtime.PlayerRequests;
             _runtime.EndGame();
 
-            PlayerActionResult result = await capturedByWindow.ExecuteAsync(
-                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+            PlayerRequestOutcome result = await capturedByWindow.ExecuteAsync(
+                new SetSpeedRequest { Speed = TickSpeed.Fast }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -191,14 +190,14 @@ namespace Rebellion.Tests.App
             GameRoot first = CreateGame();
             ConfigureMultiplayerPresentation(first, Guid.NewGuid().ToString("N"));
             _runtime.StartGame(first, new TestSessionOwner());
-            IPlayerActionDispatcher capturedByOldWindow = _runtime.PlayerActions;
+            IPlayerRequestDispatcher capturedByOldWindow = _runtime.PlayerRequests;
             GameRoot replacement = CreateGame();
             ConfigureMultiplayerPresentation(replacement, Guid.NewGuid().ToString("N"));
-            RecordingPlayerActionDispatcher newOwner = TestPlayerActions.RejectAll();
+            RecordingPlayerRequestDispatcher newOwner = TestPlayerRequests.RejectAll();
             _runtime.StartGame(replacement, new TestSessionOwner(newOwner));
 
-            PlayerActionResult result = await capturedByOldWindow.ExecuteAsync(
-                new SetSpeedPlayerAction { Speed = TickSpeed.Fast }
+            PlayerRequestOutcome result = await capturedByOldWindow.ExecuteAsync(
+                new SetSpeedRequest { Speed = TickSpeed.Fast }
             );
 
             Assert.IsFalse(result.Accepted);
@@ -1066,16 +1065,16 @@ namespace Rebellion.Tests.App
         private sealed class TestSessionOwner : IGameSessionOwner
         {
             public bool CanRequestSave => true;
-            private readonly IPlayerActionDispatcher _actions;
+            private readonly IPlayerRequestDispatcher _actions;
             public readonly List<string> Calls = new();
 
             /// <summary>
             /// Records lifecycle ownership while delegating typed requests to the fixture dispatcher.
             /// </summary>
             /// <param name="actions">The explicit command owner.</param>
-            public TestSessionOwner(IPlayerActionDispatcher actions = null)
+            public TestSessionOwner(IPlayerRequestDispatcher actions = null)
             {
-                _actions = actions ?? TestPlayerActions.RejectAll();
+                _actions = actions ?? TestPlayerRequests.RejectAll();
             }
 
             /// <summary>
@@ -1114,7 +1113,7 @@ namespace Rebellion.Tests.App
             /// </summary>
             /// <param name="action">The submitted command.</param>
             /// <returns>The fixture execution result.</returns>
-            public Task<PlayerActionResult> ExecuteAsync(PlayerAction action) =>
+            public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest action) =>
                 _actions.ExecuteAsync(action);
 
             /// <summary>
