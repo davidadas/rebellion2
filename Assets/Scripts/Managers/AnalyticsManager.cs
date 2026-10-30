@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Unity.Services.Core;
 using UnityEngine;
 using UnityEngine.UnityConsent;
 
@@ -18,7 +17,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
 
     private readonly Func<ConsentState> _getConsentState;
     private readonly Action<ConsentState> _setConsentState;
-    private readonly Func<ServicesInitializationState> _getServicesState;
+    private readonly Func<Unity.Services.Core.ServicesInitializationState> _getServicesState;
     private readonly Func<Task> _initializeServices;
     private readonly Action<string, IReadOnlyDictionary<string, object>> _recordEvent;
     private readonly Action _flush;
@@ -44,8 +43,8 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         : this(
             EndUserConsent.GetConsentState,
             EndUserConsent.SetConsentState,
-            () => UnityServices.State,
-            UnityServices.InitializeAsync,
+            () => Unity.Services.Core.UnityServices.State,
+            Unity.Services.Core.UnityServices.InitializeAsync,
             RecordUnityEvent,
             FlushUnityEvents,
             _collectionEnabledForBuild
@@ -64,7 +63,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     internal AnalyticsManager(
         Func<ConsentState> getConsentState,
         Action<ConsentState> setConsentState,
-        Func<ServicesInitializationState> getServicesState,
+        Func<Unity.Services.Core.ServicesInitializationState> getServicesState,
         Func<Task> initializeServices,
         Action<string, IReadOnlyDictionary<string, object>> recordEvent,
         Action flush,
@@ -95,7 +94,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     internal AnalyticsManager(
         Func<ConsentState> getConsentState,
         Action<ConsentState> setConsentState,
-        Func<ServicesInitializationState> getServicesState,
+        Func<Unity.Services.Core.ServicesInitializationState> getServicesState,
         Func<Task> initializeServices,
         bool collectionEnabled
     )
@@ -156,7 +155,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         }
 
         PendingAnalyticsEvent pending = new PendingAnalyticsEvent(eventName, parameters);
-        if (_getServicesState() != ServicesInitializationState.Initialized)
+        if (_getServicesState() != Unity.Services.Core.ServicesInitializationState.Initialized)
         {
             _pendingEvents.Add(pending);
             StartServicesInitialization();
@@ -174,7 +173,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
         if (
             !_collectionEnabled
             || _getConsentState().AnalyticsIntent != ConsentStatus.Granted
-            || _getServicesState() != ServicesInitializationState.Initialized
+            || _getServicesState() != Unity.Services.Core.ServicesInitializationState.Initialized
         )
         {
             return;
@@ -211,7 +210,7 @@ public sealed class AnalyticsManager : IAnalyticsConsentRuntime, IAnalyticsEvent
     private void StartServicesInitialization()
     {
         if (
-            _getServicesState() != ServicesInitializationState.Uninitialized
+            _getServicesState() != Unity.Services.Core.ServicesInitializationState.Uninitialized
             || _initializationTask?.IsCompleted == false
         )
         {
