@@ -335,15 +335,21 @@ public sealed class GameRuntime
     /// Saves the quicksave through the current persistence owner.
     /// </summary>
     /// <returns>True only after the quicksave has completed.</returns>
-    public Task<bool> QuickSaveAsync()
+    public async Task<bool> QuickSaveAsync()
     {
-        return ExecutePersistenceAsync(
+        bool coordinated = HasCoordinatedPersistence;
+        bool saved = await ExecutePersistenceAsync(
             PersistenceOperation.Save,
             () =>
-                HasCoordinatedPersistence
+                coordinated
                     ? _persistenceCoordinator.SaveGameAsync(SaveGameManager.QuickSaveFileName, null)
-                    : Task.FromResult(QuickSave())
+                    : SaveGameLocallyAsync(SaveGameManager.QuickSaveFileName, null)
         );
+        if (saved && !coordinated)
+            GameLogger.Log(
+                $"Quick save completed: {_saveGameManager.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
+            );
+        return saved;
     }
 
     /// <summary>
@@ -374,7 +380,7 @@ public sealed class GameRuntime
             () =>
                 _persistenceCoordinator != null
                     ? _persistenceCoordinator.SaveGameAsync(fileName, displayName)
-                    : Task.FromResult(SaveGameLocally(fileName, displayName))
+                    : SaveGameLocallyAsync(fileName, displayName)
         );
     }
 
@@ -604,21 +610,16 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Replaces the active graph with an authoritative multiplayer snapshot while preserving the
+    /// Replaces the active graph with prepared game state while preserving the
     /// scene's stable session and presentation subscriptions.
     /// </summary>
-    /// <param name="game">The validated authoritative game state.</param>
-    internal void ReplaceMultiplayerGame(GameRoot game)
+    /// <param name="game">The incoming game state, including its prepared player presentation.</param>
+    internal void ReplaceGame(GameRoot game)
     {
         if (_activeGameSession == null)
-            throw new InvalidOperationException("No active game can receive a multiplayer state.");
+            throw new InvalidOperationException("No active game can receive replacement state.");
 
         ValidateGameContent(game);
-        LocalPlayerPresentationState presentation = LocalPlayerPresentationState.Capture(
-            _activeGameSession.Game,
-            _activeGameSession.Game.LocalPlayerFactionID
-        );
-        presentation?.TryRestore(game, game.LocalPlayerFactionID);
         ReconcileStaticContent(game);
         _activeGameSession.ReplaceGame(game);
         _gameManager.Reset();

@@ -12,27 +12,23 @@ namespace Rebellion.App
     }
 
     /// <summary>
-    /// Retains a concise storage-failure notice independently of the scene presenting it.
+    /// Retains a pending storage failure independently of the scene presenting it.
     /// </summary>
     public sealed class PersistenceFailureNotice
     {
-        public string Message { get; private set; }
-        public bool IsPending => Message != null;
+        public PersistenceOperation? Operation { get; private set; }
+        public bool IsPending => Operation.HasValue;
         public event Action Changed;
 
         /// <summary>
-        /// Publishes a user-facing failure without exposing exception details or local file paths.
+        /// Publishes the failed operation for acknowledgment by the current scene.
         /// </summary>
         /// <param name="operation">The operation that could not complete.</param>
         public void Show(PersistenceOperation operation)
         {
-            Message = operation switch
-            {
-                PersistenceOperation.Save => "The game could not be saved. Please try again.",
-                PersistenceOperation.Load =>
-                    "The saved game could not be loaded. Please try again.",
-                _ => throw new ArgumentOutOfRangeException(nameof(operation)),
-            };
+            if (operation is not (PersistenceOperation.Save or PersistenceOperation.Load))
+                throw new ArgumentOutOfRangeException(nameof(operation));
+            Operation = operation;
             Changed?.Invoke();
         }
 
@@ -43,7 +39,7 @@ namespace Rebellion.App
         {
             if (!IsPending)
                 return;
-            Message = null;
+            Operation = null;
             Changed?.Invoke();
         }
     }

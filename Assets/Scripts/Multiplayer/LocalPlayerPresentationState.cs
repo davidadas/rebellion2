@@ -3,7 +3,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.UIState;
 
-namespace Rebellion.App
+namespace Rebellion.Multiplayer
 {
     /// <summary>
     /// Retains presentation owned by one admitted local participant across shared graph replacement.

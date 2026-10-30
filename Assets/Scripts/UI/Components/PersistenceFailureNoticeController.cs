@@ -136,7 +136,15 @@ public sealed class PersistenceFailureNoticeController : MonoBehaviour, ICancela
             _shortcutSuppression = _suppressShortcuts();
             _cancelStack.Register(this);
         }
-        _dialog.ShowAcknowledgment(_notice.Message);
+        _dialog.ShowAcknowledgment(
+            _notice.Operation.Value switch
+            {
+                PersistenceOperation.Save => "The game could not be saved. Please try again.",
+                PersistenceOperation.Load =>
+                    "The saved game could not be loaded. Please try again.",
+                _ => throw new ArgumentOutOfRangeException(nameof(_notice.Operation)),
+            }
+        );
     }
 
     /// <summary>

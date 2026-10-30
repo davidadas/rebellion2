@@ -16,7 +16,6 @@ namespace Rebellion.Multiplayer
         private UserGameplaySettings _hostAutosaveSettings;
         private GameRoot _persistenceLoadedGame;
         private ContentPack _persistenceContent;
-        private LocalPlayerPresentationState _localPresentation;
 
         /// <summary>
         /// Gets whether the admitted connection owns an agreed transition between strategy scenes.
@@ -30,17 +29,19 @@ namespace Rebellion.Multiplayer
             _synchronizationReady && _runtime != null && _persistence != null && Failure == null;
 
         /// <summary>
-        /// Retains locally owned interface state independently of another participant's snapshots.
+        /// Preserves this participant's live presentation before notifying the scene of a replacement.
         /// </summary>
-        /// <param name="game">The currently attached admitted graph.</param>
-        private void CaptureLocalPresentation(GameRoot game)
+        /// <param name="game">The configured incoming graph with authenticated participant ownership.</param>
+        private void ReplaceGame(GameRoot game)
         {
+            _runtime.ValidateGameContent(game);
+            GameRoot current = _runtime.GetActiveGame();
             LocalPlayerPresentationState presentation = LocalPlayerPresentationState.Capture(
-                game,
-                _launchConfiguration.LocalFactionID
+                current,
+                current.LocalPlayerFactionID
             );
-            if (presentation != null)
-                _localPresentation = presentation;
+            presentation?.TryRestore(game, game.LocalPlayerFactionID);
+            _runtime.ReplaceGame(game);
         }
 
         /// <summary>

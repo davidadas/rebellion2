@@ -1,10 +1,10 @@
 using System;
 using NUnit.Framework;
-using Rebellion.App;
 using Rebellion.Game;
 using Rebellion.Game.UIState;
+using Rebellion.Multiplayer;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
     public sealed class LocalPlayerPresentationStateTests

@@ -190,7 +190,6 @@ namespace Rebellion.Multiplayer
             _snapshotAdmission.Clear();
             _remoteReady = false;
             _runtime.BlockGameOperations();
-            CaptureLocalPresentation(_runtime.GetActiveGame());
             ReleaseGameplay();
             _readyPresentationSession = _runtime.GetActiveGameSession();
             BindLocalRecoveryPersistence();
@@ -232,7 +231,7 @@ namespace Rebellion.Multiplayer
         private string CreateRejoinNotice() =>
             "Waiting for "
             + (_role == MultiplayerRole.Host ? _recoveryRecord?.guestName : _hostPlayerName)
-            + " to reconnect…";
+            + " to reconnectâ€¦";
 
         /// <summary>
         /// Captures only requested lifecycle checkpoints at a writable simulation boundary.
@@ -330,7 +329,7 @@ namespace Rebellion.Multiplayer
             GameRoot state = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
             _recoveryRecord.ValidateState(state);
             ConfigureGame(state);
-            _runtime.ReplaceMultiplayerGame(state);
+            ReplaceGame(state);
         }
 
         /// <summary>
@@ -522,7 +521,7 @@ namespace Rebellion.Multiplayer
             if (livePeer)
             {
                 ConfigureGame(state);
-                _runtime.ReplaceMultiplayerGame(state);
+                ReplaceGame(state);
                 _runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
                 _recoveryPausePending = false;
                 _checkpointPending = false;

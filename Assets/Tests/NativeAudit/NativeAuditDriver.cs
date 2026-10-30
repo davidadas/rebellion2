@@ -432,7 +432,8 @@ namespace Rebellion.Tests.NativeAudit
             response.commandReady = session?.CanExecuteCommands == true;
             response.pendingBattle =
                 session?.GetService<SpaceCombatCommands>().HasPendingDecision == true;
-            response.persistenceNotice = AppBootstrap.Instance?.PersistenceNotice.Message;
+            response.persistenceNotice =
+                AppBootstrap.Instance?.PersistenceNotice.Operation?.ToString();
             response.tick = session?.Game.CurrentTick ?? -1;
             response.speed = session == null ? null : session.Game.GetGameSpeed().ToString();
             response.speedSelections =

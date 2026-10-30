@@ -62,7 +62,6 @@ namespace Rebellion.Multiplayer
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             _readyPresentationSession = null;
             _readyPresentationInitializationID = null;
-            CaptureLocalPresentation(runtime.GetActiveGame());
             runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
         }
 
@@ -236,7 +235,7 @@ namespace Rebellion.Multiplayer
             );
             GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
             ConfigureGame(game);
-            _runtime.ReplaceMultiplayerGame(game);
+            ReplaceGame(game);
             _runtime.BlockGameOperations();
             _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
                 _runtime.GetActiveGameSession()
@@ -267,8 +266,7 @@ namespace Rebellion.Multiplayer
                 return;
             GameRoot state = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
             ConfigureGame(state);
-            _runtime.ReplaceMultiplayerGame(state);
-            CaptureLocalPresentation(_runtime.GetActiveGame());
+            ReplaceGame(state);
             AcceptInitialSnapshot(metadata);
         }
 

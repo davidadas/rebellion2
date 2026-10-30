@@ -17,7 +17,7 @@ namespace Rebellion.Tests.App
             notice.Show(operation);
 
             Assert.That(notice.IsPending, Is.True);
-            Assert.That(notice.Message, Is.Not.Empty);
+            Assert.That(notice.Operation, Is.EqualTo(operation));
             Assert.That(changes, Is.EqualTo(1));
         }
 
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.App
             notice.Acknowledge();
 
             Assert.That(notice.IsPending, Is.False);
-            Assert.That(notice.Message, Is.Null);
+            Assert.That(notice.Operation, Is.Null);
         }
 
         [Test]

@@ -518,16 +518,16 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void ReplaceMultiplayerGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
+        public void ReplaceGame_CoordinatedContestedWorld_DetectsBattleInAgreedTurn()
         {
             _runtime.StartGame(CreateGame(), new TestSessionOwner());
-            _runtime.ReplaceMultiplayerGame(CreateContestedGame());
+            _runtime.ReplaceGame(CreateContestedGame());
             AssertCoordinatedBattleWaitsForTurn();
         }
 
         [TestCase(false)]
         [TestCase(true)]
-        public void ReplaceMultiplayerGame_InterruptedBattle_RestoresCompletedWorldAndReopensSaving(
+        public void ReplaceGame_InterruptedBattle_RestoresCompletedWorldAndReopensSaving(
             bool incremental
         )
         {
@@ -552,7 +552,7 @@ namespace Rebellion.Tests.App
             Assert.That(session.Tick.IsSettled, Is.False);
             Assert.That(_runtime.CanSave, Is.False);
 
-            _runtime.ReplaceMultiplayerGame(
+            _runtime.ReplaceGame(
                 MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
             );
 
@@ -915,9 +915,7 @@ namespace Rebellion.Tests.App
 
         [TestCase(true)]
         [TestCase(false)]
-        public void ReplaceMultiplayerGame_CampaignOwnership_PreservesOnlyMatchingLocalUI(
-            bool sameCampaign
-        )
+        public void ReplaceGame_CampaignOwnership_LeavesPreparedLocalUIUnchanged(bool sameCampaign)
         {
             string campaignID = Guid.NewGuid().ToString("N");
             GameRoot current = CreateGame();
@@ -935,14 +933,11 @@ namespace Rebellion.Tests.App
             var incomingGuestUI = incoming.GetFactionPlayer("FNEMP1").UIState;
             using GameSession source = new GameSession(incoming, _contentPack.GameData);
 
-            _runtime.ReplaceMultiplayerGame(source.Game);
+            _runtime.ReplaceGame(source.Game);
 
             Assert.AreSame(incoming, _runtime.GetActiveGame());
             Assert.AreSame(incomingHostUI, incoming.GetFactionPlayer("FNALL1").UIState);
-            Assert.AreSame(
-                sameCampaign ? currentGuestUI : incomingGuestUI,
-                incoming.GetFactionPlayer("FNEMP1").UIState
-            );
+            Assert.AreSame(incomingGuestUI, incoming.GetFactionPlayer("FNEMP1").UIState);
             Assert.AreEqual(120, _runtime.GetActiveGame().CurrentTick);
         }
 
