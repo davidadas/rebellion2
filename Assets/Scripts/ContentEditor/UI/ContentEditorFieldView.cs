@@ -92,6 +92,10 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <returns>The row height, including the complete wrapped caption.</returns>
     public int SetLayout(Rect bounds, float labelWidth)
     {
+        bool hasHelp = labelWidth > 0 && !string.IsNullOrWhiteSpace(field.HelpText);
+        RectTransform helpRect = (RectTransform)help.transform;
+        int helpSize = Mathf.RoundToInt(helpRect.rect.width);
+        float captionWidth = Mathf.Max(0, labelWidth - 12 - (hasHelp ? helpSize + 4 : 0));
         float valueLeft = Mathf.Max(4, labelWidth);
         label.textWrappingMode = TextWrappingModes.Normal;
         label.overflowMode = TextOverflowModes.Overflow;
@@ -103,7 +107,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                         label
                             .GetPreferredValues(
                                 label.text,
-                                Mathf.Max(1, labelWidth - 12),
+                                Mathf.Max(1, captionWidth),
                                 float.PositiveInfinity
                             )
                             .y
@@ -135,9 +139,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             label.rectTransform,
             4,
             4,
-            Mathf.RoundToInt(Mathf.Max(0, labelWidth - 12)),
+            Mathf.RoundToInt(captionWidth),
             labelHeight
         );
+        help.gameObject.SetActive(hasHelp);
+        if (hasHelp)
+            UILayout.SetSourceRect(
+                helpRect,
+                Mathf.RoundToInt(8 + Mathf.Min(label.preferredWidth, captionWidth)),
+                4 + (labelHeight - helpSize) / 2,
+                helpSize,
+                helpSize
+            );
         bool stackedMedia = field.IsMedia && bounds.width < 600;
         float valueTop = stackedMedia ? 0 : 4 + labelExtra;
         float valueHeight =
@@ -428,6 +441,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         previewRequested = null;
         choiceValues = mediaFiles = Array.Empty<string>();
         help.Configure(null, input);
+        help.gameObject.SetActive(false);
         input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
         gameObject.SetActive(false);
     }

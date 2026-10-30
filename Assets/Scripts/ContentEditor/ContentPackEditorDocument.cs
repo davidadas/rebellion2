@@ -82,9 +82,9 @@ public sealed class ContentPackEditorDocument
     }
 
     /// <summary>
-    /// Restores document contents or the absence of a newly created document during undo.
+    /// Restores document contents or their absence during reversible structural edits.
     /// </summary>
-    /// <param name="value">The restored XML, or null when creation is undone.</param>
+    /// <param name="value">The restored XML, or null when the document is removed.</param>
     internal void RestoreText(string value)
     {
         if (value == text)

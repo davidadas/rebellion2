@@ -23,13 +23,22 @@ public sealed class ContentEditorConfirmationView : MonoBehaviour, ICancelable
     [SerializeField]
     private Button cancelButton;
     private bool canCancel = true;
+    private bool bound;
 
     /// <summary>
     /// Binds cancel without retaining project-specific callbacks after dismissal.
     /// </summary>
-    private void Awake()
+    private void Awake() => BindControls();
+
+    /// <summary>
+    /// Connects cancel once for both runtime activation and direct dialog presentation.
+    /// </summary>
+    private void BindControls()
     {
+        if (bound)
+            return;
         cancelButton.onClick.AddListener(Hide);
+        bound = true;
     }
 
     /// <summary>
@@ -52,6 +61,7 @@ public sealed class ContentEditorConfirmationView : MonoBehaviour, ICancelable
         string title = null
     )
     {
+        BindControls();
         message.text = text;
         heading.text = title ?? string.Empty;
         heading.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(title));

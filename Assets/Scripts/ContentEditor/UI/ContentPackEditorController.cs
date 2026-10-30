@@ -322,7 +322,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Selects a working manifest through the native picker before handling pending project edits.
+    /// Selects a working pack folder through the native picker before handling pending project edits.
     /// </summary>
     private void ChooseOpenPack()
     {
@@ -330,18 +330,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
         {
             string mods = ContentFileResolver.ResolveModsRootPath(contentRootPath);
             Directory.CreateDirectory(mods);
-            string path = ContentEditorFileDialog.OpenFile(mods, new[] { ".xml" });
-            if (string.IsNullOrEmpty(path))
+            string folder = ContentEditorFileDialog.OpenFolder(mods);
+            if (string.IsNullOrEmpty(folder))
                 return;
-            if (
-                !string.Equals(
-                    Path.GetFileName(path),
-                    "pack.xml",
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-                throw new ArgumentException("Choose the pack.xml file in your content pack.");
-            OpenFolder(Path.GetDirectoryName(path));
+            if (!File.Exists(Path.Combine(folder, "pack.xml")))
+                throw new ArgumentException("Choose a content pack folder.");
+            OpenFolder(folder);
         });
     }
 

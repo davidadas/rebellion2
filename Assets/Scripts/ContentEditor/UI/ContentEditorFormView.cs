@@ -1097,9 +1097,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
             groupLabels.Add(Instantiate(groupTemplate, fieldScroll.ScrollArea.ContentRoot));
         TextMeshProUGUI label = groupLabels[index];
         label.text = text;
-        ContentEditorFieldHelp help = label.GetComponent<ContentEditorFieldHelp>();
-        help?.Configure(helpText);
-        label.raycastTarget = !string.IsNullOrEmpty(helpText);
+        ContentEditorFieldHelp help = label.GetComponentInChildren<ContentEditorFieldHelp>(true);
+        help.Configure(helpText);
+        bool hasHelp = !string.IsNullOrWhiteSpace(helpText);
+        help.gameObject.SetActive(hasHelp);
+        RectTransform helpRect = (RectTransform)help.transform;
+        int helpSize = Mathf.RoundToInt(helpRect.rect.width);
+        float captionWidth = Mathf.Max(1, width - (hasHelp ? helpSize + 4 : 0));
+        label.raycastTarget = false;
         label.alignment = TextAlignmentOptions.TopLeft;
         label.fontSize = heading ? 17 : 14;
         label
@@ -1109,17 +1114,26 @@ public sealed class ContentEditorFormView : MonoBehaviour
         label.overflowMode = TextOverflowModes.Overflow;
         int height = Mathf.Max(
             32,
-            Mathf.CeilToInt(
-                label.GetPreferredValues(text, Mathf.Max(1, width), float.PositiveInfinity).y
-            ) + 2
+            Mathf.CeilToInt(label.GetPreferredValues(text, captionWidth, float.PositiveInfinity).y)
+                + 2
         );
         UILayout.SetSourceRect(
             label.rectTransform,
             Mathf.RoundToInt(x),
             Mathf.RoundToInt(y),
-            Mathf.RoundToInt(width),
+            Mathf.RoundToInt(captionWidth),
             height
         );
+        if (hasHelp)
+        {
+            UILayout.SetSourceRect(
+                helpRect,
+                Mathf.RoundToInt(Mathf.Min(label.preferredWidth, captionWidth) + 4),
+                -Mathf.RoundToInt((helpSize - label.fontSize) / 2),
+                helpSize,
+                helpSize
+            );
+        }
         label.gameObject.SetActive(true);
         return height;
     }

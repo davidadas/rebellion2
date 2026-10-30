@@ -348,13 +348,19 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
-    /// Adds a blank unit without faction assignments to the destination catalog.
+    /// Adds a blank unit with optional faction eligibility as one undoable edit.
     /// </summary>
     /// <param name="catalog">The destination unit catalog.</param>
+    /// <param name="factionInstanceID">The optional recruiting or manufacturing faction.</param>
     /// <returns>The newly created definition.</returns>
-    public ContentPackEditorRecord AddUnit(ContentPackEditorCatalog catalog)
+    public ContentPackEditorRecord AddUnit(
+        ContentPackEditorCatalog catalog,
+        string factionInstanceID = null
+    )
     {
         RequireOwnedCatalog(catalog);
+        if (factionInstanceID != null && !GetFactionOptions().ContainsKey(factionInstanceID))
+            throw new ArgumentException("Choose an existing faction.", nameof(factionInstanceID));
         HashSet<string> identities = new HashSet<string>(
             GetCatalogs()
                 .SelectMany(item =>
@@ -364,7 +370,15 @@ public sealed class ContentPackEditorProject
             StringComparer.Ordinal
         );
         using (BeginEdit("Add unit"))
-            return catalog.AddUnit(identities);
+        {
+            ContentPackEditorRecord unit = catalog.AddUnit(identities);
+            if (factionInstanceID != null)
+                SetFieldValues(
+                    unit.GetFields().Single(field => field.IsFactionReference),
+                    new[] { factionInstanceID }
+                );
+            return unit;
+        }
     }
 
     /// <summary>
@@ -704,8 +718,121 @@ public sealed class ContentPackEditorProject
     public void RemoveRecord(ContentPackEditorRecord record)
     {
         RequireOwnedRecord(record);
+        if (record.Kind == "Faction")
+        {
+            RemoveFaction(record);
+            return;
+        }
         using (BeginEdit("Delete " + record.Name))
             record.Catalog.Remove(record);
+    }
+
+    /// <summary>
+    /// Unregisters a faction and removes only XML documents not referenced by other definitions.
+    /// </summary>
+    /// <param name="record">The faction's gameplay entry or declaration.</param>
+    private void RemoveFaction(ContentPackEditorRecord record)
+    {
+        if (
+            record.Element != record.Catalog.DocumentRecord.Element
+            && record.Catalog.Records.Count > 1
+        )
+        {
+            using (BeginEdit("Delete " + record.Name))
+                record.Catalog.Remove(record);
+            return;
+        }
+        ContentPackEditorCatalog manifest = GetCatalogs()
+            .Single(catalog => catalog.Document.Address == _packDefinitionAddress);
+        ContentPackEditorCatalog[] declarations = GetCatalogs()
+            .Where(catalog =>
+                catalog.DocumentRecord.Kind == "Faction"
+                && catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+            )
+            .ToArray();
+        ContentPackEditorCatalog[] removed = declarations
+            .Where(catalog =>
+                catalog.Document.Address == record.Catalog.Document.Address
+                || "Pack/"
+                    + catalog
+                        .DocumentRecord.Element.Element("FactionDataPath")
+                        .Value.Replace('\\', '/')
+                    == record.Catalog.Document.Address
+            )
+            .ToArray();
+        if (removed.Length == 0)
+        {
+            if (record.Element == record.Catalog.DocumentRecord.Element)
+                throw new InvalidOperationException("This faction is not registered in the pack.");
+            using (BeginEdit("Delete " + record.Name))
+                record.Catalog.Remove(record);
+            return;
+        }
+        HashSet<string> retained = declarations
+            .Except(removed)
+            .Append(manifest)
+            .SelectMany(GetReferencedDocumentAddresses)
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> removedAddresses = removed
+            .SelectMany(GetReferencedDocumentAddresses)
+            .Where(address => !retained.Contains(address))
+            .ToHashSet(StringComparer.Ordinal);
+        XDocument xml = XDocument.Parse(manifest.Document.Text);
+        using (BeginEdit("Delete " + record.Name))
+        {
+            xml.Root.Element("FactionPaths")
+                ?.Elements()
+                .Where(path =>
+                    removed.Any(catalog =>
+                        catalog.Document.Address == "Pack/" + path.Value.Replace('\\', '/')
+                    )
+                )
+                .Remove();
+            if (
+                !removedAddresses.Contains(record.Catalog.Document.Address)
+                && record.Element != record.Catalog.DocumentRecord.Element
+            )
+                record.Catalog.Remove(record);
+            foreach (
+                ContentPackEditorDocument document in Documents.Where(document =>
+                    removedAddresses.Contains(document.Address)
+                )
+            )
+                document.RestoreText(null);
+            manifest.Document.SetText(xml.ToString());
+        }
+        catalogs = null;
+        RefreshDefinition();
+    }
+
+    /// <summary>
+    /// Enumerates a declaration and its referenced files while leaving faction registration explicit.
+    /// </summary>
+    /// <param name="catalog">The pack or faction declaration.</param>
+    /// <returns>The normalized content addresses referenced by the declaration.</returns>
+    private static IEnumerable<string> GetReferencedDocumentAddresses(
+        ContentPackEditorCatalog catalog
+    )
+    {
+        yield return catalog.Document.Address;
+        foreach (
+            XElement path in catalog
+                .DocumentRecord.Element.Elements()
+                .Where(element => element.Name.LocalName != "FactionPaths")
+                .SelectMany(element => element.DescendantsAndSelf())
+                .Where(element =>
+                    !element.HasElements
+                    && element.Name.LocalName.EndsWith("Path", StringComparison.Ordinal)
+                )
+        )
+        {
+            string value = path.Value.Replace('\\', '/');
+            if (!string.IsNullOrWhiteSpace(value))
+                yield return value.StartsWith("Pack/", StringComparison.Ordinal)
+                || value.StartsWith("Application/", StringComparison.Ordinal)
+                    ? value
+                    : "Pack/" + value;
+        }
     }
 
     /// <summary>
@@ -753,8 +880,41 @@ public sealed class ContentPackEditorProject
     /// <returns>The catalogs ordered by editor category and faction.</returns>
     public IReadOnlyList<ContentPackEditorCatalog> GetCatalogs()
     {
-        return catalogs ??= Documents
+        return catalogs ??= CreateCatalogs();
+    }
+
+    /// <summary>
+    /// Keeps unregistered inherited faction files out of the effective authoring catalogs.
+    /// </summary>
+    /// <returns>The active catalogs ordered by category and faction.</returns>
+    private IReadOnlyList<ContentPackEditorCatalog> CreateCatalogs()
+    {
+        ContentPackEditorCatalog[] all = Documents
             .Select(document => new ContentPackEditorCatalog(document))
+            .ToArray();
+        ContentPackEditorCatalog[] declarations = all.Where(catalog =>
+                catalog.DocumentRecord.Kind == "Faction"
+                && catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+            )
+            .ToArray();
+        HashSet<string> registered = Definition
+            .FactionPaths.Select(path => "Pack/" + path.Replace('\\', '/'))
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> active = declarations
+            .Where(catalog => registered.Contains(catalog.Document.Address))
+            .Concat(all.Where(catalog => catalog.Document.Address == _packDefinitionAddress))
+            .SelectMany(GetReferencedDocumentAddresses)
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> inactive = declarations
+            .SelectMany(GetReferencedDocumentAddresses)
+            .Where(address => !active.Contains(address))
+            .ToHashSet(StringComparer.Ordinal);
+        return all.Where(catalog =>
+                !inactive.Contains(catalog.Document.Address)
+                && (
+                    !declarations.Contains(catalog) || registered.Contains(catalog.Document.Address)
+                )
+            )
             .OrderBy(catalog => catalog.Name, StringComparer.Ordinal)
             .ThenBy(catalog => catalog.Faction, StringComparer.Ordinal)
             .ToArray();
@@ -781,6 +941,8 @@ public sealed class ContentPackEditorProject
         if (source == null)
             throw new ArgumentNullException(nameof(source));
         RequireOwnedRecord(source);
+        if (source.Kind == "Faction")
+            throw new InvalidOperationException("Use Add faction to create a faction.");
         HashSet<string> identities = new HashSet<string>(
             GetCatalogs()
                 .SelectMany(catalog =>

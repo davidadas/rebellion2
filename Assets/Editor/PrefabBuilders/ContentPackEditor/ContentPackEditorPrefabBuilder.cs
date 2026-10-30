@@ -316,7 +316,7 @@ public static class ContentPackEditorPrefabBuilder
             17
         );
         group.color = new Color32(218, 178, 111, 255);
-        group.gameObject.AddComponent<ContentEditorFieldHelp>();
+        HelpIcon(group.transform);
         BindColor(group, ContentEditorColorRole.Accent);
         group.gameObject.SetActive(false);
         Assign(form, "groupTemplate", group);
@@ -391,7 +391,7 @@ public static class ContentPackEditorPrefabBuilder
         menuSettings.FindProperty("preferRightSubmenus").boolValue = true;
         menuSettings.ApplyModifiedPropertiesWithoutUndo();
         Assign(view, "menu", menu);
-        Assign(view, "checkmark", MenuControlPrefabBuilder.GetCheckmarkSprite().texture);
+        Assign(view, "checkmark", LoadIcon("Checkmark").texture);
         workbenchLayout.SetZoom(1);
     }
 
@@ -475,7 +475,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "importButton", import);
         Assign(field, "previewButton", preview);
         Assign(field, "choiceDropdown", choice);
-        Assign(field, "help", root.gameObject.AddComponent<ContentEditorFieldHelp>());
+        Assign(field, "help", HelpIcon(root));
         return field;
     }
 

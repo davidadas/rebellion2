@@ -262,9 +262,11 @@ internal static class ContentEditorControlBuilder
                 BindColor(
                     image,
                     image.name == "Item Checkmark"
-                        ? ContentEditorColorRole.Accent
+                        ? ContentEditorColorRole.Checkmark
                         : ContentEditorColorRole.Panel
                 );
+            if (image.name == "Item Checkmark")
+                image.sprite = LoadIcon("Checkmark");
         }
         foreach (TMP_Text label in dropdown.GetComponentsInChildren<TMP_Text>(true))
         {
@@ -391,6 +393,35 @@ internal static class ContentEditorControlBuilder
     }
 
     /// <summary>
+    /// Creates a compact information target using the shared delayed tooltip component.
+    /// </summary>
+    /// <param name="parent">The field or caption containing the guidance.</param>
+    /// <returns>The authored tooltip target.</returns>
+    internal static ContentEditorFieldHelp HelpIcon(Transform parent)
+    {
+        Image target = Surface("Info", parent, Color.clear);
+        target.raycastTarget = true;
+        target.canvasRenderer.cullTransparentMesh = false;
+        Rect(target.rectTransform, 0, 0, 24, 24);
+        Image icon = Surface("Glyph", target.transform, ContentEditorColorRole.Muted);
+        icon.sprite = LoadIcon("Information");
+        icon.preserveAspect = true;
+        Rect(icon.rectTransform, 4, 4, 16, 16);
+        ContentEditorFieldHelp help = target.gameObject.AddComponent<ContentEditorFieldHelp>();
+        target.gameObject.SetActive(false);
+        return help;
+    }
+
+    /// <summary>
+    /// Loads a monochrome editor icon for palette tinting at any display scale.
+    /// </summary>
+    /// <param name="name">The icon's asset name.</param>
+    /// <returns>The imported UI sprite.</returns>
+    internal static Sprite LoadIcon(string name) =>
+        AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Art/ContentEditor/{name}.png")
+        ?? throw new System.IO.FileNotFoundException($"Editor icon '{name}' is missing.");
+
+    /// <summary>
     /// Authors the existing checkbox view using compact editor artwork.
     /// </summary>
     /// <param name="parent">The owning field.</param>
@@ -418,7 +449,7 @@ internal static class ContentEditorControlBuilder
         Rect(mark, 1, 1, 20, 20);
         RawImage tick = Layer("Tick", mark).gameObject.AddComponent<RawImage>();
         ConfigureCheckmark(tick);
-        BindColor(tick, ContentEditorColorRole.Accent);
+        BindColor(tick, ContentEditorColorRole.Checkmark);
         Rect(tick.rectTransform, 0, 0, 20, 20);
         TextMeshProUGUI label = Label("Caption", background.transform, "Enabled");
         Rect(label.rectTransform, 34, 0, 120, 24);
@@ -437,7 +468,7 @@ internal static class ContentEditorControlBuilder
     /// <param name="image">The authored checkmark image.</param>
     private static void ConfigureCheckmark(RawImage image)
     {
-        Sprite sprite = MenuControlPrefabBuilder.GetCheckmarkSprite();
+        Sprite sprite = LoadIcon("Checkmark");
         Rect bounds = sprite.textureRect;
         image.texture = sprite.texture;
         image.uvRect = new Rect(
@@ -487,11 +518,11 @@ internal static class ContentEditorControlBuilder
         hit.color = Color.clear;
         Rect(hit.rectTransform, 0, 0, 230, 36);
         RectTransform iconPanel = Layer("IconPanel", command);
-        Rect(iconPanel, 0, 0, 18, 36);
+        Rect(iconPanel, 0, 0, 32, 36);
         RawImage icon = Layer("Icon", iconPanel).gameObject.AddComponent<RawImage>();
         ConfigureCheckmark(icon);
-        BindColor(icon, ContentEditorColorRole.Text);
-        Rect(icon.rectTransform, 2, 10, 14, 14);
+        BindColor(icon, ContentEditorColorRole.Checkmark);
+        Rect(icon.rectTransform, 8, 10, 16, 16);
         TextMeshProUGUI caption = Label("Caption", command, "Command");
         Object.DestroyImmediate(caption.GetComponent<ContentEditorColorBinding>());
         Rect(caption.rectTransform, 14, 0, 202, 36);

@@ -19,6 +19,7 @@ public sealed class ContentEditorNavigation
     private readonly HashSet<string> expanded = new HashSet<string>(StringComparer.Ordinal);
     private readonly List<ContentEditorTreeNode> roots = new List<ContentEditorTreeNode>();
     private readonly Dictionary<string, string> factionNames = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> factionCatalogIDs = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Clears expansion state when changing projects.
@@ -28,6 +29,7 @@ public sealed class ContentEditorNavigation
         expanded.Clear();
         roots.Clear();
         factionNames.Clear();
+        factionCatalogIDs.Clear();
     }
 
     /// <summary>
@@ -38,6 +40,7 @@ public sealed class ContentEditorNavigation
     {
         roots.Clear();
         factionNames.Clear();
+        factionCatalogIDs.Clear();
         foreach (
             ContentPackEditorRecord faction in catalogs
                 .SelectMany(catalog => catalog.Records)
@@ -46,7 +49,11 @@ public sealed class ContentEditorNavigation
         {
             string id = faction.Element.Element("InstanceID")?.Value;
             if (!string.IsNullOrWhiteSpace(id))
+            {
                 factionNames[id] = faction.Name;
+                if (faction.Catalog.Faction != "Shared")
+                    factionCatalogIDs[faction.Catalog.Faction] = id;
+            }
         }
         HashSet<string> entities = new HashSet<string>(
             catalogs
@@ -190,24 +197,22 @@ public sealed class ContentEditorNavigation
             if (factions == null)
             {
                 factions = new ContentEditorTreeNode("factions", "Factions", 0);
-                int settings = roots.FindIndex(node =>
-                    node.Key is "category/Starting setup" or "category/Pack settings"
-                );
-                roots.Insert(settings < 0 ? roots.Count : settings, factions);
+                roots.Add(factions);
             }
             factions.Children.Add(
                 new ContentEditorTreeNode("factions/add", "+ Add faction", 1, creationCatalog: pack)
             );
         }
         if (missions.Children.Count > 0)
-        {
-            int traits = roots.FindIndex(node => node.Key == "category/Officer traits");
-            int index =
-                traits >= 0 ? traits + 1
-                : units.Children.Count > 0 ? 1
-                : 0;
-            roots.Insert(Math.Min(roots.Count, index), missions);
-        }
+            roots.Add(missions);
+        roots.Sort(
+            (left, right) =>
+            {
+                int order = GetCategoryOrder(left.Caption)
+                    .CompareTo(GetCategoryOrder(right.Caption));
+                return order != 0 ? order : StringComparer.Ordinal.Compare(left.Key, right.Key);
+            }
+        );
     }
 
     /// <summary>
@@ -391,17 +396,38 @@ public sealed class ContentEditorNavigation
     }
 
     /// <summary>
+    /// Gets each creatable catalog once in the same order as its sidebar actions.
+    /// </summary>
+    /// <returns>The ordered creation destinations, independent of expanded branches.</returns>
+    public IReadOnlyList<ContentPackEditorCatalog> GetCreationCatalogs()
+    {
+        HashSet<string> categories = new(StringComparer.Ordinal);
+        List<ContentPackEditorCatalog> result = new();
+        foreach (ContentEditorTreeNode node in GetRowsForAll())
+            if (
+                node.CreationCatalog != null
+                && node.CreationParent == null
+                && node.CreationFactionInstanceID == null
+                && categories.Add(node.CreationCatalog.Name)
+            )
+                result.Add(node.CreationCatalog);
+        return result;
+    }
+
+    /// <summary>
     /// Enumerates all pages independently of expansion and search state.
     /// </summary>
     /// <returns>All navigation nodes.</returns>
     private IEnumerable<ContentEditorTreeNode> GetRowsForAll()
     {
-        Stack<ContentEditorTreeNode> pending = new Stack<ContentEditorTreeNode>(roots);
+        Stack<ContentEditorTreeNode> pending = new Stack<ContentEditorTreeNode>(
+            roots.AsEnumerable().Reverse()
+        );
         while (pending.Count > 0)
         {
             ContentEditorTreeNode node = pending.Pop();
             yield return node;
-            foreach (ContentEditorTreeNode child in node.Children)
+            foreach (ContentEditorTreeNode child in node.Children.AsEnumerable().Reverse())
                 pending.Push(child);
         }
     }
@@ -573,27 +599,39 @@ public sealed class ContentEditorNavigation
             .SelectMany(catalog => catalog.Records)
             .ToArray();
         ContentPackEditorCatalog destinationCatalog = catalogs.First(catalog => catalog.CanAddUnit);
-        string[] factions = catalogs
+        var factions = catalogs
             .Where(catalog => catalog.Records.Count == 0)
-            .Select(catalog => catalog.Faction)
-            .Concat(records.Select(GetUnitGroup))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(faction => faction == "Shared")
-            .ThenBy(faction => faction, StringComparer.Ordinal)
+            .Select(GetCatalogScope)
+            .Concat(records.Select(GetUnitScope))
+            .Concat(
+                factionNames.Select(faction =>
+                    (FactionInstanceID: faction.Key, Caption: faction.Value)
+                )
+            )
+            .Distinct()
+            .OrderBy(faction => faction.FactionInstanceID == null && faction.Caption == "Shared")
+            .ThenBy(faction => faction.Caption, StringComparer.Ordinal)
+            .ThenBy(faction => faction.FactionInstanceID, StringComparer.Ordinal)
             .ToArray();
-        foreach (string faction in factions)
+        foreach (var faction in factions)
         {
             ContentPackEditorCatalog[] destinations = catalogs
-                .Where(catalog => catalog.Faction == faction)
+                .Where(catalog => GetCatalogScope(catalog) == faction)
                 .ToArray();
             ContentEditorTreeNode branch = new(
-                key + "/" + (destinations.FirstOrDefault()?.Document.Address ?? faction),
-                faction,
+                key
+                    + "/"
+                    + (
+                        faction.FactionInstanceID == null
+                            ? "group/" + faction.Caption
+                            : "faction/" + faction.FactionInstanceID
+                    ),
+                faction.Caption,
                 depth + 1
             );
             foreach (
                 ContentPackEditorRecord record in records
-                    .Where(record => GetUnitGroup(record) == faction)
+                    .Where(record => GetUnitScope(record) == faction)
                     .OrderBy(record => record.Name, StringComparer.Ordinal)
             )
                 branch.Children.Add(RecordNode(record, depth + 2));
@@ -615,7 +653,9 @@ public sealed class ContentEditorNavigation
                     branch.Key + "/add",
                     "+ Add " + destinationCatalog.ItemName.ToLowerInvariant(),
                     depth + 2,
-                    creationCatalog: destinationCatalog
+                    creationCatalog: destinations.FirstOrDefault(catalog => catalog.CanAddUnit)
+                        ?? destinationCatalog,
+                    creationFactionInstanceID: faction.FactionInstanceID
                 )
             );
             root.Children.Add(branch);
@@ -636,7 +676,26 @@ public sealed class ContentEditorNavigation
     /// </summary>
     /// <param name="record">The selected definition.</param>
     /// <returns>The faction label, Shared, or Unassigned for an empty faction selection.</returns>
-    internal string GetUnitGroup(ContentPackEditorRecord record)
+    internal string GetUnitGroup(ContentPackEditorRecord record) => GetUnitScope(record).Caption;
+
+    /// <summary>
+    /// Resolves a catalog's faction without treating a display name as an identity.
+    /// </summary>
+    /// <param name="catalog">The definition's document.</param>
+    /// <returns>The optional faction identity and its display caption.</returns>
+    private (string FactionInstanceID, string Caption) GetCatalogScope(
+        ContentPackEditorCatalog catalog
+    ) =>
+        factionCatalogIDs.TryGetValue(catalog.Faction, out string id)
+            ? (id, factionNames[id])
+            : (null, catalog.Faction);
+
+    /// <summary>
+    /// Keeps faction identity separate from captions for exclusive, shared, and unassigned units.
+    /// </summary>
+    /// <param name="record">The unit definition.</param>
+    /// <returns>The optional faction identity and its display caption.</returns>
+    private (string FactionInstanceID, string Caption) GetUnitScope(ContentPackEditorRecord record)
     {
         if (
             record.Kind
@@ -649,7 +708,7 @@ public sealed class ContentEditorNavigation
                 or "Building"
             )
         )
-            return record.Catalog.Faction;
+            return GetCatalogScope(record.Catalog);
         string member =
             record.Kind == "Officer"
                 ? "RecruitingFactionInstanceIDs"
@@ -664,12 +723,14 @@ public sealed class ContentEditorNavigation
                 .ToArray()
             ?? Array.Empty<string>();
         if (factions.Length > 1)
-            return "Shared";
+            return (null, "Shared");
         string faction =
             factions.FirstOrDefault() ?? record.Element.Element("OwnerInstanceID")?.Value;
         if (!string.IsNullOrWhiteSpace(faction))
-            return factionNames.TryGetValue(faction, out string label) ? label : faction;
-        return record.Element.Element(member) == null ? record.Catalog.Faction : "Unassigned";
+            return (faction, factionNames.TryGetValue(faction, out string label) ? label : faction);
+        return record.Element.Element(member) == null
+            ? GetCatalogScope(record.Catalog)
+            : (null, "Unassigned");
     }
 
     /// <summary>
@@ -692,16 +753,18 @@ public sealed class ContentEditorNavigation
     {
         return name switch
         {
-            "Officer traits" => -1,
-            "Buildings" => 0,
-            "Galaxy map" => 1,
-            "Starting setup" => 19,
-            "Scenarios" => 3,
-            "Rules" => 4,
-            "Game events" => 5,
-            "Interface" => 7,
-            "Pack settings" => 20,
-            _ => 10,
+            "Factions" => 0,
+            "Galaxy" or "Galaxy map" => 1,
+            "Units" => 2,
+            "Officer traits" => 3,
+            "Buildings" => 4,
+            "Missions" => 5,
+            "Game events" => 6,
+            "Rules" or "Game rules" => 7,
+            "Reference" or "Encyclopedia entries" => 8,
+            "Starting setup" => 10,
+            "Pack settings" => 11,
+            _ => 9,
         };
     }
 
@@ -805,6 +868,7 @@ public sealed class ContentEditorTreeNode
     public IReadOnlyList<ContentPackEditorRecord> RelatedRecords { get; }
     public ContentPackEditorCatalog CreationCatalog { get; }
     public ContentPackEditorRecord CreationParent { get; }
+    public string CreationFactionInstanceID { get; }
     public string MissionID { get; }
     public List<ContentEditorTreeNode> Children { get; } = new List<ContentEditorTreeNode>();
 
@@ -821,6 +885,7 @@ public sealed class ContentEditorTreeNode
     /// <param name="missionID">The optional mission represented by this page.</param>
     /// <param name="creationCatalog">The optional destination of a create action.</param>
     /// <param name="creationParent">The optional parent receiving a nested record.</param>
+    /// <param name="creationFactionInstanceID">The optional faction selected by a unit creation action.</param>
     public ContentEditorTreeNode(
         string key,
         string caption,
@@ -831,7 +896,8 @@ public sealed class ContentEditorTreeNode
         IReadOnlyList<ContentPackEditorRecord> relatedRecords = null,
         string missionID = null,
         ContentPackEditorCatalog creationCatalog = null,
-        ContentPackEditorRecord creationParent = null
+        ContentPackEditorRecord creationParent = null,
+        string creationFactionInstanceID = null
     )
     {
         Key = key;
@@ -844,5 +910,6 @@ public sealed class ContentEditorTreeNode
         MissionID = missionID;
         CreationCatalog = creationCatalog;
         CreationParent = creationParent;
+        CreationFactionInstanceID = creationFactionInstanceID;
     }
 }

@@ -104,6 +104,19 @@ namespace Rebellion.Tests.ContentEditor.UI
                         }
                     );
             }
+            Assert.AreEqual(before, project.GetFactionOptions().Count);
+            ContentEditorConfirmationView warning =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsNotNull(warning);
+            Assert.IsTrue(
+                warning
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(text => text.text.Contains("not guaranteed to work"))
+            );
+            warning
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Primary")
+                .onClick.Invoke();
             Assert.AreEqual(before + 1, project.GetFactionOptions().Count);
             ContentEditorRecordRowView row =
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
@@ -128,6 +141,163 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
                     .Any(item => item.Node.Record?.ID == "NEW_FACTION")
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AddFaction_ThirdFactionWarning_CancelingLeavesTheProjectUnchanged(bool escape)
+        {
+            int before = project.GetFactionOptions().Count;
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = "Add faction";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Caption == "+ Add faction")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            ContentEditorConfirmationView warning =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsNotNull(warning);
+            Assert.AreEqual(before, project.GetFactionOptions().Count);
+            Assert.IsTrue(
+                warning.GetComponentsInChildren<TMP_Text>().Any(text => text.text == "Warning")
+            );
+            if (escape)
+                Assert.IsTrue(warning.TryCancel());
+            else
+                warning
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Cancel")
+                    .onClick.Invoke();
+            Assert.IsFalse(warning.gameObject.activeSelf);
+            Assert.AreEqual(before, project.GetFactionOptions().Count);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void AddFaction_OneExistingFaction_CreatesWithoutAWarning()
+        {
+            ContentPackEditorRecord removed = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Faction" && record.Element.Element("InstanceID") != null
+                );
+            project.RemoveRecord(removed);
+            view.RenderProject(project, assets);
+            int before = project.GetFactionOptions().Count;
+            view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search")
+                .text = "Add faction";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Caption == "+ Add faction")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            Assert.AreEqual(before + 1, project.GetFactionOptions().Count);
+            Assert.IsFalse(
+                view.GetComponentInChildren<ContentEditorConfirmationView>(
+                    true
+                ).gameObject.activeSelf
+            );
+        }
+
+        [Test]
+        public void RemoveRecord_FactionWithAnInvalidDraft_DeletesWithoutCommittingTheDraft()
+        {
+            ContentPackEditorRecord faction = project.AddFaction();
+            string id = faction.ID;
+            view.RenderProject(project, assets);
+            SelectRecord(faction);
+            TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field =>
+                    field.Field.MemberName == "InstanceID"
+                    && field.Field.Record.Element == faction.Element
+                )
+                .GetComponentInChildren<TMP_InputField>();
+            input.onSelect.Invoke(input.text);
+            input.text = string.Empty;
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Delete")
+                .onClick.Invoke();
+            ContentEditorConfirmationView confirmation =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsNotNull(confirmation);
+            confirmation
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Primary")
+                .onClick.Invoke();
+            Assert.IsFalse(project.GetFactionOptions().ContainsKey(id));
+            Assert.IsEmpty(
+                view.GetComponentsInChildren<TMP_InputField>(true)
+                    .Single(field => field.name == "Search")
+                    .text
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RemoveRecord_Faction_RefreshesTheTreeAfterConfirmation(
+            bool missingGameplayEntry
+        )
+        {
+            int before = project.GetFactionOptions().Count;
+            ContentPackEditorRecord faction = project.AddFaction();
+            string id = faction.ID;
+            if (missingGameplayEntry)
+                faction.Catalog.Remove(faction);
+            view.RenderProject(project, assets);
+            ContentPackEditorRecord selected = missingGameplayEntry
+                ? project
+                    .GetCatalogs()
+                    .Single(catalog =>
+                        catalog.DocumentRecord.Element.Element("ID")?.Value == id
+                        && catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                    )
+                    .DocumentRecord
+                : faction;
+            SelectRecord(selected);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Duplicate")
+                    .interactable
+            );
+            Button delete = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Delete");
+            Assert.IsTrue(delete.interactable);
+            delete.onClick.Invoke();
+            ContentEditorConfirmationView confirmation =
+                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            Assert.IsTrue(
+                confirmation
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(text => text.text.Contains("faction-specific data"))
+            );
+            confirmation
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Primary")
+                .onClick.Invoke();
+            Assert.AreEqual(before, project.GetFactionOptions().Count);
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Any(row =>
+                        row.Node.Record?.ID == id || row.Node.CreationFactionInstanceID == id
+                    )
+            );
+            Assert.IsTrue(project.Undo());
+            view.RenderProject(project, assets);
+            Assert.IsTrue(
+                project
+                    .GetCatalogs()
+                    .Any(catalog => catalog.DocumentRecord.Element.Element("ID")?.Value == id)
             );
         }
 
@@ -229,6 +399,14 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(bounds.size.x, Is.InRange(12f, 20f));
             Assert.That(bounds.size.y, Is.InRange(12f, 20f));
             Assert.That(bounds.center.y, Is.EqualTo(row.rect.center.y).Within(1f));
+            RectTransform gutter = (RectTransform)mark.transform.parent;
+            Bounds gutterBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                gutter,
+                mark.rectTransform
+            );
+            Assert.That(gutterBounds.center.x, Is.EqualTo(gutter.rect.center.x).Within(0.5f));
+            Assert.GreaterOrEqual(gutterBounds.min.x - gutter.rect.xMin, 6);
+            Assert.GreaterOrEqual(gutter.rect.xMax - gutterBounds.max.x, 6);
             TMP_Dropdown selector = view.GetComponentsInChildren<TMP_Dropdown>(true).First();
             Image selectedGlyph = (Image)
                 selector.template.GetComponentInChildren<Toggle>(true).graphic;
@@ -239,6 +417,12 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(image => image.name == "Tick");
             Assert.AreSame(mark.texture, checkboxGlyph.texture);
             Assert.AreEqual(mark.uvRect, checkboxGlyph.uvRect);
+            if (mode is ContentEditorColorMode.Dark or ContentEditorColorMode.Empire)
+            {
+                Assert.AreEqual(Color.white, mark.color);
+                Assert.AreEqual(Color.white, checkboxGlyph.color);
+                Assert.AreEqual(Color.white, selectedGlyph.color);
+            }
             RectTransform submenu = (RectTransform)row.parent;
             RectTransform parentPanel = (RectTransform)
                 view.GetComponentsInChildren<ContextMenuCommandView>()
@@ -2174,16 +2358,16 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<ContextMenuCommandView>();
             string[] expected =
             {
-                "Building",
-                "Capital ship",
-                "Officer",
-                "Special forces unit",
-                "Starfighter",
-                "Regiment",
-                "Game event",
-                "Officer trait",
                 "Faction",
                 "Planet sector",
+                "Officer",
+                "Special forces unit",
+                "Regiment",
+                "Capital ship",
+                "Starfighter",
+                "Officer trait",
+                "Building",
+                "Game event",
             };
             Assert.AreEqual(expected.Length, commands.Length);
             foreach (string caption in expected)
@@ -2196,39 +2380,115 @@ namespace Rebellion.Tests.ContentEditor.UI
                     ),
                     caption
                 );
+            CollectionAssert.AreEqual(
+                expected,
+                commands.Select(command =>
+                    command
+                        .GetComponentsInChildren<TMP_Text>()
+                        .First(label => expected.Contains(label.text))
+                        .text
+                )
+            );
             Assert.IsFalse(project.IsDirty);
         }
 
-        [TestCase("Officers", "+ Add officer", "RecruitingFactionInstanceIDs")]
-        [TestCase("Capital ships", "+ Add capital ship", "ManufacturingFactionInstanceIDs")]
-        [TestCase("Starfighters", "+ Add starfighter", "ManufacturingFactionInstanceIDs")]
-        [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs")]
-        [TestCase("Special forces", "+ Add special forces unit", "ManufacturingFactionInstanceIDs")]
-        [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs")]
-        public void AddUnit_FactionGroupAction_CreatesAnUnassignedUnitAndSupportsUndo(
+        [Test]
+        public void RenderProject_FieldGuidance_ShowsInfoIconsOnlyForDocumentedCaptions()
+        {
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            int visible = 0;
+            foreach (ContentEditorFieldView field in fields)
+            {
+                ContentEditorFieldHelp info = field.GetComponentInChildren<ContentEditorFieldHelp>(
+                    true
+                );
+                TMP_Text label = field
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Single(text =>
+                        text.name == "Label" && text.transform.parent == field.transform
+                    );
+                bool expected =
+                    label.gameObject.activeSelf && !string.IsNullOrWhiteSpace(field.Field.HelpText);
+                Assert.AreEqual(expected, info.gameObject.activeSelf, field.Field.MemberName);
+                Assert.IsNull(info.GetComponent<TMP_Text>());
+                Assert.IsNotNull(
+                    info.GetComponentsInChildren<Image>().Single(image => image.sprite != null)
+                );
+                Assert.IsNull(field.GetComponent<ContentEditorFieldHelp>());
+                if (!expected)
+                    continue;
+                visible++;
+                RectTransform root = (RectTransform)field.transform;
+                Bounds icon = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                    root,
+                    (RectTransform)info.transform
+                );
+                TMP_InputField value = field.GetComponentInChildren<TMP_InputField>();
+                if (value != null)
+                {
+                    Bounds input = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                        root,
+                        (RectTransform)value.transform
+                    );
+                    Assert.LessOrEqual(icon.max.x, input.min.x);
+                }
+            }
+            Assert.Greater(visible, 0);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase("Officers", "+ Add officer", "RecruitingFactionInstanceIDs", 0)]
+        [TestCase("Officers", "+ Add officer", "RecruitingFactionInstanceIDs", 1)]
+        [TestCase("Capital ships", "+ Add capital ship", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Capital ships", "+ Add capital ship", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Starfighters", "+ Add starfighter", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Starfighters", "+ Add starfighter", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase(
+            "Special forces",
+            "+ Add special forces unit",
+            "ManufacturingFactionInstanceIDs",
+            0
+        )]
+        [TestCase(
+            "Special forces",
+            "+ Add special forces unit",
+            "ManufacturingFactionInstanceIDs",
+            1
+        )]
+        [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs", 1)]
+        public void AddUnit_FactionGroupAction_AssignsThatFactionAndSupportsUndo(
             string category,
             string caption,
-            string member
+            string member,
+            int factionIndex
         )
         {
-            ContentPackEditorCatalog catalog = project
-                .GetCatalogs()
-                .First(item => item.Name == category);
-            int before = catalog.Records.Count;
+            string factionInstanceID = project
+                .GetFactionOptions()
+                .Keys.OrderBy(id => id, StringComparer.Ordinal)
+                .ElementAt(factionIndex);
             view.GetComponentsInChildren<TMP_InputField>(true)
                 .Single(input => input.name == "Search")
                 .text = category;
             ContentEditorRecordRowView add =
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
-                    .Where(row => row.Node?.CreationCatalog?.Name == category)
-                    .OrderByDescending(row => row.Node.Depth)
-                    .First();
+                    .Single(row =>
+                        row.Node?.CreationCatalog?.Name == category
+                        && row.Node.CreationFactionInstanceID == factionInstanceID
+                    );
+            ContentPackEditorCatalog catalog = add.Node.CreationCatalog;
+            int before = catalog.Records.Count;
             ContentEditorTreeNode group = view.GetComponentsInChildren<ContentEditorRecordRowView>()
                 .Single(row => row.Node.Children.Contains(add.Node))
                 .Node;
             Assert.AreEqual(caption, add.Node.Caption);
             Assert.AreSame(add.Node, group.Children.Last());
             Assert.AreEqual(group.Depth + 1, add.Node.Depth);
+            Assert.AreEqual(project.GetFactionOptions()[factionInstanceID], group.Caption);
             add.OnPointerDown(
                 new PointerEventData(EventSystem.current)
                 {
@@ -2238,7 +2498,7 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             Assert.AreEqual(before + 1, catalog.Records.Count);
             ContentPackEditorRecord created = catalog.Records.Last();
-            Assert.IsEmpty(created.GetField(member).Values);
+            CollectionAssert.AreEqual(new[] { factionInstanceID }, created.GetField(member).Values);
             Assert.IsTrue(string.IsNullOrEmpty(created.Element.Element("OwnerInstanceID")?.Value));
             Assert.IsTrue(
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
@@ -2251,6 +2511,16 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .GetCatalogs()
                     .Single(item => item.Document == catalog.Document)
                     .Records.Count
+            );
+            Assert.IsTrue(project.Redo());
+            CollectionAssert.AreEqual(
+                new[] { factionInstanceID },
+                project
+                    .GetCatalogs()
+                    .Single(item => item.Document == catalog.Document)
+                    .Records.Last()
+                    .GetField(member)
+                    .Values
             );
         }
 

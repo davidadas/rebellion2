@@ -36,7 +36,9 @@ public sealed class ContentPackEditorCatalog
     public bool CanAddTrait => recordName == "Trait";
     public bool CanAddFaction => xml.Root.Name.LocalName == "ContentPack";
     public bool CanDuplicate =>
-        recordName != null && Records.Any(record => GetIdentityValues(record.Element).Any());
+        recordName != null
+        && recordName != "Faction"
+        && Records.Any(record => GetIdentityValues(record.Element).Any());
     public IReadOnlyList<ContentPackEditorRecord> Records { get; private set; }
     public ContentPackEditorRecord DocumentRecord => new ContentPackEditorRecord(this, xml.Root);
 

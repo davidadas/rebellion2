@@ -99,6 +99,85 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void GetCreationCatalogs_SidebarOrder_DeduplicatesFactionActionsAndIgnoresExpansion()
+        {
+            string manifest = Path.Combine(directory, "pack.xml");
+            File.WriteAllText(manifest, "<ContentPack><ID>test-pack</ID></ContentPack>");
+            ContentPackEditorCatalog pack = new(
+                new ContentPackEditorDocument("Pack/pack.xml", manifest, manifest)
+            );
+            ContentPackEditorCatalog[] catalogs =
+            {
+                Catalog("Buildings", "Building", "Pack/Data/buildings.xml", "BUILDING", "Building"),
+                Catalog("GameEvents", "GameEvent", "Pack/Data/events.xml", "EVENT", "Event"),
+                Catalog(
+                    "CapitalShips",
+                    "CapitalShip",
+                    "Pack/Factions/A/Data/ships.xml",
+                    "SHIP",
+                    "Ship"
+                ),
+                Catalog(
+                    "Officers",
+                    "Officer",
+                    "Pack/Factions/A/Data/officers.xml",
+                    "A",
+                    "Officer A"
+                ),
+                Catalog(
+                    "Officers",
+                    "Officer",
+                    "Pack/Factions/B/Data/officers.xml",
+                    "B",
+                    "Officer B"
+                ),
+                Catalog("OfficerTraits", "Trait", "Pack/Data/traits.xml", "TRAIT", "Trait"),
+                Catalog(
+                    "PlanetSectors",
+                    "PlanetSector",
+                    "Pack/Data/galaxy.xml",
+                    "SECTOR",
+                    "Sector"
+                ),
+                pack,
+            };
+            ContentEditorNavigation navigation = new();
+            navigation.Render(catalogs);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Factions",
+                    "Galaxy",
+                    "Units",
+                    "Officer traits",
+                    "Buildings",
+                    "Game events",
+                    "Pack settings",
+                },
+                navigation.GetRows(string.Empty).Select(node => node.Caption)
+            );
+            string[] expected =
+            {
+                "Pack settings",
+                "Galaxy map",
+                "Officers",
+                "Capital ships",
+                "Officer traits",
+                "Buildings",
+                "Game events",
+            };
+            CollectionAssert.AreEqual(
+                expected,
+                navigation.GetCreationCatalogs().Select(catalog => catalog.Name)
+            );
+            navigation.SetExpanded(true);
+            CollectionAssert.AreEqual(
+                expected,
+                navigation.GetCreationCatalogs().Select(catalog => catalog.Name)
+            );
+        }
+
+        [Test]
         public void GetRows_SearchingIdentifier_RevealsMatchingRecordsWithoutChangingExpansionState()
         {
             ContentPackEditorCatalog officers = Catalog(
@@ -383,6 +462,90 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Assert.IsNotNull(create.CreationCatalog);
                 Assert.AreEqual(1, faction.Children.Count(node => node.CreationCatalog != null));
             }
+        }
+
+        [Test]
+        public void Render_FactionsWithTheSameName_KeepsCreationActionsScopedByIdentity()
+        {
+            ContentPackEditorCatalog first = Catalog(
+                "Factions",
+                "Faction",
+                "Pack/Factions/SideA/Data/faction.xml",
+                "A",
+                "Same name"
+            );
+            first.Records[0].Element.Add(new XElement("InstanceID", "A"));
+            ContentPackEditorCatalog second = Catalog(
+                "Factions",
+                "Faction",
+                "Pack/Factions/SideB/Data/faction.xml",
+                "Shared",
+                "Same name"
+            );
+            second.Records[0].Element.Add(new XElement("InstanceID", "Shared"));
+            ContentPackEditorCatalog firstUnits = Catalog(
+                "Officers",
+                "Officer",
+                "Pack/Factions/SideA/Data/units.xml",
+                "FIRST",
+                "First"
+            );
+            firstUnits
+                .Records[0]
+                .Element.Add(
+                    new XElement("RecruitingFactionInstanceIDs", new XElement("String", "A"))
+                );
+            ContentPackEditorCatalog secondUnits = Catalog(
+                "Officers",
+                "Officer",
+                "Pack/Factions/SideB/Data/units.xml",
+                "SECOND",
+                "Second"
+            );
+            secondUnits
+                .Records[0]
+                .Element.Add(
+                    new XElement("RecruitingFactionInstanceIDs", new XElement("String", "Shared"))
+                );
+            ContentPackEditorRecord shared = firstUnits.Duplicate(firstUnits.Records[0]);
+            shared
+                .Element.Element("RecruitingFactionInstanceIDs")
+                .Add(new XElement("String", "Shared"));
+            ContentEditorNavigation navigation = new();
+            navigation.Render(new[] { first, second, secondUnits, firstUnits });
+            navigation.SetExpanded(true);
+
+            ContentEditorTreeNode[] rows = navigation.GetRows(string.Empty).ToArray();
+            ContentEditorTreeNode[] actions = rows.Where(row =>
+                    row.CreationCatalog?.Name == "Officers"
+                )
+                .ToArray();
+            Assert.AreEqual(
+                actions.Length,
+                actions.Select(action => action.Key).Distinct().Count()
+            );
+            Assert.AreSame(
+                firstUnits,
+                actions.Single(action => action.CreationFactionInstanceID == "A").CreationCatalog
+            );
+            Assert.AreSame(
+                secondUnits,
+                actions
+                    .Single(action => action.CreationFactionInstanceID == "Shared")
+                    .CreationCatalog
+            );
+            Assert.AreEqual(2, actions.Count(action => action.CreationFactionInstanceID == null));
+            Assert.AreSame(
+                secondUnits,
+                navigation.GetCreationCatalogs().Single(catalog => catalog.Name == "Officers")
+            );
+            Assert.AreEqual(
+                2,
+                rows.Count(row =>
+                    row.Caption == "Same name"
+                    && row.Children.Any(child => child.CreationCatalog?.Name == "Officers")
+                )
+            );
         }
 
         [TestCase("Officers", "Officer", "RecruitingFactionInstanceIDs")]

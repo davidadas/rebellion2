@@ -837,7 +837,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             if (node.CreationParent != null)
                 AddPlanet(node.CreationParent);
             else
-                AddRecord(node.CreationCatalog);
+                AddRecord(node.CreationCatalog, node.CreationFactionInstanceID);
             return;
         }
         if (node.Record == null && node.Catalog == null)
@@ -961,7 +961,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             new ContentEditorMenuCommand(
                 "Delete",
                 ConfirmDeleteRecord,
-                selectedRecord?.Catalog.CanDuplicate == true
+                selectedRecord?.Kind == "Faction" || selectedRecord?.Catalog.CanDuplicate == true
             )
         );
     }
@@ -1236,7 +1236,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         tabRoot.gameObject.SetActive(record != null);
         form.gameObject.SetActive(record != null);
         duplicateButton.interactable = record?.Catalog.CanDuplicate == true;
-        deleteButton.interactable = duplicateButton.interactable;
+        deleteButton.interactable = record?.Kind == "Faction" || duplicateButton.interactable;
         if (record == null)
         {
             recordTitle.text = "No matching entries";
@@ -1662,71 +1662,33 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return;
         ContentPackEditorRecord targetSector =
             selectedRecord?.Catalog.IsMap == true ? mapSector : null;
-        ShowMenu(
-            addUnitButton,
-            catalogs
-                .Where(catalog => catalog.CanAddUnit)
-                .GroupBy(catalog => catalog.Name)
-                .Select(category => new ContentEditorMenuCommand(
-                    category.First().ItemName,
-                    () => AddUnit(category.First())
-                ))
-                .Concat(
-                    catalogs
-                        .Where(catalog => catalog.CanAddEvent)
-                        .Select(catalog => new ContentEditorMenuCommand(
-                            catalog.ItemName,
-                            () => AddEvent(catalog)
-                        ))
+        navigation.Render(catalogs);
+        List<ContentEditorMenuCommand> commands = new();
+        foreach (ContentPackEditorCatalog catalog in navigation.GetCreationCatalogs())
+        {
+            commands.Add(
+                new ContentEditorMenuCommand(
+                    catalog.CanAddFaction ? "Faction" : catalog.ItemName,
+                    () => AddRecord(catalog)
                 )
-                .Concat(
-                    catalogs
-                        .Where(catalog => catalog.CanAddTrait)
-                        .Select(catalog => new ContentEditorMenuCommand(
-                            catalog.ItemName,
-                            () =>
-                            {
-                                ContentPackEditorRecord trait = project.AddTrait(catalog);
-                                searchInput.SetTextWithoutNotify(string.Empty);
-                                SelectRecord(trait);
-                            }
-                        ))
-                )
-                .Concat(
-                    catalogs
-                        .Where(catalog => catalog.CanAddFaction)
-                        .Select(_ => new ContentEditorMenuCommand("Faction", AddFaction))
-                )
-                .Concat(
-                    catalogs
-                        .Where(catalog => catalog.IsMap)
-                        .Select(catalog => new ContentEditorMenuCommand(
-                            catalog.ItemName,
-                            () => AddSector(catalog)
-                        ))
-                )
-                .Concat(
-                    targetSector == null
-                        ? Array.Empty<ContentEditorMenuCommand>()
-                        : new[]
-                        {
-                            new ContentEditorMenuCommand("Planet", () => AddPlanet(targetSector)),
-                        }
-                )
-                .ToArray()
-        );
+            );
+            if (catalog.IsMap && targetSector != null)
+                commands.Add(new ContentEditorMenuCommand("Planet", () => AddPlanet(targetSector)));
+        }
+        ShowMenu(addUnitButton, commands.ToArray());
     }
 
     /// <summary>
     /// Creates a blank record from the action at the end of its own catalog list.
     /// </summary>
     /// <param name="catalog">The catalog receiving the new entry.</param>
-    private void AddRecord(ContentPackEditorCatalog catalog)
+    /// <param name="factionInstanceID">The optional faction selected by the sidebar action.</param>
+    private void AddRecord(ContentPackEditorCatalog catalog, string factionInstanceID = null)
     {
-        if (!ResolveXmlDraft(() => AddRecord(catalog)) || !CommitFields())
+        if (!ResolveXmlDraft(() => AddRecord(catalog, factionInstanceID)) || !CommitFields())
             return;
         if (catalog.CanAddUnit)
-            AddUnit(catalog);
+            AddUnit(catalog, factionInstanceID);
         else if (catalog.CanAddFaction)
             AddFaction();
         else if (catalog.CanAddEvent)
@@ -1759,6 +1721,24 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (!ResolveXmlDraft(AddFaction) || !CommitFields())
             return;
+        if (project.GetFactionOptions().Count >= 2)
+        {
+            confirmation.Show(
+                "Content packs with three or more factions have not been tested and are not guaranteed to work.",
+                "Add faction",
+                CreateFaction,
+                title: "Warning"
+            );
+            return;
+        }
+        CreateFaction();
+    }
+
+    /// <summary>
+    /// Creates the confirmed faction and opens its combined authoring page.
+    /// </summary>
+    private void CreateFaction()
+    {
         ContentPackEditorRecord faction = project.AddFaction();
         searchInput.SetTextWithoutNotify(string.Empty);
         RenderProject(project, assets);
@@ -1840,14 +1820,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Creates an unassigned unit and reveals its general form for faction selection.
+    /// Creates a unit with the selected faction scope and reveals its general form.
     /// </summary>
     /// <param name="catalog">The destination document for the selected unit category.</param>
-    private void AddUnit(ContentPackEditorCatalog catalog)
+    /// <param name="factionInstanceID">The optional recruiting or manufacturing faction.</param>
+    private void AddUnit(ContentPackEditorCatalog catalog, string factionInstanceID = null)
     {
         if (!CommitFields())
             return;
-        ContentPackEditorRecord unit = project.AddUnit(catalog);
+        ContentPackEditorRecord unit = project.AddUnit(catalog, factionInstanceID);
         searchInput.SetTextWithoutNotify(string.Empty);
         section = "General";
         navigation.Render(catalogs);
@@ -1860,15 +1841,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void ConfirmDeleteRecord()
     {
-        if (selectedRecord == null || !CommitFields())
+        if (selectedRecord == null)
             return;
         confirmation.Show(
             "Delete "
                 + selectedRecord.Name
                 + (
-                    selectedRecord.Planets.Count > 0
+                    selectedRecord.Kind == "Faction" ? " and its faction-specific data"
+                    : selectedRecord.Planets.Count > 0
                         ? " and its " + selectedRecord.Planets.Count + " planets"
-                        : string.Empty
+                    : string.Empty
                 )
                 + "?",
             "Delete",
@@ -1881,9 +1863,25 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                             sector.Planets.Any(planet => planet.Element == selectedRecord.Element)
                         )
                         : null;
-                project.RemoveRecord(selectedRecord);
+                try
+                {
+                    project.RemoveRecord(selectedRecord);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    RenderStatus(exception.Message, true);
+                    return;
+                }
                 form.Clear();
                 xml.Clear();
+                if (selectedRecord.Kind == "Faction")
+                {
+                    selectedRecord = null;
+                    selectedPage = null;
+                    searchInput.SetTextWithoutNotify(string.Empty);
+                    RenderProject(project, assets);
+                    return;
+                }
                 mapSector = parent;
                 SelectRecord(
                     parent?.Planets.FirstOrDefault() ?? parent ?? catalog.Records.FirstOrDefault()

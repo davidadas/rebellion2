@@ -71,6 +71,265 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void AddUnit_UnknownFaction_RejectsCreationWithoutChangingTheCatalog()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .Single(item => item.Name == "Officers" && item.Faction == faction.Catalog.Faction);
+            string before = catalog.Document.Text;
+
+            Assert.Throws<ArgumentException>(() => project.AddUnit(catalog, "missing-faction"));
+
+            Assert.IsEmpty(catalog.Records);
+            Assert.AreEqual(before, catalog.Document.Text);
+        }
+
+        [Test]
+        public void AddUnit_NewFactionCatalog_AssignsEligibilityInOneUndoableEdit()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .Single(item => item.Name == "Officers" && item.Faction == faction.Catalog.Faction);
+
+            ContentPackEditorRecord officer = project.AddUnit(catalog, faction.ID);
+
+            CollectionAssert.AreEqual(
+                new[] { faction.ID },
+                officer.GetField("RecruitingFactionInstanceIDs").Values
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.IsEmpty(
+                project.GetCatalogs().Single(item => item.Document == catalog.Document).Records
+            );
+            Assert.IsTrue(project.Redo());
+            CollectionAssert.AreEqual(
+                new[] { faction.ID },
+                project
+                    .GetCatalogs()
+                    .Single(item => item.Document == catalog.Document)
+                    .Records.Single()
+                    .GetField("RecruitingFactionInstanceIDs")
+                    .Values
+            );
+        }
+
+        [Test]
+        public void DuplicateRecord_Faction_RejectsAnUnregisteredClone()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            string before = faction.Catalog.Document.Text;
+            Assert.IsFalse(faction.Catalog.CanDuplicate);
+            Assert.Throws<InvalidOperationException>(() => project.DuplicateRecord(faction));
+            Assert.AreEqual(before, faction.Catalog.Document.Text);
+            Assert.AreEqual(1, project.GetFactionOptions().Count);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RemoveRecord_Faction_RemovesLinkedDocumentsAndSupportsSaveUndoRedo(
+            bool savedCreation
+        )
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            string[] before = project.Documents.Select(document => document.Address).ToArray();
+            ContentPackEditorRecord faction = project.AddFaction();
+            string id = faction.ID;
+            string[] createdPaths = project
+                .Documents.Where(document => !before.Contains(document.Address))
+                .Select(document => document.TargetPath)
+                .ToArray();
+            if (savedCreation)
+                project.Save();
+            project.RemoveRecord(faction);
+            Assert.IsEmpty(project.Definition.FactionPaths);
+            Assert.IsEmpty(project.GetFactionOptions());
+            CollectionAssert.AreEquivalent(
+                before,
+                project.Documents.Select(document => document.Address)
+            );
+            Assert.IsTrue(createdPaths.All(path => File.Exists(path) == savedCreation));
+            project.Save();
+            Assert.IsTrue(createdPaths.All(path => !File.Exists(path)));
+            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.IsEmpty(reopened.GetFactionOptions());
+            Assert.IsFalse(
+                reopened
+                    .GetCatalogs()
+                    .Any(catalog =>
+                        catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                    )
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.IsTrue(project.GetFactionOptions().ContainsKey(id));
+            project.Save();
+            Assert.IsTrue(createdPaths.All(File.Exists));
+            Assert.IsTrue(project.Redo());
+            project.Save();
+            Assert.IsTrue(createdPaths.All(path => !File.Exists(path)));
+        }
+
+        [Test]
+        public void RemoveRecord_InheritedFaction_ReopeningKeepsItRemovedWithoutChangingBaseFiles()
+        {
+            var inherited = ContentEditorFactionFactory.Create("FACTION", "Factions/Example", null);
+            foreach (var file in inherited)
+                WriteFixtureFile(file.Key, file.Value.ToString());
+            string manifestPath = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            XDocument manifest = XDocument.Load(manifestPath);
+            manifest.Root.Element("FactionPaths")?.Remove();
+            manifest.Root.Add(
+                new XElement("FactionPaths", new XElement("Path", "Factions/Example/faction.xml"))
+            );
+            manifest.Save(manifestPath);
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "Faction"
+                    && record.Element.Element("InstanceID")?.Value == "FACTION"
+                );
+            Assert.IsTrue(faction.Catalog.Document.IsInherited);
+            project.RemoveRecord(faction);
+            project.Save();
+            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.IsEmpty(reopened.GetFactionOptions());
+            Assert.IsFalse(reopened.GetCatalogs().Any(catalog => catalog.Faction == "Example"));
+            foreach (var file in inherited)
+                Assert.AreEqual(
+                    file.Value.ToString(),
+                    File.ReadAllText(Path.Combine(contentRoot, "Packs", "BasePack", file.Key))
+                );
+        }
+
+        [Test]
+        public void RemoveRecord_FactionSharingACatalog_PreservesTheOtherFactionsDefinitions()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord first = project.AddFaction();
+            ContentPackEditorRecord second = project.AddFaction();
+            first = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "Faction"
+                    && record.Element.Element("InstanceID")?.Value == first.ID
+                );
+            ContentPackEditorCatalog ships = project
+                .GetCatalogs()
+                .Single(catalog =>
+                    catalog.Name == "Capital ships" && catalog.Faction == first.Catalog.Faction
+                );
+            ContentPackEditorRecord ship = project.AddUnit(ships, second.ID);
+            ContentPackEditorRecord declaration = project
+                .GetCatalogs()
+                .Single(catalog =>
+                    catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                    && catalog.DocumentRecord.Element.Element("ID")?.Value == second.ID
+                )
+                .DocumentRecord;
+            project.SetField(declaration.GetField("CapitalShipsPath"), ships.Document.Address[5..]);
+            project.RemoveRecord(first);
+            Assert.IsFalse(project.GetFactionOptions().ContainsKey(first.ID));
+            Assert.IsTrue(project.GetFactionOptions().ContainsKey(second.ID));
+            Assert.AreEqual(
+                ship.ID,
+                project
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Document == ships.Document)
+                    .Records.Single()
+                    .ID
+            );
+            project.Save();
+            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.AreEqual(
+                ship.ID,
+                reopened
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Document.Address == ships.Document.Address)
+                    .Records.Single()
+                    .ID
+            );
+        }
+
+        [Test]
+        public void RemoveRecord_RenamedFactionIdentity_RemovesTheDeclarationForItsDataFile()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            project.SetField(faction.GetField("InstanceID"), "RENAMED_FACTION");
+            project.RemoveRecord(faction);
+            Assert.IsEmpty(project.Definition.FactionPaths);
+            Assert.IsEmpty(project.GetFactionOptions());
+            Assert.IsFalse(
+                project
+                    .GetCatalogs()
+                    .Any(catalog =>
+                        catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                    )
+            );
+        }
+
+        [Test]
+        public void RemoveRecord_FactionWithAnAlreadyRemovedGameplayEntry_CleansUpItsDeclaration()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            faction.Catalog.Remove(faction);
+            ContentPackEditorRecord declaration = project
+                .GetCatalogs()
+                .Single(catalog =>
+                    catalog.DocumentRecord.Element.Element("ID")?.Value == faction.ID
+                    && catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                )
+                .DocumentRecord;
+            project.RemoveRecord(declaration);
+            Assert.IsEmpty(project.Definition.FactionPaths);
+            Assert.IsFalse(
+                project
+                    .GetCatalogs()
+                    .Any(catalog =>
+                        catalog.DocumentRecord.Element.Element("FactionDataPath") != null
+                    )
+            );
+        }
+
+        [Test]
+        public void RemoveRecord_MultipleFactionsInOneDataFile_PreservesTheRemainingEntry()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord faction = project.AddFaction();
+            ContentPackEditorRecord retained = faction.Catalog.Duplicate(faction);
+            string before = faction.Catalog.Document.Text;
+            project.RemoveRecord(faction);
+            Assert.IsFalse(project.GetFactionOptions().ContainsKey(faction.ID));
+            Assert.IsTrue(project.GetFactionOptions().ContainsKey(retained.ID));
+            Assert.AreEqual(1, project.Definition.FactionPaths.Count);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project
+                    .GetCatalogs()
+                    .Single(catalog => catalog.Document == faction.Catalog.Document)
+                    .Document.Text
+            );
+        }
+
+        [Test]
         public void AddFaction_RepeatedCreation_UsesIndependentIdentitiesAndCatalogs()
         {
             ContentPackEditorProject project = CreateWorkingProject();

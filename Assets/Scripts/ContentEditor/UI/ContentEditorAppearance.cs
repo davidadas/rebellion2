@@ -72,6 +72,9 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             ContentEditorColorRole.Accent => light
                 ? new Color32(116, 78, 15, 255)
                 : new Color32(218, 178, 111, 255),
+            ContentEditorColorRole.Checkmark => light
+                ? ColorFor(mode, ContentEditorColorRole.Accent)
+                : Color.white,
             ContentEditorColorRole.Error => light
                 ? new Color32(163, 32, 32, 255)
                 : new Color32(255, 150, 150, 255),
@@ -138,6 +141,9 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             ContentEditorColorRole.Accent => rebels
                 ? new Color32(156, 45, 42, 255)
                 : new Color32(215, 222, 224, 255),
+            ContentEditorColorRole.Checkmark => rebels
+                ? ColorFor(mode, ContentEditorColorRole.Accent)
+                : Color.white,
             ContentEditorColorRole.ScrollTrack => rebels
                 ? new Color32(228, 223, 223, 255)
                 : new Color32(38, 44, 48, 255),
@@ -188,4 +194,5 @@ public enum ContentEditorColorRole
     ScrollThumb,
     TextSelection,
     ButtonText,
+    Checkmark,
 }
