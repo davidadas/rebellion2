@@ -66,7 +66,7 @@ namespace Rebellion.Gameplay
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
             _betrayalResolver = betrayalResolver ?? new MissionBetrayalResolver(game, provider);
             _personnelCommands =
-                personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+                personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _movementQueries = movementQueries;
         }

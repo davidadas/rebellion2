@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;

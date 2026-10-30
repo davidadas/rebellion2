@@ -9,15 +9,15 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
-using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Scripting.Events;
+using Rebellion.Gameplay.GameEvents;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
@@ -1086,7 +1086,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void FactionAutomationCommands_ManageNaming_AssignsNameImmediately()
+        public void AdvisorAutomationCommands_ManageNaming_AssignsNameImmediately()
         {
             GameRoot game = new GameRoot();
             Faction faction = new Faction { InstanceID = "FACTION", ManageNaming = true };
@@ -1111,7 +1111,7 @@ namespace Rebellion.Tests.Gameplay
             };
             faction.AddOwnedUnit(ship);
 
-            manager.GetService<FactionAutomationCommands>().ProcessFaction(faction);
+            manager.GetService<AdvisorAutomationCommands>().ProcessFaction(faction);
             manager.GetService<NamingCommands>().ProcessFaction(faction);
 
             Assert.AreEqual("Named Ship", ship.DisplayName);

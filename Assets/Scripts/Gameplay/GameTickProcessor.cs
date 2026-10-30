@@ -6,7 +6,7 @@ using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Gameplay.Scripting.Events;
+using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 
@@ -33,7 +33,7 @@ namespace Rebellion.Gameplay
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
         private ITickProcessor _captive;
-        private ITickProcessor _factionAutomation;
+        private ITickProcessor _advisorAutomation;
         private FogOfWarObserver _fogOfWarObserver;
         private ITickProcessor _gameEvents;
         private GameRoot _game;
@@ -105,8 +105,8 @@ namespace Rebellion.Gameplay
             _fogOfWarObserver = services.GetService<FogOfWarObserver>();
             _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
             _messages = new MessageTickProcessor();
-            _factionAutomation = new FactionAutomationTickProcessor(
-                services.GetService<FactionAutomationCommands>()
+            _advisorAutomation = new AdvisorAutomationTickProcessor(
+                services.GetService<AdvisorAutomationCommands>()
             );
             SmugglingCommands smugglingCommands = services.GetService<SmugglingCommands>();
             SmugglingTickProcessor smuggling = new(smugglingCommands);
@@ -199,7 +199,7 @@ namespace Rebellion.Gameplay
             _messages.ProcessTick(_game);
             GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-            _factionAutomation.ProcessTick(_game);
+            _advisorAutomation.ProcessTick(_game);
             ProcessResults(_resourceProduction.ProcessTick(_game));
             List<GameResult> manufacturingResults = new List<GameResult>();
             foreach (
@@ -220,7 +220,7 @@ namespace Rebellion.Gameplay
             }
             ProcessResults(manufacturingResults);
             // Refill capacity released by completed orders before tick observers render idle lanes.
-            _factionAutomation.ProcessTick(_game);
+            _advisorAutomation.ProcessTick(_game);
             ProcessResults(_maintenance.ProcessTick(_game));
             ProcessResults(_recovery.ProcessTick(_game));
             ProcessResults(_captive.ProcessTick(_game));

@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Gameplay
             StubMission mission = CreateMission(game, planet, officer);
             game.MoveNode(officer, mission);
             mission.Initiate(1);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new StubRNG(),
@@ -191,7 +191,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, mission);
             game.MoveNode(survivor, mission);
             mission.Initiate(1);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, mission);
             game.MoveNode(decoy, mission);
             mission.Initiate(1);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(decoy);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(decoy);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Gameplay
             StubMission mission = CreateMission(game, planet, officer);
             game.MoveNode(officer, mission);
             mission.Initiate(1);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,
                 new StubRNG(),
@@ -465,7 +465,7 @@ namespace Rebellion.Tests.Gameplay
             );
             StubMission mission = CreateMission(game, planet, officer);
             game.MoveNode(officer, mission);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,
                 new StubRNG(),
