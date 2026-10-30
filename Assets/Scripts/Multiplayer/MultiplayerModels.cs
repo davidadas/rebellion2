@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Rebellion.Game;
 
 namespace Rebellion.Multiplayer
@@ -133,7 +132,7 @@ namespace Rebellion.Multiplayer
     }
 
     /// <summary>
-    /// One discoverable player-hosted game returned by the directory service.
+    /// One player-hosted game returned by online discovery.
     /// </summary>
     [Serializable]
     public sealed class MatchmakerGame
@@ -158,33 +157,5 @@ namespace Rebellion.Multiplayer
         public string[] modVersions;
         public bool passwordProtected;
         public string campaignID;
-    }
-
-    /// <summary>
-    /// JSON wrapper used by Unity's array serializer.
-    /// </summary>
-    [Serializable]
-    internal sealed class MatchmakerGameList
-    {
-        public List<MatchmakerGame> games = new List<MatchmakerGame>();
-    }
-
-    /// <summary>
-    /// Registration request sent to the directory service.
-    /// </summary>
-    [Serializable]
-    internal sealed class MatchmakerRegistration
-    {
-        public string id;
-        public string name;
-        public string transport;
-        public string joinCode;
-        public string address;
-        public int port;
-        public int currentPlayers;
-        public int maxPlayers;
-        public string state;
-        public string hostFaction;
-        public string contentFingerprint;
     }
 }
