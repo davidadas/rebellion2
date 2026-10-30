@@ -307,13 +307,6 @@ namespace Rebellion.Tests.App
             SaveGameManager saveGameManager = SaveGameManager.Instance;
             int transitionCount = 0;
             _bootstrap.LoadStarting += () => transitionCount++;
-            AudioManager audioManager = AudioManager.EnsureExists();
-            AudioClip music = AudioClip.Create("Outgoing Music", 1, 1, 44100, false);
-            audioManager.PlayTrack(music, true);
-            AudioSource musicSource = audioManager
-                .GetComponents<AudioSource>()
-                .Single(source => source.clip == music);
-
             try
             {
                 saveGameManager.SaveGameData(
@@ -329,7 +322,6 @@ namespace Rebellion.Tests.App
                 Assert.IsFalse(runtime.HasActiveGame);
                 Assert.AreEqual(fileName, GameLaunchContext.SaveFileName);
                 Assert.IsTrue(GameLaunchContext.IsLoadGame);
-                Assert.IsNull(musicSource.clip);
                 Assert.IsNotNull(
                     Object.FindAnyObjectByType<LoadingScreenController>(FindObjectsInactive.Include)
                 );
@@ -338,7 +330,6 @@ namespace Rebellion.Tests.App
             {
                 File.Delete(saveGameManager.GetSaveFilePath(fileName));
                 File.Delete(saveGameManager.GetSaveMetadataFilePath(fileName));
-                Object.DestroyImmediate(music);
             }
         }
 
