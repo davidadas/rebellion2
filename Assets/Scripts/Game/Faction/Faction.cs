@@ -66,6 +66,7 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
+        public bool HasLostHeadquarters { get; set; }
         public string GarrisonTroopTypeID { get; set; }
 
         // Messages and Notifications.

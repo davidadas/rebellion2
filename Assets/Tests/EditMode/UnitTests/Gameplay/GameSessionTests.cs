@@ -79,6 +79,14 @@ namespace Rebellion.Tests.Gameplay
         {
             Faction attacker = new Faction { InstanceID = "attacker" };
             _game.GetFactions().Add(attacker);
+            Planet attackerHeadquarters = new Planet
+            {
+                InstanceID = "attacker-headquarters",
+                OwnerInstanceID = attacker.InstanceID,
+                IsColonized = true,
+            };
+            _game.AttachNode(attackerHeadquarters, _planet.GetParent());
+            attacker.HQInstanceID = attackerHeadquarters.InstanceID;
             _faction.Settings.Headquarters = new HeadquartersSettings
             {
                 IsMobile = mobileHeadquarters,
@@ -130,7 +138,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(_faction, loss.Defender);
             Assert.AreSame(attacker, loss.Attacker);
             Assert.AreSame(attacker, victory.Winner);
-            Assert.AreSame(_faction, victory.Loser);
+            CollectionAssert.AreEqual(new[] { _faction }, victory.DefeatedFactions);
             Assert.IsNull(_faction.HQInstanceID);
             PlanetSector sector = _planet.GetParentOfType<PlanetSector>();
             foreach (Faction faction in new[] { _faction, attacker })
@@ -1587,6 +1595,14 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(coruscant, sector);
+            Planet allianceHeadquarters = new Planet
+            {
+                InstanceID = "alliance-headquarters",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(allianceHeadquarters, sector);
+            alliance.HQInstanceID = allianceHeadquarters.InstanceID;
             GameSession manager = TestContent.CreateGameSession(game);
             List<VictoryResult> declarations = new List<VictoryResult>();
             manager.Pipeline.VictoryDeclared += declarations.Add;
@@ -1596,7 +1612,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(1, declarations.Count);
             Assert.AreSame(alliance, declarations[0].Winner);
-            Assert.AreSame(empire, declarations[0].Loser);
+            CollectionAssert.AreEqual(new[] { empire }, declarations[0].DefeatedFactions);
         }
 
         [Test]
@@ -1611,13 +1627,11 @@ namespace Rebellion.Tests.Gameplay
             VictoryResult declared = null;
             manager.Pipeline.VictoryDeclared += result => declared = result;
 
-            VictoryResult result = manager
-                .GetService<VictoryCommands>()
-                .TryDeclareVictory(winner, loser);
+            VictoryResult result = manager.GetService<VictoryCommands>().TryDeclareVictory(winner);
 
             Assert.AreSame(result, declared);
             Assert.AreSame(winner, declared.Winner);
-            Assert.AreSame(loser, declared.Loser);
+            CollectionAssert.AreEqual(new[] { loser }, declared.DefeatedFactions);
         }
 
         [Test]
@@ -1764,6 +1778,9 @@ namespace Rebellion.Tests.Gameplay
             Planet headquarters = CreatePlanet("HEADQUARTERS", winner.InstanceID, 0);
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(headquarters, sector);
+            Planet winnerHeadquarters = CreatePlanet("WINNER-HEADQUARTERS", winner.InstanceID, 100);
+            game.AttachNode(winnerHeadquarters, sector);
+            winner.HQInstanceID = winnerHeadquarters.InstanceID;
             GameSession manager = TestContent.CreateGameSession(game);
             IReadOnlyList<VictoryResult> observedResults = null;
             manager.Pipeline.VictoriesResolved += results => observedResults = results;
@@ -2823,6 +2840,12 @@ namespace Rebellion.Tests.Gameplay
             PlanetSector sector = new() { InstanceID = "SECTOR" };
             Planet target = CreatePlanet("HEADQUARTERS", defender.InstanceID, 0);
             target.IsHeadquarters = true;
+            Planet attackerHeadquarters = CreatePlanet(
+                "ATTACKER-HEADQUARTERS",
+                attacker.InstanceID,
+                100
+            );
+            attacker.HQInstanceID = attackerHeadquarters.InstanceID;
             Fleet fleet = EntityFactory.CreateFleet("FLEET", attacker.InstanceID);
             CapitalShip ship = new()
             {
@@ -2837,6 +2860,7 @@ namespace Rebellion.Tests.Gameplay
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(target, sector);
+            game.AttachNode(attackerHeadquarters, sector);
             game.AttachNode(fleet, target);
             game.AttachNode(ship, fleet);
             game.AttachNode(regiment, ship);

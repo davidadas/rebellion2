@@ -253,7 +253,7 @@ namespace Rebellion.Game.Results
     public class VictoryResult : GameResult
     {
         public Faction Winner { get; set; }
-        public Faction Loser { get; set; }
+        public List<Faction> DefeatedFactions { get; set; } = new List<Faction>();
         public GameVictoryCondition? GameMode { get; set; }
         public string Description { get; set; }
     }

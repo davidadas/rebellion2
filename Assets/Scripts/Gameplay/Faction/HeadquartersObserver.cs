@@ -106,6 +106,7 @@ namespace Rebellion.Gameplay
 
             destination.IsHeadquarters = true;
             faction.HQInstanceID = destination.InstanceID;
+            faction.HasLostHeadquarters = false;
         }
 
         /// <summary>
@@ -146,6 +147,7 @@ namespace Rebellion.Gameplay
             _game.DeleteNode(headquarters);
             planet.IsHeadquarters = false;
             previousOwner.HQInstanceID = null;
+            previousOwner.HasLostHeadquarters = true;
             reactions.Add(
                 new HeadquartersDestroyedResult
                 {
@@ -184,6 +186,7 @@ namespace Rebellion.Gameplay
                 return null;
 
             planet.IsHeadquarters = newOwner == headquartersFaction;
+            headquartersFaction.HasLostHeadquarters = newOwner != headquartersFaction;
             if (
                 previousOwner != headquartersFaction
                 || newOwner == null
