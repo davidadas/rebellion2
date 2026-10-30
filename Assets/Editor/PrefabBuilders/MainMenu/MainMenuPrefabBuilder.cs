@@ -507,6 +507,7 @@ public static class MainMenuPrefabBuilder
             typeof(Canvas),
             typeof(CanvasScaler),
             typeof(GraphicRaycaster),
+            typeof(CanvasGroup),
             typeof(AnalyticsConsentView)
         );
         FillParent(overlay.GetComponent<RectTransform>());
@@ -520,6 +521,23 @@ public static class MainMenuPrefabBuilder
         scaler.referenceResolution = new Vector2(853.33f, 480f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
+        CanvasGroup canvasGroup = overlay.GetComponent<CanvasGroup>();
+        canvasGroup.alpha = 1f;
+        canvasGroup.interactable = true;
+        canvasGroup.blocksRaycasts = true;
+
+        GameObject backdropObject = NewChild(
+            "Backdrop",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(RawImage)
+        );
+        FillParent(backdropObject.GetComponent<RectTransform>());
+        RawImage backdrop = backdropObject.GetComponent<RawImage>();
+        backdrop.color = Color.clear;
+        backdrop.raycastTarget = false;
+
         GameObject dimmer = NewChild(
             "InputBlocker",
             overlay.transform,
@@ -529,23 +547,15 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(dimmer.GetComponent<RectTransform>());
         Image dimmerImage = dimmer.GetComponent<Image>();
-        dimmerImage.color = new Color(0f, 0f, 0f, 0.985f);
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.82f);
         dimmerImage.raycastTarget = true;
 
         GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
-        UILayout.SetSourceRect((RectTransform)page.transform, 199, 122, 456, 236);
+        UILayout.SetSourceRect((RectTransform)page.transform, 199, 119, 455, 234);
 
-        GameObject panelFill = NewChild(
-            "PanelFill",
-            page.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        UILayout.SetSourceRect((RectTransform)panelFill.transform, 2, 2, 452, 232);
-        Image panelFillImage = panelFill.GetComponent<Image>();
-        panelFillImage.color = new Color(0.008f, 0.025f, 0.045f, 0.985f);
-        panelFillImage.raycastTarget = false;
+        Color panelColor = new Color(0.075f, 0.085f, 0.10f, 0.94f);
+        CreateConsentPanelSegment("PanelFill", page.transform, 4, 0, 447, 234, panelColor);
+        CreateConsentPanelSegment("PanelFillCenter", page.transform, 0, 4, 455, 226, panelColor);
 
         GameObject backgroundObject = NewChild(
             "Background",
@@ -554,78 +564,143 @@ public static class MainMenuPrefabBuilder
             typeof(CanvasRenderer),
             typeof(Image)
         );
-        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 456, 236);
+        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 455, 234);
         Image background = backgroundObject.GetComponent<Image>();
         background.color = Color.clear;
         background.raycastTarget = true;
 
-        Color borderColor = new Color(0.88f, 0.91f, 0.94f, 0.58f);
-        GameObject topBorder = NewChild(
+        Color borderColor = new Color(0.88f, 0.91f, 0.94f, 0.12f);
+        CreateConsentPanelSegment(
             "TopBorder",
             backgroundObject.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            4,
+            0,
+            447,
+            1,
+            borderColor
         );
-        UILayout.SetSourceRect((RectTransform)topBorder.transform, 0, 0, 456, 1);
-        topBorder.GetComponent<Image>().color = borderColor;
-        topBorder.GetComponent<Image>().raycastTarget = false;
-
-        GameObject bottomBorder = NewChild(
+        CreateConsentPanelSegment(
             "BottomBorder",
             backgroundObject.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            4,
+            233,
+            447,
+            1,
+            borderColor
         );
-        UILayout.SetSourceRect((RectTransform)bottomBorder.transform, 0, 235, 456, 1);
-        bottomBorder.GetComponent<Image>().color = borderColor;
-        bottomBorder.GetComponent<Image>().raycastTarget = false;
-
-        GameObject leftBorder = NewChild(
+        CreateConsentPanelSegment(
             "LeftBorder",
             backgroundObject.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            0,
+            4,
+            1,
+            226,
+            borderColor
         );
-        UILayout.SetSourceRect((RectTransform)leftBorder.transform, 0, 1, 1, 234);
-        leftBorder.GetComponent<Image>().color = borderColor;
-        leftBorder.GetComponent<Image>().raycastTarget = false;
-
-        GameObject rightBorder = NewChild(
+        CreateConsentPanelSegment(
             "RightBorder",
             backgroundObject.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            454,
+            4,
+            1,
+            226,
+            borderColor
         );
-        UILayout.SetSourceRect((RectTransform)rightBorder.transform, 455, 1, 1, 234);
-        rightBorder.GetComponent<Image>().color = borderColor;
-        rightBorder.GetComponent<Image>().raycastTarget = false;
+        CreateConsentPanelSegment(
+            "TopLeftCornerHorizontal",
+            backgroundObject.transform,
+            2,
+            1,
+            2,
+            1,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "TopLeftCornerVertical",
+            backgroundObject.transform,
+            1,
+            2,
+            1,
+            2,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "TopRightCornerHorizontal",
+            backgroundObject.transform,
+            451,
+            1,
+            2,
+            1,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "TopRightCornerVertical",
+            backgroundObject.transform,
+            453,
+            2,
+            1,
+            2,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "BottomLeftCornerHorizontal",
+            backgroundObject.transform,
+            2,
+            232,
+            2,
+            1,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "BottomLeftCornerVertical",
+            backgroundObject.transform,
+            1,
+            230,
+            1,
+            2,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "BottomRightCornerHorizontal",
+            backgroundObject.transform,
+            451,
+            232,
+            2,
+            1,
+            borderColor
+        );
+        CreateConsentPanelSegment(
+            "BottomRightCornerVertical",
+            backgroundObject.transform,
+            453,
+            230,
+            1,
+            2,
+            borderColor
+        );
 
         TextMeshProUGUI heading = MenuPrefabBuilder.CreateTextLabel("Heading", page.transform);
-        heading.text = "Help Us Improve";
+        heading.text = "HELP US IMPROVE";
         heading.color = new Color(0.925f, 0.945f, 0.965f);
-        heading.fontSize = 19;
-        heading.characterSpacing = 0.5f;
+        heading.fontSize = 23;
+        heading.characterSpacing = 16f;
         heading.alignment = TextAlignmentOptions.Midline;
-        UILayout.SetSourceRect(heading.rectTransform, 47, 18, 362, 30);
+        UILayout.SetSourceRect(heading.rectTransform, 47, 18, 361, 30);
 
         TextMeshProUGUI plea = MenuPrefabBuilder.CreateTextLabel("Plea", page.transform);
         plea.text = "Please";
         plea.color = new Color(0.925f, 0.945f, 0.965f);
-        plea.fontSize = 10.5f;
+        plea.fontSize = 9.5f;
         plea.characterSpacing = 0.4f;
         plea.alignment = TextAlignmentOptions.MidlineRight;
-        UILayout.SetSourceRect(plea.rectTransform, 165, 49, 69, 18);
+        UILayout.SetSourceRect(plea.rectTransform, 183, 50, 69, 17);
 
         RawImage sobEmoji = MenuPrefabBuilder.CreateRawImage(
             "SobEmoji",
             page.transform,
             "Application/MainMenu/UI/ui_mainmenu_analytics_sob",
-            236,
-            48,
+            254,
+            49,
             18,
             18
         );
@@ -638,21 +713,21 @@ public static class MainMenuPrefabBuilder
             typeof(CanvasRenderer),
             typeof(Image)
         );
-        UILayout.SetSourceRect((RectTransform)accentLine.transform, 201, 76, 54, 2);
+        UILayout.SetSourceRect((RectTransform)accentLine.transform, 214, 77, 28, 2);
         Image accentLineImage = accentLine.GetComponent<Image>();
         accentLineImage.color = new Color(0.25f, 0.82f, 0.88f);
         accentLineImage.raycastTarget = false;
 
         TextMeshProUGUI body = MenuPrefabBuilder.CreateTextLabel("Body", page.transform);
         body.text =
-            "We're a small team, and analytics help us understand how the game performs across different PCs. That lets us spend more time fixing the things that matter.\n\nIf you're comfortable opting in, we'd genuinely appreciate it. You can change this any time in Settings.";
-        body.color = new Color(0.760f, 0.800f, 0.840f);
-        body.fontSize = 8.5f;
-        body.lineSpacing = 2f;
+            "We're a small team, and analytics show us what needs attention most.\nOpting in would mean a lot. You can change this any time in Settings.";
+        body.color = new Color(0.80f, 0.82f, 0.85f);
+        body.fontSize = 11.5f;
+        body.lineSpacing = 8f;
         body.alignment = TextAlignmentOptions.Midline;
         body.textWrappingMode = TextWrappingModes.Normal;
         body.overflowMode = TextOverflowModes.Overflow;
-        UILayout.SetSourceRect(body.rectTransform, 42, 88, 372, 66);
+        UILayout.SetSourceRect(body.rectTransform, 42, 96, 371, 48);
 
         Button allowButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
@@ -660,20 +735,26 @@ public static class MainMenuPrefabBuilder
             "ALLOW ANALYTICS",
             0,
             new Color(0.035f, 0.075f, 0.095f),
-            184
+            193
         );
-        UILayout.SetSourceRect((RectTransform)allowButton.transform, 36, 169, 184, 34);
-        allowButton.transform.Find("SurfaceMask/Surface").GetComponent<Image>().color = new Color(
-            0.25f,
-            0.78f,
-            0.84f,
-            1f
-        );
+        UILayout.SetSourceRect((RectTransform)allowButton.transform, 36, 168, 193, 35);
+        Image allowSurface = allowButton
+            .transform.Find("SurfaceMask/Surface")
+            .GetComponent<Image>();
+        allowSurface.color = Color.white;
+        allowSurface
+            .gameObject.AddComponent<VerticalGradientEffect>()
+            .SetColors(new Color(0.31f, 0.82f, 0.87f), new Color(0.27f, 0.79f, 0.83f));
+        Image allowFrame = allowButton.GetComponent<Image>();
+        allowFrame.color = Color.clear;
+        Outline allowOutline = allowButton.GetComponent<Outline>();
+        allowOutline.effectColor = new Color(0.31f, 0.82f, 0.87f, 0.42f);
+        allowOutline.effectDistance = new Vector2(1f, -1f);
         TextMeshProUGUI allowLabel = allowButton
             .transform.Find("Label")
             .GetComponent<TextMeshProUGUI>();
         allowLabel.fontSize = 11;
-        allowLabel.characterSpacing = 1.5f;
+        allowLabel.characterSpacing = 5f;
 
         Button declineButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
@@ -681,24 +762,68 @@ public static class MainMenuPrefabBuilder
             "NO THANKS",
             0,
             new Color(0.820f, 0.850f, 0.880f),
-            184
+            175
         );
-        UILayout.SetSourceRect((RectTransform)declineButton.transform, 236, 169, 184, 34);
-        declineButton.transform.Find("SurfaceMask/Surface").GetComponent<Image>().color = new Color(
-            0.055f,
-            0.075f,
-            0.095f,
-            1f
-        );
+        UILayout.SetSourceRect((RectTransform)declineButton.transform, 244, 168, 175, 35);
+        Image declineSurface = declineButton
+            .transform.Find("SurfaceMask/Surface")
+            .GetComponent<Image>();
+        declineSurface.color = Color.white;
+        declineSurface
+            .gameObject.AddComponent<VerticalGradientEffect>()
+            .SetColors(new Color(0.13f, 0.15f, 0.17f), new Color(0.08f, 0.095f, 0.11f));
+        Image declineFrame = declineButton.GetComponent<Image>();
+        declineFrame.color = Color.clear;
+        Outline declineOutline = declineButton.GetComponent<Outline>();
+        declineOutline.effectColor = new Color(0.82f, 0.85f, 0.88f, 0.24f);
+        declineOutline.effectDistance = new Vector2(1f, -1f);
         TextMeshProUGUI declineLabel = declineButton
             .transform.Find("Label")
             .GetComponent<TextMeshProUGUI>();
-        declineLabel.characterSpacing = 1.5f;
+        declineLabel.characterSpacing = 5f;
 
         AnalyticsConsentView view = overlay.GetComponent<AnalyticsConsentView>();
         AssignReference(view, "_allowButton", allowButton);
         AssignReference(view, "_declineButton", declineButton);
+        AssignReference(view, "_backdrop", backdrop);
+        AssignReference(view, "_canvasGroup", canvasGroup);
         overlay.SetActive(false);
+    }
+
+    /// <summary>
+    /// Creates one non-interactive solid segment used to compose the consent panel's rounded fill
+    /// and border without introducing a dedicated texture dependency.
+    /// </summary>
+    /// <param name="name">The generated segment name.</param>
+    /// <param name="parent">The panel layer receiving the segment.</param>
+    /// <param name="x">The source-space left coordinate.</param>
+    /// <param name="y">The source-space top coordinate.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="color">The segment color.</param>
+    /// <returns>The generated image.</returns>
+    private static Image CreateConsentPanelSegment(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height,
+        Color color
+    )
+    {
+        GameObject segment = NewChild(
+            name,
+            parent,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)segment.transform, x, y, width, height);
+        Image image = segment.GetComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+        return image;
     }
 
     /// <summary>

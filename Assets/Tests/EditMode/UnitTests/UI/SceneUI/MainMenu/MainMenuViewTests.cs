@@ -106,40 +106,51 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(overlay);
             Assert.IsFalse(overlay.gameObject.activeSelf);
             Assert.AreEqual(1100, overlay.GetComponent<Canvas>().sortingOrder);
+            Assert.IsNotNull(overlay.GetComponent<CanvasGroup>());
 
             AnalyticsConsentView consentView = overlay.GetComponent<AnalyticsConsentView>();
             Assert.IsNotNull(consentView);
             Assert.DoesNotThrow(consentView.VerifyReferences);
             Assert.IsTrue(overlay.Find("InputBlocker").GetComponent<Image>().raycastTarget);
             Assert.AreEqual(
-                new Color(0f, 0f, 0f, 0.985f),
+                new Color(0f, 0f, 0f, 0.82f),
                 overlay.Find("InputBlocker").GetComponent<Image>().color
             );
+            RawImage backdrop = overlay.Find("Backdrop").GetComponent<RawImage>();
+            Assert.IsFalse(backdrop.raycastTarget);
+            Assert.AreEqual(Color.clear, backdrop.color);
             RectTransform page = (RectTransform)overlay.Find("ConsentPage");
-            Assert.AreEqual(new Vector2(456f, 236f), page.sizeDelta);
-            Assert.IsNotNull(page.Find("PanelFill").GetComponent<Image>());
+            Assert.AreEqual(new Vector2(455f, 234f), page.sizeDelta);
+            Assert.AreEqual(
+                new Vector2(447f, 234f),
+                ((RectTransform)page.Find("PanelFill")).sizeDelta
+            );
+            Assert.AreEqual(
+                new Vector2(455f, 226f),
+                ((RectTransform)page.Find("PanelFillCenter")).sizeDelta
+            );
 
             Transform backgroundTransform = page.Find("Background");
             Assert.AreEqual(Color.clear, backgroundTransform.GetComponent<Image>().color);
             Assert.IsNull(backgroundTransform.GetComponent<Outline>());
             Assert.AreEqual(
-                new Color(0.88f, 0.91f, 0.94f, 0.58f),
+                new Color(0.88f, 0.91f, 0.94f, 0.12f),
                 backgroundTransform.Find("TopBorder").GetComponent<Image>().color
             );
             Assert.AreEqual(
-                new Vector2(456f, 1f),
+                new Vector2(447f, 1f),
                 ((RectTransform)backgroundTransform.Find("TopBorder")).sizeDelta
             );
             Assert.AreEqual(
-                new Vector2(456f, 1f),
+                new Vector2(447f, 1f),
                 ((RectTransform)backgroundTransform.Find("BottomBorder")).sizeDelta
             );
             Assert.AreEqual(
-                new Vector2(1f, 234f),
+                new Vector2(1f, 226f),
                 ((RectTransform)backgroundTransform.Find("LeftBorder")).sizeDelta
             );
             Assert.AreEqual(
-                new Vector2(1f, 234f),
+                new Vector2(1f, 226f),
                 ((RectTransform)backgroundTransform.Find("RightBorder")).sizeDelta
             );
             Assert.AreEqual("Please", page.Find("Plea").GetComponent<TextMeshProUGUI>().text);
@@ -147,11 +158,33 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             ContentTextureBinding sobEmoji = page.Find("SobEmoji")
                 .GetComponent<ContentTextureBinding>();
             Assert.AreEqual("Application/MainMenu/UI/ui_mainmenu_analytics_sob", sobEmoji.Address);
+            RectTransform plea = (RectTransform)page.Find("Plea");
+            RectTransform emoji = (RectTransform)page.Find("SobEmoji");
+            float pleaGroupCenter =
+                (plea.anchoredPosition.x + emoji.anchoredPosition.x + emoji.sizeDelta.x) / 2f;
+            Assert.AreEqual(page.sizeDelta.x / 2f, pleaGroupCenter, 0.5f);
 
             RectTransform allowButton = (RectTransform)page.Find("AllowButton");
             RectTransform declineButton = (RectTransform)page.Find("DeclineButton");
             Assert.AreEqual(allowButton.anchoredPosition.y, declineButton.anchoredPosition.y);
-            Assert.AreEqual(allowButton.sizeDelta, declineButton.sizeDelta);
+            Assert.AreEqual(new Vector2(193f, 35f), allowButton.sizeDelta);
+            Assert.AreEqual(new Vector2(175f, 35f), declineButton.sizeDelta);
+            Assert.IsNotNull(
+                allowButton.Find("SurfaceMask/Surface").GetComponent<VerticalGradientEffect>()
+            );
+            Assert.IsNotNull(
+                declineButton.Find("SurfaceMask/Surface").GetComponent<VerticalGradientEffect>()
+            );
+            Assert.AreEqual(Color.clear, allowButton.GetComponent<Image>().color);
+            Assert.AreEqual(Color.clear, declineButton.GetComponent<Image>().color);
+            Assert.AreEqual(
+                new Color(0.31f, 0.82f, 0.87f, 0.42f),
+                allowButton.GetComponent<Outline>().effectColor
+            );
+            Assert.AreEqual(
+                new Color(0.82f, 0.85f, 0.88f, 0.24f),
+                declineButton.GetComponent<Outline>().effectColor
+            );
         }
 
         [Test]
