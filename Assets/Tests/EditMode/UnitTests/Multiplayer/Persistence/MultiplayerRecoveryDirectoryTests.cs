@@ -13,8 +13,8 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public async Task FindAsync_PreviousRoomRetained_ReturnsItWithoutSearchingDirectoryAsync()
         {
-            MatchmakerGame retained = new() { id = "old-room", campaignID = "campaign" };
-            MatchmakerGame result = await MultiplayerRecoveryDirectory.FindAsync(
+            MultiplayerGameListing retained = new() { id = "old-room", campaignID = "campaign" };
+            MultiplayerGameListing result = await MultiplayerRecoveryDirectory.FindAsync(
                 "old-room",
                 "campaign",
                 (_, _) => Task.FromResult(retained),
@@ -27,16 +27,20 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public async Task FindAsync_PreviousRoomDeleted_FindsReplacementForSameCampaignAsync()
         {
-            MatchmakerGame replacement = new() { id = "replacement", campaignID = "campaign" };
-            MatchmakerGame result = await MultiplayerRecoveryDirectory.FindAsync(
+            MultiplayerGameListing replacement = new()
+            {
+                id = "replacement",
+                campaignID = "campaign",
+            };
+            MultiplayerGameListing result = await MultiplayerRecoveryDirectory.FindAsync(
                 "old-room",
                 "campaign",
-                (_, _) => Task.FromResult<MatchmakerGame>(null),
+                (_, _) => Task.FromResult<MultiplayerGameListing>(null),
                 _ =>
-                    Task.FromResult<IReadOnlyList<MatchmakerGame>>(
+                    Task.FromResult<IReadOnlyList<MultiplayerGameListing>>(
                         new[]
                         {
-                            new MatchmakerGame { campaignID = "another" },
+                            new MultiplayerGameListing { campaignID = "another" },
                             replacement,
                         }
                     ),
@@ -48,11 +52,14 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public async Task FindAsync_BothRoomsGone_ReturnsNullSoHostCanReopenCheckpointAsync()
         {
-            MatchmakerGame result = await MultiplayerRecoveryDirectory.FindAsync(
+            MultiplayerGameListing result = await MultiplayerRecoveryDirectory.FindAsync(
                 "old-room",
                 "campaign",
-                (_, _) => Task.FromResult<MatchmakerGame>(null),
-                _ => Task.FromResult<IReadOnlyList<MatchmakerGame>>(Array.Empty<MatchmakerGame>()),
+                (_, _) => Task.FromResult<MultiplayerGameListing>(null),
+                _ =>
+                    Task.FromResult<IReadOnlyList<MultiplayerGameListing>>(
+                        Array.Empty<MultiplayerGameListing>()
+                    ),
                 default
             );
             Assert.IsNull(result);
@@ -61,12 +68,17 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public async Task FindAsync_PreviousRoomHasDifferentCampaign_DoesNotReuseItAsync()
         {
-            MatchmakerGame result = await MultiplayerRecoveryDirectory.FindAsync(
+            MultiplayerGameListing result = await MultiplayerRecoveryDirectory.FindAsync(
                 "old-room",
                 "campaign",
                 (_, _) =>
-                    Task.FromResult(new MatchmakerGame { id = "old-room", campaignID = "another" }),
-                _ => Task.FromResult<IReadOnlyList<MatchmakerGame>>(Array.Empty<MatchmakerGame>()),
+                    Task.FromResult(
+                        new MultiplayerGameListing { id = "old-room", campaignID = "another" }
+                    ),
+                _ =>
+                    Task.FromResult<IReadOnlyList<MultiplayerGameListing>>(
+                        Array.Empty<MultiplayerGameListing>()
+                    ),
                 default
             );
             Assert.IsNull(result);
@@ -100,7 +112,9 @@ namespace Rebellion.Tests.Multiplayer
                     (_, _) =>
                     {
                         cancellation.Cancel();
-                        return Task.FromResult(new MatchmakerGame { campaignID = "campaign" });
+                        return Task.FromResult(
+                            new MultiplayerGameListing { campaignID = "campaign" }
+                        );
                     },
                     _ => throw new InvalidOperationException("The canceled lookup must stop."),
                     cancellation.Token

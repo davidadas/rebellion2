@@ -75,7 +75,7 @@ namespace Rebellion.Multiplayer
         /// Rejects a browser selection that does not identify this account's retained campaign.
         /// </summary>
         /// <param name="listing">The explicitly selected recovery room.</param>
-        public void ValidateListing(MatchmakerGame listing)
+        public void ValidateListing(MultiplayerGameListing listing)
         {
             Validate();
             if (listing == null || listing.campaignID != campaignID)

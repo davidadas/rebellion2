@@ -74,7 +74,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="selected">The explicitly selected room, or null to discover the retained campaign.</param>
         /// <returns>The pending authenticated room lookup and recovery launch.</returns>
-        public async Task ResumeAsync(MatchmakerGame selected = null)
+        public async Task ResumeAsync(MultiplayerGameListing selected = null)
         {
             MultiplayerRecoveryRecord record = _recoveryRecord;
             if (record == null)
@@ -97,7 +97,7 @@ namespace Rebellion.Multiplayer
                 _hostPlayerName = record.hostName;
                 _expectedFingerprint = record.contentFingerprint;
                 SetStatus("Finding the paused game");
-                MatchmakerGame room =
+                MultiplayerGameListing room =
                     selected
                     ?? await _backend.FindRecoveryAsync(
                         record.lobbyID,

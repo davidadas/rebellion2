@@ -16,7 +16,7 @@ namespace Rebellion.Multiplayer
     {
         private const int _protocolVersion = 11;
 
-        private readonly List<MatchmakerGame> _games = new();
+        private readonly List<MultiplayerGameListing> _games = new();
         private readonly MultiplayerSnapshotBuffer _pendingCommits = new();
         private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();
         private EpicOnlineServicesClient _onlineClient;
@@ -103,7 +103,7 @@ namespace Rebellion.Multiplayer
         /// <summary>
         /// Gets the most recently discovered live games.
         /// </summary>
-        public IReadOnlyList<MatchmakerGame> Games => _games;
+        public IReadOnlyList<MultiplayerGameListing> Games => _games;
 
         /// <summary>
         /// Raised when a negotiated game should leave the main menu.
@@ -282,7 +282,11 @@ namespace Rebellion.Multiplayer
         /// <param name="game">The selected game listing.</param>
         /// <param name="password">The password entered for a protected game.</param>
         /// <returns>The pending lobby join.</returns>
-        public async Task JoinAsync(string playerName, MatchmakerGame game, string password = null)
+        public async Task JoinAsync(
+            string playerName,
+            MultiplayerGameListing game,
+            string password = null
+        )
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
@@ -332,7 +336,9 @@ namespace Rebellion.Multiplayer
                 cancellationToken.ThrowIfCancellationRequested();
                 _backend = backend;
                 RefreshRecoveryRecord();
-                IReadOnlyList<MatchmakerGame> games = await _backend.ListAsync(cancellationToken);
+                IReadOnlyList<MultiplayerGameListing> games = await _backend.ListAsync(
+                    cancellationToken
+                );
                 cancellationToken.ThrowIfCancellationRequested();
                 if (browseVersion != _browseVersion)
                     return;
@@ -365,7 +371,7 @@ namespace Rebellion.Multiplayer
         /// <param name="game">The directory listing to compare.</param>
         /// <param name="summary">The local launch settings.</param>
         /// <returns>True when the game can pass the content handshake.</returns>
-        public bool IsCompatible(MatchmakerGame game, GameSummary summary)
+        public bool IsCompatible(MultiplayerGameListing game, GameSummary summary)
         {
             return game != null
                 && string.Equals(
@@ -876,9 +882,9 @@ namespace Rebellion.Multiplayer
         /// Creates the advertised metadata for the current host settings.
         /// </summary>
         /// <returns>The host's game listing.</returns>
-        private MatchmakerGame CreateListing()
+        private MultiplayerGameListing CreateListing()
         {
-            return new MatchmakerGame
+            return new MultiplayerGameListing
             {
                 name = _gameName,
                 transport = EpicLobbyListing.Transport,

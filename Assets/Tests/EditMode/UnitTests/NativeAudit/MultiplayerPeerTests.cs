@@ -4,10 +4,9 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
-using Rebellion.Tests.NativeAudit;
 using UnityEngine;
 
-namespace Rebellion.Tests.Multiplayer
+namespace Rebellion.Tests.NativeAudit
 {
     public sealed class MultiplayerPeerTests
     {

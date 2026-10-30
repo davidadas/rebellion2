@@ -14,14 +14,14 @@ namespace Rebellion.Tests.Multiplayer
         )
         {
             Assert.Throws<ArgumentException>(() =>
-                EpicLobbyListing.ValidateForPublication(new MatchmakerGame { name = name })
+                EpicLobbyListing.ValidateForPublication(new MultiplayerGameListing { name = name })
             );
         }
 
         [Test]
         public void IsJoinable_WaitingGameWithSlot_ReturnsTrue()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = EpicLobbyListing.Transport,
                 state = "waiting",
@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void IsJoinable_StartedGameLosesPlayer_RemainsClosedToNewJoins()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = EpicLobbyListing.Transport,
                 state = "in-progress",
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void IsJoinable_FullWaitingGame_ReturnsFalse()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = EpicLobbyListing.Transport,
                 state = "waiting",

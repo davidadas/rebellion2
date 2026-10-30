@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerRecoveryRecord record = CreateRecord();
             Assert.Throws<InvalidDataException>(() =>
                 record.ValidateListing(
-                    new MatchmakerGame { campaignID = Guid.NewGuid().ToString("N") }
+                    new MultiplayerGameListing { campaignID = Guid.NewGuid().ToString("N") }
                 )
             );
         }
@@ -104,7 +104,11 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerRecoveryRecord record = CreateRecord();
             Assert.DoesNotThrow(() =>
                 record.ValidateListing(
-                    new MatchmakerGame { id = "replacement-room", campaignID = record.campaignID }
+                    new MultiplayerGameListing
+                    {
+                        id = "replacement-room",
+                        campaignID = record.campaignID,
+                    }
                 )
             );
         }

@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Rebellion.Multiplayer;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 
-namespace Rebellion.Tests.Multiplayer
+namespace Rebellion.Tests.UI.SceneUI.MainMenu.Multiplayer
 {
     public sealed class MultiplayerMenuOperationTests
     {

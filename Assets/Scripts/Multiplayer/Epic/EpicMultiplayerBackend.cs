@@ -158,7 +158,7 @@ namespace Rebellion.Multiplayer
         /// <param name="cancellationToken">Cancels this hosting operation and removes any late-created lobby.</param>
         /// <returns>The hosted peer connection.</returns>
         public async Task<IMultiplayerPeer> HostAsync(
-            MatchmakerGame game,
+            MultiplayerGameListing game,
             CancellationToken cancellationToken
         )
         {
@@ -219,7 +219,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="cancellationToken">Cancels presentation of a completed search.</param>
         /// <returns>The published games reported by EOS.</returns>
-        public async Task<IReadOnlyList<MatchmakerGame>> ListAsync(
+        public async Task<IReadOnlyList<MultiplayerGameListing>> ListAsync(
             CancellationToken cancellationToken
         )
         {
@@ -254,13 +254,13 @@ namespace Rebellion.Multiplayer
                 LobbySearchGetSearchResultCountOptions countOptions =
                     new LobbySearchGetSearchResultCountOptions();
                 uint count = search.GetSearchResultCount(ref countOptions);
-                List<MatchmakerGame> games = new();
+                List<MultiplayerGameListing> games = new();
                 for (uint index = 0; index < count; index++)
                 {
                     LobbyDetails details = CopyResult(search, index);
                     try
                     {
-                        MatchmakerGame game = EpicLobbyListing.Read(details);
+                        MultiplayerGameListing game = EpicLobbyListing.Read(details);
                         if (game != null)
                             games.Add(game);
                     }
@@ -285,7 +285,7 @@ namespace Rebellion.Multiplayer
         /// <param name="recovering">Whether a campaign reservation permits joining a started room.</param>
         /// <returns>The guest peer connection.</returns>
         public async Task<IMultiplayerPeer> JoinAsync(
-            MatchmakerGame game,
+            MultiplayerGameListing game,
             CancellationToken cancellationToken,
             bool recovering = false
         )
@@ -311,7 +311,7 @@ namespace Rebellion.Multiplayer
                 await FindAsync(search);
                 EnsureCurrentSession(sessionVersion, cancellationToken);
                 details = CopyResult(search, 0);
-                MatchmakerGame current = EpicLobbyListing.Read(details);
+                MultiplayerGameListing current = EpicLobbyListing.Read(details);
                 if (
                     !(
                         EpicLobbyListing.IsJoinable(current)
@@ -376,7 +376,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="game">The updated host metadata.</param>
         /// <returns>The pending lobby update.</returns>
-        public Task UpdateListingAsync(MatchmakerGame game)
+        public Task UpdateListingAsync(MultiplayerGameListing game)
         {
             ThrowIfDisposed();
             return _lobbyId != null && _ownsLobby
@@ -391,7 +391,7 @@ namespace Rebellion.Multiplayer
         /// <param name="campaignID">The campaign reserved for the returning participants.</param>
         /// <param name="cancellationToken">Cancels presentation of the lookup result.</param>
         /// <returns>The current recovery room, or null if no participant retains it.</returns>
-        public Task<MatchmakerGame> FindRecoveryAsync(
+        public Task<MultiplayerGameListing> FindRecoveryAsync(
             string lobbyID,
             string campaignID,
             CancellationToken cancellationToken
@@ -412,7 +412,7 @@ namespace Rebellion.Multiplayer
         /// <param name="lobbyID">The previous room identifier.</param>
         /// <param name="cancellationToken">Cancels the outgoing account's lookup.</param>
         /// <returns>The previous room, or null when the service no longer retains it.</returns>
-        private async Task<MatchmakerGame> FindRecoveryRoomAsync(
+        private async Task<MultiplayerGameListing> FindRecoveryRoomAsync(
             string lobbyID,
             CancellationToken cancellationToken
         )
@@ -553,7 +553,7 @@ namespace Rebellion.Multiplayer
         /// <param name="lobbyId">The owned lobby.</param>
         /// <param name="game">The game metadata.</param>
         /// <returns>The pending metadata publication.</returns>
-        private async Task PublishAsync(string lobbyId, MatchmakerGame game)
+        private async Task PublishAsync(string lobbyId, MultiplayerGameListing game)
         {
             UpdateLobbyModificationOptions options = new UpdateLobbyModificationOptions
             {

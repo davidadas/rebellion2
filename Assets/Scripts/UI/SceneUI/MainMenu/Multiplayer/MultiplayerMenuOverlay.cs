@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Multiplayer;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Rebellion.Multiplayer
+namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
 {
     /// <summary>
     /// Presents native discovery, room creation, save selection, and explicit two-player launch approval.
@@ -208,7 +209,7 @@ namespace Rebellion.Multiplayer
         private MultiplayerCoordinator _coordinator;
         private IReadOnlyList<ContentPackDefinition> _packs;
         private GameSummary _initialSummary;
-        private MatchmakerGame _selectedGame;
+        private MultiplayerGameListing _selectedGame;
         private SaveGameEntry _selectedSave;
         private string[] _factionIDs = Array.Empty<string>();
         private string _gamesSignature;
@@ -564,7 +565,7 @@ namespace Rebellion.Multiplayer
             _selectedGame = null;
             string filter = searchInput.text.Trim();
             foreach (
-                MatchmakerGame game in MultiplayerGameBrowser.Sort(
+                MultiplayerGameListing game in MultiplayerGameBrowser.Sort(
                     _coordinator.Games,
                     _sortColumn,
                     _sortDescending
@@ -626,7 +627,7 @@ namespace Rebellion.Multiplayer
         {
             foreach (GameObject row in _gameRows)
             {
-                MatchmakerGame game = _coordinator.Games.First(item =>
+                MultiplayerGameListing game = _coordinator.Games.First(item =>
                     row.name == "Game " + item.id
                 );
                 row.GetComponent<MenuServerRowView>()
@@ -645,7 +646,7 @@ namespace Rebellion.Multiplayer
         /// Selects one currently displayed discovery result.
         /// </summary>
         /// <param name="game">The selected result.</param>
-        private void SelectGame(MatchmakerGame game)
+        private void SelectGame(MultiplayerGameListing game)
         {
             _selectedGame = game;
             HighlightSelection();
@@ -742,7 +743,7 @@ namespace Rebellion.Multiplayer
                 return;
             if (_selectedGame.state == "rejoining" && _coordinator.HasRecovery)
             {
-                MatchmakerGame selected = _selectedGame;
+                MultiplayerGameListing selected = _selectedGame;
                 Run(_ => _coordinator.ResumeAsync(selected));
                 return;
             }

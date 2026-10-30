@@ -19,22 +19,22 @@ namespace Rebellion.Multiplayer
         /// <param name="listRooms">Searches currently published campaign rooms.</param>
         /// <param name="cancellationToken">Cancels an outgoing account's lookup.</param>
         /// <returns>The matching retained or replacement room, or null if both players are offline.</returns>
-        public static async Task<MatchmakerGame> FindAsync(
+        public static async Task<MultiplayerGameListing> FindAsync(
             string lobbyID,
             string campaignID,
-            Func<string, CancellationToken, Task<MatchmakerGame>> findRoom,
-            Func<CancellationToken, Task<IReadOnlyList<MatchmakerGame>>> listRooms,
+            Func<string, CancellationToken, Task<MultiplayerGameListing>> findRoom,
+            Func<CancellationToken, Task<IReadOnlyList<MultiplayerGameListing>>> listRooms,
             CancellationToken cancellationToken
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
-            MatchmakerGame previous = await findRoom(lobbyID, cancellationToken);
+            MultiplayerGameListing previous = await findRoom(lobbyID, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (previous?.campaignID == campaignID)
                 return previous;
-            IReadOnlyList<MatchmakerGame> rooms = await listRooms(cancellationToken);
+            IReadOnlyList<MultiplayerGameListing> rooms = await listRooms(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (MatchmakerGame room in rooms)
+            foreach (MultiplayerGameListing room in rooms)
                 if (room.campaignID == campaignID)
                     return room;
             return null;

@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Multiplayer;
 
-namespace Rebellion.Multiplayer
+namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
 {
     /// <summary>
     /// Identifies a sortable discovery column.
@@ -27,13 +28,13 @@ namespace Rebellion.Multiplayer
         /// <param name="column">The selected header.</param>
         /// <param name="descending">Whether higher values appear first.</param>
         /// <returns>The ordered results.</returns>
-        public static IEnumerable<MatchmakerGame> Sort(
-            IEnumerable<MatchmakerGame> games,
+        public static IEnumerable<MultiplayerGameListing> Sort(
+            IEnumerable<MultiplayerGameListing> games,
             MultiplayerGameColumn column,
             bool descending
         )
         {
-            IComparer<MatchmakerGame> comparer = Comparer<MatchmakerGame>.Create(
+            IComparer<MultiplayerGameListing> comparer = Comparer<MultiplayerGameListing>.Create(
                 (left, right) =>
                 {
                     int comparison = column switch

@@ -67,7 +67,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void IsCompatible_MatchingEpicContent_ReturnsTrue()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = EpicLobbyListing.Transport,
                 contentFingerprint = EpicLobbyListing.HashContent("pack|1|scenario|"),
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void IsCompatible_DifferentContentVersion_ReturnsFalse()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = EpicLobbyListing.Transport,
                 contentFingerprint = EpicLobbyListing.HashContent("pack|2|scenario|"),
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void IsCompatible_UnsupportedTransport_ReturnsFalse()
         {
-            MatchmakerGame game = new MatchmakerGame
+            MultiplayerGameListing game = new MultiplayerGameListing
             {
                 transport = "direct-tcp",
                 contentFingerprint = EpicLobbyListing.HashContent("pack|1|scenario|"),

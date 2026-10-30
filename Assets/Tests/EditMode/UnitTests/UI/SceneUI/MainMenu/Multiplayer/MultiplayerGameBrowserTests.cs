@@ -1,8 +1,9 @@
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Multiplayer;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 
-namespace Rebellion.Tests.Multiplayer
+namespace Rebellion.Tests.UI.SceneUI.MainMenu.Multiplayer
 {
     public sealed class MultiplayerGameBrowserTests
     {
@@ -19,7 +20,7 @@ namespace Rebellion.Tests.Multiplayer
             string first
         )
         {
-            MatchmakerGame[] games =
+            MultiplayerGameListing[] games =
             {
                 new()
                 {
@@ -50,7 +51,7 @@ namespace Rebellion.Tests.Multiplayer
         [Test]
         public void Sort_EqualValues_KeepsStableIdentityOrder()
         {
-            MatchmakerGame[] games =
+            MultiplayerGameListing[] games =
             {
                 new() { id = "b", name = "Same" },
                 new() { id = "a", name = "Same" },

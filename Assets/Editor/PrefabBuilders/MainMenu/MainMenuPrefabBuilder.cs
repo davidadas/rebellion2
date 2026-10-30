@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Multiplayer;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
@@ -2484,8 +2484,8 @@ public static class MainMenuPrefabBuilder
         public readonly Vector3 Tilt;
 
         // A static rotation applied to the spinning pivot itself (not the model). Because the spin
-        // is incremental in the pivot's local space, this tilts the whole spin — e.g. a nose-down
-        // attitude on a barrel-rolling ship — without making the roll wobble.
+        // is incremental in the pivot's local space, this tilts the whole spin â€” e.g. a nose-down
+        // attitude on a barrel-rolling ship â€” without making the roll wobble.
         public readonly Vector3 PivotTilt;
 
         public readonly Vector3 PivotPosition;

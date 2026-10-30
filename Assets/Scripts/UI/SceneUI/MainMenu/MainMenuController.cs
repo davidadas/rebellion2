@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 using UnityEngine;
 
 /// <summary>

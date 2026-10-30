@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Rebellion.Multiplayer
+namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
 {
     /// <summary>
     /// Identifies the form that owns an asynchronous menu command and its error.

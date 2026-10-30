@@ -31,7 +31,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="game">The published game.</param>
         /// <returns>True for a waiting EOS game with an available slot.</returns>
-        public static bool IsJoinable(MatchmakerGame game)
+        public static bool IsJoinable(MultiplayerGameListing game)
         {
             return game != null
                 && string.Equals(game.transport, Transport, StringComparison.Ordinal)
@@ -63,7 +63,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="modification">The modification to populate.</param>
         /// <param name="game">The host's game listing.</param>
-        public static void Write(LobbyModification modification, MatchmakerGame game)
+        public static void Write(LobbyModification modification, MultiplayerGameListing game)
         {
             ValidateForPublication(game);
             AddAttribute(modification, _nameKey, game.name);
@@ -82,7 +82,7 @@ namespace Rebellion.Multiplayer
         /// Rejects metadata that would make an existing room undiscoverable before native mutation.
         /// </summary>
         /// <param name="game">The complete advertised room metadata.</param>
-        internal static void ValidateForPublication(MatchmakerGame game)
+        internal static void ValidateForPublication(MultiplayerGameListing game)
         {
             if (string.IsNullOrWhiteSpace(game?.name))
                 throw new ArgumentException(
@@ -96,7 +96,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="details">The lobby details supplied by EOS.</param>
         /// <returns>The browser listing, or null for a lobby outside the browser contract.</returns>
-        public static MatchmakerGame Read(LobbyDetails details)
+        public static MultiplayerGameListing Read(LobbyDetails details)
         {
             LobbyDetailsCopyInfoOptions options = new LobbyDetailsCopyInfoOptions();
             if (
@@ -117,7 +117,7 @@ namespace Rebellion.Multiplayer
                 || string.IsNullOrWhiteSpace(state)
             )
                 return null;
-            return new MatchmakerGame
+            return new MultiplayerGameListing
             {
                 id = info.Value.LobbyId,
                 name = name,
