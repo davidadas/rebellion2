@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Rebellion.App;
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay.PlayerRequests;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -9,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using UnityEngine;
 
 /// <summary>

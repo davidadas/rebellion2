@@ -1,9 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
-using Rebellion.Gameplay.PlayerRequests;
 
-namespace Rebellion.App.PlayerRequests
+namespace Rebellion.Gameplay.PlayerRequests
 {
     /// <summary>
     /// Executes single-player requests immediately through the same player-request boundary.

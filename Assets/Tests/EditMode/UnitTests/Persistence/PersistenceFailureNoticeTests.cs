@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Rebellion.App;
+using Rebellion.Persistence;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.Persistence
 {
     public sealed class PersistenceFailureNoticeTests
     {

@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Rebellion.Persistence;
 using UnityEngine;
 
 /// <summary>
@@ -23,7 +24,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <summary>
     /// Gets the storage failure awaiting acknowledgment in the active scene.
     /// </summary>
-    public Rebellion.App.PersistenceFailureNotice PersistenceNotice { get; } = new();
+    public PersistenceFailureNotice PersistenceNotice { get; } = new();
 
     [SerializeField]
     private AppInputController inputController;
@@ -468,7 +469,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <param name="exception">The exception already recorded in the application log.</param>
     private void HandlePersistenceFailure(
         GameRuntime runtime,
-        Rebellion.App.PersistenceOperation operation,
+        PersistenceOperation operation,
         Exception exception
     )
     {

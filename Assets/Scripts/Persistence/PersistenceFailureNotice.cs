@@ -1,6 +1,6 @@
 using System;
 
-namespace Rebellion.App
+namespace Rebellion.Persistence
 {
     /// <summary>
     /// Identifies the persistence operation whose storage failure needs acknowledgment.

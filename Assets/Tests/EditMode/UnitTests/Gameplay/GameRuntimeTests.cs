@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Rebellion.App;
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -15,11 +13,13 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
+using Rebellion.Persistence;
 using Rebellion.Util.Reflection;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public sealed class GameRuntimeTests

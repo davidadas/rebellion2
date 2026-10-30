@@ -1,7 +1,8 @@
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
+using Rebellion.Gameplay.PlayerRequests;
+using Rebellion.Persistence;
 
-namespace Rebellion.App
+namespace Rebellion.Gameplay
 {
     /// <summary>
     /// Owns coordinated execution and persistence from session creation through release.

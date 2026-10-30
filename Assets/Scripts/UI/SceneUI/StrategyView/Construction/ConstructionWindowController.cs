@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.PlayerRequests;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
 using UnityEngine;

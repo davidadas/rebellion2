@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Rebellion.App;
-using Rebellion.App.PlayerRequests;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Gameplay;

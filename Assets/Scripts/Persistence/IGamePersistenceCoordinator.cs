@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Rebellion.App
+namespace Rebellion.Persistence
 {
     /// <summary>
     /// Owns save and load permissions and reports completion after the required durable publications.

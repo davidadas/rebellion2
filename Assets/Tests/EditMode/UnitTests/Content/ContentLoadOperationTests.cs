@@ -8,7 +8,7 @@ using Rebellion.Game;
 using Rebellion.Util.Reflection;
 using UnityEngine;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.Content
 {
     [TestFixture]
     public sealed class ContentLoadOperationTests

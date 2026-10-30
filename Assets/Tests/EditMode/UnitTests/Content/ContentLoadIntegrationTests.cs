@@ -19,7 +19,7 @@ using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.Content
 {
     [TestFixture]
     public sealed class ContentLoadIntegrationTests

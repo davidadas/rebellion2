@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.Game.PlayerRequests;
 
-namespace Rebellion.App.PlayerRequests
+namespace Rebellion.Gameplay.PlayerRequests
 {
     /// <summary>
     /// Retains one session's declared execution owner and rejects requests from ended sessions.
