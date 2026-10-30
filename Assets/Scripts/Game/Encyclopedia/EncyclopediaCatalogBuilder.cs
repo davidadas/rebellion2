@@ -182,40 +182,9 @@ namespace Rebellion.Game.Encyclopedia
                 Category = category,
                 OwnerInstanceID = GetEncyclopediaOwnerInstanceID(entity),
                 ImagePath = entity.EncyclopediaImagePath,
-                Stats = CreateStats(entity),
+                Stats = CloneStats(entity.EncyclopediaStats),
                 Description = GetEncyclopediaDescription(entity),
             };
-        }
-
-        /// <summary>
-        /// Creates the ordered encyclopedia stats for an entity.
-        /// </summary>
-        /// <typeparam name="T">The encyclopedia-backed entity type.</typeparam>
-        /// <param name="entity">The entity whose stats are being created.</param>
-        /// <returns>The ordered encyclopedia stats.</returns>
-        private static List<EncyclopediaEntryStat> CreateStats<T>(T entity)
-            where T : BaseGameEntity, IEncyclopediaSource
-        {
-            List<EncyclopediaEntryStat> stats = CloneStats(entity.EncyclopediaStats);
-            int? detectionRating = entity switch
-            {
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                Regiment regiment => regiment.DetectionRating,
-                _ => null,
-            };
-            if (detectionRating.HasValue)
-            {
-                stats.Add(
-                    new EncyclopediaEntryStat
-                    {
-                        Label = "Detection rating",
-                        Value = detectionRating.Value.ToString(),
-                    }
-                );
-            }
-
-            return stats;
         }
 
         /// <summary>
