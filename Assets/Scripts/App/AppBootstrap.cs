@@ -28,6 +28,7 @@ public sealed class AppBootstrap : MonoBehaviour
 
     [SerializeField]
     private AudioManager audioManager;
+    private AnalyticsManager _analyticsManager;
 
     private CancelStack _cancelStack;
     private ContentPreloadManifest _mainMenuApplicationPreload;
@@ -191,11 +192,13 @@ public sealed class AppBootstrap : MonoBehaviour
 
         _displayManager = new DisplayManager();
         _graphicsManager = new GraphicsManager(transform);
+        _analyticsManager = new AnalyticsManager();
         _userSettingsManager = new UserSettingsManager(
             audioManager,
             _displayManager,
             _graphicsManager,
-            inputManager
+            inputManager,
+            _analyticsManager
         );
         _userSettingsManager.Load();
         FrameRateMonitor.EnsureExists(
@@ -412,6 +415,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentAssets = null;
         _contentPack = null;
         _graphicsManager = null;
+        _analyticsManager = null;
         _mainMenuApplicationPreload = null;
         _strategyApplicationPreload = null;
         _runtime = null;

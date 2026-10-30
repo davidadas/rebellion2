@@ -22,6 +22,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     [SerializeField]
     private NewGameSettingsView _newGameSettingsPrefab;
 
+    [SerializeField]
+    private AnalyticsConsentView _analyticsConsentView;
+
     private UIWindow _newGameSettingsWindow;
     private NewGameSettingsView _newGameSettingsView;
     private IReadOnlyList<ContentPackDefinition> _customGamePacks;
@@ -89,6 +92,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.CreditsRequested += ShowCredits;
         view.NewGameSettingsRequested += OpenNewGameSettings;
         view.AudioCueRequested += PlayAudioCue;
+        _analyticsConsentView.Allowed += HandleAnalyticsAllowed;
+        _analyticsConsentView.Declined += HandleAnalyticsDeclined;
     }
 
     /// <summary>
@@ -128,6 +133,10 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             }
             else
                 audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
+            _analyticsConsentView.Render(
+                bootstrap.GetUserSettingsManager().Settings.Analytics.Consent
+                    == UserAnalyticsConsent.Undecided
+            );
             mainMenuCanvas.enabled = true;
         }
         catch (System.Exception exception)
@@ -159,6 +168,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         view.CreditsRequested -= ShowCredits;
         view.NewGameSettingsRequested -= OpenNewGameSettings;
         view.AudioCueRequested -= PlayAudioCue;
+        _analyticsConsentView.Allowed -= HandleAnalyticsAllowed;
+        _analyticsConsentView.Declined -= HandleAnalyticsDeclined;
 
         if (_appInputController != null)
         {
@@ -199,6 +210,9 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleOptionsMenuRequested()
     {
+        if (_analyticsConsentView.IsVisible)
+            return;
+
         if (TryCancel())
             return;
         EnsureOptionsController();
@@ -351,7 +365,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="tab">The page to show initially.</param>
     private void OpenOptions(OptionsMenuTab tab)
     {
-        if (_newGameSettingsWindow != null)
+        if (_analyticsConsentView.IsVisible || _newGameSettingsWindow != null)
             return;
         EnsureOptionsController();
         if (optionsMenuController == null)
@@ -384,7 +398,11 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void OpenNewGameSettings()
     {
-        if (_newGameSettingsWindow != null || optionsMenuController?.IsOpen == true)
+        if (
+            _analyticsConsentView.IsVisible
+            || _newGameSettingsWindow != null
+            || optionsMenuController?.IsOpen == true
+        )
             return;
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         UIWindowManager manager = view.OptionsWindowManager;
@@ -510,10 +528,41 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <returns>Whether the preview consumed cancellation.</returns>
     public bool TryCancel()
     {
+        if (_analyticsConsentView.IsVisible)
+            return true;
         if (_newGameSettingsWindow == null)
             return false;
         CloseNewGameSettings();
         return true;
+    }
+
+    /// <summary>
+    /// Persists and applies an affirmative analytics decision.
+    /// </summary>
+    private void HandleAnalyticsAllowed()
+    {
+        ApplyAnalyticsConsent(UserAnalyticsConsent.Granted);
+    }
+
+    /// <summary>
+    /// Persists and applies a negative analytics decision.
+    /// </summary>
+    private void HandleAnalyticsDeclined()
+    {
+        ApplyAnalyticsConsent(UserAnalyticsConsent.Denied);
+    }
+
+    /// <summary>
+    /// Saves an explicit analytics decision and removes the first-run input gate.
+    /// </summary>
+    /// <param name="consent">The explicit player decision.</param>
+    private void ApplyAnalyticsConsent(UserAnalyticsConsent consent)
+    {
+        UserSettingsManager settingsManager = _appBootstrap.GetUserSettingsManager();
+        settingsManager.Settings.Analytics.Consent = consent;
+        settingsManager.Save();
+        settingsManager.Apply();
+        _analyticsConsentView.Render(false);
     }
 
     /// <summary>

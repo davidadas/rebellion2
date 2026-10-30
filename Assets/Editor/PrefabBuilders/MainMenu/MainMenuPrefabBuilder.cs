@@ -321,6 +321,11 @@ public static class MainMenuPrefabBuilder
         serializedView.FindProperty("optionsWindowManager").objectReferenceValue =
             FindRequiredComponent<UIWindowManager>(root, "OptionsOverlayCanvas");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+        AssignReference(
+            FindRequiredComponent<MainMenuController>(root),
+            "_analyticsConsentView",
+            FindRequiredComponent<AnalyticsConsentView>(root, "AnalyticsConsentCanvas")
+        );
     }
 
     /// <summary>
@@ -486,6 +491,107 @@ public static class MainMenuPrefabBuilder
 
         BuildControls(viewport.transform);
         BuildOptionsOverlay(ui.transform);
+        BuildAnalyticsConsentOverlay(ui.transform);
+    }
+
+    /// <summary>
+    /// Authors the full-screen first-run analytics choice above every Main Menu control.
+    /// </summary>
+    /// <param name="parent">The Main Menu UI root.</param>
+    private static void BuildAnalyticsConsentOverlay(Transform parent)
+    {
+        GameObject overlay = NewChild(
+            "AnalyticsConsentCanvas",
+            parent,
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster),
+            typeof(AnalyticsConsentView)
+        );
+        FillParent(overlay.GetComponent<RectTransform>());
+
+        Canvas canvas = overlay.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1100;
+
+        CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+
+        GameObject dimmer = NewChild(
+            "InputBlocker",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        FillParent(dimmer.GetComponent<RectTransform>());
+        Image dimmerImage = dimmer.GetComponent<Image>();
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.9f);
+        dimmerImage.raycastTarget = true;
+
+        GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
+        UILayout.SetSourceRect((RectTransform)page.transform, 260, 25, 333, 430);
+        RawImage background = MenuPrefabBuilder.CreateRawImage(
+            "Background",
+            page.transform,
+            "Application/MainMenu/UI/ui_mainmenu_analytics_background",
+            0,
+            0,
+            333,
+            430
+        );
+        background.raycastTarget = true;
+
+        TextMeshProUGUI heading = MenuPrefabBuilder.CreateTextLabel("Heading", page.transform);
+        heading.text = "ANALYTICS";
+        heading.color = new Color(0.875f, 0.910f, 0.941f);
+        heading.fontSize = 20;
+        heading.alignment = TextAlignmentOptions.Midline;
+        UILayout.SetSourceRect(heading.rectTransform, 34, 58, 265, 28);
+
+        TextMeshProUGUI body = MenuPrefabBuilder.CreateTextLabel("Body", page.transform);
+        body.text =
+            "Allow collection of gameplay and device analytics to help us find problems and improve the game.\n\nYou can change this at any time in Settings.";
+        body.color = new Color(0.875f, 0.910f, 0.941f);
+        body.fontSize = 13;
+        body.alignment = TextAlignmentOptions.TopLeft;
+        body.textWrappingMode = TextWrappingModes.Normal;
+        body.overflowMode = TextOverflowModes.Ellipsis;
+        UILayout.SetSourceRect(body.rectTransform, 45, 128, 243, 126);
+
+        TextMeshProUGUI prompt = MenuPrefabBuilder.CreateTextLabel("Prompt", page.transform);
+        prompt.text = "SHARE ANALYTICS?";
+        prompt.color = new Color(0.373f, 0.659f, 0.925f);
+        prompt.fontSize = 13;
+        prompt.alignment = TextAlignmentOptions.Midline;
+        UILayout.SetSourceRect(prompt.rectTransform, 45, 290, 243, 22);
+
+        Button allowButton = MenuPrefabBuilder.CreateMenuActionButton(
+            page.transform,
+            "AllowButton",
+            "ALLOW",
+            0,
+            new Color(0.875f, 0.910f, 0.941f),
+            112
+        );
+        UILayout.SetSourceRect((RectTransform)allowButton.transform, 45, 330, 112, 28);
+        Button declineButton = MenuPrefabBuilder.CreateMenuActionButton(
+            page.transform,
+            "DeclineButton",
+            "NO THANKS",
+            0,
+            new Color(0.875f, 0.910f, 0.941f),
+            112
+        );
+        UILayout.SetSourceRect((RectTransform)declineButton.transform, 176, 330, 112, 28);
+
+        AnalyticsConsentView view = overlay.GetComponent<AnalyticsConsentView>();
+        AssignReference(view, "_allowButton", allowButton);
+        AssignReference(view, "_declineButton", declineButton);
+        overlay.SetActive(false);
     }
 
     /// <summary>

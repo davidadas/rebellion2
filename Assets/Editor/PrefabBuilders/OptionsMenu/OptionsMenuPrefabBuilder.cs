@@ -346,7 +346,18 @@ public static class OptionsMenuPrefabBuilder
             );
         }
 
+        CreateOptionsSectionHeader(gameplayPage, "PrivacyHeader", "PRIVACY", 272, accent);
+        OptionsToggleRowView analyticsRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "AnalyticsCollection",
+            0,
+            "Share Analytics",
+            20,
+            298
+        );
+
         AssignReferenceArray(view, "_gameplayRows", rows);
+        AssignReference(view, "_analyticsRow", analyticsRow);
         AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReference(view, "_autosaveIntervalInputField", autosaveIntervalInput);
         AssignReference(view, "_autosaveIntervalBadgeImage", autosaveIntervalBadge);

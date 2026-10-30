@@ -100,6 +100,27 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_AnalyticsConsentPage_BlocksInputAndStartsHidden()
+        {
+            Transform overlay = _prefabRoot.transform.Find("UI/AnalyticsConsentCanvas");
+            Assert.IsNotNull(overlay);
+            Assert.IsFalse(overlay.gameObject.activeSelf);
+            Assert.AreEqual(1100, overlay.GetComponent<Canvas>().sortingOrder);
+
+            AnalyticsConsentView consentView = overlay.GetComponent<AnalyticsConsentView>();
+            Assert.IsNotNull(consentView);
+            Assert.DoesNotThrow(consentView.VerifyReferences);
+            Assert.IsTrue(overlay.Find("InputBlocker").GetComponent<Image>().raycastTarget);
+            ContentTextureBinding background = overlay
+                .Find("ConsentPage/Background")
+                .GetComponent<ContentTextureBinding>();
+            Assert.AreEqual(
+                "Application/MainMenu/UI/ui_mainmenu_analytics_background",
+                background.Address
+            );
+        }
+
+        [Test]
         public void AuthoredPrefab_ExitConfirmation_BlockerFillsMainMenu()
         {
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
