@@ -988,13 +988,11 @@ public sealed class PlanetSectorWindowController
     /// <param name="hit">The semantic planet-sector hit.</param>
     /// <param name="request">The active targeting request.</param>
     /// <param name="fleetTarget">The first fleet represented by the fleet overlay.</param>
-    /// <param name="missionCreationRequested">Whether the active drop target requests mission creation.</param>
     /// <returns>The strategy mission target, or null.</returns>
     internal static StrategyMissionTarget CreateTargetForHit(
         PlanetSectorWindowHit hit,
         TargetingRequest request,
-        ISceneNode fleetTarget,
-        bool missionCreationRequested = false
+        ISceneNode fleetTarget
     )
     {
         if (hit?.GalaxyMapPlanet == null)
@@ -1010,7 +1008,7 @@ public sealed class PlanetSectorWindowController
             return new StrategyMissionTarget(
                 hit.GalaxyMapPlanet,
                 hit.GalaxyMapPlanet.Planet,
-                missionCreationRequested || hit.Icon == PlanetIcon.Mission
+                hit.Icon == PlanetIcon.Mission
             );
         }
         return null;
@@ -1159,18 +1157,10 @@ public sealed class PlanetSectorWindowController
         PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (targetingController.IsTargeting && hit != null)
         {
-            bool missionCreationRequested =
-                sessions.TryGetValue(view, out PlanetSectorWindowSession session)
-                && string.Equals(
-                    GetMissionDropPlanetInstanceId(session),
-                    hit.Planet.InstanceID,
-                    StringComparison.Ordinal
-                );
             StrategyMissionTarget target = CreateTargetForHit(
                 hit,
                 targetingController.ActiveRequest,
-                GetFirstFleetTarget(hit.Planet),
-                missionCreationRequested
+                GetFirstFleetTarget(hit.Planet)
             );
             if (target != null)
                 targetingController.TrySelectTarget(target);

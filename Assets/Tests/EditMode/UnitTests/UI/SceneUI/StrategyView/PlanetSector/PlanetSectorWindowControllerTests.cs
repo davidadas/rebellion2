@@ -198,7 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void RenderWindow_MissionDropTargetReleasedOverHoveredPlanet_RequestsMissionCreation()
+        public void RenderWindow_MissionDropTargetReleasedOverHighlightedIcon_RequestsMissionCreation()
         {
             Officer officer = new Officer
             {
@@ -248,7 +248,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsTrue(planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _));
             Assert.IsTrue(_controller.IsMissionDropTargetVisible());
-            planetView.OnDrop(CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left));
+            PointerEventData missionPointer = CreateOverlayPointerEvent(
+                view,
+                "missionImage",
+                PointerEventData.InputButton.Left
+            );
+            planetView.OnPointerMove(missionPointer);
+            _controller.RenderWindow(view, window);
+            RawImage missionImage = GetField<RawImage>(planetView, "missionImage");
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
+                ),
+                missionImage.texture
+            );
+
+            planetView.OnDrop(missionPointer);
+
             Assert.IsTrue(_actions.LastTarget.MissionCreationRequested);
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, _actions.LastItems);
         }
@@ -1176,10 +1194,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// </summary>
         /// <param name="view">The view.</param>
         /// <param name="imageFieldName">The image field name.</param>
+        /// <param name="button">The pointer button.</param>
         /// <returns>The created overlay pointer event.</returns>
         private static PointerEventData CreateOverlayPointerEvent(
             PlanetSectorWindowView view,
-            string imageFieldName
+            string imageFieldName,
+            PointerEventData.InputButton button = PointerEventData.InputButton.Right
         )
         {
             PlanetSectorPlanetView planetView =
@@ -1188,7 +1208,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             RawImage overlayImage = GetField<RawImage>(planetView, imageFieldName);
             return new PointerEventData(null)
             {
-                button = PointerEventData.InputButton.Right,
+                button = button,
                 pointerCurrentRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
                 pointerPressRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
             };
