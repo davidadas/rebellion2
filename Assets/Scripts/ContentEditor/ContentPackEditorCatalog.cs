@@ -275,6 +275,59 @@ public sealed class ContentPackEditorCatalog
     }
 
     /// <summary>
+    /// Appends an independent empty ship-name pool to an attached faction.
+    /// </summary>
+    /// <param name="faction">The faction receiving the pool.</param>
+    /// <returns>The newly authored identifier field.</returns>
+    internal ContentPackEditorField AddFactionNamePool(ContentPackEditorRecord faction)
+    {
+        RequireAttachedRecord(faction);
+        if (faction.Kind != "Faction" || faction.Element.Element("InstanceID") == null)
+            throw new ArgumentException("Choose a faction.", nameof(faction));
+        XElement pools = faction.Element.Element("ShipNamePools");
+        if (pools == null)
+        {
+            pools = new XElement("ShipNamePools");
+            faction.Element.Add(pools);
+        }
+        HashSet<string> ids = new(
+            pools
+                .Elements()
+                .Select(pool => pool.Element("NamePoolID")?.Value)
+                .Where(id => id != null),
+            StringComparer.Ordinal
+        );
+        XElement pool = new(
+            "NamePool",
+            new XElement("NamePoolID", AllocateIdentity("custom", ids)),
+            new XElement("Names"),
+            new XElement("NextNameIndex", 0)
+        );
+        pools.Add(pool);
+        Commit();
+        return new ContentPackEditorField(faction, pool.Element("NamePoolID"), "Pool ID");
+    }
+
+    /// <summary>
+    /// Removes the exact attached starting-message entry identified by its title field.
+    /// </summary>
+    /// <param name="title">The title field within the faction's message collection.</param>
+    internal void RemoveFactionMessage(ContentPackEditorField title)
+    {
+        RequireAttachedRecord(title.Record);
+        XElement message = title.XmlElement.Parent;
+        if (
+            title.Record.Kind != "Faction"
+            || title.MemberName != "Title"
+            || message?.Name.LocalName != "Message"
+            || !message.Ancestors().Contains(title.Record.Element.Element("Messages"))
+        )
+            throw new ArgumentException("Choose a starting message.", nameof(title));
+        message.Remove();
+        Commit();
+    }
+
+    /// <summary>
     /// Replaces one validated record while preserving its siblings and document ownership.
     /// </summary>
     /// <param name="source">The attached record to replace.</param>

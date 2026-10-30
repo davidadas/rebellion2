@@ -104,12 +104,15 @@ public sealed class ContentPackEditorRecord
             type = Nullable.GetUnderlyingType(type) ?? type;
             if (TypeHelper.IsScalar(type) && type != typeof(string))
                 element.Value =
-                    type == typeof(bool)
-                        ? "false"
-                        : Convert.ToString(
-                            Activator.CreateInstance(type),
+                    Kind == "Trait" && memberName == "PersonnelTravelTimePercent"
+                        ? new Rebellion.Game.Units.OfficerTraitDefinition().PersonnelTravelTimePercent.ToString(
                             CultureInfo.InvariantCulture
-                        );
+                        )
+                    : type == typeof(bool) ? "false"
+                    : Convert.ToString(
+                        Activator.CreateInstance(type),
+                        CultureInfo.InvariantCulture
+                    );
         }
         return new ContentPackEditorField(
             this,
@@ -316,6 +319,9 @@ public sealed class ContentPackEditorRecord
     /// <returns>The readable section heading.</returns>
     private static string CollectionCaption(XElement element, int index)
     {
+        if (!string.IsNullOrWhiteSpace(element.Element("Availability")?.Value))
+            return ContentPackEditorField.FormatName(element.Element("Availability").Value)
+                + " resources";
         if (
             element.Name.LocalName == "NamePool"
             && !string.IsNullOrWhiteSpace(element.Element("NamePoolID")?.Value)

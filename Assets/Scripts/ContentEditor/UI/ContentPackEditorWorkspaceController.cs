@@ -32,6 +32,9 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested += AddSector;
         view.AddPlanetRequested += AddPlanet;
         view.AddMessageRequested += AddMessage;
+        view.AddNamePoolRequested += AddNamePool;
+        view.RemoveMessageRequested += RemoveMessage;
+        view.ClearFieldsRequested += ClearFields;
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
@@ -261,6 +264,38 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Applies a grouped field clear before rebuilding the current inspector from its edited definitions.
+    /// </summary>
+    /// <param name="fields">The fields requested by the inspector.</param>
+    private void ClearFields(IReadOnlyList<ContentPackEditorField> fields)
+    {
+        Project.ClearFields(fields);
+        view.RenderProject(Project, assets);
+    }
+
+    /// <summary>
+    /// Adds a ship-name pool and reveals its identifier in the current faction inspector.
+    /// </summary>
+    /// <param name="faction">The faction receiving the pool.</param>
+    private void AddNamePool(ContentPackEditorRecord faction)
+    {
+        ContentPackEditorField id = Project.AddFactionNamePool(faction);
+        view.RenderProject(Project, assets);
+        view.FocusField(id);
+    }
+
+    /// <summary>
+    /// Removes a confirmed message through the project's history boundary.
+    /// </summary>
+    /// <param name="title">The title identifying the message.</param>
+    private void RemoveMessage(ContentPackEditorField title)
+    {
+        Project.RemoveFactionMessage(title);
+        view.RenderProject(Project, assets);
+        view.RenderStatus("Starting message deleted. Undo to restore it.", false);
+    }
+
+    /// <summary>
     /// Removes a definition through project-wide cleanup before selecting a remaining sibling.
     /// </summary>
     /// <param name="record">The confirmed definition to remove.</param>
@@ -305,6 +340,9 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested -= AddSector;
         view.AddPlanetRequested -= AddPlanet;
         view.AddMessageRequested -= AddMessage;
+        view.AddNamePoolRequested -= AddNamePool;
+        view.RemoveMessageRequested -= RemoveMessage;
+        view.ClearFieldsRequested -= ClearFields;
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;

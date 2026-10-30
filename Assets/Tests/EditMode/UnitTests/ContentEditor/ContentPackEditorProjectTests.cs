@@ -1740,6 +1740,61 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void SetField_DuplicatePlanetIdentity_RejectsTheEditWithoutChangingTheMap()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord[] planets = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .Take(2)
+                .ToArray();
+            string before = planets[0].Catalog.Document.Text;
+
+            Assert.Throws<ArgumentException>(() =>
+                project.SetField(planets[0].GetField("TypeID"), planets[1].ID)
+            );
+
+            Assert.AreEqual(before, planets[0].Catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void GetReferenceOptions_GenerationMine_ShowsBuildingNamesWithoutChangingTheDocument()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "GameGenerationConfig")
+                .SelectMany(record => record.GetFields())
+                .Single(candidate => candidate.MemberName == "MineTypeID");
+            string before = field.Document.Text;
+
+            var options = project.GetReferenceOptions(field);
+
+            Assert.IsTrue(options.ContainsKey(field.Value));
+            Assert.AreEqual("None", options[string.Empty]);
+            Assert.Greater(options.Count, 1);
+            Assert.AreEqual(before, field.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void GetReferenceOptions_OrderedFacilityList_PreservesItsMultiplicityInsteadOfOfferingASet()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.GetFields())
+                .First(candidate => candidate.MemberName == "FacilityTypeIDs");
+
+            Assert.IsNull(project.GetReferenceOptions(field));
+        }
+
+        [Test]
         public void ValidateField_UnchangedInvalidScalar_RejectsTheAuthoredTypeMismatch()
         {
             ContentPackEditorProject project = CreateLoadableProject();

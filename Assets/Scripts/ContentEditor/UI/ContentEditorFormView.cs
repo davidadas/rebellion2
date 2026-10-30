@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -19,6 +20,33 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
     [SerializeField]
     private Button addMessageButton;
+
+    [SerializeField]
+    private TMP_Dropdown collectionDropdown;
+
+    [SerializeField]
+    private Button removeMessageButton;
+
+    [SerializeField]
+    private LineChartGraphic curveGraphic;
+
+    [SerializeField]
+    private TMP_Dropdown curveDropdown;
+
+    [SerializeField]
+    private TMP_InputField scoreInput;
+
+    [SerializeField]
+    private Button addScoreButton;
+
+    [SerializeField]
+    private Button removeRowTemplate;
+
+    private readonly List<Button> removeRowButtons = new();
+    private int selectedCurve;
+
+    private XElement selectedCollection;
+    private XElement[] collectionItems = Array.Empty<XElement>();
 
     [SerializeField]
     private TextMeshProUGUI groupTemplate;
@@ -60,11 +88,16 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField> FieldValidationRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
+    public event Action AddNamePoolRequested;
+    public event Action<ContentPackEditorField> RemoveMessageRequested;
+    public event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     public event Action<ContentPackEditorField> ImportRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action<string> ValidationFailed;
     public bool HasOpenChoice =>
-        fieldViews.Any(field => field.gameObject.activeSelf && field.HasOpenChoice);
+        collectionDropdown.IsExpanded
+        || curveDropdown.IsExpanded
+        || fieldViews.Any(field => field.gameObject.activeSelf && field.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
         fieldViews
             .FirstOrDefault(field => field.gameObject.activeSelf && field.HasError)
@@ -87,6 +120,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             previewPane == null
             || previewImage == null
             || addMessageButton == null
+            || collectionDropdown == null
+            || removeMessageButton == null
+            || curveGraphic == null
+            || curveDropdown == null
+            || scoreInput == null
+            || addScoreButton == null
+            || removeRowTemplate == null
             || groupTemplate == null
             || tableRowTemplate == null
             || articleImageTemplate == null
@@ -97,6 +137,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         bound = true;
         fieldScroll.WidthChanged += HandleWidthChanged;
         addMessageButton.onClick.AddListener(RequestAddMessage);
+        collectionDropdown.onValueChanged.AddListener(SelectCollectionItem);
+        removeMessageButton.onClick.AddListener(RequestRemoveMessage);
+        curveDropdown.onValueChanged.AddListener(SelectCurve);
+        addScoreButton.onClick.AddListener(AddScore);
     }
 
     /// <summary>
@@ -108,6 +152,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return;
         fieldScroll.WidthChanged -= HandleWidthChanged;
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
+        collectionDropdown.onValueChanged.RemoveListener(SelectCollectionItem);
+        removeMessageButton.onClick.RemoveListener(RequestRemoveMessage);
+        curveDropdown.onValueChanged.RemoveListener(SelectCurve);
+        addScoreButton.onClick.RemoveListener(AddScore);
         foreach (ContentEditorFieldView field in fieldViews)
         {
             field.ValidationFailed -= ReportValidationError;
@@ -147,13 +195,28 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Commits visible drafts and reports whether the form can be left safely.
     /// </summary>
-    /// <returns>True when every active field is valid.</returns>
+    /// <returns>True when every pending field edit has been accepted.</returns>
     public bool Commit()
     {
         foreach (
             ContentEditorFieldView field in fieldViews.Where(field => field.gameObject.activeSelf)
         )
             field.Commit();
+        return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasError);
+    }
+
+    /// <summary>
+    /// Checks accepted values before saving without blocking navigation through unfinished content.
+    /// </summary>
+    /// <returns>Whether every visible authored value is valid.</returns>
+    public bool Validate()
+    {
+        if (!Commit())
+            return false;
+        foreach (
+            ContentEditorFieldView field in fieldViews.Where(field => field.gameObject.activeSelf)
+        )
+            field.ValidateCurrent();
         return fieldViews.All(field => !field.gameObject.activeSelf || !field.HasError);
     }
 
@@ -175,6 +238,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
             row.gameObject.SetActive(false);
         HidePreview();
         addMessageButton.gameObject.SetActive(false);
+        collectionDropdown.gameObject.SetActive(false);
+        removeMessageButton.gameObject.SetActive(false);
+        collectionItems = Array.Empty<XElement>();
+        selectedCollection = null;
+        curveGraphic.gameObject.SetActive(false);
+        curveDropdown.gameObject.SetActive(false);
+        scoreInput.gameObject.SetActive(false);
+        addScoreButton.gameObject.SetActive(false);
+        foreach (Button button in removeRowButtons)
+        {
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
         project = null;
         assets = null;
         selectedRecord = null;
@@ -198,6 +274,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The field to edit.</param>
     public void FocusField(ContentPackEditorField field)
     {
+        XElement item = field
+            .XmlElement.AncestorsAndSelf()
+            .FirstOrDefault(element => element.Name.LocalName is "Message" or "NamePool");
+        if (item != null && selectedCollection != item)
+        {
+            selectedCollection = item;
+            RenderFields(true);
+        }
         ContentEditorFieldView row = fieldViews.Single(item =>
             item.gameObject.activeSelf && item.Field.XmlElement == field.XmlElement
         );
@@ -219,7 +303,192 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Requests a starting-message category menu at its authored control.
     /// </summary>
-    private void RequestAddMessage() => AddMessageRequested?.Invoke(addMessageButton);
+    private void RequestAddMessage()
+    {
+        if (section == "Ship names")
+            AddNamePoolRequested?.Invoke();
+        else
+            AddMessageRequested?.Invoke(addMessageButton);
+    }
+
+    /// <summary>
+    /// Opens a selected nested entry after accepting the current form's edits.
+    /// </summary>
+    /// <param name="index">The entry selected in the standard dropdown.</param>
+    private void SelectCollectionItem(int index)
+    {
+        if (!Commit())
+        {
+            collectionDropdown.SetValueWithoutNotify(
+                Array.IndexOf(collectionItems, selectedCollection)
+            );
+            return;
+        }
+        selectedCollection = collectionItems[index];
+        RenderFields(true);
+    }
+
+    /// <summary>
+    /// Requests deletion of the currently displayed starting message.
+    /// </summary>
+    private void RequestRemoveMessage()
+    {
+        ContentPackEditorField title = selectedPage.Fields.First(field =>
+            field.MemberName == "Title" && field.XmlElement.Parent == selectedCollection
+        );
+        RemoveMessageRequested?.Invoke(title);
+    }
+
+    /// <summary>
+    /// Selects a probability column for the plot without discarding current field drafts.
+    /// </summary>
+    /// <param name="index">The selected curve.</param>
+    private void SelectCurve(int index)
+    {
+        selectedCurve = index;
+        RenderFields(false);
+    }
+
+    /// <summary>
+    /// Adds one pending threshold through the grid's ordinary detached field bindings.
+    /// </summary>
+    private void AddScore()
+    {
+        if (
+            !int.TryParse(
+                scoreInput.text,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int score
+            )
+        )
+        {
+            ValidationFailed?.Invoke("Enter a whole-number score.");
+            return;
+        }
+        if (!Commit())
+            return;
+        ContentEditorNumericGrid grid = probabilityGrid;
+        if (!grid.AddScore(score))
+        {
+            ValidationFailed?.Invoke("That score already exists.");
+            return;
+        }
+        foreach (ContentEditorFieldView field in fieldViews)
+            field.Clear();
+        reflowingFields = false;
+        foreach (TextMeshProUGUI label in groupLabels)
+            label.gameObject.SetActive(false);
+        RenderRules(selectedPage.Fields.ToArray());
+        FocusField(grid.GetCell(score, 0));
+    }
+
+    /// <summary>
+    /// Draws one exact stepwise probability curve beside or above its editable table.
+    /// </summary>
+    /// <param name="grid">The current authored probability tables.</param>
+    /// <param name="x">The chart's left edge.</param>
+    /// <param name="y">The chart's top edge.</param>
+    /// <param name="width">The chart's available width.</param>
+    /// <param name="labelIndex">The next reusable caption.</param>
+    /// <returns>The occupied height.</returns>
+    private int RenderCurve(
+        ContentEditorNumericGrid grid,
+        float x,
+        float y,
+        float width,
+        ref int labelIndex
+    )
+    {
+        selectedCurve = Mathf.Clamp(selectedCurve, 0, grid.Columns.Count - 1);
+        if (grid.Columns.Count > 1)
+        {
+            curveDropdown.gameObject.SetActive(true);
+            curveDropdown.ClearOptions();
+            curveDropdown.AddOptions(grid.Columns.ToList());
+            curveDropdown.SetValueWithoutNotify(selectedCurve);
+            UILayout.SetSourceRect(
+                (RectTransform)curveDropdown.transform,
+                Mathf.RoundToInt(x + 44),
+                Mathf.RoundToInt(y),
+                Mathf.RoundToInt(width - 48),
+                32
+            );
+        }
+        else
+            PlaceLabel(grid.Columns[0] + " (%)", labelIndex++, x + 44, y, width - 48, false);
+        IReadOnlyList<KeyValuePair<int, int>> entries = grid.GetEntries(selectedCurve);
+        if (entries.Count == 0)
+            return 40
+                + PlaceLabel(
+                    "Fill a cell to preview this curve.",
+                    labelIndex++,
+                    x + 44,
+                    y + 40,
+                    width - 48,
+                    false
+                );
+        int minimum = grid.Scores.First();
+        int maximum = grid.Scores.Last();
+        float low = Mathf.Min(0, entries.Min(entry => entry.Value));
+        float high = Mathf.Max(100, entries.Max(entry => entry.Value));
+        List<Vector2> points = new() { new Vector2(0, (entries[0].Value - low) / (high - low)) };
+        float previous = points[0].y;
+        foreach (var entry in entries)
+        {
+            float pointX =
+                maximum == minimum
+                    ? 0
+                    : (float)(((double)entry.Key - minimum) / ((double)maximum - minimum));
+            float pointY = (entry.Value - low) / (high - low);
+            points.Add(new Vector2(pointX, previous));
+            points.Add(new Vector2(pointX, pointY));
+            previous = pointY;
+        }
+        points.Add(new Vector2(1, previous));
+        UILayout.SetSourceRect(
+            (RectTransform)curveGraphic.transform,
+            Mathf.RoundToInt(x + 44),
+            Mathf.RoundToInt(y + 44),
+            Mathf.RoundToInt(width - 52),
+            180
+        );
+        curveGraphic.gameObject.SetActive(true);
+        curveGraphic.Render(points);
+        PlaceLabel(
+            high.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            labelIndex++,
+            x,
+            y + 38,
+            40,
+            false
+        );
+        PlaceLabel(
+            low.ToString("0", System.Globalization.CultureInfo.InvariantCulture),
+            labelIndex++,
+            x,
+            y + 208,
+            40,
+            false
+        );
+        PlaceLabel(
+            minimum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            labelIndex++,
+            x + 44,
+            y + 232,
+            70,
+            false
+        );
+        PlaceLabel(
+            maximum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            labelIndex++,
+            x + width - 70,
+            y + 232,
+            70,
+            false
+        );
+        return 272;
+    }
 
     /// <summary>
     /// Publishes a committed field without owning workspace selection.
@@ -253,6 +522,20 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void RenderFields(bool rebind)
     {
         addMessageButton.gameObject.SetActive(false);
+        collectionDropdown.gameObject.SetActive(false);
+        removeMessageButton.gameObject.SetActive(false);
+        curveGraphic.gameObject.SetActive(false);
+        curveDropdown.gameObject.SetActive(false);
+        scoreInput.gameObject.SetActive(false);
+        addScoreButton.gameObject.SetActive(false);
+        foreach (Button button in removeRowButtons)
+            button.gameObject.SetActive(false);
+        foreach (TextMeshProUGUI group in groupLabels)
+            group.gameObject.SetActive(false);
+        foreach (RawImage image in articleImages)
+            image.gameObject.SetActive(false);
+        foreach (RawImage row in tableRows)
+            row.gameObject.SetActive(false);
         if (selectedRecord?.Kind == "GameEvent")
             return;
         if (rebind)
@@ -263,12 +546,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
             probabilityGrid = null;
             foreach (ContentEditorFieldView field in fieldViews)
                 field.Clear();
-            foreach (TextMeshProUGUI group in groupLabels)
-                group.gameObject.SetActive(false);
-            foreach (RawImage image in articleImages)
-                image.gameObject.SetActive(false);
-            foreach (RawImage row in tableRows)
-                row.gameObject.SetActive(false);
         }
         if (selectedRecord == null || section == "Advanced")
             return;
@@ -365,7 +642,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             float inset = Mathf.Min(field.SectionPath.Count, 4) * 16;
             float width = viewportWidth - inset;
             bool narrowMedia = field.IsMedia && width < 600;
-            if (narrowMedia)
+            bool stacked =
+                narrowMedia
+                || width < 340 && !field.IsNumber && !field.IsBoolean && field.Choices.Count == 0;
+            if (stacked)
             {
                 y += PlaceLabel(
                     field.Caption,
@@ -383,7 +663,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 inset,
                 y,
                 width,
-                narrowMedia ? 0
+                stacked ? 0
                     : selectedRecord.Catalog.IsMap ? 128
                     : Mathf.Min(244, width * 0.45f),
                 narrowMedia ? 120 : 0
@@ -397,8 +677,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="address">The image used by the current tab.</param>
     /// <param name="width">The available column width.</param>
+    /// <param name="maximumHeight">The largest useful image height for this presentation.</param>
     /// <returns>The vertical space occupied by the preview and its trailing margin.</returns>
-    private int RenderPreview(string address, float width)
+    private int RenderPreview(string address, float width, float maximumHeight = 280)
     {
         Texture2D texture = null;
         try
@@ -415,7 +696,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
         previewPane.SetActive(texture != null);
         if (texture == null)
             return 0;
-        int height = Mathf.CeilToInt(Mathf.Min(280, width * texture.height / texture.width));
+        int height = Mathf.CeilToInt(
+            Mathf.Min(maximumHeight, width * texture.height / texture.width)
+        );
         UILayout.SetSourceRect(
             (RectTransform)previewPane.transform,
             4,
@@ -479,20 +762,87 @@ public sealed class ContentEditorFormView : MonoBehaviour
             fieldIndex = 0,
             headingIndex = 0,
             imageIndex = 0;
-        if (
+        bool collection =
             selectedPage.Key.StartsWith("factions/", StringComparison.Ordinal)
-            && section == "Messages"
-        )
+            && section is "Messages" or "Ship names";
+        string itemName = section == "Messages" ? "Message" : "NamePool";
+        if (collection)
         {
+            collectionItems = selectedPage
+                .Fields.Select(field =>
+                    field
+                        .XmlElement.AncestorsAndSelf()
+                        .FirstOrDefault(element => element.Name.LocalName == itemName)
+                )
+                .Where(item => item != null)
+                .Distinct()
+                .ToArray();
+            if (!collectionItems.Contains(selectedCollection))
+                selectedCollection = collectionItems.FirstOrDefault();
             addMessageButton.gameObject.SetActive(true);
+            addMessageButton.GetComponentInChildren<TMP_Text>().text =
+                section == "Messages" ? "Add starting message" : "Add ship name pool";
+            addMessageButton.gameObject.name =
+                section == "Messages" ? "AddFactionMessage" : "AddShipNamePool";
             UILayout.SetSourceRect((RectTransform)addMessageButton.transform, 4, 0, 190, 32);
             y =
-                40
+                44
                 + PlaceLabel(
-                    "These messages appear when a new game starts.",
+                    section == "Messages"
+                        ? "Messages shown when a new game starts."
+                        : "Select a pool to edit its ship names.",
                     headingIndex++,
                     4,
-                    40,
+                    44,
+                    width - 8,
+                    false
+                );
+            if (collectionItems.Length > 0)
+            {
+                collectionDropdown.gameObject.SetActive(true);
+                collectionDropdown.ClearOptions();
+                collectionDropdown.AddOptions(
+                    collectionItems
+                        .Select(item =>
+                            itemName == "Message"
+                                ? (
+                                    item.Element("Title")?.Value is { Length: > 0 } title
+                                        ? title
+                                        : "Untitled message"
+                                )
+                                : "Pool " + item.Element("NamePoolID")?.Value
+                        )
+                        .ToList()
+                );
+                collectionDropdown.SetValueWithoutNotify(
+                    Array.IndexOf(collectionItems, selectedCollection)
+                );
+                collectionDropdown.RefreshShownValue();
+                UILayout.SetSourceRect(
+                    (RectTransform)collectionDropdown.transform,
+                    4,
+                    y,
+                    Mathf.RoundToInt(width - (section == "Messages" ? 152 : 8)),
+                    34
+                );
+                removeMessageButton.gameObject.SetActive(section == "Messages");
+                UILayout.SetSourceRect(
+                    (RectTransform)removeMessageButton.transform,
+                    Mathf.RoundToInt(width - 140),
+                    y,
+                    132,
+                    34
+                );
+                y += 50;
+            }
+            else
+                y += PlaceLabel(
+                    section == "Messages"
+                        ? "No starting messages. Add one to get started."
+                        : "No ship name pools. Add one to get started.",
+                    headingIndex++,
+                    4,
+                    y,
                     width - 8,
                     false
                 );
@@ -501,6 +851,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             IGrouping<ContentPackEditorRecord, ContentPackEditorField> group in selectedPage
                 .Fields.Where(field =>
                     (selectedPage.MissionID == null || field.Record.Kind != "GameConfig")
+                    && (
+                        !collection
+                        || field.XmlElement.AncestorsAndSelf().Contains(selectedCollection)
+                    )
                     && (
                         !selectedPage.Key.StartsWith("factions/", StringComparison.Ordinal)
                         || ContentEditorContentSections.FactionSection(field) == section
@@ -519,7 +873,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 : record.Kind == "FactionTheme" ? "Unit icons"
                 : record.Element.Element("FactionDataPath") != null ? "Content files"
                 : section;
-            y += PlaceLabel(title, headingIndex++, 4, y, width - 8, true) + 8;
+            if (article || record.Kind != "Faction")
+                y += PlaceLabel(title, headingIndex++, 4, y, width - 8, true) + 8;
+            if (
+                collection
+                && itemName == "NamePool"
+                && GetNamePoolTitles(record).TryGetValue(selectedCollection, out string usage)
+            )
+                y += PlaceLabel(usage, headingIndex++, 4, y, width - 8, false) + 8;
             if (article && !string.IsNullOrEmpty(record.ImageAddress))
             {
                 while (articleImages.Count <= imageIndex)
@@ -555,7 +916,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     && field.MemberName is "TypeID" or "Category" or "VisibleFactionInstanceID"
                 )
                     continue;
-                IReadOnlyList<string> sections = field.SectionPath;
+                IReadOnlyList<string> sections = collection
+                    ? Array.Empty<string>()
+                    : field.SectionPath;
                 if (record.Kind == "FactionTheme")
                     sections = Array.Empty<string>();
                 if (
@@ -668,26 +1031,107 @@ public sealed class ContentEditorFormView : MonoBehaviour
             labelIndex = 0;
         float width = Mathf.Min(1100, fieldScroll.ScrollArea.ViewportWidth);
         IReadOnlyList<string> previous = Array.Empty<string>();
-        foreach (
-            ContentPackEditorField field in ContentEditorInspectorLayout
-                .GetFields(selectedRecord)
-                .Where(field => ContentEditorContentSections.GenerationSection(field) == section)
-        )
+        ContentPackEditorField[] fields = ContentEditorInspectorLayout
+            .GetFields(selectedRecord)
+            .Where(field => ContentEditorContentSections.GenerationSection(field) == section)
+            .ToArray();
+        HashSet<XElement> renderedRanges = new();
+        XElement previousRangeOwner = null;
+        foreach (ContentPackEditorField field in fields)
         {
+            XElement parent = field.XmlElement.Parent;
+            Type type = ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, parent);
+            bool range =
+                type == typeof(Rebellion.Game.DiceFormula)
+                || type == typeof(Rebellion.Game.SupportFormula);
+            if (range && !renderedRanges.Add(parent))
+                continue;
             IReadOnlyList<string> sections = field.SectionPath.Skip(1).ToArray();
+            if (range)
+                sections = sections.Take(Math.Max(0, sections.Count - 1)).ToArray();
             y = Mathf.CeilToInt(PlaceSections(sections, previous, ref labelIndex, 4, y, width - 8));
             previous = sections;
             float inset = Mathf.Min(sections.Count, 4) * 16;
-            y += PlaceField(
-                field,
-                fieldIndex++,
-                inset,
-                y,
-                width - inset,
-                Mathf.Min(280, (width - inset) * 0.45f)
-            );
+            if (range)
+            {
+                ContentPackEditorField[] terms = fields
+                    .Where(term => term.XmlElement.Parent == parent)
+                    .ToArray();
+                y += RenderRange(
+                    terms,
+                    ContentPackEditorField.FormatName(parent.Name.LocalName),
+                    inset,
+                    y,
+                    width - inset,
+                    ref fieldIndex,
+                    ref labelIndex,
+                    previousRangeOwner != parent.Parent
+                );
+                previousRangeOwner = parent.Parent;
+            }
+            else
+            {
+                previousRangeOwner = null;
+                y += PlaceField(
+                    field,
+                    fieldIndex++,
+                    inset,
+                    y,
+                    width - inset,
+                    Mathf.Min(280, (width - inset) * 0.45f)
+                );
+            }
         }
         fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Places a generation formula's base and independent random terms together on one readable row.
+    /// </summary>
+    /// <param name="terms">The formula's authored terms.</param>
+    /// <param name="caption">The resource or support value generated by the formula.</param>
+    /// <param name="x">The row's left edge.</param>
+    /// <param name="y">The row's top edge.</param>
+    /// <param name="width">The available width.</param>
+    /// <param name="fieldIndex">The next reusable input.</param>
+    /// <param name="labelIndex">The next reusable label.</param>
+    /// <param name="showHeaders">Whether this is the first formula in the group.</param>
+    /// <returns>The occupied height.</returns>
+    private int RenderRange(
+        ContentPackEditorField[] terms,
+        string caption,
+        float x,
+        float y,
+        float width,
+        ref int fieldIndex,
+        ref int labelIndex,
+        bool showHeaders
+    )
+    {
+        float captionWidth = Mathf.Min(280, width * 0.45f);
+        float cellWidth = (width - captionWidth) / terms.Length;
+        int headerHeight = showHeaders ? 28 : 0;
+        int captionHeight = PlaceLabel(
+            caption,
+            labelIndex++,
+            x + 4,
+            y + headerHeight + 4,
+            captionWidth - 12,
+            false
+        );
+        for (int i = 0; i < terms.Length; i++)
+        {
+            ContentPackEditorField term = terms[i];
+            float left = x + captionWidth + i * cellWidth;
+            string name =
+                term.MemberName == "Base" ? "Base"
+                : terms.Length == 2 ? "+ random"
+                : "+ random " + i;
+            if (showHeaders)
+                PlaceLabel(name, labelIndex++, left + 4, y, cellWidth - 8, false, term.HelpText);
+            PlaceField(term, fieldIndex++, left, y + headerHeight, cellWidth, 0, 44);
+        }
+        return Mathf.Max(headerHeight + 48, captionHeight + headerHeight + 8);
     }
 
     /// <summary>
@@ -740,7 +1184,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             string keyCaption = grid.IsProbability ? "Score" : "Threshold";
             float keyWidth = Mathf.Ceil(groupTemplate.GetPreferredValues(keyCaption).x) + 16;
-            width = Mathf.Min(width, keyWidth + 180 * grid.Columns.Count);
+            float availableWidth = width;
+            float tableWidth = Mathf.Min(width, keyWidth + 180 * grid.Columns.Count + 42);
+            bool sideCurve = grid.IsProbability && availableWidth - tableWidth >= 320;
+            width = tableWidth;
             y +=
                 PlaceLabel(
                     grid.IsProbability ? "Probability tables" : "Lookup tables",
@@ -753,7 +1200,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             y +=
                 PlaceLabel(
                     grid.IsProbability
-                        ? "Percentages by score. Blank cells have no entry."
+                        ? "Each score uses the preceding threshold. Blank cells have no entry."
                         : "Values by threshold. Blank cells have no entry.",
                     groupIndex++,
                     4,
@@ -761,8 +1208,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     width - 8,
                     false
                 ) + 10;
+            if (grid.IsProbability && !sideCurve)
+                y += RenderCurve(grid, 0, y, availableWidth, ref groupIndex) + 12;
+            scoreInput.gameObject.SetActive(true);
+            addScoreButton.gameObject.SetActive(true);
+            UILayout.SetSourceRect((RectTransform)scoreInput.transform, 4, y, 110, 32);
+            UILayout.SetSourceRect((RectTransform)addScoreButton.transform, 124, y, 116, 32);
+            y += 44;
+            int chartBottom = sideCurve
+                ? y + RenderCurve(grid, width + 20, y, availableWidth - width - 20, ref groupIndex)
+                : 0;
             float scoreWidth = Mathf.Min(keyWidth, width * 0.5f);
-            float cellWidth = (width - scoreWidth) / grid.Columns.Count;
+            float cellWidth = (width - scoreWidth - 42) / grid.Columns.Count;
             int headerStart = groupIndex;
             int headerHeight = PlaceLabel(keyCaption, groupIndex++, 4, y, scoreWidth - 8, true);
             for (int column = 0; column < grid.Columns.Count; column++)
@@ -829,9 +1286,35 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     cell.SetBackgroundRole(rowRole);
                     cell.SetCellLayout();
                 }
+                while (removeRowButtons.Count <= rowIndex)
+                    removeRowButtons.Add(
+                        Instantiate(removeRowTemplate, fieldScroll.ScrollArea.ContentRoot)
+                    );
+                Button remove = removeRowButtons[rowIndex];
+                remove.gameObject.SetActive(true);
+                remove.onClick.RemoveAllListeners();
+                int removedScore = score;
+                remove.onClick.AddListener(() =>
+                {
+                    if (Commit())
+                        ClearFieldsRequested?.Invoke(
+                            Enumerable
+                                .Range(0, grid.Columns.Count)
+                                .Select(column => grid.GetCell(removedScore, column))
+                                .ToArray()
+                        );
+                });
+                UILayout.SetSourceRect(
+                    (RectTransform)remove.transform,
+                    Mathf.RoundToInt(width - 38),
+                    y + 6,
+                    34,
+                    32
+                );
                 y += 44;
                 rowIndex++;
             }
+            y = Mathf.Max(y, chartBottom);
         }
         fieldScroll.SetContentHeight(y, !reflowingFields);
     }
@@ -919,13 +1402,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void RenderUnitFields(ContentPackEditorField[] fields)
     {
         float viewportWidth = fieldScroll.ScrollArea.ViewportWidth;
-        int columns =
-            viewportWidth >= 1080 ? 3
-            : viewportWidth >= 720 ? 2
-            : 1;
+        int columns = Mathf.Clamp(Mathf.FloorToInt((viewportWidth + 24) / 324), 1, 3);
         float width = (viewportWidth - (columns - 1) * 24) / columns;
         float[] top = new float[columns];
-        top[0] = RenderPreview(selectedRecord.ImageAddress, width);
+        top[0] = RenderPreview(selectedRecord.ImageAddress, width, columns == 1 ? 160 : 280);
         int fieldIndex = 0,
             groupIndex = 0;
         foreach (
@@ -1073,17 +1553,46 @@ public sealed class ContentEditorFormView : MonoBehaviour
             fieldViews.Add(created);
         }
         ContentEditorFieldView view = fieldViews[index];
+        if (reflowingFields && !IsBoundTo(view, field))
+        {
+            int existing = fieldViews.FindIndex(
+                index + 1,
+                candidate => IsBoundTo(candidate, field)
+            );
+            if (existing >= 0)
+            {
+                fieldViews[index] = fieldViews[existing];
+                fieldViews[existing] = view;
+                view = fieldViews[index];
+            }
+        }
         view.name = field.Name.Replace(" / ", " ").Replace(" ", string.Empty) + "Field";
-        if (!reflowingFields || !view.gameObject.activeSelf)
+        if (!reflowingFields || !view.gameObject.activeSelf || !IsBoundTo(view, field))
             view.Render(
                 ContentPackEditorProjector.BuildField(project, field),
                 HandleFieldChanged,
                 RequestImport,
                 RequestPreview
             );
-        int occupied = height > 0 ? height : view.Height;
+        int occupied = height;
         return view.SetLayout(new Rect(x, y, width, occupied), labelWidth);
     }
+
+    /// <summary>
+    /// Retains each draft on its own control when attaching optional members changes field order.
+    /// </summary>
+    /// <param name="view">The existing pooled control.</param>
+    /// <param name="field">The property being laid out.</param>
+    /// <returns>Whether the control represents the same authored or pending property.</returns>
+    private static bool IsBoundTo(ContentEditorFieldView view, ContentPackEditorField field) =>
+        view.gameObject.activeSelf
+        && view.Field != null
+        && (
+            view.Field.XmlElement == field.XmlElement
+            || view.Field.Record.Element == field.Record.Element
+                && view.Field.Name == field.Name
+                && view.Field.MemberName == field.MemberName
+        );
 
     /// <summary>
     /// Places a pooled heading or skill caption without introducing another boxed panel.
@@ -1195,7 +1704,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         FieldSubmitted?.Invoke(field, values);
 
     /// <summary>
-    /// Requests validation when an unchanged field loses focus.
+    /// Forwards explicit validation of an accepted authored value.
     /// </summary>
     /// <param name="field">The member to check.</param>
     private void ValidateField(ContentPackEditorField field) =>

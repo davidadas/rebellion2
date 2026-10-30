@@ -79,6 +79,17 @@ internal static class ContentEditorInspectorLayout
                 if (!fields.Any(field => field.Group == member))
                     fields.Add(record.GetField(member));
         }
+        if (record.Kind == "Trait")
+            foreach (
+                string member in new[]
+                {
+                    "LeadershipBonusPercent",
+                    "PersonnelTravelTimePercent",
+                    "SharesPersonnelTravelTimeModifier",
+                }
+            )
+                if (!fields.Any(field => field.MemberName == member))
+                    fields.Add(record.GetField(member));
         return fields;
     }
 

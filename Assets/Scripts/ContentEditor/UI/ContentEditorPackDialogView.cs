@@ -28,6 +28,9 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     private TextMeshProUGUI newFolderPathText;
 
     [SerializeField]
+    private TextMeshProUGUI helpText;
+
+    [SerializeField]
     private Button folderBrowseButton;
 
     [SerializeField]
@@ -71,6 +74,7 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
             || newVersionInput == null
             || newFolderInput == null
             || newFolderPathText == null
+            || helpText == null
             || folderBrowseButton == null
             || packChoiceDropdown == null
             || dialogError == null
@@ -164,7 +168,68 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     /// Displays an application error without discarding the entered creation values.
     /// </summary>
     /// <param name="message">The validation or file-operation failure.</param>
-    public void ShowError(string message) => dialogError.text = message;
+    public void ShowError(string message)
+    {
+        dialogError.text = message;
+        LayoutContent();
+    }
+
+    /// <summary>
+    /// Keeps complete destination paths and wrapped errors above the dialog's action row.
+    /// </summary>
+    private void LayoutContent()
+    {
+        RectTransform panel = (RectTransform)dialogError.transform.parent;
+        float width = panel.rect.width - 56;
+        float pathHeight = Mathf.Max(
+            48,
+            newFolderPathText.GetPreferredValues(newFolderPathText.text, width, 0).y
+        );
+        float helpHeight = Mathf.Max(48, helpText.GetPreferredValues(helpText.text, width, 0).y);
+        float errorHeight = Mathf.Max(
+            48,
+            dialogError.GetPreferredValues(dialogError.text, width, 0).y
+        );
+        UILayout.SetSourceRect(
+            newFolderPathText.rectTransform,
+            28,
+            370,
+            Mathf.RoundToInt(width),
+            Mathf.CeilToInt(pathHeight)
+        );
+        int helpTop = Mathf.CeilToInt(378 + pathHeight);
+        UILayout.SetSourceRect(
+            helpText.rectTransform,
+            28,
+            helpTop,
+            Mathf.RoundToInt(width),
+            Mathf.CeilToInt(helpHeight)
+        );
+        int errorTop = Mathf.CeilToInt(helpTop + helpHeight + 6);
+        UILayout.SetSourceRect(
+            dialogError.rectTransform,
+            28,
+            errorTop,
+            Mathf.RoundToInt(width),
+            Mathf.CeilToInt(errorHeight)
+        );
+        int buttonTop = Mathf.CeilToInt(errorTop + errorHeight + 8);
+        UILayout.SetSourceRect(
+            (RectTransform)dialogConfirmButton.transform,
+            444,
+            buttonTop,
+            168,
+            36
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)dialogCancelButton.transform,
+            322,
+            buttonTop,
+            110,
+            36
+        );
+        panel.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, buttonTop + 64);
+    }
 
     /// <summary>
     /// Displays the parent folder chosen by the application's native file picker.
@@ -217,6 +282,7 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
             && !string.IsNullOrWhiteSpace(newIDInput.text)
             && !string.IsNullOrWhiteSpace(newVersionInput.text)
             && !string.IsNullOrWhiteSpace(newFolderInput.text);
+        LayoutContent();
     }
 
     /// <summary>

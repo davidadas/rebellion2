@@ -26,6 +26,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Button importButton;
 
     [SerializeField]
+    private Button revertButton;
+
+    [SerializeField]
     private TMP_Dropdown choiceDropdown;
 
     [SerializeField]
@@ -41,6 +44,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Action<ContentPackEditorField, string> previewRequested;
     private bool bound;
     private bool rendering;
+    private float lastLabelWidth;
     private IReadOnlyList<string> choiceValues = Array.Empty<string>();
     private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
 
@@ -48,14 +52,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
     public event Action<ContentPackEditorField> ValidationRequested;
 
-    public int Height =>
-        field == null ? 56
-        : field.IsMediaDirectory ? (field.IsList ? 160 : 96)
-        : field.IsList
-        && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
-            ? Math.Max(56, choiceValues.Count * 32 + 20)
-        : field.IsMultiline || field.IsList ? 152
-        : 56;
+    public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
 
     public bool HasError => error != null && !string.IsNullOrEmpty(error.text);
     public bool HasOpenChoice => choiceDropdown.IsExpanded;
@@ -117,7 +114,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 )
                 : 0;
         float labelExtra = Mathf.Max(0, labelHeight - 32) * 0.5f;
-        int height = Mathf.Max(Mathf.CeilToInt(bounds.height + labelExtra), labelHeight + 24);
+        lastLabelWidth = labelWidth;
+        int height = Mathf.Max(
+            Mathf.CeilToInt(
+                (bounds.height > 0 ? bounds.height : PreferredHeight(bounds.width, labelWidth))
+                    + labelExtra
+            ),
+            labelHeight + 24
+        );
         bool multiline = field.IsMultiline || field.IsList && input.gameObject.activeSelf;
         if (multiline && input.gameObject.activeSelf && !field.IsMediaDirectory)
         {
@@ -127,7 +131,22 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 .y;
             height = Mathf.Max(height, Mathf.CeilToInt(textHeight + labelExtra + 52));
         }
-        bounds.height = height;
+        int bodyHeight = height;
+        int errorHeight = HasError
+            ? Mathf.Max(
+                32,
+                Mathf.CeilToInt(
+                    error
+                        .GetPreferredValues(
+                            error.text,
+                            Mathf.Max(1, bounds.width - valueLeft - 88),
+                            float.PositiveInfinity
+                        )
+                        .y
+                )
+            )
+            : 0;
+        bounds.height = height + (HasError ? errorHeight + 8 : 0);
         RectTransform root = (RectTransform)transform;
         UILayout.SetSourceRect(
             root,
@@ -157,7 +176,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         float valueTop = stackedMedia ? 0 : 4 + labelExtra;
         float valueHeight =
             field.IsMediaDirectory ? (field.IsList ? 96 : 32)
-            : multiline ? bounds.height - valueTop - 20
+            : multiline ? bodyHeight - valueTop - 20
             : 32;
         RectTransform value = (RectTransform)input.transform;
         value.anchorMin = new Vector2(0, 1);
@@ -168,6 +187,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? -190 : -8,
             -valueTop
         );
+        if (field.IsNumber && !multiline)
+        {
+            value.anchorMin = value.anchorMax = value.pivot = Vector2.up;
+            value.anchoredPosition = new Vector2(valueLeft, -valueTop);
+            value.sizeDelta = new Vector2(
+                Mathf.Min(120, Mathf.Max(1, bounds.width - valueLeft - 8)),
+                valueHeight
+            );
+        }
         input.textComponent.alignment =
             multiline ? TextAlignmentOptions.TopLeft
             : field.IsNumber ? TextAlignmentOptions.MidlineRight
@@ -178,7 +206,24 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         float choiceTop = field.IsMediaDirectory ? (field.IsList ? 104 : 40) + valueTop : valueTop;
         choice.offsetMin = new Vector2(valueLeft, -choiceTop - 32);
         choice.offsetMax = new Vector2(field.IsMediaDirectory ? -104 : -8, -choiceTop);
-        error.rectTransform.offsetMin = new Vector2(valueLeft, 0);
+        revertButton.gameObject.SetActive(HasError);
+        if (HasError)
+        {
+            UILayout.SetSourceRect(
+                error.rectTransform,
+                Mathf.RoundToInt(valueLeft),
+                bodyHeight - 8,
+                Mathf.Max(1, Mathf.RoundToInt(bounds.width - valueLeft - 88)),
+                errorHeight
+            );
+            UILayout.SetSourceRect(
+                (RectTransform)revertButton.transform,
+                Mathf.RoundToInt(bounds.width - 76),
+                bodyHeight - 8,
+                68,
+                32
+            );
+        }
         UILayout.SetSourceRect(
             (RectTransform)checkbox.transform,
             Mathf.RoundToInt(valueLeft),
@@ -187,20 +232,22 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             24
         );
         checkbox.GetComponentInChildren<TextMeshProUGUI>(true).text = string.Empty;
+        int columns = ChoiceColumns(bounds.width, labelWidth);
+        float choiceWidth = (bounds.width - valueLeft - 8) / columns;
         for (int i = 0; i < choices.Count; i++)
             UILayout.SetSourceRect(
                 (RectTransform)choices[i].transform,
-                Mathf.RoundToInt(valueLeft),
-                Mathf.RoundToInt(valueTop + 4) + i * 32,
-                Mathf.RoundToInt(bounds.width - labelWidth - 8),
+                Mathf.RoundToInt(valueLeft + i % columns * choiceWidth),
+                Mathf.RoundToInt(valueTop + 4) + i / columns * 32,
+                Mathf.RoundToInt(choiceWidth - 8),
                 24
             );
         if (stackedMedia)
         {
             RectTransform preview = (RectTransform)previewButton.transform;
             RectTransform import = (RectTransform)importButton.transform;
-            UILayout.SetSourceRect(preview, 0, Mathf.RoundToInt(bounds.height - 54), 90, 32);
-            UILayout.SetSourceRect(import, 100, Mathf.RoundToInt(bounds.height - 54), 90, 32);
+            UILayout.SetSourceRect(preview, 0, bodyHeight - 54, 90, 32);
+            UILayout.SetSourceRect(import, 100, bodyHeight - 54, 90, 32);
         }
         else
         {
@@ -215,7 +262,63 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             import.anchoredPosition = new Vector2(-4, -valueTop);
             import.sizeDelta = new Vector2(86, 32);
         }
-        return height;
+        return Mathf.CeilToInt(bounds.height);
+    }
+
+    /// <summary>
+    /// Measures the field's content at its actual available width before placing a row.
+    /// </summary>
+    /// <param name="width">The full row width.</param>
+    /// <param name="labelWidth">The caption column width.</param>
+    /// <returns>The unadorned field height.</returns>
+    private int PreferredHeight(float width, float labelWidth) =>
+        field == null ? 56
+        : field.IsMediaDirectory ? (field.IsList ? 160 : 96)
+        : field.IsList
+        && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
+            ? Math.Max(
+                56,
+                Mathf.CeilToInt((float)choiceValues.Count / ChoiceColumns(width, labelWidth)) * 32
+                    + 20
+            )
+        : field.IsMultiline || field.IsList ? 152
+        : 56;
+
+    /// <summary>
+    /// Packs set-valued choices into columns wide enough for their actual captions.
+    /// </summary>
+    /// <param name="width">The complete row width.</param>
+    /// <param name="labelWidth">The reserved caption width.</param>
+    /// <returns>The number of readable choice columns.</returns>
+    private int ChoiceColumns(float width, float labelWidth)
+    {
+        float minimum = Mathf.Max(
+            180,
+            choices
+                .Where(choice => choice.gameObject.activeSelf)
+                .Select(choice => choice.GetComponentInChildren<TMP_Text>().preferredWidth + 40)
+                .DefaultIfEmpty(180)
+                .Max()
+        );
+        return Mathf.Clamp(
+            Mathf.FloorToInt((width - Mathf.Max(4, labelWidth) - 8) / minimum),
+            1,
+            4
+        );
+    }
+
+    /// <summary>
+    /// Restores the last accepted value without undoing other project changes.
+    /// </summary>
+    public void RevertDraft()
+    {
+        if (field == null)
+            return;
+        input.SetTextWithoutNotify(field.IsList ? string.Join("\n", field.Values) : field.Value);
+        input.GetComponent<TextInputHistory>()?.ClearHistory();
+        error.text = string.Empty;
+        revertButton.gameObject.SetActive(false);
+        changed?.Invoke();
     }
 
     /// <summary>
@@ -239,11 +342,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             || checkbox == null
             || error == null
             || importButton == null
+            || revertButton == null
             || choiceDropdown == null
             || previewButton == null
             || help == null
         )
             throw new MissingReferenceException(name + " has incomplete field references.");
+        revertButton.onClick.AddListener(RevertDraft);
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
         importButton.onClick.AddListener(() => importRequested?.Invoke(field));
@@ -261,6 +366,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (revertButton != null)
+            revertButton.onClick.RemoveListener(RevertDraft);
         if (bound)
             checkbox.ValueChanged -= ApplyBoolean;
     }
@@ -304,6 +411,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
             label.text = field.Caption;
             error.text = string.Empty;
+            revertButton.gameObject.SetActive(false);
             importButton.gameObject.SetActive(field.IsMedia && !field.IsMediaDirectory);
             previewButton.gameObject.SetActive(
                 field.MediaType
@@ -341,7 +449,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             {
                 choiceDropdown.ClearOptions();
                 choiceDropdown.AddOptions(
-                    choiceValues.Select(ContentPackEditorField.FormatName).ToList()
+                    choiceValues
+                        .Select(choice =>
+                            referenceLabels == null ? ContentPackEditorField.FormatName(choice)
+                            : referenceLabels.TryGetValue(choice, out string caption) ? caption
+                            : "Missing: " + choice
+                        )
+                        .ToList()
                 );
                 choiceDropdown.SetValueWithoutNotify(
                     Array.IndexOf(choiceValues.ToArray(), field.Value)
@@ -450,16 +564,23 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (field != null && input.gameObject.activeSelf)
             ApplyText(input.text);
-        else if (field != null)
-            try
-            {
-                ValidationRequested?.Invoke(field);
-                error.text = string.Empty;
-            }
-            catch (ArgumentException exception)
-            {
-                ShowError(exception);
-            }
+    }
+
+    /// <summary>
+    /// Validates the accepted value for an explicit validation or save operation.
+    /// </summary>
+    public void ValidateCurrent()
+    {
+        try
+        {
+            ValidationRequested?.Invoke(field);
+            error.text = string.Empty;
+            revertButton.gameObject.SetActive(false);
+        }
+        catch (ArgumentException exception)
+        {
+            ShowError(exception);
+        }
     }
 
     /// <summary>
@@ -475,8 +596,11 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             bool modified = text != (field.IsList ? string.Join("\n", field.Values) : field.Value);
             if (!modified)
             {
-                ValidationRequested?.Invoke(field);
+                bool hadError = HasError;
                 error.text = string.Empty;
+                revertButton.gameObject.SetActive(false);
+                if (hadError)
+                    changed?.Invoke();
                 return;
             }
             if (field.IsList)
@@ -579,6 +703,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         if (error.text != message)
             ValidationFailed?.Invoke(field.Name + ": " + message);
         error.text = message;
+        revertButton.gameObject.SetActive(true);
+        changed?.Invoke();
     }
 
     /// <summary>
@@ -591,6 +717,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         Commit();
         if (HasError)
             return;
+        try
+        {
+            ValidationRequested?.Invoke(field);
+        }
+        catch (ArgumentException exception)
+        {
+            ShowError(exception);
+            return;
+        }
         if (field.IsMediaDirectory)
         {
             string selected = mediaFiles.ElementAtOrDefault(choiceDropdown.value);

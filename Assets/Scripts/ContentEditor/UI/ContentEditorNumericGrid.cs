@@ -10,7 +10,9 @@ public sealed class ContentEditorNumericGrid
 {
     private readonly Dictionary<(int Score, int Column), ContentPackEditorField> cells = new();
     public IReadOnlyList<string> Columns { get; }
-    public IReadOnlyList<int> Scores { get; }
+    private readonly List<int> scores = new();
+    private readonly (ContentPackEditorRecord Record, XElement Table)[] tables;
+    public IReadOnlyList<int> Scores => scores;
     public IReadOnlyList<ContentPackEditorField> Settings { get; }
     public bool IsProbability { get; }
 
@@ -24,7 +26,7 @@ public sealed class ContentEditorNumericGrid
         string missionID = null
     )
     {
-        var tables = fields
+        tables = fields
             .SelectMany(field =>
                 field
                     .XmlElement.AncestorsAndSelf()
@@ -51,13 +53,13 @@ public sealed class ContentEditorNumericGrid
                     : ContentPackEditorField.FormatName(table.Table.Name.LocalName)
             )
             .ToArray();
-        SortedSet<int> scores = new();
+        SortedSet<int> thresholds = new();
         foreach (var table in tables)
         foreach (XElement entry in table.Table.Elements("Entry"))
-            scores.Add(int.Parse(entry.Element("Key").Value, CultureInfo.InvariantCulture));
-        if (tables.Length > 0 && scores.Count == 0)
-            scores.Add(0);
-        Scores = scores.ToArray();
+            thresholds.Add(int.Parse(entry.Element("Key").Value, CultureInfo.InvariantCulture));
+        if (tables.Length > 0 && thresholds.Count == 0)
+            thresholds.Add(0);
+        scores.AddRange(thresholds);
         for (int column = 0; column < tables.Length; column++)
             foreach (int score in Scores)
                 cells.Add(
@@ -80,6 +82,42 @@ public sealed class ContentEditorNumericGrid
     /// <returns>The editable field, or null when the coordinates are outside the grid.</returns>
     public ContentPackEditorField GetCell(int score, int column) =>
         cells.TryGetValue((score, column), out var field) ? field : null;
+
+    /// <summary>
+    /// Adds a detached editable row, leaving authored tables untouched until a cell is filled.
+    /// </summary>
+    /// <param name="score">The new threshold.</param>
+    /// <returns>Whether a new row was added.</returns>
+    public bool AddScore(int score)
+    {
+        if (scores.Contains(score))
+            return false;
+        scores.Add(score);
+        scores.Sort();
+        for (int column = 0; column < tables.Length; column++)
+            cells.Add(
+                (score, column),
+                CreateCell(tables[column].Record, tables[column].Table, score, Columns[column])
+            );
+        return true;
+    }
+
+    /// <summary>
+    /// Gets only authored values for a curve, retaining the runtime threshold ordering.
+    /// </summary>
+    /// <param name="column">The curve column.</param>
+    /// <returns>The ordered threshold and value pairs.</returns>
+    public IReadOnlyList<KeyValuePair<int, int>> GetEntries(int column) =>
+        scores
+            .Select(score => new { Score = score, Value = GetCell(score, column)?.Value })
+            .Where(cell =>
+                int.TryParse(cell.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _)
+            )
+            .Select(cell => new KeyValuePair<int, int>(
+                cell.Score,
+                int.Parse(cell.Value, CultureInfo.InvariantCulture)
+            ))
+            .ToArray();
 
     /// <summary>
     /// Binds an optional dictionary entry to the ordinary validated project field contract.

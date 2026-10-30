@@ -180,7 +180,7 @@ public sealed class ContentPackEditorProject
         if (field.IsTraitReference && nonempty.Any(value => !traits.ContainsKey(value)))
             throw new ArgumentException("Choose a listed trait.");
         if (
-            field.MemberName == "DisallowedMissionTypeIDs"
+            field.MemberName is "DisallowedMissionTypeIDs" or "AllowedMissionTypeIDs"
             && nonempty.Any(value => !ContentPackEditorFieldSchema.MissionIDs.Contains(value))
         )
             throw new ArgumentException("Choose a listed mission.");
@@ -188,7 +188,9 @@ public sealed class ContentPackEditorProject
             field.IsIdentity
             && nonempty.Any(value => value != field.Value)
             && GetCatalogs()
-                .SelectMany(catalog => catalog.Records)
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(record => record.Planets))
+                )
                 .Where(record => record.Element != field.Record.Element)
                 .SelectMany(record => ContentPackEditorCatalog.GetIdentityValues(record.Element))
                 .Any(nonempty.Contains)
@@ -274,6 +276,118 @@ public sealed class ContentPackEditorProject
                 record => ContentPackEditorField.FormatName(record.Name.Replace('-', ' ')),
                 StringComparer.Ordinal
             );
+
+    /// <summary>
+    /// Resolves named choices for supported references while retaining editable definition IDs and ordered lists.
+    /// </summary>
+    /// <param name="field">The authored member to present.</param>
+    /// <returns>Named reference choices, or null when the member is not a supported reference.</returns>
+    public IReadOnlyDictionary<string, string> GetReferenceOptions(ContentPackEditorField field)
+    {
+        if (field.IsFactionReference)
+            return GetFactionOptions();
+        if (field.IsTraitReference)
+            return GetTraitOptions();
+        if (field.IsList || field.IsIdentity)
+            return null;
+        if (field.MemberName is "ShipNamePoolID" or "FallbackNamePoolID")
+        {
+            Dictionary<string, string> pools = new(StringComparer.Ordinal)
+            {
+                [string.Empty] = "None",
+            };
+            string[] owners =
+                field
+                    .Record.Element.Element("ManufacturingFactionInstanceIDs")
+                    ?.Elements()
+                    .Select(id => id.Value)
+                    .ToArray()
+                ?? Array.Empty<string>();
+            foreach (
+                ContentPackEditorRecord faction in GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record =>
+                        record.Kind == "Faction"
+                        && record.Element.Element("InstanceID") != null
+                        && (
+                            field.MemberName == "FallbackNamePoolID"
+                                ? record.Element == field.Record.Element
+                                : owners.Length == 0
+                                    || owners.Contains(record.Element.Element("InstanceID").Value)
+                        )
+                    )
+            )
+            foreach (
+                XElement pool in faction.Element.Element("ShipNamePools")?.Elements()
+                    ?? Enumerable.Empty<XElement>()
+            )
+            {
+                string id = pool.Element("NamePoolID")?.Value;
+                if (!string.IsNullOrWhiteSpace(id))
+                    pools[id] = "Pool " + id + " (" + faction.Name + ")";
+            }
+            return pools;
+        }
+        string kind = field.MemberName switch
+        {
+            "HQInstanceID" => "Planet",
+            "GarrisonTroopTypeID" => "Regiment",
+            "MineTypeID" => "Building",
+            "OfficerInstanceID" => "Officer",
+            "PlanetTypeID" or "DestinationTypeID" => "Planet",
+            "OwnerInstanceID" or "FactionInstanceID" or "FactionID" => "Faction",
+            "TypeID" when field.Record.Kind == "GameGenerationConfig" => field
+                .XmlElement
+                .Parent
+                ?.Name
+                .LocalName switch
+            {
+                "WeightedFacilityEntry" => "Building",
+                "FixedFleetShip" => "CapitalShip",
+                "UnitEntry" => "Unit",
+                _ => null,
+            },
+            _ => null,
+        };
+        if (kind == null)
+            return null;
+        Dictionary<string, string> result = new(StringComparer.Ordinal) { [string.Empty] = "None" };
+        if (kind == "Faction")
+        {
+            foreach (var option in GetFactionOptions())
+                result[option.Key] = option.Value;
+            return result;
+        }
+        bool instance = field.MemberName is "HQInstanceID" or "OfficerInstanceID";
+        foreach (
+            ContentPackEditorRecord record in GetCatalogs()
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .Where(record =>
+                    kind == "Unit"
+                        ? record.Kind
+                            is "Regiment"
+                                or "SpecialForce"
+                                or "Starfighter"
+                                or "CapitalShip"
+                        : record.Kind == kind
+                )
+                .OrderBy(record => record.Name, StringComparer.Ordinal)
+        )
+        {
+            string id = instance ? record.Element.Element("InstanceID")?.Value : record.ID;
+            if (!string.IsNullOrWhiteSpace(id))
+                result[id] = record.Name + " (" + id + ")";
+        }
+        if (
+            field.MemberName == "DestinationTypeID"
+            || field.MemberName == "PlanetTypeID"
+                && field.XmlElement.Parent?.Name.LocalName is "HQFacilityLoadout" or "FixedFleet"
+        )
+            result[Rebellion.Game.GameGenerationConfig.FactionHqSentinel] = "Faction headquarters";
+        return result;
+    }
 
     /// <summary>
     /// Enumerates the inherited and local files available to a directory media field.
@@ -536,6 +650,51 @@ public sealed class ContentPackEditorProject
             throw new ArgumentOutOfRangeException(nameof(type));
         using (BeginEdit("Add starting message"))
             return faction.Catalog.AddFactionMessage(faction, type);
+    }
+
+    /// <summary>
+    /// Adds an empty ship-name pool without copying any existing names.
+    /// </summary>
+    /// <param name="faction">The project-owned faction.</param>
+    /// <returns>The identifier field to focus in the new pool.</returns>
+    public ContentPackEditorField AddFactionNamePool(ContentPackEditorRecord faction)
+    {
+        RequireOwnedRecord(faction);
+        using (BeginEdit("Add ship name pool"))
+            return faction.Catalog.AddFactionNamePool(faction);
+    }
+
+    /// <summary>
+    /// Clears a set of owned fields after validating every proposed change, preserving one undo step.
+    /// </summary>
+    /// <param name="fields">The fields to clear.</param>
+    public void ClearFields(IReadOnlyList<ContentPackEditorField> fields)
+    {
+        foreach (ContentPackEditorField field in fields)
+        {
+            RequireOwnedRecord(field.Record);
+            ValidateFieldValues(field, new[] { string.Empty });
+        }
+        if (fields.All(field => string.IsNullOrEmpty(field.Value)))
+            return;
+        using (BeginEdit("Clear fields"))
+            foreach (
+                ContentPackEditorField field in fields.Where(field =>
+                    !string.IsNullOrEmpty(field.Value)
+                )
+            )
+                SetField(field, string.Empty);
+    }
+
+    /// <summary>
+    /// Removes one starting message as a single reversible edit.
+    /// </summary>
+    /// <param name="title">The title field identifying the message.</param>
+    public void RemoveFactionMessage(ContentPackEditorField title)
+    {
+        RequireOwnedRecord(title.Record);
+        using (BeginEdit("Delete starting message"))
+            title.Record.Catalog.RemoveFactionMessage(title);
     }
 
     /// <summary>

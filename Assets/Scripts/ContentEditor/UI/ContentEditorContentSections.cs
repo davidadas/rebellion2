@@ -27,6 +27,7 @@ internal static class ContentEditorContentSections
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionArtworkField(field) ? "Artwork"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
+        : field.MemberName == "DisallowedMissionTypeIDs" ? "Rules"
         : field.Group switch
         {
             "Settings" => "Rules",

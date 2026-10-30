@@ -68,7 +68,8 @@ public sealed class ContentPackEditorField
             ?.Name.LocalName
         ?? MemberName;
     public IReadOnlyList<string> Choices =>
-        MemberName == "DisallowedMissionTypeIDs" ? ContentPackEditorFieldSchema.MissionIDs
+        MemberName is "DisallowedMissionTypeIDs" or "AllowedMissionTypeIDs"
+            ? ContentPackEditorFieldSchema.MissionIDs
         : (list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType)?.IsEnum == true
             ? Enum.GetNames(list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType)
         : Array.Empty<string>();

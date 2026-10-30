@@ -56,6 +56,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private TMP_InputField searchInput;
 
     [SerializeField]
+    private Button clearSearchButton;
+    private float inspectorTop = 136;
+
+    [SerializeField]
     private ScrollAreaLayout recordScroll;
 
     [SerializeField]
@@ -195,6 +199,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal event Action<ContentPackEditorCatalog, Vector2Int> AddSectorRequested;
     internal event Action<ContentPackEditorRecord, Vector2Int> AddPlanetRequested;
     internal event Action<ContentPackEditorRecord, MessageType> AddMessageRequested;
+    internal event Action<ContentPackEditorRecord> AddNamePoolRequested;
+    internal event Action<ContentPackEditorField> RemoveMessageRequested;
+    internal event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     internal event Action<ContentPackEditorRecord> DeleteRequested;
     internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
     internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
@@ -319,6 +326,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || menuHeadings.Any(heading => heading == null)
             || appearance == null
             || searchInput == null
+            || clearSearchButton == null
             || recordScroll == null
             || recordTemplate == null
             || duplicateButton == null
@@ -366,7 +374,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             heading.Hovered += HoverMenu;
         newPackButton.onClick.AddListener(ShowNewPackDialog);
         openPackButton.onClick.AddListener(RequestOpenPack);
-        searchInput.onValueChanged.AddListener(_ => RenderRecords(revealSelection: false));
+        searchInput.onValueChanged.AddListener(HandleSearchChanged);
+        clearSearchButton.onClick.AddListener(ClearSearch);
         propertiesTab.onClick.AddListener(() => ShowSection("General"));
         artworkTab.onClick.AddListener(() => ShowSection("Artwork"));
         audioTab.onClick.AddListener(() => ShowSection("Audio"));
@@ -382,6 +391,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             generationTabs[index].onClick.AddListener(() => ShowSection(caption));
         }
         form.AddMessageRequested += ShowAddMessageMenu;
+        form.AddNamePoolRequested += RequestNamePool;
+        form.RemoveMessageRequested += ConfirmRemoveMessage;
+        form.ClearFieldsRequested += ForwardClearFields;
         form.Changed += HandleFieldChanged;
         form.FieldSubmitted += SubmitField;
         form.FieldValidationRequested += ValidateField;
@@ -448,6 +460,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             xml.ScopeRequested -= RequestXmlScope;
             form.WidthChanged -= HandleFieldAreaResize;
             form.AddMessageRequested -= ShowAddMessageMenu;
+            form.AddNamePoolRequested -= RequestNamePool;
+            form.RemoveMessageRequested -= ConfirmRemoveMessage;
+            form.ClearFieldsRequested -= ForwardClearFields;
             form.Changed -= HandleFieldChanged;
             form.FieldSubmitted -= SubmitField;
             form.FieldValidationRequested -= ValidateField;
@@ -534,6 +549,18 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || packDialog.TryCancel()
         )
             return true;
+        TMP_InputField focused = FocusedTextInput();
+        ContentEditorFieldView draft = focused?.GetComponentInParent<ContentEditorFieldView>();
+        if (draft?.HasError == true)
+        {
+            draft.RevertDraft();
+            return true;
+        }
+        if (!string.IsNullOrEmpty(searchInput.text) && (focused == null || focused == searchInput))
+        {
+            ClearSearch();
+            return true;
+        }
         if (!notice.activeSelf)
             return false;
         notice.SetActive(false);
@@ -674,7 +701,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return;
         recordTitle.text =
             selectedRecord.Kind == "GameGenerationConfig"
-                ? "Game generation"
+                ? "Starting setup"
                 : selectedPage?.Caption ?? selectedRecord.Name;
         string kind =
             selectedPage?.MissionID != null ? "Mission"
@@ -697,9 +724,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Commits pending edits and rejects operations while a field remains invalid.
+    /// Commits pending edits and rejects operations while an invalid draft remains.
     /// </summary>
-    /// <returns>True when the current form contains no invalid values.</returns>
+    /// <returns>True when the current form contains no rejected drafts.</returns>
     public bool CommitFields()
     {
         if (selectedRecord != null && xml.HasDraft)
@@ -709,6 +736,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         return form.Commit();
     }
+
+    /// <summary>
+    /// Commits drafts and validates visible accepted fields for an explicit save operation.
+    /// </summary>
+    /// <returns>Whether the current form can be saved.</returns>
+    public bool ValidateFields() => CommitFields() && form.Validate();
 
     /// <summary>
     /// Enables or disables authoring input while keeping operation status visible.
@@ -906,6 +939,21 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Keeps the clear action synchronized with the current navigation filter.
+    /// </summary>
+    /// <param name="text">The entered filter.</param>
+    private void HandleSearchChanged(string text) => RenderRecords(revealSelection: false);
+
+    /// <summary>
+    /// Removes the navigation filter and reveals the selected entry in its hierarchy.
+    /// </summary>
+    private void ClearSearch()
+    {
+        searchInput.SetTextWithoutNotify(string.Empty);
+        RenderRecords();
+    }
+
+    /// <summary>
     /// Expands a disclosure control without changing the selected entry.
     /// </summary>
     /// <param name="node">The branch to expand or collapse.</param>
@@ -923,6 +971,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (project == null)
             return;
+        bool filtered = !string.IsNullOrEmpty(searchInput.text);
+        clearSearchButton.gameObject.SetActive(filtered);
+        searchInput.textViewport.offsetMax = new Vector2(
+            filtered ? -62 : -8,
+            searchInput.textViewport.offsetMax.y
+        );
         float scrollOffset = recordScroll.ScrollArea.ContentRoot.anchoredPosition.y;
         bool selectionWasVisible = navigation.GetRows(searchInput.text).Any(IsSelected);
         navigation.Render(catalogs);
@@ -1089,6 +1143,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             KeyCode.W => () => CloseRequested?.Invoke(),
             KeyCode.Equals or KeyCode.Plus or KeyCode.KeypadPlus => () => ZoomContent(0.1f),
             KeyCode.Minus or KeyCode.KeypadMinus => () => ZoomContent(-0.1f),
+            KeyCode.Alpha0 or KeyCode.Keypad0 => () => ZoomContent(1 - workbenchLayout.Zoom),
             _ => null,
         };
         if (action == null)
@@ -1118,6 +1173,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                         "Zoom out",
                         () => ZoomContent(-0.1f),
                         shortcut: ShortcutModifier + "+Minus"
+                    ),
+                    new ContentEditorMenuCommand(
+                        "Actual size (100%)",
+                        () => ZoomContent(1 - workbenchLayout.Zoom),
+                        shortcut: ShortcutModifier + "+0"
                     ),
                 }
             ),
@@ -1396,7 +1456,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     && selectedPage.Fields.Any(field => field.Record.Kind == "GameConfig")
         );
         shipNamesTab.gameObject.SetActive(
-            faction && selectedPage.Fields.Any(field => field.Group == "ShipNamePools")
+            faction
+                && selectedPage.RelatedRecords.Any(record =>
+                    record.Kind == "Faction" && record.Element.Element("InstanceID") != null
+                )
         );
         factionMessagesTab.gameObject.SetActive(
             faction
@@ -1446,23 +1509,23 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 .Any(index => tabs[index].gameObject.activeSelf && names[index] == section)
         )
             SectionRequested?.Invoke(names[0]);
-        float width = Mathf.Min(
-            140,
-            tabRoot.rect.width / tabs.Count(tab => tab.gameObject.activeSelf)
-        );
-        int x = 0;
+        List<(RectTransform Rect, float Width)> layout = new();
         for (int i = 0; i < tabs.Length; i++)
         {
             if (!tabs[i].gameObject.activeSelf)
                 continue;
-            ((RectTransform)tabs[i].transform).anchoredPosition = new Vector2(x, 0);
-            ((RectTransform)tabs[i].transform).SetSizeWithCurrentAnchors(
-                RectTransform.Axis.Horizontal,
-                width - 6
+            TMP_Text caption = tabs[i].GetComponentInChildren<TMP_Text>();
+            layout.Add(
+                (
+                    (RectTransform)tabs[i].transform,
+                    Mathf.Max(64, caption.GetPreferredValues(caption.text).x + 28)
+                )
             );
-            x += Mathf.FloorToInt(width);
             tabs[i].transform.Find("Selection").gameObject.SetActive(section == names[i]);
         }
+        inspectorTop = 102 + UILayout.ArrangeWrappingRow(layout, tabRoot.rect.width, 34, 6);
+        tabRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, inspectorTop - 102);
+        xml.SetHeaderOffset(inspectorTop);
     }
 
     /// <summary>
@@ -1484,12 +1547,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             rect.anchorMin = showMap ? Vector2.right : Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = showMap ? new Vector2(-propertiesWidth, 0) : Vector2.zero;
-            rect.offsetMax = new Vector2(0, -136);
-            ((RectTransform)map.transform).offsetMax = new Vector2(-propertiesWidth - 30, -136);
+            rect.offsetMax = new Vector2(0, -inspectorTop);
+            ((RectTransform)map.transform).offsetMax = new Vector2(
+                -propertiesWidth - 30,
+                -inspectorTop
+            );
             form.gameObject.SetActive(section != "Advanced");
         }
         if (rebind)
             textRedoTarget = null;
+        ((RectTransform)form.transform).offsetMax = new Vector2(0, -inspectorTop);
         form.Render(project, assets, selectedRecord, selectedPage, section, rebind);
     }
 
@@ -1767,6 +1834,40 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             confirmed,
             title: "Warning"
         );
+
+    /// <summary>
+    /// Requests an atomic clear through the workspace's project owner.
+    /// </summary>
+    /// <param name="fields">The fields belonging to the selected table row.</param>
+    private void ForwardClearFields(IReadOnlyList<ContentPackEditorField> fields) =>
+        ClearFieldsRequested?.Invoke(fields);
+
+    /// <summary>
+    /// Requests an empty name pool for the faction represented by the current combined page.
+    /// </summary>
+    private void RequestNamePool()
+    {
+        if (CommitFields())
+            AddNamePoolRequested?.Invoke(
+                selectedPage.RelatedRecords.First(record =>
+                    record.Kind == "Faction" && record.Element.Element("InstanceID") != null
+                )
+            );
+    }
+
+    /// <summary>
+    /// Confirms deletion of one starting message independently of the faction definition.
+    /// </summary>
+    /// <param name="title">The selected message's title field.</param>
+    private void ConfirmRemoveMessage(ContentPackEditorField title)
+    {
+        if (CommitFields())
+            confirmation.Show(
+                "Delete starting message \"" + title.Value + "\"?",
+                "Delete message",
+                () => RemoveMessageRequested?.Invoke(title)
+            );
+    }
 
     /// <summary>
     /// Offers the game's message categories for a new starting faction message.

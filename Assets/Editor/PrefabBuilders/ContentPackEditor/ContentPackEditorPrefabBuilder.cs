@@ -140,6 +140,13 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorRecordRowView row = BuildRecordRow(list.ScrollArea.ContentRoot);
         row.gameObject.SetActive(false);
         Assign(view, "searchInput", search);
+        Button clearSearch = PlainButton("ClearSearch", search.transform, "Clear");
+        RectTransform clearRect = (RectTransform)clearSearch.transform;
+        clearRect.anchorMin = clearRect.anchorMax = clearRect.pivot = Vector2.one;
+        clearRect.anchoredPosition = new Vector2(-4, -4);
+        clearRect.sizeDelta = new Vector2(54, 26);
+        clearSearch.gameObject.SetActive(false);
+        Assign(view, "clearSearchButton", clearSearch);
         Assign(view, "recordScroll", list);
         Assign(view, "recordTemplate", row);
         Button expand = PlainButton("ExpandAll", explorer, "Expand all");
@@ -309,6 +316,41 @@ public static class ContentPackEditorPrefabBuilder
         Rect((RectTransform)addMessage.transform, 0, 0, 190, 32);
         addMessage.gameObject.SetActive(false);
         Assign(form, "addMessageButton", addMessage);
+        TMP_Dropdown collection = Dropdown("CollectionSelection", fields.ScrollArea.ContentRoot);
+        collection.gameObject.SetActive(false);
+        Assign(form, "collectionDropdown", collection);
+        Button removeMessage = PlainButton(
+            "RemoveStartingMessage",
+            fields.ScrollArea.ContentRoot,
+            "Delete message"
+        );
+        removeMessage.gameObject.SetActive(false);
+        Assign(form, "removeMessageButton", removeMessage);
+        LineChartGraphic curve = Layer("ProbabilityCurve", fields.ScrollArea.ContentRoot)
+            .gameObject.AddComponent<LineChartGraphic>();
+        BindColor(curve, ContentEditorColorRole.Accent);
+        curve.raycastTarget = false;
+        curve.gameObject.SetActive(false);
+        Assign(form, "curveGraphic", curve);
+        TMP_Dropdown curves = Dropdown("CurveSelection", fields.ScrollArea.ContentRoot);
+        curves.gameObject.SetActive(false);
+        Assign(form, "curveDropdown", curves);
+        TMP_InputField score = Input("NewScore", fields.ScrollArea.ContentRoot, "New score");
+        score.contentType = TMP_InputField.ContentType.IntegerNumber;
+        score.gameObject.SetActive(false);
+        Assign(form, "scoreInput", score);
+        Button addScore = Button("AddScore", fields.ScrollArea.ContentRoot, "Add score");
+        addScore
+            .gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Add a threshold, then fill a cell to save its value.");
+        addScore.gameObject.SetActive(false);
+        Assign(form, "addScoreButton", addScore);
+        Button removeRow = PlainButton("RemoveScoreTemplate", fields.ScrollArea.ContentRoot, "-");
+        removeRow
+            .gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Remove this threshold from every column. Undo restores the row.");
+        removeRow.gameObject.SetActive(false);
+        Assign(form, "removeRowTemplate", removeRow);
         Assign(form, "fieldTemplate", fieldTemplate);
         TextMeshProUGUI group = Label(
             "GroupTemplate",
@@ -423,6 +465,9 @@ public static class ContentPackEditorPrefabBuilder
         Stretch(thumbnail.rectTransform);
         TextMeshProUGUI title = Label("Name", root, "Officer", 14);
         Stretch(title.rectTransform, 64, 0, 8, 0);
+        OverflowTextTooltip overflow = title.gameObject.AddComponent<OverflowTextTooltip>();
+        overflow.Configure(title);
+        root.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(overflow);
         Assign(row, "hitArea", hit);
         Assign(row, "caption", title);
         Assign(row, "disclosure", arrow);
@@ -462,6 +507,11 @@ public static class ContentPackEditorPrefabBuilder
         UICheckboxView checkbox = Checkbox(root);
         Rect((RectTransform)checkbox.transform, 244, 12, 160, 28);
         TextMeshProUGUI error = Label("Error", root, string.Empty, 12);
+        Button revert = PlainButton("Revert", root, "Revert");
+        revert
+            .gameObject.AddComponent<HelpTooltipView>()
+            .Configure("Restore the last accepted value.");
+        revert.gameObject.SetActive(false);
         error.overflowMode = TextOverflowModes.Overflow;
         error.textWrappingMode = TextWrappingModes.Normal;
         error.color = new Color32(255, 127, 127, 255);
@@ -474,6 +524,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "checkbox", checkbox);
         Assign(field, "error", error);
         Assign(field, "importButton", import);
+        Assign(field, "revertButton", revert);
         Assign(field, "previewButton", preview);
         Assign(field, "choiceDropdown", choice);
         Assign(field, "help", HelpIcon(root));
@@ -695,6 +746,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(dialog, "newVersionInput", version);
         Assign(dialog, "newFolderInput", folder);
         Assign(dialog, "newFolderPathText", destination);
+        Assign(dialog, "helpText", help);
         Assign(dialog, "folderBrowseButton", browse);
         Assign(dialog, "packChoiceDropdown", pack);
         Assign(dialog, "dialogError", error);

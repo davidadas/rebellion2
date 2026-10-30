@@ -24,6 +24,7 @@ public sealed class ContentEditorXmlView : MonoBehaviour
 
     private IReadOnlyList<ContentEditorXmlScope> scopes = Array.Empty<ContentEditorXmlScope>();
     private bool bound;
+    private float headerOffset = 136;
     public event Action ApplyRequested;
     public event Action DiscardRequested;
     public event Action<int> ScopeRequested;
@@ -54,6 +55,7 @@ public sealed class ContentEditorXmlView : MonoBehaviour
         applyButton.onClick.AddListener(RequestApply);
         discardButton.onClick.AddListener(RequestDiscard);
         scopeDropdown.onValueChanged.AddListener(RequestScope);
+        input.onValueChanged.AddListener(HandleDraftChanged);
     }
 
     /// <summary>
@@ -66,6 +68,7 @@ public sealed class ContentEditorXmlView : MonoBehaviour
         applyButton.onClick.RemoveListener(RequestApply);
         discardButton.onClick.RemoveListener(RequestDiscard);
         scopeDropdown.onValueChanged.RemoveListener(RequestScope);
+        input.onValueChanged.RemoveListener(HandleDraftChanged);
     }
 
     /// <summary>
@@ -94,15 +97,41 @@ public sealed class ContentEditorXmlView : MonoBehaviour
         scopeDropdown.gameObject.SetActive(!eventConfiguration && scopes.Count > 1);
         ((RectTransform)input.transform).offsetMax = new Vector2(
             0,
-            eventConfiguration ? -88
-                : scopes.Count > 1 ? -178
-                : -136
+            eventConfiguration ? -88 : -(headerOffset + (scopes.Count > 1 ? 42 : 0))
         );
         input.gameObject.SetActive(true);
         applyButton.gameObject.SetActive(true);
         discardButton.gameObject.SetActive(true);
         gameObject.SetActive(true);
         ResetDraft();
+    }
+
+    /// <summary>
+    /// Keeps the editable block below all rows of the inspector's tab bar.
+    /// </summary>
+    /// <param name="offset">The bottom of the inspector header.</param>
+    public void SetHeaderOffset(float offset)
+    {
+        headerOffset = offset;
+        RectTransform selector = (RectTransform)scopeDropdown.transform;
+        selector.offsetMin = new Vector2(0, -offset - 32);
+        selector.offsetMax = new Vector2(0, -offset);
+        if (gameObject.activeSelf)
+            ((RectTransform)input.transform).offsetMax = new Vector2(
+                0,
+                -(offset + (scopes.Count > 1 ? 42 : 0))
+            );
+    }
+
+    /// <summary>
+    /// Enables draft actions only while an edited block differs from its accepted contents.
+    /// </summary>
+    /// <param name="text">The current XML draft.</param>
+    private void HandleDraftChanged(string text)
+    {
+        bool changed = text != (Scope?.Text ?? string.Empty);
+        applyButton.interactable = changed;
+        discardButton.interactable = changed;
     }
 
     /// <summary>
@@ -128,6 +157,7 @@ public sealed class ContentEditorXmlView : MonoBehaviour
     public void ResetDraft()
     {
         input.SetTextWithoutNotify(Scope?.Text ?? string.Empty);
+        HandleDraftChanged(input.text);
         input.GetComponent<TextInputHistory>()?.ClearHistory();
         if (!gameObject.activeInHierarchy)
             return;

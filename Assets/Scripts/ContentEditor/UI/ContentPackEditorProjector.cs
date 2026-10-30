@@ -49,9 +49,7 @@ internal static class ContentPackEditorProjector
     ) =>
         new ContentPackEditorFieldRenderData(
             field,
-            field.IsFactionReference ? project.GetFactionOptions()
-                : field.IsTraitReference ? project.GetTraitOptions()
-                : null,
+            project.GetReferenceOptions(field),
             () => project.GetMediaFiles(field)
         );
 

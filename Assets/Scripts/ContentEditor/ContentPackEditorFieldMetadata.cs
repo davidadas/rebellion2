@@ -19,6 +19,8 @@ internal static class ContentPackEditorFieldMetadata
             "Identifies this specific character, planet, or faction. Use a unique ID within the pack.",
         ["HQInstanceID"] = "The planet instance ID identifying this faction's headquarters.",
         ["DisallowedMissionTypeIDs"] = "Checked missions cannot be started by this faction.",
+        ["AllowedMissionTypeIDs"] =
+            "Checked missions can be performed by this special forces unit.",
         ["GarrisonTroopTypeID"] =
             "The regiment type used when this faction creates automatic garrisons.",
         ["RecruitingFactionInstanceIDs"] = "Factions allowed to recruit this officer.",
@@ -99,6 +101,17 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The help text, or an empty string for undocumented extensions.</returns>
     internal static string GetDescription(ContentPackEditorField field)
     {
+        if (
+            field.Record.Kind == "GameGenerationConfig"
+            && field.MemberName is "Random" or "Random1" or "Random2"
+        )
+            return "Adds an independent random amount from zero through this value, including both endpoints.";
+        if (field.Record.Kind == "GameGenerationConfig" && field.MemberName == "Base")
+            return "The starting amount before random additions and configured limits are applied.";
+        if (field.MemberName == "PersonnelTravelTimePercent")
+            return "Percentage of normal personnel travel time: 100 is unchanged; 50 halves the duration.";
+        if (field.MemberName == "LeadershipBonusPercent")
+            return "Percentage added to the officer's base leadership while the trait is active.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
             return text;
         if (field.MemberName.EndsWith("Variance", System.StringComparison.Ordinal))
@@ -121,6 +134,23 @@ internal static class ContentPackEditorFieldMetadata
         return field.MemberName switch
         {
             "DisallowedMissionTypeIDs" => "Disabled missions",
+            "AllowedMissionTypeIDs" => "Allowed missions",
+            "MineTypeID" => "Mine",
+            "RecruitingFactionInstanceIDs" => "Recruitable by",
+            "ManufacturingFactionInstanceIDs" => "Buildable by",
+            "GarrisonTroopTypeID" => "Garrison troop",
+            "OfficerInstanceID" => "Officer",
+            "PlanetTypeID" => "Planet",
+            "DestinationTypeID" => "Destination",
+            "FactionID" or "FactionInstanceID" => "Faction",
+            "OwnerInstanceID" => "Owner",
+            "IsMain" => "Main character",
+            "IsRecruitable" => "Recruitable",
+            "IsKnownJedi" => "Known Force user",
+            "IsJediTrainer" => "Can train Force users",
+            "SharesPersonnelTravelTimeModifier" => "Share travel modifier with companions",
+            "LeadershipBonusPercent" => "Leadership bonus (%)",
+            "PersonnelTravelTimePercent" => "Personnel travel time (%)",
             "NamePoolID" => "Pool ID",
             "FallbackNamePoolID" => "Fallback pool",
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
@@ -213,6 +243,8 @@ internal static class ContentPackEditorFieldMetadata
             return "Description";
         if (member is "PositionX" or "PositionY")
             return "Coordinates";
+        if (member is "ResearchOrder" or "ResearchDifficulty")
+            return "Production";
         if (
             member
             is "DisplayName"

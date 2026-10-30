@@ -442,7 +442,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (project == null)
             return;
-        if (!view.CommitFields())
+        if (!view.ValidateFields())
             throw new ArgumentException("Fix the highlighted fields before saving.");
         string previousBase = project.Definition.BasePackID;
         ContentPackEditorStorage.Save(project);
