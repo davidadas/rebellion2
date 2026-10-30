@@ -311,7 +311,13 @@ namespace Rebellion.Tests.AI.Planners
             );
             origin.IsHeadquarters = true;
             faction.HQInstanceID = origin.InstanceID;
-            AddBuilding(game, origin, "mobile-headquarters", BuildingType.Headquarters);
+            Building headquarters = AddBuilding(
+                game,
+                origin,
+                "mobile-headquarters",
+                BuildingType.Headquarters
+            );
+            faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             return origin;
         }
 

@@ -62,12 +62,12 @@ namespace Rebellion.Gameplay
                 .FirstOrDefault(candidate => candidate.InstanceID == factionInstanceId);
             if (faction?.Settings?.Headquarters?.IsMobile == true)
             {
-                return _game
-                    .GetSceneNodesByType<Building>()
-                    .Any(building =>
-                        building.TypeID == faction.Settings.Headquarters.FacilityTypeID
-                        && building.OwnerInstanceID == faction.InstanceID
-                    );
+                Building headquarters = _game.GetSceneNodeByInstanceID<Building>(
+                    faction.HeadquartersUnitInstanceID
+                );
+                return headquarters != null
+                    && headquarters.OwnerInstanceID == faction.InstanceID
+                    && !faction.HasLostHeadquarters;
             }
 
             return faction != null

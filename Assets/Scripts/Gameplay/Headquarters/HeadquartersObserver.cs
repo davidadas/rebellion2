@@ -43,8 +43,60 @@ namespace Rebellion.Gameplay
                 results.Subscribe<UnitArrivedResult>(HandleResults),
                 results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
                 results.Subscribe<GameObjectDestroyedResult>(HandleResults),
+                results.Subscribe<GameObjectScrappedResult>(HandleResults),
                 results.Subscribe<UnitOwnershipChangedResult>(HandleResults),
             };
+        }
+
+        /// <summary>
+        /// Restores the identity of mobile headquarters saved before unit identity was persisted.
+        /// </summary>
+        public void ReconcileState()
+        {
+            foreach (
+                Faction faction in _game
+                    .GetFactions()
+                    .Where(faction => faction?.Settings?.Headquarters?.IsMobile == true)
+            )
+            {
+                if (faction.HasLostHeadquarters)
+                    continue;
+
+                if (!string.IsNullOrEmpty(faction.HeadquartersUnitInstanceID))
+                {
+                    Building persistedHeadquarters = _game.GetSceneNodeByInstanceID<Building>(
+                        faction.HeadquartersUnitInstanceID
+                    );
+                    if (
+                        persistedHeadquarters == null
+                        || persistedHeadquarters.OwnerInstanceID != faction.InstanceID
+                    )
+                        MarkHeadquartersLost(faction, null);
+                    continue;
+                }
+
+                List<Building> candidates = _game
+                    .GetRegisteredSceneNodesByType<Building>(includeDisabled: true)
+                    .Where(building =>
+                        building.OwnerInstanceID == faction.InstanceID
+                        && MatchesMobileHeadquartersType(building, faction)
+                    )
+                    .ToList();
+                List<Building> locatedCandidates = candidates
+                    .Where(building =>
+                        string.IsNullOrEmpty(faction.HQInstanceID)
+                        || building.GetParentOfType<Planet>()?.InstanceID == faction.HQInstanceID
+                    )
+                    .ToList();
+                Building headquarters = locatedCandidates.Count == 1 ? locatedCandidates[0] : null;
+                if (headquarters == null)
+                {
+                    MarkHeadquartersLost(faction, null);
+                    continue;
+                }
+
+                faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
+            }
         }
 
         /// <summary>
@@ -111,6 +163,31 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Applies mobile headquarters destruction caused by intentional scrapping.
+        /// </summary>
+        /// <param name="results">The completed unit scrapping operations.</param>
+        /// <returns>The headquarters losses caused by the scrapping operations.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectScrappedResult> results)
+        {
+            List<GameResult> reactions = new();
+            foreach (
+                GameObjectScrappedResult result in results
+                    ?? Array.Empty<GameObjectScrappedResult>()
+            )
+            {
+                HeadquartersDestroyedResult destroyed = ApplyRemoval(
+                    result?.ScrappedObject as Building,
+                    result?.Context as Planet,
+                    null,
+                    result?.Tick ?? _game.CurrentTick
+                );
+                if (destroyed != null)
+                    reactions.Add(destroyed);
+            }
+            return reactions;
+        }
+
+        /// <summary>
         /// Applies mobile headquarters losses caused by direct unit ownership transfers.
         /// </summary>
         /// <param name="results">The completed unit ownership changes.</param>
@@ -140,8 +217,12 @@ namespace Rebellion.Gameplay
             if (headquarters?.BuildingType != BuildingType.Headquarters)
                 return;
 
-            Faction faction = _game.GetFactionByOwnerInstanceID(headquarters.OwnerInstanceID);
-            if (faction?.Settings?.Headquarters?.IsMobile != true || destination == null)
+            Faction faction = FindHeadquartersFaction(headquarters);
+            if (
+                faction is not { HasLostHeadquarters: false }
+                || headquarters.OwnerInstanceID != faction.InstanceID
+                || destination == null
+            )
                 return;
 
             Planet previous = _game.GetSceneNodeByInstanceID<Planet>(faction.HQInstanceID);
@@ -160,32 +241,47 @@ namespace Rebellion.Gameplay
         /// <returns>The headquarters destruction result, or null when the unit was not an active headquarters.</returns>
         private HeadquartersDestroyedResult ApplyDestruction(GameObjectDestroyedResult result)
         {
-            if (result?.DestroyedObject is not Building headquarters)
-                return null;
-
-            Faction owner = _game
-                .GetFactions()
-                .FirstOrDefault(faction =>
-                    faction.InstanceID == headquarters.OwnerInstanceID
-                    && IsMobileHeadquarters(headquarters, faction)
-                );
-            if (owner is not { HasLostHeadquarters: false })
-                return null;
-
-            Planet planet = result.Context as Planet ?? headquarters.GetParentOfType<Planet>();
-            MarkHeadquartersLost(owner, planet);
-            Faction attacker = result.DestroyedBy is ISceneNode destroyer
+            Faction attacker = result?.DestroyedBy is ISceneNode destroyer
                 ? _game
                     .GetFactions()
                     .FirstOrDefault(faction => faction.InstanceID == destroyer.GetOwnerInstanceID())
                 : null;
+            return ApplyRemoval(
+                result?.DestroyedObject as Building,
+                result?.Context as Planet,
+                attacker,
+                result?.Tick ?? _game.CurrentTick
+            );
+        }
+
+        /// <summary>
+        /// Marks the faction owning a specific mobile headquarters identity as having lost it.
+        /// </summary>
+        /// <param name="headquarters">The removed building.</param>
+        /// <param name="planet">The removal location, when available.</param>
+        /// <param name="attacker">The responsible opposing faction, when available.</param>
+        /// <param name="tick">The tick on which the removal occurred.</param>
+        /// <returns>The headquarters destruction result, or null when the building was not an active headquarters.</returns>
+        private HeadquartersDestroyedResult ApplyRemoval(
+            Building headquarters,
+            Planet planet,
+            Faction attacker,
+            int tick
+        )
+        {
+            Faction owner = FindHeadquartersFaction(headquarters);
+            if (owner is not { HasLostHeadquarters: false })
+                return null;
+
+            planet ??= headquarters.GetParentOfType<Planet>();
+            MarkHeadquartersLost(owner, planet);
             return new HeadquartersDestroyedResult
             {
                 Headquarters = headquarters,
                 Planet = planet,
                 Defender = owner,
                 Attacker = attacker,
-                Tick = result.Tick,
+                Tick = tick,
             };
         }
 
@@ -204,7 +300,7 @@ namespace Rebellion.Gameplay
                 || result.NewOwner == null
                 || result.PreviousOwner == result.NewOwner
                 || result.PreviousOwner.HasLostHeadquarters
-                || !IsMobileHeadquarters(headquarters, result.PreviousOwner)
+                || FindHeadquartersFaction(headquarters) != result.PreviousOwner
             )
                 return null;
 
@@ -220,12 +316,30 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Determines whether a building represents a faction's mobile headquarters.
+        /// Finds the faction whose persisted headquarters identity matches a building.
+        /// </summary>
+        /// <param name="building">The headquarters candidate.</param>
+        /// <returns>The matching mobile faction, or null.</returns>
+        private Faction FindHeadquartersFaction(Building building)
+        {
+            if (building == null)
+                return null;
+
+            return _game
+                .GetFactions()
+                .FirstOrDefault(faction =>
+                    faction?.Settings?.Headquarters?.IsMobile == true
+                    && faction.HeadquartersUnitInstanceID == building.InstanceID
+                );
+        }
+
+        /// <summary>
+        /// Determines whether a building has the configured type of a faction's mobile headquarters.
         /// </summary>
         /// <param name="building">The headquarters candidate.</param>
         /// <param name="faction">The faction whose configuration is evaluated.</param>
-        /// <returns>True when the building matches the faction's mobile headquarters.</returns>
-        private static bool IsMobileHeadquarters(Building building, Faction faction)
+        /// <returns>True when the building type matches the configured mobile headquarters.</returns>
+        private static bool MatchesMobileHeadquartersType(Building building, Faction faction)
         {
             return building?.BuildingType == BuildingType.Headquarters
                 && faction?.Settings?.Headquarters?.IsMobile == true
@@ -283,7 +397,9 @@ namespace Rebellion.Gameplay
 
             Building headquarters = planet
                 .GetChildren<Building>()
-                .SingleOrDefault(building => building.BuildingType == BuildingType.Headquarters);
+                .SingleOrDefault(building =>
+                    building.InstanceID == previousOwner.HeadquartersUnitInstanceID
+                );
             if (headquarters == null)
                 return;
 

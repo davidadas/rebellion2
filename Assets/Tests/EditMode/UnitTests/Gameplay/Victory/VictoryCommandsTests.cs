@@ -339,6 +339,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildingType = BuildingType.Headquarters,
             };
             game.AttachNode(thirdHeadquarters, thirdHeadquartersPlanet);
+            thirdFaction.HeadquartersUnitInstanceID = thirdHeadquarters.InstanceID;
             List<VictoryResult> published = new List<VictoryResult>();
             system.ResultsProduced += published.AddRange;
 

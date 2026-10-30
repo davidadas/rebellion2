@@ -136,6 +136,160 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(attacker, destroyed.Attacker);
         }
 
+        [Test]
+        public void HandleResults_OtherFactionHeadquartersDestroyed_PreservesOwnHeadquarters()
+        {
+            (GameRoot game, Faction first, Planet firstPlanet, _, Building firstHeadquarters) =
+                CreateGame(isMobile: true);
+            Faction second = new Faction
+            {
+                InstanceID = "second",
+                HQInstanceID = "second-planet",
+                Settings = new FactionSettings
+                {
+                    Headquarters = new HeadquartersSettings
+                    {
+                        FacilityTypeID = firstHeadquarters.TypeID,
+                        IsMobile = true,
+                    },
+                },
+            };
+            game.GetFactions().Add(second);
+            Planet secondPlanet = new Planet
+            {
+                InstanceID = second.HQInstanceID,
+                OwnerInstanceID = second.InstanceID,
+                IsColonized = true,
+                IsHeadquarters = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(secondPlanet, firstPlanet.GetParent());
+            Building secondHeadquarters = new Building
+            {
+                InstanceID = "second-headquarters",
+                TypeID = firstHeadquarters.TypeID,
+                OwnerInstanceID = second.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(secondHeadquarters, secondPlanet);
+            second.HeadquartersUnitInstanceID = secondHeadquarters.InstanceID;
+            HeadquartersObserver observer = new HeadquartersObserver(game);
+
+            game.ChangeOwnership(firstHeadquarters, second.InstanceID);
+            observer.HandleResults(
+                new[]
+                {
+                    new UnitOwnershipChangedResult
+                    {
+                        Unit = firstHeadquarters,
+                        PreviousOwner = first,
+                        NewOwner = second,
+                    },
+                }
+            );
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = firstHeadquarters,
+                        Context = firstPlanet,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsTrue(first.HasLostHeadquarters);
+            Assert.IsFalse(second.HasLostHeadquarters);
+            Assert.AreEqual(secondPlanet.InstanceID, second.HQInstanceID);
+            Assert.IsTrue(secondPlanet.IsHeadquarters);
+        }
+
+        [Test]
+        public void HandleResults_HeadquartersReturnedAfterLoss_DoesNotRestoreHeadquarters()
+        {
+            (GameRoot game, Faction faction, _, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            Faction attacker = new Faction { InstanceID = "attacker" };
+            game.GetFactions().Add(attacker);
+            HeadquartersObserver observer = new HeadquartersObserver(game);
+            game.ChangeOwnership(headquarters, attacker.InstanceID);
+            observer.HandleResults(
+                new[]
+                {
+                    new UnitOwnershipChangedResult
+                    {
+                        Unit = headquarters,
+                        PreviousOwner = faction,
+                        NewOwner = attacker,
+                    },
+                }
+            );
+
+            game.ChangeOwnership(headquarters, faction.InstanceID);
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new UnitOwnershipChangedResult
+                    {
+                        Unit = headquarters,
+                        PreviousOwner = attacker,
+                        NewOwner = faction,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_HeadquartersScrapped_RecordsHeadquartersLoss()
+        {
+            (GameRoot game, Faction faction, Planet origin, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new GameObjectScrappedResult
+                    {
+                        ScrappedObject = headquarters,
+                        Context = origin,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersDestroyedResult destroyed = results
+                .OfType<HeadquartersDestroyedResult>()
+                .Single();
+            Assert.AreSame(headquarters, destroyed.Headquarters);
+            Assert.AreSame(faction, destroyed.Defender);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+        }
+
+        [Test]
+        public void ReconcileState_LegacyHeadquartersInTransit_RestoresUnitIdentity()
+        {
+            (GameRoot game, Faction faction, _, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            faction.HeadquartersUnitInstanceID = null;
+            faction.HQInstanceID = null;
+            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+
+            new HeadquartersObserver(game).ReconcileState();
+
+            Assert.AreEqual(headquarters.InstanceID, faction.HeadquartersUnitInstanceID);
+            Assert.IsFalse(faction.HasLostHeadquarters);
+        }
+
         /// <summary>
         /// Creates a faction with headquarters and two registered planets.
         /// </summary>
@@ -189,6 +343,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(headquarters, origin);
+            faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             return (game, faction, origin, destination, headquarters);
         }
     }

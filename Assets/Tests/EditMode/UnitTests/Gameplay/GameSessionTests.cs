@@ -107,6 +107,7 @@ namespace Rebellion.Tests.Gameplay
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 _game.AttachNode(headquarters, _planet);
+                _faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             }
             Fleet fleet = EntityFactory.CreateFleet("destroyer-fleet", attacker.InstanceID);
             _game.AttachNode(fleet, _planet);
@@ -239,6 +240,26 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessResults_ScrappedMobileHeadquarters_DeclaresVictory()
+        {
+            (Faction attacker, Building headquarters) = ConfigureMobileHeadquartersVictory();
+            HeadquartersLostResult loss = null;
+            VictoryResult victory = null;
+            _session.Pipeline.HeadquartersLost += result => loss = result;
+            _session.Pipeline.VictoryDeclared += result => victory = result;
+
+            bool scrapped = _session
+                .GetService<MaintenanceCommands>()
+                .TryScrap(new IManufacturable[] { headquarters }, _faction.InstanceID);
+
+            Assert.IsTrue(scrapped);
+            Assert.IsTrue(_faction.HasLostHeadquarters);
+            Assert.IsNull(_faction.HQInstanceID);
+            Assert.IsInstanceOf<HeadquartersDestroyedResult>(loss);
+            Assert.AreSame(attacker, victory.Winner);
+        }
+
+        [Test]
         public void Constructor_LoadedDestroyedProducer_ClearsLocalAndRemoteOrdersBeforeTick()
         {
             string saveDirectoryPath = Path.Combine(
@@ -354,6 +375,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, _planet);
+            _faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             Planet destination = new Planet
             {
                 InstanceID = "destination",
@@ -2794,6 +2816,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, _planet);
+            _faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
 
             Faction attacker = new Faction { InstanceID = "attacker" };
             _game.GetFactions().Add(attacker);
