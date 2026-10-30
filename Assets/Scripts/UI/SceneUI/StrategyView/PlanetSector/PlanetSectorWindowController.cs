@@ -406,6 +406,21 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
+    /// Determines whether an open planet-sector window is displaying a mission drop target.
+    /// </summary>
+    /// <returns>True when a mission-capable drag is hovering a planet.</returns>
+    public bool IsMissionDropTargetVisible()
+    {
+        foreach (PlanetSectorWindowSession session in sessions.Values)
+        {
+            if (!string.IsNullOrEmpty(GetMissionDropPlanetInstanceId(session)))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Changes the authored position slot owned by one planet-sector session.
     /// </summary>
     /// <param name="view">The planet-sector view.</param>
@@ -973,11 +988,13 @@ public sealed class PlanetSectorWindowController
     /// <param name="hit">The semantic planet-sector hit.</param>
     /// <param name="request">The active targeting request.</param>
     /// <param name="fleetTarget">The first fleet represented by the fleet overlay.</param>
+    /// <param name="missionCreationRequested">Whether the active drop target requests mission creation.</param>
     /// <returns>The strategy mission target, or null.</returns>
     internal static StrategyMissionTarget CreateTargetForHit(
         PlanetSectorWindowHit hit,
         TargetingRequest request,
-        ISceneNode fleetTarget
+        ISceneNode fleetTarget,
+        bool missionCreationRequested = false
     )
     {
         if (hit?.GalaxyMapPlanet == null)
@@ -993,7 +1010,7 @@ public sealed class PlanetSectorWindowController
             return new StrategyMissionTarget(
                 hit.GalaxyMapPlanet,
                 hit.GalaxyMapPlanet.Planet,
-                hit.Icon == PlanetIcon.Mission
+                missionCreationRequested || hit.Icon == PlanetIcon.Mission
             );
         }
         return null;
@@ -1142,10 +1159,18 @@ public sealed class PlanetSectorWindowController
         PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (targetingController.IsTargeting && hit != null)
         {
+            bool missionCreationRequested =
+                sessions.TryGetValue(view, out PlanetSectorWindowSession session)
+                && string.Equals(
+                    GetMissionDropPlanetInstanceId(session),
+                    hit.Planet.InstanceID,
+                    StringComparison.Ordinal
+                );
             StrategyMissionTarget target = CreateTargetForHit(
                 hit,
                 targetingController.ActiveRequest,
-                GetFirstFleetTarget(hit.Planet)
+                GetFirstFleetTarget(hit.Planet),
+                missionCreationRequested
             );
             if (target != null)
                 targetingController.TrySelectTarget(target);

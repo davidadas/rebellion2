@@ -198,7 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void RenderWindow_MissionCapableDragOverPlanet_ShowsMissionDropTarget()
+        public void RenderWindow_MissionDropTargetReleasedOverHoveredPlanet_RequestsMissionCreation()
         {
             Officer officer = new Officer
             {
@@ -214,6 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(
                 planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
             );
+            Assert.IsFalse(_controller.IsMissionDropTargetVisible());
             StrategyWindowItemDragController dragReceiver = new StrategyWindowItemDragController(
                 _targetingController,
                 new DragController(5),
@@ -245,20 +246,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             _controller.RenderWindow(view, window);
 
-            Assert.IsTrue(
-                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform missionIcon)
-            );
-            RawImage missionImage = missionIcon.GetComponent<RawImage>();
-            planetView.OnDrop(
-                new PointerEventData(null)
-                {
-                    button = PointerEventData.InputButton.Left,
-                    pointerCurrentRaycast = new RaycastResult
-                    {
-                        gameObject = missionImage.gameObject,
-                    },
-                }
-            );
+            Assert.IsTrue(planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _));
+            Assert.IsTrue(_controller.IsMissionDropTargetVisible());
+            planetView.OnDrop(CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left));
             Assert.IsTrue(_actions.LastTarget.MissionCreationRequested);
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, _actions.LastItems);
         }

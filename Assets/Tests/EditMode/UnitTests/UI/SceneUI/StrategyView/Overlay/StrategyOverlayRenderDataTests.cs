@@ -20,9 +20,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
                 29
             );
 
-            StrategyOverlayRenderData data = new StrategyOverlayRenderData(null, preview, 47, 69);
+            StrategyOverlayRenderData data = new StrategyOverlayRenderData(
+                null,
+                preview,
+                47,
+                69,
+                true
+            );
 
             Assert.AreSame(preview, data.DragPreview);
+            Assert.IsTrue(data.FadeDragPreview);
             Assert.AreEqual(47, data.DragPointerX);
             Assert.AreEqual(69, data.DragPointerY);
             Assert.AreEqual(new RectInt(40, 60, 30, 40), data.DragImageBounds);

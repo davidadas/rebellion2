@@ -1721,7 +1721,13 @@ public sealed class StrategyController
         }
 
         strategyOverlay.Render(
-            new StrategyOverlayRenderData(dragFrameBounds, dragPreview, dragPointerX, dragPointerY)
+            new StrategyOverlayRenderData(
+                dragFrameBounds,
+                dragPreview,
+                dragPointerX,
+                dragPointerY,
+                planetSectorWindowController?.IsMissionDropTargetVisible() == true
+            )
         );
     }
 
