@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -33,7 +34,7 @@ public static class ContentPackEditorPreview
             Path.GetTempPath(),
             "editor-preview-" + Guid.NewGuid().ToString("N")
         );
-        ContentPackEditorProject project = ContentPackEditorProject.CreateInFolder(
+        ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
             contentRoot,
             sourceID,
             workingFolder,
@@ -41,7 +42,7 @@ public static class ContentPackEditorPreview
             "Preview pack",
             "1.0.0"
         );
-        using ContentAssets assets = project.CreateAssets();
+        using ContentAssets assets = ContentPackEditorStorage.CreateAssets(project);
         PreviewRenderUtility preview = new PreviewRenderUtility();
         try
         {
@@ -59,7 +60,6 @@ public static class ContentPackEditorPreview
             GameObject root = Object.Instantiate(prefab.transform.Find("Canvas").gameObject);
             preview.AddSingleGO(root);
             Canvas canvas = root.GetComponent<Canvas>();
-            preview.BeginStaticPreview(new Rect(0, 0, 1600, 900));
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = camera;
             canvas.planeDistance = 100;
@@ -68,21 +68,30 @@ public static class ContentPackEditorPreview
             camera.aspect = 1600f / 900;
             Canvas.ForceUpdateCanvases();
             ContentPackEditorView view = root.GetComponent<ContentPackEditorView>();
+            using ContentPackEditorWorkspaceController workspace =
+                new ContentPackEditorWorkspaceController(view);
             view.Initialize(new[] { project.Definition }, contentRoot);
-            view.RenderProject(project, assets);
-            foreach (TMPro.TMP_Text label in root.GetComponentsInChildren<TMPro.TMP_Text>(true))
-                label.ForceMeshUpdate(true);
-            Canvas.ForceUpdateCanvases();
-            preview.Render(true);
-            Texture2D image = preview.EndStaticPreview();
-            try
+            workspace.RenderProject(project, assets);
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Officer");
+            TMPro.TMP_InputField search = view.GetComponentsInChildren<TMPro.TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.SetTextWithoutNotify(officer.ID);
+            search.onValueChanged.Invoke(officer.ID);
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.Record?.Key == officer.Key)
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            foreach (ContentEditorColorMode mode in Enum.GetValues(typeof(ContentEditorColorMode)))
             {
-                Directory.CreateDirectory("_screenshots/ContentEditor");
-                File.WriteAllBytes("_screenshots/ContentEditor/Workspace.png", image.EncodeToPNG());
-            }
-            finally
-            {
-                Object.DestroyImmediate(image);
+                view.SetColorMode(mode);
+                SavePreview(preview, root, "_screenshots/ContentEditor/" + mode + ".png");
             }
         }
         finally
@@ -90,6 +99,31 @@ public static class ContentPackEditorPreview
             preview.Cleanup();
             if (Directory.Exists(workingFolder))
                 Directory.Delete(workingFolder, true);
+        }
+    }
+
+    /// <summary>
+    /// Captures the current authored controls after rebuilding their text meshes and layout.
+    /// </summary>
+    /// <param name="preview">The active rendering context.</param>
+    /// <param name="root">The live workspace canvas.</param>
+    /// <param name="path">The ignored image output path.</param>
+    private static void SavePreview(PreviewRenderUtility preview, GameObject root, string path)
+    {
+        preview.BeginStaticPreview(new Rect(0, 0, 1600, 900));
+        foreach (TMPro.TMP_Text label in root.GetComponentsInChildren<TMPro.TMP_Text>(true))
+            label.ForceMeshUpdate(true);
+        Canvas.ForceUpdateCanvases();
+        preview.Render(true);
+        Texture2D image = preview.EndStaticPreview();
+        try
+        {
+            Directory.CreateDirectory("_screenshots/ContentEditor");
+            File.WriteAllBytes(path, image.EncodeToPNG());
+        }
+        finally
+        {
+            Object.DestroyImmediate(image);
         }
     }
 }

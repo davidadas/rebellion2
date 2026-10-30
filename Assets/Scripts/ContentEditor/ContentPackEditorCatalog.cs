@@ -63,7 +63,7 @@ public sealed class ContentPackEditorCatalog
     /// <param name="source">The record to copy.</param>
     /// <param name="reservedIDs">Optional identities already used elsewhere in the working project.</param>
     /// <returns>The new editable record.</returns>
-    public ContentPackEditorRecord Duplicate(
+    internal ContentPackEditorRecord Duplicate(
         ContentPackEditorRecord source,
         ISet<string> reservedIDs = null
     )
@@ -210,7 +210,7 @@ public sealed class ContentPackEditorCatalog
     /// Removes a named entry, including its owned planets when removing a sector.
     /// </summary>
     /// <param name="record">The record to remove.</param>
-    public void Remove(ContentPackEditorRecord record)
+    internal void Remove(ContentPackEditorRecord record)
     {
         RequireAttachedRecord(record);
         record.Element.Remove();
@@ -376,7 +376,7 @@ public sealed class ContentPackEditorCatalog
     /// <param name="record">The sector or planet to move.</param>
     /// <param name="x">The new horizontal world coordinate.</param>
     /// <param name="y">The new vertical world coordinate.</param>
-    public void Move(ContentPackEditorRecord record, int x, int y)
+    internal void Move(ContentPackEditorRecord record, int x, int y)
     {
         if (!IsMap || record == null || record.Catalog != this)
             throw new InvalidOperationException("Select a map item first.");

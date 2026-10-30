@@ -1,15 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
-using Rebellion.Game;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Util.Serialization;
@@ -20,7 +15,6 @@ using Rebellion.Util.Serialization;
 public sealed class ContentPackEditorProject
 {
     private const string _packDefinitionAddress = "Pack/pack.xml";
-    private const int _mediaFrameBudgetMilliseconds = 8;
 
     private List<ContentPackEditorDocument> documents;
     private ContentPackEditorHistory history;
@@ -34,6 +28,8 @@ public sealed class ContentPackEditorProject
 
     public ContentPackDefinition Definition { get; private set; }
 
+    internal IReadOnlyList<ContentPackEditorDocument> AllDocuments => documents;
+
     public IReadOnlyList<ContentPackEditorDocument> Documents =>
         documents.Where(document => !document.IsRemoved).ToArray();
 
@@ -45,49 +41,6 @@ public sealed class ContentPackEditorProject
     public bool CanRedo => history.CanRedo;
     public string UndoDescription => history.UndoDescription;
     public string RedoDescription => history.RedoDescription;
-
-    /// <summary>
-    /// Identifies managed pack and application data directories that authoring must preserve.
-    /// </summary>
-    /// <param name="contentRootPath">The installed content root.</param>
-    /// <param name="folder">The proposed project folder.</param>
-    /// <returns>Whether the folder overlaps installed content.</returns>
-    private static bool IsInstalledPath(string contentRootPath, string folder)
-    {
-        string root = Path.GetFullPath(contentRootPath);
-        string target = Path.GetFullPath(folder)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        foreach (string name in new[] { "Packs", "Application" })
-        {
-            string protectedRoot = Path.Combine(root, name);
-            if (
-                string.Equals(target, protectedRoot, StringComparison.OrdinalIgnoreCase)
-                || target.StartsWith(
-                    protectedRoot + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-                return true;
-        }
-        return string.Equals(
-            target,
-            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-            StringComparison.OrdinalIgnoreCase
-        );
-    }
-
-    /// <summary>
-    /// Prevents a working project from modifying installed pack or application content.
-    /// </summary>
-    /// <param name="contentRootPath">The installed content root.</param>
-    /// <param name="folder">The proposed project folder.</param>
-    private static void VerifyWorkingFolder(string contentRootPath, string folder)
-    {
-        if (IsInstalledPath(contentRootPath, folder))
-            throw new IOException(
-                "Installed content is read-only. Create a new content pack in your own folder."
-            );
-    }
 
     /// <summary>
     /// Groups a continuous gesture or multi-field operation into one undoable edit.
@@ -177,7 +130,7 @@ public sealed class ContentPackEditorProject
     /// </summary>
     /// <param name="field">The edited member.</param>
     /// <param name="values">The proposed scalar or collection values.</param>
-    private void ValidateFieldValues(ContentPackEditorField field, IEnumerable<string> values)
+    internal void ValidateFieldValues(ContentPackEditorField field, IEnumerable<string> values)
     {
         ValidateFieldValues(
             field,
@@ -208,7 +161,7 @@ public sealed class ContentPackEditorProject
     /// <param name="resolver">The media resolver, when needed.</param>
     /// <param name="factions">The faction choices, when needed.</param>
     /// <param name="traits">The trait choices, when needed.</param>
-    private void ValidateFieldValues(
+    internal void ValidateFieldValues(
         ContentPackEditorField field,
         IEnumerable<string> values,
         ContentFileResolver resolver,
@@ -702,7 +655,7 @@ public sealed class ContentPackEditorProject
     /// Rejects detached or stale record handles before they can overwrite restored documents.
     /// </summary>
     /// <param name="record">The record to edit.</param>
-    private void RequireOwnedRecord(ContentPackEditorRecord record)
+    internal void RequireOwnedRecord(ContentPackEditorRecord record)
     {
         if (record == null)
             throw new ArgumentNullException(nameof(record));
@@ -921,17 +874,6 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
-    /// Creates an asset store for this pack's current inheritance chain.
-    /// </summary>
-    /// <returns>The owned asset store.</returns>
-    public ContentAssets CreateAssets()
-    {
-        return new ContentAssets(
-            ContentPackLoader.CreateFolderResolver(ContentRootPath, PackRootPath, Definition)
-        );
-    }
-
-    /// <summary>
     /// Creates a named entry without colliding with identities elsewhere in the working pack.
     /// </summary>
     /// <param name="source">The project-owned entry to use as a template.</param>
@@ -956,582 +898,82 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
-    /// Imports a media file into this pack without replacing another authored asset.
-    /// </summary>
-    /// <param name="sourcePath">The local media file.</param>
-    /// <returns>The imported pack-scoped content address.</returns>
-    public string ImportAsset(string sourcePath)
-    {
-        return ImportAssetToFolder(sourcePath, "Pack/Assets");
-    }
-
-    /// <summary>
-    /// Imports media using the destination and storage convention declared by the field.
-    /// </summary>
-    /// <param name="sourcePath">The selected source file.</param>
-    /// <param name="field">The target field.</param>
-    /// <returns>The value to store in the field.</returns>
-    public string ImportAsset(string sourcePath, ContentPackEditorField field)
-    {
-        RequireOwnedRecord(field.Record);
-        if (field.IsMediaDirectory || !field.IsMedia)
-            throw new ArgumentException("Choose a media file field.");
-        if (
-            !field.MediaExtensions.Contains(
-                Path.GetExtension(sourcePath),
-                StringComparer.OrdinalIgnoreCase
-            )
-        )
-            throw new ArgumentException("Unsupported file type.");
-        string root = field.MediaRoot;
-        string address = ImportAssetToFolder(sourcePath, root ?? "Pack/Assets");
-        return root == null ? address : address[(root.TrimEnd('/').Length + 1)..];
-    }
-
-    /// <summary>
-    /// Copies a file to a pack directory without overwriting an existing asset.
-    /// </summary>
-    /// <param name="sourcePath">The selected source file.</param>
-    /// <param name="directoryAddress">The pack-scoped destination folder.</param>
-    /// <returns>The imported content address.</returns>
-    private string ImportAssetToFolder(string sourcePath, string directoryAddress)
-    {
-        VerifyWorkingFolder(ContentRootPath, PackRootPath);
-        string source = Path.GetFullPath(sourcePath);
-        if (!File.Exists(source))
-            throw new FileNotFoundException("The selected media file does not exist.", source);
-        if (!directoryAddress.StartsWith("Pack/", StringComparison.Ordinal))
-            throw new ArgumentException("Import requires a folder inside your pack.");
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            ContentRootPath,
-            PackRootPath,
-            Definition
-        );
-        resolver.ResolveFile(directoryAddress);
-        string directory = Path.GetFullPath(directoryAddress[5..], PackRootPath);
-        Directory.CreateDirectory(directory);
-        string fileName = Path.GetFileName(source);
-        string target = Path.Combine(directory, fileName);
-        int suffix = 2;
-        while (File.Exists(target))
-        {
-            using SHA256 hash = SHA256.Create();
-            using FileStream original = File.OpenRead(source);
-            using FileStream existing = File.OpenRead(target);
-            if (hash.ComputeHash(original).SequenceEqual(hash.ComputeHash(existing)))
-                return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
-            target = Path.Combine(
-                directory,
-                Path.GetFileNameWithoutExtension(fileName)
-                    + "-"
-                    + suffix++
-                    + Path.GetExtension(fileName)
-            );
-        }
-        File.Copy(source, target);
-        return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
-    }
-
-    /// <summary>
-    /// Opens one installed pack through its inheritance chain.
-    /// </summary>
-    /// <param name="contentRootPath">The external Content directory.</param>
-    /// <param name="packID">The pack identifier to open.</param>
-    /// <returns>The editable project.</returns>
-    public static ContentPackEditorProject Open(string contentRootPath, string packID)
-    {
-        ContentFileResolver resolver = ContentPackLoader.CreatePackResolver(
-            contentRootPath,
-            packID
-        );
-        ContentPackDefinition definition =
-            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                Path.Combine(resolver.PackRootPath, "pack.xml")
-            );
-        return new ContentPackEditorProject(resolver, definition);
-    }
-
-    /// <summary>
-    /// Opens an authored pack folder while resolving inherited assets from installed content.
-    /// </summary>
-    /// <param name="contentRootPath">The installed application Content directory.</param>
-    /// <param name="packRootPath">The authored directory containing pack.xml.</param>
-    /// <returns>The editable project.</returns>
-    public static ContentPackEditorProject OpenFolder(string contentRootPath, string packRootPath)
-    {
-        VerifyWorkingFolder(contentRootPath, packRootPath);
-        ContentPackDefinition definition =
-            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                Path.Combine(packRootPath, "pack.xml")
-            );
-        return new ContentPackEditorProject(
-            ContentPackLoader.CreateFolderResolver(contentRootPath, packRootPath, definition),
-            definition
-        );
-    }
-
-    /// <summary>
-    /// Creates a derived pack that initially inherits every authored document from a base pack.
-    /// </summary>
-    /// <param name="contentRootPath">The external Content directory.</param>
-    /// <param name="basePackID">The installed base-pack identifier.</param>
-    /// <param name="packID">The new stable pack identifier.</param>
-    /// <param name="displayName">The new user-facing name.</param>
-    /// <param name="version">The initial pack version.</param>
-    /// <returns>The newly created editable project.</returns>
-    public static ContentPackEditorProject Create(
-        string contentRootPath,
-        string basePackID,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        ValidateIdentity(packID, displayName, version);
-        return CreateInFolder(
-            contentRootPath,
-            basePackID,
-            Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRootPath), packID),
-            packID,
-            displayName,
-            version
-        );
-    }
-
-    /// <summary>
-    /// Creates a derived pack in a chosen working folder without modifying installed base content.
-    /// </summary>
-    /// <param name="contentRootPath">The installed Content directory.</param>
-    /// <param name="basePackID">The installed pack to inherit.</param>
-    /// <param name="packRootPath">The new working folder.</param>
-    /// <param name="packID">The new stable identifier.</param>
-    /// <param name="displayName">The new display name.</param>
-    /// <param name="version">The initial version.</param>
-    /// <returns>The newly opened project.</returns>
-    public static ContentPackEditorProject CreateInFolder(
-        string contentRootPath,
-        string basePackID,
-        string packRootPath,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        ValidateIdentity(packID, displayName, version);
-        ContentFileResolver baseResolver = ContentPackLoader.CreatePackResolver(
-            contentRootPath,
-            basePackID
-        );
-        ContentPackDefinition baseDefinition =
-            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                Path.Combine(baseResolver.PackRootPath, "pack.xml")
-            );
-
-        VerifyWorkingFolder(contentRootPath, packRootPath);
-        string packRoot = Path.GetFullPath(packRootPath);
-        bool directoryExisted = Directory.Exists(packRoot);
-        if (
-            File.Exists(packRoot)
-            || directoryExisted && Directory.EnumerateFileSystemEntries(packRoot).Any()
-        )
-            throw new IOException("Choose a new or empty content-pack folder.");
-        foreach (string inheritedRoot in baseResolver.PackRootPaths)
-        {
-            if (
-                packRoot.StartsWith(
-                    inheritedRoot.TrimEnd(
-                        Path.DirectorySeparatorChar,
-                        Path.AltDirectorySeparatorChar
-                    ) + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-                throw new IOException(
-                    "Choose a working folder outside the inherited content pack."
-                );
-        }
-        if (
-            ContentPackLoader
-                .DiscoverPacks(contentRootPath)
-                .Any(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal))
-        )
-            throw new InvalidDataException($"A content pack already declares ID '{packID}'.");
-
-        ContentPackDefinition definition = CloneDefinition(
-            baseDefinition,
-            packID.Trim(),
-            displayName.Trim(),
-            version.Trim()
-        );
-        try
-        {
-            Directory.CreateDirectory(packRoot);
-            ContentDefinitionSerializer.Serialize(Path.Combine(packRoot, "pack.xml"), definition);
-            return OpenFolder(contentRootPath, packRoot);
-        }
-        catch
-        {
-            string manifestPath = Path.Combine(packRoot, "pack.xml");
-            if (File.Exists(manifestPath))
-                File.Delete(manifestPath);
-            if (
-                !directoryExisted
-                && Directory.Exists(packRoot)
-                && !Directory.EnumerateFileSystemEntries(packRoot).Any()
-            )
-                Directory.Delete(packRoot);
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Creates a project from a selected pack and its resolver.
     /// </summary>
     /// <param name="resolver">The selected pack's layered resolver.</param>
     /// <param name="definition">The selected pack definition.</param>
-    private ContentPackEditorProject(ContentFileResolver resolver, ContentPackDefinition definition)
+    /// <param name="documents">The already resolved editable documents.</param>
+    internal ContentPackEditorProject(
+        ContentFileResolver resolver,
+        ContentPackDefinition definition,
+        IEnumerable<ContentPackEditorDocument> documents
+    )
     {
         ContentRootPath = resolver.ContentRootPath;
         PackRootPath = resolver.PackRootPath;
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-        documents = CreateDocuments(resolver, definition);
+        this.documents = documents.ToList();
+        history = new ContentPackEditorHistory(this.documents);
+    }
+
+    /// <summary>
+    /// Identifies managed pack and application data directories that authoring must preserve.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="folder">The proposed project folder.</param>
+    /// <returns>Whether the folder overlaps installed content.</returns>
+    internal static bool IsInstalledPath(string contentRootPath, string folder)
+    {
+        string root = Path.GetFullPath(contentRootPath);
+        string target = Path.GetFullPath(folder)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        foreach (string name in new[] { "Packs", "Application" })
+        {
+            string protectedRoot = Path.Combine(root, name);
+            if (
+                string.Equals(target, protectedRoot, StringComparison.OrdinalIgnoreCase)
+                || target.StartsWith(
+                    protectedRoot + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                return true;
+        }
+        return string.Equals(
+            target,
+            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
+
+    /// <summary>
+    /// Prevents a working project from modifying installed pack or application content.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="folder">The proposed project folder.</param>
+    internal static void VerifyWorkingFolder(string contentRootPath, string folder)
+    {
+        if (IsInstalledPath(contentRootPath, folder))
+            throw new IOException(
+                "Installed content is read-only. Create a new content pack in your own folder."
+            );
+    }
+
+    /// <summary>
+    /// Accepts a persisted manifest and an optional replacement document collection.
+    /// </summary>
+    /// <param name="definition">The manifest written successfully.</param>
+    /// <param name="refreshedDocuments">Resolved documents when inheritance changed, otherwise null.</param>
+    internal void AcceptSave(
+        ContentPackDefinition definition,
+        IReadOnlyList<ContentPackEditorDocument> refreshedDocuments
+    )
+    {
+        Definition = definition;
+        if (refreshedDocuments == null)
+            return;
+        documents = refreshedDocuments.ToList();
+        catalogs = null;
         history = new ContentPackEditorHistory(documents);
-    }
-
-    /// <summary>
-    /// Saves every changed document and refreshes the in-memory pack definition.
-    /// </summary>
-    public void Save()
-    {
-        VerifyWorkingFolder(ContentRootPath, PackRootPath);
-        ContentPackEditorDocument[] dirtyDocuments = documents
-            .Where(document => document.IsDirty)
-            .ToArray();
-        foreach (ContentPackEditorDocument document in dirtyDocuments)
-        {
-            document.Validate();
-            document.VerifyUnchangedTarget();
-        }
-        ContentPackDefinition nextDefinition =
-            ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
-                documents.Single(document => document.Address == _packDefinitionAddress).Text
-            );
-        ValidateIdentity(nextDefinition.ID, nextDefinition.DisplayName, nextDefinition.Version);
-        ContentFileResolver nextResolver = ContentPackLoader.CreateFolderResolver(
-            ContentRootPath,
-            PackRootPath,
-            nextDefinition
-        );
-        bool baseChanged = !string.Equals(
-            Definition.BasePackID,
-            nextDefinition.BasePackID,
-            StringComparison.Ordinal
-        );
-        foreach (ContentPackEditorDocument document in dirtyDocuments)
-            document.Save();
-
-        Definition = nextDefinition;
-        if (baseChanged)
-        {
-            documents = CreateDocuments(nextResolver, nextDefinition);
-            catalogs = null;
-            history = new ContentPackEditorHistory(documents);
-        }
-    }
-
-    /// <summary>
-    /// Writes the current working project to a new folder with a separate pack identity.
-    /// </summary>
-    /// <param name="folder">The new destination folder.</param>
-    /// <param name="packID">The copy's identifier.</param>
-    /// <param name="displayName">The copy's display name.</param>
-    /// <param name="version">The copy's version.</param>
-    /// <returns>The independently opened project copy.</returns>
-    public ContentPackEditorProject SaveAs(
-        string folder,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        ValidateIdentity(packID, displayName, version);
-        VerifyWorkingFolder(ContentRootPath, folder);
-        ContentPackEditorExporter.WriteFolder(this, folder, packID, displayName, version);
-        return OpenFolder(ContentRootPath, folder);
-    }
-
-    /// <summary>
-    /// Validates and exports a snapshot while allowing the UI to update and cancel the operation.
-    /// </summary>
-    /// <param name="filePath">The destination zip file.</param>
-    /// <param name="progress">Optional status reporting for the current validation check.</param>
-    /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of validation and archive creation.</returns>
-    public Task ExportAsync(
-        string filePath,
-        Action<string> progress = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return ContentPackEditorExporter.WriteArchiveAsync(
-            this,
-            filePath,
-            progress,
-            cancellationToken
-        );
-    }
-
-    /// <summary>
-    /// Checks authored references, campaign startup, and media decoding while keeping authoring responsive.
-    /// </summary>
-    /// <param name="progress">Optional status reporting for the current validation check.</param>
-    /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of all validation checks.</returns>
-    public async Task ValidateAsync(
-        Action<string> progress = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        await Task.Yield();
-        foreach (var check in GetStartupChecks())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            progress?.Invoke(
-                $"Checking scenario: {check.Pack.Scenario.ID} ({check.Summary.PlayerFactionID}, {check.Summary.GalaxySize}, {check.Summary.Difficulty}, {check.Summary.ResourceAvailability})"
-            );
-            ContentEditorPackValidator.ValidateStartup(check.Pack, check.Summary);
-            await Task.Yield();
-        }
-        await ValidateMediaAsync(progress, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-    }
-
-    /// <summary>
-    /// Decodes referenced media once per resolved file while releasing each asset before continuing.
-    /// </summary>
-    /// <param name="progress">Optional status reporting for the current asset.</param>
-    /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of referenced-media validation.</returns>
-    private async Task ValidateMediaAsync(
-        Action<string> progress,
-        CancellationToken cancellationToken
-    )
-    {
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            ContentRootPath,
-            PackRootPath,
-            Definition
-        );
-        HashSet<string> checkedFiles = new HashSet<string>(StringComparer.Ordinal);
-        Stopwatch batch = Stopwatch.StartNew();
-        foreach (
-            ContentPackEditorField field in GetCatalogs()
-                .SelectMany(catalog => catalog.Records)
-                .SelectMany(record => new[] { record }.Concat(record.Planets))
-                .OrderBy(record => record.Catalog.Document.IsInherited)
-                .SelectMany(record => record.GetFields())
-                .Where(field => field.IsMedia)
-        )
-        foreach (string value in field.Values.Where(value => !string.IsNullOrWhiteSpace(value)))
-        {
-            string address = field.GetMediaAddress(value);
-            IEnumerable<string> addresses = field.IsMediaDirectory
-                ? resolver
-                    .EnumerateFileAddresses(address)
-                    .Where(candidate =>
-                        field.MediaExtensions.Contains(
-                            Path.GetExtension(candidate),
-                            StringComparer.OrdinalIgnoreCase
-                        )
-                    )
-                : new[] { address };
-            foreach (string candidate in addresses)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                string file =
-                    resolver.ResolveFile(candidate, field.MediaExtensions)
-                    ?? throw new FileNotFoundException("Media not found: " + candidate);
-                if (!checkedFiles.Add(file))
-                    continue;
-                progress?.Invoke("Checking media: " + candidate);
-                await ContentEditorMediaValidator.ValidateAsync(
-                    resolver,
-                    candidate,
-                    field.MediaType,
-                    cancellationToken
-                );
-                if (batch.ElapsedMilliseconds >= _mediaFrameBudgetMilliseconds)
-                {
-                    await Task.Yield();
-                    batch.Restart();
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Validates authored fields and loads the scenarios needed by the startup checks.
-    /// </summary>
-    /// <returns>The loaded catalog and launch configuration for each startup check.</returns>
-    private IEnumerable<(ContentPack Pack, GameSummary Summary)> GetStartupChecks()
-    {
-        if (IsDirty)
-            throw new InvalidOperationException("Save the content pack before validating it.");
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            ContentRootPath,
-            PackRootPath,
-            Definition
-        );
-        IReadOnlyDictionary<string, string> factions = GetFactionOptions();
-        IReadOnlyDictionary<string, string> traits = GetTraitOptions();
-        foreach (
-            ContentPackEditorRecord record in GetCatalogs()
-                .SelectMany(catalog => catalog.Records)
-                .SelectMany(record => new[] { record }.Concat(record.Planets))
-        )
-        foreach (ContentPackEditorField field in record.GetFields())
-            ValidateFieldValues(field, field.Values, resolver, factions, traits);
-        string[] scenarios = Definition
-            .ScenarioPaths.Select(path =>
-                ContentDefinitionSerializer
-                    .Deserialize<ContentScenarioDefinition>(
-                        resolver.ResolveFile("Pack/" + path)
-                            ?? throw new FileNotFoundException("Scenario not found: " + path)
-                    )
-                    .ID
-            )
-            .Append(Definition.DefaultScenarioID)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        foreach (string scenario in scenarios)
-        {
-            ContentPack pack = ContentPackLoader.LoadPack(resolver, Definition, scenario);
-            ContentEditorPackValidator.ValidateDefinitions(pack);
-            foreach (
-                GameSummary summary in ContentEditorPackValidator.GetStartupConfigurations(pack)
-            )
-                yield return (pack, summary);
-        }
-    }
-
-    /// <summary>
-    /// Creates the editable XML document collection in stable path order.
-    /// </summary>
-    /// <param name="resolver">The selected pack's layered resolver.</param>
-    /// <param name="definition">The selected pack manifest.</param>
-    /// <returns>The editable documents.</returns>
-    private static List<ContentPackEditorDocument> CreateDocuments(
-        ContentFileResolver resolver,
-        ContentPackDefinition definition
-    )
-    {
-        IEnumerable<string> addresses = resolver
-            .EnumerateFileAddresses("Pack/")
-            .Where(address => address.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-            .Append(_packDefinitionAddress)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(address => address, StringComparer.Ordinal);
-
-        List<ContentPackEditorDocument> result = addresses
-            .Select(address =>
-            {
-                string relativePath = address[5..];
-                string sourcePath =
-                    address == _packDefinitionAddress
-                        ? Path.Combine(resolver.PackRootPath, "pack.xml")
-                        : resolver.ResolveFile(address)
-                            ?? throw new FileNotFoundException(
-                                $"Content document not found: {address}"
-                            );
-                string targetPath = Path.GetFullPath(relativePath, resolver.PackRootPath);
-                return new ContentPackEditorDocument(address, sourcePath, targetPath);
-            })
-            .ToList();
-        if (
-            string.IsNullOrWhiteSpace(definition.GameConfigPath)
-            && !result.Any(document => document.Address == "Pack/Shared/Data/game-config.xml")
-        )
-        {
-            string defaultRules = resolver.ResolveFile("Application/Rules/game.xml");
-            if (defaultRules != null)
-                result.Add(
-                    new ContentPackEditorDocument(
-                        "Pack/Shared/Data/game-config.xml",
-                        defaultRules,
-                        Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml")
-                    )
-                );
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Copies the base manifest while assigning the new pack identity.
-    /// </summary>
-    /// <param name="source">The base manifest.</param>
-    /// <param name="packID">The new pack identifier.</param>
-    /// <param name="displayName">The new display name.</param>
-    /// <param name="version">The new version.</param>
-    /// <returns>The derived manifest.</returns>
-    private static ContentPackDefinition CloneDefinition(
-        ContentPackDefinition source,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        return new ContentPackDefinition
-        {
-            ID = packID,
-            BasePackID = source.ID,
-            Version = version,
-            DisplayName = displayName,
-            DefaultScenarioID = source.DefaultScenarioID,
-            MainMenuMusicPath = source.MainMenuMusicPath,
-            GameConfigPath = source.GameConfigPath,
-            PlanetSectorsPath = source.PlanetSectorsPath,
-            BuildingsPath = source.BuildingsPath,
-            OfficerTraitsPath = source.OfficerTraitsPath,
-            GameEventsPath = source.GameEventsPath,
-            MessageDefinitionsPath = source.MessageDefinitionsPath,
-            EncyclopediaEntriesPath = source.EncyclopediaEntriesPath,
-            NeutralThemePath = source.NeutralThemePath,
-            FactionPaths = new List<string>(source.FactionPaths),
-            ScenarioPaths = new List<string>(source.ScenarioPaths),
-            Preloads = source.Preloads.ConvertAll(preload => new ContentPreloadDefinition
-            {
-                ID = preload.ID,
-                Path = preload.Path,
-            }),
-        };
-    }
-
-    /// <summary>
-    /// Rejects incomplete content-pack identity fields before touching disk.
-    /// </summary>
-    /// <param name="packID">The proposed stable identifier.</param>
-    /// <param name="displayName">The proposed display name.</param>
-    /// <param name="version">The proposed version.</param>
-    private static void ValidateIdentity(string packID, string displayName, string version)
-    {
-        if (string.IsNullOrWhiteSpace(packID))
-            throw new ArgumentException("A content-pack ID is required.", nameof(packID));
-        if (string.IsNullOrWhiteSpace(displayName))
-            throw new ArgumentException("A display name is required.", nameof(displayName));
-        if (string.IsNullOrWhiteSpace(version))
-            throw new ArgumentException("A version is required.", nameof(version));
-        if (
-            packID.Any(character =>
-                !(char.IsLower(character) || char.IsDigit(character) || character == '-')
-            )
-            || packID[0] == '-'
-            || packID[^1] == '-'
-            || packID.Contains("--", StringComparison.Ordinal)
-        )
-            throw new ArgumentException(
-                "Content-pack IDs must use lowercase letters or digits separated by single hyphens.",
-                nameof(packID)
-            );
     }
 }

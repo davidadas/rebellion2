@@ -191,12 +191,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
         }
         sectorPreview.Hide();
         FactionTheme neutral = ContentEditorPresentation.GetNeutralTheme(project);
-        Texture2D star = assets.GetTexture(
-            GalacticInformationMarkerProjector.GetPlanetIconPath(
-                neutral.GalaxyBackground.PlanetIcons,
-                0
-            )
-        );
+        Texture2D star = assets.GetTexture(neutral.GalaxyBackground.PlanetIcons?.Small);
         Texture2D background = assets.GetTexture("Pack/Shared/Strategy/UI/Shell/galaxy-background");
         sourceSize = GetGalaxySourceSize();
         mapImage.texture = background;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Missions;
 
 /// <summary>
 /// Projects related authored content into task-oriented inspector and navigation sections.
@@ -18,12 +17,6 @@ internal static class ContentEditorContentSections
         "Support",
         "Balance",
     };
-    private static readonly IReadOnlyDictionary<string, string> _missionCaptions =
-        ContentPackEditorFieldSchema.MissionIDs.ToDictionary(
-            mission => mission,
-            ContentPackEditorField.FormatName,
-            StringComparer.Ordinal
-        );
 
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
@@ -157,77 +150,4 @@ internal static class ContentEditorContentSections
     {
         return field.Group.StartsWith("Encyclopedia", StringComparison.Ordinal);
     }
-
-    /// <summary>
-    /// Identifies mission settings without moving AI planning or unrelated combat settings.
-    /// </summary>
-    /// <param name="field">The projected rules property.</param>
-    /// <returns>Whether the field is part of mission execution rules.</returns>
-    internal static bool IsMissionField(ContentPackEditorField field)
-    {
-        return field.Group is "Research" or "Assassination" or "Espionage"
-            || field.Group == "ProbabilityTables" && field.SectionPath.Contains("Mission")
-            || field.Group == "Uprising"
-                && (
-                    field.MemberName.StartsWith("Subdue", StringComparison.Ordinal)
-                    || field.MemberName is "InciteMissionSupportShift" or "MissionLeadershipDivisor"
-                )
-            || field.Group == "Jedi"
-                && field.MemberName
-                    is "TrainingCatchUpPercent"
-                        or "ForceGrowthPerMission"
-                        or "MissionParticipantEncounterMinimum"
-                        or "MissionDefenderEncounterMinimum"
-            || field.Group == "DifficultyModifiers"
-                && (
-                    field.MemberName.StartsWith("Mission", StringComparison.Ordinal)
-                    || field.SectionPath.Any(section =>
-                        section.StartsWith("Mission", StringComparison.Ordinal)
-                    )
-                );
-    }
-
-    /// <summary>
-    /// Finds the mission owning one rule, leaving shared mission tables in their own section.
-    /// </summary>
-    /// <param name="field">The projected mission rule.</param>
-    /// <returns>The mission identifier, or null for shared mission rules.</returns>
-    internal static string MissionFor(ContentPackEditorField field)
-    {
-        if (field.Group == "Uprising")
-            return field.MemberName.StartsWith("Subdue", StringComparison.Ordinal)
-                    ? MissionTypeIDs.SubdueUprising
-                : field.MemberName == "InciteMissionSupportShift" ? MissionTypeIDs.InciteUprising
-                : null;
-        if (field.Group == "Jedi" && field.MemberName == "TrainingCatchUpPercent")
-            return MissionTypeIDs.JediTraining;
-        return _missionCaptions
-            .FirstOrDefault(mission =>
-                field.Group == mission.Key
-                || field.SectionPath.Contains(mission.Value)
-                || field.Group == "ProbabilityTables" && field.MemberName == mission.Key
-            )
-            .Key;
-    }
-
-    /// <summary>
-    /// Groups shared game rules into focused authoring pages.
-    /// </summary>
-    /// <param name="field">The rule property.</param>
-    /// <returns>The readable category.</returns>
-    internal static string RuleCategory(ContentPackEditorField field) =>
-        field.Group switch
-        {
-            "DifficultyModifiers" => "Difficulty",
-            "ProbabilityTables" => field.SectionPath.Contains("Mission")
-                ? "Shared mission rules"
-                : "Uprisings",
-            "Jedi" or "DuelResolution" => "Force and duels",
-            "SupportShift" => "Popular support",
-            "Captive" => "Prisoners",
-            "Planet" => "Planets",
-            "Blockade" => "Blockades",
-            "Uprising" => "Uprisings",
-            _ => ContentPackEditorField.FormatName(field.Group),
-        };
 }

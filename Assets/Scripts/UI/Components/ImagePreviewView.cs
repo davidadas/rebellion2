@@ -1,11 +1,12 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Inspects artwork at its authored aspect ratio without covering the current form fields.
+/// Inspects artwork at its authored aspect ratio without covering the current workspace.
 /// </summary>
-public sealed class ContentEditorImagePreview : MonoBehaviour, ICancelable
+public sealed class ImagePreviewView : MonoBehaviour, ICancelable
 {
     [SerializeField]
     private RawImage image;
@@ -24,6 +25,15 @@ public sealed class ContentEditorImagePreview : MonoBehaviour, ICancelable
     /// <param name="address">Its content address.</param>
     public void Show(Texture2D texture, string address)
     {
+        if (texture == null)
+            throw new ArgumentNullException(nameof(texture));
+        if (
+            image == null
+            || caption == null
+            || closeButton == null
+            || image.GetComponent<AspectRatioFitter>() == null
+        )
+            throw new MissingReferenceException(name + " has incomplete image-preview references.");
         if (!bound)
         {
             closeButton.onClick.AddListener(() => TryCancel());
@@ -37,7 +47,7 @@ public sealed class ContentEditorImagePreview : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Dismisses the artwork viewer without changing its authored asset reference.
+    /// Dismisses the artwork viewer without changing its source asset reference.
     /// </summary>
     /// <returns>True when the viewer was dismissed.</returns>
     public bool TryCancel()

@@ -47,13 +47,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button testButton;
 
     [SerializeField]
+    private MenuBarHeadingView[] menuHeadings;
+
+    [SerializeField]
     private ContentEditorAppearance appearance;
 
     [SerializeField]
     private TMP_InputField searchInput;
 
     [SerializeField]
-    private ContentEditorScrollLayout recordScroll;
+    private ScrollAreaLayout recordScroll;
 
     [SerializeField]
     private ContentEditorRecordRowView recordTemplate;
@@ -140,10 +143,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button dismissNoticeButton;
 
     [SerializeField]
-    private ContentEditorConfirmationView confirmation;
+    private ActionDialogView confirmation;
 
     [SerializeField]
-    private ContentEditorImagePreview imagePreview;
+    private ImagePreviewView imagePreview;
 
     [SerializeField]
     private AudioSource previewAudio;
@@ -160,9 +163,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private string section = "General";
     private bool initialized;
     private bool fieldLayoutDirty;
-    private IDisposable mapEdit;
+    private bool mapDragging;
     private Button menuAnchor;
-    private ContentEditorTextHistory textRedoTarget;
+    private TextInputHistory textRedoTarget;
     private GameSize previewSize = GameSize.Large;
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
@@ -183,6 +186,27 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action<ContentEditorPlayOptions> PlayRequested;
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action PreviewCancelled;
+    internal event Action<ContentPackEditorRecord> DuplicateRequested;
+    internal event Action<ContentPackEditorCatalog, string> AddUnitRequested;
+    internal event Action<ContentPackEditorCatalog> AddTraitRequested;
+    internal event Action<ContentPackEditorCatalog> AddEventRequested;
+    internal event Action AddFactionRequested;
+    internal event Action<ContentPackEditorCatalog, Vector2Int> AddSectorRequested;
+    internal event Action<ContentPackEditorRecord, Vector2Int> AddPlanetRequested;
+    internal event Action<ContentPackEditorRecord, MessageType> AddMessageRequested;
+    internal event Action<ContentPackEditorRecord> DeleteRequested;
+    internal event Action<ContentEditorXmlScope, string, int> XmlSubmitted;
+    internal event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
+    internal event Action<ContentPackEditorField> FieldValidationRequested;
+    internal event Action<ContentPackEditorRecord> MapEditStarted;
+    internal event Action<ContentPackEditorRecord, Vector2Int> MapMoved;
+    internal event Action MapEditEnded;
+    internal event Action<
+        ContentPackEditorRecord,
+        ContentEditorTreeNode,
+        ContentPackEditorRecord
+    > SelectionRequested;
+    internal event Action<string> SectionRequested;
 
     public ContentEditorColorMode ColorMode => appearance.Mode;
     public bool IsPreviewAudioPlaying => previewAudio && previewAudio.isPlaying;
@@ -212,11 +236,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Finds pending text that must be corrected before document history can be used.
     /// </summary>
     /// <returns>The input history responsible for the current draft.</returns>
-    private ContentEditorTextHistory TextHistory()
+    private TextInputHistory TextHistory()
     {
         TMP_InputField focused = FocusedTextInput();
         if (focused != null)
-            return focused.GetComponent<ContentEditorTextHistory>();
+            return focused.GetComponent<TextInputHistory>();
         if (selectedRecord != null && xml.PendingTextHistory != null)
             return xml.PendingTextHistory;
         return form.InvalidTextHistory;
@@ -228,7 +252,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether a pending text edit was undone.</returns>
     public bool UndoText()
     {
-        ContentEditorTextHistory history = TextHistory();
+        TextInputHistory history = TextHistory();
         if (history?.Undo() != true)
             return false;
         textRedoTarget = history;
@@ -243,7 +267,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether a pending text edit was reapplied.</returns>
     public bool RedoText()
     {
-        ContentEditorTextHistory history = TextHistory() ?? textRedoTarget;
+        TextInputHistory history = TextHistory() ?? textRedoTarget;
         if (history?.Redo() != true)
             return false;
         if (!HasTextFocus)
@@ -289,6 +313,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || openPackButton == null
             || viewButton == null
             || testButton == null
+            || menuHeadings == null
+            || menuHeadings.Length != 4
+            || menuHeadings.Any(heading => heading == null)
             || appearance == null
             || searchInput == null
             || recordScroll == null
@@ -334,6 +361,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         editButton.onClick.AddListener(ShowEditMenu);
         viewButton.onClick.AddListener(ShowViewMenu);
         testButton.onClick.AddListener(ShowTestMenu);
+        foreach (MenuBarHeadingView heading in menuHeadings)
+            heading.Hovered += HoverMenu;
         newPackButton.onClick.AddListener(ShowNewPackDialog);
         openPackButton.onClick.AddListener(RequestOpenPack);
         searchInput.onValueChanged.AddListener(_ => RenderRecords(revealSelection: false));
@@ -353,6 +382,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         }
         form.AddMessageRequested += ShowAddMessageMenu;
         form.Changed += HandleFieldChanged;
+        form.FieldSubmitted += SubmitField;
+        form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
         form.PreviewRequested += PreviewMedia;
         form.ValidationFailed += ReportFieldError;
@@ -408,12 +439,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         recordList?.Clear();
         if (initialized)
         {
+            foreach (MenuBarHeadingView heading in menuHeadings)
+                heading.Hovered -= HoverMenu;
             xml.ApplyRequested -= ApplyXmlDraft;
             xml.DiscardRequested -= RequestDiscardXml;
             xml.ScopeRequested -= RequestXmlScope;
             form.WidthChanged -= HandleFieldAreaResize;
             form.AddMessageRequested -= ShowAddMessageMenu;
             form.Changed -= HandleFieldChanged;
+            form.FieldSubmitted -= SubmitField;
+            form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
             form.PreviewRequested -= PreviewMedia;
             form.ValidationFailed -= ReportFieldError;
@@ -1211,23 +1246,25 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         StopAudioPreview();
         if (!CommitFields())
             return;
+        SelectionRequested?.Invoke(record, page, sector);
+    }
+
+    /// <summary>
+    /// Renders the controller-owned selection without deciding which object or tab is selected.
+    /// </summary>
+    /// <param name="data">The selected record and derived inspector context.</param>
+    internal void RenderSelection(ContentPackEditorSelection data)
+    {
+        ContentPackEditorRecord record = data.Record;
+        ContentEditorTreeNode page = data.Page;
+        ContentPackEditorRecord sector = data.Sector;
         selectedRecord = record;
-        selectedPage =
-            page?.Fields != null || page?.Catalog?.IsMap == true && page.Record == null
-                ? page
-                : null;
+        selectedPage = data.Page;
+        section = data.Section;
         xml.Bind(record, selectedPage?.Fields);
         textRedoTarget = null;
         navigation.Render(catalogs);
         navigation.Reveal(record, page?.Key);
-        if (
-            section is "Advanced" or "Rules"
-            || page?.Fields != null
-            || section == "Encyclopedia" && !ContentEditorContentSections.HasEncyclopedia(record)
-        )
-            section = "General";
-        if (page?.MissionID != null && page.RelatedRecords.Count == 0)
-            section = "Rules";
         xml.Hide();
         bool isMap = record?.Catalog.IsMap == true;
         mapSector = sector;
@@ -1257,7 +1294,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             fieldRect.anchorMax = Vector2.one;
             fieldRect.offsetMin = new Vector2(-360, 0);
             fieldRect.offsetMax = new Vector2(0, -136);
-            section = "General";
             RenderMap();
         }
         else
@@ -1283,6 +1319,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return;
         if (name != "Audio")
             StopAudioPreview();
+        SectionRequested?.Invoke(name);
+    }
+
+    /// <summary>
+    /// Displays the inspector tab selected by the workspace session.
+    /// </summary>
+    /// <param name="name">The inspector tab to present.</param>
+    internal void RenderSection(string name)
+    {
         section = name;
         RenderTabSelection();
         bool advanced = section == "Advanced";
@@ -1397,7 +1442,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 .Range(0, tabs.Length)
                 .Any(index => tabs[index].gameObject.activeSelf && names[index] == section)
         )
-            section = names[0];
+            SectionRequested?.Invoke(names[0]);
         float width = Mathf.Min(
             140,
             tabRoot.rect.width / tabs.Count(tab => tab.gameObject.activeSelf)
@@ -1473,14 +1518,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return false;
         try
         {
-            int index = xml.ScopeIndex;
-            selectedRecord = project.SetXml(xml.Scope, xml.Text);
-            RenderProject(project, assets);
-            if (selectedRecord.Kind != "GameEvent")
-            {
-                ShowSection("Advanced");
-                xml.SelectScope(Mathf.Min(index, xml.ScopeCount - 1));
-            }
+            XmlSubmitted?.Invoke(xml.Scope, xml.Text, xml.ScopeIndex);
             return true;
         }
         catch (Exception exception)
@@ -1643,12 +1681,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void DuplicateRecord()
     {
-        if (selectedRecord == null || !CommitFields())
-            return;
-        ContentPackEditorRecord copy = project.DuplicateRecord(selectedRecord);
-        if (copy.Catalog.IsMap && copy.Kind == "PlanetSector")
-            mapSector = null;
-        SelectRecord(copy);
+        if (selectedRecord != null && CommitFields())
+            DuplicateRequested?.Invoke(selectedRecord);
     }
 
     /// <summary>
@@ -1697,9 +1731,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             AddSector(catalog);
         else if (catalog.CanAddTrait)
         {
-            ContentPackEditorRecord record = project.AddTrait(catalog);
-            searchInput.SetTextWithoutNotify(string.Empty);
-            SelectRecord(record);
+            AddTraitRequested?.Invoke(catalog);
         }
     }
 
@@ -1709,9 +1741,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="catalog">The destination events catalog.</param>
     private void AddEvent(ContentPackEditorCatalog catalog)
     {
-        ContentPackEditorRecord record = project.AddEvent(catalog);
-        searchInput.SetTextWithoutNotify(string.Empty);
-        SelectRecord(record);
+        AddEventRequested?.Invoke(catalog);
     }
 
     /// <summary>
@@ -1719,35 +1749,21 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void AddFaction()
     {
-        if (!ResolveXmlDraft(AddFaction) || !CommitFields())
-            return;
-        if (project.GetFactionOptions().Count >= 2)
-        {
-            confirmation.Show(
-                "Content packs with three or more factions have not been tested and are not guaranteed to work.",
-                "Add faction",
-                CreateFaction,
-                title: "Warning"
-            );
-            return;
-        }
-        CreateFaction();
+        if (ResolveXmlDraft(AddFaction) && CommitFields())
+            AddFactionRequested?.Invoke();
     }
 
     /// <summary>
-    /// Creates the confirmed faction and opens its combined authoring page.
+    /// Presents the warning requested by the workspace owner before adding an extra faction.
     /// </summary>
-    private void CreateFaction()
-    {
-        ContentPackEditorRecord faction = project.AddFaction();
-        searchInput.SetTextWithoutNotify(string.Empty);
-        RenderProject(project, assets);
-        navigation.Reveal(faction);
-        ContentEditorTreeNode page = navigation
-            .GetRows(string.Empty)
-            .First(node => node.Record?.Element == faction.Element);
-        SelectRecord(faction, page);
-    }
+    /// <param name="confirmed">The operation to invoke after acknowledgement.</param>
+    internal void ConfirmAdditionalFaction(Action confirmed) =>
+        confirmation.Show(
+            "Content packs with three or more factions have not been tested and are not guaranteed to work.",
+            "Add faction",
+            confirmed,
+            title: "Warning"
+        );
 
     /// <summary>
     /// Offers the game's message categories for a new starting faction message.
@@ -1778,9 +1794,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord faction = selectedPage.RelatedRecords.First(record =>
             record.Kind == "Faction" && record.Element.Element("InstanceID") != null
         );
-        ContentPackEditorField title = project.AddFactionMessage(faction, type);
-        RenderProject(project, assets);
-        form.FocusField(title);
+        AddMessageRequested?.Invoke(faction, type);
     }
 
     /// <summary>
@@ -1789,16 +1803,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="catalog">The destination galaxy catalog.</param>
     private void AddSector(ContentPackEditorCatalog catalog)
     {
-        if (!ResolveXmlDraft(() => AddSector(catalog)) || !CommitFields())
-            return;
-        Vector2Int position = map.GetGalaxyPlacementPosition();
-        ContentPackEditorRecord sector = project.AddSector(catalog, position.x, position.y);
-        searchInput.SetTextWithoutNotify(string.Empty);
-        SelectRecord(sector);
-        ContentEditorTreeNode branch = navigation.Find(sector.Key);
-        if (!navigation.IsExpanded(branch))
-            navigation.Toggle(branch);
-        RenderRecords();
+        if (ResolveXmlDraft(() => AddSector(catalog)) && CommitFields())
+            AddSectorRequested?.Invoke(catalog, map.GetGalaxyPlacementPosition());
     }
 
     /// <summary>
@@ -1810,13 +1816,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (!ResolveXmlDraft(() => AddPlanet(sector)) || !CommitFields())
             return;
         Vector2Int offset = map.GetPlacementOffset();
-        ContentPackEditorRecord planet = project.AddPlanet(
+        AddPlanetRequested?.Invoke(
             sector,
-            sector.X + offset.x,
-            sector.Y + offset.y
+            new Vector2Int(sector.X + offset.x, sector.Y + offset.y)
         );
-        searchInput.SetTextWithoutNotify(string.Empty);
-        SelectRecord(planet);
     }
 
     /// <summary>
@@ -1826,14 +1829,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="factionInstanceID">The optional recruiting or manufacturing faction.</param>
     private void AddUnit(ContentPackEditorCatalog catalog, string factionInstanceID = null)
     {
-        if (!CommitFields())
-            return;
-        ContentPackEditorRecord unit = project.AddUnit(catalog, factionInstanceID);
-        searchInput.SetTextWithoutNotify(string.Empty);
-        section = "General";
-        navigation.Render(catalogs);
-        navigation.Reveal(unit);
-        SelectRecord(unit);
+        if (CommitFields())
+            AddUnitRequested?.Invoke(catalog, factionInstanceID);
     }
 
     /// <summary>
@@ -1856,36 +1853,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             "Delete",
             () =>
             {
-                ContentPackEditorCatalog catalog = selectedRecord.Catalog;
-                ContentPackEditorRecord parent =
-                    selectedRecord.Kind == "Planet"
-                        ? catalog.Records.FirstOrDefault(sector =>
-                            sector.Planets.Any(planet => planet.Element == selectedRecord.Element)
-                        )
-                        : null;
                 try
                 {
-                    project.RemoveRecord(selectedRecord);
+                    DeleteRequested?.Invoke(selectedRecord);
                 }
                 catch (InvalidOperationException exception)
                 {
                     RenderStatus(exception.Message, true);
-                    return;
                 }
-                form.Clear();
-                xml.Clear();
-                if (selectedRecord.Kind == "Faction")
-                {
-                    selectedRecord = null;
-                    selectedPage = null;
-                    searchInput.SetTextWithoutNotify(string.Empty);
-                    RenderProject(project, assets);
-                    return;
-                }
-                mapSector = parent;
-                SelectRecord(
-                    parent?.Planets.FirstOrDefault() ?? parent ?? catalog.Records.FirstOrDefault()
-                );
             }
         );
     }
@@ -1928,7 +1903,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private void BeginMapDrag(ContentPackEditorRecord record)
     {
         FinishMapEdit();
-        mapEdit = project.BeginEdit("Move " + record.Name);
+        MapEditStarted?.Invoke(record);
+        mapDragging = true;
     }
 
     /// <summary>
@@ -1938,8 +1914,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="position">Its absolute source coordinates.</param>
     private void MoveMapRecord(ContentPackEditorRecord record, Vector2Int position)
     {
-        project.Move(record, position.x, position.y);
-        RefreshProjectState();
+        MapMoved?.Invoke(record, position);
     }
 
     /// <summary>
@@ -1947,7 +1922,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void FinishMapDrag()
     {
-        if (mapEdit == null)
+        if (!mapDragging)
             return;
         FinishMapEdit();
         if (isActiveAndEnabled && project != null && selectedRecord != null)
@@ -1959,9 +1934,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void FinishMapEdit()
     {
-        IDisposable edit = mapEdit;
-        mapEdit = null;
-        edit?.Dispose();
+        if (!mapDragging)
+            return;
+        mapDragging = false;
+        MapEditEnded?.Invoke();
     }
 
     /// <summary>
@@ -2017,6 +1993,95 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (command is ContentEditorMenuCommand action)
             action.Execute();
     }
+
+    /// <summary>
+    /// Displays a newly created definition without applying its creation in the view.
+    /// </summary>
+    /// <param name="record">The definition created by the workspace controller.</param>
+    internal void ShowCreatedRecord(ContentPackEditorRecord record)
+    {
+        searchInput.SetTextWithoutNotify(string.Empty);
+        if (record.Kind == "Faction")
+        {
+            RenderProject(project, assets);
+            navigation.Reveal(record);
+            ContentEditorTreeNode page = navigation
+                .GetRows(string.Empty)
+                .First(node => node.Record?.Element == record.Element);
+            SelectRecord(record, page);
+            return;
+        }
+        if (record.Kind == "PlanetSector")
+            mapSector = null;
+        SelectRecord(record);
+        if (record.Kind == "PlanetSector")
+        {
+            ContentEditorTreeNode branch = navigation.Find(record.Key);
+            if (!navigation.IsExpanded(branch))
+                navigation.Toggle(branch);
+            RenderRecords();
+        }
+    }
+
+    /// <summary>
+    /// Removes stale presentation bindings after the controller deletes a definition.
+    /// </summary>
+    /// <param name="record">The removed definition.</param>
+    /// <param name="parent">The remaining parent sector, if any.</param>
+    internal void ShowRemovedRecord(ContentPackEditorRecord record, ContentPackEditorRecord parent)
+    {
+        form.Clear();
+        xml.Clear();
+        if (record.Kind == "Faction")
+        {
+            selectedRecord = null;
+            selectedPage = null;
+            searchInput.SetTextWithoutNotify(string.Empty);
+            RenderProject(project, assets);
+            return;
+        }
+        mapSector = parent;
+        SelectRecord(
+            parent?.Planets.FirstOrDefault() ?? parent ?? record.Catalog.Records.FirstOrDefault()
+        );
+    }
+
+    /// <summary>
+    /// Restores the inspector after the controller applies a scoped XML draft.
+    /// </summary>
+    /// <param name="record">The updated definition.</param>
+    /// <param name="index">The previously visible XML scope.</param>
+    internal void ShowAppliedXml(ContentPackEditorRecord record, int index)
+    {
+        selectedRecord = record;
+        RenderProject(project, assets);
+        if (selectedRecord.Kind != "GameEvent")
+        {
+            ShowSection("Advanced");
+            xml.SelectScope(Mathf.Min(index, xml.ScopeCount - 1));
+        }
+    }
+
+    /// <summary>
+    /// Reveals the field requested by a completed workspace operation.
+    /// </summary>
+    /// <param name="field">The field to focus.</param>
+    internal void FocusField(ContentPackEditorField field) => form.FocusField(field);
+
+    /// <summary>
+    /// Forwards a semantic field edit to the workspace controller.
+    /// </summary>
+    /// <param name="field">The edited member.</param>
+    /// <param name="values">The complete proposed values.</param>
+    private void SubmitField(ContentPackEditorField field, IReadOnlyList<string> values) =>
+        FieldSubmitted?.Invoke(field, values);
+
+    /// <summary>
+    /// Forwards unchanged-field validation without mutating project data in the view.
+    /// </summary>
+    /// <param name="field">The member to validate.</param>
+    private void ValidateField(ContentPackEditorField field) =>
+        FieldValidationRequested?.Invoke(field);
 }
 
 /// <summary>

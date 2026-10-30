@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Gameplay;
@@ -13,6 +16,8 @@ using Rebellion.SceneGraph;
 /// </summary>
 internal static class ContentEditorPackValidator
 {
+    private const int _mediaFrameBudgetMilliseconds = 8;
+
     /// <summary>
     /// Checks authored identities and generation references independently of random selections.
     /// </summary>
@@ -233,5 +238,152 @@ internal static class ContentEditorPackValidator
     {
         if (identifier == null || !identifiers.Contains(identifier))
             throw new InvalidDataException($"Unknown {description} '{identifier}'.");
+    }
+
+    /// <summary>
+    /// Checks authored references, campaign startup, and media decoding while keeping authoring responsive.
+    /// </summary>
+    /// <param name="project">The saved working content to validate.</param>
+    /// <param name="progress">Optional status reporting for the current validation check.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of all validation checks.</returns>
+    public static async Task ValidateAsync(
+        ContentPackEditorProject project,
+        Action<string> progress = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.Yield();
+        foreach (var check in GetStartupChecks(project))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Invoke(
+                $"Checking scenario: {check.Pack.Scenario.ID} ({check.Summary.PlayerFactionID}, {check.Summary.GalaxySize}, {check.Summary.Difficulty}, {check.Summary.ResourceAvailability})"
+            );
+            ContentEditorPackValidator.ValidateStartup(check.Pack, check.Summary);
+            await Task.Yield();
+        }
+        await ValidateMediaAsync(project, progress, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    /// Decodes referenced media once per resolved file while releasing each asset before continuing.
+    /// </summary>
+    /// <param name="project">The saved working content to validate.</param>
+    /// <param name="progress">Optional status reporting for the current asset.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of referenced-media validation.</returns>
+    private static async Task ValidateMediaAsync(
+        ContentPackEditorProject project,
+        Action<string> progress,
+        CancellationToken cancellationToken
+    )
+    {
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            project.ContentRootPath,
+            project.PackRootPath,
+            project.Definition
+        );
+        HashSet<string> checkedFiles = new HashSet<string>(StringComparer.Ordinal);
+        Stopwatch batch = Stopwatch.StartNew();
+        foreach (
+            ContentPackEditorField field in project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => new[] { record }.Concat(record.Planets))
+                .OrderBy(record => record.Catalog.Document.IsInherited)
+                .SelectMany(record => record.GetFields())
+                .Where(field => field.IsMedia)
+        )
+        foreach (string value in field.Values.Where(value => !string.IsNullOrWhiteSpace(value)))
+        {
+            string address = field.GetMediaAddress(value);
+            IEnumerable<string> addresses = field.IsMediaDirectory
+                ? resolver
+                    .EnumerateFileAddresses(address)
+                    .Where(candidate =>
+                        field.MediaExtensions.Contains(
+                            Path.GetExtension(candidate),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                    )
+                : new[] { address };
+            foreach (string candidate in addresses)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string file =
+                    resolver.ResolveFile(candidate, field.MediaExtensions)
+                    ?? throw new FileNotFoundException("Media not found: " + candidate);
+                if (!checkedFiles.Add(file))
+                    continue;
+                progress?.Invoke("Checking media: " + candidate);
+                await ContentEditorMediaValidator.ValidateAsync(
+                    resolver,
+                    candidate,
+                    field.MediaType,
+                    cancellationToken
+                );
+                if (batch.ElapsedMilliseconds >= _mediaFrameBudgetMilliseconds)
+                {
+                    await Task.Yield();
+                    batch.Restart();
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates authored fields and loads the scenarios needed by the startup checks.
+    /// </summary>
+    /// <param name="project">The working content to check.</param>
+    /// <returns>The loaded catalog and launch configuration for each startup check.</returns>
+    private static IEnumerable<(ContentPack Pack, GameSummary Summary)> GetStartupChecks(
+        ContentPackEditorProject project
+    )
+    {
+        if (project.IsDirty)
+            throw new InvalidOperationException("Save the content pack before validating it.");
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            project.ContentRootPath,
+            project.PackRootPath,
+            project.Definition
+        );
+        IReadOnlyDictionary<string, string> factions = project.GetFactionOptions();
+        IReadOnlyDictionary<string, string> traits = project.GetTraitOptions();
+        foreach (
+            ContentPackEditorRecord record in project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => new[] { record }.Concat(record.Planets))
+        )
+        foreach (ContentPackEditorField field in record.GetFields())
+            project.ValidateFieldValues(field, field.Values, resolver, factions, traits);
+        string[] scenarios = project
+            .Definition.ScenarioPaths.Select(path =>
+                ContentDefinitionSerializer
+                    .Deserialize<ContentScenarioDefinition>(
+                        resolver.ResolveFile("Pack/" + path)
+                            ?? throw new FileNotFoundException("Scenario not found: " + path)
+                    )
+                    .ID
+            )
+            .Append(project.Definition.DefaultScenarioID)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (string scenario in scenarios)
+        {
+            ContentPack pack = ContentPackLoader.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath,
+                scenario
+            );
+            ContentEditorPackValidator.ValidateDefinitions(pack);
+            foreach (
+                GameSummary summary in ContentEditorPackValidator.GetStartupConfigurations(pack)
+            )
+                yield return (pack, summary);
+        }
     }
 }

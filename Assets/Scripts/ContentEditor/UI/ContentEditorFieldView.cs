@@ -32,9 +32,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Button previewButton;
 
     [SerializeField]
-    private ContentEditorFieldHelp help;
+    private HelpTooltipView help;
     private ContentPackEditorField field;
-    private ContentPackEditorProject project;
+    private ContentPackEditorFieldRenderData presentation;
     private Action changed;
     private Action<ContentPackEditorField> importRequested;
     private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
@@ -45,6 +45,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private IReadOnlyList<string> mediaFiles = Array.Empty<string>();
 
     public event Action<string> ValidationFailed;
+    public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
+    public event Action<ContentPackEditorField> ValidationRequested;
 
     public int Height =>
         field == null ? 56
@@ -266,16 +268,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <summary>
     /// Displays the selected member and configures its input type.
     /// </summary>
-    /// <param name="value">The member to edit.</param>
+    /// <param name="value">The member and its display choices.</param>
     /// <param name="onChanged">The notification after a valid edit.</param>
     /// <param name="onImport">The media-file selection request.</param>
-    /// <param name="owner">The owning project.</param>
     /// <param name="onPreview">The media preview request.</param>
     public void Render(
-        ContentPackEditorField value,
+        ContentPackEditorFieldRenderData value,
         Action onChanged,
         Action<ContentPackEditorField> onImport,
-        ContentPackEditorProject owner,
         Action<ContentPackEditorField, string> onPreview
     )
     {
@@ -284,13 +284,10 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             BindControls();
             SetBackgroundRole(ContentEditorColorRole.Input);
-            field = value;
+            presentation = value;
+            field = value.Field;
             help.Configure(field.HelpText, input);
-            project = owner;
-            IReadOnlyDictionary<string, string> referenceLabels =
-                field.IsFactionReference ? project.GetFactionOptions()
-                : field.IsTraitReference ? project.GetTraitOptions()
-                : null;
+            IReadOnlyDictionary<string, string> referenceLabels = value.ReferenceLabels;
             choiceValues =
                 referenceLabels != null
                     ? referenceLabels
@@ -420,7 +417,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             }
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
-            input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+            input.GetComponent<TextInputHistory>()?.ClearHistory();
             gameObject.SetActive(true);
         }
         finally
@@ -435,14 +432,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public void Clear()
     {
         field = null;
-        project = null;
+        presentation = null;
         changed = null;
         importRequested = null;
         previewRequested = null;
         choiceValues = mediaFiles = Array.Empty<string>();
         help.Configure(null, input);
         help.gameObject.SetActive(false);
-        input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+        input.GetComponent<TextInputHistory>()?.ClearHistory();
         gameObject.SetActive(false);
     }
 
@@ -456,7 +453,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         else if (field != null)
             try
             {
-                project.ValidateField(field);
+                ValidationRequested?.Invoke(field);
                 error.text = string.Empty;
             }
             catch (ArgumentException exception)
@@ -478,20 +475,21 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             bool modified = text != (field.IsList ? string.Join("\n", field.Values) : field.Value);
             if (!modified)
             {
-                project.ValidateField(field);
+                ValidationRequested?.Invoke(field);
                 error.text = string.Empty;
                 return;
             }
             if (field.IsList)
-                project.SetFieldValues(
+                Submitted?.Invoke(
                     field,
                     text.Split('\n')
                         .Select(value => value.TrimEnd('\r'))
                         .Where(value => value.Length > 0)
+                        .ToArray()
                 );
             else
-                project.SetField(field, text);
-            input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+                Submitted?.Invoke(field, new[] { text });
+            input.GetComponent<TextInputHistory>()?.ClearHistory();
             error.text = string.Empty;
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
@@ -529,7 +527,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             selected.Remove(choiceValues[index]);
         try
         {
-            project.SetFieldValues(field, choiceValues.Where(selected.Contains));
+            Submitted?.Invoke(field, choiceValues.Where(selected.Contains).ToArray());
             error.text = string.Empty;
             changed?.Invoke();
         }
@@ -547,7 +545,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         try
         {
-            mediaFiles = project.GetMediaFiles(field);
+            mediaFiles = presentation.GetMediaFiles();
         }
         catch (ArgumentException)
         {

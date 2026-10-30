@@ -17,10 +17,38 @@ public sealed class ContentEditorWorkbenchLayout : UIBehaviour
 
     [SerializeField]
     private RectTransform navigationBackground;
+
+    [SerializeField]
+    private SplitterView splitter;
     private float split = 0.205f;
     public float Zoom { get; private set; } = 1;
     public float Split => split;
     public event System.Action Changed;
+
+    /// <summary>
+    /// Routes general divider gestures to the workspace's pane sizing policy.
+    /// </summary>
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        if (splitter == null)
+            return;
+        splitter.PositionChanged += SetSplit;
+        splitter.DragCompleted += CommitSplit;
+    }
+
+    /// <summary>
+    /// Releases divider subscriptions while this workspace is hidden.
+    /// </summary>
+    protected override void OnDisable()
+    {
+        if (splitter != null)
+        {
+            splitter.PositionChanged -= SetSplit;
+            splitter.DragCompleted -= CommitSplit;
+        }
+        base.OnDisable();
+    }
 
     /// <summary>
     /// Changes the content scale while preserving the fixed application menu.

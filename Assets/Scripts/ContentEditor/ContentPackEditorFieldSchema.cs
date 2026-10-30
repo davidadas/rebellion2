@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Xml.Linq;
-using System.Xml.Serialization;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
@@ -47,7 +45,7 @@ internal static class ContentPackEditorFieldSchema
         };
         if (definition != null)
             return definition;
-        IReadOnlyList<Type> types = ReflectionHelper.GetPersistableTypes(record.Name.LocalName);
+        IReadOnlyList<Type> types = SerializationMetadata.GetTypes(record.Name.LocalName);
         return types.Count == 1 ? types[0] : null;
     }
 
@@ -77,24 +75,16 @@ internal static class ContentPackEditorFieldSchema
         }
         if (attribute == null)
             return current;
-        return ReflectionHelper
-            .GetPersistableAttributeMap(current, ReflectionHelper.OperationType.Read)
-            .TryGetValue(attribute.Name.LocalName, out MemberInfo member)
-            ? ReflectionHelper.GetMemberType(member)
-            : null;
+        return SerializationMetadata.GetAttributeType(current, attribute.Name.LocalName);
     }
 
     /// <summary>
-    /// Resolves the item type of an array or generic collection.
+    /// Resolves a collection item through the serializer's public metadata contract.
     /// </summary>
-    /// <param name="type">The collection type.</param>
+    /// <param name="type">The possible collection type.</param>
     /// <returns>The item type, or null for a scalar or dictionary.</returns>
-    internal static Type GetItemType(Type type)
-    {
-        if (type == null || !TypeHelper.IsEnumerable(type) || TypeHelper.IsDictionary(type))
-            return null;
-        return type.IsArray ? type.GetElementType() : type.GetGenericArguments().FirstOrDefault();
-    }
+    internal static Type GetItemType(Type type) =>
+        SerializationMetadata.GetCollectionItemType(type);
 
     /// <summary>
     /// Gets the XML item name declared for one scalar collection member.
@@ -106,21 +96,14 @@ internal static class ContentPackEditorFieldSchema
     {
         XElement parent = element.Parent ?? record;
         Type parentType = parent == record ? GetRecordType(record) : GetValueType(record, parent);
-        if (
-            parentType != null
-            && ReflectionHelper
-                .GetElementMemberLookup(parentType)
-                .TryGetValue(element.Name.LocalName, out MemberInfo member)
-        )
-        {
-            string itemName =
-                member.GetCustomAttribute<PersistableCollectionItemAttribute>()?.Name
-                ?? member.GetCustomAttribute<XmlArrayItemAttribute>()?.ElementName;
-            if (!string.IsNullOrWhiteSpace(itemName))
-                return itemName;
-        }
+        string itemName =
+            parentType == null
+                ? null
+                : SerializationMetadata.GetCollectionItemName(parentType, element.Name.LocalName);
+        if (!string.IsNullOrWhiteSpace(itemName))
+            return itemName;
         Type itemType = GetItemType(GetValueType(record, element));
-        return itemType == null ? null : ReflectionHelper.GetPersistableElementName(itemType);
+        return itemType == null ? null : SerializationMetadata.GetElementName(itemType);
     }
 
     /// <summary>
@@ -175,16 +158,13 @@ internal static class ContentPackEditorFieldSchema
             return element.Name.LocalName.StartsWith("ArrayOf", StringComparison.Ordinal)
                 ? parentType
                 : itemType;
-        if (
-            ReflectionHelper
-                .GetElementMemberLookup(parentType)
-                .TryGetValue(element.Name.LocalName, out MemberInfo member)
-        )
-            return ReflectionHelper.GetMemberType(member);
+        Type memberType = SerializationMetadata.GetElementType(parentType, element.Name.LocalName);
+        if (memberType != null)
+            return memberType;
         if (element.Name.LocalName == parentType.Name)
             return parentType;
-        return ReflectionHelper
-            .GetPersistableTypes(element.Name.LocalName)
+        return SerializationMetadata
+            .GetTypes(element.Name.LocalName)
             .SingleOrDefault(type => parentType.IsAssignableFrom(type));
     }
 }

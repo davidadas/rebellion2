@@ -6,7 +6,7 @@ using UnityEngine;
 /// Retains reversible text edits while an author is editing a shared input control.
 /// </summary>
 [RequireComponent(typeof(MenuInputField))]
-public sealed class ContentEditorTextHistory : MonoBehaviour
+public sealed class TextInputHistory : MonoBehaviour
 {
     private readonly Stack<State> undo = new Stack<State>();
     private readonly Stack<State> redo = new Stack<State>();

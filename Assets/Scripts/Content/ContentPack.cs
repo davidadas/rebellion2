@@ -169,4 +169,27 @@ public sealed class ContentPack
             && (modIDs ?? Array.Empty<string>()).SequenceEqual(activeModIDs)
             && (modVersions ?? Array.Empty<string>()).SequenceEqual(activeModVersions);
     }
+
+    /// <summary>
+    /// Creates detached new-game settings using this pack's scenario and active content identity.
+    /// </summary>
+    /// <returns>The authored default game settings.</returns>
+    public GameSummary CreateDefaultGameSummary()
+    {
+        string[] startingFactionIds = Scenario.PlayableFactionIDs.ToArray();
+        return new GameSummary
+        {
+            Difficulty = GameDifficulty.Easy,
+            GalaxySize = GameSize.Large,
+            VictoryCondition = GameVictoryCondition.Conquest,
+            ResourceAvailability = GameResourceAvailability.Normal,
+            PlayerFactionID = Scenario.DefaultPlayerFactionID,
+            StartingFactionIDs = startingFactionIds,
+            PackID = Definition.ID,
+            PackVersion = Definition.Version,
+            ScenarioID = Scenario.ID,
+            ModIDs = FileResolver.Mods.Select(mod => mod.ID).ToArray(),
+            ModVersions = FileResolver.Mods.Select(mod => mod.Version).ToArray(),
+        };
+    }
 }

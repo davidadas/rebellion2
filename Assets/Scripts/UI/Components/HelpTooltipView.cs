@@ -3,12 +3,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Shows authoring guidance using the shared delayed tooltip presentation.
+/// Shows field guidance using the shared delayed tooltip presentation.
 /// </summary>
-public sealed class ContentEditorFieldHelp
-    : MonoBehaviour,
-        IPointerEnterHandler,
-        IPointerExitHandler
+public sealed class HelpTooltipView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField]
     private string text;
@@ -32,7 +29,7 @@ public sealed class ContentEditorFieldHelp
     }
 
     /// <summary>
-    /// Starts a delayed reveal beside the pointer in the editor canvas.
+    /// Starts a delayed reveal beside the pointer in the owning canvas.
     /// </summary>
     /// <param name="eventData">The entering pointer.</param>
     public void OnPointerEnter(PointerEventData eventData)

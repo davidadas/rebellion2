@@ -106,6 +106,13 @@ seven days; creating them does not publish a release or update an installation.
 
 Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.
 
+`ContentEditor` is a separate assembly included in Unity and the standalone authoring player. Its
+workspace controller handles editing requests, its session owns selection and continuous edits, and
+its projector supplies presentation data. Projects and documents own editable state; storage owns
+file access, while validation and export have their own owners. General input, tooltip, dialog,
+preview, scrolling, and divider behavior lives in `UI/Components` and has no editor dependency.
+Shared menu builders support textured and flat control styles.
+
 ## Game scripting
 
 `GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.

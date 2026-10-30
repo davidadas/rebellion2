@@ -84,10 +84,20 @@ namespace Rebellion.Tests.ContentEditor.UI
                 new[]
                 {
                     new ContentPackEditorCatalog(
-                        new ContentPackEditorDocument("Pack/pack.xml", pack, pack)
+                        new ContentPackEditorDocument(
+                            "Pack/pack.xml",
+                            pack,
+                            pack,
+                            File.ReadAllText(pack)
+                        )
                     ),
                     new ContentPackEditorCatalog(
-                        new ContentPackEditorDocument("Pack/generation.xml", setup, setup)
+                        new ContentPackEditorDocument(
+                            "Pack/generation.xml",
+                            setup,
+                            setup,
+                            File.ReadAllText(setup)
+                        )
                     ),
                 }
             );
@@ -104,7 +114,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             string manifest = Path.Combine(directory, "pack.xml");
             File.WriteAllText(manifest, "<ContentPack><ID>test-pack</ID></ContentPack>");
             ContentPackEditorCatalog pack = new(
-                new ContentPackEditorDocument("Pack/pack.xml", manifest, manifest)
+                new ContentPackEditorDocument(
+                    "Pack/pack.xml",
+                    manifest,
+                    manifest,
+                    File.ReadAllText(manifest)
+                )
             );
             ContentPackEditorCatalog[] catalogs =
             {
@@ -262,7 +277,12 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "<Faction><ID>side-a</ID><FactionDataPath>Factions/SideA/Data/faction.xml</FactionDataPath></Faction>"
             );
             ContentPackEditorCatalog files = new ContentPackEditorCatalog(
-                new ContentPackEditorDocument("Pack/Factions/SideA/faction.xml", manifest, manifest)
+                new ContentPackEditorDocument(
+                    "Pack/Factions/SideA/faction.xml",
+                    manifest,
+                    manifest,
+                    File.ReadAllText(manifest)
+                )
             );
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(new[] { settings, files });
@@ -336,7 +356,8 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentPackEditorDocument document = new ContentPackEditorDocument(
                 "Pack/messages.xml",
                 file,
-                file
+                file,
+                File.ReadAllText(file)
             );
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(new[] { new ContentPackEditorCatalog(document) });
@@ -695,7 +716,9 @@ namespace Rebellion.Tests.ContentEditor.UI
                     + root
                     + ">"
             );
-            return new ContentPackEditorCatalog(new ContentPackEditorDocument(address, path, path));
+            return new ContentPackEditorCatalog(
+                new ContentPackEditorDocument(address, path, path, File.ReadAllText(path))
+            );
         }
     }
 }

@@ -374,6 +374,32 @@ jobs:
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check compiled architecture
+        run: |
+          set -euo pipefail
+          test -f Library/ScriptAssemblies/GameAssembly.dll
+          test -f Library/ScriptAssemblies/ContentPackEditorAssembly.dll
+          architecture_runtime="$RUNNER_TEMP/architecture-unity-runtime"
+          mkdir -p "$architecture_runtime"
+          architecture_container="$(docker create rebellion2-unity-test:vulkan)"
+          trap 'docker rm "$architecture_container" >/dev/null' EXIT
+          docker cp "$architecture_container:/opt/unity/Editor/Data/Managed/UnityEngine/." "$architecture_runtime/"
+          dotnet build Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
+            -p:UnityCompiledAssembliesPath="$PWD/Library/ScriptAssemblies"
+          architecture_output="Tools/Rebellion.Architecture.Tests/bin/Debug/net8.0"
+          cp "$architecture_runtime"/*.dll "$architecture_output/"
+          for package in Library/ScriptAssemblies/Unity*.dll Library/ScriptAssemblies/glTFast*.dll; do
+            if [ -f "$package" ]; then
+              cp "$package" "$architecture_output/"
+            fi
+          done
+          dotnet test Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
+            --no-build --logger "console;verbosity=normal"
+
       - name: Check coverage threshold
         run: |
           python3 - <<'EOF'

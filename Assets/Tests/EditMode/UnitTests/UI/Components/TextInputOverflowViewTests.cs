@@ -2,13 +2,13 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 
-namespace Rebellion.Tests.ContentEditor.UI
+namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
-    public sealed class ContentEditorInputViewTests
+    public sealed class TextInputOverflowViewTests
     {
         private TMP_InputField input;
-        private ContentEditorInputView view;
+        private TextInputOverflowView view;
 
         /// <summary>
         /// Creates a narrow shared input to exercise overflow and rebinding.
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             input.textComponent.enableAutoSizing = false;
             input.textComponent.textWrappingMode = TextWrappingModes.NoWrap;
             input.lineType = TMP_InputField.LineType.SingleLine;
-            view = input.gameObject.AddComponent<ContentEditorInputView>();
+            view = input.gameObject.AddComponent<TextInputOverflowView>();
             Canvas.ForceUpdateCanvases();
         }
 

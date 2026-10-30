@@ -1,10 +1,11 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Converts divider drags into workbench-relative pane widths.
+/// Reports horizontal divider drags relative to an authored container.
 /// </summary>
-public sealed class ContentEditorSplitter
+public sealed class SplitterView
     : MonoBehaviour,
         IDragHandler,
         IPointerEnterHandler,
@@ -13,10 +14,20 @@ public sealed class ContentEditorSplitter
         IEndDragHandler
 {
     [SerializeField]
-    private ContentEditorWorkbenchLayout layout;
+    private RectTransform container;
     private Texture2D resizeCursor;
     private bool hovered;
     private bool dragging;
+
+    public event Action<float> PositionChanged;
+    public event Action DragCompleted;
+
+    /// <summary>
+    /// Selects the container used to normalize subsequent divider gestures.
+    /// </summary>
+    /// <param name="dragContainer">The authored container being divided.</param>
+    public void Configure(RectTransform dragContainer) =>
+        container = dragContainer ?? throw new ArgumentNullException(nameof(dragContainer));
 
     /// <summary>
     /// Shows horizontal resize feedback while the pointer is over the divider.
@@ -58,14 +69,14 @@ public sealed class ContentEditorSplitter
     public void OnEndDrag(PointerEventData eventData)
     {
         if (dragging)
-            layout.CommitSplit();
+            DragCompleted?.Invoke();
         dragging = false;
         if (!hovered)
             Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
     }
 
     /// <summary>
-    /// Restores the system pointer when the workbench is hidden.
+    /// Restores the system pointer when the divider is hidden.
     /// </summary>
     private void OnDisable()
     {
@@ -125,14 +136,16 @@ public sealed class ContentEditorSplitter
     }
 
     /// <summary>
-    /// Resizes the panes without changing the authoring selection or documents.
+    /// Reports the pointer position without owning the target panes or their size limits.
     /// </summary>
     /// <param name="eventData">The divider drag.</param>
     public void OnDrag(PointerEventData eventData)
     {
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
-        RectTransform parent = (RectTransform)layout.transform;
+        RectTransform parent = container;
+        if (parent == null || parent.rect.width <= 0)
+            return;
         if (
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 parent,
@@ -141,6 +154,6 @@ public sealed class ContentEditorSplitter
                 out Vector2 point
             )
         )
-            layout.SetSplit((point.x - parent.rect.xMin) / parent.rect.width);
+            PositionChanged?.Invoke((point.x - parent.rect.xMin) / parent.rect.width);
     }
 }

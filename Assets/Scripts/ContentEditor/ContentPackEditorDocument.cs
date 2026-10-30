@@ -26,6 +26,7 @@ public sealed class ContentPackEditorDocument
 
     public string Text => text;
     internal bool IsRemoved => text == null;
+    internal string SavedText => savedText;
 
     /// <summary>
     /// Reports a working-text change with its previous contents for the project edit history.
@@ -38,7 +39,13 @@ public sealed class ContentPackEditorDocument
     /// <param name="address">The pack-scoped content address.</param>
     /// <param name="sourcePath">The resolved source path.</param>
     /// <param name="targetPath">The selected pack's local override path.</param>
-    public ContentPackEditorDocument(string address, string sourcePath, string targetPath)
+    /// <param name="sourceText">The document text already read by the persistence owner.</param>
+    public ContentPackEditorDocument(
+        string address,
+        string sourcePath,
+        string targetPath,
+        string sourceText
+    )
     {
         Address = address ?? throw new ArgumentNullException(nameof(address));
         SourcePath = Path.GetFullPath(
@@ -54,7 +61,7 @@ public sealed class ContentPackEditorDocument
         int separator = relativePath.IndexOf('/');
         Group = separator < 0 ? "Pack" : relativePath[..separator];
         IsInherited = !string.Equals(SourcePath, TargetPath, StringComparison.OrdinalIgnoreCase);
-        text = File.ReadAllText(SourcePath);
+        text = sourceText ?? throw new ArgumentNullException(nameof(sourceText));
         savedText = text;
     }
 
@@ -76,7 +83,7 @@ public sealed class ContentPackEditorDocument
     /// Replaces the working text and records whether it differs from the source on disk.
     /// </summary>
     /// <param name="value">The edited XML text.</param>
-    public void SetText(string value)
+    internal void SetText(string value)
     {
         RestoreText(value ?? string.Empty);
     }
@@ -107,87 +114,13 @@ public sealed class ContentPackEditorDocument
     }
 
     /// <summary>
-    /// Validates and writes the working text to the selected pack's local layer.
+    /// Accepts successful persistence without touching the filesystem.
     /// </summary>
-    public void Save()
+    internal void AcceptSave()
     {
-        Validate();
-        VerifyUnchangedTarget();
-
-        if (IsRemoved)
-        {
-            if (File.Exists(TargetPath))
-                File.Delete(TargetPath);
-            savedText = null;
-            IsDirty = false;
-            return;
-        }
-
-        string directory = Path.GetDirectoryName(TargetPath);
-        if (string.IsNullOrWhiteSpace(directory))
-            throw new IOException($"Content document path has no directory: {TargetPath}");
-        Directory.CreateDirectory(directory);
-
-        string temporaryPath = TargetPath + ".tmp";
-        try
-        {
-            File.WriteAllText(temporaryPath, text);
-            ReplaceFile(temporaryPath, TargetPath);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-        }
-
-        IsInherited = false;
+        if (!IsRemoved)
+            IsInherited = false;
         IsDirty = false;
         savedText = text;
-    }
-
-    /// <summary>
-    /// Refuses to overwrite a file that another process changed after this document was opened.
-    /// </summary>
-    internal void VerifyUnchangedTarget()
-    {
-        bool exists = File.Exists(TargetPath);
-        bool changed;
-        if (savedText == null)
-            changed = exists;
-        else if (exists)
-            changed =
-                IsInherited
-                || !string.Equals(
-                    File.ReadAllText(TargetPath),
-                    savedText,
-                    StringComparison.Ordinal
-                );
-        else
-            changed = !IsInherited;
-        if (!changed && IsInherited)
-            changed =
-                !File.Exists(SourcePath)
-                || !string.Equals(
-                    File.ReadAllText(SourcePath),
-                    savedText,
-                    StringComparison.Ordinal
-                );
-        if (changed)
-            throw new IOException(
-                "Content changed outside the editor. Reopen the pack before saving: " + TargetPath
-            );
-    }
-
-    /// <summary>
-    /// Moves a completed temporary file into place without exposing partial XML.
-    /// </summary>
-    /// <param name="temporaryPath">The complete temporary file.</param>
-    /// <param name="destinationPath">The final document path.</param>
-    private static void ReplaceFile(string temporaryPath, string destinationPath)
-    {
-        if (File.Exists(destinationPath))
-            File.Replace(temporaryPath, destinationPath, null);
-        else
-            File.Move(temporaryPath, destinationPath);
     }
 }

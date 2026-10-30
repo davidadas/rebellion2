@@ -121,7 +121,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             string path = Path.Combine(folder, name + ".xml");
             File.WriteAllText(path, xml);
             return new ContentPackEditorCatalog(
-                new ContentPackEditorDocument("Pack/" + name + ".xml", path, path)
+                new ContentPackEditorDocument(
+                    "Pack/" + name + ".xml",
+                    path,
+                    path,
+                    File.ReadAllText(path)
+                )
             );
         }
     }

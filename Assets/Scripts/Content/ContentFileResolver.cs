@@ -27,7 +27,7 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Gets the selected pack and its inherited layers in resolution order.
     /// </summary>
-    internal IReadOnlyList<string> PackRootPaths => packRoots;
+    public IReadOnlyList<string> PackRootPaths => packRoots;
 
     public IReadOnlyList<ContentModDefinition> Mods { get; }
 
@@ -41,7 +41,7 @@ public sealed class ContentFileResolver
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
     /// <returns>The absolute Mods directory.</returns>
-    internal static string ResolveModsRootPath(string contentRootPath)
+    public static string ResolveModsRootPath(string contentRootPath)
     {
         return Path.Combine(
             Directory.GetParent(Path.GetFullPath(contentRootPath))?.FullName

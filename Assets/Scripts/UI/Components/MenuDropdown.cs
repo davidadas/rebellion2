@@ -27,7 +27,7 @@ public sealed class MenuDropdown : TMP_Dropdown
         UnityEngine.UI.ScrollRect scroll = popup.GetComponent<UnityEngine.UI.ScrollRect>();
         scroll.vertical = options.Count > _maximumVisibleOptions;
         scroll.scrollSensitivity = itemHeight;
-        RectTransform viewport = (RectTransform)popup.Find("Viewport");
+        RectTransform viewport = scroll.viewport;
         viewport.anchorMin = Vector2.zero;
         viewport.anchorMax = Vector2.one;
         viewport.offsetMin = new Vector2(2f, 0);

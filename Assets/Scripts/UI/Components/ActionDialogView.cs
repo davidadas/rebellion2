@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Presents a focused confirmation with up to two actions and a cancel path.
 /// </summary>
-public sealed class ContentEditorConfirmationView : MonoBehaviour, ICancelable
+public sealed class ActionDialogView : MonoBehaviour, ICancelable
 {
     [SerializeField]
     private TextMeshProUGUI message;
@@ -26,7 +26,7 @@ public sealed class ContentEditorConfirmationView : MonoBehaviour, ICancelable
     private bool bound;
 
     /// <summary>
-    /// Binds cancel without retaining project-specific callbacks after dismissal.
+    /// Binds cancel without retaining operation callbacks after dismissal.
     /// </summary>
     private void Awake() => BindControls();
 
@@ -37,6 +37,14 @@ public sealed class ContentEditorConfirmationView : MonoBehaviour, ICancelable
     {
         if (bound)
             return;
+        if (
+            message == null
+            || heading == null
+            || primaryButton == null
+            || secondaryButton == null
+            || cancelButton == null
+        )
+            throw new MissingReferenceException(name + " has incomplete action-dialog references.");
         cancelButton.onClick.AddListener(Hide);
         bound = true;
     }

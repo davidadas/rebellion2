@@ -80,7 +80,7 @@ public sealed class ContentEditorPlaySession : IDisposable
                 options.ScenarioID
             );
             ContentEditorPackValidator.ValidateDefinitions(pack);
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            GameSummary summary = pack.CreateDefaultGameSummary();
             if (!pack.Scenario.PlayableFactionIDs.Contains(options.FactionID))
                 throw new ArgumentException(
                     "Select a playable faction for this scenario.",

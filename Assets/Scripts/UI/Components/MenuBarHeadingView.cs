@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -5,13 +6,10 @@ using UnityEngine.UI;
 /// <summary>
 /// Routes menu-bar pointer movement while a desktop menu is open.
 /// </summary>
-public sealed class ContentEditorMenuHeading : MonoBehaviour, IPointerEnterHandler
+[RequireComponent(typeof(Button))]
+public sealed class MenuBarHeadingView : MonoBehaviour, IPointerEnterHandler
 {
-    [SerializeField]
-    private ContentPackEditorView owner;
-
-    [SerializeField]
-    private Button button;
+    public event Action<Button> Hovered;
 
     /// <summary>
     /// Switches between open menu headings without requiring another click.
@@ -19,6 +17,6 @@ public sealed class ContentEditorMenuHeading : MonoBehaviour, IPointerEnterHandl
     /// <param name="eventData">The entering pointer.</param>
     public void OnPointerEnter(PointerEventData eventData)
     {
-        owner.HoverMenu(button);
+        Hovered?.Invoke(GetComponent<Button>());
     }
 }

@@ -47,7 +47,7 @@ public static class ContentPackEditorPrefabBuilder
             "EventSystem",
             typeof(EventSystem),
             typeof(StandaloneInputModule),
-            typeof(ContentEditorNavigationInput)
+            typeof(ShortcutNavigationInput)
         );
         events.transform.SetParent(root.transform, false);
         RectTransform canvasRoot = Layer("Canvas", root.transform);
@@ -83,16 +83,16 @@ public static class ContentPackEditorPrefabBuilder
         menuStrip.rectTransform.offsetMin = new Vector2(0, -36);
         string[] headings = { "File", "Edit", "View", "Test" };
         string[] members = { "fileButton", "editButton", "viewButton", "testButton" };
+        MenuBarHeadingView[] menuHeadings = new MenuBarHeadingView[headings.Length];
         for (int i = 0; i < headings.Length; i++)
         {
             Button button = PlainButton(headings[i], menuStrip.transform, headings[i]);
             Rect((RectTransform)button.transform, 12 + i * 62, 0, 60, 34);
             Assign(view, members[i], button);
-            ContentEditorMenuHeading menuHeading =
-                button.gameObject.AddComponent<ContentEditorMenuHeading>();
-            Assign(menuHeading, "owner", view);
-            Assign(menuHeading, "button", button);
+            MenuBarHeadingView menuHeading = button.gameObject.AddComponent<MenuBarHeadingView>();
+            menuHeadings[i] = menuHeading;
         }
+        Assign(view, "menuHeadings", menuHeadings);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
         Stretch(projectWorkspace);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
@@ -135,7 +135,7 @@ public static class ContentPackEditorPrefabBuilder
         ((RectTransform)search.transform).anchorMax = Vector2.one;
         ((RectTransform)search.transform).offsetMax = new Vector2(-explorerRightInset, -42);
         ((RectTransform)search.transform).offsetMin = new Vector2(0, -76);
-        ContentEditorScrollLayout list = Scroll("ContentTree", explorer);
+        ScrollAreaLayout list = Scroll("ContentTree", explorer);
         Stretch((RectTransform)list.transform, 0, 96, 0, 0);
         ContentEditorRecordRowView row = BuildRecordRow(list.ScrollArea.ContentRoot);
         row.gameObject.SetActive(false);
@@ -180,8 +180,9 @@ public static class ContentPackEditorPrefabBuilder
         Assign(workbenchLayout, "divider", divider.rectTransform);
         Assign(workbenchLayout, "navigationBackground", navigationBackground.rectTransform);
         Assign(view, "workbenchLayout", workbenchLayout);
-        ContentEditorSplitter splitter = divider.gameObject.AddComponent<ContentEditorSplitter>();
-        Assign(splitter, "layout", workbenchLayout);
+        SplitterView splitter = divider.gameObject.AddComponent<SplitterView>();
+        splitter.Configure(projectWorkspace);
+        Assign(workbenchLayout, "splitter", splitter);
         Button duplicate = Button("Duplicate", editor, "Duplicate");
         Rect((RectTransform)duplicate.transform, 0, 36, 112, 32);
         ((RectTransform)duplicate.transform).anchorMin = (
@@ -289,7 +290,7 @@ public static class ContentPackEditorPrefabBuilder
             .ToArray();
         Assign(view, "generationTabs", generationTabs);
         Assign(view, "tabRoot", tabs);
-        ContentEditorScrollLayout fields = Scroll("PropertyScroll", editor);
+        ScrollAreaLayout fields = Scroll("PropertyScroll", editor);
         ContentEditorFormView form = fields.gameObject.AddComponent<ContentEditorFormView>();
         Assign(view, "form", form);
         Assign(form, "previewPane", preview.gameObject);
@@ -519,7 +520,7 @@ public static class ContentPackEditorPrefabBuilder
         fitSize.preferredWidth = 96;
         fitSize.preferredHeight = 34;
         Assign(mapView, "mapFitButton", fit);
-        fit.gameObject.AddComponent<ContentEditorFieldHelp>()
+        fit.gameObject.AddComponent<HelpTooltipView>()
             .Configure(
                 "Reset zoom and pan to show the whole map. Planet coordinates are unchanged."
             );
@@ -728,8 +729,7 @@ public static class ContentPackEditorPrefabBuilder
         Image overlay = Surface("Confirmation", parent, new Color(0, 0, 0, 0.75f));
         Stretch(overlay.rectTransform);
         overlay.raycastTarget = true;
-        ContentEditorConfirmationView prompt =
-            overlay.gameObject.AddComponent<ContentEditorConfirmationView>();
+        ActionDialogView prompt = overlay.gameObject.AddComponent<ActionDialogView>();
         Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
         panel.rectTransform.anchorMin =
             panel.rectTransform.anchorMax =
@@ -784,8 +784,7 @@ public static class ContentPackEditorPrefabBuilder
         Image overlay = Surface("ImagePreview", parent, new Color(0, 0, 0, 0.8f));
         Stretch(overlay.rectTransform);
         overlay.raycastTarget = true;
-        ContentEditorImagePreview preview =
-            overlay.gameObject.AddComponent<ContentEditorImagePreview>();
+        ImagePreviewView preview = overlay.gameObject.AddComponent<ImagePreviewView>();
         Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
         Stretch(panel.rectTransform, 160, 100, 160, 100);
         TextMeshProUGUI caption = Label("Caption", panel.transform, string.Empty, 15);

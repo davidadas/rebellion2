@@ -230,11 +230,11 @@ public sealed class ContentEditorNavigation
                 .Where(field =>
                     field.Group != "AI"
                     && (
-                        !ContentEditorContentSections.IsMissionField(field)
-                        || ContentEditorContentSections.MissionFor(field) == null
+                        !ContentPackEditorFieldMetadata.IsMissionField(field)
+                        || ContentPackEditorFieldMetadata.MissionFor(field) == null
                     )
                 )
-                .GroupBy(ContentEditorContentSections.RuleCategory)
+                .GroupBy(ContentPackEditorFieldMetadata.RuleCategory)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
         )
             root.Children.Add(
@@ -326,8 +326,8 @@ public sealed class ContentEditorNavigation
                 record =>
                     record
                         .GetFields()
-                        .Where(ContentEditorContentSections.IsMissionField)
-                        .ToLookup(ContentEditorContentSections.MissionFor, StringComparer.Ordinal)
+                        .Where(ContentPackEditorFieldMetadata.IsMissionField)
+                        .ToLookup(ContentPackEditorFieldMetadata.MissionFor, StringComparer.Ordinal)
             );
         ContentPackEditorRecord[] missionArticles = catalogs
             .SelectMany(catalog => catalog.Records)

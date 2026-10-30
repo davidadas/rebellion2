@@ -6,9 +6,9 @@ using UnityEngine;
 /// <summary>
 /// Resolves the process's user-data location for settings and saved games.
 /// </summary>
-internal static class UserDataPaths
+public static class UserDataPaths
 {
-    internal static string Root =>
+    public static string Root =>
         Resolve(Environment.GetCommandLineArgs(), Application.persistentDataPath);
 
     /// <summary>

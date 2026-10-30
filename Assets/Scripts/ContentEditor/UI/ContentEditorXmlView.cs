@@ -33,8 +33,8 @@ public sealed class ContentEditorXmlView : MonoBehaviour
     public string Text => input.text;
     public bool HasDraft => gameObject.activeSelf && input.text != (Scope?.Text ?? string.Empty);
     public bool HasOpenChoice => scopeDropdown.IsExpanded;
-    public ContentEditorTextHistory PendingTextHistory =>
-        HasDraft ? input.GetComponent<ContentEditorTextHistory>() : null;
+    public TextInputHistory PendingTextHistory =>
+        HasDraft ? input.GetComponent<TextInputHistory>() : null;
 
     /// <summary>
     /// Connects authored controls before the first draft is displayed.
@@ -128,7 +128,7 @@ public sealed class ContentEditorXmlView : MonoBehaviour
     public void ResetDraft()
     {
         input.SetTextWithoutNotify(Scope?.Text ?? string.Empty);
-        input.GetComponent<ContentEditorTextHistory>()?.ClearHistory();
+        input.GetComponent<TextInputHistory>()?.ClearHistory();
         if (!gameObject.activeInHierarchy)
             return;
         input.textComponent.ForceMeshUpdate();

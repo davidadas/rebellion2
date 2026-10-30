@@ -24,7 +24,7 @@ public sealed class ContentPackEditorField
 
     public string Name { get; }
     public string Caption { get; }
-    public string HelpText => ContentEditorFieldDocumentation.GetDescription(this);
+    public string HelpText => ContentPackEditorFieldMetadata.GetDescription(this);
     public IReadOnlyList<string> SectionPath { get; }
     public string Value =>
         attribute?.Value
@@ -141,14 +141,7 @@ public sealed class ContentPackEditorField
             element.Elements().FirstOrDefault()?.Name
             ?? ContentPackEditorFieldSchema.GetItemName(record.Element, element);
         Name = name;
-        Caption = MemberName switch
-        {
-            "DisallowedMissionTypeIDs" => "Disabled missions",
-            "NamePoolID" => "Pool ID",
-            "FallbackNamePoolID" => "Fallback pool",
-            "Names" when element.Parent?.Name.LocalName == "NamePool" => "Ship names",
-            _ => caption ?? name,
-        };
+        Caption = ContentPackEditorFieldMetadata.GetCaption(this, caption ?? name);
         SectionPath = sectionPath ?? Array.Empty<string>();
         IsBoolean =
             !this.list
@@ -167,55 +160,8 @@ public sealed class ContentPackEditorField
                     : valueType.IsPrimitive && valueType != typeof(char)
                         || valueType == typeof(decimal)
             );
-        string ancestry = string.Join(
-            "/",
-            element.AncestorsAndSelf().Select(parent => parent.Name.LocalName)
-        );
-        bool referenceKey =
-            MemberName.EndsWith("Key", StringComparison.Ordinal)
-            || MemberName.EndsWith("Keys", StringComparison.Ordinal);
-        bool assetValue =
-            MemberName.EndsWith("Path", StringComparison.Ordinal)
-            || MemberName.EndsWith("Address", StringComparison.Ordinal)
-            || Values.Any(value =>
-                value.StartsWith("Pack/", StringComparison.Ordinal)
-                || value.StartsWith("Application/", StringComparison.Ordinal)
-            )
-            || this.list
-                && (
-                    ancestry.Contains("Voice", StringComparison.Ordinal)
-                    || ancestry.Contains("Music", StringComparison.Ordinal)
-                    || ancestry.Contains("Audio", StringComparison.Ordinal)
-                    || ancestry.Contains("Texture", StringComparison.Ordinal)
-                );
-        MediaType =
-            IsBoolean || numeric || Choices.Count > 0 || referenceKey || !assetValue
-                ? ContentPackEditorMediaType.None
-            : ancestry.Contains("Voice", StringComparison.Ordinal)
-            || ancestry.Contains("Music", StringComparison.Ordinal)
-            || ancestry.Contains("Audio", StringComparison.Ordinal)
-            || ancestry.Contains("SoundPath", StringComparison.Ordinal)
-                ? ContentPackEditorMediaType.Audio
-            : ancestry.Contains("Model", StringComparison.Ordinal)
-                ? ContentPackEditorMediaType.Model
-            : ancestry.Contains("Video", StringComparison.Ordinal)
-            || ancestry.Contains("Cutscene", StringComparison.Ordinal)
-                ? ContentPackEditorMediaType.Video
-            : ancestry.Contains("Image", StringComparison.Ordinal)
-            || ancestry.Contains("IconPath", StringComparison.Ordinal)
-            || ancestry.Contains("Texture", StringComparison.Ordinal)
-                ? ContentPackEditorMediaType.Image
-            : ContentPackEditorMediaType.None;
-        Section =
-            MediaType != ContentPackEditorMediaType.None ? "Artwork and audio"
-            : IsMultiline
-            || element
-                .AncestorsAndSelf()
-                .Any(parent =>
-                    parent.Name.LocalName.StartsWith("Encyclopedia", StringComparison.Ordinal)
-                )
-                ? "Descriptions"
-            : "Properties";
+        MediaType = ContentPackEditorFieldMetadata.GetMediaType(this);
+        Section = ContentPackEditorFieldMetadata.GetSection(this);
     }
 
     /// <summary>
@@ -239,7 +185,7 @@ public sealed class ContentPackEditorField
     /// Adds an imported media address to this member or its authored media list.
     /// </summary>
     /// <param name="address">The imported pack address.</param>
-    public void SetImportedAsset(string address)
+    internal void SetImportedAsset(string address)
     {
         if (list)
             SetListValues(Values.Append(address));
@@ -251,7 +197,7 @@ public sealed class ContentPackEditorField
     /// Replaces a scalar collection without treating punctuation inside an item as a separator.
     /// </summary>
     /// <param name="values">The complete ordered item collection.</param>
-    public void SetListValues(IEnumerable<string> values)
+    internal void SetListValues(IEnumerable<string> values)
     {
         if (!list || itemName == null)
             throw new InvalidOperationException(
@@ -272,7 +218,7 @@ public sealed class ContentPackEditorField
     /// Applies a validated form value and marks only its source catalog as changed.
     /// </summary>
     /// <param name="value">The user-authored value.</param>
-    public void SetValue(string value)
+    internal void SetValue(string value)
     {
         value ??= string.Empty;
         if (value == Value)

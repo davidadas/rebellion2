@@ -49,7 +49,7 @@ public static class ContentPackLoader
     /// </summary>
     /// <param name="contentRootPath">The external content root to inspect.</param>
     /// <returns>The discovered pack definitions in stable directory order.</returns>
-    internal static IReadOnlyList<ContentPackDefinition> DiscoverPacks(string contentRootPath)
+    public static IReadOnlyList<ContentPackDefinition> DiscoverPacks(string contentRootPath)
     {
         return ReadPackDefinitions(contentRootPath)
             .Select(item => item.Definition)
@@ -67,9 +67,10 @@ public static class ContentPackLoader
         string absoluteContentRoot = Path.GetFullPath(
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
         );
-        ContentCatalogDefinition catalog = DeserializeXml<ContentCatalogDefinition>(
-            Path.Combine(absoluteContentRoot, _catalogFileName)
-        );
+        ContentCatalogDefinition catalog =
+            ContentDefinitionSerializer.Deserialize<ContentCatalogDefinition>(
+                Path.Combine(absoluteContentRoot, _catalogFileName)
+            );
         return catalog.ActivePackID;
     }
 
@@ -87,7 +88,7 @@ public static class ContentPackLoader
     )
     {
         IReadOnlyList<string> packRoots = ResolvePackRoots(contentRootPath, packID);
-        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+        ContentPackDefinition pack = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
             Path.Combine(packRoots[0], _packFileName)
         );
         return ContentFileResolver.Discover(
@@ -106,7 +107,7 @@ public static class ContentPackLoader
     /// <param name="contentRootPath">The external content root to inspect.</param>
     /// <param name="packID">The selected content-pack identifier.</param>
     /// <returns>A resolver over the selected pack and its inherited packs.</returns>
-    internal static ContentFileResolver CreatePackResolver(string contentRootPath, string packID)
+    public static ContentFileResolver CreatePackResolver(string contentRootPath, string packID)
     {
         string absoluteContentRoot = Path.GetFullPath(
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
@@ -126,7 +127,7 @@ public static class ContentPackLoader
     /// <param name="packRootPath">The authored content-pack folder.</param>
     /// <param name="definition">The manifest from that folder.</param>
     /// <returns>The resolver without unrelated installed mod overrides.</returns>
-    internal static ContentFileResolver CreateFolderResolver(
+    public static ContentFileResolver CreateFolderResolver(
         string contentRootPath,
         string packRootPath,
         ContentPackDefinition definition
@@ -139,9 +140,10 @@ public static class ContentPackLoader
             : CreatePackResolver(contentRootPath, definition.BasePackID).PackRootPaths;
         foreach (string inheritedRoot in inheritedRoots)
         {
-            ContentPackDefinition inherited = DeserializeXml<ContentPackDefinition>(
-                Path.Combine(inheritedRoot, "pack.xml")
-            );
+            ContentPackDefinition inherited =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(inheritedRoot, "pack.xml")
+                );
             if (inherited.ID == definition.ID)
                 throw new InvalidDataException("The content pack cannot inherit from itself.");
         }
@@ -159,15 +161,16 @@ public static class ContentPackLoader
     /// <param name="packRootPath">The folder containing the requested pack.xml.</param>
     /// <param name="scenarioID">The scenario, or null to use the authored default.</param>
     /// <returns>The loaded content and scenario.</returns>
-    internal static ContentPack OpenFolder(
+    public static ContentPack OpenFolder(
         string contentRootPath,
         string packRootPath,
         string scenarioID = null
     )
     {
-        ContentPackDefinition definition = DeserializeXml<ContentPackDefinition>(
-            Path.Combine(Path.GetFullPath(packRootPath), "pack.xml")
-        );
+        ContentPackDefinition definition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                Path.Combine(Path.GetFullPath(packRootPath), "pack.xml")
+            );
         return LoadPack(
             CreateFolderResolver(contentRootPath, packRootPath, definition),
             definition,
@@ -236,9 +239,10 @@ public static class ContentPackLoader
         string absoluteContentRoot = Path.GetFullPath(
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
         );
-        ContentCatalogDefinition catalog = DeserializeXml<ContentCatalogDefinition>(
-            Path.Combine(absoluteContentRoot, _catalogFileName)
-        );
+        ContentCatalogDefinition catalog =
+            ContentDefinitionSerializer.Deserialize<ContentCatalogDefinition>(
+                Path.Combine(absoluteContentRoot, _catalogFileName)
+            );
 
         string packID = string.IsNullOrWhiteSpace(packIdOverride)
             ? catalog.ActivePackID
@@ -313,7 +317,7 @@ public static class ContentPackLoader
     {
         IReadOnlyList<string> packRoots = ResolvePackRoots(absoluteContentRoot, packID);
         string packRoot = packRoots[0];
-        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+        ContentPackDefinition pack = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
             Path.Combine(packRoot, _packFileName)
         );
         if (!string.Equals(pack.ID, packID, StringComparison.Ordinal))
@@ -476,14 +480,15 @@ public static class ContentPackLoader
         if (string.IsNullOrWhiteSpace(preloadID))
             throw new ArgumentException("A preload ID is required.", nameof(preloadID));
 
-        ContentPreloadManifest manifest = DeserializeXml<ContentPreloadManifest>(
-            fileResolver.ResolveFile(
-                _applicationAddressPrefix + _preloadDirectoryName + "/" + preloadID + ".xml"
-            )
-                ?? throw new FileNotFoundException(
-                    $"Application preload '{preloadID}' was not found."
+        ContentPreloadManifest manifest =
+            ContentDefinitionSerializer.Deserialize<ContentPreloadManifest>(
+                fileResolver.ResolveFile(
+                    _applicationAddressPrefix + _preloadDirectoryName + "/" + preloadID + ".xml"
                 )
-        );
+                    ?? throw new FileNotFoundException(
+                        $"Application preload '{preloadID}' was not found."
+                    )
+            );
         ValidatePreloadManifest(
             manifest,
             _applicationAddressPrefix,
@@ -782,7 +787,9 @@ public static class ContentPackLoader
             return new List<T>();
 
         return paths
-            .Select(path => DeserializeXml<T>(RequirePackFile(fileResolver, path)))
+            .Select(path =>
+                ContentDefinitionSerializer.Deserialize<T>(RequirePackFile(fileResolver, path))
+            )
             .ToList();
     }
 
@@ -815,9 +822,10 @@ public static class ContentPackLoader
             if (manifests.ContainsKey(preload.ID))
                 throw new InvalidDataException($"Duplicate content preload ID '{preload.ID}'.");
 
-            ContentPreloadManifest manifest = DeserializeXml<ContentPreloadManifest>(
-                RequirePackFile(fileResolver, preload.Path)
-            );
+            ContentPreloadManifest manifest =
+                ContentDefinitionSerializer.Deserialize<ContentPreloadManifest>(
+                    RequirePackFile(fileResolver, preload.Path)
+                );
             ValidatePreloadManifest(manifest, _packAddressPrefix, $"Pack preload '{preload.ID}'");
             manifests.Add(preload.ID, manifest);
         }
@@ -940,32 +948,6 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Deserializes a plain XML content definition.
-    /// </summary>
-    /// <typeparam name="T">The expected definition type.</typeparam>
-    /// <param name="filePath">The absolute XML file path.</param>
-    /// <returns>The deserialized definition.</returns>
-    private static T DeserializeXml<T>(string filePath)
-        where T : class
-    {
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException($"Content definition not found: {filePath}");
-
-        System.Xml.Serialization.XmlSerializer serializer =
-            new System.Xml.Serialization.XmlSerializer(typeof(T));
-        using FileStream stream = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read
-        );
-        return serializer.Deserialize(stream) as T
-            ?? throw new InvalidDataException(
-                $"Failed to deserialize content definition: {filePath}"
-            );
-    }
-
-    /// <summary>
     /// Resolves the selected pack and its inherited packs in fallback order.
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
@@ -1052,7 +1034,7 @@ public static class ContentPackLoader
             ContentPackDefinition definition;
             try
             {
-                definition = DeserializeXml<ContentPackDefinition>(path);
+                definition = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(path);
             }
             catch (Exception exception)
                 when (string.Equals(
@@ -1101,7 +1083,7 @@ public static class ContentPackLoader
     /// Resolves the external content root for the editor or current player platform.
     /// </summary>
     /// <returns>The absolute external content root.</returns>
-    internal static string ResolveContentRootPath()
+    public static string ResolveContentRootPath()
     {
         string commandLinePath = GetCommandLineContentPath();
         if (commandLinePath != null)

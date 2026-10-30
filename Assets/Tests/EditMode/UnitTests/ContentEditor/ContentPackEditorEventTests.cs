@@ -26,7 +26,7 @@ namespace Rebellion.Tests.ContentEditor
                 Path.GetTempPath(),
                 "editor-event-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorProject.CreateInFolder(
+            project = ContentPackEditorStorage.CreateInFolder(
                 contentRoot,
                 source.ID,
                 folder,

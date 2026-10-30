@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 /// <summary>
 /// Reads and writes the plain XML definitions that describe content packs.
 /// </summary>
-internal static class ContentDefinitionSerializer
+public static class ContentDefinitionSerializer
 {
     /// <summary>
     /// Reads an edited definition before committing it to disk.
@@ -15,7 +15,7 @@ internal static class ContentDefinitionSerializer
     /// <typeparam name="T">The expected definition type.</typeparam>
     /// <param name="text">The working XML definition.</param>
     /// <returns>The deserialized definition.</returns>
-    internal static T DeserializeText<T>(string text)
+    public static T DeserializeText<T>(string text)
         where T : class
     {
         using StringReader reader = new StringReader(text);
@@ -31,7 +31,7 @@ internal static class ContentDefinitionSerializer
     /// <typeparam name="T">The expected definition type.</typeparam>
     /// <param name="filePath">The absolute XML file path.</param>
     /// <returns>The deserialized definition.</returns>
-    internal static T Deserialize<T>(string filePath)
+    public static T Deserialize<T>(string filePath)
         where T : class
     {
         if (!File.Exists(filePath))
@@ -56,7 +56,7 @@ internal static class ContentDefinitionSerializer
     /// <typeparam name="T">The definition type.</typeparam>
     /// <param name="filePath">The absolute destination path.</param>
     /// <param name="definition">The definition to write.</param>
-    internal static void Serialize<T>(string filePath, T definition)
+    public static void Serialize<T>(string filePath, T definition)
         where T : class
     {
         if (string.IsNullOrWhiteSpace(filePath))

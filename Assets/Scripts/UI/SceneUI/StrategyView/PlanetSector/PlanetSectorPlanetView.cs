@@ -199,7 +199,7 @@ public sealed class PlanetSectorPlanetView
     /// Gets the current source-space bounds of the planet image within the parent window.
     /// </summary>
     /// <returns>The rendered planet-image bounds.</returns>
-    internal RectInt GetRenderedPlanetImageSourceRect()
+    public RectInt GetRenderedPlanetImageSourceRect()
     {
         RectInt root = GetRenderedSourceRect();
         RectInt image = UILayout.GetSourceRect(planetImage.rectTransform);

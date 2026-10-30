@@ -14,6 +14,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorView view;
     private string contentRootPath;
     private ContentPackEditorProject project;
+    private ContentPackEditorWorkspaceController workspace;
     private ContentAssets assets;
     private ContentAssets applicationAssets;
     private bool quitApproved;
@@ -33,6 +34,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (view == null)
             throw new MissingReferenceException("ContentPackEditorController has no view.");
+        workspace = new ContentPackEditorWorkspaceController(view);
         contentRootPath = ContentPackLoader.ResolveContentRootPath();
         view.CreateRequested += CreatePack;
         view.OpenRequested += ChooseOpenPack;
@@ -82,7 +84,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 if (packPathIndex + 1 >= arguments.Length)
                     throw new ArgumentException("A content-pack folder must follow -packPath.");
                 OpenProject(
-                    ContentPackEditorProject.OpenFolder(
+                    ContentPackEditorStorage.OpenFolder(
                         contentRootPath,
                         arguments[packPathIndex + 1]
                     )
@@ -146,6 +148,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.PreviewRequested -= PreviewMedia;
             view.PreviewCancelled -= InvalidateMediaPreview;
         }
+        workspace?.Dispose();
         assets?.Dispose();
         applicationAssets?.Dispose();
     }
@@ -298,7 +301,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         ContinueAfterChanges(() =>
             OpenProject(
-                ContentPackEditorProject.CreateInFolder(
+                ContentPackEditorStorage.CreateInFolder(
                     contentRootPath,
                     basePackID,
                     Path.Combine(folder, packID),
@@ -317,7 +320,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OpenFolder(string folder)
     {
         ContinueAfterChanges(() =>
-            OpenProject(ContentPackEditorProject.OpenFolder(contentRootPath, folder))
+            OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder))
         );
     }
 
@@ -375,7 +378,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             );
             if (string.IsNullOrEmpty(source))
                 return;
-            string address = project.ImportAsset(source, field);
+            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
             if (field.IsList)
                 project.SetFieldValues(
                     field,
@@ -383,7 +386,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 );
             else
                 project.SetField(field, address);
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
         });
     }
 
@@ -393,21 +396,21 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="value">The project to open.</param>
     private void OpenProject(ContentPackEditorProject value)
     {
-        ContentAssets replacement = value.CreateAssets();
+        ContentAssets replacement = ContentPackEditorStorage.CreateAssets(value);
         ContentAssets previous = assets;
         try
         {
-            view.RenderProject(value, replacement);
+            workspace.RenderProject(value, replacement);
         }
         catch
         {
             try
             {
                 if (project != null)
-                    view.RenderProject(project, previous);
+                    workspace.RenderProject(project, previous);
                 else
                 {
-                    view.ClearProject();
+                    workspace.ClearProject();
                     ContentBindings.Apply(view.gameObject, applicationAssets);
                 }
             }
@@ -440,7 +443,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         if (!view.CommitFields())
             throw new ArgumentException("Fix the highlighted fields before saving.");
         string previousBase = project.Definition.BasePackID;
-        project.Save();
+        ContentPackEditorStorage.Save(project);
         if (previousBase != project.Definition.BasePackID)
             OpenProject(project);
         else
@@ -459,7 +462,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             SaveCurrentProject();
             view.RenderStatus("Validating content pack. Press Escape to cancel.", false);
-            await project.ValidateAsync(ReportValidationProgress, cancellationToken);
+            await ContentEditorPackValidator.ValidateAsync(
+                project,
+                ReportValidationProgress,
+                cancellationToken
+            );
             view.RenderStatus("Content pack validated successfully.", false);
         });
     }
@@ -484,7 +491,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 "Validating and exporting content pack. Press Escape to cancel.",
                 false
             );
-            await project.ExportAsync(filePath, ReportValidationProgress, cancellationToken);
+            await ContentPackEditorExporter.WriteArchiveAsync(
+                project,
+                filePath,
+                ReportValidationProgress,
+                cancellationToken
+            );
             view.RenderStatus("Content pack exported to " + filePath, false);
         });
     }
@@ -499,7 +511,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.UndoText())
                 return;
             if (project != null && view.CommitFields() && project.Undo())
-                view.RenderProject(project, assets);
+                workspace.RenderProject(project, assets);
         });
     }
 
@@ -513,7 +525,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.RedoText())
                 return;
             if (project != null && view.CommitFields() && project.Redo())
-                view.RenderProject(project, assets);
+                workspace.RenderProject(project, assets);
         });
     }
 
@@ -524,7 +536,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         ContinueAfterChanges(() =>
         {
-            view.ClearProject();
+            workspace.ClearProject();
             project = null;
             assets?.Dispose();
             assets = null;

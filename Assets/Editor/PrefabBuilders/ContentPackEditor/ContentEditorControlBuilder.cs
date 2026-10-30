@@ -100,16 +100,22 @@ internal static class ContentEditorControlBuilder
     /// <param name="text">The caption.</param>
     /// <param name="size">The font size.</param>
     /// <param name="muted">Whether to use secondary text color.</param>
+    /// <param name="bindColor">Whether the editor palette owns the label color.</param>
     /// <returns>The label.</returns>
     internal static TextMeshProUGUI Label(
         string name,
         Transform parent,
         string text,
         int size = 15,
-        bool muted = false
+        bool muted = false,
+        bool bindColor = true
     )
     {
-        TextMeshProUGUI label = MenuPrefabBuilder.CreateTextLabel(name, parent);
+        TextMeshProUGUI label = MenuPrefabBuilder.CreateTextLabel(
+            name,
+            parent,
+            MenuControlStyle.Flat
+        );
         label.text = text;
         label.parseCtrlCharacters = false;
         label.richText = false;
@@ -118,8 +124,8 @@ internal static class ContentEditorControlBuilder
         label.color = muted ? Muted : Text;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.overflowMode = TextOverflowModes.Ellipsis;
-        Object.DestroyImmediate(label.GetComponent<Shadow>());
-        BindColor(label, muted ? ContentEditorColorRole.Muted : ContentEditorColorRole.Text);
+        if (bindColor)
+            BindColor(label, muted ? ContentEditorColorRole.Muted : ContentEditorColorRole.Text);
         return label;
     }
 
@@ -132,15 +138,17 @@ internal static class ContentEditorControlBuilder
     /// <returns>The button.</returns>
     internal static Button Button(string name, Transform parent, string text)
     {
-        Button button = MenuPrefabBuilder.CreateMenuActionButton(parent, name, text, 0, Text, 120);
+        Button button = MenuPrefabBuilder.CreateMenuActionButton(
+            parent,
+            name,
+            text,
+            0,
+            Text,
+            120,
+            MenuControlStyle.Flat
+        );
         Image frame = button.GetComponent<Image>();
-        Object.DestroyImmediate(frame.GetComponent<ContentSpriteBinding>());
-        frame.sprite = null;
         frame.color = new Color32(88, 88, 90, 255);
-        Object.DestroyImmediate(frame.GetComponent<Outline>());
-        Transform mask = button.transform.Find("SurfaceMask");
-        if (mask != null)
-            Object.DestroyImmediate(mask.gameObject);
         button.targetGraphic = frame;
         ColorBlock colors = button.colors;
         colors.normalColor = Color.white;
@@ -203,14 +211,11 @@ internal static class ContentEditorControlBuilder
             200,
             34
         );
-        input.gameObject.AddComponent<ContentEditorTextHistory>();
-        input.gameObject.AddComponent<ContentEditorInputView>();
+        input.gameObject.AddComponent<TextInputHistory>();
+        input.gameObject.AddComponent<TextInputOverflowView>();
         Image image = input.GetComponent<Image>();
-        Object.DestroyImmediate(image.GetComponent<ContentSpriteBinding>());
-        image.sprite = null;
         image.color = InputColor;
-        Object.DestroyImmediate(image.GetComponent<Outline>());
-        Outline outline = image.gameObject.AddComponent<Outline>();
+        Outline outline = image.GetComponent<Outline>() ?? image.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color32(88, 88, 90, 255);
         outline.effectDistance = new Vector2(2, -2);
         outline.useGraphicAlpha = false;
@@ -229,7 +234,6 @@ internal static class ContentEditorControlBuilder
             label.alignment = TextAlignmentOptions.MidlineLeft;
             label.color = label == input.textComponent ? new Color32(224, 202, 156, 255) : Muted;
             Stretch(label.rectTransform);
-            Object.DestroyImmediate(label.GetComponent<Shadow>());
             BindColor(
                 label,
                 label == input.textComponent
@@ -249,58 +253,30 @@ internal static class ContentEditorControlBuilder
     /// <returns>The shared selector.</returns>
     internal static TMP_Dropdown Dropdown(string name, Transform parent)
     {
-        TMP_Dropdown dropdown = MenuControlPrefabBuilder.CreateDropdown(parent, name);
+        TMP_Dropdown dropdown = MenuControlPrefabBuilder.CreateDropdown(
+            parent,
+            name,
+            MenuControlStyle.Flat
+        );
+        Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
         foreach (Image image in dropdown.GetComponentsInChildren<Image>(true))
         {
-            ContentSpriteBinding binding = image.GetComponent<ContentSpriteBinding>();
-            if (binding != null)
-            {
-                Object.DestroyImmediate(binding);
-                image.sprite = null;
-            }
             if (image.GetComponent<Mask>() == null)
                 BindColor(
                     image,
-                    image.name == "Item Checkmark"
+                    image == item.graphic
                         ? ContentEditorColorRole.Checkmark
                         : ContentEditorColorRole.Panel
                 );
-            if (image.name == "Item Checkmark")
-                image.sprite = LoadIcon("Checkmark");
         }
+        ((Image)item.graphic).sprite = LoadIcon("Checkmark");
         foreach (TMP_Text label in dropdown.GetComponentsInChildren<TMP_Text>(true))
         {
             label.fontSize = 15;
-            label.color = Text;
-            Object.DestroyImmediate(label.GetComponent<Shadow>());
             BindColor(label, ContentEditorColorRole.Text);
         }
-        Stretch(dropdown.captionText.rectTransform, 10, 0, 28, 0);
-        Transform arrow = dropdown.transform.Find("Arrow");
-        Rect((RectTransform)arrow, 0, 0, 20, 32);
-        ((RectTransform)arrow).anchorMin = ((RectTransform)arrow).anchorMax = Vector2.one;
-        ((RectTransform)arrow).anchoredPosition = new Vector2(-24, 0);
-        Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
-        RectTransform itemRect = (RectTransform)item.transform;
-        itemRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 32);
-        item.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = item.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1.6f, 1.6f, 1.6f, 1);
-        colors.selectedColor = colors.highlightedColor;
-        item.colors = colors;
-        Stretch(dropdown.itemText.rectTransform, 28, 0, 8, 0);
-        Rect(((Image)item.graphic).rectTransform, 7, 9, 14, 14);
-        dropdown.template.anchorMin = Vector2.zero;
-        dropdown.template.anchorMax = Vector2.right;
-        dropdown.template.anchoredPosition = Vector2.zero;
-        dropdown.transition = Selectable.Transition.ColorTint;
-        colors = dropdown.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1.25f, 1.25f, 1.25f, 1);
-        colors.selectedColor = Color.white;
-        dropdown.colors = colors;
         BindColor(item.targetGraphic, ContentEditorColorRole.Panel, item);
+        dropdown.transition = Selectable.Transition.ColorTint;
         BindColor(dropdown.targetGraphic, ContentEditorColorRole.Panel, dropdown);
         return dropdown;
     }
@@ -311,10 +287,10 @@ internal static class ContentEditorControlBuilder
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owning transform.</param>
     /// <returns>The responsive scroll wrapper.</returns>
-    internal static ContentEditorScrollLayout Scroll(string name, Transform parent)
+    internal static ScrollAreaLayout Scroll(string name, Transform parent)
     {
         ScrollAreaView scroll = CommonUIPrefabBuilder.CreateScrollAreaView(
-            "Assets/Prefabs/UI/Common/MenuScrollArea.prefab",
+            MenuPrefabBuilder.FlatScrollAreaPath,
             parent,
             name,
             new RectInt(0, 0, 300, 500),
@@ -322,21 +298,6 @@ internal static class ContentEditorControlBuilder
             new RectInt(288, 0, 12, 500),
             out _
         );
-        foreach (Image image in scroll.GetComponentsInChildren<Image>(true))
-        {
-            ContentSpriteBinding binding = image.GetComponent<ContentSpriteBinding>();
-            if (binding != null)
-            {
-                Object.DestroyImmediate(binding);
-                image.sprite = null;
-                image.color = new Color32(68, 68, 70, 255);
-            }
-            else
-            {
-                Color color = image.color;
-                image.color = new Color(color.grayscale, color.grayscale, color.grayscale, color.a);
-            }
-        }
         foreach (TMP_Text label in scroll.GetComponentsInChildren<TMP_Text>(true))
             BindColor(label, ContentEditorColorRole.Muted);
         foreach (Image image in scroll.GetComponentsInChildren<Image>(true))
@@ -349,9 +310,8 @@ internal static class ContentEditorControlBuilder
                 );
         foreach (Scrollbar bar in scroll.GetComponentsInChildren<Scrollbar>(true))
             StyleScrollbar(bar);
-        ContentEditorScrollLayout layout =
-            scroll.gameObject.AddComponent<ContentEditorScrollLayout>();
-        Assign(layout, "scrollArea", scroll);
+        ScrollAreaLayout layout = scroll.gameObject.AddComponent<ScrollAreaLayout>();
+        layout.Configure(scroll);
         return layout;
     }
 
@@ -382,11 +342,6 @@ internal static class ContentEditorControlBuilder
     /// <param name="bar">The standard scrollbar to style.</param>
     private static void StyleScrollbar(Scrollbar bar)
     {
-        if (bar.targetGraphic is RawImage handle)
-        {
-            Object.DestroyImmediate(handle.GetComponent<ContentTextureBinding>());
-            handle.texture = null;
-        }
         BindColor(bar.targetGraphic, ContentEditorColorRole.ScrollThumb, bar);
         if (bar.GetComponent<Image>() is Image track)
             BindColor(track, ContentEditorColorRole.ScrollTrack);
@@ -397,7 +352,7 @@ internal static class ContentEditorControlBuilder
     /// </summary>
     /// <param name="parent">The field or caption containing the guidance.</param>
     /// <returns>The authored tooltip target.</returns>
-    internal static ContentEditorFieldHelp HelpIcon(Transform parent)
+    internal static HelpTooltipView HelpIcon(Transform parent)
     {
         Image target = Surface("Info", parent, Color.clear);
         target.raycastTarget = true;
@@ -407,7 +362,7 @@ internal static class ContentEditorControlBuilder
         icon.sprite = LoadIcon("Information");
         icon.preserveAspect = true;
         Rect(icon.rectTransform, 4, 4, 16, 16);
-        ContentEditorFieldHelp help = target.gameObject.AddComponent<ContentEditorFieldHelp>();
+        HelpTooltipView help = target.gameObject.AddComponent<HelpTooltipView>();
         target.gameObject.SetActive(false);
         return help;
     }
@@ -523,15 +478,13 @@ internal static class ContentEditorControlBuilder
         ConfigureCheckmark(icon);
         BindColor(icon, ContentEditorColorRole.Checkmark);
         Rect(icon.rectTransform, 8, 10, 16, 16);
-        TextMeshProUGUI caption = Label("Caption", command, "Command");
-        Object.DestroyImmediate(caption.GetComponent<ContentEditorColorBinding>());
+        TextMeshProUGUI caption = Label("Caption", command, "Command", bindColor: false);
         Rect(caption.rectTransform, 14, 0, 202, 36);
         Assign(commandView, "hitAreaImage", hit);
         Assign(commandView, "iconPanel", iconPanel);
         Assign(commandView, "iconImage", icon);
         Assign(commandView, "commandTextField", caption);
-        TextMeshProUGUI shortcut = Label("Shortcut", command, string.Empty, 13, true);
-        Object.DestroyImmediate(shortcut.GetComponent<ContentEditorColorBinding>());
+        TextMeshProUGUI shortcut = Label("Shortcut", command, string.Empty, 13, true, false);
         Rect(shortcut.rectTransform, 150, 0, 66, 36);
         shortcut.alignment = TextAlignmentOptions.MidlineRight;
         TextMeshProUGUI chevron = Label("Submenu", command, ">", 14);

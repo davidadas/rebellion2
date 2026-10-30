@@ -11,7 +11,7 @@ namespace Rebellion.Architecture.Tests
     public sealed class ArchitectureDependencyTests
     {
         private static readonly ArchUnitNET.Domain.Architecture _architecture = new ArchLoader()
-            .LoadAssemblies(typeof(GameRoot).Assembly)
+            .LoadAssemblies(typeof(GameRoot).Assembly, typeof(ContentPackEditorProject).Assembly)
             .Build();
 
         [Test]

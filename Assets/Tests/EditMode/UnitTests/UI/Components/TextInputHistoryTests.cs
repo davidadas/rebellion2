@@ -2,13 +2,13 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 
-namespace Rebellion.Tests.ContentEditor.UI
+namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
-    public sealed class ContentEditorTextHistoryTests
+    public sealed class TextInputHistoryTests
     {
         private TMP_InputField input;
-        private ContentEditorTextHistory history;
+        private TextInputHistory history;
 
         private static EventModifiers ShortcutModifier =>
             Application.platform is RuntimePlatform.OSXEditor or RuntimePlatform.OSXPlayer
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             input = UIComponentTestHelper.InstantiatePrefabComponent<TMP_InputField>(
                 "Assets/Prefabs/UI/Common/TextInput.prefab"
             );
-            history = input.gameObject.AddComponent<ContentEditorTextHistory>();
+            history = input.gameObject.AddComponent<TextInputHistory>();
             input.SetTextWithoutNotify("Original");
             history.ClearHistory();
             input.onSelect.Invoke(input.text);

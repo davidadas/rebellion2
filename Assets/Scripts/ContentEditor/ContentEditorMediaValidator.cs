@@ -39,10 +39,7 @@ internal static class ContentEditorMediaValidator
                     await ValidateAudioAsync(assets, address, cancellationToken);
                     break;
                 case ContentPackEditorMediaType.Model:
-                    await ValidateModelAsync(
-                        assets.ResolveFile(address, ".glb"),
-                        cancellationToken
-                    );
+                    await ValidateModelAsync(assets, address, cancellationToken);
                     break;
                 case ContentPackEditorMediaType.Video:
                     await ValidateVideoAsync(assets.GetVideoUrl(address), cancellationToken);
@@ -96,10 +93,15 @@ internal static class ContentEditorMediaValidator
     /// <summary>
     /// Instantiates the model's main scene under an inactive temporary parent before releasing it.
     /// </summary>
-    /// <param name="file">The resolved model file.</param>
+    /// <param name="assets">The isolated asset store owned by this validation.</param>
+    /// <param name="address">The scoped model address.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
     /// <returns>The completion of parsing and scene validation.</returns>
-    private static async Task ValidateModelAsync(string file, CancellationToken cancellationToken)
+    private static async Task ValidateModelAsync(
+        ContentAssets assets,
+        string address,
+        CancellationToken cancellationToken
+    )
     {
         GameObject host = new GameObject("Content validation model")
         {
@@ -108,11 +110,12 @@ internal static class ContentEditorMediaValidator
         host.SetActive(false);
         try
         {
-            using ContentModelResource resource = await ContentModelLoader.LoadResourceAsync(
-                file,
-                cancellationToken
+            using ContentModelCache models = new ContentModelCache(assets);
+            using CancellationTokenRegistration registration = cancellationToken.Register(
+                models.Dispose
             );
-            using ContentModelInstance instance = await resource.InstantiateAsync(
+            using ContentModelInstance instance = await models.InstantiateAsync(
+                address,
                 host.transform,
                 cancellationToken
             );

@@ -18,6 +18,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         private ContentPackEditorProject project;
         private ContentAssets assets;
         private ContentPackEditorView view;
+        private ContentPackEditorWorkspaceController workspace;
         private string folder;
 
         /// <summary>
@@ -34,7 +35,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Path.GetTempPath(),
                 "content-editor-ui-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorProject.CreateInFolder(
+            project = ContentPackEditorStorage.CreateInFolder(
                 contentRoot,
                 source.ID,
                 folder,
@@ -42,7 +43,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "Editor test",
                 "1.0.0"
             );
-            assets = project.CreateAssets();
+            assets = ContentPackEditorStorage.CreateAssets(project);
             view = UIComponentTestHelper.InstantiatePrefabComponent<ContentPackEditorView>(
                 "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab"
             );
@@ -50,8 +51,9 @@ namespace Rebellion.Tests.ContentEditor.UI
             canvas.renderMode = RenderMode.WorldSpace;
             ((RectTransform)view.transform).sizeDelta = new Vector2(1600, 900);
             Canvas.ForceUpdateCanvases();
+            workspace = new ContentPackEditorWorkspaceController(view);
             view.Initialize(new[] { source }, contentRoot);
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
         }
 
         /// <summary>
@@ -60,6 +62,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TearDown]
         public void TearDown()
         {
+            workspace?.Dispose();
             if (view != null)
                 UnityEngine.Object.DestroyImmediate(view.gameObject);
             assets?.Dispose();
@@ -105,8 +108,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     );
             }
             Assert.AreEqual(before, project.GetFactionOptions().Count);
-            ContentEditorConfirmationView warning =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView warning = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsNotNull(warning);
             Assert.IsTrue(
                 warning
@@ -136,7 +138,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Any(field => field.Field.MemberName == "DisplayName")
             );
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual(before, project.GetFactionOptions().Count);
             Assert.IsFalse(
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
@@ -160,8 +162,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                         button = PointerEventData.InputButton.Left,
                     }
                 );
-            ContentEditorConfirmationView warning =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView warning = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsNotNull(warning);
             Assert.AreEqual(before, project.GetFactionOptions().Count);
             Assert.IsTrue(
@@ -189,7 +190,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     record.Kind == "Faction" && record.Element.Element("InstanceID") != null
                 );
             project.RemoveRecord(removed);
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             int before = project.GetFactionOptions().Count;
             view.GetComponentsInChildren<TMP_InputField>(true)
                 .Single(input => input.name == "Search")
@@ -204,9 +205,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 );
             Assert.AreEqual(before + 1, project.GetFactionOptions().Count);
             Assert.IsFalse(
-                view.GetComponentInChildren<ContentEditorConfirmationView>(
-                    true
-                ).gameObject.activeSelf
+                view.GetComponentInChildren<ActionDialogView>(true).gameObject.activeSelf
             );
         }
 
@@ -215,7 +214,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             ContentPackEditorRecord faction = project.AddFaction();
             string id = faction.ID;
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             SelectRecord(faction);
             TMP_InputField input = view.GetComponentsInChildren<ContentEditorFieldView>()
                 .Single(field =>
@@ -228,8 +227,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "Delete")
                 .onClick.Invoke();
-            ContentEditorConfirmationView confirmation =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView confirmation = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsNotNull(confirmation);
             confirmation
                 .GetComponentsInChildren<Button>()
@@ -254,7 +252,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             string id = faction.ID;
             if (missingGameplayEntry)
                 faction.Catalog.Remove(faction);
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             ContentPackEditorRecord selected = missingGameplayEntry
                 ? project
                     .GetCatalogs()
@@ -274,8 +272,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(button => button.name == "Delete");
             Assert.IsTrue(delete.interactable);
             delete.onClick.Invoke();
-            ContentEditorConfirmationView confirmation =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView confirmation = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsTrue(
                 confirmation
                     .GetComponentsInChildren<TMP_Text>()
@@ -293,7 +290,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     )
             );
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.IsTrue(
                 project
                     .GetCatalogs()
@@ -440,8 +437,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             bool acknowledged = false;
             view.ShowAlphaNotice(() => acknowledged = true);
-            ContentEditorConfirmationView prompt =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView prompt = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsTrue(prompt.TryCancel());
             Assert.IsTrue(prompt.gameObject.activeSelf);
             Assert.IsFalse(acknowledged);
@@ -635,7 +631,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             TMP_InputField input = SkillInput();
             input.onSelect.Invoke(input.text);
             input.text = "Uncommitted draft";
-            ContentEditorTextHistory history = input.GetComponent<ContentEditorTextHistory>();
+            TextInputHistory history = input.GetComponent<TextInputHistory>();
             Image background = view.GetComponent<Image>();
             view.SetColorMode(mode);
             Assert.AreEqual(
@@ -865,7 +861,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             subject.SetTextWithoutNotify("Changed subject");
             subject.onEndEdit.Invoke(subject.text);
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual(
                 name,
                 view.GetComponentsInChildren<TMP_Text>()
@@ -886,7 +882,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             TMP_InputField input = SkillInput();
             string original = input.text;
-            ContentEditorTextHistory history = input.GetComponent<ContentEditorTextHistory>();
+            TextInputHistory history = input.GetComponent<TextInputHistory>();
             input.onSelect.Invoke(input.text);
             input.text = original == "123" ? "124" : "123";
             Assert.IsTrue(history.CanUndo);
@@ -894,7 +890,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(history.CanUndo);
             Assert.IsTrue(project.CanUndo);
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual(original, SkillInput().text);
         }
 
@@ -939,13 +935,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             foreach (string expected in new[] { "102", "101", initial })
             {
                 Assert.IsTrue(project.Undo());
-                view.RenderProject(project, assets);
+                workspace.RenderProject(project, assets);
                 Assert.AreEqual(expected, SkillInput().text);
             }
             foreach (string expected in new[] { "101", "102", "103" })
             {
                 Assert.IsTrue(project.Redo());
-                view.RenderProject(project, assets);
+                workspace.RenderProject(project, assets);
                 Assert.AreEqual(expected, SkillInput().text);
             }
         }
@@ -1039,7 +1035,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             input.onEndEdit.Invoke(input.text);
             Assert.AreEqual("43", target.Value);
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             page = navigation.Find("missions/Diplomacy");
             ContentPackEditorRecord rules = project
                 .GetCatalogs()
@@ -1075,8 +1071,8 @@ namespace Rebellion.Tests.ContentEditor.UI
             input.SetTextWithoutNotify(value);
             input.onEndEdit.Invoke(input.text);
             Assert.AreEqual(value, ProbabilityValue(0));
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 project.ContentRootPath,
                 folder
             );
@@ -1150,7 +1146,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
             for (int step = 0; step < 3; step++)
                 Assert.IsTrue(project.Redo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual("64", SelectSharedMissionRules().GetCell(0, column).Value);
         }
 
@@ -1165,7 +1161,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 )
             )
                 project.SetField(grid.GetCell(score, column), string.Empty);
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             grid = SelectSharedMissionRules();
             column = grid.Columns.ToList().IndexOf("Foil");
             Assert.GreaterOrEqual(column, 0);
@@ -1397,7 +1393,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             input.onEndEdit.Invoke(input.text);
             Assert.AreEqual("Edited fleet article", article.Element.Element("Description").Value);
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual(
                 before,
                 view.GetComponentsInChildren<ContentEditorFieldView>()
@@ -1406,7 +1402,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .text
             );
             Assert.IsTrue(project.Redo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.AreEqual(
                 "Edited fleet article",
                 view.GetComponentsInChildren<ContentEditorFieldView>()
@@ -1838,7 +1834,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .text
             );
             search.text = string.Empty;
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.IsTrue(
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
                     .Any(row => row.Node?.Record?.Kind == "PlanetSector")
@@ -1892,7 +1888,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void RenderProject_GalaxyAndSectorRowClicks_ExpandAndCollapseTheirChildren()
         {
             view.ClearProject();
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             ContentPackEditorRecord sector = project
                 .GetCatalogs()
                 .First(catalog => catalog.IsMap)
@@ -2049,7 +2045,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
             Assert.IsTrue(marker.gameObject.activeInHierarchy);
             string sectorKey = marker.Record.Key;
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.IsNull(view.GetComponentInChildren<PlanetSectorWindowView>());
             marker = view.GetComponentsInChildren<ContentEditorMapMarker>()
                 .Single(item => item.Record.Key == sectorKey);
@@ -2076,7 +2072,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
             Canvas.ForceUpdateCanvases();
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             ContentPackEditorRecord record = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == category)
@@ -2122,7 +2118,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Records.First();
             string traitID = project.GetTraitOptions().Keys.First();
             project.SetFieldValues(officer.GetField("Traits"), new[] { traitID });
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             SelectRecord(
                 project.GetCatalogs().First(catalog => catalog.Name == "Officers").Records.First()
             );
@@ -2156,13 +2152,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             string draft = xml.text + "\n<!-- Pending edit -->";
             xml.text = draft;
             SelectRecord(other);
-            ContentEditorConfirmationView confirmation =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView confirmation = view.GetComponentInChildren<ActionDialogView>();
             Assert.IsNotNull(confirmation);
             Assert.IsTrue(confirmation.TryCancel());
             Assert.AreEqual(draft, xml.text);
             SelectRecord(other);
-            confirmation = view.GetComponentInChildren<ContentEditorConfirmationView>();
+            confirmation = view.GetComponentInChildren<ActionDialogView>();
             confirmation
                 .GetComponentsInChildren<Button>()
                 .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Discard")
@@ -2254,7 +2249,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             string original = field.Value;
             ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
                 .First();
-            control.Render(field, () => { }, _ => { }, project, (_, _) => { });
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                () => { },
+                _ => { },
+                (_, _) => { }
+            );
             MenuDropdown selector = control.GetComponentInChildren<MenuDropdown>();
             Assert.IsNotNull(selector);
             Assert.Greater(selector.options.Count, 1);
@@ -2323,7 +2323,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .First(catalog => catalog.Name == category);
             string root = System.Xml.Linq.XDocument.Parse(roster.Document.Text).Root.Name.LocalName;
             project.SetDocumentText(roster.Document, "<" + root + " />");
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             roster = project.GetCatalogs().Single(catalog => catalog.Document == roster.Document);
 
             ChooseUnitCategory(roster);
@@ -2400,9 +2400,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             int visible = 0;
             foreach (ContentEditorFieldView field in fields)
             {
-                ContentEditorFieldHelp info = field.GetComponentInChildren<ContentEditorFieldHelp>(
-                    true
-                );
+                HelpTooltipView info = field.GetComponentInChildren<HelpTooltipView>(true);
                 TMP_Text label = field
                     .GetComponentsInChildren<TMP_Text>(true)
                     .Single(text =>
@@ -2415,7 +2413,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Assert.IsNotNull(
                     info.GetComponentsInChildren<Image>().Single(image => image.sprite != null)
                 );
-                Assert.IsNull(field.GetComponent<ContentEditorFieldHelp>());
+                Assert.IsNull(field.GetComponent<HelpTooltipView>());
                 if (!expected)
                     continue;
                 visible++;
@@ -2593,7 +2591,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             string faction = project.GetFactionOptions().Last().Key;
             project.SetFieldValues(unit.GetField(member), new[] { faction });
 
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             ContentFileResolver source = ContentPackLoader.CreatePackResolver(
                 project.ContentRootPath,
@@ -2640,7 +2638,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
             xml.Descendants("OfficerInstanceID").First().Value = "missing-starting-officer";
             project.SetDocumentText(generation.Document, xml.ToString());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Exception error = await GetValidationErrorAsync();
 
@@ -2656,7 +2654,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .First()
                 .SetElementValue("DisplayImagePath", "Pack/missing-planet-art.png");
             project.SetDocumentText(map.Document, xml.ToString());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Exception error = await GetValidationErrorAsync();
 
@@ -2693,7 +2691,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             };
             target.Value = "missing-generation-reference";
             project.SetDocumentText(generation.Document, xml.ToString());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Exception error = await GetValidationErrorAsync();
 
@@ -2714,7 +2712,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(fighters.Document.Text);
             xml.Descendants("Starfighter").First().SetElementValue("TypeID", shipType);
             project.SetDocumentText(fighters.Document, xml.ToString());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Exception error = await GetValidationErrorAsync();
 
@@ -2847,7 +2845,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentEditorRecordRowView branch =
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
                     .Single(row => row.Node?.Caption == "Special forces");
-            ScrollAreaView scroll = view.GetComponentsInChildren<ContentEditorScrollLayout>()
+            ScrollAreaView scroll = view.GetComponentsInChildren<ScrollAreaLayout>()
                 .Single(layout => layout.name == "ContentTree")
                 .ScrollArea;
             string selectedTitle = view.GetComponentsInChildren<TMP_Text>()
@@ -2980,7 +2978,7 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             Assert.IsTrue(project.IsDirty);
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
 
             Assert.AreEqual(previous, SkillInput().text);
             Assert.IsFalse(project.IsDirty);
@@ -3048,7 +3046,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void RenderProject_ClickingDisclosure_ExpandsBranchWithoutReplacingSelection()
         {
             view.ClearProject();
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             ContentEditorRecordRowView units =
                 view.GetComponentsInChildren<ContentEditorRecordRowView>()
                     .Single(row => row.Node?.Caption == "Units");
@@ -3249,7 +3247,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     )
                 )
             );
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             SelectRecord(officer);
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "EncyclopediaTab")
@@ -3355,7 +3353,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             xml.Root.Elements().First().SetElementValue("CanBetray", "not-a-bool");
             project.SetDocumentText(catalog.Document, xml.ToString());
 
-            Assert.DoesNotThrow(() => view.RenderProject(project, assets));
+            Assert.DoesNotThrow(() => workspace.RenderProject(project, assets));
             SelectRecord(
                 project.GetCatalogs().First(item => item.Name == "Officers").Records.First()
             );
@@ -3382,7 +3380,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .SetElementValue("EncyclopediaImagePath", "unscoped/image.png");
             project.SetDocumentText(catalog.Document, xml.ToString());
 
-            Assert.DoesNotThrow(() => view.RenderProject(project, assets));
+            Assert.DoesNotThrow(() => workspace.RenderProject(project, assets));
             SelectRecord(
                 project.GetCatalogs().First(item => item.Name == "Officers").Records.First()
             );
@@ -3491,7 +3489,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             XDocument xml = XDocument.Parse(building.Catalog.Document.Text);
             xml.Root.Elements().First().SetElementValue("BuildingType", "InvalidKind");
             project.SetDocumentText(building.Catalog.Document, xml.ToString());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             building = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Buildings")
@@ -3518,8 +3516,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "Delete")
                 .onClick.Invoke();
-            ContentEditorConfirmationView confirmation =
-                view.GetComponentInChildren<ContentEditorConfirmationView>();
+            ActionDialogView confirmation = view.GetComponentInChildren<ActionDialogView>();
             confirmation
                 .GetComponentsInChildren<Button>()
                 .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Delete")
@@ -3528,7 +3525,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(view.CommitFields());
             Assert.IsTrue(view.GetComponentsInChildren<ContentEditorFieldView>().Any());
             Assert.IsTrue(project.Undo());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             Assert.IsTrue(
                 project
                     .GetCatalogs()
@@ -3576,7 +3573,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 )
             );
             project.SetDocumentText(catalog.Document, xml.ToString());
-            view.RenderProject(project, assets);
+            workspace.RenderProject(project, assets);
             ContentEditorNavigation navigation = new ContentEditorNavigation();
             navigation.Render(project.GetCatalogs());
             SelectPage(navigation.Find("missions/reference-only-mission"));
@@ -3598,7 +3595,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             try
             {
-                await project.ValidateAsync();
+                await ContentEditorPackValidator.ValidateAsync(project);
             }
             catch (Exception exception)
             {

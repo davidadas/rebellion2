@@ -2,10 +2,10 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Keeps unfocused authoring inputs at the beginning of their value while preserving normal editing.
+/// Keeps unfocused text inputs at the beginning of their value while preserving normal editing.
 /// </summary>
 [RequireComponent(typeof(TMP_InputField))]
-public sealed class ContentEditorInputView : MonoBehaviour
+public sealed class TextInputOverflowView : MonoBehaviour
 {
     private TMP_InputField input;
     private bool pending;

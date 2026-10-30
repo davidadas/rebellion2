@@ -144,7 +144,7 @@ namespace Rebellion.Tests.ContentEditor
                 .Select(document => document.TargetPath)
                 .ToArray();
             if (savedCreation)
-                project.Save();
+                ContentPackEditorStorage.Save(project);
             project.RemoveRecord(faction);
             Assert.IsEmpty(project.Definition.FactionPaths);
             Assert.IsEmpty(project.GetFactionOptions());
@@ -153,9 +153,9 @@ namespace Rebellion.Tests.ContentEditor
                 project.Documents.Select(document => document.Address)
             );
             Assert.IsTrue(createdPaths.All(path => File.Exists(path) == savedCreation));
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.IsTrue(createdPaths.All(path => !File.Exists(path)));
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 contentRoot,
                 project.PackRootPath
             );
@@ -169,10 +169,10 @@ namespace Rebellion.Tests.ContentEditor
             );
             Assert.IsTrue(project.Undo());
             Assert.IsTrue(project.GetFactionOptions().ContainsKey(id));
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.IsTrue(createdPaths.All(File.Exists));
             Assert.IsTrue(project.Redo());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.IsTrue(createdPaths.All(path => !File.Exists(path)));
         }
 
@@ -199,8 +199,8 @@ namespace Rebellion.Tests.ContentEditor
                 );
             Assert.IsTrue(faction.Catalog.Document.IsInherited);
             project.RemoveRecord(faction);
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 contentRoot,
                 project.PackRootPath
             );
@@ -251,8 +251,8 @@ namespace Rebellion.Tests.ContentEditor
                     .Records.Single()
                     .ID
             );
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 contentRoot,
                 project.PackRootPath
             );
@@ -381,12 +381,12 @@ namespace Rebellion.Tests.ContentEditor
                 .Documents.Where(document => !before.Contains(document.Address))
                 .Select(document => document.TargetPath)
                 .ToArray();
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.IsTrue(addedPaths.All(File.Exists));
             Assert.IsTrue(project.Undo());
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.IsTrue(addedPaths.All(path => !File.Exists(path)));
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 contentRoot,
                 project.PackRootPath
             );
@@ -396,8 +396,8 @@ namespace Rebellion.Tests.ContentEditor
             );
             Assert.IsEmpty(reopened.Definition.FactionPaths);
             Assert.IsTrue(project.Redo());
-            project.Save();
-            reopened = ContentPackEditorProject.OpenFolder(contentRoot, project.PackRootPath);
+            ContentPackEditorStorage.Save(project);
+            reopened = ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath);
             Assert.IsTrue(reopened.GetFactionOptions().ContainsKey(id));
             Assert.AreEqual(
                 "<Units />",
@@ -413,7 +413,7 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorProject project = CreateWorkingProject();
             string[] before = project.Documents.Select(document => document.Address).ToArray();
             project.AddFaction();
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             project.Undo();
             string snapshot = Path.Combine(Directory.GetParent(contentRoot).FullName, "Snapshot");
             Directory.CreateDirectory(snapshot);
@@ -427,7 +427,8 @@ namespace Rebellion.Tests.ContentEditor
                     .EnumerateFiles(snapshot, "*.xml", SearchOption.AllDirectories)
                     .Any(path => Path.GetRelativePath(snapshot, path).StartsWith("Factions"))
             );
-            ContentPackEditorProject copy = project.SaveAs(
+            ContentPackEditorProject copy = ContentPackEditorStorage.SaveAs(
+                project,
                 Path.Combine(Directory.GetParent(contentRoot).FullName, "Copy"),
                 "copy",
                 "Copy",
@@ -444,10 +445,10 @@ namespace Rebellion.Tests.ContentEditor
         {
             ContentPackEditorProject project = CreateWorkingProject();
             string path = project.AddFaction().Catalog.Document.TargetPath;
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             File.AppendAllText(path, "\n<!-- External edit -->");
             project.Undo();
-            Assert.Throws<IOException>(() => project.Save());
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
             StringAssert.Contains("External edit", File.ReadAllText(path));
         }
 
@@ -468,7 +469,7 @@ namespace Rebellion.Tests.ContentEditor
                     .Single(field => field.MemberName == "ResourceProcessingPointsPerFacility")
                     .Value
             );
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             ContentPack pack = ContentPackLoader.LoadPack(
                 ContentPackLoader.CreateFolderResolver(
                     project.ContentRootPath,
@@ -503,7 +504,7 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public void AddFaction_InstalledPack_RejectsCreation()
         {
-            ContentPackEditorProject project = ContentPackEditorProject.Open(
+            ContentPackEditorProject project = ContentPackEditorStorage.Open(
                 contentRoot,
                 "base-pack"
             );
@@ -568,8 +569,8 @@ namespace Rebellion.Tests.ContentEditor
             );
             Assert.IsTrue(project.Redo());
             Assert.IsTrue(project.Redo());
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 project.ContentRootPath,
                 project.PackRootPath
             );
@@ -617,8 +618,8 @@ namespace Rebellion.Tests.ContentEditor
             );
             Assert.IsTrue(project.Redo());
             Assert.IsTrue(project.Redo());
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 project.ContentRootPath,
                 project.PackRootPath
             );
@@ -701,8 +702,8 @@ namespace Rebellion.Tests.ContentEditor
             );
             Assert.IsTrue(project.Redo());
             Assert.IsTrue(project.Redo());
-            project.Save();
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 project.ContentRootPath,
                 project.PackRootPath
             );
@@ -903,7 +904,7 @@ namespace Rebellion.Tests.ContentEditor
                 .Records[0]
                 .GetFields()
                 .Single(candidate => candidate.MemberName == "AudioOptions");
-            string stored = project.ImportAsset(source, field);
+            string stored = ContentPackEditorStorage.ImportAsset(project, source, field);
             Assert.AreEqual("replacement.wav", stored);
             Assert.AreEqual("Pack/Advisor/Audio/replacement.wav", field.GetMediaAddress(stored));
             Assert.IsTrue(
@@ -921,7 +922,7 @@ namespace Rebellion.Tests.ContentEditor
             );
             ContentPackEditorProject project = CreateWorkingProject();
             ArgumentException error = await ExpectFailureAsync<ArgumentException>(() =>
-                project.ValidateAsync()
+                ContentEditorPackValidator.ValidateAsync(project)
             );
             Assert.AreEqual("Choose a listed faction.", error.Message);
         }
@@ -959,7 +960,7 @@ namespace Rebellion.Tests.ContentEditor
             );
             if (localOverride)
                 units.SetText("<Units><Unit ID=\"local\" /></Units>");
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             string nextRoot = Path.Combine(contentRoot, "Packs", "AnotherBase");
             Directory.CreateDirectory(Path.Combine(nextRoot, "Data"));
             ContentDefinitionSerializer.Serialize(
@@ -987,7 +988,7 @@ namespace Rebellion.Tests.ContentEditor
                 )
             );
 
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Assert.AreEqual("another-base", project.Definition.BasePackID);
             Assert.AreEqual(
@@ -1027,7 +1028,7 @@ namespace Rebellion.Tests.ContentEditor
                     "<BasePackID>missing</BasePackID>"
                 )
             );
-            Assert.Throws<InvalidDataException>(() => project.Save());
+            Assert.Throws<InvalidDataException>(() => ContentPackEditorStorage.Save(project));
             Assert.AreEqual(saved, File.ReadAllText(manifest.TargetPath));
             Assert.AreEqual("base-pack", project.Definition.BasePackID);
         }
@@ -1037,7 +1038,7 @@ namespace Rebellion.Tests.ContentEditor
         {
             string folder = Path.Combine(contentRoot, "Working");
             Directory.CreateDirectory(folder);
-            ContentPackEditorProject project = ContentPackEditorProject.CreateInFolder(
+            ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
                 contentRoot,
                 "base-pack",
                 folder,
@@ -1056,7 +1057,7 @@ namespace Rebellion.Tests.ContentEditor
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "existing.txt"), "Keep this");
             Assert.Throws<IOException>(() =>
-                ContentPackEditorProject.CreateInFolder(
+                ContentPackEditorStorage.CreateInFolder(
                     contentRoot,
                     "base-pack",
                     folder,
@@ -1071,7 +1072,7 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public void Create_ValidDerivedPack_InheritsManifestAndDocuments()
         {
-            ContentPackEditorProject project = ContentPackEditorProject.Create(
+            ContentPackEditorProject project = ContentPackEditorStorage.Create(
                 contentRoot,
                 "base-pack",
                 "sample-pack",
@@ -1092,7 +1093,7 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public void Save_InheritedDocument_CreatesLocalOverride()
         {
-            ContentPackEditorProject project = ContentPackEditorProject.Create(
+            ContentPackEditorProject project = ContentPackEditorStorage.Create(
                 contentRoot,
                 "base-pack",
                 "sample-pack",
@@ -1104,7 +1105,7 @@ namespace Rebellion.Tests.ContentEditor
             );
 
             document.SetText("<Units><Unit /></Units>");
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             Assert.IsFalse(document.IsDirty);
             Assert.IsFalse(document.IsInherited);
@@ -1120,7 +1121,7 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public void Save_MalformedXml_DoesNotReplaceTarget()
         {
-            ContentPackEditorProject project = ContentPackEditorProject.Create(
+            ContentPackEditorProject project = ContentPackEditorStorage.Create(
                 contentRoot,
                 "base-pack",
                 "sample-pack",
@@ -1133,14 +1134,14 @@ namespace Rebellion.Tests.ContentEditor
             string original = File.ReadAllText(document.TargetPath);
             document.SetText("<ContentPack>");
 
-            Assert.Throws<System.Xml.XmlException>(() => project.Save());
+            Assert.Throws<System.Xml.XmlException>(() => ContentPackEditorStorage.Save(project));
             Assert.AreEqual(original, File.ReadAllText(document.TargetPath));
         }
 
         [Test]
         public void Save_AnyMalformedDocument_PreventsAllWrites()
         {
-            ContentPackEditorProject project = ContentPackEditorProject.Create(
+            ContentPackEditorProject project = ContentPackEditorStorage.Create(
                 contentRoot,
                 "base-pack",
                 "sample-pack",
@@ -1157,7 +1158,7 @@ namespace Rebellion.Tests.ContentEditor
             manifest.SetText(manifest.Text.Replace("Sample pack", "Changed pack"));
             units.SetText("<Units>");
 
-            Assert.Throws<System.Xml.XmlException>(() => project.Save());
+            Assert.Throws<System.Xml.XmlException>(() => ContentPackEditorStorage.Save(project));
             Assert.AreEqual(originalManifest, File.ReadAllText(manifest.TargetPath));
             Assert.IsFalse(File.Exists(units.TargetPath));
         }
@@ -1166,7 +1167,7 @@ namespace Rebellion.Tests.ContentEditor
         public void Create_InvalidIdentifier_DoesNotCreatePackDirectory()
         {
             Assert.Throws<ArgumentException>(() =>
-                ContentPackEditorProject.Create(
+                ContentPackEditorStorage.Create(
                     contentRoot,
                     "base-pack",
                     "Bad Pack",
@@ -1188,7 +1189,7 @@ namespace Rebellion.Tests.ContentEditor
         public void Create_StructurallyInvalidIdentifier_DoesNotCreatePackDirectory(string packID)
         {
             Assert.Throws<ArgumentException>(() =>
-                ContentPackEditorProject.Create(
+                ContentPackEditorStorage.Create(
                     contentRoot,
                     "base-pack",
                     packID,
@@ -1206,7 +1207,7 @@ namespace Rebellion.Tests.ContentEditor
         public void CreateInFolder_OutsideInstalledPacks_ResolvesInheritedDocumentsAndReopens()
         {
             string folder = Path.Combine(contentRoot, "Working", "MyPack");
-            ContentPackEditorProject project = ContentPackEditorProject.CreateInFolder(
+            ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
                 contentRoot,
                 "base-pack",
                 folder,
@@ -1218,9 +1219,9 @@ namespace Rebellion.Tests.ContentEditor
                 document.Address == "Pack/Data/units.xml"
             );
             units.SetText("<Units><Unit ID='changed'/></Units>");
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
-            ContentPackEditorProject reopened = ContentPackEditorProject.OpenFolder(
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
                 contentRoot,
                 folder
             );
@@ -1294,7 +1295,7 @@ namespace Rebellion.Tests.ContentEditor
                 document.Address == "Pack/Data/units.xml"
             );
             units.SetText("<Units><Unit/></Units>");
-            project.Save();
+            ContentPackEditorStorage.Save(project);
 
             project.Undo();
 
@@ -1313,7 +1314,8 @@ namespace Rebellion.Tests.ContentEditor
             units.SetText("<Units><Unit ID='edited'/></Units>");
             string destination = Path.Combine(contentRoot, "Copies", "Copy");
 
-            ContentPackEditorProject copy = project.SaveAs(
+            ContentPackEditorProject copy = ContentPackEditorStorage.SaveAs(
+                project,
                 destination,
                 "copy-pack",
                 "Copied pack",
@@ -1331,7 +1333,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(File.Exists(units.TargetPath));
             Assert.AreEqual(
                 "sample-pack",
-                ContentPackEditorProject.OpenFolder(contentRoot, project.PackRootPath).Definition.ID
+                ContentPackEditorStorage.OpenFolder(contentRoot, project.PackRootPath).Definition.ID
             );
         }
 
@@ -1349,11 +1351,12 @@ namespace Rebellion.Tests.ContentEditor
             string source = Path.Combine(contentRoot, "sound.wav");
             byte[] media = { 1, 2, 3, 4, 5 };
             File.WriteAllBytes(source, media);
-            project.ImportAsset(source);
+            ContentPackEditorStorage.ImportAsset(project, source);
             string archivePath = Path.Combine(contentRoot, "export.zip");
 
             int checks = 0;
-            await project.ExportAsync(
+            await ContentPackEditorExporter.WriteArchiveAsync(
+                project,
                 archivePath,
                 message =>
                 {
@@ -1389,7 +1392,7 @@ namespace Rebellion.Tests.ContentEditor
             File.WriteAllText(output, "existing archive");
 
             InvalidDataException error = await ExpectFailureAsync<InvalidDataException>(() =>
-                project.ExportAsync(output)
+                ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 
             StringAssert.Contains("missing-export-officer", error.Message);
@@ -1404,7 +1407,7 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorProject project = CreateLoadableProject();
             string badFile = Path.Combine(contentRoot, "corrupt.png");
             File.WriteAllText(badFile, "Not a PNG file.");
-            string address = project.ImportAsset(badFile);
+            string address = ContentPackEditorStorage.ImportAsset(project, badFile);
             ContentPackEditorRecord officer = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
@@ -1414,7 +1417,7 @@ namespace Rebellion.Tests.ContentEditor
             File.WriteAllText(output, "existing archive");
 
             InvalidDataException failure = await ExpectFailureAsync<InvalidDataException>(() =>
-                project.ExportAsync(output)
+                ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 
             StringAssert.Contains(address, failure.Message);
@@ -1428,7 +1431,10 @@ namespace Rebellion.Tests.ContentEditor
         {
             ContentPackEditorProject project = CreateLoadableProject();
             using CancellationTokenSource cancellation = new CancellationTokenSource();
-            Task pending = project.ValidateAsync(cancellationToken: cancellation.Token);
+            Task pending = ContentEditorPackValidator.ValidateAsync(
+                project,
+                cancellationToken: cancellation.Token
+            );
             Assert.IsFalse(pending.IsCompleted);
 
             cancellation.Cancel();
@@ -1460,7 +1466,11 @@ namespace Rebellion.Tests.ContentEditor
             string output = Path.Combine(contentRoot, "existing.zip");
             File.WriteAllText(output, "existing archive");
             using CancellationTokenSource cancellation = new CancellationTokenSource();
-            Task pending = project.ExportAsync(output, cancellationToken: cancellation.Token);
+            Task pending = ContentPackEditorExporter.WriteArchiveAsync(
+                project,
+                output,
+                cancellationToken: cancellation.Token
+            );
             Assert.IsFalse(pending.IsCompleted);
 
             cancellation.Cancel();
@@ -1488,7 +1498,9 @@ namespace Rebellion.Tests.ContentEditor
             string output = Path.Combine(contentRoot, "export.zip");
             File.WriteAllText(output, "existing archive");
 
-            await ExpectFailureAsync<System.Xml.XmlException>(() => project.ExportAsync(output));
+            await ExpectFailureAsync<System.Xml.XmlException>(() =>
+                ContentPackEditorExporter.WriteArchiveAsync(project, output)
+            );
 
             Assert.AreEqual("existing archive", File.ReadAllText(output));
         }
@@ -1499,7 +1511,9 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorProject project = CreateWorkingProject();
             string output = Path.Combine(project.PackRootPath, "Nested");
 
-            Assert.Throws<IOException>(() => project.SaveAs(output, "copy", "Copy", "1.0.0"));
+            Assert.Throws<IOException>(() =>
+                ContentPackEditorStorage.SaveAs(project, output, "copy", "Copy", "1.0.0")
+            );
 
             Assert.IsFalse(Directory.Exists(output));
         }
@@ -1532,7 +1546,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(project.IsDirty);
             Assert.IsFalse(project.CanUndo);
             project.Redo();
-            project.Save();
+            ContentPackEditorStorage.Save(project);
             Assert.AreEqual("Shared/Data/game-config.xml", project.Definition.GameConfigPath);
             StringAssert.Contains(
                 ">9<",
@@ -1554,7 +1568,7 @@ namespace Rebellion.Tests.ContentEditor
             Directory.CreateDirectory(Path.GetDirectoryName(document.TargetPath));
             File.WriteAllText(document.TargetPath, "<Units><Other /></Units>");
 
-            Assert.Throws<IOException>(() => project.Save());
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
 
             Assert.AreEqual("<Units><Other /></Units>", File.ReadAllText(document.TargetPath));
             Assert.IsTrue(document.IsDirty);
@@ -1618,7 +1632,7 @@ namespace Rebellion.Tests.ContentEditor
             document.SetText("<Units><Unit /></Units>");
             File.WriteAllText(document.SourcePath, "<Units><Updated /></Units>");
 
-            Assert.Throws<IOException>(() => project.Save());
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
 
             Assert.IsFalse(File.Exists(document.TargetPath));
             Assert.IsTrue(document.IsDirty);
@@ -1630,7 +1644,7 @@ namespace Rebellion.Tests.ContentEditor
             string folder = Path.Combine(contentRoot, "Packs", "BasePack");
             string before = File.ReadAllText(Path.Combine(folder, "pack.xml"));
             Assert.Throws<IOException>(() =>
-                ContentPackEditorProject.OpenFolder(contentRoot, folder)
+                ContentPackEditorStorage.OpenFolder(contentRoot, folder)
             );
             Assert.AreEqual(before, File.ReadAllText(Path.Combine(folder, "pack.xml")));
         }
@@ -1638,7 +1652,7 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public void Save_InstalledReferenceProject_RejectsWritingBaseData()
         {
-            ContentPackEditorProject reference = ContentPackEditorProject.Open(
+            ContentPackEditorProject reference = ContentPackEditorStorage.Open(
                 contentRoot,
                 "base-pack"
             );
@@ -1646,19 +1660,22 @@ namespace Rebellion.Tests.ContentEditor
                 item.Address == "Pack/Data/units.xml"
             );
             document.SetText("<Units><Unit /></Units>");
-            Assert.Throws<IOException>(() => reference.Save());
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(reference));
             Assert.AreEqual("<Units />", File.ReadAllText(document.SourcePath));
         }
 
         [Test]
         public void ImportAsset_InstalledReferenceProject_RejectsWritingAssets()
         {
-            ContentPackEditorProject reference = ContentPackEditorProject.Open(
+            ContentPackEditorProject reference = ContentPackEditorStorage.Open(
                 contentRoot,
                 "base-pack"
             );
             Assert.Throws<IOException>(() =>
-                reference.ImportAsset(Path.Combine(contentRoot, "file.png"))
+                ContentPackEditorStorage.ImportAsset(
+                    reference,
+                    Path.Combine(contentRoot, "file.png")
+                )
             );
             Assert.IsFalse(Directory.Exists(Path.Combine(reference.PackRootPath, "Assets")));
         }
@@ -1667,7 +1684,7 @@ namespace Rebellion.Tests.ContentEditor
         public void CreateInFolder_InsideInstalledContent_RejectsCreation()
         {
             Assert.Throws<IOException>(() =>
-                ContentPackEditorProject.CreateInFolder(
+                ContentPackEditorStorage.CreateInFolder(
                     contentRoot,
                     "base-pack",
                     Path.Combine(contentRoot, "Packs", "NewPack"),
@@ -1771,7 +1788,7 @@ namespace Rebellion.Tests.ContentEditor
         {
             string liveContentRoot = ContentPackLoader.ResolveContentRootPath();
             ContentPackDefinition source = ContentPackLoader.DiscoverPacks(liveContentRoot).First();
-            return ContentPackEditorProject.CreateInFolder(
+            return ContentPackEditorStorage.CreateInFolder(
                 liveContentRoot,
                 source.ID,
                 Path.Combine(Directory.GetParent(contentRoot).FullName, "LiveProject"),
@@ -1787,7 +1804,7 @@ namespace Rebellion.Tests.ContentEditor
         /// <returns>The editable project.</returns>
         private ContentPackEditorProject CreateWorkingProject()
         {
-            return ContentPackEditorProject.Create(
+            return ContentPackEditorStorage.Create(
                 contentRoot,
                 "base-pack",
                 "sample-pack",

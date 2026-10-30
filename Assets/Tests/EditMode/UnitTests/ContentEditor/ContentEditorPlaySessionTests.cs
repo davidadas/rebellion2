@@ -29,7 +29,7 @@ namespace Rebellion.Tests.ContentEditor
                 Path.GetTempPath(),
                 "editor-play-project-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorProject.CreateInFolder(
+            project = ContentPackEditorStorage.CreateInFolder(
                 root,
                 baseline.ID,
                 folder,

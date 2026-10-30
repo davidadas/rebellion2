@@ -669,7 +669,8 @@ namespace Rebellion.Tests.ContentEditor
                 new ContentPackEditorDocument(
                     "Pack/Data/units.xml",
                     source,
-                    Path.Combine(directory, "target.xml")
+                    Path.Combine(directory, "target.xml"),
+                    File.ReadAllText(source)
                 )
             );
         }

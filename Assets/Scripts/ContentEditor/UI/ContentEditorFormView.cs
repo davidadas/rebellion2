@@ -30,7 +30,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private RawImage articleImageTemplate;
 
     [SerializeField]
-    private ContentEditorScrollLayout fieldScroll;
+    private ScrollAreaLayout fieldScroll;
 
     [SerializeField]
     private ContentEditorFieldView fieldTemplate;
@@ -56,6 +56,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private bool bound;
 
     public event Action Changed;
+    public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
+    public event Action<ContentPackEditorField> FieldValidationRequested;
     public event Action WidthChanged;
     public event Action<Button> AddMessageRequested;
     public event Action<ContentPackEditorField> ImportRequested;
@@ -63,11 +65,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<string> ValidationFailed;
     public bool HasOpenChoice =>
         fieldViews.Any(field => field.gameObject.activeSelf && field.HasOpenChoice);
-    public ContentEditorTextHistory InvalidTextHistory =>
+    public TextInputHistory InvalidTextHistory =>
         fieldViews
             .FirstOrDefault(field => field.gameObject.activeSelf && field.HasError)
             ?.GetComponentInChildren<TMP_InputField>()
-            ?.GetComponent<ContentEditorTextHistory>();
+            ?.GetComponent<TextInputHistory>();
 
     /// <summary>
     /// Connects the authored form controls before displaying any fields.
@@ -107,7 +109,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         fieldScroll.WidthChanged -= HandleWidthChanged;
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
         foreach (ContentEditorFieldView field in fieldViews)
+        {
             field.ValidationFailed -= ReportValidationError;
+            field.Submitted -= SubmitField;
+            field.ValidationRequested -= ValidateField;
+        }
     }
 
     /// <summary>
@@ -451,7 +457,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (
             selectedRecord.Kind == "GameConfig"
             && selectedPage == null
-            && ContentEditorContentSections.IsMissionField(field)
+            && ContentPackEditorFieldMetadata.IsMissionField(field)
         )
             return false;
         return section switch
@@ -568,7 +574,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         .ToArray();
                 if (
                     record.Kind == "GameConfig"
-                    && ContentEditorContentSections.MissionFor(field) == null
+                    && ContentPackEditorFieldMetadata.MissionFor(field) == null
                 )
                     sections = new[] { "Shared mission rules" }.Concat(sections).ToArray();
                 y = Mathf.CeilToInt(
@@ -924,7 +930,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             groupIndex = 0;
         foreach (
             IGrouping<string, ContentPackEditorField> group in fields.GroupBy(
-                ContentEditorInspectorLayout.GetGroup
+                ContentPackEditorFieldMetadata.GetInspectorGroup
             )
         )
         {
@@ -1062,12 +1068,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 fieldScroll.ScrollArea.ContentRoot
             );
             created.ValidationFailed += ReportValidationError;
+            created.Submitted += SubmitField;
+            created.ValidationRequested += ValidateField;
             fieldViews.Add(created);
         }
         ContentEditorFieldView view = fieldViews[index];
         view.name = field.Name.Replace(" / ", " ").Replace(" ", string.Empty) + "Field";
         if (!reflowingFields || !view.gameObject.activeSelf)
-            view.Render(field, HandleFieldChanged, RequestImport, project, RequestPreview);
+            view.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                HandleFieldChanged,
+                RequestImport,
+                RequestPreview
+            );
         int occupied = height > 0 ? height : view.Height;
         return view.SetLayout(new Rect(x, y, width, occupied), labelWidth);
     }
@@ -1097,7 +1110,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             groupLabels.Add(Instantiate(groupTemplate, fieldScroll.ScrollArea.ContentRoot));
         TextMeshProUGUI label = groupLabels[index];
         label.text = text;
-        ContentEditorFieldHelp help = label.GetComponentInChildren<ContentEditorFieldHelp>(true);
+        HelpTooltipView help = label.GetComponentInChildren<HelpTooltipView>(true);
         help.Configure(helpText);
         bool hasHelp = !string.IsNullOrWhiteSpace(helpText);
         help.gameObject.SetActive(hasHelp);
@@ -1172,4 +1185,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
         return y;
     }
+
+    /// <summary>
+    /// Forwards a field submission without applying it inside the form.
+    /// </summary>
+    /// <param name="field">The edited member.</param>
+    /// <param name="values">The complete proposed values.</param>
+    private void SubmitField(ContentPackEditorField field, IReadOnlyList<string> values) =>
+        FieldSubmitted?.Invoke(field, values);
+
+    /// <summary>
+    /// Requests validation when an unchanged field loses focus.
+    /// </summary>
+    /// <param name="field">The member to check.</param>
+    private void ValidateField(ContentPackEditorField field) =>
+        FieldValidationRequested?.Invoke(field);
 }

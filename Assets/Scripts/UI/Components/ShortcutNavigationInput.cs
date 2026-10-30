@@ -2,16 +2,16 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// Keeps application shortcuts from also activating the editor's ordinary UI navigation axes.
+/// Keeps application shortcuts from also activating the ordinary UI navigation axes.
 /// </summary>
 [RequireComponent(typeof(StandaloneInputModule))]
 [DisallowMultipleComponent]
-public sealed class ContentEditorNavigationInput : BaseInput
+public sealed class ShortcutNavigationInput : BaseInput
 {
     private StandaloneInputModule module;
 
     /// <summary>
-    /// Supplies the authored input module with the editor's navigation policy.
+    /// Supplies the authored input module with the menu's navigation policy.
     /// </summary>
     protected override void OnEnable()
     {

@@ -61,8 +61,8 @@ internal static class ContentPackEditorExporter
     internal static async Task WriteArchiveAsync(
         ContentPackEditorProject project,
         string filePath,
-        Action<string> progress,
-        CancellationToken cancellationToken
+        Action<string> progress = null,
+        CancellationToken cancellationToken = default
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -73,9 +73,11 @@ internal static class ContentPackEditorExporter
         try
         {
             await WriteSnapshotAsync(project, staging, cancellationToken);
-            await ContentPackEditorProject
-                .OpenFolder(project.ContentRootPath, staging)
-                .ValidateAsync(progress, cancellationToken);
+            await ContentEditorPackValidator.ValidateAsync(
+                ContentPackEditorStorage.OpenFolder(project.ContentRootPath, staging),
+                progress,
+                cancellationToken
+            );
             cancellationToken.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
             await WriteArchiveContentsAsync(staging, temporaryFile, cancellationToken);
