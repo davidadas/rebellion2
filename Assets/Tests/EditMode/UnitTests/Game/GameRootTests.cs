@@ -1001,6 +1001,22 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void ChangeOwnership_EmptyOwner_ThrowsBeforeChangingOwnership()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "INVALID_OWNER_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            Assert.Throws<SceneNodeNotFoundException>(() => _game.ChangeOwnership(officer, ""));
+
+            Assert.AreEqual(_faction1.InstanceID, officer.OwnerInstanceID);
+            CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Officer>(), officer);
+        }
+
+        [Test]
         public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
         {
             Officer officer = new Officer

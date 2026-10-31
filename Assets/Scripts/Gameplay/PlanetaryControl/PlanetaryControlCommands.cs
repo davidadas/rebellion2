@@ -533,11 +533,30 @@ namespace Rebellion.Gameplay
                 if (
                     building.ManufacturingStatus != ManufacturingStatus.Complete
                     || building.Movement != null
+                    || (newOwner == null && IsActiveMobileHeadquarters(building))
                 )
                     continue;
 
                 _game.ChangeOwnership(building, newOwner?.InstanceID);
             }
+        }
+
+        /// <summary>
+        /// Determines whether a building remains the owning faction's active mobile headquarters.
+        /// </summary>
+        /// <param name="building">The building being evaluated during a control change.</param>
+        /// <returns>True when the building is its owner's active mobile headquarters.</returns>
+        private bool IsActiveMobileHeadquarters(Building building)
+        {
+            if (
+                building?.BuildingType != BuildingType.Headquarters
+                || string.IsNullOrEmpty(building.OwnerInstanceID)
+            )
+                return false;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(building.OwnerInstanceID);
+            return owner.Settings?.Headquarters?.IsMobile == true
+                && owner.HQInstanceID == building.GetParentOfType<Planet>()?.InstanceID;
         }
     }
 }

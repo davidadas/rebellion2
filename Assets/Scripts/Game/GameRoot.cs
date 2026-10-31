@@ -430,7 +430,7 @@ namespace Rebellion.Game
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
 
-            if (!string.IsNullOrEmpty(ownerInstanceId))
+            if (ownerInstanceId != null)
                 GetFactionByOwnerInstanceID(ownerInstanceId);
 
             DeregsiterOwnedUnit(node);
