@@ -42,7 +42,7 @@ public static class ContentPackEditorStorage
     /// <returns>The editable project.</returns>
     public static ContentPackEditorProject OpenFolder(string contentRootPath, string packRootPath)
     {
-        ContentPackEditorProject.VerifyWorkingFolder(contentRootPath, packRootPath);
+        ContentEditorPaths.VerifyWritableLocation(contentRootPath, packRootPath);
         ContentPackDefinition definition =
             ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
                 Path.Combine(packRootPath, "pack.xml")
@@ -116,7 +116,7 @@ public static class ContentPackEditorStorage
                 Path.Combine(baseResolver.PackRootPath, "pack.xml")
             );
 
-        ContentPackEditorProject.VerifyWorkingFolder(contentRootPath, packRootPath);
+        ContentEditorPaths.VerifyWritableLocation(contentRootPath, packRootPath);
         string packRoot = Path.GetFullPath(packRootPath);
         bool directoryExisted = Directory.Exists(packRoot);
         if (
@@ -126,15 +126,7 @@ public static class ContentPackEditorStorage
             throw new IOException("Choose a new or empty content-pack folder.");
         foreach (string inheritedRoot in baseResolver.PackRootPaths)
         {
-            if (
-                packRoot.StartsWith(
-                    inheritedRoot.TrimEnd(
-                        Path.DirectorySeparatorChar,
-                        Path.AltDirectorySeparatorChar
-                    ) + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
+            if (ContentEditorPaths.Contains(inheritedRoot, packRoot))
                 throw new IOException(
                     "Choose a working folder outside the inherited content pack."
                 );
@@ -351,7 +343,7 @@ public static class ContentPackEditorStorage
         string directoryAddress
     )
     {
-        ContentPackEditorProject.VerifyWorkingFolder(project.ContentRootPath, project.PackRootPath);
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
         string source = Path.GetFullPath(sourcePath);
         if (!File.Exists(source))
             throw new FileNotFoundException("The selected media file does not exist.", source);
@@ -364,6 +356,7 @@ public static class ContentPackEditorStorage
         );
         resolver.ResolveFile(directoryAddress);
         string directory = Path.GetFullPath(directoryAddress[5..], project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, directory);
         Directory.CreateDirectory(directory);
         string fileName = Path.GetFileName(source);
         string target = Path.Combine(directory, fileName);
@@ -383,6 +376,7 @@ public static class ContentPackEditorStorage
                     + Path.GetExtension(fileName)
             );
         }
+        ContentEditorPaths.VerifyWritePath(project, target);
         File.Copy(source, target);
         return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
     }
@@ -393,13 +387,14 @@ public static class ContentPackEditorStorage
     /// <param name="project">The working documents to persist.</param>
     public static void Save(ContentPackEditorProject project)
     {
-        ContentPackEditorProject.VerifyWorkingFolder(project.ContentRootPath, project.PackRootPath);
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
         ContentPackEditorDocument[] dirtyDocuments = project
             .AllDocuments.Where(document => document.IsDirty)
             .ToArray();
         foreach (ContentPackEditorDocument document in dirtyDocuments)
         {
             document.Validate();
+            ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
             VerifyUnchangedTarget(document);
         }
         ContentPackDefinition nextDefinition =
@@ -420,7 +415,7 @@ public static class ContentPackEditorStorage
             StringComparison.Ordinal
         );
         foreach (ContentPackEditorDocument document in dirtyDocuments)
-            SaveDocument(document);
+            SaveDocument(project, document);
 
         project.AcceptSave(
             nextDefinition,
@@ -447,10 +442,15 @@ public static class ContentPackEditorStorage
     /// <summary>
     /// Validates and writes the working text to the selected pack's local layer.
     /// </summary>
+    /// <param name="project">The owner of the write.</param>
     /// <param name="document">The validated working document.</param>
-    private static void SaveDocument(ContentPackEditorDocument document)
+    private static void SaveDocument(
+        ContentPackEditorProject project,
+        ContentPackEditorDocument document
+    )
     {
         document.Validate();
+        ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
         VerifyUnchangedTarget(document);
 
         if (document.IsRemoved)
@@ -466,7 +466,7 @@ public static class ContentPackEditorStorage
             throw new IOException($"Content document path has no directory: {document.TargetPath}");
         Directory.CreateDirectory(directory);
 
-        string temporaryPath = document.TargetPath + ".tmp";
+        string temporaryPath = document.TargetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             File.WriteAllText(temporaryPath, document.Text);

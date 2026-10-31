@@ -120,17 +120,8 @@ internal static class ContentPackEditorExporter
         string destination
     )
     {
-        string source = project.PackRootPath.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar
-        );
-        if (
-            destination.Equals(source, StringComparison.OrdinalIgnoreCase)
-            || destination.StartsWith(
-                source + Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase
-            )
-        )
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, destination);
+        if (ContentEditorPaths.Contains(project.PackRootPath, destination))
             throw new IOException("Choose an output outside the working content-pack folder.");
     }
 
