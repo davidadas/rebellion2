@@ -23,13 +23,8 @@ namespace Rebellion.Multiplayer
     {
         private static readonly ConcurrentDictionary<Type, TypePlan> _plans = new();
         private static readonly ConcurrentDictionary<Type, TypePlan> _simulationPlans = new();
-        private static readonly ConditionalWeakTable<string, StringDigest> _strings = new();
         private static readonly Func<Type, TypePlan> _createPlan = CreatePlan;
         private static readonly AccessorFactory _accessors = new();
-        private static readonly ConditionalWeakTable<
-            string,
-            StringDigest
-        >.CreateValueCallback _digestString = DigestString;
 
         /// <summary>
         /// Computes a local change-detection fingerprint using the serializer's exact member selection.
@@ -388,10 +383,10 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Computes a string digest once per live string object without retaining replaced scene graphs.
+        /// Computes the digest words directly from the persisted characters.
         /// </summary>
         /// <param name="value">The exact persisted string.</param>
-        /// <returns>The cached string digest.</returns>
+        /// <returns>The computed digest words.</returns>
         private static StringDigest DigestString(string value)
         {
             Accumulator hash = new Accumulator();
@@ -486,9 +481,9 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Stores an immutable weakly held string digest.
+        /// Stores the two immutable digest words as a value.
         /// </summary>
-        private sealed class StringDigest
+        private readonly struct StringDigest
         {
             public ulong First { get; }
             public ulong Second { get; }
@@ -527,7 +522,7 @@ namespace Rebellion.Multiplayer
             }
 
             /// <summary>
-            /// Mixes an exact persisted string through its weakly cached digest.
+            /// Mixes an exact persisted string through its directly computed digest.
             /// </summary>
             /// <param name="value">The persisted string.</param>
             public void AddString(string value)
@@ -537,7 +532,7 @@ namespace Rebellion.Multiplayer
                     Add(0);
                     return;
                 }
-                StringDigest digest = _strings.GetValue(value, _digestString);
+                StringDigest digest = DigestString(value);
                 Add(digest.First);
                 Add(digest.Second);
             }
