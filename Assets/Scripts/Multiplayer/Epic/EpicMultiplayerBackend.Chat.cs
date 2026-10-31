@@ -110,15 +110,21 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Joins a public conversation channel or creates one with EOS host migration enabled.
+        /// Shares a pending admission and retries failed membership cleanup before reopening the channel.
         /// </summary>
         /// <returns>The shared pending channel admission.</returns>
         public Task OpenGeneralChatAsync()
         {
             ThrowIfDisposed();
-            return _chatLobbyID != null
-                ? Task.CompletedTask
-                : _openingChat ??= JoinGeneralChatAsync();
+            if (_chatLobbyID != null)
+                return Task.CompletedTask;
+            if (_openingChat?.IsCompleted == true)
+                _openingChat = null;
+            if (_openingChat != null)
+                return _openingChat;
+            if (_closingChat.IsFaulted)
+                _closingChat = CloseLobbyAsync(_sharedChatLobbyID, false);
+            return _openingChat = JoinGeneralChatAsync();
         }
 
         /// <summary>
