@@ -360,17 +360,18 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
-        [TestCase(ContentEditorColorMode.Dark)]
-        [TestCase(ContentEditorColorMode.Light)]
-        [TestCase(ContentEditorColorMode.Empire)]
-        [TestCase(ContentEditorColorMode.Rebels)]
-        [TestCase(ContentEditorColorMode.Dagobah)]
+        [TestCase(ContentEditorColorMode.Dark, "Dark side")]
+        [TestCase(ContentEditorColorMode.Light, "Light side")]
+        [TestCase(ContentEditorColorMode.Empire, "Empire")]
+        [TestCase(ContentEditorColorMode.Rebels, "Rebels")]
+        [TestCase(ContentEditorColorMode.Dagobah, "Dagobah")]
         public void RenderProject_AppearanceMenu_CentersAReadableCheckmarkInTheSelectedRow(
-            ContentEditorColorMode mode
+            ContentEditorColorMode mode,
+            string expectedLabel
         )
         {
             view.SetColorMode(mode);
-            string[] modes = Enum.GetNames(typeof(ContentEditorColorMode));
+            string[] modes = { "Dark side", "Light side", "Empire", "Rebels", "Dagobah" };
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "View")
                 .onClick.Invoke();
@@ -392,7 +393,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 mark.GetComponentInParent<ContextMenuCommandView>().transform as RectTransform;
             CollectionAssert.Contains(
                 row.GetComponentsInChildren<TMP_Text>().Select(label => label.text).ToArray(),
-                mode.ToString()
+                expectedLabel
             );
             Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
                 row,

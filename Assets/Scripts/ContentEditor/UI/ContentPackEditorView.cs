@@ -1211,7 +1211,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 children: Enum.GetValues(typeof(ContentEditorColorMode))
                     .Cast<ContentEditorColorMode>()
                     .Select(mode => new ContentEditorMenuCommand(
-                        mode.ToString(),
+                        mode switch
+                        {
+                            ContentEditorColorMode.Dark => "Dark side",
+                            ContentEditorColorMode.Light => "Light side",
+                            _ => mode.ToString(),
+                        },
                         () =>
                         {
                             SetColorMode(mode);
