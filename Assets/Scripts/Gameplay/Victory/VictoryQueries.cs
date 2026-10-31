@@ -62,12 +62,12 @@ namespace Rebellion.Gameplay
                 .FirstOrDefault(candidate => candidate.InstanceID == factionInstanceId);
             if (faction?.Settings?.Headquarters?.IsMobile == true)
             {
-                return _game
-                    .GetSceneNodesByType<Building>()
-                    .Any(building =>
-                        building.TypeID == faction.Settings.Headquarters.FacilityTypeID
-                        && building.OwnerInstanceID == faction.InstanceID
-                    );
+                Building headquarters = _game.GetSceneNodeByInstanceID<Building>(
+                    faction.HeadquartersUnitInstanceID
+                );
+                return headquarters != null
+                    && headquarters.OwnerInstanceID == faction.InstanceID
+                    && !faction.HasLostHeadquarters;
             }
 
             return faction != null
@@ -85,45 +85,85 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Determines whether losing headquarters satisfies the configured game mode.
+        /// Finds the faction that has defeated every opponent under the configured game mode.
         /// </summary>
-        /// <param name="defender">The faction that lost its headquarters.</param>
-        /// <returns>True when the headquarters loss may declare victory.</returns>
-        public bool CanDeclareVictoryAfterHeadquartersLoss(Faction defender)
+        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
+        public Faction FindWinner()
         {
-            return CanDeclareVictoryAfterHeadquartersLoss(
-                defender,
-                _game.GetSceneNodesByType<Officer>()
+            return FindWinner(_game.GetSceneNodesByType<Officer>());
+        }
+
+        /// <summary>
+        /// Finds the faction that has defeated every opponent using an existing officer assessment.
+        /// </summary>
+        /// <param name="officers">The officers in the active game.</param>
+        /// <returns>The winning faction, or null while no faction has met every requirement.</returns>
+        internal Faction FindWinner(IEnumerable<Officer> officers)
+        {
+            List<Officer> officerList =
+                officers?.Where(officer => officer != null).ToList() ?? new List<Officer>();
+            return _game
+                .GetFactions()
+                .FirstOrDefault(candidate => HasDefeatedEveryOpponent(candidate, officerList));
+        }
+
+        /// <summary>
+        /// Determines whether one faction retains its headquarters while every opponent has lost
+        /// theirs and, in conquest games, every opposing main character has been captured.
+        /// </summary>
+        /// <param name="candidate">The potential winning faction.</param>
+        /// <param name="officers">The officers in the active game.</param>
+        /// <returns>True when the faction has met every victory requirement.</returns>
+        private bool HasDefeatedEveryOpponent(
+            Faction candidate,
+            IReadOnlyCollection<Officer> officers
+        )
+        {
+            if (
+                candidate is not { HasLostHeadquarters: false }
+                || !IsHeadquartersOwnedByFaction(candidate.InstanceID)
+            )
+                return false;
+
+            List<Faction> opponents = _game
+                .GetFactions()
+                .Where(faction => faction != null && faction != candidate)
+                .ToList();
+            if (opponents.Count == 0 || opponents.Any(opponent => !HasLostHeadquarters(opponent)))
+                return false;
+
+            if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
+                return true;
+
+            HashSet<string> opponentIds = opponents
+                .Select(opponent => opponent.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+
+            return officers.All(officer =>
+                !officer.IsMain
+                || !opponentIds.Contains(officer.GetOwnerInstanceID())
+                || officer.IsCaptured
             );
         }
 
         /// <summary>
-        /// Evaluates headquarters loss against an existing officer assessment.
+        /// Determines whether a configured faction no longer controls its headquarters.
         /// </summary>
-        /// <param name="defender">The faction that lost its headquarters.</param>
-        /// <param name="officers">The officers in the active game.</param>
-        /// <returns>True when the headquarters loss may declare victory.</returns>
-        internal bool CanDeclareVictoryAfterHeadquartersLoss(
-            Faction defender,
-            IEnumerable<Officer> officers
-        )
+        /// <param name="faction">The faction whose headquarters state is evaluated.</param>
+        /// <returns>True when the faction had a headquarters and has since lost it.</returns>
+        private bool HasLostHeadquarters(Faction faction)
         {
-            if (defender == null)
+            if (faction == null)
                 return false;
-            if (_game.Summary.VictoryCondition != GameVictoryCondition.Conquest)
+            if (faction.HasLostHeadquarters)
                 return true;
 
-            foreach (Officer officer in officers ?? Array.Empty<Officer>())
-            {
-                if (
-                    officer.GetOwnerInstanceID() == defender.InstanceID
-                    && officer.IsMain
-                    && !officer.IsCaptured
-                )
-                    return false;
-            }
+            bool isMobile = faction.Settings?.Headquarters?.IsMobile == true;
+            if (isMobile)
+                return false;
 
-            return true;
+            return !string.IsNullOrEmpty(faction.HQInstanceID)
+                && !IsHeadquartersOwnedByFaction(faction.InstanceID);
         }
     }
 }

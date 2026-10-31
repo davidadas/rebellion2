@@ -340,6 +340,7 @@ namespace Rebellion.Tests.PlayerRequests
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, _origin);
+            _actor.HeadquartersUnitInstanceID = headquarters.InstanceID;
 
             PlayerRequestOutcome result = _executor.Execute(
                 _ownerID,

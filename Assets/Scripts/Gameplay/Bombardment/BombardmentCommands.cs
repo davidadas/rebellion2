@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -618,7 +619,11 @@ namespace Rebellion.Gameplay
         {
             planet.IsHeadquarters = false;
             if (!string.IsNullOrEmpty(defenderId))
-                _game.GetFactionByOwnerInstanceID(defenderId).HQInstanceID = null;
+            {
+                Faction defender = _game.GetFactionByOwnerInstanceID(defenderId);
+                defender.HQInstanceID = null;
+                defender.HasLostHeadquarters = true;
+            }
             result.HeadquartersDestroyed = true;
         }
 

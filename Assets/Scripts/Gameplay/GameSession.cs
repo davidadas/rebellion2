@@ -391,6 +391,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void RebuildDerivedState()
         {
+            GetService<HeadquartersObserver>().ReconcileState();
             RebuildContentBindings();
             GetService<ManufacturingObserver>().RebuildQueues();
             GetService<FogOfWarObserver>().ReconcileKnowledge();

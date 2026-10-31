@@ -51,6 +51,45 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_CapturedHeadquartersAtOrigin_RelocatesIdentifiedHeadquarters()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AddMobileHeadquarters(game, empire, sector);
+            origin.EnergyCapacity = 2;
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 2
+            );
+            Building headquarters = game.GetSceneNodeByInstanceID<Building>(
+                empire.HeadquartersUnitInstanceID
+            );
+            Building capturedHeadquarters = AddBuilding(
+                game,
+                origin,
+                "captured-headquarters",
+                BuildingType.Headquarters
+            );
+            game.MoveNode(headquarters, destination);
+            game.MoveNode(headquarters, origin);
+            AddFleet(game, origin, "incoming", rebels.InstanceID, 200, isMoving: true);
+            AddFleet(game, origin, "defender", empire.InstanceID, 100, isMoving: false);
+            AITestSceneBuilder.RevealPlanet(game, empire, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            Assert.AreSame(headquarters, proposal.Headquarters);
+            Assert.AreNotSame(capturedHeadquarters, proposal.Headquarters);
+        }
+
+        [Test]
         public void Plan_CombinedSameOwnerIncomingThreatExceedsDefense_RelocatesHeadquarters()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -311,7 +350,13 @@ namespace Rebellion.Tests.AI.Planners
             );
             origin.IsHeadquarters = true;
             faction.HQInstanceID = origin.InstanceID;
-            AddBuilding(game, origin, "mobile-headquarters", BuildingType.Headquarters);
+            Building headquarters = AddBuilding(
+                game,
+                origin,
+                "mobile-headquarters",
+                BuildingType.Headquarters
+            );
+            faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             return origin;
         }
 

@@ -23,6 +23,7 @@ namespace Rebellion.Tests.Gameplay
                 Planet empireHQ,
                 VictoryCommands system
             ) = BuildScene(rebelsCaptureEmpireHQ: false);
+            game.ChangeOwnership(empireHQ, rebels.InstanceID);
 
             List<VictoryResult> published = CaptureVictories(system);
             new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
@@ -40,7 +41,7 @@ namespace Rebellion.Tests.Gameplay
             VictoryResult victory = published.Single();
             Assert.IsNotNull(victory);
             Assert.AreSame(rebels, victory.Winner);
-            Assert.AreSame(empire, victory.Loser);
+            CollectionAssert.AreEqual(new[] { empire }, victory.DefeatedFactions);
         }
 
         [Test]
@@ -90,7 +91,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_ConquestLossWithFreeLeader_AllowsNextEligibleDefeat()
+        public void HandleResults_ConquestWithAnyEnemyLeaderFree_DoesNotPublishVictory()
         {
             (
                 GameRoot game,
@@ -115,7 +116,11 @@ namespace Rebellion.Tests.Gameplay
                 },
                 friendlyPlanet
             );
-            Faction otherDefender = new Faction { InstanceID = "other-defender" };
+            Faction otherDefender = new Faction
+            {
+                InstanceID = "other-defender",
+                HasLostHeadquarters = true,
+            };
             game.GetFactions().Add(otherDefender);
 
             List<VictoryResult> published = CaptureVictories(system);
@@ -131,7 +136,27 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.AreSame(otherDefender, published.Single().Loser);
+            Assert.IsEmpty(published);
+
+            Officer leader = game.GetSceneNodeByInstanceID<Officer>("free-leader");
+            leader.IsCaptured = true;
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
+                new[]
+                {
+                    new HeadquartersCapturedResult
+                    {
+                        Attacker = attacker,
+                        Defender = otherDefender,
+                    },
+                }
+            );
+
+            VictoryResult victory = published.Single();
+            Assert.AreSame(attacker, victory.Winner);
+            CollectionAssert.AreEquivalent(
+                new[] { defender, otherDefender },
+                victory.DefeatedFactions
+            );
         }
 
         [Test]
@@ -202,6 +227,18 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(empireHQ, planetSector);
             empire.HQInstanceID = "hq_empire";
+
+            Planet rebelHQ = new Planet
+            {
+                InstanceID = "hq_rebels",
+                OwnerInstanceID = rebels.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(rebelHQ, planetSector);
+            rebels.HQInstanceID = rebelHQ.InstanceID;
 
             return (game, empire, rebels, empireHQ, new VictoryCommands(game));
         }

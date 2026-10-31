@@ -1241,7 +1241,10 @@ public static class MultiplayerNetworkSimulationRunner
                         {
                             tick = victory.Tick,
                             winnerFactionID = victory.Winner?.InstanceID,
-                            loserFactionID = victory.Loser?.InstanceID,
+                            defeatedFactionIDs = victory
+                                .DefeatedFactions.Select(faction => faction?.InstanceID)
+                                .Where(instanceID => !string.IsNullOrEmpty(instanceID))
+                                .ToArray(),
                             mode = victory.GameMode?.ToString(),
                         };
                         break;
@@ -1361,7 +1364,7 @@ public static class MultiplayerNetworkSimulationRunner
     {
         public int tick;
         public string winnerFactionID;
-        public string loserFactionID;
+        public string[] defeatedFactionIDs;
         public string mode;
     }
 
