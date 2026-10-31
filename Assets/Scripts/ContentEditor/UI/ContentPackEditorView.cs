@@ -1308,9 +1308,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentPackEditorRecord sector = record?.Kind switch
         {
             "PlanetSector" => record,
-            "Planet" => record.Catalog.Records.FirstOrDefault(candidate =>
-                candidate.Planets.Any(planet => planet.Element == record.Element)
-            ),
+            "Planet" => ContentPackEditorProjector.GetParentSector(record),
             _ => null,
         };
         ShowRecord(record, page, sector);
