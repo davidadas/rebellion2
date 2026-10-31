@@ -3,7 +3,7 @@
 An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built with Unity and the
 improvements we have always wanted.
 
-<img width="1890" height="1063" alt="Rebellion 2 main menu" src="https://github.com/adasgames/rebellion2-installers/releases/download/v0.0.42/rebellion2-2026-10-31_11-54-50-188.png" />
+<img width="3770" height="2110" alt="Rebellion 2 strategy view" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
 
 ## Download
 
@@ -52,6 +52,12 @@ or browse the public [installer and launcher source code](https://github.com/ada
 
 The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
 *Star Wars: Empire at War: Gold Pack* on GOG or Steam.
+
+> [!IMPORTANT]
+> Rebellion 2 remains in active development. Save compatibility is not guaranteed between releases.
+
+Overwriting a saved game or a Custom Game preset asks for confirmation. Select **Yes** to replace it
+or **No** to keep it.
 
 ## Project status
 
