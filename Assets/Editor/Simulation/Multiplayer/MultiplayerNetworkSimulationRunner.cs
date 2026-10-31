@@ -39,6 +39,7 @@ public static class MultiplayerNetworkSimulationRunner
     private const string _preserveControllersFlag = "-networkSimPreserveControllers";
     private const string _fightHumanBattlesFlag = "-networkSimFightHumanBattles";
     private const string _humanParticipantsFlag = "-networkSimHumanParticipants";
+    private const string _profileFlag = "-networkSimProfile";
     private const string _saveDirectoryFlag = "-saveDirectory";
     private const int _defaultTickCount = 100;
     private const int _defaultSeed = 314159;
@@ -74,6 +75,9 @@ public static class MultiplayerNetworkSimulationRunner
             );
             report.humanParticipants = args.Any(argument =>
                 string.Equals(argument, _humanParticipantsFlag, StringComparison.Ordinal)
+            );
+            report.profile = args.Any(argument =>
+                string.Equals(argument, _profileFlag, StringComparison.Ordinal)
             );
             if (report.humanParticipants && report.preserveControllers)
                 throw new ArgumentException(
@@ -277,15 +281,18 @@ public static class MultiplayerNetworkSimulationRunner
             {
                 DayTiming timing = await peers.AdvanceDayAsync();
                 AssertStableRoots(hostSession, guestSession, hostGame, guestGame);
-                Stopwatch verification = Stopwatch.StartNew();
                 report.days.Add(timing);
-                try
+                if (!report.profile)
                 {
-                    VerifyState(hostSession.Game, guestSession.Game, report);
-                }
-                finally
-                {
-                    timing.verificationMilliseconds = verification.Elapsed.TotalMilliseconds;
+                    Stopwatch verification = Stopwatch.StartNew();
+                    try
+                    {
+                        VerifyState(hostSession.Game, guestSession.Game, report);
+                    }
+                    finally
+                    {
+                        timing.verificationMilliseconds = verification.Elapsed.TotalMilliseconds;
+                    }
                 }
                 report.ticksCompleted++;
                 report.endTick = hostGame.CurrentTick;
@@ -313,11 +320,14 @@ public static class MultiplayerNetworkSimulationRunner
                             "The guest preference did not propagate to both peers."
                         );
                     AssertStableRoots(hostSession, guestSession, hostGame, guestGame);
-                    VerifyState(hostGame, guestGame, report);
+                    if (!report.profile)
+                        VerifyState(hostGame, guestGame, report);
                     report.peerProposalApplied = true;
                     report.proposalTick = hostGame.CurrentTick;
                 }
             }
+            if (report.profile)
+                VerifyState(hostGame, guestGame, report);
             if (report.initialSnapshotTransfers != 1 || report.snapshotTransfers != 1)
                 throw new InvalidDataException("A settled day transferred another world snapshot.");
             report.stableGameReferences = true;
@@ -1407,6 +1417,7 @@ public static class MultiplayerNetworkSimulationRunner
         public bool preserveControllers;
         public bool fightHumanBattles;
         public bool humanParticipants;
+        public bool profile;
         public bool waitingForCombatResponse;
         public ControllerAssignment[] controllers;
         public List<CombatResponseSample> combatResponses = new();
