@@ -61,16 +61,16 @@ or **No** to keep it.
 
 ## Project status
 
-Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
+Rebellion 2 is approximately **75% complete toward a feature-complete single-player campaign**.
 
 | Area | Estimate | Area | Estimate |
 | --- | ---: | --- | ---: |
-| Foundation and Data | 60% | Strategy Simulation | 60% |
-| Strategic AI | 50% | Missions | 80% |
-| Campaign Events | 85% | Custom Events API | 30% |
-| Strategy Interface | 80% | UI Upscaling | 40% |
-| Save Games | 100% | Settings | 10% |
-| Moddability | 65% | Modding Tools | 0% |
+| Foundation and Data | 90% | Strategy Simulation | 85% |
+| Strategic AI | 75% | Missions | 95% |
+| Campaign Events | 90% | Custom Events API | 80% |
+| Strategy Interface | 90% | UI Upscaling | 75% |
+| Save Games | 100% | Settings | 90% |
+| Moddability | 90% | Modding Tools | 0% |
 | Tactical Simulation | 0% | Tactical AI | 0% |
 | Multiplayer | 0% | | |
 
