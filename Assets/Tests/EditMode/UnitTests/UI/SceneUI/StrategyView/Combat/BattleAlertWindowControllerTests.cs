@@ -32,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private int _dirtyCount;
         private GameRoot _game;
         private PendingCombatResult _pending;
+        private int _pendingSnapshotReads;
         private SpaceCombatResult _resolveResult;
         private GameResultPipeline _pipeline;
         private TaskCompletionSource<SpaceCombatResult> _resolutionCompletion;
@@ -53,6 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             _dirtyCount = 0;
             _pending = null;
+            _pendingSnapshotReads = 0;
             _resolveResult = null;
             _resolutionCompletion = null;
             _stopMusicCount = 0;
@@ -121,6 +123,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new BattleAlertWindowController(
+                    () => _pending != null,
                     null,
                     () => Task.FromResult(_resolveResult),
                     () => Task.FromResult(_resolveResult),
@@ -195,6 +198,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void SyncPendingCombatWindow_NoPendingCombat_DoesNotBuildCombatSnapshot()
+        {
+            _pending = null;
+
+            _controller.SyncPendingCombatWindow();
+
+            Assert.AreEqual(0, _pendingSnapshotReads);
+        }
+
+        [Test]
+        public void SyncPendingCombatWindow_ExistingPendingCombat_DoesNotRebuildCombatSnapshot()
+        {
+            _controller.SyncPendingCombatWindow();
+            _pendingSnapshotReads = 0;
+
+            _controller.SyncPendingCombatWindow();
+
+            Assert.AreEqual(0, _pendingSnapshotReads);
+        }
+
+        [Test]
+        public void SyncPendingCombatWindow_OpenResultWithQueuedOutcome_DoesNotBuildCombatSnapshot()
+        {
+            _controller.OpenResult(
+                new BombardmentResult
+                {
+                    Planet = _resolveResult.Planet,
+                    AttackerOwnerInstanceID = _playerFactionId,
+                    DefenderOwnerInstanceID = _opponentFactionId,
+                }
+            );
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _pendingSnapshotReads = 0;
+
+            _controller.SyncPendingCombatWindow();
+
+            Assert.AreEqual(0, _pendingSnapshotReads);
+        }
+
+        [Test]
         public void SyncPendingCombatWindow_PendingCombatCleared_ClosesPendingWindow()
         {
             OpenWindow(out UIWindow window);
@@ -265,6 +308,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 new[] { "Visible mine" },
                 data.Pending.Rows.Select(row => row.Text)
             );
+        }
+
+        [Test]
+        public void CreateRenderData_RetreatEligibilityChanged_UpdatesRetreatButton()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _controller.CreateRenderData(view, _playerFactionId, 0, 0);
+            _pending = new PendingCombatResult
+            {
+                PlanetInstanceID = _pending.PlanetInstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                AttackerCanRetreat = false,
+            };
+            _controller.SyncPendingCombatWindow();
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                0,
+                0
+            );
+
+            Assert.IsFalse(data.Pending.CommandButtons[0].Interactable);
         }
 
         [Test]
@@ -761,7 +828,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private BattleAlertWindowController CreateController()
         {
             return new BattleAlertWindowController(
-                () => _pending,
+                () => _pending != null,
+                () =>
+                {
+                    _pendingSnapshotReads++;
+                    return _pending;
+                },
                 () => ResolveCombatAsync(true),
                 () => ResolveCombatAsync(false),
                 () => _uiContext,

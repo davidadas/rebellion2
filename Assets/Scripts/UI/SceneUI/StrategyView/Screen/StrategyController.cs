@@ -745,6 +745,7 @@ public sealed class StrategyController
             _appInputController.OptionsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
+            () => session.GetService<SpaceCombatCommands>().HasPendingDecision,
             () =>
                 session
                     .GetService<SpaceCombatCommands>()
@@ -1137,12 +1138,7 @@ public sealed class StrategyController
         if (battleAlertWindowController.SyncPendingCombatWindow())
         {
             dirty = true;
-            if (
-                session
-                    .GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult pendingCombat)
-                && pendingCombat != null
-            )
+            if (session.GetService<SpaceCombatCommands>().HasPendingDecision)
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
         }
 

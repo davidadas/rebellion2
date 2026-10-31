@@ -41,6 +41,7 @@ public interface IBattleAlertWindowActions
 public sealed class BattleAlertWindowController
 {
     private readonly Action<UIWindow> closeWindow;
+    private readonly Func<bool> hasPendingCombat;
     private readonly Func<PendingCombatResult> getPendingCombat;
     private readonly Func<string, Planet> findVisiblePlanet;
     private readonly Func<Task<SpaceCombatResult>> resolveRetreat;
@@ -66,7 +67,8 @@ public sealed class BattleAlertWindowController
     /// <summary>
     /// Creates a battle-alert controller from explicit combat operations.
     /// </summary>
-    /// <param name="getPendingCombat">Returns the current pending encounter.</param>
+    /// <param name="hasPendingCombat">Reports whether an encounter is awaiting resolution.</param>
+    /// <param name="getPendingCombat">Builds the current encounter's presentation snapshot.</param>
     /// <param name="resolveRetreat">Resolves a player retreat.</param>
     /// <param name="autoResolve">Automatically resolves the pending encounter.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
@@ -80,6 +82,7 @@ public sealed class BattleAlertWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     internal BattleAlertWindowController(
+        Func<bool> hasPendingCombat,
         Func<PendingCombatResult> getPendingCombat,
         Func<Task<SpaceCombatResult>> resolveRetreat,
         Func<Task<SpaceCombatResult>> autoResolve,
@@ -95,6 +98,8 @@ public sealed class BattleAlertWindowController
         Action markDirty
     )
     {
+        this.hasPendingCombat =
+            hasPendingCombat ?? throw new ArgumentNullException(nameof(hasPendingCombat));
         this.getPendingCombat =
             getPendingCombat ?? throw new ArgumentNullException(nameof(getPendingCombat));
         this.resolveRetreat =
@@ -150,7 +155,7 @@ public sealed class BattleAlertWindowController
             throw new MissingReferenceException($"{view.name} is missing UIWindow.");
 
         BattleAlertWindowSession session = new BattleAlertWindowSession(window);
-        session.ReconcileMode(GetWindowMode(getPendingCombat(), null));
+        session.ReconcileMode(GetWindowMode(hasPendingCombat(), null));
         sessions.Add(view, session);
         view.ChoiceRequested += HandleChoiceRequested;
         view.CloseRequested += HandleCloseRequested;
@@ -196,13 +201,13 @@ public sealed class BattleAlertWindowController
     public bool SyncPendingCombatWindow()
     {
         EnsureInitialized();
-        PendingCombatResult pending = getPendingCombat();
         BattleAlertWindowView existing = FindWindow();
 
-        if (TryPresentCompletedCombat(existing, pending))
+        if (TryPresentCompletedCombat(existing))
             return true;
 
-        if (pending == null)
+        bool hasPending = hasPendingCombat();
+        if (!hasPending)
         {
             if (existing == null)
                 return false;
@@ -218,7 +223,7 @@ public sealed class BattleAlertWindowController
         if (existing != null)
         {
             BattleAlertWindowSession session = GetSession(existing);
-            session.ReconcileMode(GetWindowMode(pending, session.Result));
+            session.ReconcileMode(GetWindowMode(hasPending, session.Result));
             return false;
         }
 
@@ -259,21 +264,21 @@ public sealed class BattleAlertWindowController
         }
 
         if (queued)
-            TryPresentCompletedCombat(FindWindow(), getPendingCombat());
+            TryPresentCompletedCombat(FindWindow());
     }
 
     /// <summary>
     /// Displays the next completed encounter without replacing an open result or a newer decision.
     /// </summary>
     /// <param name="view">The current battle-alert view, when open.</param>
-    /// <param name="pending">The simulation's current unresolved encounter.</param>
     /// <returns>True when a queued outcome became visible.</returns>
-    private bool TryPresentCompletedCombat(BattleAlertWindowView view, PendingCombatResult pending)
+    private bool TryPresentCompletedCombat(BattleAlertWindowView view)
     {
         if (completedCombats.Count == 0 || view != null && GetSession(view).Result != null)
             return false;
 
         SpaceCombatResult result = completedCombats.Peek();
+        PendingCombatResult pending = getPendingCombat();
         if (
             pending != null
             && (
@@ -677,18 +682,18 @@ public sealed class BattleAlertWindowController
     /// <summary>
     /// Returns the presentation mode represented by the current combat state.
     /// </summary>
-    /// <param name="pending">The current pending encounter.</param>
+    /// <param name="hasPending">Whether an encounter is awaiting resolution.</param>
     /// <param name="result">The completed result owned by the window.</param>
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
-        PendingCombatResult pending,
+        bool hasPending,
         BattleResultPresentation result
     )
     {
         if (result != null)
             return BattleAlertWindowMode.Result;
 
-        return pending == null ? BattleAlertWindowMode.Hidden : BattleAlertWindowMode.Pending;
+        return hasPending ? BattleAlertWindowMode.Pending : BattleAlertWindowMode.Hidden;
     }
 
     /// <summary>
