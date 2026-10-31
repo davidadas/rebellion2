@@ -82,16 +82,6 @@ namespace Rebellion.Gameplay
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
         public GameSession(GameRoot game, GameDataCatalog gameData)
-            : this(gameData)
-        {
-            ReplaceGame(game);
-        }
-
-        /// <summary>
-        /// Creates disconnected session owners before selecting initialization or recovery.
-        /// </summary>
-        /// <param name="gameData">The exact installed content catalog.</param>
-        private GameSession(GameDataCatalog gameData)
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
@@ -106,6 +96,7 @@ namespace Rebellion.Gameplay
             );
             Tick.CanStartTick = () => IsOperationBoundaryClear;
             Tick.CompletingOperation = SettlePendingGameplayResults;
+            ReplaceGame(game);
         }
 
         /// <summary>
