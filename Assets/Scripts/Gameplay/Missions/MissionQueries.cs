@@ -676,7 +676,7 @@ namespace Rebellion.Gameplay
                     return Array.Empty<ISceneNode>();
                 return candidates
                     .Where(candidate =>
-                        candidate is Regiment
+                        candidate is Regiment or Starfighter
                         && candidate.GetParent() is Planet
                         && mission.IsEligibleDetector(candidate)
                     )
@@ -732,6 +732,7 @@ namespace Rebellion.Gameplay
 
             List<ISceneNode> candidates = new List<ISceneNode>();
             candidates.AddRange(planet.GetChildren<Regiment>());
+            candidates.AddRange(planet.GetChildren<Starfighter>());
             foreach (Fleet fleet in planet.GetChildren<Fleet>())
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
@@ -969,7 +970,10 @@ namespace Rebellion.Gameplay
                     !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
                     && planet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
                 )
+                {
                     AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+                    AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
+                }
                 return detectors;
             }
 
