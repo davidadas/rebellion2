@@ -83,6 +83,23 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private string section;
     private bool bound;
 
+    [SerializeField]
+    private TMP_Dropdown generationTask;
+
+    [SerializeField]
+    private CollectionEditorView setupCollectionTemplate;
+
+    [SerializeField]
+    private Button setupUnitsTemplate;
+    private readonly List<CollectionEditorView> setupCollections = new();
+    private readonly List<Button> setupUnitButtons = new();
+    private readonly Dictionary<string, int> setupTasks = new();
+    private readonly Dictionary<string, int> setupEntries = new();
+    public event Action<ContentPackEditorField> SelectionRequested;
+    public event Action<ContentPackEditorCollection> UnitSelectionRequested;
+    public event Action<ContentPackEditorCollection> CollectionAddRequested;
+    public event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
+
     public event Action Changed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
@@ -95,7 +112,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField, string> PreviewRequested;
     public event Action<string> ValidationFailed;
     public bool HasOpenChoice =>
-        collectionDropdown.IsExpanded
+        generationTask.IsExpanded
+        || setupCollections.Any(view => view.gameObject.activeSelf && view.HasOpenChoice)
+        || collectionDropdown.IsExpanded
         || curveDropdown.IsExpanded
         || fieldViews.Any(field => field.gameObject.activeSelf && field.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
@@ -117,7 +136,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (bound)
             return;
         if (
-            previewPane == null
+            generationTask == null
+            || setupCollectionTemplate == null
+            || setupUnitsTemplate == null
+            || previewPane == null
             || previewImage == null
             || addMessageButton == null
             || collectionDropdown == null
@@ -135,6 +157,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         )
             throw new MissingReferenceException(name + " has incomplete form references.");
         bound = true;
+        generationTask.onValueChanged.AddListener(SelectGenerationTask);
         fieldScroll.WidthChanged += HandleWidthChanged;
         addMessageButton.onClick.AddListener(RequestAddMessage);
         collectionDropdown.onValueChanged.AddListener(SelectCollectionItem);
@@ -150,6 +173,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         if (!bound)
             return;
+        generationTask.onValueChanged.RemoveListener(SelectGenerationTask);
         fieldScroll.WidthChanged -= HandleWidthChanged;
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
         collectionDropdown.onValueChanged.RemoveListener(SelectCollectionItem);
@@ -161,6 +185,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.ValidationFailed -= ReportValidationError;
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
+            field.SelectionRequested -= RequestSelection;
         }
     }
 
@@ -225,6 +250,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     public void Clear()
     {
+        ClearSetupControls();
         foreach (ContentEditorFieldView field in fieldViews)
             field.Clear();
         foreach (TextMeshProUGUI label in groupLabels)
@@ -521,6 +547,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="rebind">Whether to bind new values instead of only reflowing existing controls.</param>
     private void RenderFields(bool rebind)
     {
+        ClearSetupControls();
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
         removeMessageButton.gameObject.SetActive(false);
@@ -1026,63 +1053,422 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void RenderGenerationSettings()
     {
         previewPane.SetActive(false);
+        var groups = ContentEditorGenerationLayout.Groups(section);
+        int task = Mathf.Clamp(
+            setupTasks.TryGetValue(section, out int selected) ? selected : 0,
+            0,
+            groups.Count - 1
+        );
+        setupTasks[section] = task;
+        float width = Mathf.Min(1100, fieldScroll.ScrollArea.ViewportWidth);
         int y = 0,
             fieldIndex = 0,
-            labelIndex = 0;
-        float width = Mathf.Min(1100, fieldScroll.ScrollArea.ViewportWidth);
-        IReadOnlyList<string> previous = Array.Empty<string>();
-        ContentPackEditorField[] fields = ContentEditorInspectorLayout
-            .GetFields(selectedRecord)
-            .Where(field => ContentEditorContentSections.GenerationSection(field) == section)
+            labelIndex = 0,
+            collectionIndex = 0,
+            unitIndex = 0;
+        if (groups.Count > 1)
+        {
+            generationTask.ClearOptions();
+            generationTask.AddOptions(groups.Select(group => group.Caption).ToList());
+            generationTask.SetValueWithoutNotify(task);
+            generationTask.RefreshShownValue();
+            UILayout.SetSourceRect(
+                (RectTransform)generationTask.transform,
+                4,
+                4,
+                Mathf.RoundToInt(width - 8),
+                34
+            );
+            generationTask.gameObject.SetActive(true);
+            y = 54;
+        }
+        string[] path = groups[task].Path;
+        XElement owner = selectedRecord.Element;
+        foreach (string member in path.Take(path.Length - 1))
+            owner = owner?.Element(member);
+        string memberName = path.Last();
+        Type ownerType =
+            owner == selectedRecord.Element ? ContentPackEditorFieldSchema.GetRecordType(owner)
+            : owner == null ? null
+            : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, owner);
+        Type memberType =
+            ownerType == null
+                ? null
+                : Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
+                    ownerType,
+                    memberName
+                );
+        if (
+            memberType != null
+            && ContentPackEditorFieldSchema.GetItemType(memberType) is Type item
+            && !Rebellion.Util.Serialization.TypeHelper.IsScalar(item)
+        )
+            RenderSetupCollection(
+                project.GetCollection(selectedRecord, selectedRecord.Element, path),
+                width,
+                ref y,
+                ref fieldIndex,
+                ref labelIndex,
+                ref collectionIndex,
+                ref unitIndex
+            );
+        else if (owner?.Element(memberName) is XElement scope)
+            RenderSetupObject(
+                scope,
+                width,
+                ref y,
+                ref fieldIndex,
+                ref labelIndex,
+                ref collectionIndex,
+                ref unitIndex
+            );
+        fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Displays one selected object while keeping each child collection independently editable.
+    /// </summary>
+    /// <param name="owner">The selected setup entry.</param>
+    /// <param name="width">Available form width.</param>
+    /// <param name="y">Next vertical position.</param>
+    /// <param name="fieldIndex">Next field slot.</param>
+    /// <param name="labelIndex">Next heading slot.</param>
+    /// <param name="collectionIndex">Next collection control slot.</param>
+    /// <param name="unitIndex">Next unit-picker slot.</param>
+    private void RenderSetupObject(
+        XElement owner,
+        float width,
+        ref int y,
+        ref int fieldIndex,
+        ref int labelIndex,
+        ref int collectionIndex,
+        ref int unitIndex
+    )
+    {
+        var collections = ContentEditorGenerationLayout.Collections(project, selectedRecord, owner);
+        var fields = selectedRecord
+            .GetFields()
+            .Where(field =>
+                field.XmlElement.AncestorsAndSelf().Contains(owner)
+                && !collections.Any(collection =>
+                    field.XmlElement.AncestorsAndSelf().Contains(collection.Element)
+                )
+            )
+            .ToList();
+        Type ownerType =
+            owner == selectedRecord.Element
+                ? ContentPackEditorFieldSchema.GetRecordType(owner)
+                : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, owner);
+        string[] optional = owner.Name.LocalName switch
+        {
+            "StartingOfficerRule" => new[]
+            {
+                "GalaxySizes",
+                "DestinationTypeID",
+                "DestinationInstanceID",
+            },
+            "StartingPlanet" => new[] { "PlanetTypeID", "VisibleToFactionIDs" },
+            "WeightedFacilityEntry" => new[] { "TypeID" },
+            "FixedFleet" => new[] { "PlanetTypeID", "TargetPlanets" },
+            "HQFacilityLoadout" => new[] { "FactionID", "FacilityTypeIDs" },
+            _ => Array.Empty<string>(),
+        };
+        foreach (string member in optional)
+        {
+            XElement existing = owner.Element(member);
+            bool list =
+                ContentPackEditorFieldSchema.GetItemType(
+                    Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
+                        ownerType,
+                        member
+                    )
+                ) != null;
+            fields.RemoveAll(field =>
+                field.XmlElement.Parent == owner && field.MemberName == member
+            );
+            XElement element = existing ?? new XElement(member);
+            fields.Add(
+                new ContentPackEditorField(
+                    selectedRecord,
+                    element,
+                    string.Join(
+                        " / ",
+                        owner.AncestorsAndSelf().Reverse().Select(item => item.Name.LocalName)
+                    )
+                        + " / "
+                        + member,
+                    attach: () =>
+                        ContentEditorGenerationFactory.AttachMember(owner, element, ownerType),
+                    valueTypeOverride: Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
+                        ownerType,
+                        member
+                    ),
+                    parentOverride: owner,
+                    caption: ContentPackEditorField.FormatName(member),
+                    groupOverride: owner
+                        .AncestorsAndSelf()
+                        .TakeWhile(element => element != selectedRecord.Element)
+                        .Last()
+                        .Name.LocalName,
+                    detach: () =>
+                    {
+                        if (element.Parent != null)
+                            element.Remove();
+                    },
+                    itemNameOverride: !list ? null
+                        : member == "VisibleToFactionIDs" ? "FactionID"
+                        : member == "TargetPlanets" ? "PlanetTypeID"
+                        : Rebellion.Util.Serialization.SerializationMetadata.GetCollectionItemName(
+                            ownerType,
+                            member
+                        )
+                            ?? Rebellion.Util.Serialization.SerializationMetadata.GetElementName(
+                                ContentPackEditorFieldSchema.GetItemType(
+                                    Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
+                                        ownerType,
+                                        member
+                                    )
+                                )
+                            )
+                )
+            );
+        }
+        string[] memberOrder = ownerType
+            .GetProperties()
+            .Select(property => property.Name)
             .ToArray();
-        HashSet<XElement> renderedRanges = new();
-        XElement previousRangeOwner = null;
-        foreach (ContentPackEditorField field in fields)
+        fields = fields
+            .OrderBy(field =>
+                Array.IndexOf(
+                    memberOrder,
+                    field
+                        .XmlElement.AncestorsAndSelf()
+                        .FirstOrDefault(element => element.Parent == owner)
+                        ?.Name.LocalName
+                        ?? field.MemberName
+                )
+            )
+            .ToList();
+        HashSet<XElement> ranges = new();
+        foreach (var field in fields)
         {
             XElement parent = field.XmlElement.Parent;
-            Type type = ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, parent);
-            bool range =
+            Type type =
+                parent == null
+                    ? null
+                    : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, parent);
+            if (
                 type == typeof(Rebellion.Game.DiceFormula)
-                || type == typeof(Rebellion.Game.SupportFormula);
-            if (range && !renderedRanges.Add(parent))
-                continue;
-            IReadOnlyList<string> sections = field.SectionPath.Skip(1).ToArray();
-            if (range)
-                sections = sections.Take(Math.Max(0, sections.Count - 1)).ToArray();
-            y = Mathf.CeilToInt(PlaceSections(sections, previous, ref labelIndex, 4, y, width - 8));
-            previous = sections;
-            float inset = Mathf.Min(sections.Count, 4) * 16;
-            if (range)
+                || type == typeof(Rebellion.Game.SupportFormula)
+                || type == typeof(Rebellion.Game.PlanetSizeProfile)
+            )
             {
-                ContentPackEditorField[] terms = fields
-                    .Where(term => term.XmlElement.Parent == parent)
-                    .ToArray();
+                if (!ranges.Add(parent))
+                    continue;
                 y += RenderRange(
-                    terms,
-                    ContentPackEditorField.FormatName(parent.Name.LocalName),
-                    inset,
+                    fields.Where(term => term.XmlElement.Parent == parent).ToArray(),
+                    parent.Name.LocalName == "NumStartingOfficers"
+                        ? "Starting officer count"
+                        : ContentPackEditorField.FormatName(parent.Name.LocalName),
+                    0,
                     y,
-                    width - inset,
+                    width,
                     ref fieldIndex,
                     ref labelIndex,
-                    previousRangeOwner != parent.Parent
+                    true
                 );
-                previousRangeOwner = parent.Parent;
             }
             else
-            {
-                previousRangeOwner = null;
-                y += PlaceField(
-                    field,
-                    fieldIndex++,
-                    inset,
-                    y,
-                    width - inset,
-                    Mathf.Min(280, (width - inset) * 0.45f)
-                );
-            }
+                y += PlaceField(field, fieldIndex++, 0, y, width, Mathf.Min(280, width * 0.45f));
         }
-        fieldScroll.SetContentHeight(y, !reflowingFields);
+        foreach (var collection in collections)
+            RenderSetupCollection(
+                collection,
+                width,
+                ref y,
+                ref fieldIndex,
+                ref labelIndex,
+                ref collectionIndex,
+                ref unitIndex
+            );
+    }
+
+    /// <summary>
+    /// Shows collection selection and explicit creation, including quantity selection for starting units.
+    /// </summary>
+    /// <param name="collection">The authored collection.</param>
+    /// <param name="width">Available form width.</param>
+    /// <param name="y">Next vertical position.</param>
+    /// <param name="fieldIndex">Next field slot.</param>
+    /// <param name="labelIndex">Next heading slot.</param>
+    /// <param name="collectionIndex">Next collection slot.</param>
+    /// <param name="unitIndex">Next unit-picker slot.</param>
+    private void RenderSetupCollection(
+        ContentPackEditorCollection collection,
+        float width,
+        ref int y,
+        ref int fieldIndex,
+        ref int labelIndex,
+        ref int collectionIndex,
+        ref int unitIndex
+    )
+    {
+        if (collection.ItemType == typeof(Rebellion.Game.UnitEntry))
+        {
+            string title = collection.Name == "Cargo" ? "Cargo" : "Units";
+            y += PlaceLabel(title, labelIndex++, 4, y + 8, width - 8, true) + 8;
+            while (setupUnitButtons.Count <= unitIndex)
+                setupUnitButtons.Add(
+                    Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot)
+                );
+            Button button = setupUnitButtons[unitIndex++];
+            button.GetComponentInChildren<TMP_Text>().text = "Choose units and quantities...";
+            UILayout.SetSourceRect(
+                (RectTransform)button.transform,
+                4,
+                y,
+                Mathf.RoundToInt(width - 8),
+                34
+            );
+            button.onClick.AddListener(() =>
+            {
+                if (Commit())
+                    UnitSelectionRequested?.Invoke(collection);
+            });
+            button.gameObject.SetActive(true);
+            y += 44;
+            var options = project.GetCollectionUnitOptions(collection);
+            string summary = string.Join(
+                "\n",
+                collection.Entries.Select(entry =>
+                    (entry.Element("Count")?.Value ?? "0")
+                    + " x "
+                    + (
+                        options.TryGetValue(
+                            entry.Element("TypeID")?.Value ?? string.Empty,
+                            out string name
+                        )
+                            ? name
+                            : "Missing: " + entry.Element("TypeID")?.Value
+                    )
+                )
+            );
+            if (summary.Length > 0)
+                y += PlaceLabel(summary, labelIndex++, 4, y, width - 8, false) + 12;
+            return;
+        }
+        while (setupCollections.Count <= collectionIndex)
+            setupCollections.Add(
+                Instantiate(setupCollectionTemplate, fieldScroll.ScrollArea.ContentRoot)
+            );
+        CollectionEditorView view = setupCollections[collectionIndex++];
+        int index = Mathf.Clamp(
+            setupEntries.TryGetValue(collection.Key, out int current) ? current : 0,
+            0,
+            Math.Max(0, collection.Entries.Count - 1)
+        );
+        setupEntries[collection.Key] = index;
+        UILayout.SetSourceRect((RectTransform)view.transform, 0, y, Mathf.RoundToInt(width), 120);
+        view.Render(
+            ContentEditorGenerationLayout.Caption(collection.Name),
+            collection
+                .Entries.Select(
+                    (entry, ordinal) =>
+                        ContentEditorGenerationLayout.EntryCaption(project, entry, ordinal)
+                )
+                .ToArray(),
+            index,
+            ContentEditorGenerationLayout.AddCaption(collection.Name)
+        );
+        view.Selected += value =>
+        {
+            if (Commit())
+            {
+                setupEntries[collection.Key] = value;
+                Refresh();
+            }
+            else
+                Refresh();
+        };
+        view.AddRequested += () =>
+        {
+            if (Commit())
+            {
+                setupEntries[collection.Key] = collection.Entries.Count;
+                CollectionAddRequested?.Invoke(collection);
+            }
+        };
+        view.RemoveRequested += () =>
+        {
+            if (Commit())
+                CollectionRemoveRequested?.Invoke(collection, index);
+        };
+        y += 132;
+        if (collection.Entries.Count > 0)
+            RenderSetupObject(
+                collection.Entries[index],
+                width,
+                ref y,
+                ref fieldIndex,
+                ref labelIndex,
+                ref collectionIndex,
+                ref unitIndex
+            );
+    }
+
+    /// <summary>
+    /// Switches the current setup task only after accepting pending form edits.
+    /// </summary>
+    /// <param name="index">The selected task.</param>
+    private void SelectGenerationTask(int index)
+    {
+        if (Commit())
+            setupTasks[section] = index;
+        Refresh();
+    }
+
+    /// <summary>
+    /// Refreshes structural edits while retaining the current scroll position.
+    /// </summary>
+    public void Refresh()
+    {
+        float offset = fieldScroll.ScrollArea.ContentRoot.anchoredPosition.y;
+        RenderFields(true);
+        fieldScroll.ScrollArea.RevealContentRect(offset, fieldScroll.ScrollArea.ViewportHeight);
+    }
+
+    /// <summary>
+    /// Resets setup navigation when a different project is opened.
+    /// </summary>
+    public void ResetGenerationSelection()
+    {
+        setupTasks.Clear();
+        setupEntries.Clear();
+    }
+
+    /// <summary>
+    /// Releases pooled setup bindings before presenting another page.
+    /// </summary>
+    private void ClearSetupControls()
+    {
+        generationTask.gameObject.SetActive(false);
+        foreach (var view in setupCollections)
+            view.Clear();
+        foreach (var button in setupUnitButtons)
+        {
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Forwards a named reference selection request to the workspace.
+    /// </summary>
+    /// <param name="field">The list being edited.</param>
+    private void RequestSelection(ContentPackEditorField field)
+    {
+        if (Commit())
+            SelectionRequested?.Invoke(field);
     }
 
     /// <summary>
@@ -1124,7 +1510,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ContentPackEditorField term = terms[i];
             float left = x + captionWidth + i * cellWidth;
             string name =
-                term.MemberName == "Base" ? "Base"
+                term.MemberName is "Small" or "Medium" or "Large" ? term.MemberName
+                : term.MemberName == "Base" ? "Base"
                 : terms.Length == 2 ? "+ random"
                 : "+ random " + i;
             if (showHeaders)
@@ -1550,6 +1937,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             created.ValidationFailed += ReportValidationError;
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
+            created.SelectionRequested += RequestSelection;
             fieldViews.Add(created);
         }
         ContentEditorFieldView view = fieldViews[index];
@@ -1567,7 +1955,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
             }
         }
         view.name = field.Name.Replace(" / ", " ").Replace(" ", string.Empty) + "Field";
-        if (!reflowingFields || !view.gameObject.activeSelf || !IsBoundTo(view, field))
+        if (
+            !reflowingFields
+            || !view.gameObject.activeSelf
+            || !IsBoundTo(view, field)
+            || view.Field.XmlElement != field.XmlElement && view.Field.Value != field.Value
+        )
             view.Render(
                 ContentPackEditorProjector.BuildField(project, field),
                 HandleFieldChanged,

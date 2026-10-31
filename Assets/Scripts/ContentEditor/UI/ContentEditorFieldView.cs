@@ -29,6 +29,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Button revertButton;
 
     [SerializeField]
+    private Button selectItemsButton;
+
+    [SerializeField]
     private TMP_Dropdown choiceDropdown;
 
     [SerializeField]
@@ -51,6 +54,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public event Action<string> ValidationFailed;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
     public event Action<ContentPackEditorField> ValidationRequested;
+    public event Action<ContentPackEditorField> SelectionRequested;
 
     public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
 
@@ -206,6 +210,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         float choiceTop = field.IsMediaDirectory ? (field.IsList ? 104 : 40) + valueTop : valueTop;
         choice.offsetMin = new Vector2(valueLeft, -choiceTop - 32);
         choice.offsetMax = new Vector2(field.IsMediaDirectory ? -104 : -8, -choiceTop);
+        UILayout.SetSourceRect(
+            (RectTransform)selectItemsButton.transform,
+            Mathf.RoundToInt(valueLeft),
+            Mathf.RoundToInt(valueTop),
+            Mathf.Max(1, Mathf.RoundToInt(bounds.width - valueLeft - 8)),
+            32
+        );
         revertButton.gameObject.SetActive(HasError);
         if (HasError)
         {
@@ -272,7 +283,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <param name="labelWidth">The caption column width.</param>
     /// <returns>The unadorned field height.</returns>
     private int PreferredHeight(float width, float labelWidth) =>
-        field == null ? 56
+        field == null || selectItemsButton.gameObject.activeSelf ? 56
         : field.IsMediaDirectory ? (field.IsList ? 160 : 96)
         : field.IsList
         && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
@@ -343,12 +354,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             || error == null
             || importButton == null
             || revertButton == null
+            || selectItemsButton == null
             || choiceDropdown == null
             || previewButton == null
             || help == null
         )
             throw new MissingReferenceException(name + " has incomplete field references.");
         revertButton.onClick.AddListener(RevertDraft);
+        selectItemsButton.onClick.AddListener(RequestSelection);
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
         importButton.onClick.AddListener(() => importRequested?.Invoke(field));
@@ -368,6 +381,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (revertButton != null)
             revertButton.onClick.RemoveListener(RevertDraft);
+        if (selectItemsButton != null)
+            selectItemsButton.onClick.RemoveListener(RequestSelection);
         if (bound)
             checkbox.ValueChanged -= ApplyBoolean;
     }
@@ -424,7 +439,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             bool isChoice = !field.IsList && choiceValues.Count > 0;
             if (isChoice && !choiceValues.Contains(field.Value))
                 choiceValues = new[] { field.Value }.Concat(choiceValues).ToArray();
-            bool isChecklist = field.IsList && (choiceValues.Count > 0 || referenceLabels != null);
+            bool isPicker =
+                field.IsList
+                && referenceLabels != null
+                && !field.IsFactionReference
+                && !field.IsTraitReference;
+            bool isChecklist =
+                !isPicker && field.IsList && (choiceValues.Count > 0 || referenceLabels != null);
             bool booleanValue = false;
             bool showBoolean = field.IsBoolean && bool.TryParse(field.Value, out booleanValue);
             bool emptyReference = referenceLabels != null && choiceValues.Count == 0;
@@ -462,7 +483,13 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 );
                 choiceDropdown.RefreshShownValue();
             }
-            input.gameObject.SetActive(!showBoolean && !isChoice && !isChecklist);
+            input.gameObject.SetActive(!showBoolean && !isChoice && !isChecklist && !isPicker);
+            selectItemsButton.gameObject.SetActive(isPicker);
+            if (isPicker)
+                selectItemsButton.GetComponentInChildren<TMP_Text>().text =
+                    field.Values.Count == 0
+                        ? "Choose..."
+                        : field.Values.Distinct().Count() + " selected — choose...";
             checkbox.gameObject.SetActive(showBoolean);
             foreach (UICheckboxView choice in choices)
                 choice.gameObject.SetActive(false);
@@ -741,4 +768,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         string address = field.Values.ElementAtOrDefault(line) ?? field.Values.FirstOrDefault();
         previewRequested?.Invoke(field, address);
     }
+
+    /// <summary>
+    /// Requests named selection without exposing reference identifiers as free text.
+    /// </summary>
+    private void RequestSelection() => SelectionRequested?.Invoke(field);
 }

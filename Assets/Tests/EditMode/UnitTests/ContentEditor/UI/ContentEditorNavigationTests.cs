@@ -433,7 +433,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [TestCase("Officers", "Officer", "+ Add officer")]
-        [TestCase("SpecialForces", "SpecialForce", "+ Add special forces unit")]
+        [TestCase("SpecialForces", "SpecialForce", "+ Add special forces")]
         [TestCase("Regiments", "Regiment", "+ Add regiment")]
         [TestCase("CapitalShips", "CapitalShip", "+ Add capital ship")]
         [TestCase("Starfighters", "Starfighter", "+ Add starfighter")]

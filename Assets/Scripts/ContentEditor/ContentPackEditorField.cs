@@ -21,6 +21,7 @@ public sealed class ContentPackEditorField
     private readonly string groupOverride;
     private readonly Action attach;
     private readonly Action detach;
+    private readonly XElement parentOverride;
 
     public string Name { get; }
     public string Caption { get; }
@@ -39,7 +40,10 @@ public sealed class ContentPackEditorField
     public ContentPackEditorDocument Document => record.Catalog.Document;
     public string MemberName => attribute?.Name.LocalName ?? element.Name.LocalName;
     public bool IsFactionReference =>
-        MemberName is "RecruitingFactionInstanceIDs" or "ManufacturingFactionInstanceIDs";
+        MemberName
+            is "RecruitingFactionInstanceIDs"
+                or "ManufacturingFactionInstanceIDs"
+                or "VisibleToFactionIDs";
     public bool IsTraitReference => record.Kind == "Officer" && MemberName == "Traits";
     public bool IsMediaDirectory =>
         IsMedia
@@ -49,6 +53,7 @@ public sealed class ContentPackEditorField
         );
     internal ContentPackEditorRecord Record => record;
     internal XElement XmlElement => element;
+    internal XElement Container => parentOverride ?? element.Parent;
     internal bool IsIdentity =>
         ContentPackEditorCatalog.IsIdentityName(MemberName)
         && (attribute != null ? element == record.Element : element.Parent == record.Element);
@@ -112,6 +117,8 @@ public sealed class ContentPackEditorField
     /// <param name="caption">The short label displayed beside the value.</param>
     /// <param name="sectionPath">The containing form headings, separate from the field label.</param>
     /// <param name="detach">The optional removal of a collection entry when its value is cleared.</param>
+    /// <param name="itemNameOverride">The serialized item name for a detached optional collection.</param>
+    /// <param name="parentOverride">The containing object for an absent optional member.</param>
     internal ContentPackEditorField(
         ContentPackEditorRecord record,
         XElement element,
@@ -123,7 +130,9 @@ public sealed class ContentPackEditorField
         string groupOverride = null,
         string caption = null,
         IReadOnlyList<string> sectionPath = null,
-        Action detach = null
+        Action detach = null,
+        XName itemNameOverride = null,
+        XElement parentOverride = null
     )
     {
         this.record = record;
@@ -131,6 +140,7 @@ public sealed class ContentPackEditorField
         this.attribute = attribute;
         this.attach = attach;
         this.detach = detach;
+        this.parentOverride = parentOverride;
         this.groupOverride = groupOverride;
         valueType =
             valueTypeOverride
@@ -139,7 +149,8 @@ public sealed class ContentPackEditorField
         Type itemType = ContentPackEditorFieldSchema.GetItemType(valueType);
         this.list = list || itemType != null && TypeHelper.IsScalar(itemType);
         itemName =
-            element.Elements().FirstOrDefault()?.Name
+            itemNameOverride
+            ?? element.Elements().FirstOrDefault()?.Name
             ?? ContentPackEditorFieldSchema.GetItemName(record.Element, element);
         Name = name;
         Caption = ContentPackEditorFieldMetadata.GetCaption(this, caption ?? name);
@@ -210,6 +221,13 @@ public sealed class ContentPackEditorField
             ContentPackEditorFieldSchema.ValidateScalar(value, itemType);
         if (Values.SequenceEqual(replacement))
             return;
+        if (replacement.Length == 0 && detach != null)
+        {
+            detach();
+            element.RemoveNodes();
+            record.Catalog.Commit();
+            return;
+        }
         AttachOptionalMember();
         element.ReplaceNodes(replacement.Select(value => new XElement(itemName, value)));
         record.Catalog.Commit();

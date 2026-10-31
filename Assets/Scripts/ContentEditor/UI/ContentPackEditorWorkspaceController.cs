@@ -39,6 +39,9 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
         view.FieldValidationRequested += ValidateField;
+        view.CollectionAddRequested += AddCollectionEntry;
+        view.CollectionRemoveRequested += RemoveCollectionEntry;
+        view.CollectionQuantitiesSubmitted += ApplyCollectionQuantities;
         view.MapEditStarted += session.BeginMapEdit;
         view.MapMoved += MoveRecord;
         view.MapEditEnded += session.EndMapEdit;
@@ -147,6 +150,41 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             Project.SetFieldValues(field, values);
         else
             Project.SetField(field, values.Single());
+    }
+
+    /// <summary>
+    /// Adds an independent setup entry through project history.
+    /// </summary>
+    /// <param name="collection">The destination collection.</param>
+    private void AddCollectionEntry(ContentPackEditorCollection collection)
+    {
+        Project.AddCollectionEntry(collection);
+        view.RefreshInspector();
+    }
+
+    /// <summary>
+    /// Deletes one setup entry through project history.
+    /// </summary>
+    /// <param name="collection">The owning collection.</param>
+    /// <param name="index">The selected entry.</param>
+    private void RemoveCollectionEntry(ContentPackEditorCollection collection, int index)
+    {
+        Project.RemoveCollectionEntry(collection, index);
+        view.RefreshInspector();
+    }
+
+    /// <summary>
+    /// Applies selected unit quantities without rewriting unaffected entries.
+    /// </summary>
+    /// <param name="collection">The unit collection.</param>
+    /// <param name="values">The selected types and quantities.</param>
+    private void ApplyCollectionQuantities(
+        ContentPackEditorCollection collection,
+        IReadOnlyDictionary<string, int> values
+    )
+    {
+        Project.SetCollectionQuantities(collection, values);
+        view.RefreshInspector();
     }
 
     /// <summary>
@@ -347,6 +385,9 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
         view.FieldValidationRequested -= ValidateField;
+        view.CollectionAddRequested -= AddCollectionEntry;
+        view.CollectionRemoveRequested -= RemoveCollectionEntry;
+        view.CollectionQuantitiesSubmitted -= ApplyCollectionQuantities;
         view.MapEditStarted -= session.BeginMapEdit;
         view.MapMoved -= MoveRecord;
         view.MapEditEnded -= session.EndMapEdit;

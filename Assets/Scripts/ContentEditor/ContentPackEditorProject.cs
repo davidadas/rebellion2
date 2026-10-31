@@ -288,8 +288,15 @@ public sealed class ContentPackEditorProject
             return GetFactionOptions();
         if (field.IsTraitReference)
             return GetTraitOptions();
-        if (field.IsList || field.IsIdentity)
+        if (field.IsIdentity)
             return null;
+        if (field.MemberName == "GalaxySize" && field.Record.Kind == "GameGenerationConfig")
+            return Enum.GetValues(typeof(Rebellion.Game.GameSize))
+                .Cast<Rebellion.Game.GameSize>()
+                .ToDictionary(
+                    size => ((int)size).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    size => size.ToString()
+                );
         if (field.MemberName is "ShipNamePoolID" or "FallbackNamePoolID")
         {
             Dictionary<string, string> pools = new(StringComparer.Ordinal)
@@ -333,12 +340,15 @@ public sealed class ContentPackEditorProject
             "HQInstanceID" => "Planet",
             "GarrisonTroopTypeID" => "Regiment",
             "MineTypeID" => "Building",
+            "FacilityTypeIDs" or "Upgrades" => "Building",
+            "TargetPlanets" => "Planet",
+            "ProtectedUnitTypeIDs" => "Unit",
             "OfficerInstanceID" => "Officer",
+            "DestinationInstanceID" => "Planet",
             "PlanetTypeID" or "DestinationTypeID" => "Planet",
             "OwnerInstanceID" or "FactionInstanceID" or "FactionID" => "Faction",
             "TypeID" when field.Record.Kind == "GameGenerationConfig" => field
-                .XmlElement
-                .Parent
+                .Container
                 ?.Name
                 .LocalName switch
             {
@@ -351,14 +361,17 @@ public sealed class ContentPackEditorProject
         };
         if (kind == null)
             return null;
-        Dictionary<string, string> result = new(StringComparer.Ordinal) { [string.Empty] = "None" };
+        Dictionary<string, string> result = new(StringComparer.Ordinal);
+        if (!field.IsList)
+            result[string.Empty] = "None";
         if (kind == "Faction")
         {
             foreach (var option in GetFactionOptions())
                 result[option.Key] = option.Value;
             return result;
         }
-        bool instance = field.MemberName is "HQInstanceID" or "OfficerInstanceID";
+        bool instance =
+            field.MemberName is "HQInstanceID" or "OfficerInstanceID" or "DestinationInstanceID";
         foreach (
             ContentPackEditorRecord record in GetCatalogs()
                 .SelectMany(catalog =>
@@ -381,12 +394,185 @@ public sealed class ContentPackEditorProject
                 result[id] = record.Name + " (" + id + ")";
         }
         if (
-            field.MemberName == "DestinationTypeID"
+            field.MemberName is "DestinationTypeID" or "TargetPlanets"
             || field.MemberName == "PlanetTypeID"
-                && field.XmlElement.Parent?.Name.LocalName is "HQFacilityLoadout" or "FixedFleet"
+                && field.Container?.Name.LocalName is "HQFacilityLoadout" or "FixedFleet"
         )
             result[Rebellion.Game.GameGenerationConfig.FactionHqSentinel] = "Faction headquarters";
         return result;
+    }
+
+    /// <summary>
+    /// Resolves a typed setup collection without creating an override until it is edited.
+    /// </summary>
+    /// <param name="record">The owning setup definition.</param>
+    /// <param name="owner">The attached containing object.</param>
+    /// <param name="path">The collection's member path.</param>
+    /// <returns>The editable collection reference.</returns>
+    internal ContentPackEditorCollection GetCollection(
+        ContentPackEditorRecord record,
+        XElement owner,
+        params string[] path
+    )
+    {
+        RequireOwnedRecord(record);
+        if (owner != record.Element && !owner.Ancestors().Contains(record.Element))
+            throw new ArgumentException("Choose a current setup entry.", nameof(owner));
+        return new ContentPackEditorCollection(record, owner, path);
+    }
+
+    /// <summary>
+    /// Adds a blank setup entry as one reversible authoring operation.
+    /// </summary>
+    /// <param name="collection">The destination collection.</param>
+    internal void AddCollectionEntry(ContentPackEditorCollection collection)
+    {
+        RequireOwnedRecord(collection.Record);
+        if (
+            collection.Owner != collection.Record.Element
+            && !collection.Owner.Ancestors().Contains(collection.Record.Element)
+        )
+            throw new ArgumentException("Choose a current setup entry.", nameof(collection));
+        XElement entry = ContentEditorGenerationFactory.Create(collection.ItemType);
+        using (BeginEdit("Add starting setup entry"))
+        {
+            collection.Attach();
+            collection.Element.Add(entry);
+            collection.Record.Catalog.Commit();
+        }
+    }
+
+    /// <summary>
+    /// Removes exactly one selected setup entry without affecting its siblings.
+    /// </summary>
+    /// <param name="collection">The owning collection.</param>
+    /// <param name="index">The selected entry index.</param>
+    internal void RemoveCollectionEntry(ContentPackEditorCollection collection, int index)
+    {
+        RequireOwnedRecord(collection.Record);
+        if (
+            collection.Owner != collection.Record.Element
+            && !collection.Owner.Ancestors().Contains(collection.Record.Element)
+        )
+            throw new ArgumentException("Choose a current setup entry.", nameof(collection));
+        XElement entry = collection.Entries.ElementAt(index);
+        using (BeginEdit("Delete starting setup entry"))
+        {
+            entry.Remove();
+            if (collection.Name is "Overrides" or "Bonuses" && collection.Entries.Count == 0)
+                collection.Element.Remove();
+            collection.Record.Catalog.Commit();
+        }
+    }
+
+    /// <summary>
+    /// Gets named unit choices for a starting-unit or cargo collection.
+    /// </summary>
+    /// <param name="collection">The unit-entry collection.</param>
+    /// <returns>The available unit definitions.</returns>
+    internal IReadOnlyDictionary<string, string> GetCollectionUnitOptions(
+        ContentPackEditorCollection collection
+    ) =>
+        GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .Where(record =>
+                record.Kind is "Regiment" or "Starfighter" or "SpecialForce"
+                || record.Kind == "CapitalShip"
+                    && collection.Element.Parent?.Name == "WeightedUnitEntry"
+            )
+            .OrderBy(record => record.Name, StringComparer.Ordinal)
+            .ToDictionary(
+                record => record.ID,
+                record => record.Name + " (" + record.ID + ")",
+                StringComparer.Ordinal
+            );
+
+    /// <summary>
+    /// Applies selected starting-unit quantities, retaining unchanged entries and their order.
+    /// </summary>
+    /// <param name="collection">The unit-entry collection.</param>
+    /// <param name="amounts">The selected types and quantities.</param>
+    internal void SetCollectionQuantities(
+        ContentPackEditorCollection collection,
+        IReadOnlyDictionary<string, int> amounts
+    )
+    {
+        RequireOwnedRecord(collection.Record);
+        if (
+            collection.Owner != collection.Record.Element
+            && !collection.Owner.Ancestors().Contains(collection.Record.Element)
+        )
+            throw new ArgumentException("Choose a current setup entry.", nameof(collection));
+        if (collection.ItemType != typeof(Rebellion.Game.UnitEntry))
+            throw new ArgumentException("Choose a unit collection.", nameof(collection));
+        var options = GetCollectionUnitOptions(collection);
+        if (amounts.Any(item => item.Value < 0 || !options.ContainsKey(item.Key)))
+            throw new ArgumentException(
+                "Choose listed units and nonnegative quantities.",
+                nameof(amounts)
+            );
+        var original = collection.Entries;
+        var totals = original
+            .GroupBy(entry => entry.Element("TypeID")?.Value ?? string.Empty)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(entry => (long)((int?)entry.Element("Count") ?? 0)),
+                StringComparer.Ordinal
+            );
+        if (
+            totals.Count == amounts.Count
+            && totals.All(item =>
+                amounts.TryGetValue(item.Key, out int value) && value == item.Value
+            )
+        )
+            return;
+        using (BeginEdit("Change starting units"))
+        {
+            collection.Attach();
+            foreach (
+                var group in original.GroupBy(entry =>
+                    entry.Element("TypeID")?.Value ?? string.Empty
+                )
+            )
+            {
+                int desired = amounts.TryGetValue(group.Key, out int count) ? count : 0;
+                if (totals[group.Key] == desired)
+                    continue;
+                XElement[] entries = group.ToArray();
+                for (int index = 0; index < entries.Length; index++)
+                {
+                    int assigned =
+                        index == entries.Length - 1
+                            ? desired
+                            : Math.Min(
+                                desired,
+                                Math.Max(0, (int?)entries[index].Element("Count") ?? 0)
+                            );
+                    if (assigned == 0)
+                        entries[index].Remove();
+                    else
+                        entries[index].SetElementValue("Count", assigned);
+                    desired -= assigned;
+                }
+            }
+            foreach (
+                var item in amounts.Where(item => item.Value > 0 && !totals.ContainsKey(item.Key))
+            )
+                collection.Element.Add(
+                    new XElement(
+                        "UnitEntry",
+                        new XElement("TypeID", item.Key),
+                        new XElement("Count", item.Value)
+                    )
+                );
+            if (
+                collection.Name == "Cargo"
+                && collection.Entries.Count == 0
+                && collection.Element.Parent != null
+            )
+                collection.Element.Remove();
+            collection.Record.Catalog.Commit();
+        }
     }
 
     /// <summary>

@@ -150,6 +150,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ActionDialogView confirmation;
 
     [SerializeField]
+    private SelectionDialogView selectionDialog;
+    internal event Action<ContentPackEditorCollection> CollectionAddRequested;
+    internal event Action<ContentPackEditorCollection, int> CollectionRemoveRequested;
+    internal event Action<
+        ContentPackEditorCollection,
+        IReadOnlyDictionary<string, int>
+    > CollectionQuantitiesSubmitted;
+
+    [SerializeField]
     private ImagePreviewView imagePreview;
 
     [SerializeField]
@@ -355,6 +364,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
+            || selectionDialog == null
             || confirmation == null
             || imagePreview == null
             || previewAudio == null
@@ -396,6 +406,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.ClearFieldsRequested += ForwardClearFields;
         form.Changed += HandleFieldChanged;
         form.FieldSubmitted += SubmitField;
+        form.SelectionRequested += ShowFieldSelection;
+        form.UnitSelectionRequested += ShowUnitSelection;
+        form.CollectionAddRequested += ForwardCollectionAdd;
+        form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
         form.PreviewRequested += PreviewMedia;
@@ -465,6 +479,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.ClearFieldsRequested -= ForwardClearFields;
             form.Changed -= HandleFieldChanged;
             form.FieldSubmitted -= SubmitField;
+            form.SelectionRequested -= ShowFieldSelection;
+            form.UnitSelectionRequested -= ShowUnitSelection;
+            form.CollectionAddRequested -= ForwardCollectionAdd;
+            form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
             form.PreviewRequested -= PreviewMedia;
@@ -535,6 +553,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether an editor popup consumed the cancellation.</returns>
     public bool TryCancel()
     {
+        if (selectionDialog.TryCancel())
+            return true;
         if (
             packDialog.HasOpenChoice
             || form.HasOpenChoice
@@ -598,6 +618,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projectWorkspace.SetActive(true);
         welcomePane.SetActive(false);
         editButton.interactable = true;
+        selectionDialog.Hide();
         confirmation.TryCancel();
         imagePreview.TryCancel();
         menu.Reset();
@@ -611,6 +632,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             previewScenario = value.Definition.DefaultScenarioID;
             searchInput.SetTextWithoutNotify(string.Empty);
             navigation.Reset();
+            form.ResetGenerationSelection();
         }
         StopAudioPreview();
         xml.Clear();
@@ -869,6 +891,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     public void ClearProject()
     {
+        selectionDialog.Hide();
+        form.ResetGenerationSelection();
         xml.Clear();
         FinishMapEdit();
         map.Clear();
@@ -1121,6 +1145,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (
             !workbench.interactable
             || packDialog.IsOpen
+            || selectionDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
         )
@@ -2193,6 +2218,83 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="field">The field to focus.</param>
     internal void FocusField(ContentPackEditorField field) => form.FocusField(field);
+
+    /// <summary>
+    /// Opens named multi-selection, retaining repeated building quantities and destination weights.
+    /// </summary>
+    /// <param name="field">The authored reference list.</param>
+    private void ShowFieldSelection(ContentPackEditorField field)
+    {
+        string quantity =
+            field.MemberName == "TargetPlanets" ? "Weight"
+            : field.MemberName == "FacilityTypeIDs" ? "Quantity"
+            : null;
+        selectionDialog.Show(
+            field.Caption,
+            project.GetReferenceOptions(field),
+            ItemSelection.Count(field.Values),
+            counts =>
+            {
+                SubmitField(field, new ItemSelection(counts).ApplyTo(field.Values));
+                RefreshInspector();
+            },
+            quantity
+        );
+    }
+
+    /// <summary>
+    /// Opens named unit selection with explicit quantities for a placement or ship cargo.
+    /// </summary>
+    /// <param name="collection">The starting-unit collection.</param>
+    private void ShowUnitSelection(ContentPackEditorCollection collection)
+    {
+        var counts = collection
+            .Entries.GroupBy(entry => entry.Element("TypeID")?.Value ?? string.Empty)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                    checked((int)group.Sum(entry => (long)((int?)entry.Element("Count") ?? 0))),
+                StringComparer.Ordinal
+            );
+        selectionDialog.Show(
+            collection.Name == "Cargo" ? "Ship cargo" : "Starting units",
+            project.GetCollectionUnitOptions(collection),
+            counts,
+            values =>
+            {
+                CollectionQuantitiesSubmitted?.Invoke(collection, values);
+            },
+            "Quantity"
+        );
+    }
+
+    /// <summary>
+    /// Forwards explicit entry creation to the workspace owner.
+    /// </summary>
+    /// <param name="collection">The destination collection.</param>
+    private void ForwardCollectionAdd(ContentPackEditorCollection collection) =>
+        CollectionAddRequested?.Invoke(collection);
+
+    /// <summary>
+    /// Confirms removal of exactly one selected setup entry.
+    /// </summary>
+    /// <param name="collection">The owning collection.</param>
+    /// <param name="index">The selected entry.</param>
+    private void ConfirmCollectionRemove(ContentPackEditorCollection collection, int index) =>
+        confirmation.Show(
+            "Delete this starting setup entry?",
+            "Delete entry",
+            () => CollectionRemoveRequested?.Invoke(collection, index)
+        );
+
+    /// <summary>
+    /// Refreshes authored fields after a structural edit without replacing the workspace.
+    /// </summary>
+    internal void RefreshInspector()
+    {
+        form.Refresh();
+        RefreshProjectState();
+    }
 
     /// <summary>
     /// Forwards a semantic field edit to the workspace controller.

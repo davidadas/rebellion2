@@ -1782,7 +1782,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void GetReferenceOptions_OrderedFacilityList_PreservesItsMultiplicityInsteadOfOfferingASet()
+        public void GetReferenceOptions_OrderedFacilityList_ProvidesNamedChoicesWithoutChangingQuantities()
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField field = project
@@ -1791,7 +1791,10 @@ namespace Rebellion.Tests.ContentEditor
                 .SelectMany(record => record.GetFields())
                 .First(candidate => candidate.MemberName == "FacilityTypeIDs");
 
-            Assert.IsNull(project.GetReferenceOptions(field));
+            string[] before = field.Values.ToArray();
+            Assert.IsNotNull(project.GetReferenceOptions(field));
+            CollectionAssert.AreEqual(before, field.Values);
+            Assert.IsFalse(project.IsDirty);
         }
 
         [Test]

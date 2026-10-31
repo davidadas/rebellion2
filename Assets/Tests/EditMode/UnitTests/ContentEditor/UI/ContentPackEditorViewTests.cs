@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.SceneGraph;
 using TMPro;
@@ -1685,6 +1686,227 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(project.IsDirty);
         }
 
+        [Test]
+        public void RenderProject_AddStartingUnits_OffersNamedSelectionAndSavesQuantities()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab3")
+                .onClick.Invoke();
+            var collection = view.GetComponentsInChildren<CollectionEditorView>().Single();
+            collection
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Add")
+                .onClick.Invoke();
+            var setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "GameGenerationConfig");
+            XElement placement = setup
+                .Element.Element("UnitDeployment")
+                .Element("FixedGarrisons")
+                .Elements()
+                .Last();
+            Assert.AreEqual(string.Empty, placement.Element("FactionID").Value);
+            foreach (string member in new[] { "FactionID", "PlanetTypeID" })
+            {
+                ContentEditorFieldView control =
+                    view.GetComponentsInChildren<ContentEditorFieldView>()
+                        .Single(control => control.Field.MemberName == member);
+                TMP_Dropdown choice = control.GetComponentInChildren<TMP_Dropdown>();
+                Assert.IsNotNull(choice);
+                Assert.IsNull(control.GetComponentInChildren<TMP_InputField>());
+                choice.value = 1;
+                Assert.IsNotEmpty(placement.Element(member).Value);
+            }
+            view.GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.name.StartsWith("SetupUnitsTemplate", StringComparison.Ordinal)
+                )
+                .onClick.Invoke();
+            SelectionDialogView dialog = view.GetComponentInChildren<SelectionDialogView>();
+            Assert.IsNotNull(dialog);
+            SelectionOptionView row = dialog.GetComponentsInChildren<SelectionOptionView>().First();
+            string caption = row.GetComponentInChildren<TMP_Text>().text;
+            TMP_InputField quantity = row.GetComponentInChildren<TMP_InputField>();
+            quantity.text = "4";
+            dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Apply")
+                .onClick.Invoke();
+            Assert.IsFalse(dialog.IsOpen);
+            XElement unit = placement.Element("Units").Elements().Single();
+            Assert.AreEqual(4, (int)unit.Element("Count"));
+            Assert.IsTrue(caption.Contains(unit.Element("TypeID").Value));
+        }
+
+        [Test]
+        public void RenderProject_UnitSelection_CancelLeavesStartingSetupUnchanged()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab3")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.name.StartsWith("SetupUnitsTemplate", StringComparison.Ordinal)
+                )
+                .onClick.Invoke();
+            var setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "GameGenerationConfig");
+            string before = setup.Catalog.Document.Text;
+            SelectionDialogView dialog = view.GetComponentInChildren<SelectionDialogView>();
+            TMP_InputField quantity = dialog
+                .GetComponentsInChildren<SelectionOptionView>()
+                .First()
+                .GetComponentInChildren<TMP_InputField>();
+            quantity.text = "20";
+            quantity.onEndEdit.Invoke(quantity.text);
+            Assert.IsTrue(view.TryCancel());
+            Assert.IsFalse(dialog.IsOpen);
+            Assert.AreEqual(before, setup.Catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_UnitSelection_SearchRetainsQuantitiesAndRejectsInvalidInput()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab3")
+                .onClick.Invoke();
+            view.GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.name.StartsWith("SetupUnitsTemplate", StringComparison.Ordinal)
+                )
+                .onClick.Invoke();
+            SelectionDialogView dialog = view.GetComponentInChildren<SelectionDialogView>();
+            SelectionOptionView row = dialog.GetComponentsInChildren<SelectionOptionView>().First();
+            Assert.Greater(((RectTransform)row.transform).rect.width, 650);
+            Assert.Greater(row.GetComponentInChildren<TMP_Text>().rectTransform.rect.width, 500);
+            ScrollAreaView scroll = dialog.GetComponentInChildren<ScrollAreaView>();
+            Assert.AreEqual(0, scroll.ContentRoot.anchoredPosition.y, 0.1f);
+            TMP_InputField quantity = row.GetComponentInChildren<TMP_InputField>();
+            quantity.text = "-1";
+            Button apply = dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Apply");
+            apply.onClick.Invoke();
+            Assert.IsTrue(dialog.IsOpen);
+            Assert.IsTrue(row.HasError);
+            quantity.text = "7";
+            quantity.onEndEdit.Invoke(quantity.text);
+            string caption = row.GetComponentInChildren<TMP_Text>().text;
+            TMP_InputField search = dialog
+                .GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "SelectionSearch");
+            search.text = "no-such-selection";
+            Assert.IsEmpty(dialog.GetComponentsInChildren<SelectionOptionView>());
+            search.text = string.Empty;
+            Assert.AreEqual(
+                "7",
+                dialog
+                    .GetComponentsInChildren<SelectionOptionView>()
+                    .Single(option => option.GetComponentInChildren<TMP_Text>().text == caption)
+                    .GetComponentInChildren<TMP_InputField>()
+                    .text
+            );
+            view.TryCancel();
+        }
+
+        [Test]
+        public void RenderProject_HeadquartersBuildings_UsesQuantityPickerWithoutChangingExistingOrder()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab2")
+                .onClick.Invoke();
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "FacilityTypeIDs");
+            string before = field.Field.Document.Text;
+            Assert.IsNull(field.GetComponentInChildren<TMP_InputField>());
+            field
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+            SelectionDialogView dialog = view.GetComponentInChildren<SelectionDialogView>();
+            Assert.IsTrue(
+                dialog.GetComponentsInChildren<TMP_Text>().Any(text => text.text == "Quantity")
+            );
+            dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Apply")
+                .onClick.Invoke();
+            Assert.AreEqual(before, field.Field.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RenderProject_OfficerDestination_ReplacesOtherDestinationAndKeepsSchemaOrder()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Starting setup"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerationTab1")
+                .onClick.Invoke();
+            ContentEditorFieldView specific = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "DestinationInstanceID");
+            specific.GetComponentInChildren<TMP_Dropdown>().value = 1;
+            UIComponentTestHelper.InvokeLifecycle(view, "LateUpdate");
+            var setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "GameGenerationConfig");
+            XElement officer = setup
+                .Element.Element("Officers")
+                .Element("StartingOfficers")
+                .Elements()
+                .First();
+            Assert.IsNull(officer.Element("DestinationTypeID"));
+            Assert.IsNotNull(officer.Element("DestinationInstanceID"));
+            ContentEditorFieldView sizes = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "GalaxySizes");
+            UICheckboxView checkbox = sizes.GetComponentsInChildren<UICheckboxView>().First();
+            UIComponentTestHelper.InvokeLifecycle(checkbox, "Awake");
+            checkbox.GetComponent<Toggle>().isOn = true;
+            CollectionAssert.AreEqual(
+                new[] { "OfficerInstanceID", "GalaxySizes", "DestinationInstanceID" },
+                officer.Elements().Select(element => element.Name.LocalName)
+            );
+            checkbox.GetComponent<Toggle>().isOn = false;
+            Assert.IsNull(officer.Element("GalaxySizes"));
+            System.Xml.Schema.XmlSchemaSet schemas = new();
+            schemas.Add(
+                null,
+                Path.Combine(
+                    project.ContentRootPath,
+                    "Application",
+                    "Schemas",
+                    "generation-config.xsd"
+                )
+            );
+            Assert.DoesNotThrow(() =>
+                setup.Element.Document.Validate(
+                    schemas,
+                    (sender, error) =>
+                    {
+                        throw error.Exception;
+                    }
+                )
+            );
+        }
+
         [TestCase("Galaxy", 0)]
         [TestCase("Officers", 1)]
         [TestCase("Buildings", 2)]
@@ -1704,7 +1926,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<ContentEditorFieldView>();
             Assert.IsNotEmpty(fields);
             Assert.IsTrue(
-                fields.All(field => field.Field.XmlElement.Document != null),
+                fields.All(field => field.Field.Document != null),
                 "Generation controls must edit authored pack data."
             );
             Assert.IsTrue(
@@ -2951,7 +3173,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "Faction",
                 "Planet sector",
                 "Officer",
-                "Special forces unit",
+                "Special forces",
                 "Regiment",
                 "Capital ship",
                 "Starfighter",
@@ -3038,18 +3260,8 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase("Starfighters", "+ Add starfighter", "ManufacturingFactionInstanceIDs", 1)]
         [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs", 0)]
         [TestCase("Troops", "+ Add regiment", "ManufacturingFactionInstanceIDs", 1)]
-        [TestCase(
-            "Special forces",
-            "+ Add special forces unit",
-            "ManufacturingFactionInstanceIDs",
-            0
-        )]
-        [TestCase(
-            "Special forces",
-            "+ Add special forces unit",
-            "ManufacturingFactionInstanceIDs",
-            1
-        )]
+        [TestCase("Special forces", "+ Add special forces", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Special forces", "+ Add special forces", "ManufacturingFactionInstanceIDs", 1)]
         [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs", 0)]
         [TestCase("Buildings", "+ Add building", "ManufacturingFactionInstanceIDs", 1)]
         public void AddUnit_FactionGroupAction_AssignsThatFactionAndSupportsUndo(
@@ -3884,7 +4096,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Where(label => label.name.StartsWith("GroupTemplate", StringComparison.Ordinal))
                 .Select(label => label.text)
                 .ToArray();
-            Assert.Greater(headings.Length, 3);
+            Assert.IsNotEmpty(view.GetComponentsInChildren<CollectionEditorView>());
             Assert.IsFalse(headings.Any(heading => heading.Contains(" / ")));
             foreach (
                 ContentEditorFieldView control in view.GetComponentsInChildren<ContentEditorFieldView>()
@@ -3892,9 +4104,15 @@ namespace Rebellion.Tests.ContentEditor.UI
             {
                 TMP_Text label = control
                     .GetComponentsInChildren<TMP_Text>()
-                    .Single(text =>
+                    .SingleOrDefault(text =>
                         text.name == "Label" && text.transform.parent == control.transform
                     );
+                if (label == null)
+                {
+                    Assert.IsTrue(control.Field.IsNumber);
+                    Assert.IsNotNull(control.GetComponentInChildren<TMP_InputField>());
+                    continue;
+                }
                 Assert.IsFalse(label.text.Contains(" / "), label.text);
                 Assert.LessOrEqual(
                     label

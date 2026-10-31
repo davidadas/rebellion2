@@ -13,6 +13,17 @@ internal static class ContentPackEditorFieldMetadata
         string
     >
     {
+        ["GalaxySizes"] =
+            "Apply this starting officer rule to the selected galaxy sizes. Leave all unchecked to use every size.",
+        ["DestinationTypeID"] =
+            "Choose a planet or faction headquarters. Leave both destinations unset to choose a friendly starting location.",
+        ["DestinationInstanceID"] =
+            "Choose a specific planet instance. Selecting this replaces the other destination.",
+        ["FacilityTypeIDs"] =
+            "Choose buildings and the quantity of each to place at this headquarters.",
+        ["TargetPlanets"] =
+            "Choose candidate starting planets. Weight controls how often each can be selected. This replaces a fixed planet.",
+        ["VisibleToFactionIDs"] = "Factions that know this planet at game start.",
         ["TypeID"] =
             "Identifies this definition. Other definitions and events use this ID to reference it.",
         ["InstanceID"] =
@@ -133,6 +144,13 @@ internal static class ContentPackEditorFieldMetadata
     {
         return field.MemberName switch
         {
+            "GalaxySizes" => "Galaxy sizes (all if empty)",
+            "FacilityTypeIDs" => "Buildings",
+            "TargetPlanets" => "Possible starting planets",
+            "VisibleToFactionIDs" => "Visible to factions",
+            "DestinationInstanceID" => "Specific destination",
+            "TypeID" when field.Container?.Name.LocalName == "WeightedFacilityEntry" => "Building",
+            "TypeID" when field.Container?.Name.LocalName == "FixedFleetShip" => "Ship",
             "DisallowedMissionTypeIDs" => "Disabled missions",
             "AllowedMissionTypeIDs" => "Allowed missions",
             "MineTypeID" => "Mine",

@@ -308,6 +308,19 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorFieldView fieldTemplate = BuildField(fields.ScrollArea.ContentRoot);
         fieldTemplate.gameObject.SetActive(false);
         Assign(form, "fieldScroll", fields);
+        TMP_Dropdown generationTask = Dropdown("SetupTask", fields.ScrollArea.ContentRoot);
+        generationTask.gameObject.SetActive(false);
+        Assign(form, "generationTask", generationTask);
+        CollectionEditorView setupCollection = BuildSetupCollection(fields.ScrollArea.ContentRoot);
+        setupCollection.gameObject.SetActive(false);
+        Assign(form, "setupCollectionTemplate", setupCollection);
+        Button units = Button(
+            "SetupUnitsTemplate",
+            fields.ScrollArea.ContentRoot,
+            "Choose units and quantities..."
+        );
+        units.gameObject.SetActive(false);
+        Assign(form, "setupUnitsTemplate", units);
         Button addMessage = Button(
             "AddFactionMessage",
             fields.ScrollArea.ContentRoot,
@@ -426,6 +439,7 @@ public static class ContentPackEditorPrefabBuilder
 
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
+        BuildSelectionDialog(canvasRoot, view);
         BuildConfirmation(canvasRoot, view);
         BuildImagePreview(canvasRoot, view);
         BuildNotification(canvasRoot, view);
@@ -519,6 +533,8 @@ public static class ContentPackEditorPrefabBuilder
         Stretch(error.rectTransform, 244, 0, 14, 0);
         error.rectTransform.anchorMax = Vector2.right;
         error.rectTransform.offsetMax = new Vector2(-14, 20);
+        Button selectItems = Button("SelectItems", root, "Choose...");
+        Assign(field, "selectItemsButton", selectItems);
         Assign(field, "label", label);
         Assign(field, "input", input);
         Assign(field, "checkbox", checkbox);
@@ -529,6 +545,92 @@ public static class ContentPackEditorPrefabBuilder
         Assign(field, "choiceDropdown", choice);
         Assign(field, "help", HelpIcon(root));
         return field;
+    }
+
+    /// <summary>
+    /// Authors shared collection controls for starting placements and nested fleet entries.
+    /// </summary>
+    /// <param name="parent">The form content root.</param>
+    /// <returns>The reusable collection template.</returns>
+    private static CollectionEditorView BuildSetupCollection(Transform parent)
+    {
+        RectTransform root = Layer("SetupCollectionTemplate", parent);
+        Rect(root, 0, 0, 900, 120);
+        CollectionEditorView view = root.gameObject.AddComponent<CollectionEditorView>();
+        Assign(view, "heading", Label("Heading", root, "Starting units", 17));
+        Assign(view, "entries", Dropdown("Entries", root));
+        Assign(view, "add", Button("Add", root, "Add entry"));
+        Assign(view, "remove", PlainButton("Delete", root, "Delete entry"));
+        return view;
+    }
+
+    /// <summary>
+    /// Authors a searchable multi-select using the application's checkbox, input, and scrolling controls.
+    /// </summary>
+    /// <param name="parent">The canvas root.</param>
+    /// <param name="view">The workspace owning the modal.</param>
+    private static void BuildSelectionDialog(Transform parent, ContentPackEditorView view)
+    {
+        Image overlay = Surface("ItemSelection", parent, new Color(0, 0, 0, 0.75f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        SelectionDialogView dialog = overlay.gameObject.AddComponent<SelectionDialogView>();
+        Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
+        panel.rectTransform.anchorMin =
+            panel.rectTransform.anchorMax =
+            panel.rectTransform.pivot =
+                new Vector2(0.5f, 0.5f);
+        panel.rectTransform.sizeDelta = new Vector2(760, 640);
+        TMP_Text title = Label("Heading", panel.transform, "Choose units", 20);
+        Rect(title.rectTransform, 20, 14, 720, 36);
+        TMP_InputField search = Input(
+            "SelectionSearch",
+            panel.transform,
+            "Search by name or ID..."
+        );
+        Rect((RectTransform)search.transform, 20, 60, 720, 34);
+        TMP_Text summary = Label("Summary", panel.transform, string.Empty, 14, true);
+        Rect(summary.rectTransform, 20, 104, 560, 28);
+        TMP_Text quantityTitle = Label("QuantityHeading", panel.transform, "Quantity", 14, true);
+        Rect(quantityTitle.rectTransform, 620, 104, 100, 28);
+        quantityTitle.alignment = TextAlignmentOptions.MidlineRight;
+        ScrollAreaLayout scroll = Scroll("Options", panel.transform);
+        Rect((RectTransform)scroll.transform, 20, 140, 720, 404);
+        RectTransform row = Layer("OptionTemplate", scroll.ScrollArea.ContentRoot);
+        Rect(row, 0, 0, 704, 64);
+        SelectionOptionView option = row.gameObject.AddComponent<SelectionOptionView>();
+        UICheckboxView check = Checkbox(row);
+        TextMeshProUGUI optionLabel = check.GetComponentInChildren<TextMeshProUGUI>(true);
+        OverflowTextTooltip overflow = optionLabel.gameObject.AddComponent<OverflowTextTooltip>();
+        overflow.Configure(optionLabel);
+        check.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(overflow);
+        TMP_InputField amount = Input("Quantity", row, "0");
+        amount.contentType = TMP_InputField.ContentType.IntegerNumber;
+        TMP_Text error = Label("Error", row, string.Empty, 12);
+        error.overflowMode = TextOverflowModes.Overflow;
+        BindColor(error, ContentEditorColorRole.Error);
+        Assign(option, "checkbox", check);
+        Assign(option, "quantity", amount);
+        Assign(option, "error", error);
+        row.gameObject.SetActive(false);
+        Button apply = Button("Apply", panel.transform, "Apply");
+        Rect((RectTransform)apply.transform, 620, 586, 120, 34);
+        Button cancel = PlainButton("Cancel", panel.transform, "Cancel");
+        Rect((RectTransform)cancel.transform, 488, 586, 120, 34);
+        TMP_Text errorText = Label("SelectionError", panel.transform, string.Empty, 13);
+        Rect(errorText.rectTransform, 20, 552, 720, 26);
+        BindColor(errorText, ContentEditorColorRole.Error);
+        Assign(dialog, "error", errorText);
+        Assign(dialog, "heading", title);
+        Assign(dialog, "summary", summary);
+        Assign(dialog, "quantityHeading", quantityTitle);
+        Assign(dialog, "search", search);
+        Assign(dialog, "scroll", scroll);
+        Assign(dialog, "rowTemplate", option);
+        Assign(dialog, "apply", apply);
+        Assign(dialog, "cancel", cancel);
+        Assign(view, "selectionDialog", dialog);
+        overlay.gameObject.SetActive(false);
     }
 
     /// <summary>

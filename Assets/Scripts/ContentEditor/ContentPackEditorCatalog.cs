@@ -24,7 +24,7 @@ public sealed class ContentPackEditorCatalog
     public string ItemName =>
         recordName switch
         {
-            "SpecialForce" => "Special forces unit",
+            "SpecialForce" => "Special forces",
             "Trait" => "Officer trait",
             _ => recordName == null ? null : ContentPackEditorField.FormatName(recordName),
         };
