@@ -150,6 +150,22 @@ jobs:
           done
           exit 1
 
+      - name: Install multiplayer build configuration
+        env:
+          EOS_BUILD_CONFIG: ${{ secrets.EOS_BUILD_CONFIG }}
+        run: |
+          if [ -z "$EOS_BUILD_CONFIG" ]; then
+            echo "EOS_BUILD_CONFIG must contain the multiplayer deployment configuration."
+            exit 1
+          fi
+          mkdir -p Assets/StreamingAssets/EOS
+          for name in eos_product_config.json eos_windows_config.json eos_linux_config.json eos_macos_config.json player_auth_config.json; do
+            if ! printf '%s' "$EOS_BUILD_CONFIG" | jq -e --arg name "$name" '.[$name] | select(type == "object")' > "Assets/StreamingAssets/EOS/$name" 2>/dev/null; then
+              echo "EOS_BUILD_CONFIG is missing a valid $name object."
+              exit 1
+            fi
+          done
+
       - name: Build project
         uses: game-ci/unity-builder@v4
         env:
