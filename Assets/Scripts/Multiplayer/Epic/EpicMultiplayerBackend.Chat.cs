@@ -68,6 +68,7 @@ namespace Rebellion.Multiplayer
         public Task CloseGeneralChatAsync()
         {
             _chatVersion++;
+            Task opening = _openingChat;
             _openingChat = null;
             if (_chatRequestNotification != 0)
                 _platform
@@ -83,9 +84,29 @@ namespace Rebellion.Multiplayer
             string lobbyID = _chatLobbyID;
             _chatLobbyID = null;
             _chatMembers.Clear();
-            if (lobbyID != null)
-                _closingChat = CloseLobbyAsync(lobbyID, false);
+            Task closing = lobbyID == null ? _closingChat : CloseLobbyAsync(lobbyID, false);
+            _closingChat = FinishClosingChatAsync(opening, closing);
             return _closingChat;
+        }
+
+        /// <summary>
+        /// Finishes an outgoing admission and its cleanup before another join can use the same room.
+        /// </summary>
+        /// <param name="opening">The outgoing admission, whose caller retains its failure.</param>
+        /// <param name="closing">The previously pending or newly requested membership removal.</param>
+        /// <returns>The completion of both outgoing operations.</returns>
+        private static async Task FinishClosingChatAsync(Task opening, Task closing)
+        {
+            try
+            {
+                if (opening != null)
+                    await opening;
+            }
+            catch (Exception)
+            {
+                // The admission caller owns its error; its cleanup has finished before this task completes.
+            }
+            await closing;
         }
 
         /// <summary>
