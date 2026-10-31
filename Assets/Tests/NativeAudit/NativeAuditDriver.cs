@@ -398,6 +398,10 @@ namespace Rebellion.Tests.NativeAudit
                 AppBootstrap.Instance == null ? null : AppBootstrap.Instance.GetRuntime();
             Rebellion.Gameplay.GameSession session = runtime?.GetActiveGameSession();
             response.frame = Time.frameCount;
+            response.renderedFrame = Time.renderedFrameCount;
+            response.targetFrameRate = Application.targetFrameRate;
+            response.vSyncCount = QualitySettings.vSyncCount;
+            response.graphicsDevice = SystemInfo.graphicsDeviceType.ToString();
             response.scene = SceneManager.GetActiveScene().name;
             response.focused = Application.isFocused;
             response.width = Screen.width;
@@ -543,6 +547,10 @@ namespace Rebellion.Tests.NativeAudit
             public bool completed;
             public string error;
             public int frame;
+            public int renderedFrame;
+            public int targetFrameRate;
+            public int vSyncCount;
+            public string graphicsDevice;
             public string scene;
             public bool focused;
             public int width;
