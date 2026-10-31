@@ -106,9 +106,7 @@ def collect_files(root, platform, game_name="rebellion2"):
     allowed = {game_name + suffix}
     if platform != "StandaloneOSX":
         allowed.add("rebellion2-editor" + suffix)
-        allowed.update(
-            {game_name + "_Data", "rebellion2-editor_Data", "MonoBleedingEdge"}
-        )
+        allowed.update({game_name + "_Data", "rebellion2-editor_Data"})
         if platform == "StandaloneWindows64":
             allowed.update(
                 {
@@ -118,6 +116,7 @@ def collect_files(root, platform, game_name="rebellion2"):
                     "D3D12",
                     "dstorage.dll",
                     "dstoragecore.dll",
+                    "MonoBleedingEdge",
                 }
             )
             require((root / "UnityPlayer.dll").is_file(), "Missing UnityPlayer.dll")
@@ -133,12 +132,17 @@ def collect_files(root, platform, game_name="rebellion2"):
         )
         data = player_data(root, name, platform, game_name)
         require(data.is_dir(), f"Missing player data: {data}")
-        # Both executables share UnityPlayer and the Mono runtime in this bundle layout.
-        # IL2CPP companions need separate native runtimes, not a shared GameAssembly library.
+        # Both players share UnityPlayer; Linux keeps a Mono runtime in each player's data.
+        # IL2CPP companions cannot share a single native GameAssembly library.
         require(
             (data / "Managed" / "GameAssembly.dll").is_file(),
             "Shared desktop bundles require Mono builds",
         )
+        if platform == "StandaloneLinux64":
+            require(
+                any((data / "MonoBleedingEdge" / "x86_64").glob("*mono*.so")),
+                f"Missing Mono runtime for: {name}",
+            )
         require(
             (data / "Managed" / EDITOR_ASSEMBLY).is_file()
             == (name == "rebellion2-editor"),
@@ -200,7 +204,7 @@ def collect_files(root, platform, game_name="rebellion2"):
             ):
                 continue
             files.append(path)
-    if platform != "StandaloneOSX":
+    if platform == "StandaloneWindows64":
         require(
             any((root / "MonoBleedingEdge" / "EmbedRuntime").glob("*mono*")),
             "Missing shared Mono runtime",

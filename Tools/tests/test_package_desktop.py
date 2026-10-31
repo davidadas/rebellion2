@@ -40,6 +40,12 @@ class PackageDesktopTests(unittest.TestCase):
                 self.write(name + suffix).chmod(0o755)
             data = packager.player_data(self.root, name, platform, game_name)
             self.write((data / "Managed/GameAssembly.dll").relative_to(self.root))
+            if platform == "StandaloneLinux64":
+                self.write(
+                    (
+                        data / "MonoBleedingEdge/x86_64/libmonobdwgc-2.0.so"
+                    ).relative_to(self.root)
+                )
         editor = packager.player_data(
             self.root, "rebellion2-editor", platform, game_name
         )
@@ -70,7 +76,8 @@ class PackageDesktopTests(unittest.TestCase):
             ).to_bytes(4, "big")
         self.write((editor / "Plugins" / native).relative_to(self.root), binary)
         if platform != "StandaloneOSX":
-            self.write("MonoBleedingEdge/EmbedRuntime/mono-runtime")
+            if platform == "StandaloneWindows64":
+                self.write("MonoBleedingEdge/EmbedRuntime/mono-runtime")
             self.write(
                 "UnityPlayer.dll"
                 if platform == "StandaloneWindows64"
@@ -112,6 +119,12 @@ class PackageDesktopTests(unittest.TestCase):
                             else "rebellion2.app/Contents/MacOS/rebellion2"
                         )
                         self.assertTrue(player.mode & 0o111)
+                        if platform == "StandaloneLinux64":
+                            for name in ("rebellion2", "rebellion2-editor"):
+                                self.assertIn(
+                                    name + "_Data/MonoBleedingEdge/x86_64/libmonobdwgc-2.0.so",
+                                    payload,
+                                )
                 manifest = json.loads(payload.pop("bundle.json"))
                 self.assertEqual(
                     set(payload), {item["path"] for item in manifest["files"]}
@@ -217,6 +230,24 @@ class PackageDesktopTests(unittest.TestCase):
         (self.root / "MonoBleedingEdge/EmbedRuntime/mono-runtime").unlink()
         with self.assertRaisesRegex(ValueError, "Mono runtime"):
             packager.collect_files(self.root, "StandaloneWindows64")
+
+    def test_collect_files_linux_requires_each_players_mono_runtime(self):
+        for name in ("rebellion2", "rebellion2-editor"):
+            with (
+                self.subTest(player=name),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                self.root = Path(temporary) / "build"
+                self.root.mkdir()
+                self.create_build("StandaloneLinux64")
+                runtime = self.root / (
+                    name + "_Data/MonoBleedingEdge/x86_64/libmonobdwgc-2.0.so"
+                )
+                runtime.unlink()
+                with self.assertRaisesRegex(
+                    ValueError, "Missing Mono runtime for: " + name
+                ):
+                    packager.collect_files(self.root, "StandaloneLinux64")
 
     def test_package_output_inside_build_is_rejected(self):
         self.create_build()

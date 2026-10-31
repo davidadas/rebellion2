@@ -66,7 +66,7 @@ jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
-    needs: [test, resolve-media]
+    needs: [lint, resolve-media]
     environment: production
     permissions:
       contents: read
@@ -127,7 +127,9 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - uses: actions/cache@v4
+      - name: Restore Unity build Library
+        id: build-library
+        uses: actions/cache/restore@v4
         with:
           path: Library
           key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
@@ -151,6 +153,7 @@ jobs:
           exit 1
 
       - name: Build project
+        id: unity-build
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -163,6 +166,13 @@ jobs:
           buildMethod: StandalonePlayerBuild.Build
           buildName: rebellion2
           buildsPath: build
+
+      - name: Save compiled Unity build Library
+        if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.build-library.outputs.cache-primary-key }}
 
       - name: Package verified desktop bundle
         shell: bash

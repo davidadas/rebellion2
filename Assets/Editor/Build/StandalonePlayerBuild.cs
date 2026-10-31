@@ -258,18 +258,16 @@ public static class StandalonePlayerBuild
     }
 
     /// <summary>
-    /// Adds the macOS application-bundle extension when a build caller supplies a directory-like
-    /// artifact path, so the post-build output check matches what Unity actually writes.
+    /// Adds the desktop artifact extension when a build caller supplies only its base name.
     /// </summary>
     /// <param name="target">The desktop platform being built.</param>
     /// <param name="outputPath">The requested player artifact path.</param>
     /// <returns>The output path Unity creates for the target platform.</returns>
     private static string NormalizeOutputPath(UnityEditor.BuildTarget target, string outputPath)
     {
-        return
-            target == UnityEditor.BuildTarget.StandaloneOSX
-            && !outputPath.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
-            ? outputPath + ".app"
+        string extension = "." + GetDefaultArtifact(target).Extension;
+        return !outputPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+            ? outputPath + extension
             : outputPath;
     }
 
