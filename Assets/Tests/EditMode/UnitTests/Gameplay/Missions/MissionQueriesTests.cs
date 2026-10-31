@@ -261,6 +261,33 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GetMissionOdds_GroundStarfighter_IncludesDetectionRating()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            foreach (Fleet fleet in planet.GetChildren<Fleet>().ToList())
+                game.DeleteNode(fleet);
+            Starfighter detector = new Starfighter
+            {
+                InstanceID = "ground-fighter",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(detector, planet);
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            MissionQueries system = new MissionQueries(game);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_ValidMission_DoesNotStartMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
@@ -412,7 +439,7 @@ namespace Rebellion.Tests.Gameplay
             ISceneNode[] expected =
                 phase == MissionEncounterPhase.DepartureStart
                 || phase == MissionEncounterPhase.PreObjective && !orbitalTarget
-                    ? new ISceneNode[] { groundRegiment }
+                    ? new ISceneNode[] { groundRegiment, groundFighter }
                     : new ISceneNode[] { ship, carriedFighter };
 
             CollectionAssert.AreEqual(expected, queries.GetDetectors(mission, planet, phase));

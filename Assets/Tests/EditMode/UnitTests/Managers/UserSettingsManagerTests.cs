@@ -183,6 +183,67 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        [Test]
+        public void SaveThenLoad_AnalyticsDenied_RestoresConsentFromDisk()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-settings-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                DisplayManager display = CreateDisplayManager();
+                UserSettingsManager firstSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                firstSettings.Load();
+                firstSettings.Settings.Analytics.Consent = UserAnalyticsConsent.Denied;
+                firstSettings.Save();
+
+                UserSettingsManager secondSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                secondSettings.Load();
+
+                Assert.AreEqual(
+                    UserAnalyticsConsent.Denied,
+                    secondSettings.Settings.Analytics.Consent
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void Apply_AnalyticsGranted_AppliesConsentToRuntime()
+        {
+            RecordingAnalyticsConsentRuntime analyticsRuntime =
+                new RecordingAnalyticsConsentRuntime();
+            UserSettingsManager settings = new UserSettingsManager(
+                null,
+                CreateDisplayManager(),
+                null,
+                null,
+                analyticsRuntime
+            );
+            settings.Load();
+            settings.Settings.Analytics.Consent = UserAnalyticsConsent.Granted;
+
+            settings.Apply();
+
+            Assert.AreEqual(UserAnalyticsConsent.Granted, analyticsRuntime.AppliedConsent);
+        }
+
         /// <summary>
         /// Creates a deterministic display manager that does not mutate the test runner display.
         /// </summary>
@@ -214,6 +275,20 @@ namespace Rebellion.Tests.Managers
             }
             Assert.Fail($"Binding '{name}' was not found on {action}.");
             return -1;
+        }
+
+        private sealed class RecordingAnalyticsConsentRuntime : IAnalyticsConsentRuntime
+        {
+            internal UserAnalyticsConsent AppliedConsent { get; private set; }
+
+            /// <summary>
+            /// Records the applied analytics consent choice.
+            /// </summary>
+            /// <param name="settings">The analytics settings being applied.</param>
+            public void ApplyConsent(UserAnalyticsSettings settings)
+            {
+                AppliedConsent = settings.Consent;
+            }
         }
     }
 }

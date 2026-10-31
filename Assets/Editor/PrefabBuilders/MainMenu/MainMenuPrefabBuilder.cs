@@ -321,6 +321,11 @@ public static class MainMenuPrefabBuilder
         serializedView.FindProperty("optionsWindowManager").objectReferenceValue =
             FindRequiredComponent<UIWindowManager>(root, "OptionsOverlayCanvas");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+        AssignReference(
+            FindRequiredComponent<MainMenuController>(root),
+            "_analyticsConsentView",
+            FindRequiredComponent<AnalyticsConsentView>(root, "AnalyticsConsentCanvas")
+        );
     }
 
     /// <summary>
@@ -484,6 +489,255 @@ public static class MainMenuPrefabBuilder
 
         BuildControls(viewport.transform);
         BuildOptionsOverlay(ui.transform);
+        BuildAnalyticsConsentOverlay(ui.transform);
+    }
+
+    /// <summary>
+    /// Authors the full-screen first-run analytics choice above every Main Menu control.
+    /// </summary>
+    /// <param name="parent">The Main Menu UI root.</param>
+    private static void BuildAnalyticsConsentOverlay(Transform parent)
+    {
+        GameObject overlay = NewChild(
+            "AnalyticsConsentCanvas",
+            parent,
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster),
+            typeof(CanvasGroup),
+            typeof(AnalyticsConsentView)
+        );
+        FillParent(overlay.GetComponent<RectTransform>());
+
+        Canvas canvas = overlay.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1100;
+
+        CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+
+        CanvasGroup canvasGroup = overlay.GetComponent<CanvasGroup>();
+        canvasGroup.alpha = 1f;
+        canvasGroup.interactable = true;
+        canvasGroup.blocksRaycasts = true;
+
+        GameObject backdropObject = NewChild(
+            "Backdrop",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(RawImage)
+        );
+        FillParent(backdropObject.GetComponent<RectTransform>());
+        RawImage backdrop = backdropObject.GetComponent<RawImage>();
+        backdrop.color = Color.clear;
+        backdrop.raycastTarget = false;
+
+        GameObject dimmer = NewChild(
+            "InputBlocker",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        FillParent(dimmer.GetComponent<RectTransform>());
+        Image dimmerImage = dimmer.GetComponent<Image>();
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.9f);
+        dimmerImage.raycastTarget = true;
+
+        GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
+        UILayout.SetSourceRect((RectTransform)page.transform, 277, 163, 300, 154);
+
+        Sprite roundedRectangle = AssetDatabase.GetBuiltinExtraResource<Sprite>(
+            "UI/Skin/Background.psd"
+        );
+
+        GameObject backgroundObject = NewChild(
+            "Background",
+            page.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 300, 154);
+        Image background = backgroundObject.GetComponent<Image>();
+        background.sprite = roundedRectangle;
+        background.type = Image.Type.Sliced;
+        background.color = new Color(0.34f, 0.37f, 0.40f, 0.50f);
+        background.raycastTarget = true;
+
+        GameObject panelFillObject = NewChild(
+            "PanelFill",
+            page.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)panelFillObject.transform, 1, 1, 298, 152);
+        Image panelFill = panelFillObject.GetComponent<Image>();
+        panelFill.sprite = roundedRectangle;
+        panelFill.type = Image.Type.Sliced;
+        panelFill.color = Color.white;
+        panelFill.raycastTarget = false;
+        panelFill
+            .gameObject.AddComponent<VerticalGradientEffect>()
+            .SetColors(
+                new Color(0.12f, 0.125f, 0.145f, 0.98f),
+                new Color(0.082f, 0.094f, 0.114f, 0.98f)
+            );
+        panelFillObject.transform.SetSiblingIndex(backgroundObject.transform.GetSiblingIndex() + 1);
+
+        TextMeshProUGUI optional = MenuPrefabBuilder.CreateTextLabel("Optional", page.transform);
+        optional.text = "OPTIONAL";
+        optional.color = new Color(0.68f, 0.71f, 0.75f);
+        optional.fontSize = 6;
+        optional.characterSpacing = 20f;
+        optional.alignment = TextAlignmentOptions.Midline;
+        UILayout.SetSourceRect(optional.rectTransform, 98, 15, 104, 12);
+
+        GameObject accentLine = NewChild(
+            "AccentLine",
+            page.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        UILayout.SetSourceRect((RectTransform)accentLine.transform, 141, 33, 18, 2);
+        Image accentLineImage = accentLine.GetComponent<Image>();
+        accentLineImage.color = new Color(0.25f, 0.82f, 0.88f);
+        accentLineImage.raycastTarget = false;
+
+        TextMeshProUGUI heading = MenuPrefabBuilder.CreateTextLabel("Heading", page.transform);
+        heading.text = "HELP US IMPROVE";
+        heading.color = new Color(0.925f, 0.945f, 0.965f);
+        heading.fontSize = 15;
+        heading.characterSpacing = 12f;
+        heading.alignment = TextAlignmentOptions.Midline;
+        UILayout.SetSourceRect(heading.rectTransform, 25, 43, 250, 20);
+
+        TextMeshProUGUI body = MenuPrefabBuilder.CreateTextLabel("Body", page.transform);
+        body.text =
+            "Share optional analytics to help us improve the game.\nYou can change this any time in Settings.";
+        body.color = new Color(0.80f, 0.82f, 0.85f);
+        body.fontSize = 9f;
+        body.lineSpacing = 5f;
+        body.alignment = TextAlignmentOptions.Midline;
+        body.textWrappingMode = TextWrappingModes.Normal;
+        body.overflowMode = TextOverflowModes.Overflow;
+        UILayout.SetSourceRect(body.rectTransform, 20, 65, 260, 32);
+
+        Button allowButton = MenuPrefabBuilder.CreateMenuActionButton(
+            page.transform,
+            "AllowButton",
+            "ALLOW ANALYTICS",
+            0,
+            new Color(0.035f, 0.075f, 0.095f),
+            128
+        );
+        UILayout.SetSourceRect((RectTransform)allowButton.transform, 23, 110, 128, 23);
+        Image allowSurface = allowButton
+            .transform.Find("SurfaceMask/Surface")
+            .GetComponent<Image>();
+        allowSurface.color = Color.white;
+        allowSurface
+            .gameObject.AddComponent<VerticalGradientEffect>()
+            .SetColors(new Color(0.34f, 0.80f, 0.84f), new Color(0.30f, 0.76f, 0.80f));
+        ConfigureConsentButtonFrame(
+            allowButton,
+            roundedRectangle,
+            new Color(0.31f, 0.82f, 0.87f, 0.70f)
+        );
+        TextMeshProUGUI allowLabel = allowButton
+            .transform.Find("Label")
+            .GetComponent<TextMeshProUGUI>();
+        allowLabel.fontSize = 7.5f;
+        allowLabel.characterSpacing = 3.5f;
+
+        Button declineButton = MenuPrefabBuilder.CreateMenuActionButton(
+            page.transform,
+            "DeclineButton",
+            "NO THANKS",
+            0,
+            new Color(0.820f, 0.850f, 0.880f),
+            116
+        );
+        UILayout.SetSourceRect((RectTransform)declineButton.transform, 161, 110, 116, 23);
+        Image declineSurface = declineButton
+            .transform.Find("SurfaceMask/Surface")
+            .GetComponent<Image>();
+        declineSurface.color = Color.white;
+        declineSurface
+            .gameObject.AddComponent<VerticalGradientEffect>()
+            .SetColors(new Color(0.15f, 0.17f, 0.19f), new Color(0.10f, 0.115f, 0.13f));
+        ConfigureConsentButtonFrame(
+            declineButton,
+            roundedRectangle,
+            new Color(0.50f, 0.53f, 0.56f, 0.58f)
+        );
+        TextMeshProUGUI declineLabel = declineButton
+            .transform.Find("Label")
+            .GetComponent<TextMeshProUGUI>();
+        declineLabel.fontSize = 7.5f;
+        declineLabel.characterSpacing = 3.5f;
+
+        allowButton.navigation = new Navigation
+        {
+            mode = Navigation.Mode.Explicit,
+            selectOnLeft = allowButton,
+            selectOnRight = declineButton,
+            selectOnUp = allowButton,
+            selectOnDown = allowButton,
+        };
+        declineButton.navigation = new Navigation
+        {
+            mode = Navigation.Mode.Explicit,
+            selectOnLeft = allowButton,
+            selectOnRight = declineButton,
+            selectOnUp = declineButton,
+            selectOnDown = declineButton,
+        };
+
+        AnalyticsConsentView view = overlay.GetComponent<AnalyticsConsentView>();
+        AssignReference(view, "_allowButton", allowButton);
+        AssignReference(view, "_declineButton", declineButton);
+        AssignReference(view, "_backdrop", backdrop);
+        AssignReference(view, "_canvasGroup", canvasGroup);
+        overlay.SetActive(false);
+    }
+
+    /// <summary>
+    /// Replaces the shared cut-corner action artwork with the rounded frame used by the consent
+    /// page while retaining the shared button behavior.
+    /// </summary>
+    /// <param name="button">The button receiving the rounded frame.</param>
+    /// <param name="roundedRectangle">The sliced rounded-rectangle sprite.</param>
+    /// <param name="borderColor">The visible one-pixel border color.</param>
+    private static void ConfigureConsentButtonFrame(
+        Button button,
+        Sprite roundedRectangle,
+        Color borderColor
+    )
+    {
+        Image frame = button.GetComponent<Image>();
+        Object.DestroyImmediate(frame.GetComponent<ContentSpriteBinding>());
+        frame.sprite = roundedRectangle;
+        frame.type = Image.Type.Sliced;
+        frame.color = borderColor;
+
+        Outline outline = button.GetComponent<Outline>();
+        if (outline != null)
+            Object.DestroyImmediate(outline);
+
+        Image maskImage = button.transform.Find("SurfaceMask").GetComponent<Image>();
+        Object.DestroyImmediate(maskImage.GetComponent<ContentSpriteBinding>());
+        maskImage.sprite = roundedRectangle;
+        maskImage.type = Image.Type.Sliced;
+        RectTransform maskRect = maskImage.rectTransform;
+        maskRect.offsetMin = Vector2.one;
+        maskRect.offsetMax = -Vector2.one;
     }
 
     /// <summary>

@@ -380,7 +380,7 @@ namespace Rebellion.Game
     #region BALANCE
 
     /// <summary>
-    /// Defines post-generation support adjustment settings.
+    /// Stores support adjustment values in serialized generation settings.
     /// </summary>
     [PersistableObject]
     public class BalanceSection

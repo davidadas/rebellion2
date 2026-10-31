@@ -52,6 +52,14 @@
       Condition="'$(HighDefinitionRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
       >Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
     >
+    <UnityServicesCoreHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Services.Core.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.Services.Core.dll</UnityServicesCoreHintPath
+    >
+    <UnityServicesCoreHintPath
+      Condition="'$(UnityServicesCoreHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.Services.Core.dll')"
+      >Library/ScriptAssemblies/Unity.Services.Core.dll</UnityServicesCoreHintPath
+    >
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -73,6 +81,13 @@
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll')"
     >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.UnityConsentModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UnityConsentModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.UnityConsentModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference
@@ -151,6 +166,10 @@
     </Reference>
     <Reference Include="UnityEngine.UI" Condition="'$(UGuiHintPath)' != ''">
       <HintPath>$(UGuiHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Services.Core" Condition="'$(UnityServicesCoreHintPath)' != ''">
+      <HintPath>$(UnityServicesCoreHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.InputSystem" Condition="'$(InputSystemHintPath)' != ''">

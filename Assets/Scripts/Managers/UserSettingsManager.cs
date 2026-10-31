@@ -13,6 +13,7 @@ public sealed class UserSettingsManager
     private readonly DisplayManager _displayManager;
     private readonly GraphicsManager _graphicsManager;
     private readonly InputManager _inputManager;
+    private readonly IAnalyticsConsentRuntime _analyticsConsentRuntime;
     private readonly string _settingsFilePathOverride;
 
     /// <summary>
@@ -31,7 +32,7 @@ public sealed class UserSettingsManager
         DisplayManager displayManager,
         InputManager inputManager
     )
-        : this(audioManager, displayManager, null, inputManager, null) { }
+        : this(audioManager, displayManager, null, inputManager, null, null) { }
 
     /// <summary>
     /// Creates a user settings manager for the supplied runtime systems.
@@ -46,7 +47,31 @@ public sealed class UserSettingsManager
         GraphicsManager graphicsManager,
         InputManager inputManager
     )
-        : this(audioManager, displayManager, graphicsManager, inputManager, null) { }
+        : this(audioManager, displayManager, graphicsManager, inputManager, null, null) { }
+
+    /// <summary>
+    /// Creates a user settings manager for every supplied runtime system.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="analyticsConsentRuntime">The analytics consent runtime.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager,
+        IAnalyticsConsentRuntime analyticsConsentRuntime
+    )
+        : this(
+            audioManager,
+            displayManager,
+            graphicsManager,
+            inputManager,
+            analyticsConsentRuntime,
+            null
+        ) { }
 
     /// <summary>
     /// Creates a user settings manager that uses the given file path.
@@ -61,7 +86,7 @@ public sealed class UserSettingsManager
         InputManager inputManager,
         string settingsFilePath
     )
-        : this(audioManager, displayManager, null, inputManager, settingsFilePath) { }
+        : this(audioManager, displayManager, null, inputManager, null, settingsFilePath) { }
 
     /// <summary>
     /// Creates a user settings manager that uses the given file path and graphics owner.
@@ -78,11 +103,32 @@ public sealed class UserSettingsManager
         InputManager inputManager,
         string settingsFilePath
     )
+        : this(audioManager, displayManager, graphicsManager, inputManager, null, settingsFilePath)
+    { }
+
+    /// <summary>
+    /// Creates a user settings manager with explicit runtime systems and persistence path.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="analyticsConsentRuntime">The analytics consent runtime.</param>
+    /// <param name="settingsFilePath">The exact settings file path.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager,
+        IAnalyticsConsentRuntime analyticsConsentRuntime,
+        string settingsFilePath
+    )
     {
         _audioManager = audioManager;
         _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
         _graphicsManager = graphicsManager;
         _inputManager = inputManager;
+        _analyticsConsentRuntime = analyticsConsentRuntime;
         _settingsFilePathOverride = settingsFilePath;
     }
 
@@ -156,6 +202,7 @@ public sealed class UserSettingsManager
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
         _displayManager.Apply(Settings.Video);
         _graphicsManager?.Apply(Settings.Video);
+        _analyticsConsentRuntime?.ApplyConsent(Settings.Analytics);
     }
 
     /// <summary>

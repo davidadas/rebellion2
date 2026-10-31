@@ -30,6 +30,7 @@ internal sealed class OptionsSettingsSession
         new Dictionary<UserGameplayOption, bool>();
     private readonly Dictionary<UserInterfaceOption, bool> _snapshotUserInterface =
         new Dictionary<UserInterfaceOption, bool>();
+    private UserAnalyticsConsent _snapshotAnalyticsConsent;
 
     private float[] _snapshotVolumes = Array.Empty<float>();
     private int _snapshotResolutionWidth;
@@ -61,6 +62,8 @@ internal sealed class OptionsSettingsSession
     internal UserInterfaceSettings UserInterface => _userSettings.Settings.UserInterface;
 
     internal UserAudioSettings Audio => _userSettings.Settings.Audio;
+
+    internal UserAnalyticsSettings Analytics => _userSettings.Settings.Analytics;
 
     internal string ResolutionLabel => $"{Video.ResolutionWidth} x {Video.ResolutionHeight}";
 
@@ -142,6 +145,7 @@ internal sealed class OptionsSettingsSession
         Gameplay.GameLaunchSpeed = _snapshotGameLaunchSpeed;
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
+        Analytics.Consent = _snapshotAnalyticsConsent;
 
         _inputManager.LoadBindingOverrides(_snapshotBindingOverrides);
         _inputDiffersFromSnapshot = false;
@@ -272,6 +276,17 @@ internal sealed class OptionsSettingsSession
     internal void ToggleGameplay(UserGameplayOption option)
     {
         Gameplay.SetEnabled(option, !Gameplay.IsEnabled(option));
+        RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Toggles analytics collection and marks the session dirty.
+    /// </summary>
+    internal void ToggleAnalytics()
+    {
+        Analytics.Consent = Analytics.IsEnabled
+            ? UserAnalyticsConsent.Denied
+            : UserAnalyticsConsent.Granted;
         RefreshDirtyState();
     }
 
@@ -470,6 +485,7 @@ internal sealed class OptionsSettingsSession
         _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
         _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
         _snapshotGameLaunchSpeed = Gameplay.GameLaunchSpeed;
+        _snapshotAnalyticsConsent = Analytics.Consent;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
@@ -498,6 +514,7 @@ internal sealed class OptionsSettingsSession
         if (
             UserInterface.IdleBarLocation != _snapshotIdleBarLocation
             || Gameplay.GameLaunchSpeed != _snapshotGameLaunchSpeed
+            || Analytics.Consent != _snapshotAnalyticsConsent
         )
         {
             IsDirty = true;

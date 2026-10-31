@@ -1183,7 +1183,17 @@ namespace Rebellion.AI
                         break;
                     case Starfighter starfighter:
                         if (starfighter.GetParentOfType<CapitalShip>() == null)
+                        {
                             IndexHostilePlanetaryStarfighter(starfighter);
+                            if (
+                                starfighter.GetParent() is Planet
+                                && Mission.IsEligibleDetectorForOwner(
+                                    starfighter,
+                                    _faction.InstanceID
+                                )
+                            )
+                                AddMissionDetectorCandidate(starfighter, false);
+                        }
                         IndexMissionDetector(starfighter, starfightersByCapitalShip);
                         break;
                     case Regiment regiment:

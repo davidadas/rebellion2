@@ -18,6 +18,8 @@ public static class StandalonePlayerBuild
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
+    private const string _enableAnalyticsArgument = "-enableAnalytics";
+    private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -44,7 +46,12 @@ public static class StandalonePlayerBuild
 
         try
         {
-            string builtPlayerPath = BuildPlayer(target, outputPath, false);
+            string builtPlayerPath = BuildPlayer(
+                target,
+                outputPath,
+                enableDiagnostics: false,
+                enableAnalytics: false
+            );
             ContentPackEditorBuild.BuildBesideGame(target, builtPlayerPath, false);
             LaunchPlayer(target, builtPlayerPath, contentPath);
         }
@@ -113,7 +120,8 @@ public static class StandalonePlayerBuild
             string builtPlayerPath = BuildPlayer(
                 target,
                 outputPath,
-                HasArgument(_enableDiagnosticsArgument)
+                HasArgument(_enableDiagnosticsArgument),
+                HasArgument(_enableAnalyticsArgument)
             );
             ContentPackEditorBuild.BuildBesideGame(
                 target,
@@ -168,11 +176,13 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
+    /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
-        bool enableDiagnostics
+        bool enableDiagnostics,
+        bool enableAnalytics
     )
     {
         _ = GetDefaultArtifact(target);
@@ -183,7 +193,7 @@ public static class StandalonePlayerBuild
             outputPath,
             enableDiagnostics,
             new[] { _bootScenePath, _mainMenuScenePath, _strategyScenePath },
-            Array.Empty<string>()
+            enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>()
         );
     }
 
