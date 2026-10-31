@@ -3,7 +3,7 @@
 An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built with Unity and the
 improvements we have always wanted.
 
-<img width="3770" height="2110" alt="Rebellion 2 strategy view" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
+<img width="1560" height="878" alt="Rebellion 2 main menu" src="Docs/Assets/main-menu.png" />
 
 ## Download
 
@@ -61,18 +61,20 @@ or **No** to keep it.
 
 ## Project status
 
-Rebellion 2 is approximately **75% complete toward a feature-complete single-player campaign**.
+Percentages measure feature parity for each capability.
 
-| Area | Estimate | Area | Estimate |
-| --- | ---: | --- | ---: |
-| Foundation and Data | 90% | Strategy Simulation | 85% |
-| Strategic AI | 75% | Missions | 95% |
-| Campaign Events | 90% | Custom Events API | 80% |
-| Strategy Interface | 90% | UI Upscaling | 75% |
-| Save Games | 100% | Settings | 90% |
-| Moddability | 90% | Modding Tools | 0% |
-| Tactical Simulation | 0% | Tactical AI | 0% |
-| Multiplayer | 0% | | |
+| Capability | Status |
+| --- | ---: |
+| Single-player campaign | 100% |
+| Campaign UI | 100% |
+| Campaign AI | 100% |
+| Customizable campaigns | 100% |
+| Saved games and settings | 100% |
+| 3D tactical combat | 0% |
+| 3D tactical combat UI | 0% |
+| 3D tactical combat AI | 0% |
+| Multiplayer | 0% |
+| Modding tools | 0% |
 
 ## Documentation
 
