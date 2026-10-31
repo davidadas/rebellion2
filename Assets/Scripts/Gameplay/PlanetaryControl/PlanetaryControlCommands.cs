@@ -244,8 +244,6 @@ namespace Rebellion.Gameplay
 
                 List<string> regimentOwners = _queries.GetActiveRegimentOwners(planet);
                 Faction controller = _queries.GetPlanetController(planet, regimentOwners);
-                if (controller == null && regimentOwners.Count == 0)
-                    controller = _queries.GetPlanetOwner(planet);
                 PlanetOwnershipChangedResult result = ChangePlanetOwner(planet, controller);
                 if (result != null)
                 {
