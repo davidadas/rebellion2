@@ -1443,12 +1443,9 @@ namespace Rebellion.Gameplay
         {
             string destinationOwner = destinationPlanet.GetOwnerInstanceID();
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
-            return !string.IsNullOrEmpty(destinationOwner)
-                && destinationOwner != movableOwner
-                && (
-                    movable is not Building building
-                    || !IManufacturable.CanBeManufacturedBy(building, destinationOwner)
-                )
+            bool ownershipChanged = destinationOwner != movableOwner;
+            return ownershipChanged
+                && (movable is Building || !string.IsNullOrEmpty(destinationOwner))
                 && !MovementQueries.CanEnterHostileOrbit(movable, destination);
         }
 
@@ -1498,7 +1495,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Handles arrival rejection after a destination changes to an incompatible owner.
+        /// Handles arrival rejection after a destination changes owner.
         /// </summary>
         /// <param name="movable">The arriving unit.</param>
         /// <param name="destinationPlanet">The rejecting planet.</param>
@@ -1543,37 +1540,14 @@ namespace Rebellion.Gameplay
             ICollection<GameResult> results
         )
         {
-            string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);
-            string previousBuildingOwner = null;
-            bool alignedBuildingOwnership = false;
-            if (
-                movable is Building building
-                && destination is Planet arrivalDestination
-                && building.GetOwnerInstanceID() != arrivalDestination.GetOwnerInstanceID()
-            )
-            {
-                previousBuildingOwner = building.GetOwnerInstanceID();
-                _game.ChangeOwnership(building, arrivalDestination.GetOwnerInstanceID());
-                alignedBuildingOwnership = true;
-            }
-
-            try
-            {
-                MoveNode(movable, destination, results);
-            }
-            catch
-            {
-                if (alignedBuildingOwnership)
-                    _game.ChangeOwnership((Building)movable, previousBuildingOwner);
-                throw;
-            }
-
+            MoveNode(movable, destination, results);
             movable.Movement = null;
             GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
 
             if (movable is Building && destination is Planet arrivalPlanet)
                 arrivalPlanet.IsColonized = true;
 
+            string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);
             if (!string.IsNullOrEmpty(arrivingOwner))
                 destinationPlanet.AddVisitor(arrivingOwner);
 

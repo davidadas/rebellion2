@@ -4435,7 +4435,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_CompatibleBuildingDestinationChangedSides_BuildingCaptured()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -4471,7 +4471,6 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "mine1",
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
-                ManufacturingFactionInstanceIDs = new List<string> { "empire", "rebels" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
 
@@ -4494,76 +4493,16 @@ namespace Rebellion.Tests.Gameplay
             for (int i = 0; i < transit; i++)
                 allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.AreSame(destPlanet, mine.GetParent());
-            Assert.IsNull(mine.Movement);
-            Assert.AreEqual("rebels", mine.GetOwnerInstanceID());
-            Assert.IsFalse(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
-            Assert.IsTrue(destPlanet.WasVisitedBy("empire"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
-        public void ProcessTick_IncompatibleBuildingDestinationChangedSides_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_BuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-
-            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
-            game.AttachNode(sector, game.GetGalaxyMap());
-            Planet originPlanet = new Planet
-            {
-                InstanceID = "pA",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PositionX = 0,
-                PositionY = 0,
-            };
-            game.AttachNode(originPlanet, sector);
-            Planet destinationPlanet = new Planet
-            {
-                InstanceID = "pB",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                EnergyCapacity = 10,
-                PositionX = 100,
-                PositionY = 0,
-            };
-            game.AttachNode(destinationPlanet, sector);
-            Building shipyard = new Building
-            {
-                InstanceID = "shipyard1",
-                OwnerInstanceID = "empire",
-                BuildingType = BuildingType.Shipyard,
-                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(shipyard, destinationPlanet);
-            MovementCommands movement = new MovementCommands(
-                game,
-                new FogOfWarCommands(game),
-                new FleetCommands(game),
-                new FogOfWarQueries(game),
-                new MovementQueries(game)
-            );
-            movement.RequestMove(shipyard, destinationPlanet, originPlanet);
-            destinationPlanet.OwnerInstanceID = "rebels";
-
-            List<GameResult> results = new List<GameResult>();
-            for (int i = 0; i < shipyard.Movement.TransitTicks; i++)
-                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
-
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(shipyard.InstanceID));
-            Assert.IsTrue(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
-        }
-
-        [Test]
-        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_BuildingArrivesNeutral()
-        {
-            GameConfig config = TestConfig.Create();
-            GameRoot game = TestGame.Create(config);
-            Faction empire = new Faction { InstanceID = "empire" };
-            game.GetFactions().Add(empire);
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -4609,12 +4548,8 @@ namespace Rebellion.Tests.Gameplay
             for (int i = 0; i < mine.Movement.TransitTicks; i++)
                 results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.AreSame(destinationPlanet, mine.GetParent());
-            Assert.IsNull(mine.Movement);
-            Assert.IsNull(mine.GetOwnerInstanceID());
-            CollectionAssert.DoesNotContain(empire.GetOwnedUnitsByType<Building>(), mine);
-            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
-            Assert.IsTrue(destinationPlanet.WasVisitedBy(empire.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsTrue(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
