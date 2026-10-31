@@ -177,6 +177,7 @@ public sealed class OptionsMenuRenderData
     public GameLaunchSpeed GameLaunchSpeed { get; }
     public int AutosaveIntervalTicks { get; }
     public int AutosavesToKeep { get; }
+    public bool AnalyticsEnabled { get; }
 
     public IReadOnlyList<float> Volumes { get; }
 
@@ -218,6 +219,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="contentPackLabel">The selected content pack's display name.</param>
     /// <param name="showModsTab">Whether the host exposes content management.</param>
     /// <param name="graphicsValues">The current graphics values keyed by setting.</param>
+    /// <param name="analyticsEnabled">Whether analytics collection is enabled.</param>
     /// <param name="statusMessage">The result of the most recent settings action.</param>
     /// <param name="statusIsError">Whether the settings status represents an error.</param>
     public OptionsMenuRenderData(
@@ -245,6 +247,7 @@ public sealed class OptionsMenuRenderData
         string contentPackLabel = "",
         bool showModsTab = true,
         IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> graphicsValues = null,
+        bool analyticsEnabled = false,
         string statusMessage = "",
         bool statusIsError = false
     )
@@ -263,6 +266,7 @@ public sealed class OptionsMenuRenderData
         GameLaunchSpeed = gameLaunchSpeed;
         AutosaveIntervalTicks = autosaveIntervalTicks;
         AutosavesToKeep = autosavesToKeep;
+        AnalyticsEnabled = analyticsEnabled;
         Volumes = volumes ?? Array.Empty<float>();
         Bindings = bindings ?? Array.Empty<OptionsBindingRow>();
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();

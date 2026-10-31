@@ -18,6 +18,8 @@ public static class StandalonePlayerBuild
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
+    private const string _enableAnalyticsArgument = "-enableAnalytics";
+    private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
 
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
@@ -44,7 +46,12 @@ public static class StandalonePlayerBuild
 
         try
         {
-            string builtPlayerPath = BuildPlayer(target, outputPath, false);
+            string builtPlayerPath = BuildPlayer(
+                target,
+                outputPath,
+                enableDiagnostics: false,
+                enableAnalytics: false
+            );
             LaunchPlayer(target, builtPlayerPath, contentPath);
         }
         finally
@@ -109,7 +116,12 @@ public static class StandalonePlayerBuild
 #if UNITY_STANDALONE_OSX
             ApplyBuildArchitecture(target);
 #endif
-            BuildPlayer(target, outputPath, HasArgument(_enableDiagnosticsArgument));
+            BuildPlayer(
+                target,
+                outputPath,
+                HasArgument(_enableDiagnosticsArgument),
+                HasArgument(_enableAnalyticsArgument)
+            );
         }
         finally
         {
@@ -158,17 +170,19 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
+    /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
-        bool enableDiagnostics
+        bool enableDiagnostics,
+        bool enableAnalytics
     )
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
         UIBuilderMenu.BuildRuntimeUI();
-        return BuildGeneratedPlayer(target, outputPath, enableDiagnostics);
+        return BuildGeneratedPlayer(target, outputPath, enableDiagnostics, enableAnalytics);
     }
 
     /// <summary>
@@ -177,11 +191,13 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The normalized player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
+    /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildGeneratedPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
-        bool enableDiagnostics
+        bool enableDiagnostics,
+        bool enableAnalytics
     )
     {
         string outputDirectory = Path.GetDirectoryName(outputPath);
@@ -200,6 +216,9 @@ public static class StandalonePlayerBuild
             locationPathName = outputPath,
             target = target,
             options = UnityEditor.BuildOptions.None,
+            extraScriptingDefines = enableAnalytics
+                ? new[] { _analyticsScriptingDefine }
+                : Array.Empty<string>(),
         };
 
         bool originalDiagnosticsEnabled = UnityEditor

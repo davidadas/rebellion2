@@ -10,6 +10,7 @@
         "Unity.TextMeshPro",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.HighDefinition.Runtime",
+        "Unity.Services.Core",
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner"
     ],

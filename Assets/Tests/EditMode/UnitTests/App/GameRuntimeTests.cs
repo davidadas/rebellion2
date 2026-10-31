@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -61,6 +62,44 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.StartGame(replacement));
 
             Assert.IsFalse(_runtime.HasActiveGame);
+        }
+
+        [Test]
+        public void StartGame_AnalyticsEnabled_RecordsRuntimeLifecycle()
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            GameRuntime runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot game = CreateGame();
+
+            runtime.StartGame(game);
+            runtime.EndGame();
+
+            CollectionAssert.AreEqual(new[] { "campaign_started" }, sink.EventNames);
+            Assert.IsNotEmpty(game.Metadata.CampaignID);
+        }
+
+        [Test]
+        public void StartLoadedGame_AnalyticsEnabled_InitializesCampaignIdentityBeforeTicks()
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            GameRuntime runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot game = CreateGame();
+            game.Metadata.CampaignID = null;
+
+            runtime.StartLoadedGame(game);
+
+            Assert.IsNotEmpty(game.Metadata.CampaignID);
+            Assert.IsEmpty(sink.EventNames);
         }
 
         [Test]
@@ -707,6 +746,32 @@ namespace Rebellion.Tests.App
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
+        }
+
+        private sealed class RecordingAnalyticsSink : IAnalyticsEventSink
+        {
+            internal List<string> EventNames { get; } = new List<string>();
+
+            public bool IsAvailable => true;
+            public bool IsCollectionEnabled => true;
+
+            /// <summary>
+            /// Records an event name for lifecycle assertions.
+            /// </summary>
+            /// <param name="eventName">The event name.</param>
+            /// <param name="parameters">The event parameters.</param>
+            public void RecordEvent(
+                string eventName,
+                IReadOnlyDictionary<string, object> parameters
+            )
+            {
+                EventNames.Add(eventName);
+            }
+
+            /// <summary>
+            /// Completes a no-op flush for the in-memory sink.
+            /// </summary>
+            public void Flush() { }
         }
     }
 }

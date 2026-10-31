@@ -157,6 +157,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private TMP_Dropdown _gameLaunchSpeedDropdown;
 
+    [SerializeField]
+    private OptionsToggleRowView _analyticsRow;
+
     [Header("User Interface page")]
     [SerializeField]
     private TMP_Dropdown _idleBarLocationDropdown;
@@ -254,6 +257,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
     public event Action<UserGameplayOption> GameplayToggleRequested;
+    public event Action AnalyticsToggleRequested;
     public event Action<UserInterfaceOption> UserInterfaceToggleRequested;
     public event Action<IdleBarLocation> IdleBarLocationRequested;
     public event Action<GameLaunchSpeed> GameLaunchSpeedRequested;
@@ -444,6 +448,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             bool enabled = data.GameplayStates.TryGetValue(option, out bool value) && value;
             row.Render(enabled);
         }
+        _analyticsRow.Render(data.AnalyticsEnabled);
 
         bool autosaveEnabled =
             data.GameplayStates.TryGetValue(
@@ -1034,6 +1039,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested += HandleGameplayToggle;
         }
+        _analyticsRow.ToggleRequested += HandleAnalyticsToggle;
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row != null)
@@ -1133,6 +1139,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested -= HandleGameplayToggle;
         }
+        _analyticsRow.ToggleRequested -= HandleAnalyticsToggle;
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row != null)
@@ -1346,6 +1353,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void HandleGameplayToggle(int option)
     {
         GameplayToggleRequested?.Invoke((UserGameplayOption)option);
+    }
+
+    /// <summary>
+    /// Forwards an analytics-toggle request to subscribers.
+    /// </summary>
+    /// <param name="option">The unused row identifier.</param>
+    private void HandleAnalyticsToggle(int option)
+    {
+        AnalyticsToggleRequested?.Invoke();
     }
 
     /// <summary>
