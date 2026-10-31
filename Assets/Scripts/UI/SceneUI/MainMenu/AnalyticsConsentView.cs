@@ -117,16 +117,26 @@ public sealed class AnalyticsConsentView : MonoBehaviour
                 name = "AnalyticsConsentBackdrop",
             };
             _backdropTexture.Create();
-            RenderTexture blurTexture = RenderTexture.GetTemporary(
-                Mathf.Max(1, capture.width / 12),
-                Mathf.Max(1, capture.height / 12),
+            RenderTexture halfResolution = RenderTexture.GetTemporary(
+                Mathf.Max(1, capture.width / 2),
+                Mathf.Max(1, capture.height / 2),
                 0,
                 RenderTextureFormat.ARGB32
             );
-            blurTexture.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(capture, blurTexture);
-            Graphics.Blit(blurTexture, _backdropTexture);
-            RenderTexture.ReleaseTemporary(blurTexture);
+            RenderTexture eighthResolution = RenderTexture.GetTemporary(
+                Mathf.Max(1, capture.width / 8),
+                Mathf.Max(1, capture.height / 8),
+                0,
+                RenderTextureFormat.ARGB32
+            );
+            halfResolution.filterMode = FilterMode.Bilinear;
+            eighthResolution.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(capture, halfResolution);
+            Graphics.Blit(halfResolution, _backdropTexture);
+            Graphics.Blit(_backdropTexture, eighthResolution);
+            Graphics.Blit(eighthResolution, _backdropTexture);
+            RenderTexture.ReleaseTemporary(halfResolution);
+            RenderTexture.ReleaseTemporary(eighthResolution);
             Destroy(capture);
             _backdrop.texture = _backdropTexture;
             _backdrop.color = Color.white;
