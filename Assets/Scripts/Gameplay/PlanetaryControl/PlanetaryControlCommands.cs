@@ -556,6 +556,8 @@ namespace Rebellion.Gameplay
 
             Faction owner = _game.GetFactionByOwnerInstanceID(building.OwnerInstanceID);
             return owner.Settings?.Headquarters?.IsMobile == true
+                && owner.HeadquartersUnitInstanceID == building.InstanceID
+                && !owner.HasLostHeadquarters
                 && owner.HQInstanceID == building.GetParentOfType<Planet>()?.InstanceID;
         }
     }

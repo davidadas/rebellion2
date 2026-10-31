@@ -1257,6 +1257,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, _targetPlanet);
+            _empire.HeadquartersUnitInstanceID = headquarters.InstanceID;
 
             _commands.ClearPlanetOwnership(_targetPlanet);
 
