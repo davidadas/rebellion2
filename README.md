@@ -61,7 +61,7 @@ or **No** to keep it.
 
 ## Project status
 
-Percentages measure feature parity for each capability.
+The game currently has a 100% playable campaign. Current development focuses on modding tools, multiplayer, and new 3D combat.
 
 | Capability | Status |
 | --- | ---: |
