@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Rebellion.Tests.ContentEditor
@@ -73,6 +75,37 @@ namespace Rebellion.Tests.ContentEditor
             second.SaveColorMode(ContentEditorColorMode.Light);
             Assert.AreEqual(0.8f, first.Load().Zoom);
             Assert.AreEqual(0.4f, first.Load().Split);
+        }
+
+        [Test]
+        public async Task SaveColorMode_ConcurrentLayoutUpdates_PreservesBothChangesAsync()
+        {
+            ContentEditorSettingsManager first = new(path);
+            ContentEditorSettingsManager second = new(path);
+            using Barrier start = new(2);
+            for (int round = 0; round < 24; round++)
+            {
+                ContentEditorColorMode mode =
+                    round % 2 == 0 ? ContentEditorColorMode.Light : ContentEditorColorMode.Dark;
+                float zoom = round % 2 == 0 ? 0.8f : 1.2f;
+                float split = round % 2 == 0 ? 0.3f : 0.4f;
+                await Task.WhenAll(
+                    Task.Run(() =>
+                    {
+                        start.SignalAndWait();
+                        first.SaveLayout(zoom, split);
+                    }),
+                    Task.Run(() =>
+                    {
+                        start.SignalAndWait();
+                        second.SaveColorMode(mode);
+                    })
+                );
+                ContentEditorSettings settings = first.Load();
+                Assert.AreEqual(mode, settings.ColorMode);
+                Assert.AreEqual(zoom, settings.Zoom);
+                Assert.AreEqual(split, settings.Split);
+            }
         }
 
         [Test]

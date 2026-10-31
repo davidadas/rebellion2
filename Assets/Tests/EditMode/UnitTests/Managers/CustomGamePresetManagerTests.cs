@@ -39,6 +39,28 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SavePreset_DefaultStorage_UsesTheCurrentUserProfile()
+        {
+            string id = "profile-test-" + Guid.NewGuid().ToString("N");
+            CustomGamePresetManager profile = new();
+            string expected = Path.Combine(
+                UserDataPaths.Root,
+                "custom-games",
+                id + ".customgame.xml"
+            );
+            try
+            {
+                profile.SavePreset(id, "Profile test", CreateSummary());
+                Assert.IsTrue(File.Exists(expected));
+                Assert.AreEqual("FNEMP1", profile.LoadPreset(id).PlayerFactionID);
+            }
+            finally
+            {
+                profile.DeletePreset(id);
+            }
+        }
+
+        [Test]
         public void SavePreset_CompleteSetup_RoundTripsLaunchConfiguration()
         {
             GameSummary summary = CreateSummary();

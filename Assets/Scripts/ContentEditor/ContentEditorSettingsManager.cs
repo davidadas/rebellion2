@@ -1,12 +1,16 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// Stores application preferences independently of content packs and editor build locations.
 /// </summary>
 public sealed class ContentEditorSettingsManager
 {
+    private static readonly object updateGate = new();
     private readonly string path;
     private readonly ContentEditorSettings defaults;
 
@@ -33,10 +37,19 @@ public sealed class ContentEditorSettingsManager
         ContentEditorSettings settings = new ContentEditorSettings();
         try
         {
-            JsonUtility.FromJsonOverwrite(
-                File.Exists(path) ? File.ReadAllText(path) : JsonUtility.ToJson(defaults),
-                settings
-            );
+            if (File.Exists(path))
+            {
+                using FileStream input = new(
+                    path,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read | FileShare.Delete
+                );
+                using StreamReader reader = new(input);
+                JsonUtility.FromJsonOverwrite(reader.ReadToEnd(), settings);
+            }
+            else
+                JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(defaults), settings);
         }
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException or ArgumentException)
@@ -80,23 +93,57 @@ public sealed class ContentEditorSettingsManager
     /// <param name="change">The preference update.</param>
     private void Update(Action<ContentEditorSettings> change)
     {
-        ContentEditorSettings settings = Load();
-        change(settings);
-        settings.Normalize();
-        Directory.CreateDirectory(Path.GetDirectoryName(path));
-        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
+        // File locks can be process-scoped, so threads must also share one gate.
+        lock (updateGate)
         {
-            File.WriteAllText(temporary, JsonUtility.ToJson(settings, true));
-            if (File.Exists(path))
-                File.Replace(temporary, path, null);
-            else
-                File.Move(temporary, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            // Retain this file: replacing or deleting it would split locks across different files.
+            using FileStream ownership = new(
+                path + ".lock",
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.ReadWrite
+            );
+            AcquireLock(ownership);
+            ContentEditorSettings settings = Load();
+            change(settings);
+            settings.Normalize();
+            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporary, JsonUtility.ToJson(settings, true));
+                if (File.Exists(path))
+                    File.Replace(temporary, path, null);
+                else
+                    File.Move(temporary, path);
+            }
+            finally
+            {
+                if (File.Exists(temporary))
+                    File.Delete(temporary);
+            }
         }
-        finally
+    }
+
+    /// <summary>
+    /// Serializes updates from separate editor processes without leaving ownership after a crash.
+    /// </summary>
+    /// <param name="ownership">The shared settings lock file, released when its handle closes.</param>
+    private static void AcquireLock(FileStream ownership)
+    {
+        Stopwatch waiting = Stopwatch.StartNew();
+        while (true)
         {
-            if (File.Exists(temporary))
-                File.Delete(temporary);
+            try
+            {
+                ownership.Lock(0, 1);
+                return;
+            }
+            catch (IOException exception)
+                when ((exception.HResult & 0xffff) == 33 && waiting.ElapsedMilliseconds < 5000)
+            {
+                Thread.Sleep(10);
+            }
         }
     }
 }

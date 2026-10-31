@@ -87,9 +87,9 @@ Archives contain both players, their runtimes, native file dialogs, dependency n
 content, local mods, and debug output are excluded. The installer must supply the existing external
 `Content` folder beside the players; this archive does not replace the content distribution.
 
-CI runs packaging tests during lint, waits for the game tests before building, then verifies and
-uploads a desktop bundle for each build target. These are downloadable CI artifacts retained for
-seven days; creating them does not publish a release or update an installation.
+CI runs packaging tests during lint, then runs game tests and builds in parallel. Each build verifies
+and uploads a desktop bundle; its presence does not mean the game tests have passed. These artifacts
+are retained for seven days; creating them does not publish a release or update an installation.
 ## Code organization
 
 `Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.

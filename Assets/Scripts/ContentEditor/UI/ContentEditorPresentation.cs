@@ -16,7 +16,12 @@ internal static class ContentEditorPresentation
     /// <returns>The authored neutral presentation.</returns>
     internal static FactionTheme GetNeutralTheme(ContentPackEditorProject project)
     {
-        return GetTheme(project, project.Definition.NeutralThemePath);
+        string path = project
+            .GetCatalogs()
+            .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
+            .DocumentRecord.Element.Element("NeutralThemePath")
+            .Value;
+        return GetTheme(project, path);
     }
 
     /// <summary>
@@ -51,7 +56,7 @@ internal static class ContentEditorPresentation
     /// <returns>The current theme.</returns>
     private static FactionTheme GetTheme(ContentPackEditorProject project, string path)
     {
-        string address = "Pack/" + path;
+        string address = "Pack/" + path.Replace('\\', '/');
         ContentPackEditorRecord record = project
             .GetCatalogs()
             .Single(catalog =>

@@ -52,6 +52,21 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void GetCollectionItemType_NamedListSubclass_MatchesDeserializedItems()
+        {
+            using StringReader input = new(
+                "<FactionThemes><FactionTheme><FactionInstanceID>sample</FactionInstanceID></FactionTheme></FactionThemes>"
+            );
+            FactionThemes themes = (FactionThemes)
+                new GameSerializer(typeof(FactionThemes)).Deserialize(input);
+            Assert.AreEqual(
+                typeof(FactionTheme),
+                SerializationMetadata.GetCollectionItemType(themes.GetType())
+            );
+            Assert.AreEqual("sample", themes[0].FactionInstanceID);
+        }
+
+        [Test]
         public void GetTypes_ChangedReturnedArray_DoesNotModifyTheSerializerRegistry()
         {
             Type[] first = (Type[])SerializationMetadata.GetTypes(nameof(MetadataSample));

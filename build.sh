@@ -358,8 +358,11 @@ do_build() {
     fi
 
     require_command "${PYTHON:-python3}"
+    local game_artifact_name
+    game_artifact_name="$(basename "$resolved_player_path")"
     "${PYTHON:-python3}" "$PROJECT_PATH/Tools/package_desktop.py" \
-        --platform "$build_target" --build-dir "$(dirname "$resolved_player_path")"
+        --platform "$build_target" --build-dir "$(dirname "$resolved_player_path")" \
+        --game-name "${game_artifact_name%.*}"
 
     echo "Build complete: $resolved_player_path"
 }

@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 
 /// <summary>
-/// Resolves the process's user-data location for settings and saved games.
+/// Resolves the process's user-data location for persistent application files.
 /// </summary>
 public static class UserDataPaths
 {

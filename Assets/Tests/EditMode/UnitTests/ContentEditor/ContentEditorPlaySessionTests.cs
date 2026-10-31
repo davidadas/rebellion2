@@ -149,6 +149,8 @@ namespace Rebellion.Tests.ContentEditor
 
         [TestCase(RuntimePlatform.WindowsPlayer, "rebellion2.exe")]
         [TestCase(RuntimePlatform.LinuxPlayer, "rebellion2.x86_64")]
+        [TestCase(RuntimePlatform.WindowsPlayer, "Custom game.exe")]
+        [TestCase(RuntimePlatform.LinuxPlayer, "Rebellion2.x86_64")]
         public async Task CreateStartInfo_DesktopLayout_PassesSeparateArgumentsAndAnIsolatedProfileAsync(
             RuntimePlatform platform,
             string executable
@@ -157,6 +159,24 @@ namespace Rebellion.Tests.ContentEditor
             string install = Path.Combine(folder, "installation with spaces");
             Directory.CreateDirectory(install);
             File.WriteAllText(Path.Combine(install, executable), "fixture");
+            string managed = Path.Combine(
+                install,
+                Path.GetFileNameWithoutExtension(executable) + "_Data",
+                "Managed"
+            );
+            Directory.CreateDirectory(managed);
+            File.WriteAllText(Path.Combine(managed, "GameAssembly.dll"), "fixture");
+            string editorManaged = Path.Combine(install, "rebellion2-editor_Data", "Managed");
+            Directory.CreateDirectory(editorManaged);
+            File.WriteAllText(Path.Combine(editorManaged, "GameAssembly.dll"), "fixture");
+            File.WriteAllText(
+                Path.Combine(install, "rebellion2-editor" + Path.GetExtension(executable)),
+                "fixture"
+            );
+            File.WriteAllText(
+                Path.Combine(install, "uninstaller" + Path.GetExtension(executable)),
+                "fixture"
+            );
             using ContentEditorPlaySession session = await ContentEditorPlaySession.PrepareAsync(
                 project,
                 new ContentEditorPlayOptions(

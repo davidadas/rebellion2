@@ -80,9 +80,16 @@ namespace Rebellion.Util.Serialization
         {
             if (type == null || !TypeHelper.IsEnumerable(type) || TypeHelper.IsDictionary(type))
                 return null;
-            return type.IsArray
-                ? type.GetElementType()
-                : type.GetGenericArguments().FirstOrDefault();
+            if (type.IsArray)
+                return type.GetElementType();
+            return type.GetGenericArguments().FirstOrDefault()
+                ?? type.GetInterfaces()
+                    .Where(candidate =>
+                        candidate.IsGenericType
+                        && candidate.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                    )
+                    .Select(candidate => candidate.GetGenericArguments()[0])
+                    .FirstOrDefault();
         }
     }
 }

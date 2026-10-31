@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -170,20 +171,15 @@ public sealed class ContentEditorPlaySession : IDisposable
         }
         else
         {
-            string gameName = platform switch
+            string extension = platform switch
             {
-                RuntimePlatform.WindowsPlayer => "rebellion2.exe",
-                RuntimePlatform.LinuxPlayer => "rebellion2.x86_64",
+                RuntimePlatform.WindowsPlayer => ".exe",
+                RuntimePlatform.LinuxPlayer => ".x86_64",
                 _ => throw new InvalidOperationException(
                     "Run test games from the built desktop editor."
                 ),
             };
-            string executable = Path.Combine(playerDirectory, gameName);
-            if (!File.Exists(executable))
-                throw new FileNotFoundException(
-                    "The game executable is missing beside the editor.",
-                    executable
-                );
+            string executable = FindGameExecutable(playerDirectory, dataPath, extension);
             info = new ProcessStartInfo(executable)
             {
                 UseShellExecute = false,
@@ -199,6 +195,37 @@ public sealed class ContentEditorPlaySession : IDisposable
         info.ArgumentList.Add("-logFile");
         info.ArgumentList.Add(Path.Combine(DirectoryPath, "Player.log"));
         return info;
+    }
+
+    /// <summary>
+    /// Finds the companion Unity player by its managed data folder, including custom build names.
+    /// </summary>
+    /// <param name="directory">The shared installation directory.</param>
+    /// <param name="editorDataPath">The current editor player's data folder.</param>
+    /// <param name="extension">The platform's executable suffix.</param>
+    /// <returns>The single companion game executable.</returns>
+    private static string FindGameExecutable(
+        string directory,
+        string editorDataPath,
+        string extension
+    )
+    {
+        StringComparison comparison =
+            extension == ".exe" ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        string[] candidates = Directory
+            .EnumerateDirectories(directory, "*_Data")
+            .Where(data =>
+                !string.Equals(Path.GetFullPath(data), Path.GetFullPath(editorDataPath), comparison)
+                && File.Exists(Path.Combine(data, "Managed", "GameAssembly.dll"))
+            )
+            .Select(data => data[..^5] + extension)
+            .Where(File.Exists)
+            .ToArray();
+        if (candidates.Length != 1)
+            throw new IOException(
+                "The installation must contain one companion game beside the editor."
+            );
+        return candidates[0];
     }
 
     /// <summary>
