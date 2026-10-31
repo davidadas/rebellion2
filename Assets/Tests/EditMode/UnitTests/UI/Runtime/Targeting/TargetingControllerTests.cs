@@ -304,6 +304,61 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(1, receiver.SubmissionCount);
         }
 
+        [Test]
+        public async Task TrySelectTarget_OlderSubmissionPending_SelectsReplacementRequestAsync()
+        {
+            RecordingSubmissionReceiver first = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("First", null, first, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+            controller.Begin(new TargetingRequest("Second", null, new RecordingReceiver()));
+
+            try
+            {
+                Assert.IsTrue(controller.TrySelectTarget(new StubTargetable(new object())));
+            }
+            finally
+            {
+                first.SubmissionCompletion.SetResult(false);
+                await submission;
+            }
+        }
+
+        [Test]
+        public async Task TrySubmitAsync_OlderSubmissionCompletes_KeepsReplacementFrozenAsync()
+        {
+            RecordingSubmissionReceiver first = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            RecordingSubmissionReceiver second = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("First", null, first, true));
+            Task<bool> firstSubmission = controller.TrySubmitAsync();
+            controller.Begin(new TargetingRequest("Second", null, second, true));
+            Task<bool> secondSubmission = controller.TrySubmitAsync();
+
+            try
+            {
+                first.SubmissionCompletion.SetResult(true);
+                await firstSubmission;
+
+                Assert.IsFalse(controller.TrySelectTarget(new StubTargetable(new object())));
+            }
+            finally
+            {
+                first.SubmissionCompletion.TrySetResult(false);
+                second.SubmissionCompletion.TrySetResult(false);
+                await Task.WhenAll(firstSubmission, secondSubmission);
+            }
+        }
+
         private sealed class StubTargetable : ITargetable
         {
             public object Target { get; }

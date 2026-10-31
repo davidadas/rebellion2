@@ -565,6 +565,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task OnPointerUp_SubmissionPending_PreservesActiveRequestAsync(
+            bool resolvesPosition
+        )
+        {
+            _receiver.SubmissionCompletion = new TaskCompletionSource<bool>();
+            TargetingRequest request = new("Target", null, _receiver, true);
+            _targetingController.Begin(request);
+            Task<bool> submission = _controller.SubmitTargetingAsync();
+            _resolvePosition = resolvesPosition;
+
+            try
+            {
+                _controller.OnPointerUp(CreatePointerEvent(_window.gameObject));
+
+                Assert.AreSame(request, _targetingController.ActiveRequest);
+            }
+            finally
+            {
+                _receiver.SubmissionCompletion.SetResult(false);
+                await submission;
+            }
+        }
+
+        [Test]
+        public async Task SubmitTargetingAsync_CancelledRequestAccepted_DoesNotConsumeLaterClickAsync()
+        {
+            _receiver.SubmissionCompletion = new TaskCompletionSource<bool>();
+            _targetingController.Begin(new TargetingRequest("Target", null, _receiver, true));
+            Task<bool> submission = _controller.SubmitTargetingAsync();
+            _targetingController.Cancel();
+            _openStatus = true;
+            PointerEventData eventData = CreateStatusDoubleClickEvent(_window);
+            _controller.OnPointerDown(eventData);
+
+            _receiver.SubmissionCompletion.SetResult(true);
+            await submission;
+            _controller.OnPointerUp(eventData);
+            _controller.OnPointerClick(eventData);
+
+            Assert.AreEqual(1, _openStatusCount);
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
@@ -778,9 +822,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             public void Hide() { }
         }
 
-        private sealed class RecordingTargetingReceiver : ITargetingReceiver
+        private sealed class RecordingTargetingReceiver
+            : ITargetingReceiver,
+                ITargetingSubmissionReceiver
         {
             public int CancelledCount { get; private set; }
+            public TaskCompletionSource<bool> SubmissionCompletion { get; set; }
+
+            /// <summary>
+            /// Supplies the configured submission completion without executing an order.
+            /// </summary>
+            /// <param name="request">The submitted targeting request.</param>
+            /// <returns>The deferred completion or a rejected submission.</returns>
+            public Task<bool> TrySubmitTargetingAsync(TargetingRequest request) =>
+                SubmissionCompletion?.Task ?? Task.FromResult(false);
 
             /// <summary>
             /// Executes on target selected.

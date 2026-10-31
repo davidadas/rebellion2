@@ -135,6 +135,9 @@ public sealed class StrategyScreenInputController : ICancelable
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (targetingController.IsSubmitting)
+            return;
+
         if (TryCompleteItemDrag(eventData))
             return;
 

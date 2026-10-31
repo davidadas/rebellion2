@@ -123,11 +123,17 @@ public sealed class TargetingController : ICancelable
     private readonly ITargetingCursor cursor;
     private TargetingRequest activeRequest;
     private bool cursorVisible;
-    private bool submitting;
+    private TargetingRequest submittingRequest;
 
     public bool IsTargeting => activeRequest != null;
 
     public TargetingRequest ActiveRequest => activeRequest;
+
+    /// <summary>
+    /// Gets whether the active request is waiting for its submitted operation to complete.
+    /// </summary>
+    public bool IsSubmitting =>
+        activeRequest != null && ReferenceEquals(activeRequest, submittingRequest);
 
     /// <summary>
     /// Creates a targeting controller with an optional cursor presenter.
@@ -184,7 +190,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when an active request was completed.</returns>
     public bool TrySelectTarget(ITargetable targetable)
     {
-        if (submitting || activeRequest == null || targetable == null)
+        if (IsSubmitting || activeRequest == null || targetable == null)
             return false;
 
         TargetingRequest request = activeRequest;
@@ -201,32 +207,33 @@ public sealed class TargetingController : ICancelable
     /// <summary>
     /// Tries to submit an active multi-selection targeting request.
     /// </summary>
-    /// <returns>True when the receiver committed the request.</returns>
+    /// <returns>True when the still-active request was accepted and targeting ended.</returns>
     public async Task<bool> TrySubmitAsync()
     {
         if (
-            submitting
+            IsSubmitting
             || activeRequest == null
             || activeRequest.Receiver is not ITargetingSubmissionReceiver receiver
         )
             return false;
 
         TargetingRequest submittedRequest = activeRequest;
-        submitting = true;
+        submittingRequest = submittedRequest;
         try
         {
-            if (!await receiver.TrySubmitTargetingAsync(submittedRequest))
+            if (
+                !await receiver.TrySubmitTargetingAsync(submittedRequest)
+                || !ReferenceEquals(activeRequest, submittedRequest)
+            )
                 return false;
-            if (ReferenceEquals(activeRequest, submittedRequest))
-            {
-                activeRequest = null;
-                HideCursor();
-            }
+            activeRequest = null;
+            HideCursor();
             return true;
         }
         finally
         {
-            submitting = false;
+            if (ReferenceEquals(submittingRequest, submittedRequest))
+                submittingRequest = null;
         }
     }
 
@@ -251,7 +258,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when a request was canceled.</returns>
     public bool TryCancel()
     {
-        if (submitting || activeRequest == null)
+        if (IsSubmitting || activeRequest == null)
             return false;
 
         if (
