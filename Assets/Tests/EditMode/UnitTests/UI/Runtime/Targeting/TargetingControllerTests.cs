@@ -240,6 +240,70 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(1, receiver.CanceledCount);
         }
 
+        [Test]
+        public async Task TrySelectTarget_SubmissionPending_PreservesPlanUntilRejectionAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("Target", null, receiver, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+            StubTargetable target = new(new object());
+
+            Assert.IsFalse(controller.TrySelectTarget(target));
+            Assert.Zero(receiver.SelectedCount);
+            receiver.SubmissionCompletion.SetResult(false);
+            Assert.IsFalse(await submission);
+
+            Assert.IsTrue(controller.TrySelectTarget(target));
+            Assert.AreEqual(1, receiver.SelectedCount);
+        }
+
+        [Test]
+        public async Task TryCancel_SubmissionPending_PreservesPlanUntilRejectionAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                KeepActiveAfterUndo = true,
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingController controller = new();
+            controller.Begin(new TargetingRequest("Target", null, receiver, true));
+            Task<bool> submission = controller.TrySubmitAsync();
+
+            Assert.IsFalse(controller.TryCancel());
+            Assert.Zero(receiver.UndoCount);
+            Assert.Zero(receiver.CanceledCount);
+            receiver.SubmissionCompletion.SetResult(false);
+            Assert.IsFalse(await submission);
+
+            Assert.IsTrue(controller.TryCancel());
+            Assert.AreEqual(1, receiver.UndoCount);
+        }
+
+        [Test]
+        public async Task TrySubmitAsync_SubmissionAccepted_EndsFrozenTargetingAsync()
+        {
+            RecordingSubmissionReceiver receiver = new()
+            {
+                SubmissionCompletion = new TaskCompletionSource<bool>(),
+            };
+            TargetingRequest request = new("Target", null, receiver, true);
+            TargetingController controller = new();
+            controller.Begin(request);
+            Task<bool> submission = controller.TrySubmitAsync();
+
+            Assert.IsFalse(await controller.TrySubmitAsync());
+            Assert.AreSame(request, controller.ActiveRequest);
+            receiver.SubmissionCompletion.SetResult(true);
+
+            Assert.IsTrue(await submission);
+            Assert.IsFalse(controller.IsTargeting);
+            Assert.AreEqual(1, receiver.SubmissionCount);
+        }
+
         private sealed class StubTargetable : ITargetable
         {
             public object Target { get; }
@@ -337,6 +401,8 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             public bool KeepActiveAfterUndo { get; set; }
             public TargetingRequest LastRequest { get; private set; }
             public int SubmissionCount { get; private set; }
+            public TaskCompletionSource<bool> SubmissionCompletion { get; set; }
+            public int SelectedCount { get; private set; }
             public int UndoCount { get; private set; }
 
             /// <summary>
@@ -344,7 +410,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             /// </summary>
             /// <param name="request">The request.</param>
             /// <param name="target">The target.</param>
-            public void OnTargetSelected(TargetingRequest request, object target) { }
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                SelectedCount++;
+                LastRequest = request;
+            }
 
             /// <summary>
             /// Executes on targeting cancelled.
@@ -365,7 +435,7 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             {
                 SubmissionCount++;
                 LastRequest = request;
-                return Task.FromResult(AcceptSubmission);
+                return SubmissionCompletion?.Task ?? Task.FromResult(AcceptSubmission);
             }
 
             /// <summary>

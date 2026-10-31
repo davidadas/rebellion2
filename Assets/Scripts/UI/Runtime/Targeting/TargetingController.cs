@@ -184,7 +184,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when an active request was completed.</returns>
     public bool TrySelectTarget(ITargetable targetable)
     {
-        if (activeRequest == null || targetable == null)
+        if (submitting || activeRequest == null || targetable == null)
             return false;
 
         TargetingRequest request = activeRequest;
@@ -251,7 +251,7 @@ public sealed class TargetingController : ICancelable
     /// <returns><see langword="true"/> when a request was canceled.</returns>
     public bool TryCancel()
     {
-        if (activeRequest == null)
+        if (submitting || activeRequest == null)
             return false;
 
         if (

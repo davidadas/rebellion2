@@ -46,6 +46,7 @@ public sealed class UIRequestNoticeView : MonoBehaviour
     /// <param name="canRespond">Whether both response controls should be visible.</param>
     public void Render(string message, Color color, bool canRespond)
     {
+        messageText.richText = false;
         messageText.text = message ?? string.Empty;
         messageText.color = color;
         acceptButton.gameObject.SetActive(canRespond);

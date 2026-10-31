@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -15,6 +16,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.PlayerRequests
 {
@@ -828,6 +830,7 @@ namespace Rebellion.Tests.PlayerRequests
 
         [TestCase("first line\r\nsecond line\n  final line  ")]
         [TestCase(" \t\r\n ")]
+        [TestCase("Meet at \U0001F680 <coordinates> & wait")]
         public void Execute_SendPeerChatRawText_PreservesSubmittedBody(string text)
         {
             PlayerRequestOutcome result = _executor.Execute(
@@ -851,6 +854,35 @@ namespace Rebellion.Tests.PlayerRequests
             Assert.IsFalse(result.Accepted);
             Assert.IsEmpty(_actor.Messages[MessageType.Chat]);
             Assert.IsEmpty(_opponent.Messages[MessageType.Chat]);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(11)]
+        [TestCase(0xD800)]
+        [TestCase(0xDC00)]
+        [TestCase(0xFFFE)]
+        [TestCase(0xFFFF)]
+        public void Execute_SendPeerChatInvalidXmlCharacters_RejectsWithoutDelivery(int character)
+        {
+            PlayerRequestOutcome result = _executor.Execute(
+                _ownerID,
+                new SendPeerChatRequest { Text = "Message " + (char)character }
+            );
+
+            Assert.IsFalse(result.Accepted);
+            Assert.IsEmpty(_actor.Messages[MessageType.Chat]);
+            Assert.IsEmpty(_opponent.Messages[MessageType.Chat]);
+        }
+
+        [Test]
+        public void Execute_SendPeerChatInvalidXmlCharacters_LeavesGameSaveable()
+        {
+            _executor.Execute(_ownerID, new SendPeerChatRequest { Text = "Message \u0001" });
+            using MemoryStream save = new();
+            GameSerializer serializer = new(typeof(GameRoot));
+
+            Assert.DoesNotThrow(() => serializer.Serialize(save, _game));
         }
 
         [TestCase(_ownerID, _opponentID)]

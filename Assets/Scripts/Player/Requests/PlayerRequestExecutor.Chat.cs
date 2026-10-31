@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Xml;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -22,6 +23,14 @@ namespace Rebellion.PlayerRequests
         {
             if (string.IsNullOrEmpty(request.Text))
                 return Reject("Enter a message to send.");
+            try
+            {
+                XmlConvert.VerifyXmlChars(request.Text);
+            }
+            catch (XmlException)
+            {
+                return Reject("The message contains unsupported characters.");
+            }
             Player sender = _session.Game.GetFactionPlayer(actor.InstanceID);
             Player[] recipients = _session
                 .Game.GetPlayers()
