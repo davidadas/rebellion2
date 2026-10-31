@@ -13,7 +13,16 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="TngTech.ArchUnitNET.NUnit" Version="0.13.4" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' == ''">
     <ProjectReference Include="../../GameAssembly.csproj" />
+    <ProjectReference Include="../../ContentPackEditorAssembly.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UnityCompiledAssembliesPath)' != ''">
+    <Reference Include="GameAssembly">
+      <HintPath>$(UnityCompiledAssembliesPath)/GameAssembly.dll</HintPath>
+    </Reference>
+    <Reference Include="ContentPackEditorAssembly">
+      <HintPath>$(UnityCompiledAssembliesPath)/ContentPackEditorAssembly.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

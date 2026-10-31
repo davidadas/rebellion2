@@ -237,7 +237,7 @@ public static class CommonUIPrefabBuilder
         GameObject root = CreateRectObject("TextInput");
         root.AddComponent<CanvasRenderer>();
         Image image = root.AddComponent<Image>();
-        TMP_InputField input = root.AddComponent<TMP_InputField>();
+        TMP_InputField input = root.AddComponent<MenuInputField>();
         input.enabled = true;
         SetSourceRect(
             root.GetComponent<RectTransform>(),

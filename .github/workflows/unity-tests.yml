@@ -127,7 +127,9 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - uses: actions/cache@v4
+      - name: Restore Unity build Library
+        id: build-library
+        uses: actions/cache/restore@v4
         with:
           path: Library
           key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
@@ -151,6 +153,7 @@ jobs:
           exit 1
 
       - name: Build project
+        id: unity-build
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -161,6 +164,36 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
           buildMethod: StandalonePlayerBuild.Build
+          buildName: rebellion2
+          buildsPath: build
+
+      - name: Save compiled Unity build Library
+        if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.build-library.outputs.cache-primary-key }}
+
+      - name: Package verified desktop bundle
+        shell: bash
+        run: |
+          extension="tar.gz"
+          if [ "${{ matrix.targetPlatform }}" = "StandaloneWindows64" ]; then
+            extension="zip"
+          fi
+          python3 Tools/package_desktop.py \
+            --platform "${{ matrix.targetPlatform }}" \
+            --build-dir "build/${{ matrix.targetPlatform }}" \
+            --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
+
+      - name: Upload desktop bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebellion2-${{ matrix.targetPlatform }}
+          path: dist/rebellion2-${{ matrix.targetPlatform }}.*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
       - name: Reset package files
         run: |
@@ -193,6 +226,9 @@ jobs:
 
       - name: Format check
         run: dotnet csharpier check Assets/
+
+      - name: Test desktop packaging
+        run: python3 -m unittest discover -s Tools/tests -v
 
       - name: Extract Unity managed assemblies
         run: |
@@ -308,7 +344,9 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - uses: actions/cache@v4
+      - name: Restore Unity test Library
+        id: test-library
+        uses: actions/cache/restore@v4
         with:
           path: Library
           key: Library-test-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
@@ -332,6 +370,7 @@ jobs:
           EOF
 
       - name: Run Unity Tests
+        id: unity-tests
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -347,6 +386,51 @@ jobs:
           customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
+
+      - name: Save imported Unity test Library
+        if: >-
+          ${{ !cancelled()
+              && steps.test-library.outputs.cache-hit != 'true'
+              && hashFiles('artifacts/editmode-results.xml') != ''
+              && hashFiles('Library/ScriptAssemblies/UnitTests.dll') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.test-library.outputs.cache-primary-key }}
+
+      - name: Upload Unity test results
+        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: editmode-test-results
+          path: artifacts/editmode-results.xml
+          retention-days: 7
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check compiled architecture
+        run: |
+          set -euo pipefail
+          test -f Library/ScriptAssemblies/GameAssembly.dll
+          test -f Library/ScriptAssemblies/ContentPackEditorAssembly.dll
+          architecture_runtime="$RUNNER_TEMP/architecture-unity-runtime"
+          mkdir -p "$architecture_runtime"
+          architecture_container="$(docker create rebellion2-unity-test:vulkan)"
+          trap 'docker rm "$architecture_container" >/dev/null' EXIT
+          docker cp "$architecture_container:/opt/unity/Editor/Data/Managed/UnityEngine/." "$architecture_runtime/"
+          dotnet build Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
+            -p:UnityCompiledAssembliesPath="$PWD/Library/ScriptAssemblies"
+          architecture_output="Tools/Rebellion.Architecture.Tests/bin/Debug/net8.0"
+          cp "$architecture_runtime"/*.dll "$architecture_output/"
+          for package in Library/ScriptAssemblies/Unity*.dll Library/ScriptAssemblies/glTFast*.dll; do
+            if [ -f "$package" ]; then
+              cp "$package" "$architecture_output/"
+            fi
+          done
+          dotnet test Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj \
+            --no-build --logger "console;verbosity=normal"
 
       - name: Check coverage threshold
         run: |

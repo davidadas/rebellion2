@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Reflection;
 
@@ -62,25 +61,8 @@ public static class GameLaunchContext
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <returns>The default launch summary.</returns>
-    internal static GameSummary CreateDefaultSummary(ContentPack contentPack)
-    {
-        if (contentPack == null)
-            throw new ArgumentNullException(nameof(contentPack));
-
-        string[] startingFactionIds = contentPack.Scenario.PlayableFactionIDs.ToArray();
-        return new GameSummary
-        {
-            Difficulty = GameDifficulty.Easy,
-            GalaxySize = GameSize.Large,
-            VictoryCondition = GameVictoryCondition.Conquest,
-            ResourceAvailability = GameResourceAvailability.Normal,
-            PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
-            StartingFactionIDs = startingFactionIds,
-            PackID = contentPack.Definition.ID,
-            PackVersion = contentPack.Definition.Version,
-            ScenarioID = contentPack.Scenario.ID,
-            ModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
-            ModVersions = contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray(),
-        };
-    }
+    internal static GameSummary CreateDefaultSummary(ContentPack contentPack) =>
+        (
+            contentPack ?? throw new ArgumentNullException(nameof(contentPack))
+        ).CreateDefaultGameSummary();
 }

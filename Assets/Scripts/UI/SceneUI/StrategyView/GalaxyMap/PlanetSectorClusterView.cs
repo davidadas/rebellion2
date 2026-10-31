@@ -160,7 +160,7 @@ public sealed class PlanetSectorClusterView
     /// </summary>
     /// <param name="index">The rendered marker index.</param>
     /// <returns>The marker bounds, or default for an invalid index.</returns>
-    internal RectInt GetRenderedStarSourceRect(int index)
+    public RectInt GetRenderedStarSourceRect(int index)
     {
         return index >= 0 && index < starImages.Count
             ? GetSourceRect(starImages[index].rectTransform)

@@ -151,7 +151,7 @@ public sealed class UserSettingsManager
         disabledModIDs = Array.Empty<string>();
         try
         {
-            string path = Path.Combine(Application.persistentDataPath, _settingsFileName);
+            string path = Path.Combine(UserDataPaths.Root, _settingsFileName);
             if (!File.Exists(path))
                 return false;
 
@@ -176,8 +176,7 @@ public sealed class UserSettingsManager
     /// <returns>The absolute user settings file path.</returns>
     public string GetSettingsFilePath()
     {
-        return _settingsFilePathOverride
-            ?? Path.Combine(Application.persistentDataPath, _settingsFileName);
+        return _settingsFilePathOverride ?? Path.Combine(UserDataPaths.Root, _settingsFileName);
     }
 
     /// <summary>

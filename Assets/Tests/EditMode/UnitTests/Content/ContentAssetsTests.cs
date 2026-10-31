@@ -251,6 +251,36 @@ namespace Rebellion.Tests.Content
             }
         }
 
+        [TestCase(".wav")]
+        [TestCase(".ogg")]
+        [TestCase(".mp3")]
+        public async Task LoadAudioAsync_SupportedCodec_DecodesNonSilentSamplesAsync(
+            string extension
+        )
+        {
+            string directory = Path.Combine(_packRoot, "Audio");
+            Directory.CreateDirectory(directory);
+            File.Copy(
+                Path.Combine(
+                    "Assets",
+                    "Tests",
+                    "EditMode",
+                    "UnitTests",
+                    "Content",
+                    "AudioFixtures",
+                    "tone" + extension
+                ),
+                Path.Combine(directory, "tone" + extension)
+            );
+            using ContentAssets assets = CreateAssets();
+            AudioClip clip = await assets.LoadAudioAsync("Pack/Audio/tone");
+            Assert.IsNotNull(clip);
+            Assert.Greater(clip.samples, 0);
+            float[] samples = new float[clip.samples * clip.channels];
+            Assert.IsTrue(clip.GetData(samples, 0));
+            Assert.IsTrue(Array.Exists(samples, sample => Mathf.Abs(sample) > 0.01f));
+        }
+
         /// <summary>
         /// Creates assets.
         /// </summary>

@@ -1,0 +1,35 @@
+fileFormatVersion: 2
+guid: e596a9b115da48558bc52808e3ef2956
+PluginImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  iconMap: {}
+  executionOrder: {}
+  defineConstraints:
+  - UNITY_EDITOR || REBELLION_CONTENT_PACK_EDITOR
+  isPreloaded: 0
+  isOverridable: 0
+  isExplicitlyReferenced: 0
+  validateReferences: 1
+  platformData:
+  - first:
+      Any: 
+    second:
+      enabled: 0
+      settings: {}
+  - first:
+      Editor: Editor
+    second:
+      enabled: 1
+      settings:
+        CPU: x86
+        OS: Windows
+  - first:
+      Standalone: Win
+    second:
+      enabled: 1
+      settings:
+        CPU: x86
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

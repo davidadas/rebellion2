@@ -96,7 +96,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
-        _availablePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+        _availablePacks = _showModsTab
+            ? ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath)
+            : new[] { contentPack.Definition };
         ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
@@ -323,15 +325,22 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Rediscovers compatible mods for the pending content-pack selection.
+    /// Discovers installed choices or retains the already resolved content for a loaded folder.
     /// </summary>
     private void RefreshSelectedModResolver()
     {
-        _selectedModResolver = ContentPackLoader.DiscoverModResolver(
-            _bootstrap.GetContentPack().ContentRootPath,
-            _selectedPackID,
-            _selectedDisabledModIDs
-        );
+        ContentPack contentPack = _bootstrap.GetContentPack();
+        _selectedModResolver =
+            _showModsTab
+            && _availablePacks.Any(pack =>
+                string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
+            )
+                ? ContentPackLoader.DiscoverModResolver(
+                    contentPack.ContentRootPath,
+                    _selectedPackID,
+                    _selectedDisabledModIDs
+                )
+                : contentPack.FileResolver;
     }
 
     /// <summary>
