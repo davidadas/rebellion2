@@ -332,7 +332,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
-          find Content -type f -name '*.mp4' -delete
+          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
