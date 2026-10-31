@@ -1372,10 +1372,12 @@ public sealed class FleetWindowController
             return;
 
         GameRoot requestGame = getUIContext()?.Game;
-        if (session.RenameTarget != null && !string.IsNullOrEmpty(value))
+        ISceneNode renameTarget = session.RenameTarget;
+        session.EndRename();
+        if (renameTarget != null && !string.IsNullOrEmpty(value))
         {
             PlayerRequestOutcome result = await playerRequests.ExecuteAsync(
-                new RenameRequest { EntityID = session.RenameTarget.InstanceID, Name = value }
+                new RenameRequest { EntityID = renameTarget.InstanceID, Name = value }
             );
             if (!result.Accepted)
                 return;
@@ -1388,7 +1390,6 @@ public sealed class FleetWindowController
         )
             return;
 
-        session.EndRename();
         markDirty();
     }
 

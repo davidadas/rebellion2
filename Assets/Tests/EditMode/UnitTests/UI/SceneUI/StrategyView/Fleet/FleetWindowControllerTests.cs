@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,8 +16,10 @@ using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using TMPro;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -53,35 +56,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [SetUp]
         public void SetUp()
         {
-            _dirtyCount = 0;
-            _selectionRouteRenderCount = 0;
-            _game = CreateGame();
-            _uiContext = TestContent.CreateUIContext(
-                _game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
-            );
-            _planet = CreatePlanet(_game);
-            _fleet = CreateFleet("fleet", "First Fleet", out _officer);
-            _planet.Planet.AddChild(_fleet);
-            AttachFleetGraph(_planet.Planet, _fleet);
-            _session = TestContent.CreateGameSession(_game);
-            _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
-            _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
-            _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
-            _targetingController = new TargetingController();
-            _fleetCommandController = CreateFleetCommandController();
-            _controller = CreateController();
-            _actions = new TestActions();
-            _controller.Initialize(
-                _actions,
-                _actions,
-                _actions,
-                _actions,
-                (_, _) => { },
-                _ => { },
-                _ => { }
-            );
+            CreateFixture();
         }
 
         /// <summary>
@@ -90,7 +65,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [TearDown]
         public void TearDown()
         {
-            UnityEngine.Object.DestroyImmediate(_rootObject);
+            DestroyFixture();
+        }
+
+        /// <summary>
+        /// Restores Edit Mode after exercising Unity's window lifecycle.
+        /// </summary>
+        /// <returns>The mode-cleanup sequence.</returns>
+        [UnityTearDown]
+        public IEnumerator LeavePlayMode()
+        {
+            if (!Application.isPlaying)
+                yield break;
+            DestroyFixture();
+            yield return new ExitPlayMode();
+        }
+
+        [UnityTest]
+        public IEnumerator OnContextMenuCommandSelected_OlderRenameCompletes_PreservesNewRename()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            CreatePlayModeFixture();
+            yield return VerifyDeferredRename(true);
+        }
+
+        [UnityTest]
+        public IEnumerator RenderWindow_SubmittedRenamePendingOrRejected_KeepsInputClosed()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            CreatePlayModeFixture();
+            yield return VerifyDeferredRename(false);
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyWindow_RenameActive_ReleasesWindowWithoutErrors()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            CreatePlayModeFixture();
+            BeginFleetRename();
+            FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
+            UIWindow window = view.GetComponent<UIWindow>();
+            _controller.RenderWindow(view, window, true);
+            Assert.IsTrue(view.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf);
+
+            _windowManager.DestroyWindow(window);
+            yield return null;
+
+            Assert.IsTrue(view == null);
+            Assert.IsEmpty(_windowManager.Windows);
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
@@ -1222,6 +1248,149 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 )
             );
             return request;
+        }
+
+        /// <summary>
+        /// Creates model and authored-view state for one test.
+        /// </summary>
+        private void CreateFixture()
+        {
+            _dirtyCount = 0;
+            _selectionRouteRenderCount = 0;
+            _game = CreateGame();
+            _uiContext = TestContent.CreateUIContext(
+                _game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            _planet = CreatePlanet(_game);
+            _fleet = CreateFleet("fleet", "First Fleet", out _officer);
+            _planet.Planet.AddChild(_fleet);
+            AttachFleetGraph(_planet.Planet, _fleet);
+            _session = TestContent.CreateGameSession(_game);
+            _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+            GameFlowController flow = _rootObject.GetComponentInChildren<GameFlowController>(true);
+            if (flow != null)
+                flow.enabled = false;
+            StrategyController strategy = _rootObject.GetComponentInChildren<StrategyController>(
+                true
+            );
+            if (strategy != null)
+                strategy.enabled = false;
+            _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
+            _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _targetingController = new TargetingController();
+            _fleetCommandController = CreateFleetCommandController();
+            _controller = CreateController();
+            _actions = new TestActions();
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+        }
+
+        /// <summary>
+        /// Releases the fixture before mode transitions and after tests.
+        /// </summary>
+        private void DestroyFixture()
+        {
+            UnityEngine.Object.DestroyImmediate(_rootObject);
+            _rootObject = null;
+            _session?.Dispose();
+            _session = null;
+        }
+
+        /// <summary>
+        /// Releases Edit Mode objects before entering an empty Play Mode scene.
+        /// </summary>
+        private void PreparePlayMode()
+        {
+            DestroyFixture();
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        }
+
+        /// <summary>
+        /// Creates authored controls with Unity's actual Awake and destruction callbacks.
+        /// </summary>
+        private void CreatePlayModeFixture()
+        {
+            Assert.IsTrue(Application.isPlaying);
+            DestroyFixture();
+            CreateFixture();
+            foreach (Camera camera in _rootObject.GetComponentsInChildren<Camera>(true))
+                camera.enabled = false;
+        }
+
+        /// <summary>
+        /// Selects Rename through a fresh public fleet context menu.
+        /// </summary>
+        private void BeginFleetRename()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+            StrategyMenuCommand rename = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Rename);
+            ContextMenuController menu = new();
+            menu.Open(request);
+            Assert.IsTrue(menu.TrySelectCommand(rename));
+        }
+
+        /// <summary>
+        /// Completes one request after another render or another edit of the same target.
+        /// </summary>
+        /// <param name="beginNewRename">Whether to start a newer draft before accepting the old request.</param>
+        /// <returns>The deferred public-control verification sequence.</returns>
+        private IEnumerator VerifyDeferredRename(bool beginNewRename)
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+            BeginFleetRename();
+            FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
+            UIWindow window = view.GetComponent<UIWindow>();
+            _controller.RenderWindow(view, window, true);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+            input.SetTextWithoutNotify("Submitted name");
+            input.onSubmit.Invoke(input.text);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            Assert.IsFalse(input.gameObject.activeSelf);
+
+            _controller.RenderWindow(view, window, true);
+            Assert.IsFalse(input.gameObject.activeSelf, "Rendering reopened the submitted edit.");
+            if (beginNewRename)
+            {
+                BeginFleetRename();
+                _controller.RenderWindow(view, window, true);
+                input.SetTextWithoutNotify("New rename draft");
+                Assert.IsTrue(input.gameObject.activeSelf);
+            }
+
+            completion.SetResult(new PlayerRequestOutcome(beginNewRename));
+            yield return null;
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual(beginNewRename, input.gameObject.activeSelf);
+            if (beginNewRename)
+                Assert.AreEqual("New rename draft", input.text);
         }
 
         /// <summary>
