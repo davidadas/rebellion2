@@ -1773,7 +1773,7 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
-    /// Mission that marks an unvisited planet as visited.
+    /// Mission that gathers current intelligence about a non-friendly planet.
     /// </summary>
     public class ReconnaissanceMission : Mission
     {
@@ -1797,7 +1797,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns a reconnaissance mission for an unvisited location planet, or null.
+        /// Returns a reconnaissance mission for a non-friendly location planet, or null.
         /// </summary>
         /// <param name="ctx">Mission context providing owner, location, participants, and fog-of-war.</param>
         /// <returns>A configured mission, or null if the location is invalid.</returns>
@@ -1807,9 +1807,6 @@ namespace Rebellion.Game.Missions
                 return null;
 
             if (planet.GetOwnerInstanceID() == ctx.OwnerInstanceId)
-                return null;
-
-            if (planet.WasVisitedBy(ctx.OwnerInstanceId))
                 return null;
 
             List<IMissionParticipant> mainParticipants =

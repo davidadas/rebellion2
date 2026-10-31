@@ -603,6 +603,20 @@ public sealed class StrategyController
             MarkDirty,
             getSelectionModifiers
         );
+        missionCreateWindowController = new MissionCreateWindowController(
+            session,
+            () => uiContext,
+            PlaySfx,
+            strategyWindowLayerView,
+            strategyWindowManager,
+            windowPlacementController.GetMissionCreateWindowPosition,
+            CloseWindow,
+            MarkDirty,
+            getSelectionModifiers,
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
+            GetShowMissionOdds,
+            SetShowMissionOdds
+        );
         planetSectorWindowController = new PlanetSectorWindowController(
             fleetCommandController,
             () => uiContext,
@@ -613,6 +627,8 @@ public sealed class StrategyController
             windowPlacementController.GetSectorWindowPosition,
             CloseWindow,
             MarkDirty,
+            (target, items) =>
+                missionCreateWindowController.CanOpen(target, items, PlayerFactionId),
             () =>
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
@@ -722,20 +738,6 @@ public sealed class StrategyController
             windowPlacementController.GetBattleAlertWindowPosition,
             CloseWindow,
             MarkDirty
-        );
-        missionCreateWindowController = new MissionCreateWindowController(
-            session,
-            () => uiContext,
-            PlaySfx,
-            strategyWindowLayerView,
-            strategyWindowManager,
-            windowPlacementController.GetMissionCreateWindowPosition,
-            CloseWindow,
-            MarkDirty,
-            () => bootstrap.GetInputManager().GetSelectionModifierState(),
-            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
-            GetShowMissionOdds,
-            SetShowMissionOdds
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -1721,7 +1723,13 @@ public sealed class StrategyController
         }
 
         strategyOverlay.Render(
-            new StrategyOverlayRenderData(dragFrameBounds, dragPreview, dragPointerX, dragPointerY)
+            new StrategyOverlayRenderData(
+                dragFrameBounds,
+                dragPreview,
+                dragPointerX,
+                dragPointerY,
+                planetSectorWindowController?.IsMissionDropTargetVisible() == true
+            )
         );
     }
 
@@ -2221,7 +2229,7 @@ public sealed class StrategyController
     /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
-        session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
+        session?.GetService<AdvisorAutomationCommands>()?.ProcessFaction(faction);
         session?.GetService<NamingCommands>()?.ProcessFaction(faction);
         RefreshStrategyState();
     }
@@ -2362,7 +2370,7 @@ public sealed class StrategyController
             return false;
 
         return session
-                ?.GetService<OfficerCommandCommands>()
+                ?.GetService<PersonnelCommands>()
                 ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
     }
 

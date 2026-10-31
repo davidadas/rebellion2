@@ -23,20 +23,6 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Evaluates a consideration and quantizes its contribution for a discrete scoring domain.
-        /// </summary>
-        /// <param name="input">The normalized consideration input.</param>
-        /// <param name="consideration">The response curve and contribution weight.</param>
-        /// <returns>The weighted utility contribution truncated to a whole score point.</returns>
-        public static double EvaluateDiscrete(
-            double input,
-            GameConfig.AIConsiderationConfig consideration
-        )
-        {
-            return Math.Truncate(Evaluate(input, consideration));
-        }
-
-        /// <summary>
         /// Evaluates a normalized input around a neutral midpoint.
         /// </summary>
         /// <param name="input">The normalized consideration input.</param>

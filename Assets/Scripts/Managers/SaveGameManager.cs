@@ -35,10 +35,7 @@ public class SaveGameManager
     public const int MaxDisplayNameLength = 64;
     public const string AutosaveFilePrefix = "autosave_";
     public const string QuickSaveFileName = "quicksave";
-    private const int _saveSlotCount = 6;
     private const string _quickSaveDisplayName = "Quicksave";
-    private const string _saveSlotFilePrefix = "save_slot_";
-    private const string _saveSlotDisplayPrefix = "Save Slot ";
     private const string _metadataElementName = "Metadata";
     private const string _metadataFileExtension = ".metadata.xml";
 
@@ -64,8 +61,6 @@ public class SaveGameManager
         }
     }
 
-    public int SaveSlotCount => _saveSlotCount;
-
     /// <summary>
     /// Creates the singleton save manager for the application's persistent save directory.
     /// </summary>
@@ -85,42 +80,6 @@ public class SaveGameManager
             );
 
         _saveDirectoryPath = saveDirectoryPath;
-    }
-
-    /// <summary>
-    /// Returns whether the supplied save slot index is valid.
-    /// </summary>
-    /// <param name="slot">The zero-based save slot index.</param>
-    /// <returns>True when the save slot index is valid.</returns>
-    public bool IsValidSaveSlot(int slot)
-    {
-        return slot >= 0 && slot < _saveSlotCount;
-    }
-
-    /// <summary>
-    /// Returns the save file name for a numbered save slot.
-    /// </summary>
-    /// <param name="slot">The zero-based save slot index.</param>
-    /// <returns>The save file name for the slot.</returns>
-    public string GetSaveSlotFileName(int slot)
-    {
-        if (!IsValidSaveSlot(slot))
-            throw new ArgumentOutOfRangeException(nameof(slot));
-
-        return _saveSlotFilePrefix + (slot + 1);
-    }
-
-    /// <summary>
-    /// Returns the display name for a numbered save slot.
-    /// </summary>
-    /// <param name="slot">The zero-based save slot index.</param>
-    /// <returns>The display name for the slot.</returns>
-    public string GetSaveSlotDisplayName(int slot)
-    {
-        if (!IsValidSaveSlot(slot))
-            throw new ArgumentOutOfRangeException(nameof(slot));
-
-        return _saveSlotDisplayPrefix + (slot + 1);
     }
 
     /// <summary>
@@ -150,27 +109,6 @@ public class SaveGameManager
     internal string GetSaveMetadataFilePath(string fileName)
     {
         return Path.Combine(GetSaveDirectoryPath(), fileName + _metadataFileExtension);
-    }
-
-    /// <summary>
-    /// Returns valid saves occupying the configured numbered slots.
-    /// </summary>
-    /// <returns>The discovered numbered save entries in slot order.</returns>
-    public IReadOnlyList<SaveGameEntry> GetSaveSlotEntries()
-    {
-        List<SaveGameEntry> saves = new List<SaveGameEntry>(_saveSlotCount);
-        for (int slot = 0; slot < _saveSlotCount; slot++)
-        {
-            string fileName = GetSaveSlotFileName(slot);
-            if (!File.Exists(GetSaveFilePath(fileName)))
-                continue;
-
-            SaveGameEntry save = TryReadSaveEntry(fileName);
-            if (save != null)
-                saves.Add(save);
-        }
-
-        return saves;
     }
 
     /// <summary>
@@ -365,23 +303,6 @@ public class SaveGameManager
             GameLogger.Warning($"Autosave failed at tick {game.CurrentTick}: {exception.Message}");
             return false;
         }
-    }
-
-    /// <summary>
-    /// Saves game data to one numbered save slot with a display name.
-    /// </summary>
-    /// <param name="game">The game data to save.</param>
-    /// <param name="slot">The zero-based save slot index.</param>
-    /// <param name="displayName">The display name to store in save metadata.</param>
-    public void SaveSlotGameData(GameRoot game, int slot, string displayName)
-    {
-        if (!IsValidSaveSlot(slot))
-            throw new ArgumentOutOfRangeException(nameof(slot));
-
-        string resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
-            ? GetSaveSlotDisplayName(slot)
-            : displayName.Trim();
-        SaveGameData(game, GetSaveSlotFileName(slot), resolvedDisplayName);
     }
 
     /// <summary>

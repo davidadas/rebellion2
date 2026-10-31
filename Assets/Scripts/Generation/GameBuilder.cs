@@ -4,7 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Reflection;

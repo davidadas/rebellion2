@@ -71,6 +71,7 @@ public sealed class PlanetSectorWindowController
 
     private readonly HashSet<PlanetSectorWindowView> boundViews =
         new HashSet<PlanetSectorWindowView>();
+    private readonly Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission;
     private readonly Action<UIWindow, bool> closeWindow;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Func<GalacticInformationFilterMode> getFilterMode;
@@ -105,6 +106,7 @@ public sealed class PlanetSectorWindowController
     /// <param name="getWindowPosition">Returns the authored position for a sector slot.</param>
     /// <param name="closeWindow">Closes a registered window through the screen lifecycle.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="canCreateMission">Returns whether the active selection has a mission available for a target.</param>
     /// <param name="getFilterMode">Returns the active galactic-information filter.</param>
     /// <param name="getSelectedFleetInstanceIds">Returns fleets selected across strategy windows.</param>
     public PlanetSectorWindowController(
@@ -117,6 +119,7 @@ public sealed class PlanetSectorWindowController
         Func<int, Vector2Int> getWindowPosition,
         Action<UIWindow, bool> closeWindow,
         Action markDirty,
+        Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission,
         Func<GalacticInformationFilterMode> getFilterMode = null,
         Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null
     )
@@ -135,6 +138,8 @@ public sealed class PlanetSectorWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.canCreateMission =
+            canCreateMission ?? throw new ArgumentNullException(nameof(canCreateMission));
         this.getFilterMode = getFilterMode ?? (() => GalacticInformationFilterMode.DisplayOff);
         this.getSelectedFleetInstanceIds =
             getSelectedFleetInstanceIds ?? (() => Array.Empty<string>());
@@ -406,6 +411,21 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
+    /// Determines whether an open planet-sector window is displaying a mission drop target.
+    /// </summary>
+    /// <returns>True when a mission-capable drag is hovering a planet.</returns>
+    public bool IsMissionDropTargetVisible()
+    {
+        foreach (PlanetSectorWindowSession session in sessions.Values)
+        {
+            if (!string.IsNullOrEmpty(GetMissionDropPlanetInstanceId(session)))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Changes the authored position slot owned by one planet-sector session.
     /// </summary>
     /// <param name="view">The planet-sector view.</param>
@@ -443,9 +463,35 @@ public sealed class PlanetSectorWindowController
                 getSelectedFleetInstanceIds(),
                 filterMode == GalacticInformationFilterMode.FleetWaypoints,
                 filterMode,
-                getSectors()
+                getSectors(),
+                GetMissionDropPlanetInstanceId(session)
             )
         );
+    }
+
+    /// <summary>
+    /// Resolves the hovered planet that should expose its mission drop target.
+    /// </summary>
+    /// <param name="session">The active planet-sector session.</param>
+    /// <returns>The hovered planet identifier, or null when the active drag cannot create missions.</returns>
+    private string GetMissionDropPlanetInstanceId(PlanetSectorWindowSession session)
+    {
+        PlanetSectorWindowHit hit = session?.GetHoveredHit();
+        if (
+            hit?.Planet == null
+            || targetingController.ActiveRequest
+                is not {
+                    Receiver: StrategyWindowItemDragController,
+                    Source: StrategyWindowTargetingSource
+                    {
+                        Action: StrategyMenuAction.Move,
+                    } source,
+                }
+        )
+            return null;
+
+        StrategyMissionTarget target = new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.Planet);
+        return canCreateMission(target, source.Items) ? hit.Planet.InstanceID : null;
     }
 
     /// <summary>
@@ -962,7 +1008,13 @@ public sealed class PlanetSectorWindowController
         )
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
-            return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
+        {
+            return new StrategyMissionTarget(
+                hit.GalaxyMapPlanet,
+                hit.GalaxyMapPlanet.Planet,
+                hit.Icon == PlanetIcon.Mission
+            );
+        }
         return null;
     }
 
@@ -1529,6 +1581,19 @@ public sealed class PlanetSectorWindowController
         public PlanetSectorWindowHit GetSelectedHit()
         {
             return GetStoredHit(SelectedPlanetInstanceId, SelectedIcon, false);
+        }
+
+        /// <summary>
+        /// Resolves the stored hover identity against the current sector projection.
+        /// </summary>
+        /// <returns>The current hovered hit, or null.</returns>
+        public PlanetSectorWindowHit GetHoveredHit()
+        {
+            return GetStoredHit(
+                HoveredPlanetInstanceId,
+                HoveredIcon,
+                HoveredIcon == PlanetIcon.None
+            );
         }
 
         /// <summary>

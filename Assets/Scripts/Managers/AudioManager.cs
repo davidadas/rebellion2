@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Util.Logging;
-using Rebellion.Util.Random;
 using UnityEngine;
 
 /// <summary>
@@ -19,9 +18,6 @@ public sealed class AudioManager : MonoBehaviour
 
     [SerializeField]
     private AudioSource sfxSource;
-
-    [SerializeField]
-    private AudioSource ambienceSource;
 
     [Range(0f, 1f)]
     [SerializeField]
@@ -57,11 +53,6 @@ public sealed class AudioManager : MonoBehaviour
     private readonly HashSet<AudioPlaybackHandle> _activeSfxPlaybacks =
         new HashSet<AudioPlaybackHandle>();
     private readonly Stack<AudioSource> _availableSfxSources = new Stack<AudioSource>();
-    private AudioClip[] _clipPlaylist;
-    private string[] _activePlaylistPaths;
-    private string[] _requestedPlaylistPaths;
-    private int _playlistIndex;
-    private bool _shufflePlaylist;
     private string _activeTrackPath;
     private Func<string> _nextTrackPathProvider;
     private Coroutine _playlistCoroutine;
@@ -231,66 +222,6 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays one music track from an already loaded clip.
-    /// </summary>
-    /// <param name="clip">The music clip to play.</param>
-    /// <param name="loop">Whether the track should loop.</param>
-    public void PlayTrack(AudioClip clip, bool loop = false)
-    {
-        if (clip == null)
-            return;
-
-        EnsureAudioSources();
-        StopPlaylist();
-        StopFadeOut();
-        StopMusicLoad();
-        StopCurrentMusicClip();
-
-        _activeTrackPath = null;
-        _activeTrackLoop = false;
-        musicSource.clip = clip;
-        musicSource.loop = loop;
-        ApplyVolumes();
-        musicSource.Play();
-    }
-
-    /// <summary>
-    /// Plays a playlist from content addresses.
-    /// </summary>
-    /// <param name="resourcePaths">The content addresses for the playlist tracks.</param>
-    /// <param name="shuffle">Whether the playlist should be shuffled before playback.</param>
-    public void PlayPlaylist(string[] resourcePaths, bool shuffle = false)
-    {
-        string[] playablePaths = GetPlayablePaths(resourcePaths);
-        if (playablePaths.Length == 0)
-            return;
-
-        EnsureAudioSources();
-        if (IsPlayingResourcePlaylist(playablePaths, shuffle))
-        {
-            ApplyVolumes();
-            return;
-        }
-
-        StopPlaylist();
-        StopFadeOut();
-        StopMusicLoad();
-        StopCurrentMusicClip();
-
-        _activeTrackPath = null;
-        _activeTrackLoop = false;
-        _clipPlaylist = null;
-        _requestedPlaylistPaths = playablePaths.ToArray();
-        _activePlaylistPaths = shuffle
-            ? playablePaths.Shuffle().ToArray()
-            : playablePaths.ToArray();
-        _playlistIndex = 0;
-        _shufflePlaylist = shuffle;
-
-        _playlistCoroutine = StartCoroutine(RunPathPlaylist());
-    }
-
-    /// <summary>
     /// Plays tracks selected on demand by a dynamic content-path provider.
     /// </summary>
     /// <param name="nextTrackPathProvider">The provider invoked before each track load.</param>
@@ -323,13 +254,7 @@ public sealed class AudioManager : MonoBehaviour
     public void StopPlaylist()
     {
         StopPlaylistCoroutine();
-
-        _clipPlaylist = null;
-        _activePlaylistPaths = null;
-        _requestedPlaylistPaths = null;
         _nextTrackPathProvider = null;
-        _playlistIndex = 0;
-        _shufflePlaylist = false;
     }
 
     /// <summary>
@@ -569,23 +494,6 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays ambience from an already loaded clip.
-    /// </summary>
-    /// <param name="clip">The ambience clip to play.</param>
-    /// <param name="loop">Whether the ambience clip should loop.</param>
-    public void PlayAmbience(AudioClip clip, bool loop = false)
-    {
-        if (clip == null)
-            return;
-
-        EnsureAudioSources();
-        ambienceSource.clip = clip;
-        ambienceSource.loop = loop;
-        ApplyVolumes();
-        ambienceSource.Play();
-    }
-
-    /// <summary>
     /// Applies persisted audio settings to the active audio sources.
     /// </summary>
     /// <param name="settings">The settings to apply.</param>
@@ -694,8 +602,6 @@ public sealed class AudioManager : MonoBehaviour
             musicSource = CreateAudioSource();
         if (sfxSource == null)
             sfxSource = CreateAudioSource();
-        if (ambienceSource == null)
-            ambienceSource = CreateAudioSource();
     }
 
     /// <summary>
@@ -717,26 +623,12 @@ public sealed class AudioManager : MonoBehaviour
     {
         EnsureAudioSources();
         musicSource.volume = musicVolume * masterVolume;
-        ambienceSource.volume = ambienceVolume * masterVolume;
         sfxSource.volume = sfxVolume * masterVolume;
         foreach (AudioPlaybackHandle playback in _activeSfxPlaybacks)
         {
             if (playback.Source != null)
                 playback.Source.volume = sfxVolume * masterVolume;
         }
-    }
-
-    /// <summary>
-    /// Returns normalized, playable content addresses from a requested playlist.
-    /// </summary>
-    /// <param name="resourcePaths">The requested playlist paths.</param>
-    /// <returns>The playable paths.</returns>
-    private static string[] GetPlayablePaths(string[] resourcePaths)
-    {
-        return resourcePaths
-                ?.Where(resourcePath => !string.IsNullOrWhiteSpace(resourcePath))
-                .ToArray()
-            ?? new string[0];
     }
 
     /// <summary>
@@ -749,23 +641,7 @@ public sealed class AudioManager : MonoBehaviour
     {
         return musicSource?.isPlaying == true
             && _activeTrackPath == resourcePath
-            && musicSource.loop == loop
-            && _activePlaylistPaths == null;
-    }
-
-    /// <summary>
-    /// Returns whether the requested path playlist is already playing.
-    /// </summary>
-    /// <param name="resourcePaths">The requested playlist paths.</param>
-    /// <param name="shuffle">The requested shuffle state.</param>
-    /// <returns>True when the requested playlist is already active.</returns>
-    private bool IsPlayingResourcePlaylist(string[] resourcePaths, bool shuffle)
-    {
-        return musicSource?.isPlaying == true
-            && _activePlaylistPaths != null
-            && _requestedPlaylistPaths != null
-            && _shufflePlaylist == shuffle
-            && resourcePaths.SequenceEqual(_requestedPlaylistPaths);
+            && musicSource.loop == loop;
     }
 
     /// <summary>
@@ -790,62 +666,6 @@ public sealed class AudioManager : MonoBehaviour
 
         StopCoroutine(_fadeOutCoroutine);
         _fadeOutCoroutine = null;
-    }
-
-    /// <summary>
-    /// Plays the active clip playlist until it is stopped or replaced.
-    /// </summary>
-    /// <returns>The coroutine enumerator.</returns>
-    private IEnumerator RunClipPlaylist()
-    {
-        while (HasClipPlaylist())
-        {
-            musicSource.clip = _clipPlaylist[_playlistIndex];
-            musicSource.loop = false;
-            ApplyVolumes();
-            musicSource.Play();
-
-            while (musicSource.isPlaying)
-                yield return null;
-
-            AdvancePlaylistIndex(_clipPlaylist.Length);
-        }
-
-        _playlistCoroutine = null;
-    }
-
-    /// <summary>
-    /// Plays the active path playlist until it is stopped or replaced.
-    /// </summary>
-    /// <returns>The coroutine enumerator.</returns>
-    private IEnumerator RunPathPlaylist()
-    {
-        while (HasPathPlaylist())
-        {
-            string path = _activePlaylistPaths[_playlistIndex];
-            BeginMusicClipLoad(path);
-            while (!_musicClipLoad.IsCompleted)
-                yield return null;
-
-            if (!AssignLoadedMusicClip())
-            {
-                AdvancePlaylistIndex(_activePlaylistPaths.Length);
-                yield return null;
-                continue;
-            }
-
-            musicSource.loop = false;
-            ApplyVolumes();
-            musicSource.Play();
-
-            while (musicSource.isPlaying)
-                yield return null;
-
-            StopCurrentMusicClip();
-            AdvancePlaylistIndex(_activePlaylistPaths.Length);
-        }
-
-        _playlistCoroutine = null;
     }
 
     /// <summary>
@@ -1081,35 +901,6 @@ public sealed class AudioManager : MonoBehaviour
             ?? throw new InvalidOperationException(
                 "AudioManager has not been initialized with a content asset store."
             );
-    }
-
-    /// <summary>
-    /// Returns whether a clip playlist is active.
-    /// </summary>
-    /// <returns>True when a clip playlist is active.</returns>
-    private bool HasClipPlaylist()
-    {
-        return _clipPlaylist?.Length > 0;
-    }
-
-    /// <summary>
-    /// Returns whether a path playlist is active.
-    /// </summary>
-    /// <returns>True when a path playlist is active.</returns>
-    private bool HasPathPlaylist()
-    {
-        return _activePlaylistPaths?.Length > 0;
-    }
-
-    /// <summary>
-    /// Advances the active playlist index.
-    /// </summary>
-    /// <param name="playlistLength">The active playlist length.</param>
-    private void AdvancePlaylistIndex(int playlistLength)
-    {
-        _playlistIndex++;
-        if (_playlistIndex >= playlistLength)
-            _playlistIndex = 0;
     }
 
     /// <summary>

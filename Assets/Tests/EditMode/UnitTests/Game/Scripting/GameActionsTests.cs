@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Scripting;
-using Rebellion.Game.Scripting.Events;
 
 namespace Rebellion.Tests.Game.Scripting
 {

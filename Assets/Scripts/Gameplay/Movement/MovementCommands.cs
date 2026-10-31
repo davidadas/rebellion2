@@ -66,7 +66,7 @@ namespace Rebellion.Gameplay
             _movementRandom = random ?? game.Random;
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
-                personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+                personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
@@ -511,14 +511,14 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Places mission participants at the mission planet without initiating return travel.
+        /// Places mission participants and passengers at the mission planet without initiating return travel.
         /// </summary>
-        /// <param name="participants">The participants remaining at the mission location.</param>
+        /// <param name="participants">The participants and passengers remaining at the mission location.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
         /// <param name="results">The owning operation's movement results.</param>
-        /// <returns>Participants that could not be placed at the mission planet.</returns>
+        /// <returns>Units that could not be placed at the mission planet.</returns>
         internal List<IMovable> CompleteMissionAtLocation(
-            IReadOnlyList<IMissionParticipant> participants,
+            IReadOnlyList<IMovable> participants,
             Planet missionPlanet,
             ICollection<GameResult> results
         )
@@ -529,7 +529,7 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(results));
 
             List<IMovable> strandedUnits = new List<IMovable>();
-            foreach (IMissionParticipant participant in participants)
+            foreach (IMovable participant in participants)
             {
                 if (
                     participant == null
@@ -656,7 +656,7 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
+                _fleetSystem.RemoveEmptyFleet(createdDestinationFleet);
                 return false;
             }
 
@@ -668,10 +668,10 @@ namespace Rebellion.Gameplay
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                    FleetLifecycle.RemoveEmptyFleet(_game, sourceFleet);
+                    _fleetSystem.RemoveEmptyFleet(sourceFleet);
             }
 
-            FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
+            _fleetSystem.RemoveEmptyFleet(createdDestinationFleet);
             return accepted;
         }
 

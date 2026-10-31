@@ -239,7 +239,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(mission, planet);
             game.MoveNode(officer, mission);
             mission.Initiate(0);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(survivor, mission);
             mission.Initiate(2);
             mission.DetectionResolved = true;
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
@@ -4603,7 +4603,7 @@ namespace Rebellion.Tests.Gameplay
                 movement
             );
             List<GameResult> rankResults = new List<GameResult>();
-            TestSystems.GetOfficerCommands(commands).ResultsProduced += results =>
+            TestSystems.GetPersonnelCommands(commands).ResultsProduced += results =>
                 rankResults.AddRange(results);
 
             bool initiated = commands.InitiateMission(

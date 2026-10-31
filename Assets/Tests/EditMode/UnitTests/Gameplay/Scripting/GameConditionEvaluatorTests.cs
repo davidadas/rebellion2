@@ -5,9 +5,9 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Scripting;
-using Rebellion.Game.Scripting.Events;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
@@ -585,7 +585,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, planet);
-            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(officer);
             IsKilledConditional condition = new IsKilledConditional
             {
                 OfficerInstanceID = officer.InstanceID,

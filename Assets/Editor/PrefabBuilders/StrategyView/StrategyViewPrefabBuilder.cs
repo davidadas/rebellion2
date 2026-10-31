@@ -1376,11 +1376,9 @@ public static class StrategyViewPrefabBuilder
         audioObject.transform.SetParent(services.transform, false);
         AudioSource music = audioObject.AddComponent<AudioSource>();
         AudioSource sfx = audioObject.AddComponent<AudioSource>();
-        AudioSource ambience = audioObject.AddComponent<AudioSource>();
         AudioManager audio = audioObject.AddComponent<AudioManager>();
         AssignReference(audio, "musicSource", music);
         AssignReference(audio, "sfxSource", sfx);
-        AssignReference(audio, "ambienceSource", ambience);
 
         GameObject cameraObject = new GameObject("Main Camera");
         cameraObject.transform.SetParent(sceneRoot.transform, false);

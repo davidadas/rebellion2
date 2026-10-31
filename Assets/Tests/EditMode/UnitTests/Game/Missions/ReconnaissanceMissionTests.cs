@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Game.Missions
     public class ReconnaissanceMissionTests
     {
         [Test]
-        public void ResolveObjective_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
+        public void ResolveObjective_EnemyPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
             (
                 GameRoot game,
@@ -54,6 +54,10 @@ namespace Rebellion.Tests.Game.Missions
                 empire.Fog.Snapshots.TryGetValue("sector1", out PlanetSectorSnapshot snapshot)
             );
             Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
+            Assert.AreEqual(
+                PlanetIntelligenceCategory.None,
+                snapshot.Planets["enemy_planet"].RevealedCategories
+            );
 
             GalaxyMap view = new FogOfWarQueries(game).BuildFactionView(empire);
             Planet viewPlanet = view.GetChildren<PlanetSector>()
@@ -61,6 +65,85 @@ namespace Rebellion.Tests.Game.Missions
                 .GetChildren<Planet>()
                 .First(planet => planet.InstanceID == "enemy_planet");
             Assert.IsFalse(viewPlanet.IsUnexploredView);
+        }
+
+        [Test]
+        public void ResolveObjective_PreviouslyObservedEnemyPlanet_RefreshesSnapshot()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            new FogOfWarRecorder().RecordPlanetSnapshot(empire, enemyPlanet, sector, 1);
+            enemyPlanet.EnergyCapacity = 9;
+
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = empire.Fog.Snapshots[sector.InstanceID].Planets[
+                enemyPlanet.InstanceID
+            ];
+            Assert.AreEqual(9, snapshot.EnergyCapacity);
+            Assert.AreEqual(PlanetIntelligenceCategory.None, snapshot.RevealedCategories);
+        }
+
+        [Test]
+        public void ResolveObjective_EnemyFacilities_RevealsOnlyCompletedFacilities()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Building completedFacility = new Building
+            {
+                InstanceID = "completed-facility",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building unfinishedFacility = new Building
+            {
+                InstanceID = "unfinished-facility",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(completedFacility, enemyPlanet);
+            game.AttachNode(unfinishedFacility, enemyPlanet);
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            mission.ResolveObjective(game, new ThrowingRNG());
+
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots["sector1"]
+                .Planets[enemyPlanet.InstanceID];
+            Assert.AreEqual(completedFacility.InstanceID, snapshot.Buildings.Single().InstanceID);
+            Assert.IsFalse(snapshot.HasManufacturingIntelligence);
         }
 
         [Test]
@@ -129,6 +212,67 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ProcessTick_VisitedEnemyPlanetFoilsReconnaissance_DoesNotRefreshSnapshot()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            new FogOfWarRecorder().RecordPlanetSnapshot(empire, enemyPlanet, sector, 1);
+            enemyPlanet.EnergyCapacity = 9;
+
+            Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, enemyPlanet);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, enemyPlanet);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.SendToMission(reconTeam, mission);
+            reconTeam.Movement = null;
+            mission.Initiate(1);
+
+            TestSystems
+                .CreateMissionCommands(game, new FixedRNG(0.01), movement)
+                .ProcessMissionTick(game);
+
+            PlanetSnapshot snapshot = empire.Fog.Snapshots[sector.InstanceID].Planets[
+                enemyPlanet.InstanceID
+            ];
+            Assert.AreEqual(5, snapshot.EnergyCapacity);
+            Assert.AreEqual(1, snapshot.TickCaptured);
+        }
+
+        [Test]
         public void TryCreate_NoParticipants_ReturnsNull()
         {
             (
@@ -157,7 +301,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_VisitedPlanet_ReturnsNull()
+        public void TryCreate_VisitedEnemyPlanet_ReturnsMission()
         {
             (
                 GameRoot game,
@@ -175,6 +319,58 @@ namespace Rebellion.Tests.Game.Missions
                 game,
                 "empire",
                 enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNotNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_VisitedNeutralPlanet_ReturnsMission()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.SetOwnerInstanceID(null);
+            enemyPlanet.AddVisitor("empire");
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNotNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_FriendlyPlanet_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empirePlanet);
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                empirePlanet,
                 new List<IMissionParticipant> { reconTeam },
                 new List<IMissionParticipant>()
             );

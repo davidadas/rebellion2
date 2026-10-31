@@ -498,17 +498,6 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns whether this ship has any of the requested roles.
-        /// </summary>
-        /// <param name="roles">The roles to inspect.</param>
-        /// <returns>True if this ship has at least one requested role.</returns>
-        public bool HasAnyRole(params CapitalShipRole[] roles)
-        {
-            IReadOnlyList<CapitalShipRole> shipRoles = GetRoles();
-            return roles.Any(shipRoles.Contains);
-        }
-
-        /// <summary>
         /// Returns the ship's total primary weapon strength.
         /// </summary>
         /// <returns>The summed primary weapon strength.</returns>

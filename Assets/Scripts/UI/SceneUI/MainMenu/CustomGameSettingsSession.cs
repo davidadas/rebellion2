@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 

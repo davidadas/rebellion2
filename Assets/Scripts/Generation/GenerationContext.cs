@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Scripting.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 

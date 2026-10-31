@@ -19,7 +19,7 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly MissionQueries _queries;
         private readonly MissionResolver _resolver;
-        private readonly OfficerCommandCommands _officerCommands;
+        private readonly PersonnelCommands _personnelCommands;
 
         /// <summary>
         /// Raised when an immediate mission operation produces results.
@@ -36,8 +36,7 @@ namespace Rebellion.Gameplay
         /// <param name="queries">The mission eligibility and probability queries.</param>
         /// <param name="movementQueries">The mission-return destination rules.</param>
         /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
-        /// <param name="personnelCommands">The personnel lifecycle commands.</param>
-        /// <param name="officerCommands">The officer command-assignment operations.</param>
+        /// <param name="personnelCommands">The personnel operations.</param>
         public MissionCommands(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -46,13 +45,13 @@ namespace Rebellion.Gameplay
             MissionQueries queries,
             MovementQueries movementQueries,
             MissionBetrayalResolver betrayalResolver = null,
-            PersonnelCommands personnelCommands = null,
-            OfficerCommandCommands officerCommands = null
+            PersonnelCommands personnelCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _officerCommands = officerCommands ?? new OfficerCommandCommands(game);
+            _personnelCommands =
+                personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _resolver = new MissionResolver(
                 game,
                 provider,
@@ -61,7 +60,7 @@ namespace Rebellion.Gameplay
                 queries,
                 movementQueries,
                 betrayalResolver,
-                personnelCommands
+                _personnelCommands
             );
         }
 
@@ -71,19 +70,19 @@ namespace Rebellion.Gameplay
         /// <param name="game">The active game state.</param>
         /// <param name="queries">The mission eligibility and probability queries.</param>
         /// <param name="resolver">The registered mission lifecycle resolver.</param>
-        /// <param name="officerCommands">The officer command-assignment operations.</param>
+        /// <param name="personnelCommands">The personnel operations.</param>
         internal MissionCommands(
             GameRoot game,
             MissionQueries queries,
             MissionResolver resolver,
-            OfficerCommandCommands officerCommands
+            PersonnelCommands personnelCommands
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
-            _officerCommands =
-                officerCommands ?? throw new ArgumentNullException(nameof(officerCommands));
+            _personnelCommands =
+                personnelCommands ?? throw new ArgumentNullException(nameof(personnelCommands));
         }
 
         /// <summary>
@@ -104,7 +103,7 @@ namespace Rebellion.Gameplay
             _game.AttachNode(mission, planet);
             List<IMissionParticipant> startingParticipants = mission.GetAllParticipants();
             foreach (Officer officer in startingParticipants.OfType<Officer>())
-                _officerCommands.TrySetRank(
+                _personnelCommands.TrySetRank(
                     officer.InstanceID,
                     OfficerRank.None,
                     officer.GetOwnerInstanceID()
