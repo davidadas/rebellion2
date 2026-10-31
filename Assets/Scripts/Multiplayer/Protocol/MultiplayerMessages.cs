@@ -34,12 +34,11 @@ namespace Rebellion.Multiplayer
     }
 
     /// <summary>
-    /// Metadata attached to a revisioned game-state snapshot.
+    /// Identifies the one initial world supplied for a negotiated game.
     /// </summary>
     [Serializable]
     internal sealed class MultiplayerSnapshotMessage
     {
-        public long revision;
         public string hash;
         public string simulationFingerprint;
         public string initializationID;

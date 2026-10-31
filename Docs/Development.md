@@ -102,7 +102,8 @@ script compilation to finish before testing or building.
 
 Each launch, shared load and reconnect receives an initialization identity. Readiness, recovery
 snapshots and gameplay packets from an outgoing initialization cannot enter its replacement.
-Snapshot revisions are ordered within that initialization; a restarted host begins its own sequence.
+Each initialization transfers one world; its receipt must match the payload hash and restored-world
+fingerprint.
 Completed commands include their queued movement and manufacturing reactions before the caller
 receives success. Tick completion and the handoff to human combat input also settle these reactions.
 Persistence admission rejects pending reactions; requesting a save does not flush gameplay work.

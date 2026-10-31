@@ -17,8 +17,8 @@ namespace Rebellion.Multiplayer
         private const int _protocolVersion = 11;
 
         private readonly List<MultiplayerGameListing> _games = new();
-        private readonly MultiplayerSnapshotBuffer _pendingCommits = new();
         private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();
+        private MultiplayerPacket _pendingInitialSnapshot;
         private EpicOnlineServicesClient _onlineClient;
         private EpicMultiplayerBackend _backend;
         private IMultiplayerPeer _peer;
@@ -36,7 +36,6 @@ namespace Rebellion.Multiplayer
         private string _gameName;
         private string _listingState = "waiting";
         private string _status = "Offline";
-        private string _lastAcceptedHash;
         private string _initializationID => _snapshotAdmission.InitializationID;
         private bool _remoteReady;
         private bool _synchronizationReady;
@@ -409,12 +408,11 @@ namespace Rebellion.Multiplayer
             _hostSummary = null;
             _launchConfiguration = null;
             Failure = null;
-            _pendingCommits.Clear();
+            _pendingInitialSnapshot = null;
             _role = MultiplayerRole.None;
             _gameName = null;
             _listingState = "waiting";
             _snapshotAdmission.Clear();
-            _lastAcceptedHash = null;
             _remoteReady = false;
             _synchronizationReady = false;
             ResetLobby();
@@ -752,7 +750,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Retains the newest complete authoritative state without rebuilding presentation inside the receive loop.
+        /// Retains the initial world without replacing simulation state inside the receive loop.
         /// </summary>
         /// <param name="packet">The committed snapshot packet.</param>
         private void HandleSnapshotCommit(MultiplayerPacket packet)
@@ -762,17 +760,14 @@ namespace Rebellion.Multiplayer
             MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
                 packet.Metadata
             );
-            if (
-                metadata == null
-                || !_snapshotAdmission.Accepts(metadata.initializationID, metadata.revision)
-            )
+            if (metadata == null || !_snapshotAdmission.Accepts(metadata.initializationID))
                 return;
 
-            _pendingCommits.Enqueue(packet, metadata.revision);
+            _pendingInitialSnapshot = packet;
         }
 
         /// <summary>
-        /// Applies at most one complete host state per frame, after all received revisions have been inspected.
+        /// Applies the pending initial world after the guest presentation is ready.
         /// </summary>
         private void ProcessPendingCommit()
         {
@@ -782,7 +777,8 @@ namespace Rebellion.Multiplayer
                 || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
             )
                 return;
-            MultiplayerPacket packet = _pendingCommits.Take();
+            MultiplayerPacket packet = _pendingInitialSnapshot;
+            _pendingInitialSnapshot = null;
             if (packet == null)
                 return;
             try
@@ -796,13 +792,13 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Adopts snapshot ordering for a new initialization and discards its predecessor's pending state.
+        /// Adopts a new initialization and discards its predecessor's pending world.
         /// </summary>
         /// <param name="initializationID">The identity agreed for the initialized game.</param>
         private void BeginInitialization(string initializationID)
         {
             if (_snapshotAdmission.Begin(initializationID))
-                _pendingCommits.Clear();
+                _pendingInitialSnapshot = null;
         }
 
         /// <summary>

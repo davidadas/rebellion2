@@ -186,7 +186,7 @@ namespace Rebellion.Multiplayer
             _checkpointPending = true;
             _pendingRejoinPacket = null;
             _rejectingGuest = false;
-            _pendingCommits.Clear();
+            _pendingInitialSnapshot = null;
             _snapshotAdmission.Clear();
             _remoteReady = false;
             _runtime.BlockGameOperations();
@@ -510,13 +510,6 @@ namespace Rebellion.Multiplayer
             _lobby?.UpdateDisplayNames(offer.record.hostName, offer.record.guestName);
             _admittedGuestUserID = offer.record.guestUserID;
             BeginInitialization(offer.snapshot.initializationID);
-            if (
-                !_snapshotAdmission.Accepts(
-                    offer.snapshot.initializationID,
-                    offer.snapshot.revision
-                )
-            )
-                throw new InvalidDataException("The rejoin snapshot revision is invalid.");
             _pendingRejoinSnapshot = offer.snapshot;
             if (livePeer)
             {

@@ -14,6 +14,7 @@ namespace Rebellion.Multiplayer
     {
         private MultiplayerGameSession _gameSession;
         private bool _awaitingSnapshotReceipt;
+        private string _initialSnapshotHash;
         private string _initialSimulationFingerprint;
         private MultiplayerSnapshotMessage _pendingRejoinSnapshot;
         private GameSession _readyPresentationSession;
@@ -142,19 +143,6 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reports whether a negotiated simulation can participate in its shared day loop.
-        /// </summary>
-        /// <returns>True outside multiplayer or while the live peers are synchronized.</returns>
-        public bool ShouldAdvanceLocalTicks()
-        {
-            return _launchConfiguration == null
-                || _synchronizationReady
-                    && _gameSession != null
-                    && !_checkpointPending
-                    && _persistence?.BlocksNewTicks != true;
-        }
-
-        /// <summary>
         /// Starts the next shared day when the configured host clock and both peers are ready.
         /// </summary>
         /// <param name="elapsedSeconds">The frame interval available to the host clock.</param>
@@ -224,9 +212,9 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Loads the selected saved world locally and prepares the ordinary initial-state receipt barrier.
+        /// Captures the settled host world and prepares the initial loaded-state receipt barrier.
         /// </summary>
-        /// <param name="metadata">Receives the revision, payload hash, and loaded-state fingerprint.</param>
+        /// <param name="metadata">Receives the initialization, payload hash, and loaded-state fingerprint.</param>
         /// <returns>The one world payload supplied to the other participant.</returns>
         private MultiplayerSnapshot PrepareInitialSnapshot(out MultiplayerSnapshotMessage metadata)
         {
@@ -242,12 +230,11 @@ namespace Rebellion.Multiplayer
             );
             metadata = new MultiplayerSnapshotMessage
             {
-                revision = _snapshotAdmission.NextRevision(),
                 hash = snapshot.Hash,
                 simulationFingerprint = _initialSimulationFingerprint,
                 initializationID = _initializationID,
             };
-            _lastAcceptedHash = snapshot.Hash;
+            _initialSnapshotHash = snapshot.Hash;
             _awaitingSnapshotReceipt = true;
             return snapshot;
         }
@@ -279,8 +266,6 @@ namespace Rebellion.Multiplayer
                 _runtime.GetActiveGameSession(),
                 metadata.simulationFingerprint
             );
-            _snapshotAdmission.RecordRevision(metadata.revision);
-            _lastAcceptedHash = metadata.hash;
             StartOrderedGameplay();
             QueueSend(
                 new MultiplayerPacket(
@@ -306,7 +291,7 @@ namespace Rebellion.Multiplayer
             if (
                 !_snapshotAdmission.AcceptsReceipt(
                     metadata,
-                    _lastAcceptedHash,
+                    _initialSnapshotHash,
                     _initialSimulationFingerprint
                 )
             )
@@ -432,6 +417,7 @@ namespace Rebellion.Multiplayer
             _gameSession?.Dispose();
             _gameSession = null;
             _awaitingSnapshotReceipt = false;
+            _initialSnapshotHash = null;
             _initialSimulationFingerprint = null;
             _pendingRejoinSnapshot = null;
             _readyPresentationSession = null;

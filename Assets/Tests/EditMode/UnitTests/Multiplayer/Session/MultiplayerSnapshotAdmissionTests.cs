@@ -7,62 +7,58 @@ namespace Rebellion.Tests.Multiplayer
     public sealed class MultiplayerSnapshotAdmissionTests
     {
         [Test]
-        public void Accepts_RestartedHostIssuesLowerRevisionInNewInitialization_AcceptsSnapshot()
+        public void Accepts_RestartedHostEstablishesNewInitialization_AcceptsInitialWorld()
         {
             MultiplayerSnapshotAdmission admission = new();
             admission.Begin(Guid.NewGuid().ToString("N"));
-            admission.RecordRevision(2);
             string returning = Guid.NewGuid().ToString("N");
             admission.Begin(returning);
 
-            Assert.That(admission.Accepts(returning, 1), Is.True);
+            Assert.That(admission.Accepts(returning), Is.True);
         }
 
         [Test]
-        public void Accepts_OlderRevisionInSameInitialization_RejectsSnapshot()
+        public void Accepts_CurrentInitialization_AcceptsInitialWorld()
         {
             MultiplayerSnapshotAdmission admission = new();
             string initialization = Guid.NewGuid().ToString("N");
             admission.Begin(initialization);
-            admission.RecordRevision(2);
 
-            Assert.That(admission.Accepts(initialization, 1), Is.False);
+            Assert.That(admission.Accepts(initialization), Is.True);
         }
 
         [Test]
-        public void Accepts_PreviousInitializationHasHigherRevision_RejectsSnapshot()
+        public void Accepts_PreviousInitialization_RejectsInitialWorld()
         {
             MultiplayerSnapshotAdmission admission = new();
             string previous = Guid.NewGuid().ToString("N");
             admission.Begin(previous);
-            admission.RecordRevision(2);
             admission.Begin(Guid.NewGuid().ToString("N"));
 
-            Assert.That(admission.Accepts(previous, 3), Is.False);
+            Assert.That(admission.Accepts(previous), Is.False);
         }
 
         [Test]
-        public void Begin_RepeatedIdentity_RetainsAcceptedRevision()
+        public void Begin_RepeatedIdentity_RetainsInitialization()
         {
             MultiplayerSnapshotAdmission admission = new();
             string initialization = Guid.NewGuid().ToString("N");
             admission.Begin(initialization);
-            admission.RecordRevision(2);
-            admission.Begin(initialization);
+            bool changed = admission.Begin(initialization);
 
-            Assert.That(admission.Revision, Is.EqualTo(2));
+            Assert.That(changed, Is.False);
+            Assert.That(admission.InitializationID, Is.EqualTo(initialization));
         }
 
         [Test]
-        public void NextRevision_NewInitialization_RestartsHostSequence()
+        public void Begin_NewInitialization_ReplacesPreviousOwnership()
         {
             MultiplayerSnapshotAdmission admission = new();
             admission.Begin(Guid.NewGuid().ToString("N"));
-            admission.NextRevision();
-            admission.NextRevision();
-            admission.Begin(Guid.NewGuid().ToString("N"));
+            string replacement = Guid.NewGuid().ToString("N");
 
-            Assert.That(admission.NextRevision(), Is.EqualTo(1));
+            Assert.That(admission.Begin(replacement), Is.True);
+            Assert.That(admission.InitializationID, Is.EqualTo(replacement));
         }
 
         [Test]
@@ -73,7 +69,7 @@ namespace Rebellion.Tests.Multiplayer
             admission.Begin(initialization);
             admission.Clear();
 
-            Assert.That(admission.Accepts(initialization, 1), Is.False);
+            Assert.That(admission.Accepts(initialization), Is.False);
         }
 
         [Test]
@@ -82,11 +78,9 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerSnapshotAdmission admission = new();
             string initialization = Guid.NewGuid().ToString("N");
             admission.Begin(initialization);
-            long revision = admission.NextRevision();
             MultiplayerSnapshotMessage receipt = new()
             {
                 initializationID = initialization,
-                revision = revision,
                 hash = "payload",
                 simulationFingerprint = "loaded-world",
             };
@@ -95,7 +89,6 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [TestCase("initialization")]
-        [TestCase("revision")]
         [TestCase("payload")]
         [TestCase("state")]
         [TestCase("missing")]
@@ -104,11 +97,9 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerSnapshotAdmission admission = new();
             string initialization = Guid.NewGuid().ToString("N");
             admission.Begin(initialization);
-            long revision = admission.NextRevision();
             MultiplayerSnapshotMessage receipt = new()
             {
                 initializationID = initialization,
-                revision = revision,
                 hash = "payload",
                 simulationFingerprint = "loaded-world",
             };
@@ -116,9 +107,6 @@ namespace Rebellion.Tests.Multiplayer
             {
                 case "initialization":
                     receipt.initializationID = Guid.NewGuid().ToString("N");
-                    break;
-                case "revision":
-                    receipt.revision++;
                     break;
                 case "payload":
                     receipt.hash = "another-payload";

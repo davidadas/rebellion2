@@ -556,7 +556,7 @@ namespace Rebellion.Multiplayer
             );
             _remoteReady = false;
             _awaitingSnapshotReceipt = false;
-            _pendingCommits.Clear();
+            _pendingInitialSnapshot = null;
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             DetachGameForSceneTransfer(_runtime);
             LoadingScreenController.StartMultiplayer(

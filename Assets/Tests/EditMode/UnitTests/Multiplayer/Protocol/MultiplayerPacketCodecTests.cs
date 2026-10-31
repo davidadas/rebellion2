@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             MultiplayerPacket expected = new MultiplayerPacket(
                 MultiplayerMessageType.SnapshotCommit,
-                "{\"revision\":4}",
+                "{\"hash\":\"payload-hash\"}",
                 new byte[] { 0, 1, 2, 254, 255 }
             );
             using MemoryStream stream = new MemoryStream();

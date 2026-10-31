@@ -39,7 +39,7 @@ namespace Rebellion.Tests.NativeAudit
         }
 
         [Test]
-        public async Task SnapshotCommit_DirectConnection_RoundTripsMutatedGameStateAsync()
+        public async Task SendAsync_SnapshotPayload_TransfersBothDirectionsAsync()
         {
             using MultiplayerPeer host = new MultiplayerPeer();
             using MultiplayerPeer guest = new MultiplayerPeer();
@@ -49,13 +49,14 @@ namespace Rebellion.Tests.NativeAudit
             await WaitForEventAsync(guest, MultiplayerTransportEventType.Connected);
             GameRoot hostGame = new GameRoot { CurrentTick = 7 };
             MultiplayerSnapshot hostSnapshot = MultiplayerSnapshotCodec.Capture(hostGame);
+            string initializationID = Guid.NewGuid().ToString("N");
 
-            await host.SendAsync(CreateSnapshotPacket(hostSnapshot, 1));
+            await host.SendAsync(CreateSnapshotPacket(hostSnapshot, initializationID));
             MultiplayerTransportEvent committed = await WaitForEventAsync(
                 guest,
                 MultiplayerTransportEventType.PacketReceived
             );
-            SnapshotMetadata metadata = JsonUtility.FromJson<SnapshotMetadata>(
+            MultiplayerSnapshotMessage metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(
                 committed.Packet.Metadata
             );
             GameRoot guestGame = MultiplayerSnapshotCodec.Restore(
@@ -65,12 +66,12 @@ namespace Rebellion.Tests.NativeAudit
             guestGame.CurrentTick = 8;
             MultiplayerSnapshot guestSnapshot = MultiplayerSnapshotCodec.Capture(guestGame);
 
-            await guest.SendAsync(CreateSnapshotPacket(guestSnapshot, 2));
+            await guest.SendAsync(CreateSnapshotPacket(guestSnapshot, initializationID));
             MultiplayerTransportEvent proposed = await WaitForEventAsync(
                 host,
                 MultiplayerTransportEventType.PacketReceived
             );
-            metadata = JsonUtility.FromJson<SnapshotMetadata>(proposed.Packet.Metadata);
+            metadata = JsonUtility.FromJson<MultiplayerSnapshotMessage>(proposed.Packet.Metadata);
             GameRoot restored = MultiplayerSnapshotCodec.Restore(
                 proposed.Packet.Payload,
                 metadata.hash
@@ -78,24 +79,28 @@ namespace Rebellion.Tests.NativeAudit
 
             Assert.That(committed.Packet.Type, Is.EqualTo(MultiplayerMessageType.SnapshotCommit));
             Assert.That(restored.CurrentTick, Is.EqualTo(8));
-            Assert.That(metadata.revision, Is.EqualTo(2));
+            Assert.That(metadata.initializationID, Is.EqualTo(initializationID));
         }
 
         /// <summary>
         /// Creates one snapshot commit packet for transport integration coverage.
         /// </summary>
         /// <param name="snapshot">The captured state.</param>
-        /// <param name="revision">The advertised revision.</param>
+        /// <param name="initializationID">The initialization identity carried by the metadata.</param>
         /// <returns>The encoded snapshot packet.</returns>
         private static MultiplayerPacket CreateSnapshotPacket(
             MultiplayerSnapshot snapshot,
-            long revision
+            string initializationID
         )
         {
             return new MultiplayerPacket(
                 MultiplayerMessageType.SnapshotCommit,
                 JsonUtility.ToJson(
-                    new SnapshotMetadata { revision = revision, hash = snapshot.Hash }
+                    new MultiplayerSnapshotMessage
+                    {
+                        initializationID = initializationID,
+                        hash = snapshot.Hash,
+                    }
                 ),
                 snapshot.Payload
             );
@@ -124,13 +129,6 @@ namespace Rebellion.Tests.NativeAudit
             }
             Assert.Fail($"Timed out waiting for {eventType}.");
             return null;
-        }
-
-        [Serializable]
-        private sealed class SnapshotMetadata
-        {
-            public long revision;
-            public string hash;
         }
     }
 }
