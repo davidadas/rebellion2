@@ -486,6 +486,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void PresentResolvedResults_PendingEncounterWithSameDisplayIdentity_PreservesDecision()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.IsFalse(_controller.HasCombatResult(view));
+        }
+
+        [Test]
+        public void SyncPendingCombatWindow_NewerPendingWithQueuedOutcome_DoesNotBuildCombatSnapshot()
+        {
+            _controller.SyncPendingCombatWindow();
+            _pending = new PendingCombatResult
+            {
+                Tick = _resolveResult.Tick + 1,
+                PlanetInstanceID = _retreatPlanet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _pendingSnapshotReads = 0;
+
+            _controller.SyncPendingCombatWindow();
+
+            Assert.AreEqual(0, _pendingSnapshotReads);
+        }
+
+        [Test]
         public void PresentResolvedResults_OpenResult_QueuesNextOutcomeUntilClose()
         {
             _pending = null;

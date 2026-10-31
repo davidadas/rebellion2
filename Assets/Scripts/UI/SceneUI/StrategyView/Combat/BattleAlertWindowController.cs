@@ -268,25 +268,16 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Displays the next completed encounter without replacing an open result or a newer decision.
+    /// Displays the next completed encounter without replacing an open result or an unresolved decision.
     /// </summary>
     /// <param name="view">The current battle-alert view, when open.</param>
     /// <returns>True when a queued outcome became visible.</returns>
     private bool TryPresentCompletedCombat(BattleAlertWindowView view)
     {
-        if (completedCombats.Count == 0 || view != null && GetSession(view).Result != null)
-            return false;
-
-        SpaceCombatResult result = completedCombats.Peek();
-        PendingCombatResult pending = getPendingCombat();
         if (
-            pending != null
-            && (
-                pending.Tick != result.Tick
-                || pending.PlanetInstanceID != result.Planet?.InstanceID
-                || pending.AttackerOwnerInstanceID != result.AttackerOwnerInstanceID
-                || pending.DefenderOwnerInstanceID != result.DefenderOwnerInstanceID
-            )
+            completedCombats.Count == 0
+            || view != null && GetSession(view).Result != null
+            || hasPendingCombat()
         )
             return false;
 
@@ -294,7 +285,7 @@ public sealed class BattleAlertWindowController
         if (view == null)
             return false;
 
-        completedCombats.Dequeue();
+        SpaceCombatResult result = completedCombats.Dequeue();
         BattleResultPresentation presentation = BattleResultPresentation.Create(result);
         SetCombatResult(view, presentation);
         if (
