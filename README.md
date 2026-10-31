@@ -53,29 +53,28 @@ or browse the public [installer and launcher source code](https://github.com/ada
 The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
 *Star Wars: Empire at War: Gold Pack* on GOG or Steam.
 
-> [!IMPORTANT]
-> Rebellion 2 remains in active development. Save compatibility is not guaranteed between releases.
-
 ## Project status
 
-Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
+The game currently has a 100% playable campaign. Only multiplayer, modding tools, and a completely replacement for the original's 3D space combat remain.
 
-| Area | Estimate | Area | Estimate |
-| --- | ---: | --- | ---: |
-| Foundation and Data | 60% | Strategy Simulation | 60% |
-| Strategic AI | 50% | Missions | 80% |
-| Campaign Events | 85% | Custom Events API | 30% |
-| Strategy Interface | 80% | UI Upscaling | 40% |
-| Save Games | 100% | Settings | 10% |
-| Moddability | 65% | Modding Tools | 0% |
-| Tactical Simulation | 0% | Tactical AI | 0% |
-| Multiplayer | 0% | | |
+| Capability | Status |
+| --- | ---: |
+| Single-player campaign | 100% |
+| Campaign UI | 100% |
+| Campaign AI | 100% |
+| Customizable campaigns | 100% |
+| Saved games and settings | 100% |
+| 3D tactical combat | 0% |
+| 3D tactical combat UI | 0% |
+| 3D tactical combat AI | 0% |
+| Multiplayer | 0% |
+| Modding tools | 0% |
 
 ## Documentation
 
 - [Development setup and commands](Docs/Development.md)
 - [Modding and content packs](Docs/Modding/Index.md)
-- [Creating game events](Docs/Modding/Events/Index.md)
+- [Creating game events](Docs/Modding/Scripting/Events/Index.md)
 
 Game assets and generated UI artifacts live outside this source repository. Development checkouts
 use the separate `rebellion2-media` repository and the ignored asset directories described in the

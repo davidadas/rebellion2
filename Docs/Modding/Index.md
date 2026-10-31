@@ -130,7 +130,7 @@ through the ownership-verifying installer.
 
 ## Guides
 
-- [Creating game events](Events/Index.md)
+- [Creating game events](Scripting/Events/Index.md)
 - [Creating and modifying units](Units/Index.md)
 
 ## Compatibility

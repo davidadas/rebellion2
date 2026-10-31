@@ -8,8 +8,8 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -130,6 +130,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
             Assert.IsEmpty(_windowManager.Windows);
             Assert.AreEqual(0, _dirtyCount);
+        }
+
+        [Test]
+        public void CanOpen_ReconnaissanceParticipantAndUnvisitedEnemyPlanet_ReturnsTrue()
+        {
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsTrue(canOpen);
+        }
+
+        [Test]
+        public void CanOpen_ReconnaissanceParticipantAndVisitedEnemyPlanet_ReturnsTrue()
+        {
+            _target.Planet.Planet.AddVisitor(_playerFactionId);
+
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsTrue(canOpen);
+        }
+
+        [Test]
+        public void CanOpen_ReconnaissanceParticipantAndFriendlyPlanet_ReturnsFalse()
+        {
+            _target.Planet.Planet.OwnerInstanceID = _playerFactionId;
+
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsFalse(canOpen);
         }
 
         [Test]

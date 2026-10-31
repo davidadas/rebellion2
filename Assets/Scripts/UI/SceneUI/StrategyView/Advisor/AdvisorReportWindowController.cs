@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>

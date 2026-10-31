@@ -811,13 +811,33 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             badgeTemplate.width,
             badgeTemplate.height
         );
+        TextMeshProUGUI key = GetBindingField(keys, _bindingKeyTemplate, prefix + "Key", index);
+        ConfigureBindingTooltip(badge, key);
         UILayout.SetTemplateText(
-            GetBindingField(keys, _bindingKeyTemplate, prefix + "Key", index),
+            key,
             _bindingKeyTemplate,
             listening ? "..." : text,
             editable ? _textColor : _metaColor,
             new RectInt(x, top + keyTemplate.y, keyTemplate.width, keyTemplate.height)
         );
+    }
+
+    /// <summary>
+    /// Connects a binding badge to the complete value of its truncated key label.
+    /// </summary>
+    /// <param name="badge">The binding badge used as the hover surface.</param>
+    /// <param name="key">The bounded key label.</param>
+    private static void ConfigureBindingTooltip(Image badge, TextMeshProUGUI key)
+    {
+        OverflowTextTooltip tooltip = key.GetComponent<OverflowTextTooltip>();
+        if (tooltip == null)
+            tooltip = key.gameObject.AddComponent<OverflowTextTooltip>();
+        tooltip.Configure(key, TextOverflowModes.Truncate);
+
+        OverflowTextTooltipTrigger trigger = badge.GetComponent<OverflowTextTooltipTrigger>();
+        if (trigger == null)
+            trigger = badge.gameObject.AddComponent<OverflowTextTooltipTrigger>();
+        trigger.Configure(tooltip);
     }
 
     /// <summary>

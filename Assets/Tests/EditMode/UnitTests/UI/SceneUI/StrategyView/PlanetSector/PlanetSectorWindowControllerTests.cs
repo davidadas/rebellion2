@@ -11,8 +11,8 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -37,6 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
         private GameSession _session;
+        private bool _missionCreationAvailable;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -54,6 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             _dirtyCount = 0;
             _filterMode = GalacticInformationFilterMode.DisplayOff;
+            _missionCreationAvailable = true;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -97,7 +99,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     () => new[] { _sector },
                     GetWindowPosition,
                     CloseWindow,
-                    MarkDirty
+                    MarkDirty,
+                    (_, _) => true
                 )
             );
         }
@@ -195,6 +198,84 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ),
                 markerImage.texture
             );
+        }
+
+        [Test]
+        public void RenderWindow_MissionDropTargetReleasedOverHighlightedIcon_RequestsMissionCreation()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(officer, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            Assert.IsFalse(
+                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
+            );
+            Assert.IsFalse(_controller.IsMissionDropTargetVisible());
+            BeginMissionItemDrag(officer);
+
+            planetView.OnPointerEnter(
+                CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+            _controller.RenderWindow(view, window);
+
+            Assert.IsTrue(planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _));
+            Assert.IsTrue(_controller.IsMissionDropTargetVisible());
+            PointerEventData missionPointer = CreateOverlayPointerEvent(
+                view,
+                "missionImage",
+                PointerEventData.InputButton.Left
+            );
+            planetView.OnPointerMove(missionPointer);
+            _controller.RenderWindow(view, window);
+            RawImage missionImage = GetField<RawImage>(planetView, "missionImage");
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
+                ),
+                missionImage.texture
+            );
+
+            planetView.OnDrop(missionPointer);
+
+            Assert.IsTrue(_actions.LastTarget.MissionCreationRequested);
+            CollectionAssert.AreEqual(new ISceneNode[] { officer }, _actions.LastItems);
+        }
+
+        [Test]
+        public void RenderWindow_MissionCapableDragWithoutDestinationMission_HidesMissionDropTarget()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(officer, _planet.Planet);
+            _missionCreationAvailable = false;
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            BeginMissionItemDrag(officer);
+
+            planetView.OnPointerEnter(
+                CreatePlanetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+            _controller.RenderWindow(view, window);
+
+            Assert.IsFalse(
+                planetView.TryGetIconSourceRect(PlanetIcon.Mission, out RectTransform _)
+            );
+            Assert.IsFalse(_controller.IsMissionDropTargetVisible());
         }
 
         [Test]
@@ -617,7 +698,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void PlanetReleased_FleetIconTargeting_SelectsFirstFleetInWindowOrder()
+        public void PlanetReleased_FleetIconMoveTargeting_SelectsPlanet()
+        {
+            GameFleet secondFleet = new GameFleet
+            {
+                InstanceID = "second-fleet",
+                DisplayName = "Fleet Two",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(secondFleet, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow _);
+            _controller.RenderWindow(view, _windowManager.Windows.Single());
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            TestTargetingReceiver receiver = new TestTargetingReceiver();
+            _targetingController.Begin(
+                new TargetingRequest(
+                    "Target",
+                    new StrategyWindowTargetingSource(
+                        null,
+                        StrategyMenuAction.Move,
+                        0,
+                        0,
+                        new ISceneNode[] { _fleet }
+                    ),
+                    receiver
+                )
+            );
+
+            planetView.OnPointerClick(
+                CreateFleetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_planet.Planet, target.Item);
+            Assert.AreSame(_planet.Planet, target.GetMoveDestination());
+        }
+
+        [Test]
+        public void PlanetReleased_FleetIconManufacturingTargeting_SelectsFirstFleetInWindowOrder()
         {
             GameFleet secondFleet = new GameFleet
             {
@@ -753,16 +876,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void CreateTargetForHit_CreateMissionOnFleetOverlayIcon_TargetsPlanet()
+        [TestCase(StrategyMenuAction.Move)]
+        [TestCase(StrategyMenuAction.MoveConfirm)]
+        [TestCase(StrategyMenuAction.WaypointMove)]
+        public void CreateTargetForHit_MovementActionOnFleetOverlayIcon_TargetsPlanet(
+            StrategyMenuAction action
+        )
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyMenuAction.CreateMission);
 
             StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
-                request,
+                CreateRequest(action, Array.Empty<ISceneNode>()),
                 fleet
+            );
+
+            Assert.IsNotNull(target);
+            Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.GetMoveDestination());
+        }
+
+        [Test]
+        public void CreateTargetForHit_FacilityOverlayIcon_TargetsPlanet()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Facility, false);
+
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
+                hit,
+                CreateRequest(StrategyMenuAction.CreateMission, Array.Empty<ISceneNode>()),
+                new GameFleet()
             );
 
             Assert.IsNotNull(target);
@@ -771,38 +915,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void CreateTargetForHit_FacilityOverlayIcon_TargetsPlanet()
+        public void CreateTargetForHit_MissionOverlayIcon_RequestsMissionCreation()
         {
-            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Facility, false);
-            GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyMenuAction.CreateMission);
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
 
             StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
-                request,
-                fleet
+                CreateRequest(StrategyMenuAction.Move, Array.Empty<ISceneNode>()),
+                null
             );
 
             Assert.IsNotNull(target);
-            Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
+            Assert.IsTrue(target.MissionCreationRequested);
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
-        [TestCase(StrategyMenuAction.Destination)]
-        [TestCase(StrategyMenuAction.Move)]
-        [TestCase(StrategyMenuAction.MoveConfirm)]
-        [TestCase(StrategyMenuAction.WaypointMove)]
-        public void CreateTargetForHit_FleetContainerActionOnFleetOverlayIcon_TargetsFleet(
-            StrategyMenuAction action
-        )
+        [Test]
+        public void CreateTargetForHit_ManufacturingDestinationOnFleetOverlayIcon_TargetsFleet()
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(action);
 
             StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
-                request,
+                CreateRequest(StrategyMenuAction.Destination, Array.Empty<ISceneNode>()),
                 fleet
             );
 
@@ -818,17 +954,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             StrategyMissionTarget missingHit = PlanetSectorWindowController.CreateTargetForHit(
                 null,
-                CreateRequest(StrategyMenuAction.Move),
+                CreateRequest(StrategyMenuAction.Move, Array.Empty<ISceneNode>()),
                 _fleet
             );
             StrategyMissionTarget emptyHit = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
-                CreateRequest(StrategyMenuAction.Move),
+                CreateRequest(StrategyMenuAction.Move, Array.Empty<ISceneNode>()),
                 _fleet
             );
 
             Assert.IsNull(missingHit);
             Assert.IsNull(emptyHit);
+        }
+
+        /// <summary>
+        /// Begins an item drag whose selection can be routed to mission creation.
+        /// </summary>
+        /// <param name="item">The dragged mission participant.</param>
+        private void BeginMissionItemDrag(ISceneNode item)
+        {
+            StrategyWindowItemDragController dragReceiver = new StrategyWindowItemDragController(
+                _targetingController,
+                new DragController(5),
+                _ => Array.Empty<ISceneNode>(),
+                (UIWindow _, int _, int _, out DragPreview preview) =>
+                {
+                    preview = null;
+                    return false;
+                },
+                _ => null,
+                _actions
+            );
+            _targetingController.Begin(
+                new TargetingRequest(
+                    "Move",
+                    new StrategyWindowTargetingSource(
+                        null,
+                        StrategyMenuAction.Move,
+                        0,
+                        0,
+                        new[] { item }
+                    ),
+                    dragReceiver
+                )
+            );
         }
 
         /// <summary>
@@ -847,6 +1016,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 GetWindowPosition,
                 CloseWindow,
                 MarkDirty,
+                (_, _) => _missionCreationAvailable,
                 () => _filterMode
             );
         }
@@ -1065,10 +1235,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// </summary>
         /// <param name="view">The view.</param>
         /// <param name="imageFieldName">The image field name.</param>
+        /// <param name="button">The pointer button.</param>
         /// <returns>The created overlay pointer event.</returns>
         private static PointerEventData CreateOverlayPointerEvent(
             PlanetSectorWindowView view,
-            string imageFieldName
+            string imageFieldName,
+            PointerEventData.InputButton button = PointerEventData.InputButton.Right
         )
         {
             PlanetSectorPlanetView planetView =
@@ -1077,7 +1249,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             RawImage overlayImage = GetField<RawImage>(planetView, imageFieldName);
             return new PointerEventData(null)
             {
-                button = PointerEventData.InputButton.Right,
+                button = button,
                 pointerCurrentRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
                 pointerPressRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
             };
@@ -1125,16 +1297,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private void MarkDirty()
         {
             _dirtyCount++;
-        }
-
-        /// <summary>
-        /// Creates request.
-        /// </summary>
-        /// <param name="action">The action.</param>
-        /// <returns>The created request.</returns>
-        private static TargetingRequest CreateRequest(StrategyMenuAction action)
-        {
-            return CreateRequest(action, Array.Empty<ISceneNode>());
         }
 
         /// <summary>
@@ -1258,7 +1420,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
-            ) { }
+            )
+            {
+                LastItems = items;
+                LastTarget = target;
+            }
 
             /// <summary>
             /// Opens planet sector battle result.

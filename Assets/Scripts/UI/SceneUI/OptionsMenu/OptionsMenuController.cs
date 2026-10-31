@@ -611,8 +611,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             string fileName = _saveSlots[slot].FileName;
             if (submitted && HasActiveGame())
             {
-                if (!OverwriteSave(fileName, newName))
-                    return;
+                RequestSaveOverwrite(_saveSlots[slot], newName);
+                return;
             }
             else
                 _saveGameManager.SetSaveDisplayName(fileName, newName);
@@ -649,18 +649,38 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Overwrites the selected existing save with the running game.
+    /// Requests confirmation before replacing the selected save with the running game.
     /// </summary>
     private void HandleSaveRequested()
     {
         if (!CanSaveGame() || !IsSelectedExistingSave())
             return;
 
-        string fileName = _saveSlots[_selectedSlot].FileName;
-        if (!OverwriteSave(fileName, _saveSlots[_selectedSlot].Name))
+        OptionsSaveSlot slot = _saveSlots[_selectedSlot];
+        RequestSaveOverwrite(slot, slot.Name);
+    }
+
+    /// <summary>
+    /// Confirms replacement of one save without depending on the later row selection.
+    /// </summary>
+    /// <param name="slot">The existing save to replace.</param>
+    /// <param name="displayName">The display name to persist after confirmation.</param>
+    private void RequestSaveOverwrite(OptionsSaveSlot slot, string displayName)
+    {
+        if (!CanSaveGame())
             return;
-        RefreshSaveSlots(fileName);
-        _markDirty();
+
+        string fileName = slot.FileName;
+        RequestConfirm(
+            $"Overwrite \"{slot.Name}\"?",
+            () =>
+            {
+                if (!OverwriteSave(fileName, displayName))
+                    return;
+                RefreshSaveSlots(fileName);
+                _markDirty();
+            }
+        );
     }
 
     /// <summary>
@@ -761,7 +781,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (!CanSaveGame())
             return false;
 
-        string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
+        string fileName = "save_" + Guid.NewGuid().ToString("N");
         return _saveGame(fileName, displayName);
     }
 

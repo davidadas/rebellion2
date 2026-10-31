@@ -8,17 +8,17 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 using UnityEngine;
@@ -505,11 +505,13 @@ public static class TestGameData
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="officerTraits">The officer trait definitions.</param>
+    /// <param name="officers">The content-authored officer templates.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
-        OfficerTraitDefinition[] officerTraits = null
+        OfficerTraitDefinition[] officerTraits = null,
+        Officer[] officers = null
     )
     {
         return new GameDataCatalog(
@@ -522,7 +524,7 @@ public static class TestGameData
             Array.Empty<Starfighter>(),
             Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
-            Array.Empty<Officer>(),
+            officers ?? Array.Empty<Officer>(),
             Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
@@ -649,8 +651,8 @@ public static class TestSystems
     > _missionResolvers = new ConditionalWeakTable<MissionCommands, MissionResolver>();
     private static readonly ConditionalWeakTable<
         MissionCommands,
-        OfficerCommandCommands
-    > _officerCommands = new ConditionalWeakTable<MissionCommands, OfficerCommandCommands>();
+        PersonnelCommands
+    > _personnelCommands = new ConditionalWeakTable<MissionCommands, PersonnelCommands>();
 
     /// <summary>
     /// Creates a mission system with the uprising resolution path available.
@@ -690,6 +692,10 @@ public static class TestSystems
     )
     {
         MissionQueries queries = new MissionQueries(game);
+        PersonnelCommands personnelCommands = new PersonnelCommands(
+            game,
+            new PersonnelQueries(game)
+        );
         MissionResolver resolver = new MissionResolver(
             game,
             provider,
@@ -698,12 +704,11 @@ public static class TestSystems
             queries,
             new MovementQueries(game),
             new MissionBetrayalResolver(game, provider),
-            new PersonnelCommands(new PersonnelQueries(game))
+            personnelCommands
         );
-        OfficerCommandCommands officerCommands = new OfficerCommandCommands(game);
-        MissionCommands commands = new MissionCommands(game, queries, resolver, officerCommands);
+        MissionCommands commands = new MissionCommands(game, queries, resolver, personnelCommands);
         _missionResolvers.Add(commands, resolver);
-        _officerCommands.Add(commands, officerCommands);
+        _personnelCommands.Add(commands, personnelCommands);
         return commands;
     }
 
@@ -722,14 +727,14 @@ public static class TestSystems
     }
 
     /// <summary>
-    /// Gets the officer-command service paired with test mission commands.
+    /// Gets the personnel service paired with test mission commands.
     /// </summary>
     /// <param name="commands">The mission commands created by this helper.</param>
-    /// <returns>The paired officer-command service.</returns>
-    internal static OfficerCommandCommands GetOfficerCommands(MissionCommands commands)
+    /// <returns>The paired personnel service.</returns>
+    internal static PersonnelCommands GetPersonnelCommands(MissionCommands commands)
     {
-        return _officerCommands.TryGetValue(commands, out OfficerCommandCommands officerCommands)
-            ? officerCommands
+        return _personnelCommands.TryGetValue(commands, out PersonnelCommands personnelCommands)
+            ? personnelCommands
             : throw new InvalidOperationException(
                 "Mission commands were not created by TestSystems."
             );

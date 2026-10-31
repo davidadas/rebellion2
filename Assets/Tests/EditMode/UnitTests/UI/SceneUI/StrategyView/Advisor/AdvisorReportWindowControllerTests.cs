@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using UnityEngine;
 using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 

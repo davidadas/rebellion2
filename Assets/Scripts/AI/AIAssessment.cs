@@ -7,8 +7,9 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -18,6 +19,7 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIAssessment
     {
+        private readonly HashSet<string> _heldOfficerIDs;
         private readonly GameRoot _game;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
@@ -131,8 +133,6 @@ namespace Rebellion.AI
             new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _projectedInterdictionCountByFleetId =
             new Dictionary<string, int>(StringComparer.Ordinal);
-        private readonly Dictionary<string, int> _hostilePlanetaryCapitalFirepowerByPlanetId =
-            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _hostilePlanetaryStarfighterFirepowerByPlanetId =
             new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _hostilePlanetaryStarfighterCountByPlanetId =
@@ -148,14 +148,9 @@ namespace Rebellion.AI
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _productionThroughputs =
             new Dictionary<ManufacturingType, double>();
-        private readonly Dictionary<ManufacturingType, double> _idleProductionThroughputs =
-            new Dictionary<ManufacturingType, double>();
         private readonly Dictionary<ManufacturingType, int> _queuedProductionWork =
             new Dictionary<ManufacturingType, int>();
-        private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
-            new Dictionary<ManufacturingType, double>();
         private HashSet<string> _queuedManufacturableIds;
-        private int? _productionFacilityMaintenance;
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -189,10 +184,6 @@ namespace Rebellion.AI
         > _attackCampaignPlanetsBySystemId = new Dictionary<string, IReadOnlyList<Planet>>(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<string, int> _enemySystemSupportLeverage = new Dictionary<
-            string,
-            int
-        >(StringComparer.Ordinal);
         private readonly HashSet<string> _knownGarrisonedPlanetIds = new HashSet<string>(
             StringComparer.Ordinal
         );
@@ -281,11 +272,18 @@ namespace Rebellion.AI
         /// <param name="game">The game being assessed.</param>
         /// <param name="faction">The faction being assessed.</param>
         /// <param name="factionView">The faction-visible galaxy state.</param>
-        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
+        /// <param name="officerBehaviors">Content-authored officer behaviors evaluated for this assessment.</param>
+        public AIAssessment(
+            GameRoot game,
+            Faction faction,
+            GalaxyMap factionView,
+            IReadOnlyDictionary<string, OfficerAIBehavior> officerBehaviors = null
+        )
         {
             _game = game;
             _faction = faction;
             _factionView = factionView;
+            _heldOfficerIDs = BuildHeldOfficerIDs(officerBehaviors);
             _opposingFactionIds =
                 game?.GetFactions()
                     .Where(candidate => candidate.InstanceID != faction?.InstanceID)
@@ -408,6 +406,50 @@ namespace Rebellion.AI
             }
             EngagementOrderedFleets = BuildEngagementOrderedFleets();
             ColonizationOrderedFleets = BuildColonizationOrderedFleets();
+        }
+
+        /// <summary>
+        /// Returns whether this assessment withholds an owned officer from new AI assignments.
+        /// </summary>
+        /// <param name="officer">The officer being considered.</param>
+        /// <returns>True when the officer's hold-position conditions matched.</returns>
+        public bool IsOfficerHoldingPosition(Officer officer) =>
+            officer != null
+            && officer.OwnerInstanceID == _faction?.InstanceID
+            && _heldOfficerIDs.Contains(officer.InstanceID);
+
+        /// <summary>
+        /// Evaluates the active catalog's hold-position conditions once for this faction turn.
+        /// </summary>
+        /// <param name="behaviors">The content-only configuration indexed by officer identity.</param>
+        /// <returns>The officers excluded from new assignments during this assessment.</returns>
+        private HashSet<string> BuildHeldOfficerIDs(
+            IReadOnlyDictionary<string, OfficerAIBehavior> behaviors
+        )
+        {
+            HashSet<string> held = new(StringComparer.Ordinal);
+            if (_game == null || _faction == null || behaviors == null)
+                return held;
+            foreach (KeyValuePair<string, OfficerAIBehavior> entry in behaviors)
+            {
+                Officer officer = _game.GetSceneNodeByInstanceID<Officer>(
+                    entry.Key,
+                    includeDisabled: true
+                );
+                if (officer == null || officer.OwnerInstanceID != _faction.InstanceID)
+                    continue;
+                if (entry.Value.Type != OfficerAIBehaviorType.HoldPosition)
+                    throw new InvalidOperationException(
+                        $"Unsupported officer AI behavior '{entry.Value.Type}'."
+                    );
+                if (
+                    entry.Value.Conditionals.All(condition =>
+                        GameConditionEvaluator.IsMet(condition, _game)
+                    )
+                )
+                    held.Add(officer.InstanceID);
+            }
+            return held;
         }
 
         /// <summary>
@@ -711,20 +753,6 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns all known planets in a system.
-        /// </summary>
-        /// <param name="systemId">System instance identifier.</param>
-        /// <returns>The indexed known planets, or an empty collection.</returns>
-        internal IReadOnlyList<Planet> GetKnownSystemPlanets(string systemId)
-        {
-            return
-                !string.IsNullOrEmpty(systemId)
-                && _knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
-                ? planets
-                : Array.Empty<Planet>();
-        }
-
-        /// <summary>
         /// Returns the campaign planets associated with an attack target.
         /// </summary>
         /// <param name="targetPlanet">Primary attack target.</param>
@@ -762,26 +790,6 @@ namespace Rebellion.AI
                 return 0;
 
             return (double)systemPlanets.Count(IsOwnedPlanet) / systemPlanets.Count;
-        }
-
-        /// <summary>
-        /// Returns the known enemy planet count in a system.
-        /// </summary>
-        /// <param name="systemId">System instance identifier.</param>
-        /// <returns>The enemy planet count.</returns>
-        public int GetEnemyPlanetCountInSystem(string systemId)
-        {
-            return GetAttackCampaignPlanets(systemId).Count;
-        }
-
-        /// <summary>
-        /// Returns the combined strategic value of known enemy planets in a system.
-        /// </summary>
-        /// <param name="systemId">System instance identifier.</param>
-        /// <returns>The combined strategic value.</returns>
-        public double GetEnemySystemValue(string systemId)
-        {
-            return GetAttackCampaignPlanets(systemId).Sum(GetPlanetValue);
         }
 
         /// <summary>
@@ -854,23 +862,6 @@ namespace Rebellion.AI
                 _defensiveSupportRisks,
                 planet.InstanceID,
                 () => CalculateSupportLeverage(planet, GetLeadingOpposingFactionId(planet))
-            );
-        }
-
-        /// <summary>
-        /// Returns the combined offensive support leverage for known enemy planets in a system.
-        /// </summary>
-        /// <param name="systemId">The system identifier.</param>
-        /// <returns>The combined support leverage.</returns>
-        public int GetEnemySystemSupportLeverage(string systemId)
-        {
-            if (string.IsNullOrEmpty(systemId))
-                return 0;
-
-            return GetOrAdd(
-                _enemySystemSupportLeverage,
-                systemId,
-                () => GetAttackCampaignPlanets(systemId).Sum(GetOffensiveSupportLeverage)
             );
         }
 
@@ -1342,13 +1333,6 @@ namespace Rebellion.AI
                 return;
 
             string planetId = planet.InstanceID;
-            AddIndexedAmount(
-                _hostilePlanetaryCapitalFirepowerByPlanetId,
-                planetId,
-                SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
-                    starfighter
-                )
-            );
             AddIndexedAmount(
                 _hostilePlanetaryStarfighterFirepowerByPlanetId,
                 planetId,
@@ -1994,19 +1978,6 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns ready hostile planetary fighter firepower against capital ships.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The capital-target firepower.</returns>
-        public int GetHostilePlanetaryFirepowerAgainstCapitalShips(Planet planet)
-        {
-            return GetIndexedAmount(
-                _hostilePlanetaryCapitalFirepowerByPlanetId,
-                planet?.InstanceID
-            );
-        }
-
-        /// <summary>
         /// Returns ready hostile planetary fighter firepower against starfighters.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -2592,48 +2563,6 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns maintenance committed to complete and constructing production facilities.
-        /// </summary>
-        /// <returns>The committed production-facility maintenance.</returns>
-        public int GetProductionFacilityMaintenance()
-        {
-            if (_productionFacilityMaintenance.HasValue)
-                return _productionFacilityMaintenance.Value;
-
-            _productionFacilityMaintenance = OwnedPlanets
-                .SelectMany(GetPlanetBuildings)
-                .Where(building =>
-                    building.GetOwnerInstanceID() == _faction.InstanceID
-                    && building.GetBuildingType()
-                        is BuildingType.ConstructionFacility
-                            or BuildingType.Shipyard
-                            or BuildingType.TrainingFacility
-                )
-                .Sum(building => building.MaintenanceCost);
-            return _productionFacilityMaintenance.Value;
-        }
-
-        /// <summary>
-        /// Returns idle production throughput for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The idle production throughput.</returns>
-        public double GetIdleProductionThroughput(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _idleProductionThroughputs,
-                type,
-                () =>
-                    OwnedPlanets
-                        .Where(planet => GetQueuedProductionWork(planet, type) == 0)
-                        .Sum(planet => planet.GetProductionRate(type))
-            );
-        }
-
-        /// <summary>
         /// Returns queued production work for a manufacturing type.
         /// </summary>
         /// <param name="type">Manufacturing type to inspect.</param>
@@ -2689,34 +2618,6 @@ namespace Rebellion.AI
             }
 
             return (int)commitment;
-        }
-
-        /// <summary>
-        /// Returns estimated queue clear time for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The queued production clear ticks.</returns>
-        public double GetQueuedProductionClearTicks(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _queuedProductionClearTicks,
-                type,
-                () =>
-                {
-                    int work = GetQueuedProductionWork(type);
-                    if (work <= 0)
-                        return 0;
-
-                    double throughput = GetProductionThroughput(type);
-                    if (throughput <= 0)
-                        return double.PositiveInfinity;
-
-                    return work / throughput;
-                }
-            );
         }
 
         /// <summary>
@@ -2818,7 +2719,12 @@ namespace Rebellion.AI
             if (_faction == null)
                 return new List<IMissionParticipant>();
 
-            return _faction.GetAvailableMissionParticipants();
+            return _faction
+                .GetAvailableMissionParticipants()
+                .Where(participant =>
+                    participant is not Officer officer || !IsOfficerHoldingPosition(officer)
+                )
+                .ToList();
         }
 
         /// <summary>

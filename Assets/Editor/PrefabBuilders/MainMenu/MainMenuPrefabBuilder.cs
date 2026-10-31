@@ -379,11 +379,9 @@ public static class MainMenuPrefabBuilder
         audioManagerObject.transform.localPosition = new Vector3(0f, 0f, -10f);
         AudioSource musicSource = NewAudioSource(audioManagerObject);
         AudioSource sfxSource = NewAudioSource(audioManagerObject);
-        AudioSource ambienceSource = NewAudioSource(audioManagerObject);
         AudioManager audioManager = audioManagerObject.AddComponent<AudioManager>();
         AssignReference(audioManager, "musicSource", musicSource);
         AssignReference(audioManager, "sfxSource", sfxSource);
-        AssignReference(audioManager, "ambienceSource", ambienceSource);
     }
 
     /// <summary>
@@ -2130,7 +2128,7 @@ public static class MainMenuPrefabBuilder
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
 
-        const int planetLayer = 31;
+        const int planetLayer = PresentationLayers.MainMenuPlanet;
         BuildStellarFlare(pivot.transform, planetLayer);
         BuildPlanet(
             pivot.transform,
@@ -2935,7 +2933,9 @@ public static class MainMenuPrefabBuilder
         );
         light.color = color;
         light.shadows = shadows;
-        light.cullingMask = ~(1 << 31);
+        light.cullingMask = ~(
+            (1 << PresentationLayers.MainMenuPlanet) | (1 << PresentationLayers.LoadingScreen)
+        );
     }
 
     /// <summary>

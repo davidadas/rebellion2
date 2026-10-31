@@ -128,9 +128,15 @@ public sealed class CutscenePlayer : MonoBehaviour
             return;
 
         if (IsSkipPressed())
-        {
-            EndCutscene();
-        }
+            Skip();
+    }
+
+    /// <summary>
+    /// Stops the active cutscene in response to player input.
+    /// </summary>
+    public void Skip()
+    {
+        EndCutscene();
     }
 
     /// <summary>

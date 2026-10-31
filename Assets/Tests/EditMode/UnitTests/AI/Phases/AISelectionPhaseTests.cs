@@ -14,7 +14,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Phases
@@ -247,6 +247,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             headquarters.OwnerInstanceID = empire.InstanceID;
             game.AttachNode(headquarters, origin);
+            empire.HeadquartersUnitInstanceID = headquarters.InstanceID;
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 origin,

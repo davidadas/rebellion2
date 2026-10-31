@@ -8,8 +8,8 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -231,6 +231,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, origin);
+            player.HeadquartersUnitInstanceID = headquarters.InstanceID;
 
             bool moved = _controller.TryExecuteMove(
                 _sourceWindow,
@@ -448,6 +449,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
 
             AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_MissionTargetOnFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(
+                    _destination,
+                    _destination.Planet,
+                    missionCreationRequested: true
+                ),
+                new ISceneNode[] { _officer }
+            );
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
+        }
+
+        [Test]
+        public void ExecuteItemDrop_MissionTargetWithoutDestinationOption_ExecutesMove()
+        {
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(
+                    _destination,
+                    _destination.Planet,
+                    missionCreationRequested: true
+                ),
+                new ISceneNode[] { _specialForces }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNotNull(_specialForces.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(0, _invalidOrderRejectionCount);
         }
 
         [Test]
