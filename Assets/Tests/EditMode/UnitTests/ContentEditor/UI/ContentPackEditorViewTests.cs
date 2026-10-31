@@ -364,6 +364,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase(ContentEditorColorMode.Light)]
         [TestCase(ContentEditorColorMode.Empire)]
         [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
         public void RenderProject_AppearanceMenu_CentersAReadableCheckmarkInTheSelectedRow(
             ContentEditorColorMode mode
         )
@@ -418,7 +419,12 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(image => image.name == "Tick");
             Assert.AreSame(mark.texture, checkboxGlyph.texture);
             Assert.AreEqual(mark.uvRect, checkboxGlyph.uvRect);
-            if (mode is ContentEditorColorMode.Dark or ContentEditorColorMode.Empire)
+            if (
+                mode
+                is ContentEditorColorMode.Dark
+                    or ContentEditorColorMode.Empire
+                    or ContentEditorColorMode.Dagobah
+            )
             {
                 Assert.AreEqual(Color.white, mark.color);
                 Assert.AreEqual(Color.white, checkboxGlyph.color);
@@ -798,6 +804,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase(ContentEditorColorMode.Light)]
         [TestCase(ContentEditorColorMode.Empire)]
         [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
         public void SetColorMode_EditingATextDraft_RecolorsTheFormWithoutChangingItsValueOrHistory(
             ContentEditorColorMode mode
         )
@@ -844,6 +851,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase(ContentEditorColorMode.Light)]
         [TestCase(ContentEditorColorMode.Empire)]
         [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
         public void RenderProject_NewControlsAfterChangingAppearance_UseTheSelectedPalette(
             ContentEditorColorMode mode
         )
@@ -1665,6 +1673,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase(ContentEditorColorMode.Light)]
         [TestCase(ContentEditorColorMode.Empire)]
         [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
         public void SetColorMode_Scrollbars_KeepOpaqueContrastingHandlesWithoutContentTextures(
             ContentEditorColorMode mode
         )

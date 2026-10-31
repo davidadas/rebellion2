@@ -40,8 +40,13 @@ public sealed class ContentEditorAppearance : MonoBehaviour
     /// <returns>The corresponding palette color.</returns>
     public static Color ColorFor(ContentEditorColorMode mode, ContentEditorColorRole role)
     {
-        if (mode is ContentEditorColorMode.Empire or ContentEditorColorMode.Rebels)
-            return FactionColorFor(mode, role);
+        if (
+            mode
+            is ContentEditorColorMode.Empire
+                or ContentEditorColorMode.Rebels
+                or ContentEditorColorMode.Dagobah
+        )
+            return ThemedColorFor(mode, role);
         bool light = mode == ContentEditorColorMode.Light;
         return role switch
         {
@@ -98,13 +103,25 @@ public sealed class ContentEditorAppearance : MonoBehaviour
     }
 
     /// <summary>
-    /// Resolves complete faction palettes for surfaces, controls, text and interaction states.
+    /// Resolves named palettes for surfaces, controls, text and interaction states.
     /// </summary>
-    /// <param name="mode">The Empire or Rebels presentation.</param>
+    /// <param name="mode">The Empire, Rebels or Dagobah presentation.</param>
     /// <param name="role">The control's visual purpose.</param>
-    /// <returns>The requested faction color or a contrast-appropriate shared status color.</returns>
-    private static Color FactionColorFor(ContentEditorColorMode mode, ContentEditorColorRole role)
+    /// <returns>The requested theme color or a contrast-appropriate shared status color.</returns>
+    private static Color ThemedColorFor(ContentEditorColorMode mode, ContentEditorColorRole role)
     {
+        if (mode == ContentEditorColorMode.Empire)
+            return role switch
+            {
+                ContentEditorColorRole.Text
+                or ContentEditorColorRole.TextButton
+                or ContentEditorColorRole.ButtonText => new Color32(226, 232, 229, 255),
+                ContentEditorColorRole.Accent => new Color32(139, 192, 151, 255),
+                ContentEditorColorRole.Selection => new Color32(49, 76, 60, 255),
+                ContentEditorColorRole.ScrollThumb => new Color32(119, 170, 133, 255),
+                ContentEditorColorRole.TextSelection => new Color(0.34f, 0.60f, 0.42f, 0.45f),
+                _ => ColorFor(ContentEditorColorMode.Dark, role),
+            };
         bool rebels = mode == ContentEditorColorMode.Rebels;
         return role switch
         {
@@ -170,6 +187,7 @@ public enum ContentEditorColorMode
     Light,
     Empire,
     Rebels,
+    Dagobah,
 }
 
 public enum ContentEditorColorRole

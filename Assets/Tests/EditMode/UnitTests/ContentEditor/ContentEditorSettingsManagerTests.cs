@@ -46,6 +46,7 @@ namespace Rebellion.Tests.ContentEditor
         [TestCase(ContentEditorColorMode.Light)]
         [TestCase(ContentEditorColorMode.Empire)]
         [TestCase(ContentEditorColorMode.Rebels)]
+        [TestCase(ContentEditorColorMode.Dagobah)]
         public void Load_AfterApplicationRestart_RetainsThemeLayoutAndAcknowledgement(
             ContentEditorColorMode mode
         )
