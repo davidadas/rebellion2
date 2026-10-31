@@ -26,6 +26,9 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
     [SerializeField]
     private ContextMenuDismissBoundary dismissBoundary;
 
+    [SerializeField]
+    private bool preferRightSubmenus;
+
     private readonly List<ContextMenuPanelView> panelViews = new List<ContextMenuPanelView>();
     private readonly List<ContextMenuPanel> panels = new List<ContextMenuPanel>();
     private bool initialized;
@@ -366,7 +369,12 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
         int submenuWidth = GetMenuWidth(submenu);
         Vector2Int surfaceSize = GetSurfaceSize();
         int leftX = parent.X - submenuWidth + metrics.BorderSize;
-        submenu.X = leftX >= 0 ? leftX : parent.X + parentWidth - metrics.BorderSize;
+        int rightX = parent.X + parentWidth - metrics.BorderSize;
+        bool fitsRight = surfaceSize.x <= 0 || rightX + submenuWidth <= surfaceSize.x;
+        submenu.X =
+            preferRightSubmenus && fitsRight ? rightX
+            : leftX >= 0 ? leftX
+            : rightX;
         submenu.Y = parent.Y + metrics.BorderSize + rowIndex * metrics.RowHeight;
         AdjustSubmenuPosition(submenu, surfaceSize, metrics);
         panels.Add(submenu);
@@ -520,6 +528,8 @@ public sealed class ContextMenuCommandItem
 
     public Texture ActiveIconTexture { get; }
 
+    public string Shortcut { get; }
+
     /// <summary>
     /// Creates one context-menu command item.
     /// </summary>
@@ -532,6 +542,7 @@ public sealed class ContextMenuCommandItem
     /// <param name="selected">Whether the command has a persistent selection frame.</param>
     /// <param name="selectionColors">The owner colors displayed by the selection frames.</param>
     /// <param name="selectionState">The optional owner of selection updates for an open menu.</param>
+    /// <param name="shortcut">The optional display-only keyboard shortcut.</param>
     public ContextMenuCommandItem(
         IContextMenuCommand command,
         Texture iconTexture = null,
@@ -541,7 +552,8 @@ public sealed class ContextMenuCommandItem
         IReadOnlyList<ContextMenuCommandItem> submenuCommands = null,
         bool selected = false,
         IReadOnlyList<Color32> selectionColors = null,
-        ContextMenuSelectionState selectionState = null
+        ContextMenuSelectionState selectionState = null,
+        string shortcut = null
     )
     {
         Command = command ?? throw new System.ArgumentNullException(nameof(command));
@@ -555,6 +567,7 @@ public sealed class ContextMenuCommandItem
         ActiveIconTexture = activeIconTexture;
         UsesIconColumn = usesIconColumn || iconTexture != null || activeIconTexture != null;
         CenterNativeIcon = centerNativeIcon;
+        Shortcut = shortcut;
         SubmenuCommands =
             submenuCommands == null
                 ? new List<ContextMenuCommandItem>()

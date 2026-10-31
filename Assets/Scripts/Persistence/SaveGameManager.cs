@@ -68,10 +68,7 @@ public class SaveGameManager
     /// Creates the singleton save manager for the application's persistent save directory.
     /// </summary>
     private SaveGameManager()
-        : this(
-            Path.Combine(UnityEngine.Application.persistentDataPath, "saves"),
-            Environment.GetCommandLineArgs()
-        ) { }
+        : this(Path.Combine(UserDataPaths.Root, "saves"), Environment.GetCommandLineArgs()) { }
 
     /// <summary>
     /// Creates the application's save owner using its process-level directory selection.

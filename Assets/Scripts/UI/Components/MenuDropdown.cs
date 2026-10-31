@@ -6,6 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class MenuDropdown : TMP_Dropdown
 {
+    private const int _maximumVisibleOptions = 10;
+
     /// <summary>
     /// Sizes the shared popup from its authored item height before TMP creates the interactive list.
     /// </summary>
@@ -18,9 +20,14 @@ public sealed class MenuDropdown : TMP_Dropdown
         float itemHeight = item.rect.height;
         popup.SetSizeWithCurrentAnchors(
             RectTransform.Axis.Vertical,
-            options.Count * itemHeight + 4f
+            Mathf.Min(options.Count, _maximumVisibleOptions) * itemHeight + 4f
         );
-        RectTransform viewport = (RectTransform)popup.Find("Viewport");
+        RectTransform content = (RectTransform)item.parent;
+        content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemHeight);
+        UnityEngine.UI.ScrollRect scroll = popup.GetComponent<UnityEngine.UI.ScrollRect>();
+        scroll.vertical = options.Count > _maximumVisibleOptions;
+        scroll.scrollSensitivity = itemHeight;
+        RectTransform viewport = scroll.viewport;
         viewport.anchorMin = Vector2.zero;
         viewport.anchorMax = Vector2.one;
         viewport.offsetMin = new Vector2(2f, 2f);

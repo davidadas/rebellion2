@@ -27,8 +27,7 @@ public static class MenuControlPrefabBuilder
     /// </summary>
     internal static void Rebuild()
     {
-        BuildDropdown(out GameObject dropdown);
-        Save(dropdown, DropdownPath);
+        RebuildDropdown();
         GameObject list = new GameObject("MenuSaveList", typeof(RectTransform));
         list.SetActive(false);
         RectTransform saveLoadPage = (RectTransform)list.transform;
@@ -237,6 +236,51 @@ public static class MenuControlPrefabBuilder
     }
 
     /// <summary>
+    /// Rebuilds the canonical selector shared by application and authoring forms.
+    /// </summary>
+    internal static void RebuildDropdown()
+    {
+        BuildDropdown(out GameObject root);
+        Save(root, DropdownPath);
+    }
+
+    /// <summary>
+    /// Returns the built-in checkmark used by flat selectors and checked controls.
+    /// </summary>
+    /// <returns>The built-in checkmark sprite.</returns>
+    internal static Sprite GetCheckmarkSprite() =>
+        AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Checkmark.psd");
+
+    /// <summary>
+    /// Instantiates the canonical selector beneath a view.
+    /// </summary>
+    /// <param name="parent">The owning view.</param>
+    /// <param name="name">The instance name.</param>
+    /// <param name="style">The authored surface style.</param>
+    /// <returns>The shared selector.</returns>
+    internal static TMP_Dropdown CreateDropdown(
+        Transform parent,
+        string name,
+        MenuControlStyle style = MenuControlStyle.Textured
+    )
+    {
+        GameObject root;
+        if (style == MenuControlStyle.Flat)
+        {
+            BuildDropdown(out root, style);
+            root.transform.SetParent(parent, false);
+        }
+        else
+            root = Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(DropdownPath),
+                parent,
+                false
+            );
+        root.name = name;
+        return root.GetComponent<TMP_Dropdown>();
+    }
+
+    /// <summary>
     /// Instantiates the same selector artwork and popup used by application Options.
     /// </summary>
     /// <param name="parent">The control owner.</param>
@@ -251,17 +295,12 @@ public static class MenuControlPrefabBuilder
         RectInt bounds
     )
     {
-        GameObject root = Object.Instantiate(
-            AssetDatabase.LoadAssetAtPath<GameObject>(DropdownPath),
-            parent,
-            false
-        );
-        root.name = name;
+        TMP_Dropdown dropdown = CreateDropdown(parent, name);
+        GameObject root = dropdown.gameObject;
         float scale = bounds.height / 18f;
         RectTransform rect = (RectTransform)root.transform;
         SetSourceRect(rect, bounds.x, bounds.y, Mathf.RoundToInt(bounds.width / scale), 18);
         rect.localScale = Vector3.one * scale;
-        TMP_Dropdown dropdown = root.GetComponent<TMP_Dropdown>();
         dropdown.ClearOptions();
         foreach (string option in options)
             dropdown.options.Add(new TMP_Dropdown.OptionData(option));
@@ -308,15 +347,19 @@ public static class MenuControlPrefabBuilder
     /// Builds the existing Options dropdown hierarchy once as a reusable prefab.
     /// </summary>
     /// <param name="root">Receives the prefab hierarchy.</param>
+    /// <param name="style">The authored surface style.</param>
     /// <returns>The authored selector.</returns>
-    private static TMP_Dropdown BuildDropdown(out GameObject root)
+    private static TMP_Dropdown BuildDropdown(
+        out GameObject root,
+        MenuControlStyle style = MenuControlStyle.Textured
+    )
     {
         const int controlWidth = 120;
-        const int controlHeight = 18;
-        const int itemHeight = 18;
+        int controlHeight = style == MenuControlStyle.Flat ? 32 : 18;
+        int itemHeight = controlHeight;
         Color accent = new Color(0.373f, 0.659f, 0.925f);
         IReadOnlyList<string> options = new[] { "Value" };
-        Image surface = CreateSlicedImage(
+        Image surface = CreateStyledImage(
             "MenuDropdown",
             null,
             _menuBadgeAddress,
@@ -325,21 +368,25 @@ public static class MenuControlPrefabBuilder
             0,
             controlWidth,
             controlHeight,
-            Color.white
+            Color.white,
+            style
         );
         surface.raycastTarget = true;
         TMP_Dropdown dropdown = surface.gameObject.AddComponent<MenuDropdown>();
-        ApplyOptionsDropdownFeedback(dropdown, surface);
+        if (style == MenuControlStyle.Textured)
+            ApplyOptionsDropdownFeedback(dropdown, surface);
+        else
+            dropdown.targetGraphic = surface;
 
-        TextMeshProUGUI caption = CreateTextLabel("Label", surface.transform);
+        TextMeshProUGUI caption = CreateTextLabel("Label", surface.transform, style);
         caption.color = new Color(0.875f, 0.910f, 0.941f);
-        caption.fontSize = 10;
+        caption.fontSize = style == MenuControlStyle.Flat ? 15 : 10;
         caption.alignment = TextAlignmentOptions.MidlineLeft;
         caption.overflowMode = TextOverflowModes.Ellipsis;
         SetSourceRect(caption.rectTransform, 7, 1, controlWidth - 25, controlHeight - 2);
         dropdown.captionText = caption;
 
-        TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform);
+        TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform, style);
         arrow.text = "V";
         arrow.color = accent;
         arrow.fontSize = 9;
@@ -347,7 +394,7 @@ public static class MenuControlPrefabBuilder
         SetSourceRect(arrow.rectTransform, controlWidth - 19, 1, 14, controlHeight - 2);
 
         int popupHeight = options.Count * itemHeight + 4;
-        Image templateImage = CreateSlicedImage(
+        Image templateImage = CreateStyledImage(
             "Template",
             surface.transform,
             _menuPanelAddress,
@@ -356,7 +403,8 @@ public static class MenuControlPrefabBuilder
             controlHeight,
             controlWidth,
             popupHeight,
-            Color.white
+            Color.white,
+            style
         );
         templateImage.raycastTarget = true;
         RectTransform template = templateImage.rectTransform;
@@ -399,7 +447,7 @@ public static class MenuControlPrefabBuilder
         RectTransform content = contentObject.GetComponent<RectTransform>();
         SetSourceRect(content, 0, 0, controlWidth - 4, options.Count * itemHeight);
 
-        Image itemImage = CreateSlicedImage(
+        Image itemImage = CreateStyledImage(
             "Item",
             content,
             _menuRowAddress,
@@ -408,34 +456,57 @@ public static class MenuControlPrefabBuilder
             0,
             controlWidth - 4,
             itemHeight,
-            _buttonSurfaceColor
+            _buttonSurfaceColor,
+            style
         );
         itemImage.raycastTarget = true;
         Toggle item = itemImage.gameObject.AddComponent<Toggle>();
         item.targetGraphic = itemImage;
-        item.transition = Selectable.Transition.SpriteSwap;
-        Sprite activeRowSprite = LoadSprite(_menuRowActiveAddress, _panelBorder);
-        SpriteState itemSprites = item.spriteState;
-        itemSprites.highlightedSprite = activeRowSprite;
-        itemSprites.selectedSprite = activeRowSprite;
-        itemSprites.pressedSprite = activeRowSprite;
-        item.spriteState = itemSprites;
+        if (style == MenuControlStyle.Textured)
+        {
+            item.transition = Selectable.Transition.SpriteSwap;
+            Sprite activeRowSprite = LoadSprite(_menuRowActiveAddress, _panelBorder);
+            SpriteState itemSprites = item.spriteState;
+            itemSprites.highlightedSprite = activeRowSprite;
+            itemSprites.selectedSprite = activeRowSprite;
+            itemSprites.pressedSprite = activeRowSprite;
+            item.spriteState = itemSprites;
+        }
+        else
+            item.transition = Selectable.Transition.ColorTint;
 
-        RawImage checkmark = CreateRawImage(
-            "Item Checkmark",
-            itemImage.transform,
-            _contextMenuCheckMarkAddress,
-            5,
-            3,
-            10,
-            10
-        );
+        Graphic checkmark;
+        if (style == MenuControlStyle.Flat)
+        {
+            Image image = new GameObject(
+                "Item Checkmark",
+                typeof(RectTransform),
+                typeof(Image)
+            ).GetComponent<Image>();
+            image.transform.SetParent(itemImage.transform, false);
+            image.sprite = GetCheckmarkSprite();
+            checkmark = image;
+        }
+        else
+        {
+            checkmark = CreateRawImage(
+                "Item Checkmark",
+                itemImage.transform,
+                _contextMenuCheckMarkAddress,
+                5,
+                3,
+                10,
+                10
+            );
+        }
         checkmark.color = accent;
+        checkmark.raycastTarget = false;
+        SetSourceRect(checkmark.rectTransform, 5, 3, 10, 10);
         item.graphic = checkmark;
 
-        TextMeshProUGUI itemLabel = CreateTextLabel("Item Label", itemImage.transform);
+        TextMeshProUGUI itemLabel = CreateTextLabel("Item Label", itemImage.transform, style);
         itemLabel.color = new Color(0.875f, 0.910f, 0.941f);
-        itemLabel.fontSize = 10;
+        itemLabel.fontSize = style == MenuControlStyle.Flat ? 15 : 10;
         itemLabel.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(itemLabel.rectTransform, 18, 1, controlWidth - 25, itemHeight - 2);
 
@@ -456,6 +527,19 @@ public static class MenuControlPrefabBuilder
         StretchHorizontal(content, 0, 0);
         StretchHorizontal(itemImage.rectTransform, 0, 0);
         StretchHorizontal(itemLabel.rectTransform, 18, 7);
+        if (style == MenuControlStyle.Flat)
+        {
+            SetSourceRect(caption.rectTransform, 10, 0, controlWidth - 38, controlHeight);
+            StretchHorizontal(caption.rectTransform, 10, 28);
+            SetSourceRect(arrow.rectTransform, 0, 0, 20, controlHeight);
+            AnchorRight(arrow.rectTransform, 24);
+            template.anchorMin = Vector2.zero;
+            template.anchorMax = Vector2.right;
+            template.anchoredPosition = Vector2.zero;
+            SetSourceRect(checkmark.rectTransform, 7, 9, 14, 14);
+            SetSourceRect(itemLabel.rectTransform, 28, 0, controlWidth - 40, itemHeight);
+            StretchHorizontal(itemLabel.rectTransform, 28, 8);
+        }
         root = surface.gameObject;
         return dropdown;
     }

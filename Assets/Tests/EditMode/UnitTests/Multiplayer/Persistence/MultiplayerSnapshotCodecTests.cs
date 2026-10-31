@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public async Task Capture_ConcurrentIndependentWorlds_RestoresEachState()
+        public async Task Capture_ConcurrentIndependentWorlds_RestoresEachStateAsync()
         {
             Task<(string Expected, string Actual)>[] captures = Enumerable
                 .Range(0, 8)

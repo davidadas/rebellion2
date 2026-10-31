@@ -1,11 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Content
 {
@@ -165,6 +167,56 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
         }
 
+        [TestCase("Contents")]
+        [TestCase("Contents/Resources/Data")]
+        public void ResolvePlayerContentRootPath_NestedHelper_UsesTheHostInstallation(
+            string dataSuffix
+        )
+        {
+            string installation = Path.Combine(Path.GetTempPath(), "Content-root-layout");
+            string dataPath = Path.Combine(
+                installation,
+                "Game.app",
+                "Contents",
+                "Helpers",
+                "Editor.app",
+                dataSuffix.Replace('/', Path.DirectorySeparatorChar)
+            );
+
+            string actual = ContentPackLoader.ResolvePlayerContentRootPath(
+                dataPath,
+                RuntimePlatform.OSXPlayer
+            );
+
+            Assert.AreEqual(Path.Combine(installation, "Content"), actual);
+        }
+
+        [Test]
+        public void ResolvePlayerContentRootPath_HelperInsideBundledGame_SharesTheExistingResourcesContent()
+        {
+            string resources = Path.Combine(
+                Path.GetTempPath(),
+                "Launcher.app",
+                "Contents",
+                "Resources"
+            );
+            string dataPath = Path.Combine(
+                resources,
+                "Game.app",
+                "Contents",
+                "Helpers",
+                "Editor.app",
+                "Contents"
+            );
+
+            string actual = ContentPackLoader.ResolvePlayerContentRootPath(
+                dataPath,
+                RuntimePlatform.OSXPlayer
+            );
+
+            Assert.AreEqual(Path.Combine(resources, "Content"), actual);
+        }
+
         [Test]
         public void GetDefaultPackID_CatalogSelection_ReturnsConfiguredPack()
         {
@@ -186,6 +238,127 @@ namespace Rebellion.Tests.Content
             {
                 Directory.Delete(contentRoot, true);
             }
+        }
+
+        [Test]
+        public void DiscoverPacks_AuthoredPackInMods_IncludesItWithoutTreatingModsAsPacks()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "authored-packs-" + Guid.NewGuid().ToString("N")
+            );
+            string contentRoot = Path.Combine(directory, "Content");
+            WritePackDefinition(contentRoot, "Base", "base", null);
+            string authored = Path.Combine(directory, "Mods", "user-pack");
+            Directory.CreateDirectory(authored);
+            File.WriteAllText(
+                Path.Combine(authored, "pack.xml"),
+                "<ContentPack><ID>user-pack</ID><BasePackID>base</BasePackID><Version>1.0.0</Version></ContentPack>"
+            );
+            string mod = Path.Combine(directory, "Mods", "overlay");
+            Directory.CreateDirectory(mod);
+            File.WriteAllText(
+                Path.Combine(mod, "mod.xml"),
+                "<ContentModDefinition><ID>overlay</ID></ContentModDefinition>"
+            );
+            try
+            {
+                CollectionAssert.AreEquivalent(
+                    new[] { "base", "user-pack" },
+                    ContentPackLoader.DiscoverPacks(contentRoot).Select(pack => pack.ID)
+                );
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void CreatePackResolver_AuthoredPackInMods_UsesLocalOverridesAndInheritedFiles()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "authored-packs-" + Guid.NewGuid().ToString("N")
+            );
+            string contentRoot = Path.Combine(directory, "Content");
+            string baseRoot = WritePackDefinition(contentRoot, "Base", "base", null);
+            string authored = Path.Combine(directory, "Mods", "user-pack");
+            Directory.CreateDirectory(authored);
+            File.WriteAllText(
+                Path.Combine(authored, "pack.xml"),
+                "<ContentPack><ID>user-pack</ID><BasePackID>base</BasePackID><Version>1.0.0</Version></ContentPack>"
+            );
+            string inherited = WriteFile(baseRoot, "Data/ships.xml", "base ships");
+            WriteFile(baseRoot, "Data/officers.xml", "base officers");
+            string overridden = WriteFile(authored, "Data/officers.xml", "edited officers");
+            try
+            {
+                ContentFileResolver resolver = ContentPackLoader.CreatePackResolver(
+                    contentRoot,
+                    "user-pack"
+                );
+                Assert.AreEqual(inherited, resolver.ResolveFile("Pack/Data/ships.xml"));
+                Assert.AreEqual(overridden, resolver.ResolveFile("Pack/Data/officers.xml"));
+                Assert.AreEqual(
+                    "base officers",
+                    File.ReadAllText(Path.Combine(baseRoot, "Data", "officers.xml"))
+                );
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void CreatePackResolver_DuplicatePackInMods_RejectsTheAmbiguousIdentity()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "authored-packs-" + Guid.NewGuid().ToString("N")
+            );
+            string contentRoot = Path.Combine(directory, "Content");
+            WritePackDefinition(contentRoot, "Base", "base", null);
+            string authored = Path.Combine(directory, "Mods", "duplicate");
+            Directory.CreateDirectory(authored);
+            File.WriteAllText(
+                Path.Combine(authored, "pack.xml"),
+                "<ContentPack><ID>base</ID><Version>1.0.0</Version></ContentPack>"
+            );
+            try
+            {
+                Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.CreatePackResolver(contentRoot, "base")
+                );
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void DiscoverPacks_MalformedAuthoredDraft_KeepsInstalledChoicesAvailable()
+        {
+            WithMalformedDraft(contentRoot =>
+                CollectionAssert.AreEqual(
+                    new[] { "base" },
+                    ContentPackLoader.DiscoverPacks(contentRoot).Select(pack => pack.ID)
+                )
+            );
+        }
+
+        [Test]
+        public void CreatePackResolver_MalformedUnrelatedDraft_StillResolvesInstalledContent()
+        {
+            WithMalformedDraft(contentRoot =>
+                Assert.IsTrue(
+                    Directory.Exists(
+                        ContentPackLoader.CreatePackResolver(contentRoot, "base").PackRootPath
+                    )
+                )
+            );
         }
 
         [Test]
@@ -398,6 +571,36 @@ namespace Rebellion.Tests.Content
             {
                 if (Directory.Exists(contentRoot))
                     Directory.Delete(contentRoot, true);
+            }
+        }
+
+        /// <summary>
+        /// Exercises discovery with an isolated installed pack and an unreadable authored draft.
+        /// </summary>
+        /// <param name="assertion">The discovery or resolution contract to check.</param>
+        private static void WithMalformedDraft(Action<string> assertion)
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "pack-draft-" + Guid.NewGuid().ToString("N")
+            );
+            string contentRoot = Path.Combine(directory, "Content");
+            WritePackDefinition(contentRoot, "Base", "base", null);
+            string draft = Path.Combine(directory, "Mods", "bad-draft");
+            Directory.CreateDirectory(draft);
+            File.WriteAllText(Path.Combine(draft, "pack.xml"), "<ContentPack>");
+            try
+            {
+                LogAssert.Expect(
+                    LogType.Warning,
+                    new Regex("Content pack could not be loaded:.*bad-draft")
+                );
+                assertion(contentRoot);
+                Assert.AreEqual("<ContentPack>", File.ReadAllText(Path.Combine(draft, "pack.xml")));
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
             }
         }
 

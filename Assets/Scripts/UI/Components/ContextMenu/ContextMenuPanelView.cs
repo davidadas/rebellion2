@@ -171,7 +171,7 @@ public sealed class ContextMenuPanelView : MonoBehaviour
         {
             width = Mathf.Max(
                 width,
-                commandPrefab.GetMinimumPanelWidth(commands[index]?.Text, hasIconColumn)
+                commandPrefab.GetMinimumPanelWidth(commands[index], hasIconColumn)
             );
         }
 

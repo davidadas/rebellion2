@@ -2300,7 +2300,7 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public async Task Serialize_ConcurrentColdTypes_RoundTripsEveryIndependentValue()
+        public async Task Serialize_ConcurrentColdTypes_RoundTripsEveryIndependentValueAsync()
         {
             Type[] scalarTypes =
             {

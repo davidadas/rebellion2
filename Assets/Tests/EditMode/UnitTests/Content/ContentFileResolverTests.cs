@@ -162,6 +162,18 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void EnumerateFileAddresses_PackRoot_ReturnsAllPackFiles()
+        {
+            WriteFile(_packRoot, "pack.xml", "pack");
+            WriteFile(_packRoot, "Data/ships.xml", "ships");
+            ContentFileResolver resolver = new ContentFileResolver(_contentRoot, _packRoot);
+
+            string[] addresses = resolver.EnumerateFileAddresses("Pack/").ToArray();
+
+            CollectionAssert.AreEqual(new[] { "Pack/Data/ships.xml", "Pack/pack.xml" }, addresses);
+        }
+
+        [Test]
         public void Discover_CompatibleMod_LoadsDefinitionAndContent()
         {
             WriteFile(_packRoot, "Data/ships.xml", "base");

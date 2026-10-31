@@ -41,6 +41,22 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ArrangeWrappingRow_NarrowContainer_WrapsWholeControlsWithoutChangingTheirWidths()
+        {
+            var items = new[]
+            {
+                ((RectTransform)_imageObject.transform, 120f),
+                ((RectTransform)_textObject.transform, 100f),
+            };
+
+            float height = UILayout.ArrangeWrappingRow(items, 200, 32, 8);
+
+            Assert.AreEqual(72, height);
+            Assert.AreEqual(new RectInt(0, 0, 120, 32), UILayout.GetSourceRect(items[0].Item1));
+            Assert.AreEqual(new RectInt(0, 40, 100, 32), UILayout.GetSourceRect(items[1].Item1));
+        }
+
+        [Test]
         public void SetImage_TextureAndPosition_UsesTextureSourceDimensions()
         {
             UILayout.SetImage(_image, _texture, 12, 34);
