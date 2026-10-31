@@ -6,8 +6,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -709,6 +709,83 @@ namespace Rebellion.Tests.Game.Missions
                 target.GetParent(),
                 "Abducted officer should return with the special-forces escort"
             );
+        }
+
+        [Test]
+        public void ProcessTick_SuccessfulAbductionAtFriendlyPlanet_KeepsGroupAtMissionPlanet()
+        {
+            (
+                GameRoot game,
+                Planet missionPlanet,
+                Planet originPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            originPlanet.OwnerInstanceID = "empire";
+            originPlanet.PopularSupport = new Dictionary<string, int> { { "empire", 60 } };
+            game.MoveNode(officer, originPlanet);
+            officer.MissionReturnParentInstanceID = originPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = originPlanet.InstanceID;
+
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", "rebels");
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet defendingFleet = EntityFactory.CreateFleet("defending-fleet", "empire");
+            CapitalShip defendingShip = new CapitalShip
+            {
+                InstanceID = "defending-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
+            game.AttachNode(hostileFleet, missionPlanet);
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(target, hostileShip);
+            game.AttachNode(defendingFleet, missionPlanet);
+            game.AttachNode(defendingShip, defendingFleet);
+            MakeAbductionAlwaysSucceed(game);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                missionPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, missionPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.IsTrue(target.IsCaptured);
+            Assert.AreEqual(missionPlanet, officer.GetParent());
+            Assert.AreEqual(missionPlanet, target.GetParent());
+            Assert.AreEqual(missionPlanet, completed.ReturnDestination);
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(target.Movement);
         }
 
         [Test]

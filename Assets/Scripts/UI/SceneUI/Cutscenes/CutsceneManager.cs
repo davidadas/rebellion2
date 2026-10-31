@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -21,6 +22,7 @@ public sealed class CutsceneManager : MonoBehaviour
     private AudioManager audioManager;
 
     private CutscenePlayer activePlayer;
+    private Coroutine pendingCompletion;
     private bool _audioPauseApplied;
     private bool _presentationPauseApplied;
     private bool ownsTimePause;
@@ -71,6 +73,7 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        CancelPendingCompletion();
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
@@ -223,7 +226,20 @@ public sealed class CutsceneManager : MonoBehaviour
         RestoreTimeScale();
         RestorePresentation();
 
-        onFinished?.Invoke();
+        if (onFinished != null)
+            pendingCompletion = StartCoroutine(CompleteAfterPlayerRelease(onFinished));
+    }
+
+    /// <summary>
+    /// Completes playback after Unity has destroyed the stopped video player at the frame boundary.
+    /// </summary>
+    /// <param name="onFinished">The callback supplied with the playback request.</param>
+    /// <returns>An enumerator that waits for the stopped player to be released.</returns>
+    private IEnumerator CompleteAfterPlayerRelease(Action onFinished)
+    {
+        yield return null;
+        pendingCompletion = null;
+        onFinished();
     }
 
     /// <summary>
@@ -319,9 +335,22 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void CancelPlayback()
     {
+        CancelPendingCompletion();
         DestroyActivePlayer();
         RestoreApplicationAudio();
         RestoreTimeScale();
         RestorePresentation();
+    }
+
+    /// <summary>
+    /// Cancels a completion callback that is waiting for the previous player to be released.
+    /// </summary>
+    private void CancelPendingCompletion()
+    {
+        if (pendingCompletion == null)
+            return;
+
+        StopCoroutine(pendingCompletion);
+        pendingCompletion = null;
     }
 }

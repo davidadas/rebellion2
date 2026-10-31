@@ -10,7 +10,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.AI.Helpers

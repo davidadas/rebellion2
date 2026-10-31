@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 

@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
+using Rebellion.Game.GameEvents;
 using Rebellion.Game.Units;
 using Rebellion.Util.Reflection;
 using TMPro;
@@ -25,6 +25,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private NewGameSettingsView view;
         private GameSummary summary;
         private OptionsMenuView optionsPrefab;
+        private string presetDirectory;
 
         /// <summary>
         /// Instantiates the generated settings editor independently of application startup.
@@ -39,6 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             instance.SetActive(true);
             view = instance.GetComponent<NewGameSettingsView>();
+            view.InitializeContent(TestContent.Assets);
             summary = new GameSummary { Difficulty = GameDifficulty.Easy };
             optionsPrefab = AssetDatabase.LoadAssetAtPath<OptionsMenuView>(
                 "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab"
@@ -49,7 +51,13 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// Releases the generated controls.
         /// </summary>
         [TearDown]
-        public void TearDown() => UnityEngine.Object.DestroyImmediate(instance);
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(instance);
+            if (Directory.Exists(presetDirectory))
+                Directory.Delete(presetDirectory, true);
+            presetDirectory = null;
+        }
 
         [Test]
         public void Initialize_SelectedDifficulty_ShowsPlayerAndAIValues()
@@ -365,8 +373,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 new[]
                 {
                     "GAME SETUP",
-                    "DIFFICULTY MODIFIERS",
-                    "WORLD GENERATION",
+                    "DIFFICULTY",
+                    "WORLD SETTINGS",
                     "FACTION MODIFIERS",
                     "SAVE / LOAD",
                 },
@@ -556,6 +564,34 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void SelectCategory_GameSetup_BindsClonedSelectorBackgrounds()
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                Image sourceBadge = source
+                    .GetComponentsInChildren<Image>(true)
+                    .Single(image => image.name == "ContentPackBadge");
+                sourceBadge.sprite = null;
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+                foreach (
+                    OptionsChoiceFieldView choice in instance.GetComponentsInChildren<OptionsChoiceFieldView>()
+                )
+                {
+                    Image badge = choice.transform.Find("Badge").GetComponent<Image>();
+                    Assert.IsNotNull(badge.sprite, choice.name);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
+            }
+        }
+
+        [Test]
         public void SelectCategory_GameSetup_ShowsOneTogglePerClassifiedEventCategory()
         {
             view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
@@ -715,6 +751,110 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsTrue(ApplyButton().gameObject.activeSelf);
         }
 
+        [TestCase("SaveIcon")]
+        [TestCase("SaveIconDisabled")]
+        [TestCase("LoadIcon")]
+        [TestCase("LoadIconDisabled")]
+        public void SelectCategory_SaveLoadWithStrippedTextures_RestoresCommandArtwork(string name)
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                ClearSaveListTextures(source.gameObject);
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+
+                RawImage image = instance
+                    .GetComponentInChildren<OptionsSaveListView>(true)
+                    .GetComponentsInChildren<RawImage>(true)
+                    .Single(candidate => candidate.name == name);
+                ContentTextureBinding binding = image.GetComponent<ContentTextureBinding>();
+                string address =
+                    binding != null
+                        ? binding.Address
+                        : image.GetComponent<ContentPressVisualBinding>().UpAddress;
+                Assert.AreSame(
+                    ContentBindings.RequireTexture(TestContent.Assets, address),
+                    image.texture
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
+            }
+        }
+
+        [TestCase("SaveIcon")]
+        [TestCase("LoadIcon")]
+        public void SelectCategory_SaveLoadWithStrippedTextures_RestoresPressedArtwork(string name)
+        {
+            OptionsMenuView source = UnityEngine.Object.Instantiate(optionsPrefab);
+            try
+            {
+                ClearSaveListTextures(source.gameObject);
+
+                view.Initialize(TestContent.Pack, summary, source, null);
+                view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+                OptionsSaveListView saveList =
+                    instance.GetComponentInChildren<OptionsSaveListView>();
+                saveList.Render(
+                    new[]
+                    {
+                        new OptionsSaveSlot("Preset", string.Empty, null, false, "preset.json"),
+                    },
+                    0,
+                    true,
+                    false
+                );
+                Button button = PresetButton(name);
+                ContentPressVisualBinding binding =
+                    button.GetComponent<ContentPressVisualBinding>();
+
+                button
+                    .GetComponent<RawImagePressVisual>()
+                    .OnPointerDown(
+                        new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                    );
+
+                Assert.AreSame(
+                    ContentBindings.RequireTexture(TestContent.Assets, binding.DownAddress),
+                    button.GetComponent<RawImage>().texture
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source.gameObject);
+            }
+        }
+
+        [TestCase("SaveIcon")]
+        [TestCase("SaveIconDisabled")]
+        [TestCase("LoadIcon")]
+        [TestCase("LoadIconDisabled")]
+        public void InitializeContent_ExistingPresetPage_RestoresCommandArtwork(string name)
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            ClearSaveListTextures(instance);
+
+            view.InitializeContent(TestContent.Assets);
+
+            RawImage image = instance
+                .GetComponentInChildren<OptionsSaveListView>(true)
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(candidate => candidate.name == name);
+            ContentTextureBinding binding = image.GetComponent<ContentTextureBinding>();
+            string address =
+                binding != null
+                    ? binding.Address
+                    : image.GetComponent<ContentPressVisualBinding>().UpAddress;
+            Assert.AreSame(
+                ContentBindings.RequireTexture(TestContent.Assets, address),
+                image.texture
+            );
+        }
+
         [Test]
         public void Apply_CycledGameSetup_PublishesCompleteLaunchSummary()
         {
@@ -838,6 +978,154 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             StepSetupChoice("content-pack", 1);
 
             Assert.AreEqual("alternate", requested);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandlePresetSaveRequested_ExistingPreset_WaitsForConfirmation(bool submitName)
+        {
+            (CustomGamePresetManager manager, string fileName) = RequestPresetOverwrite(submitName);
+            ConfirmationDialogView confirmation = PresetConfirmation();
+
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            StringAssert.Contains(
+                "Overwrite \"Existing Preset\"?",
+                confirmation.GetComponentInChildren<TMP_Text>().text
+            );
+            Assert.AreEqual(111, manager.LoadPreset(fileName).Seed);
+            Assert.AreEqual("Existing Preset", manager.GetPresets().Single().DisplayName);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfirmPresetAction_Overwrite_WritesRequestedPreset(bool submitName)
+        {
+            (CustomGamePresetManager manager, string fileName) = RequestPresetOverwrite(submitName);
+
+            PresetConfirmationButton(true).onClick.Invoke();
+
+            Assert.AreEqual(222, manager.LoadPreset(fileName).Seed);
+            Assert.AreEqual(
+                submitName ? "Updated Preset" : "Existing Preset",
+                manager.GetPresets().Single().DisplayName
+            );
+            Assert.IsFalse(PresetConfirmation().gameObject.activeSelf);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CancelPresetAction_Overwrite_PreservesStoredPreset(bool submitName)
+        {
+            RequestPresetOverwrite(submitName);
+            string path = Directory.GetFiles(presetDirectory, "*.customgame.xml").Single();
+            byte[] before = File.ReadAllBytes(path);
+
+            PresetConfirmationButton(false).onClick.Invoke();
+            PresetConfirmationButton(true).onClick.Invoke();
+
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+            Assert.IsFalse(PresetConfirmation().gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Initialize_PendingPresetOverwrite_DiscardsConfirmation()
+        {
+            (CustomGamePresetManager manager, string fileName) = RequestPresetOverwrite(false);
+
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, manager);
+            PresetConfirmationButton(true).onClick.Invoke();
+
+            Assert.AreEqual(111, manager.LoadPreset(fileName).Seed);
+            Assert.IsFalse(PresetConfirmation().gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RequestClose_PendingPresetOverwrite_DiscardsConfirmation()
+        {
+            (CustomGamePresetManager manager, string fileName) = RequestPresetOverwrite(false);
+
+            instance
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Close")
+                .onClick.Invoke();
+            PresetConfirmationButton(true).onClick.Invoke();
+
+            Assert.AreEqual(111, manager.LoadPreset(fileName).Seed);
+            Assert.IsFalse(PresetConfirmation().gameObject.activeSelf);
+        }
+
+        [Test]
+        public void ConfirmPresetAction_ReorderedPreset_KeepsSavedPresetSelected()
+        {
+            (CustomGamePresetManager manager, _) = InitializePresetPage();
+            GameSummary other = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            other.Seed = 333;
+            manager.CreatePreset("Other Preset", other);
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, manager);
+            SeedInput().onEndEdit.Invoke("222");
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            PresetButton("SlotRow2").onClick.Invoke();
+            PresetButton("SaveIcon").onClick.Invoke();
+
+            PresetConfirmationButton(true).onClick.Invoke();
+            PresetButton("LoadIcon").onClick.Invoke();
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(222, launched.Seed);
+        }
+
+        [TestCase(false, 1)]
+        [TestCase(true, 0)]
+        public void HandlePresetDeleteRequested_Confirmation_DeletesOnlyWhenAccepted(
+            bool accepted,
+            int expectedCount
+        )
+        {
+            (CustomGamePresetManager manager, _) = InitializePresetPage();
+            PresetButton("SlotDelete1").onClick.Invoke();
+
+            PresetConfirmationButton(accepted).onClick.Invoke();
+
+            Assert.AreEqual(expectedCount, manager.GetPresets().Count);
+        }
+
+        [Test]
+        public void HandlePresetSlotRenamed_NewPreset_CreatesWithoutOverwriteConfirmation()
+        {
+            (CustomGamePresetManager manager, _) = InitializePresetPage();
+            PresetButton("SlotRow0").onClick.Invoke();
+            instance
+                .GetComponentInChildren<OptionsSaveListView>(true)
+                .GetComponentInChildren<TMP_InputField>(true)
+                .text = "New Preset";
+
+            PresetButton("SaveIcon").onClick.Invoke();
+
+            CollectionAssert.AreEquivalent(
+                new[] { "Existing Preset", "New Preset" },
+                manager.GetPresets().Select(entry => entry.DisplayName)
+            );
+            Assert.IsFalse(PresetConfirmation().gameObject.activeSelf);
+        }
+
+        [Test]
+        public void SelectCategory_RepeatedSaveLoadRender_EmitsOneSaveRequest()
+        {
+            InitializePresetPage();
+            OptionsSaveListView saveList = instance.GetComponentInChildren<OptionsSaveListView>(
+                true
+            );
+            int requests = 0;
+            saveList.SaveRequested += () => requests++;
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            PresetButton("SlotRow1").onClick.Invoke();
+
+            PresetButton("SaveIcon").onClick.Invoke();
+
+            Assert.AreEqual(1, requests);
         }
 
         [Test]
@@ -1697,6 +1985,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .transform.Find("ContentRoot/Tab4")
                 .GetComponentInChildren<TMP_Text>();
 
+            Assert.AreEqual(expected.text, actual.text);
             Assert.AreEqual(expected.color, actual.color);
             Assert.AreEqual(expected.alignment, actual.alignment);
             Assert.AreEqual(expected.fontStyle, actual.fontStyle);
@@ -1713,6 +2002,100 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(FontStyles.Bold, label.fontStyle);
             Assert.AreEqual(114f, ((RectTransform)ApplyButton().transform).sizeDelta.x);
         }
+
+        /// <summary>
+        /// Creates a preset page using an isolated directory and a known saved seed.
+        /// </summary>
+        /// <returns>The isolated preset manager and existing preset identity.</returns>
+        private (CustomGamePresetManager Manager, string FileName) InitializePresetPage()
+        {
+            presetDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-preset-confirm-tests-" + Guid.NewGuid().ToString("N")
+            );
+            CustomGamePresetManager manager = new CustomGamePresetManager(presetDirectory);
+            summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            summary.Seed = 111;
+            string fileName = manager.CreatePreset("Existing Preset", summary);
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, manager);
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            return (manager, fileName);
+        }
+
+        /// <summary>
+        /// Requests replacement of an existing preset through the save controls.
+        /// </summary>
+        /// <param name="submitName">Whether to submit an edited name instead of clicking Save.</param>
+        /// <returns>The isolated preset manager and existing preset identity.</returns>
+        private (CustomGamePresetManager Manager, string FileName) RequestPresetOverwrite(
+            bool submitName
+        )
+        {
+            (CustomGamePresetManager Manager, string FileName) preset = InitializePresetPage();
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            SeedInput().onEndEdit.Invoke("222");
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+            Button row = PresetButton("SlotRow1");
+            row.onClick.Invoke();
+            if (submitName)
+            {
+                row.onClick.Invoke();
+                instance
+                    .GetComponentInChildren<OptionsSaveListView>(true)
+                    .GetComponentInChildren<TMP_InputField>(true)
+                    .onSubmit.Invoke("Updated Preset");
+            }
+            else
+                PresetButton("SaveIcon").onClick.Invoke();
+            return preset;
+        }
+
+        /// <summary>
+        /// Removes authored command textures to reproduce stripped player-build references.
+        /// </summary>
+        /// <param name="source">The hierarchy containing the shared Save/Load page.</param>
+        private static void ClearSaveListTextures(GameObject source)
+        {
+            OptionsSaveListView saveList = source.GetComponentInChildren<OptionsSaveListView>(true);
+            foreach (RawImage image in saveList.GetComponentsInChildren<RawImage>(true))
+                image.texture = null;
+            foreach (
+                RawImagePressVisual visual in saveList.GetComponentsInChildren<RawImagePressVisual>(
+                    true
+                )
+            )
+                visual.SetTextures(null, null);
+        }
+
+        /// <summary>
+        /// Finds a button in the preset list.
+        /// </summary>
+        /// <param name="name">The authored button name.</param>
+        /// <returns>The matching button.</returns>
+        private Button PresetButton(string name) =>
+            instance
+                .GetComponentInChildren<OptionsSaveListView>(true)
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == name);
+
+        /// <summary>
+        /// Finds the preset confirmation dialog.
+        /// </summary>
+        /// <returns>The confirmation dialog.</returns>
+        private ConfirmationDialogView PresetConfirmation() =>
+            instance.GetComponentInChildren<ConfirmationDialogView>(true);
+
+        /// <summary>
+        /// Finds the requested preset confirmation button.
+        /// </summary>
+        /// <param name="accepted">Whether to select Yes instead of No.</param>
+        /// <returns>The matching confirmation button.</returns>
+        private Button PresetConfirmationButton(bool accepted) =>
+            PresetConfirmation()
+                .GetComponentsInChildren<Button>(true)
+                .Single(button =>
+                    button.name == (accepted ? "ConfirmButtonImage" : "CancelButtonImage")
+                );
 
         /// <summary>
         /// Finds an authored input by its row identity and recipient column.

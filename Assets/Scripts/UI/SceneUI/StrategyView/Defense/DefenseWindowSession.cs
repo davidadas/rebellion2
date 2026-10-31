@@ -269,10 +269,12 @@ internal sealed class DefenseWindowSession
     /// Reports whether one scene node can initiate a Defense-window move drag.
     /// </summary>
     /// <param name="item">The scene node to inspect.</param>
-    /// <returns>True when the node is a movable non-building unit.</returns>
+    /// <returns>True when the node is a movable unit or an unfinished building.</returns>
     public static bool CanDragItem(ISceneNode item)
     {
-        return item is IMovable movable && item is not Building && movable.IsMovable();
+        return item is Building building
+            ? StrategyContextMenuAvailability.CanRetargetBuilding(building)
+            : item is IMovable movable && movable.IsMovable();
     }
 
     /// <summary>

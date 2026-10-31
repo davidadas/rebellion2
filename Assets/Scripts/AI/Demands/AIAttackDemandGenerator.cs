@@ -4,7 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands

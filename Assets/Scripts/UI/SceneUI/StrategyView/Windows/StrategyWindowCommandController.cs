@@ -5,8 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -127,12 +127,15 @@ public sealed class StrategyWindowCommandController
             && destination != null
             && destination is not Fleet
             && !string.IsNullOrEmpty(playerFactionId)
-            && !string.Equals(
-                destination.GetOwnerInstanceID(),
-                playerFactionId,
-                StringComparison.Ordinal
-            )
-            && StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId);
+            && missionCreateWindowController.CanOpen(target, items, playerFactionId)
+            && (
+                target.MissionCreationRequested
+                || !string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    playerFactionId,
+                    StringComparison.Ordinal
+                )
+            );
 
         if (opensMission)
             OpenMissionCreateWindow(target, items);

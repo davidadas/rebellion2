@@ -5,8 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -107,6 +107,26 @@ public sealed class MissionCreateWindowController
     public void Initialize(IMissionCreateWindowActions windowActions)
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
+    }
+
+    /// <summary>
+    /// Determines whether a participant selection has at least one mission available for a target.
+    /// </summary>
+    /// <param name="target">The selected mission target.</param>
+    /// <param name="sourceItems">The source selection in visual order.</param>
+    /// <param name="playerFactionId">The active player's faction identifier.</param>
+    /// <returns>True when the selection can open a mission creation session for the target.</returns>
+    public bool CanOpen(
+        StrategyMissionTarget target,
+        IReadOnlyList<ISceneNode> sourceItems,
+        string playerFactionId
+    )
+    {
+        List<IMissionParticipant> participants = GetMissionSourceParticipants(
+            sourceItems,
+            playerFactionId
+        );
+        return participants.Count > 0 && BuildMissionChoices(participants, target).Count > 0;
     }
 
     /// <summary>

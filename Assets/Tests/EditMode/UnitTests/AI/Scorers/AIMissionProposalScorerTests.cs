@@ -11,7 +11,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 using OfficerRating = Rebellion.Game.Units.SkillRating;
 

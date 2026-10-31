@@ -5,6 +5,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Scripting;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
@@ -186,6 +187,26 @@ namespace Rebellion.Game.Units
     }
 
     /// <summary>
+    /// Identifies the authored behavior controlling an officer's AI assignments.
+    /// </summary>
+    public enum OfficerAIBehaviorType
+    {
+        HoldPosition,
+    }
+
+    /// <summary>
+    /// Configures an officer's AI behavior while every authored condition is satisfied.
+    /// </summary>
+    [PersistableObject]
+    public sealed class OfficerAIBehavior
+    {
+        [PersistableAttribute]
+        public OfficerAIBehaviorType Type { get; set; }
+
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+    }
+
+    /// <summary>
     /// Defines the command rank levels an officer can hold.
     /// </summary>
     public enum OfficerRank
@@ -337,6 +358,12 @@ namespace Rebellion.Game.Units
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+
+        /// <summary>
+        /// Gets or sets content-only AI configuration; saved officers use the active catalog instead.
+        /// </summary>
+        [PersistableIgnore]
+        public OfficerAIBehavior AIBehavior { get; set; }
 
         [PersistableCollectionItem(Name = "TraitID")]
         public List<string> Traits { get; set; } = new List<string>();

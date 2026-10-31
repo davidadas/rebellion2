@@ -136,13 +136,13 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
-        public void EndCutscene_RepeatedTermination_InvokesCompletionOnce()
+        public void Skip_RepeatedCalls_InvokesCompletionOnce()
         {
             int completedCount = 0;
             _player.Play(_clip, () => completedCount++);
 
-            Invoke("EndCutscene");
-            Invoke("EndCutscene");
+            _player.Skip();
+            _player.Skip();
 
             Assert.AreEqual(1, completedCount);
             Assert.AreEqual(Color.black, _screen.color);

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -56,8 +56,11 @@ public sealed class FacilityWindowController
     private readonly UIWindowManager windowManager;
 
     private IFacilityWindowActions actions;
+    private Action<PointerEventData> endItemDrag;
     private IIdleBarManufacturingTrackingActions idleBarTrackingActions;
+    private Action<PointerEventData> moveItemDrag;
     private IStrategyConfirmationActions confirmationActions;
+    private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
     /// Creates a facility feature controller.
@@ -110,10 +113,16 @@ public sealed class FacilityWindowController
     /// <param name="windowActions">The feature-specific facility actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="trackingActions">Reads and changes manufacturing-lane idle-bar tracking.</param>
+    /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
+    /// <param name="continueItemDrag">Advances the active strategy item drag.</param>
+    /// <param name="completeItemDrag">Completes the active strategy item drag.</param>
     public void Initialize(
         IFacilityWindowActions windowActions,
         IStrategyConfirmationActions windowConfirmationActions,
-        IIdleBarManufacturingTrackingActions trackingActions
+        IIdleBarManufacturingTrackingActions trackingActions,
+        Action<UIWindow, PointerEventData> beginItemDrag,
+        Action<PointerEventData> continueItemDrag,
+        Action<PointerEventData> completeItemDrag
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
@@ -122,6 +131,10 @@ public sealed class FacilityWindowController
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
         idleBarTrackingActions =
             trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
+        startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
+        moveItemDrag =
+            continueItemDrag ?? throw new ArgumentNullException(nameof(continueItemDrag));
+        endItemDrag = completeItemDrag ?? throw new ArgumentNullException(nameof(completeItemDrag));
     }
 
     /// <summary>
@@ -140,6 +153,8 @@ public sealed class FacilityWindowController
         view.BackgroundClicked += HandleBackgroundClicked;
         view.Destroyed += HandleViewDestroyed;
         view.InventoryItemDoubleClicked += HandleInventoryItemDoubleClicked;
+        view.InventoryItemDragged += HandleInventoryItemDragged;
+        view.InventoryItemDragEnded += HandleInventoryItemDragEnded;
         view.InventoryItemPressed += HandleInventoryItemPressed;
         view.InventoryItemReleased += HandleInventoryItemReleased;
         view.ManufacturingCardPressed += HandleManufacturingCardPressed;
@@ -641,6 +656,50 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Gets the current inventory selection owned by one facility window.
+    /// </summary>
+    /// <param name="window">The source facility window.</param>
+    /// <returns>The selected buildings in display order.</returns>
+    public IReadOnlyList<ISceneNode> GetContextItems(UIWindow window)
+    {
+        if (
+            window == null
+            || !windowManager.TryGetWindowView(window, out FacilityWindowView view)
+            || !TryGetSession(view, out FacilityWindowSession session)
+        )
+            return Array.Empty<ISceneNode>();
+
+        return session.GetSelectedBuildings().Cast<ISceneNode>().ToList();
+    }
+
+    /// <summary>
+    /// Creates the current facility drag preview from selected inventory items.
+    /// </summary>
+    /// <param name="window">The source facility window.</param>
+    /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
+    /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
+    /// <param name="preview">Receives the drag preview.</param>
+    /// <returns>True when every selected building supplies a drawable preview.</returns>
+    public bool TryGetDragPreview(
+        UIWindow window,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        return window != null
+            && windowManager.TryGetWindowView(window, out FacilityWindowView view)
+            && TryGetSession(view, out FacilityWindowSession session)
+            && view.TryCreateDragPreview(
+                session.GetSelectedBuildingIndexes(),
+                sourceX,
+                sourceY,
+                out preview
+            );
+    }
+
+    /// <summary>
     /// Gets facility items selected for scrapping.
     /// </summary>
     /// <param name="view">The facility view.</param>
@@ -1006,7 +1065,8 @@ public sealed class FacilityWindowController
     )
     {
         if (
-            !TryGetSession(view, out FacilityWindowSession session)
+            eventData == null
+            || !TryGetSession(view, out FacilityWindowSession session)
             || session.ActiveTab == FacilityWindowTab.Manufacturing
             || targetingController.IsTargeting
                 && eventData.button == PointerEventData.InputButton.Left
@@ -1022,7 +1082,13 @@ public sealed class FacilityWindowController
         else if (eventData.button == PointerEventData.InputButton.Left)
         {
             session.Window.RequestFocus();
-            session.SelectBuilding(itemIndex);
+            session.SelectBuildingForDrag(itemIndex, view.InventoryColumnCount);
+            if (
+                session.IsBuildingSelected(itemIndex)
+                && session.CanDragSelectedBuildings()
+                && view.InventoryItemContainsDragSource(itemIndex, eventData)
+            )
+                startItemDrag(session.Window, eventData);
         }
 
         markDirty();
@@ -1041,12 +1107,40 @@ public sealed class FacilityWindowController
     )
     {
         if (
-            eventData.button != PointerEventData.InputButton.Left
+            eventData?.button != PointerEventData.InputButton.Left
             || !TryGetSession(view, out FacilityWindowSession session)
         )
             return;
 
-        TrySelectTarget(view, session.GetInventoryBuilding(itemIndex));
+        bool targetSelected = TrySelectTarget(view, session.GetInventoryBuilding(itemIndex));
+        endItemDrag(eventData);
+        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
+            return;
+
+        session.SelectBuilding(itemIndex);
+        markDirty();
+    }
+
+    /// <summary>
+    /// Advances an active inventory-item drag.
+    /// </summary>
+    /// <param name="view">The source facility view.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleInventoryItemDragged(FacilityWindowView view, PointerEventData eventData)
+    {
+        if (eventData?.button == PointerEventData.InputButton.Left)
+            moveItemDrag(eventData);
+    }
+
+    /// <summary>
+    /// Completes an active inventory-item drag.
+    /// </summary>
+    /// <param name="view">The source facility view.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleInventoryItemDragEnded(FacilityWindowView view, PointerEventData eventData)
+    {
+        if (eventData?.button == PointerEventData.InputButton.Left)
+            endItemDrag(eventData);
     }
 
     /// <summary>
@@ -1097,6 +1191,8 @@ public sealed class FacilityWindowController
         view.BackgroundClicked -= HandleBackgroundClicked;
         view.Destroyed -= HandleViewDestroyed;
         view.InventoryItemDoubleClicked -= HandleInventoryItemDoubleClicked;
+        view.InventoryItemDragged -= HandleInventoryItemDragged;
+        view.InventoryItemDragEnded -= HandleInventoryItemDragEnded;
         view.InventoryItemPressed -= HandleInventoryItemPressed;
         view.InventoryItemReleased -= HandleInventoryItemReleased;
         view.ManufacturingCardPressed -= HandleManufacturingCardPressed;
@@ -1185,7 +1281,14 @@ public sealed class FacilityWindowController
     /// </summary>
     private void EnsureInitialized()
     {
-        if (actions == null || confirmationActions == null || idleBarTrackingActions == null)
+        if (
+            actions == null
+            || confirmationActions == null
+            || idleBarTrackingActions == null
+            || startItemDrag == null
+            || moveItemDrag == null
+            || endItemDrag == null
+        )
             throw new InvalidOperationException(
                 $"{nameof(FacilityWindowController)} must be initialized before use."
             );
