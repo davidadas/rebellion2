@@ -794,7 +794,6 @@ public sealed class StrategyController
             () => this != null ? uiContext : null,
             PlaySfx,
             ClearWindowSelection,
-            RebuildSnapshot,
             MarkDirty,
             strategyHudController.PlayInvalidOrderRejected,
             strategyHudController.PlayInTransitOrderRejected,
@@ -2396,14 +2395,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebuilds strategy state after a successful construction order.
-    /// </summary>
-    void IConstructionWindowActions.RefreshAfterConstruction()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
     /// Opens Encyclopedia information for the active facility selection.
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
@@ -2419,14 +2410,6 @@ public sealed class StrategyController
     void IFacilityWindowActions.OpenFacilityStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a facility command changes the game.
-    /// </summary>
-    void IFacilityWindowActions.RefreshFacilityState()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2456,14 +2439,6 @@ public sealed class StrategyController
     void IFleetWindowActions.OpenFleetBattleResult(CombatReport report)
     {
         battleAlertWindowController.OpenReport(report);
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a fleet command changes the game.
-    /// </summary>
-    void IFleetWindowActions.RefreshFleetState()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2504,22 +2479,6 @@ public sealed class StrategyController
     void IDefenseWindowActions.OpenDefenseStatusWindow(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a stationed officer's command changes.
-    /// </summary>
-    void IDefenseWindowActions.RefreshDefenseState()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a planet-sector command changes the game.
-    /// </summary>
-    void IPlanetSectorWindowActions.RefreshPlanetSectorState()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2599,14 +2558,6 @@ public sealed class StrategyController
             sourceWindow,
             mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission }
         );
-    }
-
-    /// <summary>
-    /// Rebuilds strategy state after a mission is created.
-    /// </summary>
-    void IMissionCreateWindowActions.RefreshAfterMissionCreation()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>

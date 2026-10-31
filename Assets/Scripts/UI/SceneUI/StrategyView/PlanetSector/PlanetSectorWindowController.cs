@@ -17,11 +17,6 @@ using UnityEngine.EventSystems;
 public interface IPlanetSectorWindowActions
 {
     /// <summary>
-    /// Rebuilds shared strategy state after a planet-sector command changes the game.
-    /// </summary>
-    void RefreshPlanetSectorState();
-
-    /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
     /// <param name="report">The faction-visible combat report.</param>
@@ -940,7 +935,6 @@ public sealed class PlanetSectorWindowController
             && ReferenceEquals(requestGame, getUIContext()?.Game)
         )
         {
-            actions.RefreshPlanetSectorState();
             actions.OpenPlanetSectorBattleResult(report);
         }
         return true;

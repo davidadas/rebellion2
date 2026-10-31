@@ -704,6 +704,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (faction == null)
             return;
 
+        StrategyAdvisorView requestedView = view;
         PlayerRequest playerRequest = menuCommand.Action switch
         {
             StrategyMenuAction.AdvisorMarkAllMessagesRead => new MarkAllMessagesReadRequest(),
@@ -734,10 +735,15 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             && TryGetMessageType(menuCommand.Action, out MessageType messageType)
         )
             playerRequest = new ToggleMessageNotificationRequest { MessageType = messageType };
-        if (playerRequest == null || !(await playerRequests.ExecuteAsync(playerRequest)).Accepted)
+        if (
+            playerRequest == null
+            || !(await playerRequests.ExecuteAsync(playerRequest)).Accepted
+            || !ReferenceEquals(faction, getPlayerFaction())
+            || requestedView == null
+            || !ReferenceEquals(view, requestedView)
+        )
             return;
 
-        actions.RequestHudRender();
         if (menuCommand.Action == StrategyMenuAction.AdvisorManageGarrisons)
             PlayResponse(
                 faction.ManageGarrisons

@@ -37,7 +37,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
         private Officer _officer;
-        private int _rebuildCount;
         private int _playedSfxCount;
         private int _transitRejectionCount;
         private int _underConstructionRejectionCount;
@@ -57,7 +56,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _clearedWindow = null;
             _dirtyCount = 0;
             _invalidOrderRejectionCount = 0;
-            _rebuildCount = 0;
             _playedSfxCount = 0;
             _transitRejectionCount = 0;
             _underConstructionRejectionCount = 0;
@@ -136,7 +134,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     () => _uiContext,
                     _ => { },
                     _ => { },
-                    () => { },
                     () => { }
                 )
             );
@@ -153,7 +150,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsFalse(moved);
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
         }
 
@@ -168,7 +164,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsTrue(moved);
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -591,7 +586,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual("target", _officer.GetParentOfType<Planet>().InstanceID);
             Assert.IsNotNull(_officer.Movement);
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -612,7 +606,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.That(dispatcher.Requests.Count, Is.EqualTo(1));
             Assert.That(_windowManager.Windows.Count, Is.EqualTo(1));
             Assert.That(_clearedWindow, Is.Null);
-            Assert.That(_rebuildCount, Is.Zero);
             Assert.That(_dirtyCount, Is.EqualTo(dirtyBeforeConfirmation));
             Assert.That(
                 _game.GetSceneNodeByInstanceID<SpecialForces>(_specialForces.InstanceID),
@@ -687,7 +680,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsFalse(_officer.IsActive());
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -701,7 +693,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsTrue(_officer.IsActive());
             Assert.IsFalse(_officer.IsRetired);
-            Assert.AreEqual(0, _rebuildCount);
         }
 
         [Test]
@@ -747,7 +738,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(origin, _officer.GetParent());
             Assert.AreSame(origin, secondOfficer.GetParent());
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -763,7 +753,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsNull(mission.GetParent());
             Assert.AreSame(origin, _officer.GetParent());
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -773,7 +762,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             bool aborted = await _controller.TryAbortMissionAsync("missing");
 
             Assert.IsFalse(aborted);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
         }
 
@@ -802,7 +790,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(firstMission, _officer.GetParent());
             Assert.AreSame(secondMission, secondOfficer.GetParent());
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
         }
 
@@ -818,7 +805,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(accepted);
             Assert.IsNull(_clearedWindow);
             Assert.AreEqual(0, _playedSfxCount);
-            Assert.AreEqual(0, _rebuildCount);
         }
 
         [Test]
@@ -873,7 +859,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(await pending);
             Assert.IsNull(_clearedWindow);
             Assert.AreEqual(0, _playedSfxCount);
-            Assert.AreEqual(0, _rebuildCount);
         }
 
         [TestCase(false)]
@@ -899,7 +884,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(await pending);
             Assert.IsNull(_clearedWindow);
             Assert.AreEqual(0, _playedSfxCount);
-            Assert.AreEqual(0, _rebuildCount);
+            Assert.Zero(_dirtyCount);
         }
 
         [TestCase(false)]
@@ -926,7 +911,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             completion.SetResult(new PlayerRequestOutcome(true));
 
             Assert.IsTrue(await pending);
-            Assert.AreEqual(0, _rebuildCount);
+            Assert.Zero(_dirtyCount);
         }
 
         [TestCase(false)]
@@ -947,7 +932,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             completion.SetResult(new PlayerRequestOutcome(true));
 
             Assert.IsTrue(await pending);
-            Assert.AreEqual(0, _rebuildCount);
+            Assert.Zero(_dirtyCount);
         }
 
         [TestCase(false)]
@@ -974,7 +959,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             await Task.Yield();
 
             Assert.AreEqual(0, callbackCount);
-            Assert.AreEqual(0, _rebuildCount);
+            Assert.Zero(_dirtyCount);
         }
 
         [TestCase(false)]
@@ -994,7 +979,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             completion.SetResult(new PlayerRequestOutcome(true));
 
             Assert.IsTrue(await pending);
-            Assert.AreEqual(0, _rebuildCount);
+            Assert.Zero(_dirtyCount);
         }
 
         /// <summary>
@@ -1035,7 +1020,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 () => _uiContext,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
-                () => _rebuildCount++,
                 () => _dirtyCount++,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
@@ -1213,11 +1197,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private sealed class MissionCreateActions : IMissionCreateWindowActions
         {
-            /// <summary>
-            /// Refreshes after mission creation.
-            /// </summary>
-            public void RefreshAfterMissionCreation() { }
-
             /// <summary>
             /// Opens mission create info.
             /// </summary>

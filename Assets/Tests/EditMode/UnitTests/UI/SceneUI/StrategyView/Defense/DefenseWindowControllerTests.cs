@@ -460,7 +460,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
             CollectionAssert.AreEqual(new ISceneNode[] { _officer }, _testActions.CommandItems);
             Assert.AreEqual(OfficerRank.General, _testActions.CommandRank);
-            Assert.AreEqual(1, _testActions.RefreshDefenseStateCount);
         }
 
         [Test]
@@ -627,16 +626,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             public OfficerRank CommandRank { get; private set; }
 
             public bool OfficerCommandChangeResult { get; set; }
-
-            public int RefreshDefenseStateCount { get; private set; }
-
-            /// <summary>
-            /// Records a shared-state refresh after a Defense command change.
-            /// </summary>
-            public void RefreshDefenseState()
-            {
-                RefreshDefenseStateCount++;
-            }
 
             /// <summary>
             /// Records one requested officer command assignment.

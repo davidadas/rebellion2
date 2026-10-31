@@ -34,11 +34,6 @@ public interface IFleetWindowActions : IOfficerCommandActions
     /// </summary>
     /// <param name="report">The faction-visible combat report.</param>
     void OpenFleetBattleResult(CombatReport report);
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a fleet command changes the game.
-    /// </summary>
-    void RefreshFleetState();
 }
 
 /// <summary>
@@ -622,11 +617,8 @@ public sealed class FleetWindowController
             case StrategyMenuAction.CommandCommander:
             case StrategyMenuAction.CommandAdmiral:
             case StrategyMenuAction.CommandGeneral:
-                if (
-                    menuCommand.Action.TryGetOfficerRank(out OfficerRank rank)
-                    && await actions.TrySetOfficerCommandAsync(source.Items, rank)
-                )
-                    actions.RefreshFleetState();
+                if (menuCommand.Action.TryGetOfficerRank(out OfficerRank rank))
+                    await actions.TrySetOfficerCommandAsync(source.Items, rank);
                 break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 if (source.Items.Count == 1)
@@ -712,7 +704,6 @@ public sealed class FleetWindowController
         if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
         {
             ClearSelection(sourceWindow);
-            actions.RefreshFleetState();
         }
         return true;
     }
@@ -749,7 +740,6 @@ public sealed class FleetWindowController
 
         if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
         {
-            actions.RefreshFleetState();
             actions.OpenFleetBattleResult(report);
         }
         return true;

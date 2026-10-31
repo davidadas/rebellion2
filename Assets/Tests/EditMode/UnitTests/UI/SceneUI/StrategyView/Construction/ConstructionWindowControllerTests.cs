@@ -27,6 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private TestActions _actions;
+        private UIWindow _closedWindow;
         private ConstructionWindowController _controller;
         private int _dirtyCount;
         private GameSession _session;
@@ -44,6 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void SetUp()
         {
             _dirtyCount = 0;
+            _closedWindow = null;
             GameRoot game = CreateGame();
             _session = TestContent.CreateGameSession(game);
             _uiContext = TestContent.CreateUIContext(
@@ -289,7 +291,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         [TestCase(false)]
         [TestCase(true)]
-        public async Task RequestStart_OriginatingPresentationReplaced_DoesNotRefreshItAsync(
+        public async Task RequestStart_OriginatingPresentationReplaced_DoesNotCloseItAsync(
             bool replaceGame
         )
         {
@@ -309,7 +311,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             completion.SetResult(new PlayerRequestOutcome(true));
             await Task.Yield();
 
-            Assert.Zero(_actions.RefreshCount);
+            Assert.IsNull(_closedWindow);
         }
 
         [Test]
@@ -556,7 +558,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
-                _ => { },
+                window => _closedWindow = window,
                 () => _dirtyCount++,
                 instanceId => _session.Game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
@@ -633,8 +635,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         private sealed class TestActions : IConstructionWindowActions
         {
-            public int RefreshCount { get; private set; }
-
             /// <summary>
             /// Opens construction info.
             /// </summary>
@@ -646,11 +646,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             /// </summary>
             /// <param name="target">The target.</param>
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
-
-            /// <summary>
-            /// Refreshes after construction.
-            /// </summary>
-            public void RefreshAfterConstruction() => RefreshCount++;
         }
     }
 }

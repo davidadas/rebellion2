@@ -122,7 +122,7 @@ namespace Rebellion.Multiplayer
                 id = info.Value.LobbyId,
                 name = name,
                 transport = Transport,
-                address = info.Value.LobbyOwnerUserId.ToString(),
+                ownerUserID = info.Value.LobbyOwnerUserId.ToString(),
                 currentPlayers = checked((int)(info.Value.MaxMembers - info.Value.AvailableSlots)),
                 maxPlayers = checked((int)info.Value.MaxMembers),
                 state = state,

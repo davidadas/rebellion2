@@ -30,7 +30,6 @@ public sealed class StrategyWindowCommandController
     private readonly Func<UIContext> getUIContext;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
-    private readonly Action rebuildSnapshot;
     private readonly Action markDirty;
     private readonly Action playInvalidOrderRejected;
     private readonly Action playInTransitOrderRejected;
@@ -46,7 +45,6 @@ public sealed class StrategyWindowCommandController
     /// <param name="getUIContext">Returns the active presentation context, or null after it ends.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
-    /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
     /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
@@ -59,7 +57,6 @@ public sealed class StrategyWindowCommandController
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
-        Action rebuildSnapshot,
         Action markDirty,
         Action playInvalidOrderRejected = null,
         Action playInTransitOrderRejected = null,
@@ -79,8 +76,6 @@ public sealed class StrategyWindowCommandController
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
-        this.rebuildSnapshot =
-            rebuildSnapshot ?? throw new ArgumentNullException(nameof(rebuildSnapshot));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.playInvalidOrderRejected = playInvalidOrderRejected ?? (() => { });
         this.playInTransitOrderRejected = playInTransitOrderRejected ?? (() => { });
@@ -690,7 +685,6 @@ public sealed class StrategyWindowCommandController
             RefreshAfterMutation(sourceWindow, requestGame);
         else
         {
-            rebuildSnapshot();
             markDirty();
         }
 
@@ -714,7 +708,7 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
-    /// Clears source selection and refreshes strategy state after a domain mutation.
+    /// Clears source selection and invalidates the current presentation after a domain mutation.
     /// </summary>
     /// <param name="sourceWindow">The window that owned the selection.</param>
     /// <param name="requestGame">The game owning the completed request.</param>
@@ -724,12 +718,11 @@ public sealed class StrategyWindowCommandController
             return;
 
         clearWindowSelection(sourceWindow);
-        rebuildSnapshot();
         markDirty();
     }
 
     /// <summary>
-    /// Rebuilds route projection without clearing the selection used by repeated waypoint targeting.
+    /// Invalidates route presentation while retaining the selection used by waypoint targeting.
     /// </summary>
     /// <param name="requestGame">The game owning the completed request.</param>
     private void RefreshAfterWaypointMutation(GameRoot requestGame)
@@ -737,7 +730,6 @@ public sealed class StrategyWindowCommandController
         if (!IsCurrentGame(requestGame))
             return;
 
-        rebuildSnapshot();
         markDirty();
     }
 

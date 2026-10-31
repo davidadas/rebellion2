@@ -835,11 +835,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             /// </summary>
             /// <param name="target">The target.</param>
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
-
-            /// <summary>
-            /// Refreshes after construction.
-            /// </summary>
-            public void RefreshAfterConstruction() { }
         }
 
         private sealed class FacilityActions : IFacilityWindowActions, IStrategyConfirmationActions
@@ -917,11 +912,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
-
-            /// <summary>
-            /// Refreshes facility state.
-            /// </summary>
-            public void RefreshFacilityState() { }
         }
 
         private sealed class ManufacturingTrackingActions : IIdleBarManufacturingTrackingActions

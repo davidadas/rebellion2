@@ -12,11 +12,6 @@ using UnityEngine.EventSystems;
 public interface IDefenseWindowActions : IOfficerCommandActions
 {
     /// <summary>
-    /// Rebuilds shared strategy state after a stationed officer's command changes.
-    /// </summary>
-    void RefreshDefenseState();
-
-    /// <summary>
     /// Opens status information for one Defense-window target.
     /// </summary>
     /// <param name="target">The selected status target.</param>
@@ -545,11 +540,8 @@ public sealed class DefenseWindowController
             case StrategyMenuAction.CommandCommander:
             case StrategyMenuAction.CommandAdmiral:
             case StrategyMenuAction.CommandGeneral:
-                if (
-                    strategyCommand.Action.TryGetOfficerRank(out OfficerRank rank)
-                    && await actions.TrySetOfficerCommandAsync(source.Items, rank)
-                )
-                    actions.RefreshDefenseState();
+                if (strategyCommand.Action.TryGetOfficerRank(out OfficerRank rank))
+                    await actions.TrySetOfficerCommandAsync(source.Items, rank);
                 break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 if (source.Items.Count == 1)

@@ -616,7 +616,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 CombatReportType.PlanetaryAssault,
                 _actions.LastBattleResult.CombatType
             );
-            Assert.AreEqual(1, _actions.RefreshCount);
         }
 
         [TestCase(false)]
@@ -1403,7 +1402,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
-            public int RefreshCount { get; private set; }
             public int TargetedCommandCount { get; private set; }
             public CombatReport LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
@@ -1474,14 +1472,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             public void OpenPlanetSectorBattleResult(CombatReport report)
             {
                 LastBattleResult = report;
-            }
-
-            /// <summary>
-            /// Refreshes planet sector state.
-            /// </summary>
-            public void RefreshPlanetSectorState()
-            {
-                RefreshCount++;
             }
 
             /// <summary>

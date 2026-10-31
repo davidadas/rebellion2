@@ -27,11 +27,6 @@ public interface IFacilityWindowActions
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
     void OpenFacilityInfo(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a facility command changes the game.
-    /// </summary>
-    void RefreshFacilityState();
 }
 
 /// <summary>
@@ -440,23 +435,14 @@ public sealed class FacilityWindowController
         if (!manufacturingType.HasValue)
             return;
 
-        GameRoot requestGame = getUIContext()?.Game;
         Planet planet = session.Planet?.Planet;
-        if (
-            !(
-                await playerRequests.ExecuteAsync(
-                    new ToggleManufacturingReservationRequest
-                    {
-                        ProducerPlanetID = planet?.InstanceID,
-                        ManufacturingType = manufacturingType.Value,
-                    }
-                )
-            ).Accepted
-        )
-            return;
-
-        if (IsCurrentSession(view, session, requestGame))
-            actions.RefreshFacilityState();
+        await playerRequests.ExecuteAsync(
+            new ToggleManufacturingReservationRequest
+            {
+                ProducerPlanetID = planet?.InstanceID,
+                ManufacturingType = manufacturingType.Value,
+            }
+        );
     }
 
     /// <summary>
@@ -894,7 +880,12 @@ public sealed class FacilityWindowController
             return;
         }
 
-        if (!IsCurrentSession(source.View, session, requestGame))
+        if (
+            source.View == null
+            || !TryGetSession(source.View, out FacilityWindowSession currentSession)
+            || !ReferenceEquals(session, currentSession)
+            || !ReferenceEquals(requestGame, getUIContext()?.Game)
+        )
             return;
 
         session.SetDestination(type.Value, destinationPlanetId, destinationItemId);
@@ -1194,25 +1185,6 @@ public sealed class FacilityWindowController
 
         session.SetActiveTab(tab);
         markDirty();
-    }
-
-    /// <summary>
-    /// Checks whether a completed request still belongs to the same open facility session.
-    /// </summary>
-    /// <param name="view">The view that submitted the request.</param>
-    /// <param name="session">The session captured before submission.</param>
-    /// <param name="requestGame">The game owning the request.</param>
-    /// <returns>True when the originating view, session, and game remain current.</returns>
-    private bool IsCurrentSession(
-        FacilityWindowView view,
-        FacilityWindowSession session,
-        GameRoot requestGame
-    )
-    {
-        return view != null
-            && sessions.TryGetValue(view, out FacilityWindowSession currentSession)
-            && ReferenceEquals(session, currentSession)
-            && ReferenceEquals(requestGame, getUIContext()?.Game);
     }
 
     /// <summary>

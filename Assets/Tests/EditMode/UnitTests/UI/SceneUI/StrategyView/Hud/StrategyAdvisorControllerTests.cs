@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -339,6 +340,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 PlayerAdvisorOption.ManageNaming,
                 ((ToggleAdvisorOptionRequest)playerRequests.Requests.Single()).Option
             );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OnContextMenuCommandSelected_OriginatingAdvisorReplaced_DoesNotPlayResponseAsync(
+            bool replaceFaction
+        )
+        {
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            Faction faction = new() { ManageGarrisons = false };
+            Texture2D frame = new(1, 1);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.AudioRoot = "Audio";
+            theme.PlanetaryGarrisonManagementDisabled = CreateResponse("Disabled", "disabled");
+            List<string> playedAudio = new();
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            StrategyAdvisorController controller = new(
+                () => faction,
+                _ => frame,
+                playedAudio.Add,
+                dispatcher
+            );
+            TestActions actions = new();
+            controller.Initialize(actions);
+            try
+            {
+                StrategyAdvisorView view = root.GetComponentInChildren<StrategyAdvisorView>(true);
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                controller.BindView(view);
+                controller.Render(theme);
+                SelectCommand(controller, view, actions, StrategyMenuAction.AdvisorManageGarrisons);
+                Assert.AreEqual(1, dispatcher.Requests.Count);
+                if (replaceFaction)
+                    faction = new Faction();
+                else
+                    UnityEngine.Object.DestroyImmediate(root);
+                int responses = playedAudio.Count;
+
+                completion.SetResult(new PlayerRequestOutcome(true));
+                await Task.Yield();
+
+                Assert.AreEqual(responses, playedAudio.Count);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(frame);
+            }
         }
 
         [Test]

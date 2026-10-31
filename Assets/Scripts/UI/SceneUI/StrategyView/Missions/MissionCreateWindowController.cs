@@ -21,11 +21,6 @@ using UnityEngine.EventSystems;
 public interface IMissionCreateWindowActions
 {
     /// <summary>
-    /// Rebuilds strategy state after a mission is created.
-    /// </summary>
-    void RefreshAfterMissionCreation();
-
-    /// <summary>
     /// Opens the Encyclopedia from the Mission Create information control.
     /// </summary>
     void OpenMissionCreateInfo();
@@ -375,7 +370,6 @@ public sealed class MissionCreateWindowController
 
             if (started)
             {
-                actions.RefreshAfterMissionCreation();
                 closeWindow(session.Window);
             }
             else

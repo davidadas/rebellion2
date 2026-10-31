@@ -26,11 +26,6 @@ public interface IConstructionWindowActions
     /// </summary>
     /// <param name="target">The selected construction status target.</param>
     void OpenConstructionStatus(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Rebuilds strategy state after a successful construction order.
-    /// </summary>
-    void RefreshAfterConstruction();
 }
 
 /// <summary>
@@ -571,7 +566,6 @@ public sealed class ConstructionWindowController
             if (started)
             {
                 lastOrderedItemTypeIds[(playerFactionId, manufacturingTab)] = selected.GetTypeID();
-                actions.RefreshAfterConstruction();
                 closeWindow(session.Window);
             }
             else

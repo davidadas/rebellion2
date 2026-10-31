@@ -185,6 +185,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public async Task PlayerRequests_AcceptedAdvisorOption_PublishesCompletedStateBeforeReturningAsync()
+        {
+            GameRoot game = CreateGame();
+            Faction faction = new() { InstanceID = "FNALL1", TranslateCounterpart = false };
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "player", PlayerControllerType.Human);
+            _runtime.StartGame(game);
+            int changes = 0;
+            bool observedSetting = false;
+            _runtime.GameStateChanged += () =>
+            {
+                changes++;
+                observedSetting = faction.TranslateCounterpart;
+            };
+
+            PlayerRequestOutcome outcome = await _runtime.PlayerRequests.ExecuteAsync(
+                new ToggleAdvisorOptionRequest { Option = PlayerAdvisorOption.TranslateCounterpart }
+            );
+
+            Assert.IsTrue(outcome.Accepted);
+            Assert.AreEqual(1, changes);
+            Assert.IsTrue(observedSetting);
+        }
+
+        [Test]
+        public async Task PlayerRequests_RejectedAdvisorOption_DoesNotPublishStateChangeAsync()
+        {
+            GameRoot game = CreateGame();
+            Faction faction = new() { InstanceID = "FNALL1" };
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "player", PlayerControllerType.Human);
+            _runtime.StartGame(game);
+            int changes = 0;
+            _runtime.GameStateChanged += () => changes++;
+
+            PlayerRequestOutcome outcome = await _runtime.PlayerRequests.ExecuteAsync(
+                new ToggleAdvisorOptionRequest { Option = (PlayerAdvisorOption)int.MaxValue }
+            );
+
+            Assert.IsFalse(outcome.Accepted);
+            Assert.Zero(changes);
+        }
+
+        [Test]
         public async Task StartGame_ReplacedSessionDispatcher_RejectsWithoutReachingNewOwnerAsync()
         {
             GameRoot first = CreateGame();

@@ -107,7 +107,7 @@ namespace Rebellion.Multiplayer
                 cancellationToken.ThrowIfCancellationRequested();
                 if (room != null)
                 {
-                    record.ValidatePeer(_backend.LocalUserID, room.address);
+                    record.ValidatePeer(_backend.LocalUserID, room.ownerUserID);
                     _peer = await _backend.JoinAsync(room, cancellationToken, true);
                     cancellationToken.ThrowIfCancellationRequested();
                     SetStatus(

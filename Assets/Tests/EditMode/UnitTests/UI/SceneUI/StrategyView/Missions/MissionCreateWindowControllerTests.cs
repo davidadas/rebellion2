@@ -359,7 +359,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         [TestCase(false)]
         [TestCase(true)]
-        public async Task ConfirmButton_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+        public async Task ConfirmButton_OriginatingPresentationReplaced_DoesNotCloseItAsync(
             bool replaceGame
         )
         {
@@ -378,7 +378,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             completion.SetResult(new PlayerRequestOutcome(true));
             await Task.Yield();
 
-            Assert.AreEqual(0, _actions.RefreshCount);
+            Assert.IsNull(_closedWindow);
         }
 
         /// <summary>
@@ -487,15 +487,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private sealed class TestActions : IMissionCreateWindowActions
         {
             public int InfoCount { get; private set; }
-            public int RefreshCount { get; private set; }
-
-            /// <summary>
-            /// Refreshes after mission creation.
-            /// </summary>
-            public void RefreshAfterMissionCreation()
-            {
-                RefreshCount++;
-            }
 
             /// <summary>
             /// Opens mission create info.

@@ -25,6 +25,45 @@ namespace Rebellion.Tests.Multiplayer
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
 
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public async Task ExecuteAsync_RenamingOwnedShip_PublishesCommittedStateOnBothPeersAsync(
+            MultiplayerRole role
+        )
+        {
+            using PeerPair peers = new();
+            string shipID = role == MultiplayerRole.Host ? "host-ship" : "guest-ship";
+            string observedHostName = null;
+            string observedGuestName = null;
+            int hostChanges = 0;
+            int guestChanges = 0;
+            peers.Host.StateChanged += () =>
+            {
+                hostChanges++;
+                observedHostName = peers
+                    .HostGame.GetSceneNodeByInstanceID<CapitalShip>(shipID)
+                    .DisplayName;
+            };
+            peers.Guest.StateChanged += () =>
+            {
+                guestChanges++;
+                observedGuestName = peers
+                    .GuestGame.GetSceneNodeByInstanceID<CapitalShip>(shipID)
+                    .DisplayName;
+            };
+
+            Task<PlayerRequestOutcome> completion = (
+                role == MultiplayerRole.Host ? peers.Host : peers.Guest
+            ).ExecuteAsync(new RenameRequest { EntityID = shipID, Name = "Renamed once" });
+            peers.Flush();
+
+            Assert.IsTrue((await completion).Accepted);
+            Assert.AreEqual(1, hostChanges);
+            Assert.AreEqual(1, guestChanges);
+            Assert.AreEqual("Renamed once", observedHostName);
+            Assert.AreEqual("Renamed once", observedGuestName);
+        }
+
         [Test]
         public void Receive_PreviousInitializationCommit_DoesNotMutateCurrentGuest()
         {

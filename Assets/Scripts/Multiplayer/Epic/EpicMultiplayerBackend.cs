@@ -328,7 +328,7 @@ namespace Rebellion.Multiplayer
                     throw new InvalidOperationException(
                         "This game is no longer available with the selected settings."
                     );
-                ProductUserId owner = ProductUserId.FromString(current.address);
+                ProductUserId owner = ProductUserId.FromString(current.ownerUserID);
                 if (owner.Equals(_localUser))
                     throw new InvalidOperationException("You cannot join your own game.");
                 peer = new EpicMultiplayerPeer(_platform.GetP2PInterface(), _localUser, game.id);

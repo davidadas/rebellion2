@@ -985,7 +985,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNotNull(_actions.LastBattleResult);
             Assert.AreEqual(CombatReportType.Bombardment, _actions.LastBattleResult.CombatType);
             Assert.AreEqual(BombardmentType.General, _actions.LastBattleResult.BombardmentType);
-            Assert.AreEqual(1, _actions.RefreshCount);
         }
 
         [Test]
@@ -1127,7 +1126,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(selected);
             Assert.AreEqual(1, _actions.OfficerCommandCount);
             Assert.AreEqual(OfficerRank.Admiral, _actions.LastOfficerRank);
-            Assert.AreEqual(1, _actions.RefreshCount);
         }
 
         [Test]
@@ -1362,8 +1360,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             public bool OfficerCommandResult { get; set; }
 
-            public int RefreshCount { get; private set; }
-
             public bool IsIdleBarEnabled => true;
 
             /// <summary>
@@ -1473,14 +1469,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
-
-            /// <summary>
-            /// Refreshes fleet state.
-            /// </summary>
-            public void RefreshFleetState()
-            {
-                RefreshCount++;
-            }
 
             /// <summary>
             /// Attempts to assign the selected officer to a command post.
