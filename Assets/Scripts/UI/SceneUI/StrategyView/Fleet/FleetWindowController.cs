@@ -701,7 +701,14 @@ public sealed class FleetWindowController
         if (!await fleetCommandController.TryCreateFleetFromCapitalShipsAsync(items))
             return false;
 
-        if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
+        if (
+            windowLayer != null
+            && ReferenceEquals(requestGame, getUIContext()?.Game)
+            && new HashSet<string>(
+                items.Select(item => item?.InstanceID),
+                StringComparer.Ordinal
+            ).SetEquals(GetContextItems(sourceWindow).Select(item => item?.InstanceID))
+        )
         {
             ClearSelection(sourceWindow);
         }

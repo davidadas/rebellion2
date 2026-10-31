@@ -794,6 +794,7 @@ public sealed class StrategyController
             runtime.PlayerRequests,
             () => this != null ? uiContext : null,
             PlaySfx,
+            GetContextItems,
             ClearWindowSelection,
             MarkDirty,
             strategyHudController.PlayInvalidOrderRejected,

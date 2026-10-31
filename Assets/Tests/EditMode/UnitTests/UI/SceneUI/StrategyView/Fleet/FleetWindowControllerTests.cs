@@ -1138,6 +1138,92 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        [Test]
+        public async Task OnContextMenuCommandSelected_CreateFleetReplyAfterSelectionChanged_PreservesSelectionAsync()
+        {
+            GameFleet otherFleet = CreateFleet(
+                "other-fleet",
+                "Other Fleet",
+                out Officer otherOfficer
+            );
+            _game.AttachNode(otherFleet, _planet.Planet);
+            AttachFleetGraph(_planet.Planet, otherFleet);
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _fleetCommandController = CreateFleetCommandController(dispatcher);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            ContextMenuRequest request = CreateItemContextMenu(view, window, ship);
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.CreateFleet);
+            Assert.IsTrue(command.Enabled);
+            _controller.OnContextMenuCommandSelected(request, command);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            CreateItemContextMenu(view, window, otherOfficer);
+            CollectionAssert.AreEqual(new[] { otherOfficer }, _controller.GetContextItems(window));
+
+            PlayerRequestOutcome outcome = await TestPlayerRequests
+                .Create(_session, () => _playerFactionId)
+                .ExecuteAsync(dispatcher.Requests.Single());
+            Assert.IsTrue(outcome.Accepted);
+            completion.SetResult(outcome);
+            await Task.Yield();
+
+            CollectionAssert.AreEqual(new[] { otherOfficer }, _controller.GetContextItems(window));
+        }
+
+        /// <summary>
+        /// Selects an entity and opens its menu through the rendered detail card.
+        /// </summary>
+        /// <param name="view">The live fleet view.</param>
+        /// <param name="window">The owning window.</param>
+        /// <param name="item">The entity selected before opening the menu.</param>
+        /// <returns>The public context-menu request.</returns>
+        private ContextMenuRequest CreateItemContextMenu(
+            FleetWindowView view,
+            UIWindow window,
+            ISceneNode item
+        )
+        {
+            Assert.IsTrue(_controller.SelectTarget(view, item));
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(candidate => candidate.gameObject.activeInHierarchy);
+            PointerEventData pointer = new(null)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+            };
+            Assert.IsTrue(
+                _controller.TryCreateContextMenu(
+                    new StrategyContextMenuProviderContext(
+                        window,
+                        new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                        pointer,
+                        10,
+                        20
+                    ),
+                    out ContextMenuRequest request,
+                    out _
+                )
+            );
+            return request;
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>

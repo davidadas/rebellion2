@@ -46,6 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
+        private IReadOnlyList<ISceneNode> _windowSelection;
 
         /// <summary>
         /// Sets up.
@@ -67,6 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _destination = destination;
             _missionTarget = missionTarget;
             _officer = new Officer { InstanceID = "officer", OwnerInstanceID = _playerFactionId };
+            _windowSelection = new ISceneNode[] { _officer };
             _specialForces = new SpecialForces
             {
                 InstanceID = "recon-team",
@@ -133,6 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     TestPlayerRequests.Create(_session, () => _playerFactionId),
                     () => _uiContext,
                     _ => { },
+                    _ => Array.Empty<ISceneNode>(),
                     _ => { },
                     () => { }
                 )
@@ -177,6 +180,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 "destination-fleet"
             );
             _game.AttachNode(destinationFleet, _destination.Planet);
+            _windowSelection = new ISceneNode[] { sourceFleet };
 
             bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
@@ -213,6 +217,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(headquarters, origin);
             player.HeadquartersUnitInstanceID = headquarters.InstanceID;
+            _windowSelection = new ISceneNode[] { headquarters };
 
             bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
@@ -457,6 +462,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void ExecuteItemDrop_MissionTargetWithoutDestinationOption_ExecutesMove()
         {
+            _windowSelection = new ISceneNode[] { _specialForces };
             _controller.ExecuteItemDrop(
                 _sourceWindow,
                 new StrategyMissionTarget(
@@ -650,6 +656,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _specialForces,
             };
             int callbackCount = 0;
+            _windowSelection = new ISceneNode[] { _specialForces };
             _controller.OpenStopConstructionConfirmWindow(
                 _sourceWindow,
                 new ISceneNode[] { _specialForces },
@@ -660,6 +667,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.AreEqual(1, callbackCount);
             Assert.IsFalse(producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
+            Assert.AreSame(_sourceWindow, _clearedWindow);
         }
 
         [Test]
@@ -727,6 +735,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _game.AttachNode(secondOfficer, origin);
             DiplomacyMission firstMission = CreateWorkingMission("first-mission", _officer);
             DiplomacyMission secondMission = CreateWorkingMission("second-mission", secondOfficer);
+            _windowSelection = new ISceneNode[] { firstMission, secondMission };
 
             _controller.OpenMissionAbortConfirmWindow(
                 _sourceWindow,
@@ -983,6 +992,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Zero(_dirtyCount);
         }
 
+        [Test]
+        public async Task TryExecuteMoveAsync_FleetWindowSelectionChanged_PreservesNewSelectionAsync()
+        {
+            Rebellion.Game.Units.Fleet fleet = CreateOperationalFleet();
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            _game.MoveNode(_officer, ship);
+            Officer laterSelection = new()
+            {
+                InstanceID = "later-selection",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(laterSelection, ship);
+            Planet origin = fleet.GetParentOfType<Planet>();
+            FleetWindowSession selection = new(
+                new GalaxyMapPlanet(
+                    origin.GetParentOfType<GalaxyPlanetSector>(),
+                    origin,
+                    _playerFactionId
+                ),
+                _sourceWindow,
+                getPlayerFactionInstanceId: () => _playerFactionId
+            );
+            Assert.IsTrue(selection.SelectTarget(_officer, FleetWindowTab.Personnel));
+            Assert.IsTrue(selection.SelectItem(_officer));
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(
+                dispatcher,
+                _ => selection.ClearItemSelection(),
+                _ => selection.GetContextItems()
+            );
+            Task<bool> pending = _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                selection.GetContextItems()
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            Assert.IsTrue(selection.SelectItem(laterSelection));
+            CollectionAssert.AreEqual(new[] { laterSelection }, selection.GetContextItems());
+
+            PlayerRequestOutcome outcome = await TestPlayerRequests
+                .Create(_session, () => _playerFactionId)
+                .ExecuteAsync(dispatcher.Requests.Single());
+            Assert.IsTrue(outcome.Accepted);
+            completion.SetResult(outcome);
+            Assert.IsTrue(await pending);
+
+            CollectionAssert.AreEqual(new[] { laterSelection }, selection.GetContextItems());
+        }
+
         /// <summary>
         /// Replaces the displayed game or ends presentation before an order completes.
         /// </summary>
@@ -999,9 +1058,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         /// Creates the shared controller with an explicit execution-completion boundary.
         /// </summary>
         /// <param name="playerRequests">Completes the fixture's player requests.</param>
+        /// <param name="clearSelection">Clears the real window selection when supplied.</param>
+        /// <param name="getSelection">Returns the real window selection when supplied.</param>
         /// <returns>The initialized shared command controller.</returns>
         private StrategyWindowCommandController CreateController(
-            IPlayerRequestDispatcher playerRequests
+            IPlayerRequestDispatcher playerRequests,
+            Action<UIWindow> clearSelection = null,
+            Func<UIWindow, IReadOnlyList<ISceneNode>> getSelection = null
         )
         {
             ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
@@ -1020,7 +1083,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 playerRequests,
                 () => _uiContext,
                 _ => _playedSfxCount++,
-                window => _clearedWindow = window,
+                getSelection ?? (_ => _windowSelection),
+                clearSelection ?? (window => _clearedWindow = window),
                 () => _dirtyCount++,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,

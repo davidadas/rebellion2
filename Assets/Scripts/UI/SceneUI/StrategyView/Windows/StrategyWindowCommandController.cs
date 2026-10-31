@@ -29,6 +29,7 @@ public sealed class StrategyWindowCommandController
     );
     private readonly Func<UIContext> getUIContext;
     private readonly Action<string> playSfx;
+    private readonly Func<UIWindow, IReadOnlyList<ISceneNode>> getWindowSelection;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action markDirty;
     private readonly Action playInvalidOrderRejected;
@@ -44,6 +45,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
     /// <param name="getUIContext">Returns the active presentation context, or null after it ends.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
+    /// <param name="getWindowSelection">Returns the current selection owned by a source window.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
     /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
@@ -56,6 +58,7 @@ public sealed class StrategyWindowCommandController
         IPlayerRequestDispatcher playerRequests,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
+        Func<UIWindow, IReadOnlyList<ISceneNode>> getWindowSelection,
         Action<UIWindow> clearWindowSelection,
         Action markDirty,
         Action playInvalidOrderRejected = null,
@@ -74,6 +77,8 @@ public sealed class StrategyWindowCommandController
             playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
+        this.getWindowSelection =
+            getWindowSelection ?? throw new ArgumentNullException(nameof(getWindowSelection));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
@@ -183,7 +188,7 @@ public sealed class StrategyWindowCommandController
         if (!await TryMoveAsync(target, sourceItems))
             return false;
 
-        RefreshAfterMutation(sourceWindow, requestGame);
+        RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
         return true;
     }
 
@@ -239,7 +244,7 @@ public sealed class StrategyWindowCommandController
                 GameRoot requestGame = getUIContext()?.Game;
                 bool moved = await TryMoveAsync(target, sourceItems);
                 if (moved)
-                    RefreshAfterMutation(sourceWindow, requestGame);
+                    RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
                 return moved;
             }
         );
@@ -350,13 +355,14 @@ public sealed class StrategyWindowCommandController
         IReadOnlyList<ISceneNode> items
     )
     {
-        List<string> missionInstanceIds = GetMissionInstanceIds(items);
+        List<ISceneNode> sourceItems = CopyItems(items);
+        List<string> missionInstanceIds = GetMissionInstanceIds(sourceItems);
         if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
             return;
 
         confirmDialogWindowController.OpenMissionAbort(
             missions,
-            () => TryAbortMissionsAsync(missionInstanceIds, sourceWindow)
+            () => TryAbortMissionsAsync(missionInstanceIds, sourceWindow, sourceItems)
         );
     }
 
@@ -370,7 +376,7 @@ public sealed class StrategyWindowCommandController
         if (string.IsNullOrEmpty(missionInstanceId))
             return Task.FromResult(false);
 
-        return TryAbortMissionsAsync(new[] { missionInstanceId }, null);
+        return TryAbortMissionsAsync(new[] { missionInstanceId }, null, Array.Empty<ISceneNode>());
     }
 
     /// <summary>
@@ -401,7 +407,7 @@ public sealed class StrategyWindowCommandController
                     ).Accepted
                 )
                 {
-                    RefreshAfterMutation(sourceWindow, requestGame);
+                    RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
                     return true;
                 }
                 return false;
@@ -444,7 +450,7 @@ public sealed class StrategyWindowCommandController
                 {
                     if (IsCurrentGame(requestGame))
                         onStopped?.Invoke();
-                    RefreshAfterMutation(sourceWindow, requestGame);
+                    RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
                     return true;
                 }
                 return false;
@@ -479,7 +485,7 @@ public sealed class StrategyWindowCommandController
                     ).Accepted
                 )
                 {
-                    RefreshAfterMutation(sourceWindow, requestGame);
+                    RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
                     return true;
                 }
                 return false;
@@ -655,10 +661,12 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="missionInstanceIds">The persistent mission identifiers.</param>
     /// <param name="sourceWindow">The optional source window whose selection should be cleared.</param>
+    /// <param name="sourceItems">The original window selection associated with the mission request.</param>
     /// <returns>True when every mission was aborted.</returns>
     private async Task<bool> TryAbortMissionsAsync(
         IReadOnlyList<string> missionInstanceIds,
-        UIWindow sourceWindow
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> sourceItems
     )
     {
         if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
@@ -682,7 +690,7 @@ public sealed class StrategyWindowCommandController
             playSfx(voicePath);
 
         if (sourceWindow != null)
-            RefreshAfterMutation(sourceWindow, requestGame);
+            RefreshAfterMutation(sourceWindow, requestGame, sourceItems);
         else
         {
             markDirty();
@@ -708,16 +716,28 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
-    /// Clears source selection and invalidates the current presentation after a domain mutation.
+    /// Clears a matching source selection and invalidates presentation after a domain mutation.
     /// </summary>
     /// <param name="sourceWindow">The window that owned the selection.</param>
     /// <param name="requestGame">The game owning the completed request.</param>
-    private void RefreshAfterMutation(UIWindow sourceWindow, GameRoot requestGame)
+    /// <param name="sourceItems">The original window selection submitted with the request.</param>
+    private void RefreshAfterMutation(
+        UIWindow sourceWindow,
+        GameRoot requestGame,
+        IReadOnlyList<ISceneNode> sourceItems
+    )
     {
         if (!IsCurrentGame(requestGame))
             return;
 
-        clearWindowSelection(sourceWindow);
+        if (
+            sourceWindow != null
+            && new HashSet<string>(
+                sourceItems.Select(item => item?.InstanceID),
+                StringComparer.Ordinal
+            ).SetEquals(getWindowSelection(sourceWindow).Select(item => item?.InstanceID))
+        )
+            clearWindowSelection(sourceWindow);
         markDirty();
     }
 
