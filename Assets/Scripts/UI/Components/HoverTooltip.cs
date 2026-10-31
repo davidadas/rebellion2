@@ -44,6 +44,7 @@ public sealed class HoverTooltip
     private const int _minimumWidth = 20;
 
     private readonly int _maximumWidth;
+    private readonly int _fontSize;
     private readonly string _name;
     private readonly RectTransform _parent;
     private readonly bool _wrapText;
@@ -65,11 +66,13 @@ public sealed class HoverTooltip
     /// <param name="name">The tooltip object's name.</param>
     /// <param name="maximumWidth">The maximum width within the supplied parent.</param>
     /// <param name="wrapText">Whether long content may expand onto multiple lines.</param>
+    /// <param name="fontSize">The text size in the parent's coordinate space.</param>
     public HoverTooltip(
         RectTransform parent,
         string name,
         int maximumWidth = 160,
-        bool wrapText = false
+        bool wrapText = false,
+        int fontSize = 8
     )
     {
         _parent = parent != null ? parent : throw new ArgumentNullException(nameof(parent));
@@ -81,6 +84,8 @@ public sealed class HoverTooltip
                 ? maximumWidth
                 : throw new ArgumentOutOfRangeException(nameof(maximumWidth));
         _wrapText = wrapText;
+        _fontSize =
+            fontSize > 0 ? fontSize : throw new ArgumentOutOfRangeException(nameof(fontSize));
     }
 
     /// <summary>
@@ -183,7 +188,7 @@ public sealed class HoverTooltip
         textObject.transform.SetParent(rootObject.transform, false);
         _text = textObject.GetComponent<TextMeshProUGUI>();
         _text.color = Color.black;
-        _text.fontSize = 8;
+        _text.fontSize = _fontSize;
         _text.alignment = TextAlignmentOptions.Center;
         _text.textWrappingMode = _wrapText ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
         _text.overflowMode = _wrapText ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
@@ -215,7 +220,8 @@ public sealed class HoverTooltip
             Mathf.Min(_maximumWidth, maximumWidth)
         );
         int textWidth = width - 2 * (_borderWidth + _horizontalPadding);
-        int height = _height;
+        int minimumHeight = Mathf.Max(_height, _fontSize + 6);
+        int height = minimumHeight;
         if (_wrapText)
         {
             float preferredHeight = _text
@@ -223,8 +229,8 @@ public sealed class HoverTooltip
                 .y;
             height = Mathf.Clamp(
                 Mathf.CeilToInt(preferredHeight) + 2 * _borderWidth,
-                _height,
-                Mathf.Max(_height, parentBounds.height - 2)
+                minimumHeight,
+                Mathf.Max(minimumHeight, parentBounds.height - 2)
             );
         }
         int x = content.SourceBounds.x + (content.SourceBounds.width - width) / 2;

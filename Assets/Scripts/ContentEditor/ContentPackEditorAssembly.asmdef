@@ -1,0 +1,20 @@
+{
+    "name": "ContentPackEditorAssembly",
+    "rootNamespace": "",
+    "references": [
+        "GameAssembly",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR || REBELLION_CONTENT_PACK_EDITOR"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

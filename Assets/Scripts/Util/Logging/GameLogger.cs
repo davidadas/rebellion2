@@ -26,8 +26,7 @@ namespace Rebellion.Util.Logging
         }
 
         // Default log file path and configuration settings.
-        private static string _logFilePath =
-            $"{UnityEngine.Application.persistentDataPath}/log.txt";
+        private static string _logFilePath = Path.Combine(UserDataPaths.Root, "log.txt");
         private static bool _logToFile;
         private static bool _includeTimestamp = true;
 
@@ -46,7 +45,7 @@ namespace Rebellion.Util.Logging
         /// <summary>
         /// Configures the logger settings.
         /// </summary>
-        /// <param name="filePath">Path to the log file. Defaults to Application.persistentDataPath if null.</param>
+        /// <param name="filePath">The log file path, or null to retain the current profile's configured path.</param>
         /// <param name="enableFileLogging">Whether to log messages to a file.</param>
         /// <param name="addTimestamps">Whether to include timestamps in log messages.</param>
         public static void Configure(

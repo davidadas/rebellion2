@@ -22,8 +22,19 @@ public sealed class BootController : MonoBehaviour
     {
         try
         {
-            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            NewGameLaunchRequest request = NewGameLaunchRequest.Read(
+                Environment.GetCommandLineArgs()
+            );
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists(
+                request?.OpenContent(ContentPackLoader.ResolveContentRootPath())
+            );
             await bootstrap.InitializeMainMenuContentAsync();
+            if (request != null)
+            {
+                GameLaunchContext.ApplyCustomGameSummary(request.Summary);
+                bootstrap.LoadScene("StrategyView");
+                return;
+            }
             PlayNext();
         }
         catch (Exception exception)
