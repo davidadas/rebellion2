@@ -14,7 +14,7 @@ namespace Rebellion.Multiplayer
     /// </summary>
     public sealed partial class MultiplayerCoordinator : MonoBehaviour, IGameSessionOwner
     {
-        private const int _protocolVersion = 11;
+        private const int _protocolVersion = 12;
 
         private readonly List<MultiplayerGameListing> _games = new();
         private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();
@@ -75,7 +75,8 @@ namespace Rebellion.Multiplayer
         public bool IsConnecting =>
             _launchConfiguration == null
             && (
-                _role == MultiplayerRole.Host && _peer == null
+                _returningToRecovery
+                || _role == MultiplayerRole.Host && _peer == null
                 || _role == MultiplayerRole.Guest && _guestLobby == null
             );
 
@@ -470,12 +471,7 @@ namespace Rebellion.Multiplayer
         /// </summary>
         private void HandleConnected()
         {
-            if (_waitingForRejoin && _backend.IsLobbyOwner)
-            {
-                SetStatus("Player connected; verifying the returning account");
-                return;
-            }
-            if (_backend.IsLobbyOwner)
+            if (!_waitingForRejoin && !_returningToRecovery && _backend.IsLobbyOwner)
             {
                 SetStatus("Player connected; negotiating game");
                 return;
@@ -486,10 +482,14 @@ namespace Rebellion.Multiplayer
                 protocolVersion = _protocolVersion,
                 simulationBuild = MultiplayerCompatibility.SimulationBuild,
                 playerName = _playerName,
-                contentFingerprint = _expectedFingerprint,
+                contentFingerprint =
+                    _waitingForRejoin || _returningToRecovery
+                        ? _recoveryRecord?.contentFingerprint
+                        : _expectedFingerprint,
                 passwordProof = _passwordProof,
                 recoveryCampaignID =
                     _returningToRecovery || _waitingForRejoin ? _recoveryRecord?.campaignID : null,
+                returningToRecovery = _returningToRecovery,
             };
             QueueSend(
                 new MultiplayerPacket(MultiplayerMessageType.Hello, JsonUtility.ToJson(hello))
@@ -614,7 +614,7 @@ namespace Rebellion.Multiplayer
         {
             if (_rejectingGuest)
                 return;
-            if (_waitingForRejoin)
+            if (_waitingForRejoin || _returningToRecovery)
             {
                 HandleRecoveryHello(packet);
                 return;

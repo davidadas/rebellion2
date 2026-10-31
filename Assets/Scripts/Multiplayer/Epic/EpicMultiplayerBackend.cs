@@ -52,6 +52,7 @@ namespace Rebellion.Multiplayer
         private EpicMultiplayerPeer _peer;
         private string _lobbyId;
         private ProductUserId _remoteUser;
+        private string _recoveryCampaignID;
         private bool _ownsLobby;
         private bool _disposed;
         private int _sessionVersion;
@@ -72,7 +73,7 @@ namespace Rebellion.Multiplayer
         public string LocalUserID => _localUser.ToString();
 
         /// <summary>
-        /// Gets the product identity admitted by the service's current host membership event.
+        /// Gets the authenticated counterpart admitted by lobby membership or the saved campaign.
         /// </summary>
         public string RemoteUserID => _remoteUser?.ToString();
 
@@ -120,16 +121,43 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reopens the room's stream without changing either participant's simulation authority.
+        /// Opens a campaign-scoped stream for the saved counterpart independently of lobby ownership.
         /// </summary>
-        public void ReopenRecoveryPeer()
+        /// <param name="campaignID">The durable campaign identifier shared by both participants.</param>
+        /// <param name="remoteUserID">The authenticated counterpart reserved by the saved campaign.</param>
+        /// <param name="initiate">Whether this participant also initiates an outgoing connection.</param>
+        /// <returns>The connection admitted for this campaign.</returns>
+        public IMultiplayerPeer OpenRecoveryPeer(
+            string campaignID,
+            string remoteUserID,
+            bool initiate
+        )
         {
-            if (_lobbyId == null)
-                return;
+            ThrowIfDisposed();
+            if (!Guid.TryParseExact(campaignID, "N", out _))
+                throw new ArgumentException(
+                    "A campaign identifier is required.",
+                    nameof(campaignID)
+                );
+            ProductUserId counterpart = ProductUserId.FromString(remoteUserID);
+            if (counterpart?.IsValid() != true || counterpart.Equals(_localUser))
+                throw new ArgumentException(
+                    "A distinct counterpart is required.",
+                    nameof(remoteUserID)
+                );
             _peer?.Dispose();
-            _peer = new EpicMultiplayerPeer(_platform.GetP2PInterface(), _localUser, _lobbyId);
-            if (_remoteUser != null)
-                _peer.Connect(_remoteUser);
+            _recoveryCampaignID = campaignID;
+            _remoteUser = counterpart;
+            _peer = new EpicMultiplayerPeer(
+                _platform.GetP2PInterface(),
+                _localUser,
+                "campaign:" + campaignID
+            );
+            if (initiate)
+                _peer.Connect(counterpart);
+            else
+                _peer.Listen(counterpart);
+            return _peer;
         }
 
         /// <summary>
@@ -164,7 +192,7 @@ namespace Rebellion.Multiplayer
         {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            if (_lobbyId != null)
+            if (_lobbyId != null || _peer != null)
                 throw new InvalidOperationException(
                     "Leave the current game before hosting another."
                 );
@@ -282,17 +310,15 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="game">The selected public game.</param>
         /// <param name="cancellationToken">Cancels joining and leaves any late-joined lobby.</param>
-        /// <param name="recovering">Whether a campaign reservation permits joining a started room.</param>
         /// <returns>The guest peer connection.</returns>
         public async Task<IMultiplayerPeer> JoinAsync(
             MultiplayerGameListing game,
-            CancellationToken cancellationToken,
-            bool recovering = false
+            CancellationToken cancellationToken
         )
         {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            if (_lobbyId != null)
+            if (_lobbyId != null || _peer != null)
                 throw new InvalidOperationException(
                     "Leave the current game before joining another."
                 );
@@ -313,12 +339,7 @@ namespace Rebellion.Multiplayer
                 details = CopyResult(search, 0);
                 MultiplayerGameListing current = EpicLobbyListing.Read(details);
                 if (
-                    !(
-                        EpicLobbyListing.IsJoinable(current)
-                        || recovering
-                            && current?.maxPlayers == 2
-                            && current.campaignID == game.campaignID
-                    )
+                    !EpicLobbyListing.IsJoinable(current)
                     || !string.Equals(
                         current.contentFingerprint,
                         game.contentFingerprint,
@@ -385,71 +406,6 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Finds a reserved campaign after its lobby owner changes or its room is recreated.
-        /// </summary>
-        /// <param name="lobbyID">The last atomically saved room identifier.</param>
-        /// <param name="campaignID">The campaign reserved for the returning participants.</param>
-        /// <param name="cancellationToken">Cancels presentation of the lookup result.</param>
-        /// <returns>The current recovery room, or null if no participant retains it.</returns>
-        public Task<MultiplayerGameListing> FindRecoveryAsync(
-            string lobbyID,
-            string campaignID,
-            CancellationToken cancellationToken
-        )
-        {
-            return MultiplayerRecoveryDirectory.FindAsync(
-                lobbyID,
-                campaignID,
-                FindRecoveryRoomAsync,
-                ListAsync,
-                cancellationToken
-            );
-        }
-
-        /// <summary>
-        /// Reads a retained room while allowing the service to report that its last member has left.
-        /// </summary>
-        /// <param name="lobbyID">The previous room identifier.</param>
-        /// <param name="cancellationToken">Cancels the outgoing account's lookup.</param>
-        /// <returns>The previous room, or null when the service no longer retains it.</returns>
-        private async Task<MultiplayerGameListing> FindRecoveryRoomAsync(
-            string lobbyID,
-            CancellationToken cancellationToken
-        )
-        {
-            LobbySearch search = CreateSearch();
-            try
-            {
-                LobbySearchSetLobbyIdOptions options = new LobbySearchSetLobbyIdOptions
-                {
-                    LobbyId = lobbyID,
-                };
-                RequireSuccess(search.SetLobbyId(ref options), "Find recovery room");
-                bool found = await FindAsync(search, true);
-                cancellationToken.ThrowIfCancellationRequested();
-                LobbySearchGetSearchResultCountOptions count =
-                    new LobbySearchGetSearchResultCountOptions();
-                if (found && search.GetSearchResultCount(ref count) > 0)
-                {
-                    LobbyDetails details = CopyResult(search, 0);
-                    try
-                    {
-                        return EpicLobbyListing.Read(details);
-                    }
-                    finally
-                    {
-                        details.Release();
-                    }
-                }
-            }
-            finally
-            {
-                search.Release();
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Drains this session's gameplay messages on the main thread.
         /// </summary>
         public void Poll()
@@ -501,12 +457,26 @@ namespace Rebellion.Multiplayer
                 || !string.Equals(data.LobbyId, _lobbyId, StringComparison.Ordinal)
             )
                 return;
-            if (
-                data.CurrentStatus == LobbyMemberStatus.Promoted
-                && data.TargetUserId.Equals(_localUser)
-            )
+            if (data.CurrentStatus == LobbyMemberStatus.Promoted)
             {
-                _ownsLobby = true;
+                _ownsLobby = data.TargetUserId.Equals(_localUser);
+                return;
+            }
+            if (_recoveryCampaignID != null)
+            {
+                if (
+                    data.CurrentStatus == LobbyMemberStatus.Closed
+                    || data.TargetUserId.Equals(_localUser)
+                        && (
+                            data.CurrentStatus == LobbyMemberStatus.Left
+                            || data.CurrentStatus == LobbyMemberStatus.Kicked
+                            || data.CurrentStatus == LobbyMemberStatus.Disconnected
+                        )
+                )
+                {
+                    _lobbyId = null;
+                    _ownsLobby = false;
+                }
                 return;
             }
             if (
@@ -618,9 +588,8 @@ namespace Rebellion.Multiplayer
         /// Runs a configured search for this authenticated player.
         /// </summary>
         /// <param name="search">The configured search.</param>
-        /// <param name="allowMissing">Whether a deleted room is an expected recovery lookup miss.</param>
-        /// <returns>True for a completed search, or false for an expected missing room.</returns>
-        private Task<bool> FindAsync(LobbySearch search, bool allowMissing = false)
+        /// <returns>The completed search operation.</returns>
+        private Task FindAsync(LobbySearch search)
         {
             TaskCompletionSource<bool> completion = new(
                 TaskCreationOptions.RunContinuationsAsynchronously
@@ -633,12 +602,7 @@ namespace Rebellion.Multiplayer
                 ref options,
                 null,
                 (ref LobbySearchFindCallbackInfo result) =>
-                {
-                    if (allowMissing && result.ResultCode == Result.NotFound)
-                        completion.TrySetResult(false);
-                    else
-                        Complete(completion, "Find games", result.ResultCode);
-                }
+                    Complete(completion, "Find games", result.ResultCode)
             );
             return completion.Task;
         }
@@ -731,6 +695,7 @@ namespace Rebellion.Multiplayer
             _lobbyId = null;
             _ownsLobby = false;
             _remoteUser = null;
+            _recoveryCampaignID = null;
             _peer = null;
         }
 

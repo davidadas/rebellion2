@@ -14,6 +14,7 @@ namespace Rebellion.Multiplayer
         public string contentFingerprint;
         public string passwordProof;
         public string recoveryCampaignID;
+        public bool returningToRecovery;
     }
 
     /// <summary>

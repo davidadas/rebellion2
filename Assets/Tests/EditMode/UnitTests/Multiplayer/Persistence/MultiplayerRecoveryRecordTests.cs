@@ -59,6 +59,35 @@ namespace Rebellion.Tests.Multiplayer
             Assert.Throws<InvalidDataException>(() => CreateRecord().GetRole("other"));
         }
 
+        [TestCase("host", false, true, true)]
+        [TestCase("guest", false, true, true)]
+        [TestCase("host", true, false, false)]
+        [TestCase("guest", true, false, false)]
+        [TestCase("host", true, true, true)]
+        [TestCase("guest", true, true, false)]
+        [TestCase("host", false, false, true)]
+        [TestCase("guest", false, false, false)]
+        public void ShouldOfferState_ParticipantAvailability_SelectsOneRecoverySource(
+            string localUserID,
+            bool localReturning,
+            bool remoteReturning,
+            bool expected
+        )
+        {
+            Assert.That(
+                CreateRecord().ShouldOfferState(localUserID, localReturning, remoteReturning),
+                Is.EqualTo(expected)
+            );
+        }
+
+        [Test]
+        public void ShouldOfferState_UnreservedAccount_RejectsSelection()
+        {
+            Assert.Throws<InvalidDataException>(() =>
+                CreateRecord().ShouldOfferState("other", false, true)
+            );
+        }
+
         [TestCase("host", "guest")]
         [TestCase("guest", "host")]
         public void ValidatePeer_OriginalCounterpart_AllowsReturningPlayer(

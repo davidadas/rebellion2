@@ -7,11 +7,13 @@ using System.Threading.Tasks;
 using AcceptConnectionOptions = Epic.OnlineServices.P2P.AcceptConnectionOptions;
 using AddNotifyPeerConnectionClosedOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionClosedOptions;
 using AddNotifyPeerConnectionEstablishedOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionEstablishedOptions;
+using AddNotifyPeerConnectionInterruptedOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionInterruptedOptions;
 using AddNotifyPeerConnectionRequestOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionRequestOptions;
 using CloseConnectionOptions = Epic.OnlineServices.P2P.CloseConnectionOptions;
 using Common = Epic.OnlineServices.Common;
 using OnIncomingConnectionRequestInfo = Epic.OnlineServices.P2P.OnIncomingConnectionRequestInfo;
 using OnPeerConnectionEstablishedInfo = Epic.OnlineServices.P2P.OnPeerConnectionEstablishedInfo;
+using OnPeerConnectionInterruptedInfo = Epic.OnlineServices.P2P.OnPeerConnectionInterruptedInfo;
 using OnRemoteConnectionClosedInfo = Epic.OnlineServices.P2P.OnRemoteConnectionClosedInfo;
 using P2PInterface = Epic.OnlineServices.P2P.P2PInterface;
 using PacketReliability = Epic.OnlineServices.P2P.PacketReliability;
@@ -26,7 +28,7 @@ using SocketId = Epic.OnlineServices.P2P.SocketId;
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Transfers the game protocol over one lobby-scoped, reliable ordered EOS connection.
+    /// Transfers the game protocol over one admitted, reliable ordered EOS connection.
     /// </summary>
     public sealed class EpicMultiplayerPeer : IMultiplayerPeer
     {
@@ -41,6 +43,7 @@ namespace Rebellion.Multiplayer
         private readonly MultiplayerPacketFramer _framer;
         private readonly ulong _requestNotification;
         private readonly ulong _connectedNotification;
+        private readonly ulong _interruptedNotification;
         private readonly ulong _closedNotification;
         private ReceivePacketOptions _receiveOptions;
         private ProductUserId _receivedUser;
@@ -51,16 +54,16 @@ namespace Rebellion.Multiplayer
         private bool _disposed;
 
         /// <summary>
-        /// Gets whether the remote lobby participant is connected.
+        /// Gets whether the admitted counterpart is connected.
         /// </summary>
         public bool IsConnected => _connected && !_disconnected;
 
         /// <summary>
-        /// Registers a socket that accepts only the admitted lobby participant.
+        /// Registers a socket that accepts only the admitted counterpart.
         /// </summary>
         /// <param name="p2p">The authenticated EOS P2P interface.</param>
         /// <param name="localUser">The local product user.</param>
-        /// <param name="lobbyId">The lobby that owns the connection.</param>
+        /// <param name="lobbyId">The shared lobby or campaign connection key.</param>
         public EpicMultiplayerPeer(P2PInterface p2p, ProductUserId localUser, string lobbyId)
         {
             _p2p = p2p ?? throw new ArgumentNullException(nameof(p2p));
@@ -104,6 +107,17 @@ namespace Rebellion.Multiplayer
                 null,
                 OnConnectionEstablished
             );
+            AddNotifyPeerConnectionInterruptedOptions interruptedOptions =
+                new AddNotifyPeerConnectionInterruptedOptions
+                {
+                    LocalUserId = localUser,
+                    SocketId = _socket,
+                };
+            _interruptedNotification = _p2p.AddNotifyPeerConnectionInterrupted(
+                ref interruptedOptions,
+                null,
+                OnConnectionInterrupted
+            );
             AddNotifyPeerConnectionClosedOptions closedOptions =
                 new AddNotifyPeerConnectionClosedOptions
                 {
@@ -118,6 +132,7 @@ namespace Rebellion.Multiplayer
             if (
                 _requestNotification == Common.INVALID_NOTIFICATIONID
                 || _connectedNotification == Common.INVALID_NOTIFICATIONID
+                || _interruptedNotification == Common.INVALID_NOTIFICATIONID
                 || _closedNotification == Common.INVALID_NOTIFICATIONID
             )
             {
@@ -143,10 +158,26 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Admits a participant established by the lobby membership boundary.
+        /// Admits and connects to an authenticated participant.
         /// </summary>
-        /// <param name="remoteUser">The remote lobby member.</param>
+        /// <param name="remoteUser">The authenticated counterpart.</param>
         public void Connect(ProductUserId remoteUser)
+        {
+            bool admitted = _remoteUser != null;
+            Listen(remoteUser);
+            if (admitted)
+                return;
+            SendPacketOptions options = CreateSendOptions(
+                MultiplayerPacketFramer.CreateConnectionFrame()
+            );
+            RequireSuccess(_p2p.SendPacket(ref options), "Connect to the other player");
+        }
+
+        /// <summary>
+        /// Admits an authenticated counterpart without initiating an outgoing connection.
+        /// </summary>
+        /// <param name="remoteUser">The authenticated counterpart allowed to connect.</param>
+        public void Listen(ProductUserId remoteUser)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(EpicMultiplayerPeer));
@@ -164,10 +195,6 @@ namespace Rebellion.Multiplayer
                 return;
             }
             _remoteUser = remoteUser;
-            SendPacketOptions options = CreateSendOptions(
-                MultiplayerPacketFramer.CreateConnectionFrame()
-            );
-            RequireSuccess(_p2p.SendPacket(ref options), "Connect to the other player");
         }
 
         /// <summary>
@@ -283,6 +310,7 @@ namespace Rebellion.Multiplayer
             _disposed = true;
             _p2p.RemoveNotifyPeerConnectionRequest(_requestNotification);
             _p2p.RemoveNotifyPeerConnectionEstablished(_connectedNotification);
+            _p2p.RemoveNotifyPeerConnectionInterrupted(_interruptedNotification);
             _p2p.RemoveNotifyPeerConnectionClosed(_closedNotification);
             CloseConnection();
             _stream.Dispose();
@@ -318,6 +346,16 @@ namespace Rebellion.Multiplayer
             _connected = true;
             _events.Enqueue(new MultiplayerTransportEvent(MultiplayerTransportEventType.Connected));
             _ = ReceiveAsync();
+        }
+
+        /// <summary>
+        /// Ends an interrupted stream so the campaign can negotiate a completed recovery checkpoint.
+        /// </summary>
+        /// <param name="data">The interrupted connection notification.</param>
+        private void OnConnectionInterrupted(ref OnPeerConnectionInterruptedInfo data)
+        {
+            if (!_disposed && data.RemoteUserId.Equals(_remoteUser))
+                Disconnect("The connection to the other player was interrupted.");
         }
 
         /// <summary>

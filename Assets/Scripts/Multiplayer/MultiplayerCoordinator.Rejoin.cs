@@ -70,10 +70,10 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Rejoins the surviving room or lets the original host reopen its durable campaign.
+        /// Connects the saved participants directly and lets the host reopen its durable checkpoint.
         /// </summary>
-        /// <param name="selected">The explicitly selected room, or null to discover the retained campaign.</param>
-        /// <returns>The pending authenticated room lookup and recovery launch.</returns>
+        /// <param name="selected">An optional browser selection identifying the retained campaign.</param>
+        /// <returns>The pending authenticated connection and recovery launch.</returns>
         public async Task ResumeAsync(MultiplayerGameListing selected = null)
         {
             MultiplayerRecoveryRecord record = _recoveryRecord;
@@ -90,39 +90,22 @@ namespace Rebellion.Multiplayer
                 cancellationToken.ThrowIfCancellationRequested();
                 _backend = await _onlineClient.ConnectAsync();
                 cancellationToken.ThrowIfCancellationRequested();
-                MultiplayerRole role = record.GetRole(_backend.LocalUserID);
+                _role = record.GetRole(_backend.LocalUserID);
                 MultiplayerCompatibility.ValidateBuild(record.simulationBuild);
                 _playerName = NormalizePlayerName(_onlineClient.Session.DisplayName);
                 _gameName = record.gameName;
                 _hostPlayerName = record.hostName;
                 _expectedFingerprint = record.contentFingerprint;
-                SetStatus("Finding the paused game");
-                MultiplayerGameListing room =
-                    selected
-                    ?? await _backend.FindRecoveryAsync(
-                        record.lobbyID,
-                        record.campaignID,
-                        cancellationToken
-                    );
-                cancellationToken.ThrowIfCancellationRequested();
-                if (room != null)
+                _waitingForRejoin = true;
+                _admittedGuestUserID = record.guestUserID;
+                SetStatus(CreateRejoinNotice());
+                if (_role != MultiplayerRole.Host)
                 {
-                    record.ValidatePeer(_backend.LocalUserID, room.ownerUserID);
-                    _peer = await _backend.JoinAsync(room, cancellationToken, true);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    SetStatus(
-                        "Reconnecting to "
-                            + (role == MultiplayerRole.Host ? record.guestName : record.hostName)
-                    );
+                    _peer = OpenRecoveryPeer();
                     return;
                 }
-                if (role != MultiplayerRole.Host)
-                    throw new InvalidOperationException(
-                        "The host has not reopened this campaign yet. Try Resume game again when they return."
-                    );
                 GameRoot state = GetRecoveryStore().ReadState(_backend.LocalUserID);
                 record.ValidateState(state);
-                _role = role;
                 _hostSummary = state.Summary;
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
                 _lobbyContent = await Task.Run(() =>
@@ -133,15 +116,10 @@ namespace Rebellion.Multiplayer
                     GetGameplayContentIdentity(_lobbyContent),
                     record.gameplayContent
                 );
-                _listingState = "rejoining";
-                _peer = await _backend.HostAsync(CreateListing(), cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-                record.lobbyID = _backend.LobbyId;
-                _admittedGuestUserID = record.guestUserID;
-                _waitingForRejoin = true;
                 _recoveryPausePending = true;
                 _checkpointPending = true;
                 BeginInitialization(Guid.NewGuid().ToString("N"));
+                _peer = OpenRecoveryPeer();
                 LaunchRecovery(state);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -180,7 +158,6 @@ namespace Rebellion.Multiplayer
             _synchronizationReady = false;
             _waitingForRejoin = true;
             _recoveryOfferSent = false;
-            _returningToRecovery = false;
             _publishedRecoveryOwner = false;
             _recoveryPausePending = true;
             _checkpointPending = true;
@@ -194,9 +171,27 @@ namespace Rebellion.Multiplayer
             _readyPresentationSession = _runtime.GetActiveGameSession();
             BindLocalRecoveryPersistence();
             _runtime.GetActiveGameManager().BindSpeedRequests(RequestGameSpeed);
-            _backend.ReopenRecoveryPeer();
-            _peer = _backend.Peer;
+            _peer = OpenRecoveryPeer();
             SetStatus(CreateRejoinNotice());
+        }
+
+        /// <summary>
+        /// Admits the campaign's saved counterpart without requiring a surviving lobby membership.
+        /// </summary>
+        /// <returns>The campaign-scoped authenticated connection.</returns>
+        private IMultiplayerPeer OpenRecoveryPeer()
+        {
+            MultiplayerRecoveryRecord record =
+                _recoveryRecord
+                ?? throw new InvalidOperationException("No campaign recovery record is available.");
+            string counterpart =
+                _role == MultiplayerRole.Host ? record.guestUserID : record.hostUserID;
+            record.ValidatePeer(_backend.LocalUserID, counterpart);
+            return _backend.OpenRecoveryPeer(
+                record.campaignID,
+                counterpart,
+                _returningToRecovery || _role == MultiplayerRole.Guest
+            );
         }
 
         /// <summary>
@@ -239,7 +234,7 @@ namespace Rebellion.Multiplayer
         private void ProcessRejoinRecovery()
         {
             GameSession session = _runtime?.GetActiveGameSession();
-            if (session == null)
+            if (session == null || !ReferenceEquals(_readyPresentationSession, session))
                 return;
             if (_recoveryPausePending)
             {
@@ -394,11 +389,6 @@ namespace Rebellion.Multiplayer
         {
             if (!_waitingForRejoin || _recoveryOfferSent)
                 return;
-            if (_recoveryPausePending || _checkpointPending)
-            {
-                _pendingRejoinPacket = packet;
-                return;
-            }
             MultiplayerHelloMessage hello = JsonUtility.FromJson<MultiplayerHelloMessage>(
                 packet.Metadata
             );
@@ -418,8 +408,18 @@ namespace Rebellion.Multiplayer
                         "The returning player's content selection does not match."
                     );
                 if (
+                    !_recoveryRecord.ShouldOfferState(
+                        _backend.LocalUserID,
+                        _returningToRecovery,
+                        hello.returningToRecovery
+                    )
+                )
+                    return;
+                if (
                     _runtime?.GetActiveGameSession()?.CanCaptureSettledState != true
+                    || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
                     || _recoveryPausePending
+                    || _checkpointPending
                 )
                 {
                     _pendingRejoinPacket = packet;
@@ -481,7 +481,13 @@ namespace Rebellion.Multiplayer
             bool livePeer = _waitingForRejoin && !_recoveryOfferSent && _runtime != null;
             if ((!_returningToRecovery && !livePeer) || _recoveryRecord == null)
                 throw new InvalidOperationException("No campaign recovery is being negotiated.");
-            if (livePeer && !_runtime.GetActiveGameSession().CanExecuteCommands)
+            if (
+                _launchConfiguration != null
+                && (
+                    _runtime?.GetActiveGameSession()?.CanExecuteCommands != true
+                    || !ReferenceEquals(_readyPresentationSession, _runtime.GetActiveGameSession())
+                )
+            )
             {
                 _pendingRejoinPacket = packet;
                 return;
@@ -519,8 +525,8 @@ namespace Rebellion.Multiplayer
                 _recoveryPausePending = false;
                 _checkpointPending = false;
                 _recoveryOfferSent = true;
-                NotifyPresentationReady(_runtime);
                 SetStatus("Synchronizing the game");
+                NotifyPresentationReady(_runtime);
                 return;
             }
             PrepareRecoveryContent(state);
@@ -533,6 +539,7 @@ namespace Rebellion.Multiplayer
         private async void PrepareRecoveryContent(GameRoot state)
         {
             var cancellationToken = _sessionCancellation.Token;
+            IMultiplayerPeer receivingPeer = _peer;
             try
             {
                 ContentPack active = AppBootstrap.EnsureExists().GetContentPack();
@@ -540,6 +547,8 @@ namespace Rebellion.Multiplayer
                     SaveContentResolver.Open(active, state.Summary)
                 );
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!ReferenceEquals(receivingPeer, _peer))
+                    return;
                 MultiplayerCompatibility.ValidateContent(
                     GetGameplayContentIdentity(content),
                     _recoveryRecord.gameplayContent
@@ -550,7 +559,10 @@ namespace Rebellion.Multiplayer
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
             catch (Exception exception)
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (
+                    cancellationToken.IsCancellationRequested
+                    || !ReferenceEquals(receivingPeer, _peer)
+                )
                     return;
                 Disconnect();
                 RefreshRecoveryRecord();

@@ -527,6 +527,12 @@ namespace Rebellion.Multiplayer
         /// <param name="reason">The transport's departure message.</param>
         private void HandlePeerDeparture(string reason)
         {
+            if (_returningToRecovery && _launchConfiguration == null)
+            {
+                _peer = OpenRecoveryPeer();
+                SetStatus(CreateRejoinNotice());
+                return;
+            }
             if (_launchConfiguration != null)
             {
                 EndForPeerDeparture();

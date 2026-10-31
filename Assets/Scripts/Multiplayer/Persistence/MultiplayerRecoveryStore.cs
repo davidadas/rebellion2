@@ -72,6 +72,21 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Keeps a surviving world authoritative, using the host checkpoint when both participants restart.
+        /// </summary>
+        /// <param name="localUserID">The locally authenticated participant.</param>
+        /// <param name="localReturning">Whether the local participant is reopening its disk checkpoint.</param>
+        /// <param name="remoteReturning">Whether the counterpart is reopening its disk checkpoint.</param>
+        /// <returns>Whether the local participant supplies the recovery world.</returns>
+        public bool ShouldOfferState(string localUserID, bool localReturning, bool remoteReturning)
+        {
+            MultiplayerRole role = GetRole(localUserID);
+            return localReturning == remoteReturning
+                ? role == MultiplayerRole.Host
+                : !localReturning;
+        }
+
+        /// <summary>
         /// Rejects a browser selection that does not identify this account's retained campaign.
         /// </summary>
         /// <param name="listing">The explicitly selected recovery room.</param>

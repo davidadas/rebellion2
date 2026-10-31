@@ -91,6 +91,11 @@ namespace Rebellion.Multiplayer
                 AcceptInitialSnapshot(metadata);
                 return;
             }
+            if (_waitingForRejoin)
+            {
+                SetStatus(CreateRejoinNotice());
+                return;
+            }
             if (_role == MultiplayerRole.Guest)
             {
                 QueueSend(
