@@ -184,17 +184,18 @@ public static class MultiplayerNetworkSimulationRunner
         report.seed = hostGame.Summary.Seed;
         report.galaxySize = hostGame.Summary.GalaxySize.ToString();
         report.victoryCondition = hostGame.Summary.VictoryCondition.ToString();
-        string[] factions = contentPack.Scenario.PlayableFactionIDs.Take(2).ToArray();
+        string[] factions = contentPack.Scenario.PlayableFactionIDs.ToArray();
         if (
             factions.Length != 2
             || factions.Distinct(StringComparer.Ordinal).Count() != 2
+            || !factions.Contains(hostGame.Summary.PlayerFactionID, StringComparer.Ordinal)
             || factions.Any(id => hostGame.GetFactionByOwnerInstanceID(id) == null)
         )
             throw new InvalidDataException(
                 "The scenario must provide two distinct session factions."
             );
-        report.hostFactionID = factions[0];
-        report.guestFactionID = factions[1];
+        if (factions[0] != hostGame.Summary.PlayerFactionID)
+            Array.Reverse(factions);
         if (report.humanParticipants)
         {
             hostGame.SetFactionController(
@@ -208,6 +209,7 @@ public static class MultiplayerNetworkSimulationRunner
                 PlayerControllerType.Human
             );
         }
+        hostGame.LocalPlayerFactionID = factions[0];
         report.controllers = hostGame
             .GetPlayers()
             .Select(player => new ControllerAssignment
@@ -229,6 +231,7 @@ public static class MultiplayerNetworkSimulationRunner
         MultiplayerSnapshot initialSnapshot = MultiplayerSnapshotCodec.Capture(hostGame);
         hostGame = MultiplayerSnapshotCodec.Restore(initialSnapshot.Payload, initialSnapshot.Hash);
         hostGame.UseDeterministicRuntimeIdentifiers = true;
+        hostGame.LocalPlayerFactionID = factions[0];
         hostSession.ReplaceGame(hostGame);
         MultiplayerPacket initialPacket = new MultiplayerPacket(
             MultiplayerMessageType.SnapshotCommit,
@@ -250,15 +253,20 @@ public static class MultiplayerNetworkSimulationRunner
             initialMetadata.hash
         );
         restoredGuest.UseDeterministicRuntimeIdentifiers = true;
+        restoredGuest.LocalPlayerFactionID = factions[1];
         using GameSession guestSession = new GameSession(restoredGuest, contentPack.GameData);
         GameRoot guestGame = guestSession.Game;
         if (
             ReferenceEquals(hostGame, guestGame)
             || ReferenceEquals(hostGame.Random, guestGame.Random)
+            || hostGame.GetPlayerFaction().InstanceID != factions[0]
+            || guestGame.GetPlayerFaction().InstanceID != factions[1]
         )
             throw new InvalidOperationException(
-                "The peers must own independent graphs and random providers."
+                "The peers must own independent graphs, random providers, and local faction views."
             );
+        report.hostFactionID = hostGame.GetPlayerFaction().InstanceID;
+        report.guestFactionID = guestGame.GetPlayerFaction().InstanceID;
 
         GameManager hostClock = new GameManager(() => hostSession.Game, hostSession.Tick);
         GameManager guestClock = new GameManager(() => guestSession.Game, guestSession.Tick);
@@ -299,8 +307,12 @@ public static class MultiplayerNetworkSimulationRunner
 
                 if (!report.peerProposalApplied && index >= report.ticksRequested / 2)
                 {
+                    TickSpeed proposedSpeed =
+                        guestGame.GetFactionPlayer(factions[1]).RequestedGameSpeed == TickSpeed.Fast
+                            ? TickSpeed.Medium
+                            : TickSpeed.Fast;
                     Task<PlayerRequestOutcome> request = peers.Guest.ExecuteAsync(
-                        new SetSpeedRequest { Speed = TickSpeed.Fast }
+                        new SetSpeedRequest { Speed = proposedSpeed }
                     );
                     await peers.WaitUntilAsync(
                         () => request.IsCompleted && peers.Host.CanBeginHostTick,
@@ -312,17 +324,29 @@ public static class MultiplayerNetworkSimulationRunner
                             "The guest speed request was rejected: " + result.RejectionReason
                         );
                     if (
-                        hostGame.GetFactionPlayer(factions[1]).RequestedGameSpeed != TickSpeed.Fast
+                        hostGame.GetFactionPlayer(factions[1]).RequestedGameSpeed != proposedSpeed
                         || guestGame.GetFactionPlayer(factions[1]).RequestedGameSpeed
-                            != TickSpeed.Fast
+                            != proposedSpeed
                     )
                         throw new InvalidDataException(
                             "The guest preference did not propagate to both peers."
+                        );
+                    if (
+                        hostClock.GetPlayerRequestedGameSpeed()
+                            != (
+                                hostGame.GetFactionPlayer(factions[0]).RequestedGameSpeed
+                                ?? hostClock.GetGameSpeed()
+                            )
+                        || guestClock.GetPlayerRequestedGameSpeed() != proposedSpeed
+                    )
+                        throw new InvalidDataException(
+                            "Each peer must read its own participant's speed selection."
                         );
                     AssertStableRoots(hostSession, guestSession, hostGame, guestGame);
                     if (!report.profile)
                         VerifyState(hostGame, guestGame, report);
                     report.peerProposalApplied = true;
+                    report.proposalSpeed = proposedSpeed.ToString();
                     report.proposalTick = hostGame.CurrentTick;
                 }
             }
@@ -445,7 +469,7 @@ public static class MultiplayerNetworkSimulationRunner
     }
 
     /// <summary>
-    /// Preserves the verification scenario's AI controllers without rebinding either graph to UI state.
+    /// Configures AI controllers before the independent peer sessions are initialized.
     /// </summary>
     /// <param name="game">The graph being prepared before its single initial snapshot.</param>
     private static void ConfigureAIStress(GameRoot game)
@@ -457,7 +481,6 @@ public static class MultiplayerNetworkSimulationRunner
                 throw new InvalidDataException("A scenario faction has no configured player.");
             game.SetFactionController(faction.InstanceID, player.PlayerID, PlayerControllerType.AI);
         }
-        game.LocalPlayerFactionID = null;
     }
 
     /// <summary>
@@ -1449,6 +1472,7 @@ public static class MultiplayerNetworkSimulationRunner
         public long initialSnapshotBytes;
         public int stateChecks;
         public bool peerProposalApplied;
+        public string proposalSpeed;
         public int proposalTick;
         public bool stableGameReferences;
         public string finalStateHash;
