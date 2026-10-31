@@ -283,7 +283,9 @@ jobs:
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
+            if git lfs pull \
+              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
+              --exclude="Content/**/*.mp4"; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -294,6 +296,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
+          find Content -type f -name '*.mp4' -delete
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
@@ -301,20 +304,10 @@ jobs:
 
       - name: Install media
         run: |
-          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          mkdir -p Assets/Art/Models/MainMenu
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
-          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
-          rm -rf .ci
-
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-test-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-test-
-            Library-
 
       - name: Prepare Vulkan-enabled Unity test image
         run: |
@@ -344,7 +337,7 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
-          customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
+          customParameters: -force-vulkan -contentPath /github/workspace/.ci/rebellion2-media/Content -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
 
