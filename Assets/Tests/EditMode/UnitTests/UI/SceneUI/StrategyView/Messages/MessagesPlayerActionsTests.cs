@@ -7,6 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
+using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
@@ -192,6 +193,105 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsTrue(fixture.faction.AdvisorMessageNotificationsEnabled);
             Assert.IsFalse(fixture.faction.IsAdvisorMessageNotificationEnabled(MessageType.Fleet));
             Assert.IsTrue(fixture.faction.IsAdvisorMessageNotificationEnabled(MessageType.Mission));
+        }
+
+        [Test]
+        public Task MarkReadAsync_GameReplacedWhileQueued_PreservesReplacementStateAsync()
+        {
+            return AssertQueuedGesturePreservesReplacementAsync(
+                (actions, message) => actions.MarkReadAsync(message)
+            );
+        }
+
+        [Test]
+        public Task AcknowledgeAsync_GameReplacedWhileQueued_PreservesReplacementStateAsync()
+        {
+            return AssertQueuedGesturePreservesReplacementAsync(
+                (actions, message) => actions.AcknowledgeAsync(new[] { message })
+            );
+        }
+
+        [Test]
+        public Task RemoveAsync_GameReplacedWhileQueued_PreservesReplacementStateAsync()
+        {
+            return AssertQueuedGesturePreservesReplacementAsync(
+                (actions, message) => actions.RemoveAsync(new[] { message.InstanceID })
+            );
+        }
+
+        [Test]
+        public Task ConsumeContinuationAsync_GameReplacedWhileQueued_PreservesReplacementStateAsync()
+        {
+            return AssertQueuedGesturePreservesReplacementAsync(
+                (actions, message) => actions.ConsumeContinuationAsync(message)
+            );
+        }
+
+        [Test]
+        public Task ToggleNotificationAsync_GameReplacedWhileQueued_PreservesReplacementStateAsync()
+        {
+            return AssertQueuedGesturePreservesReplacementAsync(
+                (actions, _) => actions.ToggleNotificationAsync(MessagesTab.Fleet)
+            );
+        }
+
+        /// <summary>
+        /// Checks that a gesture waiting behind another request cannot change a hot-loaded game.
+        /// </summary>
+        /// <param name="gesture">The message gesture queued before graph replacement.</param>
+        /// <returns>A task that completes after the old request and queued gesture settle.</returns>
+        private static async Task AssertQueuedGesturePreservesReplacementAsync(
+            Func<MessagesPlayerActions, Message, Task<bool>> gesture
+        )
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new() { InstanceID = "FNALL1" };
+            game.GetFactions().Add(faction);
+            game.LocalPlayerFactionID = faction.InstanceID;
+            Message blockingMessage = AddMessage(faction, MessageType.Fleet, "blocking");
+            Message oldMessage = AddMessage(faction, MessageType.Fleet, "selected");
+            oldMessage.MissionContinuationPending = true;
+            using GameSession session = new(game, TestContent.Data);
+            IPlayerRequestDispatcher executor = TestPlayerRequests.Create(session);
+            TaskCompletionSource<PlayerRequestOutcome> release = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(request =>
+                request is ReadMessagesRequest read && read.MessageIDs.Single() == "blocking"
+                    ? release.Task
+                    : executor.ExecuteAsync(request)
+            );
+            MessagesPlayerActions actions = new(dispatcher, () => session.Game.GetPlayerFaction());
+            Task<bool> first = actions.MarkReadAsync(blockingMessage);
+            Task<bool> queued = gesture(actions, oldMessage);
+            Assert.IsFalse(queued.IsCompleted);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            GameRoot replacement = TestGame.Create(TestConfig.Create());
+            Faction replacementFaction = new() { InstanceID = faction.InstanceID };
+            replacement.GetFactions().Add(replacementFaction);
+            replacement.LocalPlayerFactionID = replacementFaction.InstanceID;
+            session.ReplaceGame(replacement);
+            Message replacementMessage = AddMessage(
+                replacementFaction,
+                MessageType.Fleet,
+                "selected"
+            );
+            replacementMessage.MissionContinuationPending = true;
+
+            release.SetResult(new PlayerRequestOutcome(false));
+            Assert.IsFalse(await first);
+            bool accepted = await queued;
+
+            CollectionAssert.Contains(
+                replacementFaction.Messages[MessageType.Fleet],
+                replacementMessage
+            );
+            Assert.IsFalse(replacementMessage.Read);
+            Assert.IsFalse(replacementMessage.NotificationAcknowledged);
+            Assert.IsTrue(replacementMessage.MissionContinuationPending);
+            Assert.IsTrue(
+                replacementFaction.IsAdvisorMessageNotificationEnabled(MessageType.Fleet)
+            );
+            Assert.IsFalse(accepted);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
         }
 
         /// <summary>

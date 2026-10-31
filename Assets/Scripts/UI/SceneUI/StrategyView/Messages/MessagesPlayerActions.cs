@@ -116,26 +116,33 @@ internal sealed class MessagesPlayerActions
     }
 
     /// <summary>
-    /// Resolves requests after earlier completions so repeated reads and acknowledgments coalesce.
+    /// Resolves queued gestures in their originating game so repeated reads and acknowledgments coalesce.
     /// </summary>
     /// <param name="createRequest">Rechecks current durable state and returns any remaining request.</param>
-    /// <returns>True when no change remains or domain execution accepted the request.</returns>
+    /// <returns>True when the originating faction remains active and no change remains or execution accepted it.</returns>
     private async Task<bool> ExecuteAsync(Func<PlayerRequest> createRequest)
     {
-        await mutationGate.WaitAsync();
         try
         {
-            PlayerRequest request = createRequest();
-            return request == null || (await dispatcher.ExecuteAsync(request)).Accepted;
+            Faction faction = getFaction();
+            await mutationGate.WaitAsync();
+            try
+            {
+                if (!ReferenceEquals(faction, getFaction()))
+                    return false;
+
+                PlayerRequest request = createRequest();
+                return request == null || (await dispatcher.ExecuteAsync(request)).Accepted;
+            }
+            finally
+            {
+                mutationGate.Release();
+            }
         }
         catch (Exception exception)
         {
             Debug.LogException(exception);
             return false;
-        }
-        finally
-        {
-            mutationGate.Release();
         }
     }
 
