@@ -1344,6 +1344,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_GroundStarfighterWithoutFleet_CanFoilMission()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                Officer defender,
+                MovementCommands movement
+            ) = BuildDetectionScene();
+            foreach (Fleet fleet in planet.GetChildren<Fleet>().ToList())
+                game.DeleteNode(fleet);
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.CurrentRank = OfficerRank.Commander;
+            defender.SetBaseRating(SkillRating.Espionage, 0);
+            Starfighter detector = new Starfighter
+            {
+                InstanceID = "ground-fighter",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(detector, planet);
+            SetFoilTable(game, new Dictionary<int, int> { { -10000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -10000, 0 } });
+            DisableCaptureEvasionInjury(game);
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            List<GameResult> results = system.ProcessMissionTick(game);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
         public void GetDecoyProbability_DeparturePlanet_UsesOriginCommander()
         {
             (
