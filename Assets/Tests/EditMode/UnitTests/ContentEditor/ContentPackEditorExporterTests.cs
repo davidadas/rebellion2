@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -51,7 +52,11 @@ namespace Rebellion.Tests.ContentEditor
         [Timeout(600000)]
         public async Task WriteArchiveAsync_UnsavedEditsAndLocalMedia_IncludesOverridesWithoutCopyingBaseContentAsync()
         {
-            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorProject project = CreatePortableExportProject();
+            string[] baselineFiles = Directory
+                .GetFiles(project.PackRootPath, "*", SearchOption.AllDirectories)
+                .Select(path => Path.GetRelativePath(project.PackRootPath, path).Replace('\\', '/'))
+                .ToArray();
             ContentPackEditorRecord officer = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
@@ -77,7 +82,10 @@ namespace Rebellion.Tests.ContentEditor
 
             using ZipArchive archive = ZipFile.OpenRead(archivePath);
             Assert.IsNotNull(archive.GetEntry("pack.xml"));
-            Assert.AreEqual(3, archive.Entries.Count);
+            CollectionAssert.AreEquivalent(
+                baselineFiles.Concat(new[] { units.Address[5..], "Assets/sound.wav" }).Distinct(),
+                archive.Entries.Select(entry => entry.FullName)
+            );
             using StreamReader text = new StreamReader(archive.GetEntry(units.Address[5..]).Open());
             Assert.AreEqual(units.Text, text.ReadToEnd());
             using Stream asset = archive.GetEntry("Assets/sound.wav").Open();
@@ -198,6 +206,32 @@ namespace Rebellion.Tests.ContentEditor
             );
 
             Assert.IsFalse(File.Exists(output));
+        }
+
+        /// <summary>
+        /// Keeps real startup and media integration while using cutscenes supported by every test platform.
+        /// </summary>
+        /// <returns>The saved baseline before the export-specific unsaved edits.</returns>
+        private ContentPackEditorProject CreatePortableExportProject()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            string video = ContentPackEditorStorage.ImportAsset(
+                project,
+                Path.Combine(
+                    Application.dataPath,
+                    "Tests/EditMode/UnitTests/ContentEditor/MediaFixtures/black-frame.webm"
+                )
+            );
+            foreach (
+                ContentPackEditorField field in project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .SelectMany(record => record.GetFields())
+                    .Where(field => field.MediaType == ContentPackEditorMediaType.Video)
+            )
+                project.SetField(field, video);
+            ContentPackEditorStorage.Save(project);
+            return project;
         }
     }
 }

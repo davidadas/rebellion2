@@ -272,6 +272,102 @@ public static class RectangleLayout
     }
 
     /// <summary>
+    /// Reuses identical axis projections within one search over fixed geometry and frame bounds.
+    /// </summary>
+    private sealed class ProjectionCache : IEqualityComparer<Separation[]>
+    {
+        private readonly Dictionary<Separation[], (int[] Values, double Bound)> horizontal;
+        private readonly Dictionary<Separation[], (int[] Values, double Bound)> vertical;
+
+        /// <summary>
+        /// Creates independent caches for the two coordinate axes.
+        /// </summary>
+        public ProjectionCache()
+        {
+            horizontal = new(this);
+            vertical = new(this);
+        }
+
+        /// <summary>
+        /// Solves each ordered constraint sequence once without sharing results between layouts.
+        /// </summary>
+        /// <param name="items">The immutable desired anchors and occupied shapes.</param>
+        /// <param name="minimum">The frame's lower coordinate.</param>
+        /// <param name="maximum">The frame's upper coordinate.</param>
+        /// <param name="constraints">The immutable separation sequence on this axis.</param>
+        /// <param name="isHorizontal">Whether this is the horizontal axis.</param>
+        /// <param name="token">The cancellation request.</param>
+        /// <param name="lowerBound">The projection's conservative displacement bound.</param>
+        /// <returns>The immutable projected coordinates, or null for contradictory constraints.</returns>
+        public int[] Project(
+            IReadOnlyList<RectangleLayoutItem> items,
+            float minimum,
+            float maximum,
+            Separation[] constraints,
+            bool isHorizontal,
+            CancellationToken token,
+            out double lowerBound
+        )
+        {
+            token.ThrowIfCancellationRequested();
+            var cache = isHorizontal ? horizontal : vertical;
+            if (!cache.TryGetValue(constraints, out var result))
+            {
+                int[] values = ProjectAxis(
+                    items,
+                    minimum,
+                    maximum,
+                    constraints,
+                    isHorizontal,
+                    token,
+                    out double bound
+                );
+                result = (values, bound);
+                cache.Add(constraints, result);
+            }
+            lowerBound = result.Bound;
+            return result.Values;
+        }
+
+        /// <summary>
+        /// Compares constraint order as well as values to preserve numerical projection behavior.
+        /// </summary>
+        /// <param name="first">The first immutable sequence.</param>
+        /// <param name="second">The second immutable sequence.</param>
+        /// <returns>Whether both sequences request the same projection.</returns>
+        public bool Equals(Separation[] first, Separation[] second)
+        {
+            if (first.Length != second.Length)
+                return false;
+            for (int i = 0; i < first.Length; i++)
+                if (
+                    first[i].Before != second[i].Before
+                    || first[i].After != second[i].After
+                    || first[i].Distance != second[i].Distance
+                )
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Hashes the ordered separation values within one axis.
+        /// </summary>
+        /// <param name="constraints">The immutable sequence.</param>
+        /// <returns>The value hash used by the search-local cache.</returns>
+        public int GetHashCode(Separation[] constraints)
+        {
+            int hash = 17;
+            foreach (Separation constraint in constraints)
+            {
+                hash = unchecked(hash * 31 + constraint.Before);
+                hash = unchecked(hash * 31 + constraint.After);
+                hash = unchecked(hash * 31 + constraint.Distance);
+            }
+            return hash;
+        }
+    }
+
+    /// <summary>
     /// Searches feasible integer placements to minimize squared visual displacement from the authored anchors.
     /// </summary>
     /// <param name="items">The desired anchors and their rigid occupied shapes.</param>
@@ -569,8 +665,16 @@ public static class RectangleLayout
         CancellationToken token
     )
     {
+        ProjectionCache projections = new();
         Stack<Placement> pending = new();
-        Placement initial = Project(items, bounds, scale, CreateSymmetryConstraints(items), token);
+        Placement initial = Project(
+            items,
+            bounds,
+            scale,
+            CreateSymmetryConstraints(items),
+            token,
+            projections
+        );
         if (initial != null)
             pending.Push(initial);
         while (pending.Count > 0)
@@ -586,7 +690,14 @@ public static class RectangleLayout
                 Separation[] constraints = AddConstraint(current.Constraints, alternative);
                 if (constraints == null)
                     continue;
-                Placement candidate = Project(items, bounds, scale, constraints, token);
+                Placement candidate = Project(
+                    items,
+                    bounds,
+                    scale,
+                    constraints,
+                    token,
+                    projections
+                );
                 if (candidate != null)
                     candidates.Add(candidate);
             }
@@ -617,8 +728,16 @@ public static class RectangleLayout
         Placement best
     )
     {
+        ProjectionCache projections = new();
         Stack<Placement> pending = new();
-        Placement initial = Project(items, bounds, scale, CreateSymmetryConstraints(items), token);
+        Placement initial = Project(
+            items,
+            bounds,
+            scale,
+            CreateSymmetryConstraints(items),
+            token,
+            projections
+        );
         if (initial != null)
             pending.Push(initial);
         while (pending.Count > 0)
@@ -640,7 +759,14 @@ public static class RectangleLayout
                 Separation[] constraints = AddConstraint(current.Constraints, alternative);
                 if (constraints == null)
                     continue;
-                Placement candidate = Project(items, bounds, scale, constraints, token);
+                Placement candidate = Project(
+                    items,
+                    bounds,
+                    scale,
+                    constraints,
+                    token,
+                    projections
+                );
                 if (candidate != null)
                     candidates.Add(candidate);
             }
@@ -831,16 +957,19 @@ public static class RectangleLayout
     /// <param name="scale">The visual coordinate scales.</param>
     /// <param name="constraints">The selected directional separations.</param>
     /// <param name="token">The cancellation request.</param>
+    /// <param name="projections">The cache owned by this fixed-geometry search, when available.</param>
     /// <returns>The projected placement, or null for contradictory constraints.</returns>
     private static Placement Project(
         IReadOnlyList<RectangleLayoutItem> items,
         Rect bounds,
         Vector2 scale,
         Separation[] constraints,
-        CancellationToken token
+        CancellationToken token,
+        ProjectionCache projections = null
     )
     {
-        int[] x = ProjectAxis(
+        projections ??= new ProjectionCache();
+        int[] x = projections.Project(
             items,
             bounds.xMin,
             bounds.xMax,
@@ -851,7 +980,7 @@ public static class RectangleLayout
         );
         if (x == null)
             return null;
-        int[] y = ProjectAxis(
+        int[] y = projections.Project(
             items,
             bounds.yMin,
             bounds.yMax,

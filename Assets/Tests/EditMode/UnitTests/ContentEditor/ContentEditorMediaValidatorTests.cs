@@ -166,9 +166,9 @@ namespace Rebellion.Tests.ContentEditor
             File.Copy(
                 Path.Combine(
                     Application.dataPath,
-                    "Tests/EditMode/UnitTests/ContentEditor/MediaFixtures/black-frame.mp4"
+                    "Tests/EditMode/UnitTests/ContentEditor/MediaFixtures/black-frame.webm"
                 ),
-                Path.Combine(root, "video.mp4")
+                Path.Combine(root, "video.webm")
             );
             using CancellationTokenSource cancellation = new CancellationTokenSource(
                 TimeSpan.FromSeconds(20)
@@ -178,7 +178,7 @@ namespace Rebellion.Tests.ContentEditor
             {
                 await ContentEditorMediaValidator.ValidateAsync(
                     resolver,
-                    "Pack/video.mp4",
+                    "Pack/video.webm",
                     ContentPackEditorMediaType.Video,
                     cancellation.Token
                 );

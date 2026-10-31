@@ -237,6 +237,33 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void Arrange_ConsecutiveSearchesWithDifferentFrames_UsesEachSearchGeometry()
+        {
+            RectangleLayoutItem[] items = { Item(4, 3, 3, 2), Item(4, 3, 3, 2), Item(4, 3, 3, 2) };
+            foreach (
+                Rect bounds in new[]
+                {
+                    new Rect(0, 0, 8, 6),
+                    new Rect(2, 1, 6, 4),
+                    new Rect(0, 0, 8, 6),
+                }
+            )
+            {
+                Vector2Int[] result = RectangleLayout.Arrange(
+                    items,
+                    bounds,
+                    Vector2.zero,
+                    Vector2.one
+                );
+                AssertClear(items, result, bounds, Vector2.zero);
+                Assert.AreEqual(
+                    FindMinimumCost(items, bounds, Vector2.zero, Vector2.one),
+                    GetCost(items, result, Vector2.one)
+                );
+            }
+        }
+
+        [Test]
         public void Arrange_CoincidentTenItems_ReturnsACompleteDeterministicAndIdempotentLayout()
         {
             RectangleLayoutItem[] items = Enumerable
