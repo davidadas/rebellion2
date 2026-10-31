@@ -48,6 +48,37 @@ namespace Rebellion.Architecture.Tests
         }
 
         [Test]
+        public void ContentEditorPresentation_XmlMutations_BelongToTheAuthoringModel()
+        {
+            IArchRule rule = Types()
+                .That()
+                .ResideInAssembly(typeof(ContentPackEditorProject).Assembly.FullName)
+                .And()
+                .Are(
+                    Types()
+                        .That()
+                        .HaveFullNameContaining("View")
+                        .Or()
+                        .HaveFullNameContaining("ContentEditorNumericGrid")
+                )
+                .Should()
+                .NotCallAny(
+                    MethodMembers()
+                        .That()
+                        .AreDeclaredIn(
+                            Types()
+                                .That()
+                                .HaveFullNameMatching(
+                                    @"^System\.Xml\.Linq\.(XContainer|XElement|XNode)$"
+                                )
+                        )
+                        .And()
+                        .HaveNameMatching("^(Add|Remove|Replace|Set).*")
+                );
+            rule.Check(_architecture);
+        }
+
+        [Test]
         public void ContentEditorViews_Dependencies_ExcludePersistenceAndValidationOwners()
         {
             IArchRule rule = Types()

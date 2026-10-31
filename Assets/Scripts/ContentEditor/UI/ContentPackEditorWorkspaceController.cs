@@ -126,14 +126,16 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             )
                 throw new ArgumentException("The map changed. Try arranging it again.");
         }
-        int moved = 0;
+        var placements = layout
+            .Records.Select(
+                (record, i) => (Record: record, Position: authoredPositions[i], Index: i)
+            )
+            .Where(item => positions[item.Index] != layout.Items[item.Index].Position)
+            .Select(item => (item.Record, item.Position.x, item.Position.y))
+            .ToArray();
+        int moved = placements.Length;
         using (current.BeginEdit("Auto arrange map"))
-            for (int i = 0; i < layout.Records.Count; i++)
-                if (positions[i] != layout.Items[i].Position)
-                {
-                    current.Move(layout.Records[i], authoredPositions[i].x, authoredPositions[i].y);
-                    moved++;
-                }
+            current.Move(placements);
         if (moved > 0)
             view.ShowArrangedMap();
         return moved;

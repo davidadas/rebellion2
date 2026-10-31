@@ -429,29 +429,6 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
-    /// Writes the current working project to a new folder with a separate pack identity.
-    /// </summary>
-    /// <param name="project">The source project to copy.</param>
-    /// <param name="folder">The new destination folder.</param>
-    /// <param name="packID">The copy's identifier.</param>
-    /// <param name="displayName">The copy's display name.</param>
-    /// <param name="version">The copy's version.</param>
-    /// <returns>The independently opened project copy.</returns>
-    public static ContentPackEditorProject SaveAs(
-        ContentPackEditorProject project,
-        string folder,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        ValidateIdentity(packID, displayName, version);
-        ContentPackEditorProject.VerifyWorkingFolder(project.ContentRootPath, folder);
-        ContentPackEditorExporter.WriteFolder(project, folder, packID, displayName, version);
-        return OpenFolder(project.ContentRootPath, folder);
-    }
-
-    /// <summary>
     /// Creates an asset store for this pack's current inheritance chain.
     /// </summary>
     /// <param name="project">The workspace whose content layers are requested.</param>

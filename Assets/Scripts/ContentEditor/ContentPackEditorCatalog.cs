@@ -431,24 +431,58 @@ public sealed class ContentPackEditorCatalog
     /// <param name="y">The new vertical world coordinate.</param>
     internal void Move(ContentPackEditorRecord record, int x, int y)
     {
-        if (!IsMap || record == null || record.Catalog != this)
-            throw new InvalidOperationException("Select a map item first.");
-        int dx = x - record.X;
-        int dy = y - record.Y;
-        if (record.Element.Name.LocalName == "PlanetSector")
+        foreach (var position in GetMoveCoordinates(record, x, y))
         {
-            foreach (
-                XElement planet in record.Element.Element("Planets")?.Elements("Planet")
-                    ?? Enumerable.Empty<XElement>()
-            )
-            {
-                planet.SetElementValue("PositionX", ReadCoordinate(planet, "PositionX") + dx);
-                planet.SetElementValue("PositionY", ReadCoordinate(planet, "PositionY") + dy);
-            }
+            position.Element.SetElementValue("PositionX", position.X);
+            position.Element.SetElementValue("PositionY", position.Y);
         }
-        record.Element.SetElementValue("PositionX", x);
-        record.Element.SetElementValue("PositionY", y);
         Commit();
+    }
+
+    /// <summary>
+    /// Calculates every coordinate affected by a move before modifying the authored XML.
+    /// </summary>
+    /// <param name="record">The attached map item.</param>
+    /// <param name="x">The proposed horizontal position.</param>
+    /// <param name="y">The proposed vertical position.</param>
+    /// <returns>The validated coordinates for the record and its owned planets.</returns>
+    internal (XElement Element, int X, int Y)[] GetMoveCoordinates(
+        ContentPackEditorRecord record,
+        int x,
+        int y
+    )
+    {
+        if (!IsMap)
+            throw new InvalidOperationException("Select a map item first.");
+        RequireAttachedRecord(record);
+        long dx = (long)x - record.X;
+        long dy = (long)y - record.Y;
+        var planets =
+            record.Kind == "PlanetSector"
+                ? record.Element.Element("Planets")?.Elements("Planet")
+                    ?? Enumerable.Empty<XElement>()
+                : Enumerable.Empty<XElement>();
+        try
+        {
+            return planets
+                .Select(planet =>
+                    (
+                        Element: planet,
+                        X: checked((int)(ReadCoordinate(planet, "PositionX") + dx)),
+                        Y: checked((int)(ReadCoordinate(planet, "PositionY") + dy))
+                    )
+                )
+                .Append((record.Element, x, y))
+                .ToArray();
+        }
+        catch (OverflowException exception)
+        {
+            throw new ArgumentException(
+                "These coordinates cannot preserve the planet positions.",
+                nameof(record),
+                exception
+            );
+        }
     }
 
     /// <summary>

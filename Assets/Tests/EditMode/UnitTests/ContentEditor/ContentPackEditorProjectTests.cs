@@ -427,12 +427,9 @@ namespace Rebellion.Tests.ContentEditor
                     .EnumerateFiles(snapshot, "*.xml", SearchOption.AllDirectories)
                     .Any(path => Path.GetRelativePath(snapshot, path).StartsWith("Factions"))
             );
-            ContentPackEditorProject copy = ContentPackEditorStorage.SaveAs(
-                project,
-                Path.Combine(Directory.GetParent(contentRoot).FullName, "Copy"),
-                "copy",
-                "Copy",
-                "1.0.0"
+            ContentPackEditorProject copy = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                snapshot
             );
             CollectionAssert.AreEquivalent(
                 before,
@@ -1305,7 +1302,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void SaveAs_UnsavedProject_PreservesSourceAndWritesIndependentCopy()
+        public async Task WriteSnapshotAsync_UnsavedProject_PreservesSourceAndWritesIndependentCopyAsync()
         {
             ContentPackEditorProject project = CreateWorkingProject();
             ContentPackEditorDocument units = project.Documents.Single(document =>
@@ -1314,15 +1311,18 @@ namespace Rebellion.Tests.ContentEditor
             units.SetText("<Units><Unit ID='edited'/></Units>");
             string destination = Path.Combine(contentRoot, "Copies", "Copy");
 
-            ContentPackEditorProject copy = ContentPackEditorStorage.SaveAs(
+            Directory.CreateDirectory(destination);
+            await ContentPackEditorExporter.WriteSnapshotAsync(
                 project,
                 destination,
-                "copy-pack",
-                "Copied pack",
-                "2.0.0"
+                CancellationToken.None
+            );
+            ContentPackEditorProject copy = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                destination
             );
 
-            Assert.AreEqual("copy-pack", copy.Definition.ID);
+            Assert.AreEqual("sample-pack", copy.Definition.ID);
             Assert.AreEqual("base-pack", copy.Definition.BasePackID);
             Assert.IsFalse(copy.IsDirty);
             Assert.IsTrue(project.IsDirty);
@@ -1506,16 +1506,79 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void SaveAs_DestinationInsideSource_RejectsRecursiveCopy()
+        public void WriteArchiveAsync_DestinationInsideSource_RejectsRecursiveCopy()
         {
             ContentPackEditorProject project = CreateWorkingProject();
-            string output = Path.Combine(project.PackRootPath, "Nested");
+            string output = Path.Combine(project.PackRootPath, "Nested.zip");
 
-            Assert.Throws<IOException>(() =>
-                ContentPackEditorStorage.SaveAs(project, output, "copy", "Copy", "1.0.0")
+            Assert.ThrowsAsync<IOException>(() =>
+                ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 
-            Assert.IsFalse(Directory.Exists(output));
+            Assert.IsFalse(File.Exists(output));
+        }
+
+        [Test]
+        public void Move_LaterPlacementWouldOverflow_LeavesEveryRecordAndHistoryUnchanged()
+        {
+            WriteFixtureFile(
+                "Data/planets.xml",
+                "<PlanetSectors><PlanetSector><TypeID>FIRST</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector><PlanetSector><TypeID>SECOND</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets><Planet><TypeID>PLANET</TypeID><PositionX>2147483647</PositionX><PositionY>0</PositionY></Planet></Planets></PlanetSector></PlanetSectors>"
+            );
+            var project = CreateWorkingProject();
+            var catalog = project.GetCatalogs().Single(item => item.IsMap);
+            string before = catalog.Document.Text;
+            string first = catalog.Records[0].Element.ToString();
+
+            Assert.Throws<ArgumentException>(() =>
+                project.Move(new[] { (catalog.Records[0], 10, 10), (catalog.Records[1], 1, 1) })
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.AreEqual(first, catalog.Records[0].Element.ToString());
+            Assert.IsFalse(project.CanUndo);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void Move_OverlappingParentAndChildPlacements_RejectsTheAmbiguousGroupWithoutChanges()
+        {
+            WriteFixtureFile(
+                "Data/planets.xml",
+                "<PlanetSectors><PlanetSector><TypeID>SECTOR</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets><Planet><TypeID>PLANET</TypeID><PositionX>1</PositionX><PositionY>0</PositionY></Planet></Planets></PlanetSector></PlanetSectors>"
+            );
+            var project = CreateWorkingProject();
+            var catalog = project.GetCatalogs().Single(item => item.IsMap);
+            var sector = catalog.Records.Single();
+            string before = catalog.Document.Text;
+
+            Assert.Throws<ArgumentException>(() =>
+                project.Move(new[] { (sector.Planets.Single(), int.MaxValue, 0), (sector, 1, 0) })
+            );
+
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+        }
+
+        [Test]
+        public void Move_MultiplePlacements_UndoesTheCompleteGroupOnce()
+        {
+            WriteFixtureFile(
+                "Data/planets.xml",
+                "<PlanetSectors><PlanetSector><TypeID>FIRST</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector><PlanetSector><TypeID>SECOND</TypeID><PositionX>0</PositionX><PositionY>0</PositionY><Planets/></PlanetSector></PlanetSectors>"
+            );
+            var project = CreateWorkingProject();
+            var catalog = project.GetCatalogs().Single(item => item.IsMap);
+            string before = catalog.Document.Text;
+
+            project.Move(new[] { (catalog.Records[0], 10, 20), (catalog.Records[1], 30, 40) });
+
+            Assert.AreEqual(10, catalog.Records[0].X);
+            Assert.AreEqual(40, catalog.Records[1].Y);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(project.CanUndo);
         }
 
         [Test]

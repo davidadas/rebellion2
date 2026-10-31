@@ -64,7 +64,8 @@ public sealed class ContentEditorNumericGrid
             foreach (int score in Scores)
                 cells.Add(
                     (score, column),
-                    CreateCell(tables[column].Record, tables[column].Table, score, Columns[column])
+                    tables[column]
+                        .Record.GetTableField(tables[column].Table, score, Columns[column])
                 );
         Settings = fields
             .Where(field =>
@@ -97,7 +98,7 @@ public sealed class ContentEditorNumericGrid
         for (int column = 0; column < tables.Length; column++)
             cells.Add(
                 (score, column),
-                CreateCell(tables[column].Record, tables[column].Table, score, Columns[column])
+                tables[column].Record.GetTableField(tables[column].Table, score, Columns[column])
             );
         return true;
     }
@@ -118,55 +119,4 @@ public sealed class ContentEditorNumericGrid
                 int.Parse(cell.Value, CultureInfo.InvariantCulture)
             ))
             .ToArray();
-
-    /// <summary>
-    /// Binds an optional dictionary entry to the ordinary validated project field contract.
-    /// </summary>
-    /// <param name="record">The owning rules record.</param>
-    /// <param name="table">The existing probability table.</param>
-    /// <param name="score">The row's threshold.</param>
-    /// <param name="caption">The column's readable name.</param>
-    /// <returns>A field supporting insertion, editing and clearing through project history.</returns>
-    private static ContentPackEditorField CreateCell(
-        ContentPackEditorRecord record,
-        XElement table,
-        int score,
-        string caption
-    )
-    {
-        string key = score.ToString(CultureInfo.InvariantCulture);
-        XElement entry =
-            table.Elements("Entry").FirstOrDefault(item => item.Element("Key")?.Value == key)
-            ?? new XElement("Entry", new XElement("Key", key), new XElement("Value"));
-        return new ContentPackEditorField(
-            record,
-            entry.Element("Value"),
-            caption + " / " + key,
-            valueTypeOverride: typeof(int),
-            groupOverride: table
-                .AncestorsAndSelf()
-                .TakeWhile(element => element != record.Element)
-                .Last()
-                .Name.LocalName,
-            attach: () =>
-            {
-                if (entry.Parent != null)
-                    return;
-                XElement next = table
-                    .Elements("Entry")
-                    .FirstOrDefault(item =>
-                        int.Parse(item.Element("Key").Value, CultureInfo.InvariantCulture) > score
-                    );
-                if (next == null)
-                    table.Add(entry);
-                else
-                    next.AddBeforeSelf(entry);
-            },
-            detach: () =>
-            {
-                if (entry.Parent != null)
-                    entry.Remove();
-            }
-        );
-    }
 }

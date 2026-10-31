@@ -86,6 +86,158 @@ public sealed class ContentPackEditorRecord
     }
 
     /// <summary>
+    /// Projects a nested object's authored and optional fields without attaching absent members.
+    /// </summary>
+    /// <param name="owner">The attached object within this record.</param>
+    /// <returns>The typed fields in their declared member order.</returns>
+    internal IReadOnlyList<ContentPackEditorField> GetFields(XElement owner)
+    {
+        if (owner == null)
+            throw new ArgumentNullException(nameof(owner));
+        if (owner != Element && !owner.Ancestors().Contains(Element))
+            throw new ArgumentException("Choose an object in this record.", nameof(owner));
+        var fields = GetFields()
+            .Where(field => field.XmlElement.AncestorsAndSelf().Contains(owner))
+            .ToList();
+        Type ownerType =
+            owner == Element
+                ? ContentPackEditorFieldSchema.GetRecordType(owner)
+                : ContentPackEditorFieldSchema.GetValueType(Element, owner);
+        if (ownerType == null)
+            return fields;
+        string[] optional = owner.Name.LocalName switch
+        {
+            "StartingOfficerRule" => new[]
+            {
+                "GalaxySizes",
+                "DestinationTypeID",
+                "DestinationInstanceID",
+            },
+            "StartingPlanet" => new[] { "PlanetTypeID", "VisibleToFactionIDs" },
+            "WeightedFacilityEntry" => new[] { "TypeID" },
+            "FixedFleet" => new[] { "PlanetTypeID", "TargetPlanets" },
+            "HQFacilityLoadout" => new[] { "FactionID", "FacilityTypeIDs" },
+            _ => Array.Empty<string>(),
+        };
+        foreach (string member in optional)
+        {
+            XElement existing = owner.Element(member);
+            bool list =
+                ContentPackEditorFieldSchema.GetItemType(
+                    SerializationMetadata.GetElementType(ownerType, member)
+                ) != null;
+            fields.RemoveAll(field =>
+                field.XmlElement.Parent == owner && field.MemberName == member
+            );
+            XElement element = existing ?? new XElement(member);
+            fields.Add(
+                new ContentPackEditorField(
+                    this,
+                    element,
+                    string.Join(
+                        " / ",
+                        owner.AncestorsAndSelf().Reverse().Select(item => item.Name.LocalName)
+                    )
+                        + " / "
+                        + member,
+                    attach: () =>
+                        ContentEditorGenerationFactory.AttachMember(owner, element, ownerType),
+                    valueTypeOverride: SerializationMetadata.GetElementType(ownerType, member),
+                    parentOverride: owner,
+                    caption: ContentPackEditorField.FormatName(member),
+                    groupOverride: owner
+                        .AncestorsAndSelf()
+                        .TakeWhile(element => element != Element)
+                        .Last()
+                        .Name.LocalName,
+                    detach: () =>
+                    {
+                        if (element.Parent != null)
+                            element.Remove();
+                    },
+                    itemNameOverride: !list ? null
+                        : member == "VisibleToFactionIDs" ? "FactionID"
+                        : member == "TargetPlanets" ? "PlanetTypeID"
+                        : SerializationMetadata.GetCollectionItemName(ownerType, member)
+                            ?? SerializationMetadata.GetElementName(
+                                ContentPackEditorFieldSchema.GetItemType(
+                                    SerializationMetadata.GetElementType(ownerType, member)
+                                )
+                            )
+                )
+            );
+        }
+        string[] memberOrder = ownerType
+            .GetProperties()
+            .Select(property => property.Name)
+            .ToArray();
+        return fields
+            .OrderBy(field =>
+                Array.IndexOf(
+                    memberOrder,
+                    field
+                        .XmlElement.AncestorsAndSelf()
+                        .FirstOrDefault(element => element.Parent == owner)
+                        ?.Name.LocalName
+                        ?? field.MemberName
+                )
+            )
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Binds an optional dictionary entry to the ordinary validated project field contract.
+    /// </summary>
+    /// <param name="table">The existing probability table.</param>
+    /// <param name="score">The row's threshold.</param>
+    /// <param name="caption">The column's readable name.</param>
+    /// <returns>A field supporting insertion, editing and clearing through project history.</returns>
+    internal ContentPackEditorField GetTableField(XElement table, int score, string caption)
+    {
+        if (table?.Ancestors().Contains(Element) != true)
+            throw new ArgumentException("Choose a table in this record.", nameof(table));
+        if (
+            ContentPackEditorFieldSchema.GetValueType(Element, table)
+            != typeof(Dictionary<int, int>)
+        )
+            throw new ArgumentException("Choose a numeric lookup table.", nameof(table));
+        string key = score.ToString(CultureInfo.InvariantCulture);
+        XElement entry =
+            table.Elements("Entry").FirstOrDefault(item => item.Element("Key")?.Value == key)
+            ?? new XElement("Entry", new XElement("Key", key), new XElement("Value"));
+        return new ContentPackEditorField(
+            this,
+            entry.Element("Value"),
+            caption + " / " + key,
+            valueTypeOverride: typeof(int),
+            groupOverride: table
+                .AncestorsAndSelf()
+                .TakeWhile(element => element != Element)
+                .Last()
+                .Name.LocalName,
+            attach: () =>
+            {
+                if (entry.Parent != null)
+                    return;
+                XElement next = table
+                    .Elements("Entry")
+                    .FirstOrDefault(item =>
+                        int.Parse(item.Element("Key").Value, CultureInfo.InvariantCulture) > score
+                    );
+                if (next == null)
+                    table.Add(entry);
+                else
+                    next.AddBeforeSelf(entry);
+            },
+            detach: () =>
+            {
+                if (entry.Parent != null)
+                    entry.Remove();
+            }
+        );
+    }
+
+    /// <summary>
     /// Gets an authored member or an uncommitted optional member with its declared default value.
     /// </summary>
     /// <param name="memberName">The serialized member name.</param>

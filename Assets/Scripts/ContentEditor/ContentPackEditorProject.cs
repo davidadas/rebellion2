@@ -93,6 +93,33 @@ public sealed class ContentPackEditorProject
     }
 
     /// <summary>
+    /// Validates independent map moves before applying the complete group as one reversible operation.
+    /// </summary>
+    /// <param name="placements">The independent owned records and their proposed authored coordinates.</param>
+    public void Move(IReadOnlyList<(ContentPackEditorRecord Record, int X, int Y)> placements)
+    {
+        if (placements == null)
+            throw new ArgumentNullException(nameof(placements));
+        foreach (var placement in placements)
+        {
+            RequireOwnedRecord(placement.Record);
+            placement.Record.Catalog.GetMoveCoordinates(placement.Record, placement.X, placement.Y);
+        }
+        var roots = placements.Select(placement => placement.Record.Element).ToHashSet();
+        if (
+            roots.Count != placements.Count
+            || roots.Any(element => element.Ancestors().Any(roots.Contains))
+        )
+            throw new ArgumentException(
+                "Choose each map item once, without its containing sector.",
+                nameof(placements)
+            );
+        using (BeginEdit("Move map items"))
+            foreach (var placement in placements)
+                Move(placement.Record, placement.X, placement.Y);
+    }
+
+    /// <summary>
     /// Applies a field edit together with any manifest link needed for a local rules override.
     /// </summary>
     /// <param name="field">The project-owned field.</param>

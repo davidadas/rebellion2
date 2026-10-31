@@ -1147,105 +1147,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         var collections = ContentEditorGenerationLayout.Collections(project, selectedRecord, owner);
         var fields = selectedRecord
-            .GetFields()
+            .GetFields(owner)
             .Where(field =>
-                field.XmlElement.AncestorsAndSelf().Contains(owner)
-                && !collections.Any(collection =>
+                !collections.Any(collection =>
                     field.XmlElement.AncestorsAndSelf().Contains(collection.Element)
-                )
-            )
-            .ToList();
-        Type ownerType =
-            owner == selectedRecord.Element
-                ? ContentPackEditorFieldSchema.GetRecordType(owner)
-                : ContentPackEditorFieldSchema.GetValueType(selectedRecord.Element, owner);
-        string[] optional = owner.Name.LocalName switch
-        {
-            "StartingOfficerRule" => new[]
-            {
-                "GalaxySizes",
-                "DestinationTypeID",
-                "DestinationInstanceID",
-            },
-            "StartingPlanet" => new[] { "PlanetTypeID", "VisibleToFactionIDs" },
-            "WeightedFacilityEntry" => new[] { "TypeID" },
-            "FixedFleet" => new[] { "PlanetTypeID", "TargetPlanets" },
-            "HQFacilityLoadout" => new[] { "FactionID", "FacilityTypeIDs" },
-            _ => Array.Empty<string>(),
-        };
-        foreach (string member in optional)
-        {
-            XElement existing = owner.Element(member);
-            bool list =
-                ContentPackEditorFieldSchema.GetItemType(
-                    Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
-                        ownerType,
-                        member
-                    )
-                ) != null;
-            fields.RemoveAll(field =>
-                field.XmlElement.Parent == owner && field.MemberName == member
-            );
-            XElement element = existing ?? new XElement(member);
-            fields.Add(
-                new ContentPackEditorField(
-                    selectedRecord,
-                    element,
-                    string.Join(
-                        " / ",
-                        owner.AncestorsAndSelf().Reverse().Select(item => item.Name.LocalName)
-                    )
-                        + " / "
-                        + member,
-                    attach: () =>
-                        ContentEditorGenerationFactory.AttachMember(owner, element, ownerType),
-                    valueTypeOverride: Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
-                        ownerType,
-                        member
-                    ),
-                    parentOverride: owner,
-                    caption: ContentPackEditorField.FormatName(member),
-                    groupOverride: owner
-                        .AncestorsAndSelf()
-                        .TakeWhile(element => element != selectedRecord.Element)
-                        .Last()
-                        .Name.LocalName,
-                    detach: () =>
-                    {
-                        if (element.Parent != null)
-                            element.Remove();
-                    },
-                    itemNameOverride: !list ? null
-                        : member == "VisibleToFactionIDs" ? "FactionID"
-                        : member == "TargetPlanets" ? "PlanetTypeID"
-                        : Rebellion.Util.Serialization.SerializationMetadata.GetCollectionItemName(
-                            ownerType,
-                            member
-                        )
-                            ?? Rebellion.Util.Serialization.SerializationMetadata.GetElementName(
-                                ContentPackEditorFieldSchema.GetItemType(
-                                    Rebellion.Util.Serialization.SerializationMetadata.GetElementType(
-                                        ownerType,
-                                        member
-                                    )
-                                )
-                            )
-                )
-            );
-        }
-        string[] memberOrder = ownerType
-            .GetProperties()
-            .Select(property => property.Name)
-            .ToArray();
-        fields = fields
-            .OrderBy(field =>
-                Array.IndexOf(
-                    memberOrder,
-                    field
-                        .XmlElement.AncestorsAndSelf()
-                        .FirstOrDefault(element => element.Parent == owner)
-                        ?.Name.LocalName
-                        ?? field.MemberName
                 )
             )
             .ToList();

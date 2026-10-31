@@ -4,52 +4,12 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 /// <summary>
-/// Writes complete project copies and installable archives without changing the working project.
+/// Writes frozen project snapshots and installable archives without changing the working project.
 /// </summary>
 internal static class ContentPackEditorExporter
 {
-    /// <summary>
-    /// Publishes a complete project copy to a new folder after all files are staged.
-    /// </summary>
-    /// <param name="project">The project being copied.</param>
-    /// <param name="folder">The new output folder.</param>
-    /// <param name="packID">The copy's identifier.</param>
-    /// <param name="displayName">The copy's display name.</param>
-    /// <param name="version">The copy's version.</param>
-    internal static void WriteFolder(
-        ContentPackEditorProject project,
-        string folder,
-        string packID,
-        string displayName,
-        string version
-    )
-    {
-        string destination = Path.GetFullPath(folder);
-        if (Directory.Exists(destination) || File.Exists(destination))
-            throw new IOException("Choose a new folder for the project copy.");
-        RejectNestedDestination(project, destination);
-        string staging = CreateStagingDirectory(Path.GetDirectoryName(destination));
-        try
-        {
-            WriteSnapshot(project, staging);
-            string manifestPath = Path.Combine(staging, "pack.xml");
-            XDocument manifest = XDocument.Load(manifestPath);
-            manifest.Root.SetElementValue("ID", packID);
-            manifest.Root.SetElementValue("DisplayName", displayName);
-            manifest.Root.SetElementValue("Version", version);
-            manifest.Save(manifestPath);
-            Directory.Move(staging, destination);
-        }
-        finally
-        {
-            if (Directory.Exists(staging))
-                Directory.Delete(staging, true);
-        }
-    }
-
     /// <summary>
     /// Validates a staged snapshot and writes its archive with cancellation between checks and file copies.
     /// </summary>
@@ -184,49 +144,6 @@ internal static class ContentPackEditorExporter
         string path = Path.Combine(parent, ".rebellion2-editor-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
-    }
-
-    /// <summary>
-    /// Copies local media and writes current document states into an owned staging folder.
-    /// </summary>
-    /// <param name="project">The working project.</param>
-    /// <param name="staging">The owned staging folder.</param>
-    private static void WriteSnapshot(ContentPackEditorProject project, string staging)
-    {
-        var removed = project.RemovedDocumentPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (ContentPackEditorDocument document in project.Documents)
-            document.Validate();
-        foreach (
-            string source in Directory.EnumerateFiles(
-                project.PackRootPath,
-                "*",
-                SearchOption.AllDirectories
-            )
-        )
-        {
-            if (
-                source.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
-                || source.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
-                || removed.Contains(source)
-            )
-                continue;
-            string target = Path.Combine(
-                staging,
-                Path.GetRelativePath(project.PackRootPath, source)
-            );
-            Directory.CreateDirectory(Path.GetDirectoryName(target));
-            File.Copy(source, target);
-        }
-        foreach (
-            ContentPackEditorDocument document in project.Documents.Where(document =>
-                !document.IsInherited || document.IsDirty
-            )
-        )
-        {
-            string target = Path.Combine(staging, document.Address[5..]);
-            Directory.CreateDirectory(Path.GetDirectoryName(target));
-            File.WriteAllText(target, document.Text);
-        }
     }
 
     /// <summary>
