@@ -86,7 +86,8 @@ namespace Rebellion.AI.Planners
             return context
                 .Assessment.GetPlanetBuildings(origin)
                 .FirstOrDefault(building =>
-                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    building.GetInstanceID() == context.Faction.HeadquartersUnitInstanceID
+                    && building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == BuildingType.Headquarters
                     && building.ManufacturingStatus == ManufacturingStatus.Complete
                     && building.Movement == null

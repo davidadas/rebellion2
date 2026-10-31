@@ -279,8 +279,14 @@ public static partial class HeadlessSimulationRunner
         {
             WinnerFactionId = victory.Winner?.InstanceID,
             Winner = victory.Winner?.GetDisplayName(),
-            LoserFactionId = victory.Loser?.InstanceID,
-            Loser = victory.Loser?.GetDisplayName(),
+            DefeatedFactionIds = victory
+                .DefeatedFactions.Select(faction => faction?.InstanceID)
+                .Where(instanceId => !string.IsNullOrEmpty(instanceId))
+                .ToArray(),
+            DefeatedFactions = victory
+                .DefeatedFactions.Where(faction => faction != null)
+                .Select(faction => faction.GetDisplayName())
+                .ToArray(),
             Tick = victory.Tick,
             Mode = victory.GameMode?.ToString(),
         };

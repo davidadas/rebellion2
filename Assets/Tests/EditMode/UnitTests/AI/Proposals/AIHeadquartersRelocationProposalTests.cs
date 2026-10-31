@@ -205,6 +205,7 @@ namespace Rebellion.Tests.AI.Proposals
                 "mobile-headquarters",
                 BuildingType.Headquarters
             );
+            empire.HeadquartersUnitInstanceID = headquarters.InstanceID;
             if (completedDestinationBuildingType == BuildingType.Mine)
             {
                 AddBuilding(game, origin, "refinery", BuildingType.Refinery);

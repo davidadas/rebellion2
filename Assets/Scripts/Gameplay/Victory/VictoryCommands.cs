@@ -32,19 +32,24 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Declares the winning and losing factions and publishes the completed outcome.
+        /// Declares the winning faction and publishes the completed outcome.
         /// </summary>
         /// <param name="winner">The faction that won the game.</param>
-        /// <param name="loser">The faction that lost the game.</param>
         /// <returns>The declared outcome, or null when the request is invalid or already settled.</returns>
-        public VictoryResult TryDeclareVictory(Faction winner, Faction loser)
+        public VictoryResult TryDeclareVictory(Faction winner)
         {
             Faction liveWinner = ResolveFaction(winner);
-            Faction liveLoser = ResolveFaction(loser);
-            if (liveWinner == null || liveLoser == null || liveWinner == liveLoser)
+            if (liveWinner == null)
                 return null;
 
-            VictoryResult result = CreateVictory(liveWinner, liveLoser);
+            List<Faction> defeatedFactions = _game
+                .GetFactions()
+                .Where(faction => faction != null && faction != liveWinner)
+                .ToList();
+            if (defeatedFactions.Count == 0)
+                return null;
+
+            VictoryResult result = CreateVictory(liveWinner, defeatedFactions);
             if (result != null)
                 ResultsProduced?.Invoke(new[] { result });
             return result;
@@ -54,9 +59,12 @@ namespace Rebellion.Gameplay
         /// Records one terminal outcome without publishing it to presentation listeners.
         /// </summary>
         /// <param name="winner">The faction that won the game.</param>
-        /// <param name="loser">The faction that lost the game.</param>
+        /// <param name="defeatedFactions">Every opposing faction defeated by the winner.</param>
         /// <returns>The recorded outcome, or null when the game is already settled.</returns>
-        private VictoryResult CreateVictory(Faction winner, Faction loser)
+        private VictoryResult CreateVictory(
+            Faction winner,
+            IReadOnlyCollection<Faction> defeatedFactions
+        )
         {
             if (_victoryDeclared)
                 return null;
@@ -65,7 +73,7 @@ namespace Rebellion.Gameplay
             return new VictoryResult
             {
                 Winner = winner,
-                Loser = loser,
+                DefeatedFactions = defeatedFactions.ToList(),
                 GameMode = _game.Summary.VictoryCondition,
                 Tick = _game.CurrentTick,
             };

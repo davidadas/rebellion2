@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
@@ -25,6 +27,45 @@ namespace Rebellion.Generation
                 ctx.Classification,
                 ctx.Rng
             );
+            BindMobileHeadquarters(ctx.Factions, ctx.Sectors);
+        }
+
+        /// <summary>
+        /// Records the specific deployed building that represents each mobile headquarters.
+        /// </summary>
+        /// <param name="factions">The generated factions.</param>
+        /// <param name="sectors">The generated sectors containing headquarters planets.</param>
+        private static void BindMobileHeadquarters(
+            IEnumerable<Faction> factions,
+            IEnumerable<PlanetSector> sectors
+        )
+        {
+            Dictionary<string, Planet> planets = sectors
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .ToDictionary(planet => planet.InstanceID, StringComparer.Ordinal);
+
+            foreach (
+                Faction faction in (factions ?? Enumerable.Empty<Faction>()).Where(faction =>
+                    faction?.Settings?.Headquarters?.IsMobile == true
+                )
+            )
+            {
+                if (
+                    string.IsNullOrEmpty(faction.HQInstanceID)
+                    || !planets.TryGetValue(faction.HQInstanceID, out Planet planet)
+                )
+                    continue;
+
+                Building headquarters = planet
+                    .GetChildren<Building>(includeDisabled: true)
+                    .SingleOrDefault(building =>
+                        building.BuildingType == BuildingType.Headquarters
+                        && building.OwnerInstanceID == faction.InstanceID
+                        && building.TypeID == faction.Settings.Headquarters.FacilityTypeID
+                    );
+                if (headquarters != null)
+                    faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
+            }
         }
 
         /// <summary>
