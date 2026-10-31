@@ -438,6 +438,7 @@ public class SaveGameManager
     private void PrepareSaveGameData(GameRoot game, string fileName, string displayName)
     {
         ValidateSaveFileName(fileName);
+        string normalizedDisplayName = NormalizeDisplayName(displayName);
         Saving?.Invoke();
         EnsureCampaignIdentity(game);
         string saveDirectory = GetSaveDirectoryPath();
@@ -459,7 +460,6 @@ public class SaveGameManager
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
         game.Metadata.ModIDs = game.Summary?.ModIDs ?? Array.Empty<string>();
         game.Metadata.ModVersions = game.Summary?.ModVersions ?? Array.Empty<string>();
-        string normalizedDisplayName = NormalizeDisplayName(displayName);
         if (normalizedDisplayName.Length > 0)
             game.Metadata.SaveDisplayName = normalizedDisplayName;
         else if (
@@ -685,19 +685,23 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Trims a save display name and constrains it to the supported length.
+    /// Validates XML text and trims a save display name without splitting a surrogate pair at the UI limit.
     /// </summary>
     /// <param name="displayName">The display name to normalize.</param>
     /// <returns>The normalized display name, or an empty string when no name was supplied.</returns>
-    private static string NormalizeDisplayName(string displayName)
+    internal static string NormalizeDisplayName(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
             return string.Empty;
 
         string normalized = displayName.Trim();
-        return normalized.Length <= MaxDisplayNameLength
-            ? normalized
-            : normalized.Substring(0, MaxDisplayNameLength).TrimEnd();
+        XmlConvert.VerifyXmlChars(normalized);
+        if (normalized.Length <= MaxDisplayNameLength)
+            return normalized;
+        int length = char.IsHighSurrogate(normalized[MaxDisplayNameLength - 1])
+            ? MaxDisplayNameLength - 1
+            : MaxDisplayNameLength;
+        return normalized.Substring(0, length).TrimEnd();
     }
 
     /// <summary>

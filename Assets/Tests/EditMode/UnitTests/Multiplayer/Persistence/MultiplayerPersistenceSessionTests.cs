@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
@@ -13,6 +14,28 @@ namespace Rebellion.Tests.Multiplayer
     [TestFixture]
     public sealed class MultiplayerPersistenceSessionTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RequestAsync_InvalidDisplayName_RejectsBeforeReservingGameplay(
+            bool guestRequest
+        )
+        {
+            using PeerPair peers = new();
+            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+
+            Assert.Throws<XmlException>(() =>
+                owner.RequestAsync("checkpoint", "Name \u0001", false)
+            );
+            peers.Flush();
+
+            Assert.IsFalse(peers.Host.BlocksNewTicks);
+            Assert.IsFalse(peers.Guest.BlocksGameplay);
+            Assert.IsEmpty(peers.HostFiles);
+            Assert.IsEmpty(peers.GuestFiles);
+            Assert.IsNull(peers.Host.Failure);
+            Assert.IsNull(peers.Guest.Failure);
+        }
+
         [Test]
         public void Receive_PreviousConnectionPrepare_DoesNotReserveRecoveredGuest()
         {
@@ -298,6 +321,32 @@ namespace Rebellion.Tests.Multiplayer
             peers.Host.Pump();
 
             Assert.IsInstanceOf<ArgumentException>(peers.Host.Failure);
+            Assert.IsEmpty(peers.HostFiles);
+            Assert.IsEmpty(peers.GuestFiles);
+        }
+
+        [Test]
+        public void Receive_InvalidDisplayName_RejectsBeforeAnyStoreCallback()
+        {
+            using PeerPair peers = new();
+            peers.Host.Receive(
+                new MultiplayerPacket(
+                    MultiplayerMessageType.PersistenceRequest,
+                    JsonUtility.ToJson(
+                        new MultiplayerPersistenceCommand
+                        {
+                            requestID = 1,
+                            fileName = "checkpoint",
+                            displayName = "Name \u0001",
+                            initializationID = peers.ConnectionID,
+                        }
+                    )
+                )
+            );
+
+            peers.Host.Pump();
+
+            Assert.IsInstanceOf<XmlException>(peers.Host.Failure);
             Assert.IsEmpty(peers.HostFiles);
             Assert.IsEmpty(peers.GuestFiles);
         }

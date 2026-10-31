@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -252,11 +253,32 @@ namespace Rebellion.PlayerRequests
             )
                 return Reject("The selected entity cannot be renamed.");
 
+            if (!IsValidXmlText(request.Name))
+                return Reject("The name contains unsupported characters.");
+
             if (node is CapitalShip ship)
                 ship.AssignName(request.Name);
             else
                 node.DisplayName = request.Name;
             return new PlayerRequestOutcome(true);
+        }
+
+        /// <summary>
+        /// Checks submitted text before it can enter the XML-persisted game model.
+        /// </summary>
+        /// <param name="text">The non-null text to validate without changing it.</param>
+        /// <returns>Whether XML character data can represent the complete text.</returns>
+        private static bool IsValidXmlText(string text)
+        {
+            try
+            {
+                XmlConvert.VerifyXmlChars(text);
+                return true;
+            }
+            catch (XmlException)
+            {
+                return false;
+            }
         }
 
         /// <summary>

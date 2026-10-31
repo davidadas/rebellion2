@@ -293,8 +293,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Selects the model members also admitted by the explicit recovery schema.
-        /// Result records use this policy even though they are not disk-save roots.
+        /// Selects the persistable attributes and members admitted by the serializer.
         /// </summary>
         /// <param name="type">The admitted model or result type.</param>
         /// <returns>The cached member plan.</returns>

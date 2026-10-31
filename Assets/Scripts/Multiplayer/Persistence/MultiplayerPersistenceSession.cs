@@ -129,6 +129,7 @@ namespace Rebellion.Multiplayer
         {
             ThrowIfUnavailable();
             SaveGameManager.ValidateSaveFileName(fileName);
+            displayName = SaveGameManager.NormalizeDisplayName(displayName);
             if (
                 _role == MultiplayerRole.Guest
                 && load
@@ -311,6 +312,7 @@ namespace Rebellion.Multiplayer
                 case MultiplayerMessageType.PersistenceRequest:
                     RequireRole(MultiplayerRole.Host);
                     SaveGameManager.ValidateSaveFileName(command.fileName);
+                    command.displayName = SaveGameManager.NormalizeDisplayName(command.displayName);
                     if (command.load != (packet.Payload.Length > 0))
                         throw new InvalidDataException(
                             "A guest load must carry its selected saved world; save requests carry no snapshot."

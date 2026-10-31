@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Xml;
 using Rebellion.Game;
 
 namespace Rebellion.Multiplayer
@@ -106,6 +107,8 @@ namespace Rebellion.Multiplayer
             string guestName
         )
         {
+            XmlConvert.VerifyXmlChars(hostName ?? string.Empty);
+            XmlConvert.VerifyXmlChars(guestName ?? string.Empty);
             InitializeCampaign(game, admitted, authoritative);
             game.SetFactionController(
                 admitted.HostFactionID,

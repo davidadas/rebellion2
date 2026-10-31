@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -489,6 +490,44 @@ namespace Rebellion.Tests.Persistence
                 SaveGameManager.MaxDisplayNameLength,
                 loadedGame.Metadata.SaveDisplayName.Length
             );
+        }
+
+        [TestCase(62)]
+        [TestCase(63)]
+        public void SaveGameData_SupplementaryCharacterAtNameLimit_PreservesCompleteCharacters(
+            int prefixLength
+        )
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            string prefix = new('N', prefixLength);
+            string expected = prefixLength == 62 ? prefix + "\U0001F680" : prefix;
+
+            _saveGameManager.SaveGameData(game, _saveFileName, prefix + "\U0001F680 suffix");
+
+            Assert.AreEqual(
+                expected,
+                _saveGameManager.LoadGameData(_saveFileName).Metadata.SaveDisplayName
+            );
+        }
+
+        [TestCase(1)]
+        [TestCase(0xD800)]
+        public void SaveGameData_InvalidDisplayName_RejectsBeforeChangingCheckpoint(int character)
+        {
+            GameRoot game = new GameRoot();
+            game.Metadata.SaveDisplayName = "Existing name";
+            DateTime savedAt = game.Metadata.LastSavedUtc;
+            int captureCount = 0;
+            _saveGameManager.Saving += () => captureCount++;
+
+            Assert.Throws<XmlException>(() =>
+                _saveGameManager.SaveGameData(game, _saveFileName, "Name " + (char)character)
+            );
+
+            Assert.AreEqual("Existing name", game.Metadata.SaveDisplayName);
+            Assert.AreEqual(savedAt, game.Metadata.LastSavedUtc);
+            Assert.Zero(captureCount);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
         }
 
         [Test]

@@ -207,6 +207,65 @@ namespace Rebellion.Tests.PlayerRequests
             Assert.AreEqual("Manual", ship.DisplayName);
         }
 
+        [TestCase(false, 1)]
+        [TestCase(true, 1)]
+        [TestCase(false, 0xD800)]
+        [TestCase(true, 0xD800)]
+        [TestCase(false, 0xDC00)]
+        [TestCase(true, 0xDC00)]
+        [TestCase(false, 0xFFFE)]
+        [TestCase(true, 0xFFFE)]
+        public void Execute_RenameInvalidXmlText_RejectsWithoutChangingName(
+            bool capitalShip,
+            int character
+        )
+        {
+            Fleet fleet = CreateFleet("fleet", _ownerID, _origin, out CapitalShip ship);
+            ISceneNode target = capitalShip ? ship : fleet;
+            string previousName = target.DisplayName;
+
+            PlayerRequestOutcome outcome = _executor.Execute(
+                _ownerID,
+                new RenameRequest { EntityID = target.InstanceID, Name = "Name " + (char)character }
+            );
+
+            Assert.IsFalse(outcome.Accepted);
+            Assert.AreEqual(previousName, target.DisplayName);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Execute_RenameInvalidXmlText_LeavesGameSaveable(bool capitalShip)
+        {
+            Fleet fleet = CreateFleet("fleet", _ownerID, _origin, out CapitalShip ship);
+            ISceneNode target = capitalShip ? ship : fleet;
+            _executor.Execute(
+                _ownerID,
+                new RenameRequest { EntityID = target.InstanceID, Name = "Name \u0001" }
+            );
+            using MemoryStream save = new();
+            GameSerializer serializer = new(typeof(GameRoot));
+
+            Assert.DoesNotThrow(() => serializer.Serialize(save, _game));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Execute_RenameValidXmlText_PreservesSubmittedName(bool capitalShip)
+        {
+            Fleet fleet = CreateFleet("fleet", _ownerID, _origin, out CapitalShip ship);
+            ISceneNode target = capitalShip ? ship : fleet;
+            const string name = "  Name <A> & \U0001F680\t\n  ";
+
+            PlayerRequestOutcome outcome = _executor.Execute(
+                _ownerID,
+                new RenameRequest { EntityID = target.InstanceID, Name = name }
+            );
+
+            Assert.IsTrue(outcome.Accepted);
+            Assert.AreEqual(name, target.DisplayName);
+        }
+
         [Test]
         public void Execute_MoveWrongFactionOfficer_DoesNotReparentOrPublishResults()
         {

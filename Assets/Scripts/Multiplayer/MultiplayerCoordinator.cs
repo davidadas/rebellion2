@@ -965,7 +965,9 @@ namespace Rebellion.Multiplayer
         private static string NormalizePlayerName(string playerName)
         {
             string value = string.IsNullOrWhiteSpace(playerName) ? "Player" : playerName.Trim();
-            return value.Length <= 32 ? value : value.Substring(0, 32);
+            return value.Length <= 32
+                ? value
+                : value.Substring(0, char.IsHighSurrogate(value[31]) ? 31 : 32);
         }
 
         /// <summary>
@@ -979,7 +981,9 @@ namespace Rebellion.Multiplayer
             string value = string.IsNullOrWhiteSpace(gameName)
                 ? $"{playerName}'s Game"
                 : gameName.Trim();
-            return value.Length <= 64 ? value : value.Substring(0, 64);
+            return value.Length <= 64
+                ? value
+                : value.Substring(0, char.IsHighSurrogate(value[63]) ? 63 : 64);
         }
 
         /// <summary>

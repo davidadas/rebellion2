@@ -231,7 +231,7 @@ namespace Rebellion.Multiplayer
         private string CreateRejoinNotice() =>
             "Waiting for "
             + (_role == MultiplayerRole.Host ? _recoveryRecord?.guestName : _hostPlayerName)
-            + " to reconnectâ€¦";
+            + " to reconnect...";
 
         /// <summary>
         /// Captures only requested lifecycle checkpoints at a writable simulation boundary.

@@ -1,13 +1,79 @@
 using System;
 using System.IO;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Multiplayer
 {
     public sealed class MultiplayerCampaignAdmissionTests
     {
+        [TestCase(null)]
+        [TestCase("  Player <A> & \U0001F680\t\n  ")]
+        public void ConfigureGame_ValidParticipantNames_PreservesSaveableNames(string name)
+        {
+            GameRoot game = CreateSavedGame();
+            MultiplayerCampaignIdentity admitted = CreateIdentity();
+            MultiplayerLaunchConfiguration configuration = new(
+                game.Summary,
+                "alliance",
+                "alliance",
+                "empire",
+                game
+            );
+
+            MultiplayerCampaignAdmission.ConfigureGame(
+                game,
+                admitted,
+                configuration,
+                true,
+                name,
+                name
+            );
+
+            Assert.AreEqual(name, game.GetFactionPlayer("alliance").DisplayName);
+            Assert.AreEqual(name, game.GetFactionPlayer("empire").DisplayName);
+            using MemoryStream save = new();
+            GameSerializer serializer = new(typeof(GameRoot));
+            Assert.DoesNotThrow(() => serializer.Serialize(save, game));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfigureGame_InvalidParticipantName_PreservesExistingControllers(
+            bool invalidHost
+        )
+        {
+            GameRoot game = CreateSavedGame();
+            MultiplayerCampaignIdentity admitted = CreateIdentity();
+            MultiplayerLaunchConfiguration configuration = new(
+                game.Summary,
+                "alliance",
+                "alliance",
+                "empire",
+                game
+            );
+
+            Assert.Throws<XmlException>(() =>
+                MultiplayerCampaignAdmission.ConfigureGame(
+                    game,
+                    admitted,
+                    configuration,
+                    true,
+                    invalidHost ? "Host \u0001" : "Host",
+                    invalidHost ? "Guest" : "Guest \u0001"
+                )
+            );
+
+            Assert.AreEqual("saved-host-controller", game.GetFactionPlayer("alliance").PlayerID);
+            Assert.AreEqual("saved-guest-controller", game.GetFactionPlayer("empire").PlayerID);
+            Assert.AreEqual("Saved host name", game.GetFactionPlayer("alliance").DisplayName);
+            Assert.AreEqual("Saved guest name", game.GetFactionPlayer("empire").DisplayName);
+            Assert.AreEqual("empire", game.LocalPlayerFactionID);
+        }
+
         /// <summary>
         /// Allows selection before the reserved guest joins while still requiring the saved host.
         /// </summary>
