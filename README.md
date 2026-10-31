@@ -55,8 +55,7 @@ The installer verifies ownership automatically. You must own either *Star Wars: 
 
 ## Project status
 
-The game currently has a 100% playable campaign. Current development focuses on modding tools,
-multiplayer, and new 3D combat.
+The game currently has a 100% playable campaign. Only multiplayer, modding tools, and a completely replacement for the original's 3D space combat remain.
 
 | Capability | Status |
 | --- | ---: |
