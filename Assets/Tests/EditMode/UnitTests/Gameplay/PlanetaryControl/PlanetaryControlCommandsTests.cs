@@ -1184,7 +1184,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
+        public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_RetainsOwnerWithoutControllingSupport()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
             _game.ChangeOwnership(planet, "empire");
@@ -1194,12 +1194,48 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = ReconcilePlanet(planet);
 
-            Assert.IsNull(planet.GetOwnerInstanceID());
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetOwnershipChangedResult>()
-                    .Any(result => result.Planet == planet && result.NewOwner == null)
-            );
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ReconcilePlanet_ColonizedPlanetWithoutController_RetainsPopulationOwnerAndBuildings()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 55);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 45);
+            _targetPlanet.EnergyCapacity = 1;
+            Building mine = new Building
+            {
+                InstanceID = "neutral-mine",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(mine, _targetPlanet);
+
+            ReconcilePlanet(_targetPlanet);
+
+            Assert.AreEqual(_empire.InstanceID, _targetPlanet.GetOwnerInstanceID());
+            Assert.IsTrue(_targetPlanet.IsColonized);
+            Assert.AreEqual(55, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(45, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(_empire.InstanceID, mine.GetOwnerInstanceID());
+            Assert.AreSame(_targetPlanet, mine.GetParent());
+            CollectionAssert.Contains(_empire.GetOwnedUnitsByType<Building>(), mine);
+        }
+
+        [Test]
+        public void ClearPlanetOwnership_UncolonizedPlanet_ClearsClaimSupport()
+        {
+            _targetPlanet.IsColonized = false;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetFullPopularSupport(_empire.InstanceID);
+
+            _commands.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
+            Assert.IsEmpty(_targetPlanet.PopularSupport);
         }
 
         [Test]

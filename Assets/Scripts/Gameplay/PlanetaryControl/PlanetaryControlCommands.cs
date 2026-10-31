@@ -244,6 +244,8 @@ namespace Rebellion.Gameplay
 
                 List<string> regimentOwners = _queries.GetActiveRegimentOwners(planet);
                 Faction controller = _queries.GetPlanetController(planet, regimentOwners);
+                if (controller == null && regimentOwners.Count == 0)
+                    controller = _queries.GetPlanetOwner(planet);
                 PlanetOwnershipChangedResult result = ChangePlanetOwner(planet, controller);
                 if (result != null)
                 {
@@ -306,10 +308,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Clears the planet's owner, returning it to neutral control. Cancels competing
-        /// missions, evicts non-owner units, clears manufacturing queues, and zeroes
-        /// popular support for every faction. Buildings are left in place — they remain
-        /// where they were built and only transfer when a new faction claims the planet.
+        /// Clears the planet's owner, returning it to neutral control. Populated planets retain
+        /// their support, while uncolonized planets clear support that was assigned by a claim.
         /// </summary>
         /// <param name="planet">The planet whose ownership is being cleared.</param>
         /// <returns>The ownership-change result.</returns>
@@ -320,8 +320,8 @@ namespace Rebellion.Gameplay
                 newOwner: null
             );
 
-            foreach (Faction faction in _game.GetFactions())
-                planet.SetPopularSupport(faction.InstanceID, 0);
+            if (!planet.IsColonized)
+                planet.PopularSupport.Clear();
 
             return result;
         }
@@ -384,8 +384,7 @@ namespace Rebellion.Gameplay
                     .Select(faction => faction.InstanceID)
                     .ToList();
 
-                if (newOwner != null)
-                    TransferBuildings(planet, newOwner);
+                AlignBuildingOwnership(planet, newOwner);
 
                 PlanetOwnershipChangedResult result = CreateOwnershipChangedResult(
                     planet,
@@ -399,8 +398,7 @@ namespace Rebellion.Gameplay
                 planet.EndUprising();
                 if (newOwner == null)
                 {
-                    _game.DeregsiterOwnedUnit(planet);
-                    planet.SetOwnerInstanceID(null);
+                    _game.ChangeOwnership(planet, null);
                 }
                 else
                 {
@@ -526,11 +524,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Transfers completed, stationary buildings on the planet to the new owner.
+        /// Aligns completed, stationary buildings with the planet's resolved owner.
         /// </summary>
         /// <param name="planet">The planet whose buildings are transferred.</param>
-        /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
-        private void TransferBuildings(Planet planet, Faction newOwner)
+        /// <param name="newOwner">The faction receiving the buildings, or null for neutral control.</param>
+        private void AlignBuildingOwnership(Planet planet, Faction newOwner)
         {
             foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
             {
@@ -540,7 +538,7 @@ namespace Rebellion.Gameplay
                 )
                     continue;
 
-                _game.ChangeOwnership(building, newOwner.InstanceID);
+                _game.ChangeOwnership(building, newOwner?.InstanceID);
             }
         }
     }
