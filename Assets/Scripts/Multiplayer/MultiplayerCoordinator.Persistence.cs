@@ -347,24 +347,7 @@ namespace Rebellion.Multiplayer
                     true,
                     command.fileName
                 );
-                string displayName = command.displayName;
-                string logicalName = command.fileName;
-                if (
-                    SaveGameManager.TryParseMultiplayerSaveFileName(
-                        logicalName,
-                        out _,
-                        out _,
-                        out string parsed
-                    )
-                )
-                    logicalName = parsed;
-                if (
-                    logicalName == SaveGameManager.QuickSaveFileName
-                    && string.IsNullOrWhiteSpace(displayName)
-                )
-                    displayName = "Quicksave";
-
-                publication = runtime.SaveGameLocallyAsync(fileName, displayName);
+                publication = runtime.SaveGameLocallyAsync(fileName, command.displayName);
             }
             byte[] metadataPayload = MultiplayerSnapshotCodec.Serialize(
                 typeof(GameMetadata),

@@ -190,13 +190,6 @@ namespace Rebellion.Multiplayer
                         RequireRole(MultiplayerRole.Guest);
                         _events.Enqueue(new ReceivedEvent(packet.Type, envelope, packet.Payload));
                         break;
-                    case MultiplayerMessageType.PlayerActionRejected:
-                        RequireRole(MultiplayerRole.Guest);
-                        CompleteRequest(
-                            envelope.requestID,
-                            new PlayerRequestOutcome(false, envelope.reason)
-                        );
-                        break;
                     case MultiplayerMessageType.PlayerActionReceipt:
                         RequireRole(MultiplayerRole.Host);
                         ReceiveActionReceipt(envelope);

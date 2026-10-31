@@ -547,7 +547,6 @@ namespace Rebellion.Multiplayer
                     case MultiplayerMessageType.PlayerActionRequest:
                     case MultiplayerMessageType.PlayerActionCommit:
                     case MultiplayerMessageType.PlayerActionReceipt:
-                    case MultiplayerMessageType.PlayerActionRejected:
                     case MultiplayerMessageType.AdvanceDay:
                     case MultiplayerMessageType.DayReceipt:
                     case MultiplayerMessageType.SynchronizationFailed:

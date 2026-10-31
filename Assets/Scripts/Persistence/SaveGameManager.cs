@@ -533,7 +533,13 @@ public class SaveGameManager
         string normalizedDisplayName = NormalizeDisplayName(displayName);
         if (normalizedDisplayName.Length > 0)
             game.Metadata.SaveDisplayName = normalizedDisplayName;
-        else if (fileName == QuickSaveFileName)
+        else if (
+            fileName == QuickSaveFileName
+            || (
+                TryParseMultiplayerSaveFileName(fileName, out _, out _, out string logicalName)
+                && logicalName == QuickSaveFileName
+            )
+        )
             game.Metadata.SaveDisplayName = _quickSaveDisplayName;
     }
 

@@ -532,6 +532,47 @@ namespace Rebellion.Tests.Persistence
             Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
         }
 
+        [TestCase(true, null)]
+        [TestCase(false, null)]
+        [TestCase(true, " ")]
+        [TestCase(false, " ")]
+        public async Task SaveGameDataAsync_MultiplayerQuicksave_StoresDefaultDisplayNameAsync(
+            bool host,
+            string displayName
+        )
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string fileName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                host,
+                SaveGameManager.QuickSaveFileName
+            );
+
+            await _saveGameManager.SaveGameDataAsync(game, fileName, displayName);
+            GameRoot loaded = _saveGameManager.LoadGameData(fileName);
+
+            Assert.AreEqual("Quicksave", loaded.Metadata.SaveDisplayName);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task SaveGameDataAsync_MultiplayerQuicksaveWithLabel_PreservesExplicitDisplayNameAsync(
+            bool host
+        )
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string fileName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                host,
+                SaveGameManager.QuickSaveFileName
+            );
+
+            await _saveGameManager.SaveGameDataAsync(game, fileName, "Named checkpoint");
+            GameRoot loaded = _saveGameManager.LoadGameData(fileName);
+
+            Assert.AreEqual("Named checkpoint", loaded.Metadata.SaveDisplayName);
+        }
+
         [Test]
         public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -106,6 +107,62 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(peers.Guest.BlocksGameplay);
             Assert.IsEmpty(peers.HostFiles);
             Assert.IsEmpty(peers.GuestFiles);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task RequestAsync_ManualSave_CompletesAfterReservationReleasedAsync(
+            bool guestRequest
+        )
+        {
+            using PeerPair peers = new();
+            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            Task<bool> request = owner.RequestAsync("checkpoint", "Checkpoint", false);
+            Task<bool> blockedAtCompletion = request.ContinueWith(
+                _ => owner.BlocksGameplay,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
+
+            peers.Flush();
+
+            Assert.IsTrue(request.IsCompletedSuccessfully);
+            Assert.IsTrue(await request);
+            Assert.IsFalse(await blockedAtCompletion);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task RequestAsync_Load_CompletesAfterTransferOwnershipReleasedAsync(
+            bool guestRequest
+        )
+        {
+            using PeerPair peers = new();
+            MultiplayerPersistenceSession owner = guestRequest ? peers.Guest : peers.Host;
+            Task<bool> request = owner.RequestAsync(
+                "load-source",
+                null,
+                true,
+                guestRequest
+                    ? new MultiplayerSnapshot(new byte[] { 1, 2, 3 }, "selected-save")
+                    : null
+            );
+            Task<bool> transferringAtCompletion = request.ContinueWith(
+                _ => owner.IsTransferringScene,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
+            peers.Flush();
+            Assert.IsFalse(request.IsCompleted);
+
+            peers.Host.NotifySynchronized();
+            peers.Flush();
+
+            Assert.IsTrue(request.IsCompletedSuccessfully);
+            Assert.IsTrue(await request);
+            Assert.IsFalse(await transferringAtCompletion);
         }
 
         [Test]

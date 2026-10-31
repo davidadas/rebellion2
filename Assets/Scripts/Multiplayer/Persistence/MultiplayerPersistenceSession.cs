@@ -144,7 +144,9 @@ namespace Rebellion.Multiplayer
                     nameof(source)
                 );
             long requestID = checked(++_nextRequestID);
-            TaskCompletionSource<bool> completion = new();
+            TaskCompletionSource<bool> completion = new(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
             _requests.Add(requestID, completion);
             MultiplayerPersistenceCommand command = new()
             {
@@ -496,12 +498,9 @@ namespace Rebellion.Multiplayer
         {
             _lastCompletedToken = _current.token;
             bool localRequest = _current.guestRequest == (_role == MultiplayerRole.Guest);
-            if (
-                !_current.automatic
-                && localRequest
-                && _requests.Remove(_current.requestID, out TaskCompletionSource<bool> completion)
-            )
-                completion.TrySetResult(true);
+            TaskCompletionSource<bool> completion = null;
+            if (!_current.automatic && localRequest)
+                _requests.Remove(_current.requestID, out completion);
             if (_current.automatic)
                 _autosaveQueued = false;
             _current = null;
@@ -512,6 +511,7 @@ namespace Rebellion.Multiplayer
             _guestPrepared = false;
             _readySent = false;
             IsTransferringScene = false;
+            completion?.TrySetResult(true);
             CheckpointCompleted?.Invoke();
         }
 

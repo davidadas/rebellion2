@@ -40,7 +40,6 @@ namespace Rebellion.Multiplayer
     internal sealed class MultiplayerSnapshotMessage
     {
         public long revision;
-        public long baseRevision;
         public string hash;
         public string simulationFingerprint;
         public string initializationID;

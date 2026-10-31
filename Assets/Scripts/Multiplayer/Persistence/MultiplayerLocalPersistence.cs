@@ -60,22 +60,6 @@ namespace Rebellion.Multiplayer
                 _role == MultiplayerRole.Host,
                 fileName
             );
-            string logicalName = fileName;
-            if (
-                SaveGameManager.TryParseMultiplayerSaveFileName(
-                    fileName,
-                    out _,
-                    out _,
-                    out string parsed
-                )
-            )
-                logicalName = parsed;
-            if (
-                logicalName == SaveGameManager.QuickSaveFileName
-                && string.IsNullOrWhiteSpace(displayName)
-            )
-                displayName = "Quicksave";
-
             // A local publication must not claim to match an older copy on the absent peer.
             game.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
             bool saved = await _runtime.SaveGameLocallyAsync(localFileName, displayName);

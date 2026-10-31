@@ -36,7 +36,7 @@ namespace Rebellion.Tests.Multiplayer
         public void Enqueue_CorrectionAtSameRevision_RetainsLaterCorrection()
         {
             MultiplayerSnapshotBuffer buffer = new();
-            MultiplayerPacket correction = new(MultiplayerMessageType.SnapshotRejected);
+            MultiplayerPacket correction = new(MultiplayerMessageType.SnapshotCommit);
             buffer.Enqueue(new MultiplayerPacket(MultiplayerMessageType.SnapshotCommit), 3);
             buffer.Enqueue(correction, 3);
 

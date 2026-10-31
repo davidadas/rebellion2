@@ -243,7 +243,6 @@ namespace Rebellion.Multiplayer
             metadata = new MultiplayerSnapshotMessage
             {
                 revision = _snapshotAdmission.NextRevision(),
-                baseRevision = 0,
                 hash = snapshot.Hash,
                 simulationFingerprint = _initialSimulationFingerprint,
                 initializationID = _initializationID,
