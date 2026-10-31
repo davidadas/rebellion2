@@ -113,7 +113,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.DoesNotThrow(consentView.VerifyReferences);
             Assert.IsTrue(overlay.Find("InputBlocker").GetComponent<Image>().raycastTarget);
             Assert.AreEqual(
-                new Color(0f, 0f, 0f, 0.82f),
+                new Color(0f, 0f, 0f, 0.9f),
                 overlay.Find("InputBlocker").GetComponent<Image>().color
             );
             RawImage backdrop = overlay.Find("Backdrop").GetComponent<RawImage>();

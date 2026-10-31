@@ -547,7 +547,7 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(dimmer.GetComponent<RectTransform>());
         Image dimmerImage = dimmer.GetComponent<Image>();
-        dimmerImage.color = new Color(0f, 0f, 0f, 0.82f);
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.9f);
         dimmerImage.raycastTarget = true;
 
         GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
