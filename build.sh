@@ -260,8 +260,8 @@ do_coverage() {
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml
     local summary_xml="$coverage_dir/Report/Summary.xml"
-    local line_threshold=85.0
-    local method_threshold=93.5
+    local line_threshold=85.1
+    local method_threshold=94.1
 
     if [ ! -f "$summary_xml" ]; then
         echo "Coverage summary not found at $summary_xml"

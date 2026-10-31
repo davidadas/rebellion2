@@ -354,8 +354,8 @@ jobs:
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          LINE_THRESHOLD   = 85.0
-          METHOD_THRESHOLD = 93.5
+          LINE_THRESHOLD   = 85.1
+          METHOD_THRESHOLD = 94.1
 
           summary_path = Path("CodeCoverage/Report/Summary.xml")
           if not summary_path.is_file():
