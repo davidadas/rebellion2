@@ -207,7 +207,17 @@
       <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Library/PackageCache/com.unity.nuget.newtonsoft-json*/Runtime/Newtonsoft.Json.dll">
+    <Reference
+      Include="Newtonsoft.Json"
+      Condition="Exists('$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Library/PackageCache/com.unity.nuget.newtonsoft-json*/Runtime/Newtonsoft.Json.dll"
+      Condition="!Exists('$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll')"
+    >
       <Private>false</Private>
     </Reference>
     <Reference Include="glTFast" Condition="Exists('Library/ScriptAssemblies/glTFast.dll')">
