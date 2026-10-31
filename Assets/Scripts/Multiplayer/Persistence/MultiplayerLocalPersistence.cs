@@ -54,6 +54,7 @@ namespace Rebellion.Multiplayer
         {
             if (!CanRequestSave || string.IsNullOrWhiteSpace(fileName))
                 return false;
+            displayName = SaveGameManager.NormalizeDisplayName(displayName);
             GameRoot game = _session.Game;
             string localFileName = SaveGameManager.GetMultiplayerSaveFileName(
                 game.Metadata.CampaignID,

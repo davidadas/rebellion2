@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -142,6 +143,24 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsEmpty(_store.GetSavedGames());
             Assert.AreEqual(0, _publications);
             Assert.AreEqual(token, game.Metadata.SharedSaveToken);
+        }
+
+        [TestCase(MultiplayerRole.Host)]
+        [TestCase(MultiplayerRole.Guest)]
+        public void SaveGameAsync_InvalidDisplayName_RejectsWithoutChangingToken(
+            MultiplayerRole role
+        )
+        {
+            GameRoot game = StartWaitingGame(role);
+            string token = game.Metadata.SharedSaveToken;
+
+            Assert.ThrowsAsync<XmlException>(() =>
+                _runtime.SaveGameAsync("rejected", "Name \u0001")
+            );
+
+            Assert.AreEqual(token, game.Metadata.SharedSaveToken);
+            Assert.AreEqual(0, _publications);
+            Assert.IsEmpty(_store.GetSavedGames());
         }
 
         [Test]
