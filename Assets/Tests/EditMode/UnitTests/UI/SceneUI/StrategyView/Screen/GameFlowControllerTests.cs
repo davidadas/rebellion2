@@ -95,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             string path = GameFlowController.GetCampaignEndingCutscenePath(
                 theme,
                 player,
-                new VictoryResult { Winner = player, Loser = opponent }
+                new VictoryResult { Winner = player }
             );
 
             Assert.AreEqual("alliance-victory", path);
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             string path = GameFlowController.GetCampaignEndingCutscenePath(
                 theme,
                 player,
-                new VictoryResult { Winner = opponent, Loser = player }
+                new VictoryResult { Winner = opponent }
             );
 
             Assert.AreEqual("alliance-defeat", path);
@@ -181,10 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             SetField("cutscenePlaying", true);
 
             Assert.DoesNotThrow(() =>
-                InvokePrivate(
-                    "HandleVictoryDeclared",
-                    new VictoryResult { Winner = player, Loser = opponent }
-                )
+                InvokePrivate("HandleVictoryDeclared", new VictoryResult { Winner = player })
             );
 
             Assert.AreEqual(TickSpeed.Paused, game.GetGameSpeed());

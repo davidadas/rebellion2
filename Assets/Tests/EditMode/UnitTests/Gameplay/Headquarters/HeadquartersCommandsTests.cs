@@ -171,6 +171,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(headquarters, origin);
+            faction.HeadquartersUnitInstanceID = headquarters.InstanceID;
             return (game, faction, origin, destination, headquarters);
         }
     }

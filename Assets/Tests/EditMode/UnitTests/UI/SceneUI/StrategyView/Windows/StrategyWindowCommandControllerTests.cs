@@ -231,6 +231,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, origin);
+            player.HeadquartersUnitInstanceID = headquarters.InstanceID;
 
             bool moved = _controller.TryExecuteMove(
                 _sourceWindow,

@@ -247,6 +247,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             headquarters.OwnerInstanceID = empire.InstanceID;
             game.AttachNode(headquarters, origin);
+            empire.HeadquartersUnitInstanceID = headquarters.InstanceID;
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 origin,

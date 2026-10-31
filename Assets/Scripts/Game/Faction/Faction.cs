@@ -66,6 +66,8 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
+        public string HeadquartersUnitInstanceID { get; set; }
+        public bool HasLostHeadquarters { get; set; }
         public string GarrisonTroopTypeID { get; set; }
 
         // Messages and Notifications.
@@ -161,16 +163,6 @@ namespace Rebellion.Game.Factions
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
-
-        /// <summary>
-        /// Returns maintenance headroom after adding a manufacturable item.
-        /// </summary>
-        /// <param name="item">The prospective item.</param>
-        /// <returns>The projected maintenance headroom.</returns>
-        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
-        {
-            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
-        }
 
         /// <summary>
         /// Reserves one raw material for a facility or queues its request in arrival order.

@@ -145,6 +145,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void CanOpen_ReconnaissanceParticipantAndVisitedEnemyPlanet_ReturnsTrue()
+        {
+            _target.Planet.Planet.AddVisitor(_playerFactionId);
+
+            bool canOpen = _controller.CanOpen(
+                _target,
+                new ISceneNode[] { _specialForces },
+                _playerFactionId
+            );
+
+            Assert.IsTrue(canOpen);
+        }
+
+        [Test]
         public void CanOpen_ReconnaissanceParticipantAndFriendlyPlanet_ReturnsFalse()
         {
             _target.Planet.Planet.OwnerInstanceID = _playerFactionId;

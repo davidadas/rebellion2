@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
@@ -52,21 +53,12 @@ namespace Rebellion.Gameplay
             if (_commands.IsDeclared)
                 return new List<GameResult>();
 
-            foreach (
-                HeadquartersLostResult result in results ?? Array.Empty<HeadquartersLostResult>()
-            )
-            {
-                if (
-                    result?.Attacker == null
-                    || result.Defender == null
-                    || !_queries.CanDeclareVictoryAfterHeadquartersLoss(result.Defender)
-                )
-                    continue;
+            if (results == null || results.Count == 0)
+                return new List<GameResult>();
 
-                _commands.TryDeclareVictory(result.Attacker, result.Defender);
-                if (_commands.IsDeclared)
-                    break;
-            }
+            Faction winner = _queries.FindWinner();
+            if (winner != null)
+                _commands.TryDeclareVictory(winner);
 
             return new List<GameResult>();
         }
