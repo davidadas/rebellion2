@@ -84,6 +84,25 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartLoadedGame_AnalyticsEnabled_InitializesCampaignIdentityBeforeTicks()
+        {
+            RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
+            GameRuntime runtime = new GameRuntime(
+                _contentPack,
+                _saveGameManager,
+                () => _gameplaySettings,
+                sink
+            );
+            GameRoot game = CreateGame();
+            game.Metadata.CampaignID = null;
+
+            runtime.StartLoadedGame(game);
+
+            Assert.IsNotEmpty(game.Metadata.CampaignID);
+            Assert.IsEmpty(sink.EventNames);
+        }
+
+        [Test]
         public void LoadGame_InvalidContent_KeepsActiveManager()
         {
             GameSession session = _runtime.StartGame(CreateGame());

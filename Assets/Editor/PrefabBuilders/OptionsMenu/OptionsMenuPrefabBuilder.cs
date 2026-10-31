@@ -346,7 +346,7 @@ public static class OptionsMenuPrefabBuilder
             );
         }
 
-        CreateOptionsSectionHeader(gameplayPage, "PrivacyHeader", "PRIVACY", 272, accent);
+        CreateOptionsSectionHeader(gameplayPage, "AnalyticsHeader", "ANALYTICS", 272, accent);
         OptionsToggleRowView analyticsRow = CreateOptionsToggleRow(
             gameplayPage,
             "AnalyticsCollection",

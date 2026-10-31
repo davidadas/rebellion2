@@ -551,7 +551,7 @@ public static class MainMenuPrefabBuilder
         dimmerImage.raycastTarget = true;
 
         GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
-        UILayout.SetSourceRect((RectTransform)page.transform, 199, 119, 455, 234);
+        UILayout.SetSourceRect((RectTransform)page.transform, 247, 148, 360, 185);
 
         Sprite roundedRectangle = AssetDatabase.GetBuiltinExtraResource<Sprite>(
             "UI/Skin/Background.psd"
@@ -564,7 +564,7 @@ public static class MainMenuPrefabBuilder
             typeof(CanvasRenderer),
             typeof(Image)
         );
-        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 455, 234);
+        UILayout.SetSourceRect((RectTransform)backgroundObject.transform, 0, 0, 360, 185);
         Image background = backgroundObject.GetComponent<Image>();
         background.sprite = roundedRectangle;
         background.type = Image.Type.Sliced;
@@ -578,7 +578,7 @@ public static class MainMenuPrefabBuilder
             typeof(CanvasRenderer),
             typeof(Image)
         );
-        UILayout.SetSourceRect((RectTransform)panelFillObject.transform, 1, 1, 453, 232);
+        UILayout.SetSourceRect((RectTransform)panelFillObject.transform, 1, 1, 358, 183);
         Image panelFill = panelFillObject.GetComponent<Image>();
         panelFill.sprite = roundedRectangle;
         panelFill.type = Image.Type.Sliced;
@@ -595,10 +595,10 @@ public static class MainMenuPrefabBuilder
         TextMeshProUGUI optional = MenuPrefabBuilder.CreateTextLabel("Optional", page.transform);
         optional.text = "OPTIONAL";
         optional.color = new Color(0.68f, 0.71f, 0.75f);
-        optional.fontSize = 8;
+        optional.fontSize = 7;
         optional.characterSpacing = 22f;
         optional.alignment = TextAlignmentOptions.Midline;
-        UILayout.SetSourceRect(optional.rectTransform, 170, 23, 115, 16);
+        UILayout.SetSourceRect(optional.rectTransform, 123, 18, 114, 14);
 
         GameObject accentLine = NewChild(
             "AccentLine",
@@ -607,7 +607,7 @@ public static class MainMenuPrefabBuilder
             typeof(CanvasRenderer),
             typeof(Image)
         );
-        UILayout.SetSourceRect((RectTransform)accentLine.transform, 214, 49, 28, 2);
+        UILayout.SetSourceRect((RectTransform)accentLine.transform, 169, 39, 22, 2);
         Image accentLineImage = accentLine.GetComponent<Image>();
         accentLineImage.color = new Color(0.25f, 0.82f, 0.88f);
         accentLineImage.raycastTarget = false;
@@ -615,21 +615,21 @@ public static class MainMenuPrefabBuilder
         TextMeshProUGUI heading = MenuPrefabBuilder.CreateTextLabel("Heading", page.transform);
         heading.text = "HELP US IMPROVE";
         heading.color = new Color(0.925f, 0.945f, 0.965f);
-        heading.fontSize = 23;
-        heading.characterSpacing = 16f;
+        heading.fontSize = 18;
+        heading.characterSpacing = 14f;
         heading.alignment = TextAlignmentOptions.Midline;
-        UILayout.SetSourceRect(heading.rectTransform, 47, 65, 361, 30);
+        UILayout.SetSourceRect(heading.rectTransform, 30, 52, 300, 24);
 
         TextMeshProUGUI body = MenuPrefabBuilder.CreateTextLabel("Body", page.transform);
         body.text =
             "Share optional analytics to help us improve the game.\nYou can change this any time in Settings.";
         body.color = new Color(0.80f, 0.82f, 0.85f);
-        body.fontSize = 13.5f;
-        body.lineSpacing = 8f;
+        body.fontSize = 10.5f;
+        body.lineSpacing = 6f;
         body.alignment = TextAlignmentOptions.Midline;
         body.textWrappingMode = TextWrappingModes.Normal;
         body.overflowMode = TextOverflowModes.Overflow;
-        UILayout.SetSourceRect(body.rectTransform, 42, 96, 371, 48);
+        UILayout.SetSourceRect(body.rectTransform, 24, 78, 312, 38);
 
         Button allowButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
@@ -637,9 +637,9 @@ public static class MainMenuPrefabBuilder
             "ALLOW ANALYTICS",
             0,
             new Color(0.035f, 0.075f, 0.095f),
-            193
+            153
         );
-        UILayout.SetSourceRect((RectTransform)allowButton.transform, 36, 168, 193, 35);
+        UILayout.SetSourceRect((RectTransform)allowButton.transform, 28, 132, 153, 28);
         Image allowSurface = allowButton
             .transform.Find("SurfaceMask/Surface")
             .GetComponent<Image>();
@@ -655,8 +655,8 @@ public static class MainMenuPrefabBuilder
         TextMeshProUGUI allowLabel = allowButton
             .transform.Find("Label")
             .GetComponent<TextMeshProUGUI>();
-        allowLabel.fontSize = 11;
-        allowLabel.characterSpacing = 5f;
+        allowLabel.fontSize = 9;
+        allowLabel.characterSpacing = 4f;
 
         Button declineButton = MenuPrefabBuilder.CreateMenuActionButton(
             page.transform,
@@ -664,9 +664,9 @@ public static class MainMenuPrefabBuilder
             "NO THANKS",
             0,
             new Color(0.820f, 0.850f, 0.880f),
-            175
+            139
         );
-        UILayout.SetSourceRect((RectTransform)declineButton.transform, 244, 168, 175, 35);
+        UILayout.SetSourceRect((RectTransform)declineButton.transform, 193, 132, 139, 28);
         Image declineSurface = declineButton
             .transform.Find("SurfaceMask/Surface")
             .GetComponent<Image>();
@@ -682,7 +682,25 @@ public static class MainMenuPrefabBuilder
         TextMeshProUGUI declineLabel = declineButton
             .transform.Find("Label")
             .GetComponent<TextMeshProUGUI>();
-        declineLabel.characterSpacing = 5f;
+        declineLabel.fontSize = 9;
+        declineLabel.characterSpacing = 4f;
+
+        allowButton.navigation = new Navigation
+        {
+            mode = Navigation.Mode.Explicit,
+            selectOnLeft = allowButton,
+            selectOnRight = declineButton,
+            selectOnUp = allowButton,
+            selectOnDown = allowButton,
+        };
+        declineButton.navigation = new Navigation
+        {
+            mode = Navigation.Mode.Explicit,
+            selectOnLeft = allowButton,
+            selectOnRight = declineButton,
+            selectOnUp = declineButton,
+            selectOnDown = declineButton,
+        };
 
         AnalyticsConsentView view = overlay.GetComponent<AnalyticsConsentView>();
         AssignReference(view, "_allowButton", allowButton);

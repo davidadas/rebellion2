@@ -30,11 +30,13 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void Constructor_LoadedCampaign_DoesNotRecordCreation()
         {
+            GameRoot game = CreateGame();
             RecordingAnalyticsSink sink = new RecordingAnalyticsSink();
 
-            new CampaignAnalyticsTracker(CreateGame(), sink, false);
+            new CampaignAnalyticsTracker(game, sink, false);
 
             Assert.IsEmpty(sink.Events);
+            Assert.IsNotEmpty(game.Metadata.CampaignID);
         }
 
         [Test]

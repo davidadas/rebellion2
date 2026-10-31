@@ -41,6 +41,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     private AppInputController _appInputController;
     private AppBootstrap _appBootstrap;
 
+    private bool IsAnalyticsConsentBlocking => _analyticsConsentView?.IsVisible == true;
+
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
     /// </summary>
@@ -133,10 +135,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             }
             else
                 audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
-            _analyticsConsentView.Render(
-                bootstrap.GetUserSettingsManager().Settings.Analytics.Consent
-                    == UserAnalyticsConsent.Undecided
-            );
+            RenderAnalyticsConsentGate(bootstrap);
             mainMenuCanvas.enabled = true;
         }
         catch (System.Exception exception)
@@ -144,7 +143,10 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             if (!LoadingScreenController.CompleteFailedRecovery(bootstrap, exception))
             {
                 if (mainMenuCanvas != null)
+                {
+                    RenderAnalyticsConsentGate(bootstrap);
                     mainMenuCanvas.enabled = true;
+                }
                 Debug.LogException(exception);
             }
         }
@@ -231,6 +233,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="factionId">The configured faction identifier.</param>
     internal void SelectFaction(string factionId)
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         GameLaunchContext.Summary.PlayerFactionID = factionId;
     }
 
@@ -240,6 +244,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="size">The selected galaxy size.</param>
     internal void SelectGalaxySize(GameSize size)
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         GameLaunchContext.Summary.GalaxySize = size;
     }
 
@@ -249,6 +255,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="condition">The selected victory condition.</param>
     internal void SelectVictoryCondition(GameVictoryCondition condition)
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         currentVictoryCondition = condition;
         GameLaunchContext.Summary.VictoryCondition = condition;
         view?.RenderVictoryCondition(condition);
@@ -260,6 +268,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="difficulty">The selected difficulty.</param>
     internal void SelectGameDifficulty(GameDifficulty difficulty)
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         GameLaunchContext.Summary.Difficulty = difficulty;
     }
 
@@ -269,6 +279,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// <param name="factionId">The configured faction identifier.</param>
     private void HandleStartGameRequested(string factionId)
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         SelectFaction(factionId);
         StartGame();
     }
@@ -278,6 +290,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleVictoryConditionToggleRequested()
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         SelectVictoryCondition(
             currentVictoryCondition == GameVictoryCondition.Conquest
                 ? GameVictoryCondition.Headquarters
@@ -299,6 +313,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void ShowCredits()
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         AudioManager.EnsureExists().FadeOutMusic(creditsMusicFadeDuration);
         AppBootstrap.EnsureExists().GetCutsceneManager().Play(_creditsVideoPath, OnCreditsFinished);
     }
@@ -308,6 +324,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void OpenSaveLoadMenu()
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         PlayAudioCue(_selectSfxPath);
         OpenOptions(OptionsMenuTab.SaveLoad);
     }
@@ -566,10 +584,24 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Shows the first-run input gate whenever no explicit analytics choice can be established.
+    /// </summary>
+    /// <param name="bootstrap">The initialized application bootstrap, or null after startup failure.</param>
+    private void RenderAnalyticsConsentGate(AppBootstrap bootstrap)
+    {
+        UserAnalyticsConsent? consent = bootstrap
+            ?.GetUserSettingsManager()
+            ?.Settings?.Analytics?.Consent;
+        _analyticsConsentView.Render(consent == null || consent == UserAnalyticsConsent.Undecided);
+    }
+
+    /// <summary>
     /// Exits the player, or stops Play Mode when testing the command in the Unity Editor.
     /// </summary>
-    private static void ExitApplication()
+    private void ExitApplication()
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -604,6 +636,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void StartGame()
     {
+        if (IsAnalyticsConsentBlocking)
+            return;
         GameLaunchContext.IsLoadGame = false;
         GameLaunchContext.SaveFileName = null;
         GameLaunchContext.PlayIntroCutscene = true;

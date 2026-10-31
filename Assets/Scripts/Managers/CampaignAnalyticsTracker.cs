@@ -30,6 +30,7 @@ internal sealed class CampaignAnalyticsTracker
     {
         _game = game ?? throw new ArgumentNullException(nameof(game));
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        EnsureCampaignId();
         _playerFactionId = ResolvePlayerFactionId(game);
         _aiFactionIds = game.GetPlayers()
             .Where(player => player?.ControllerType == PlayerControllerType.AI)

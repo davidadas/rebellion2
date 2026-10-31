@@ -141,6 +141,80 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, recordedCount);
         }
 
+        [Test]
+        public void RecordEvent_ServicesUninitialized_RecordsAfterInitialization()
+        {
+            ConsentState consentState = new ConsentState
+            {
+                AnalyticsIntent = ConsentStatus.Granted,
+            };
+            ServicesInitializationState servicesState = ServicesInitializationState.Uninitialized;
+            string recordedName = null;
+            AnalyticsManager manager = new AnalyticsManager(
+                () => consentState,
+                value => consentState = value,
+                () => servicesState,
+                () =>
+                {
+                    servicesState = ServicesInitializationState.Initialized;
+                    return Task.CompletedTask;
+                },
+                (name, _) => recordedName = name,
+                () => { },
+                true
+            );
+
+            ((IAnalyticsEventSink)manager).RecordEvent(
+                "campaign_started",
+                new Dictionary<string, object>()
+            );
+
+            Assert.AreEqual("campaign_started", recordedName);
+        }
+
+        [Test]
+        public void ApplyConsent_DeniedDuringInitialization_DropsQueuedEvents()
+        {
+            ConsentState consentState = new ConsentState
+            {
+                AnalyticsIntent = ConsentStatus.Granted,
+            };
+            ServicesInitializationState servicesState = ServicesInitializationState.Uninitialized;
+            TaskCompletionSource<bool> initialization = new TaskCompletionSource<bool>();
+            List<string> recordedNames = new List<string>();
+            AnalyticsManager manager = new AnalyticsManager(
+                () => consentState,
+                value => consentState = value,
+                () => servicesState,
+                () =>
+                {
+                    servicesState = ServicesInitializationState.Initializing;
+                    return initialization.Task;
+                },
+                (name, _) => recordedNames.Add(name),
+                () => { },
+                true
+            );
+
+            ((IAnalyticsEventSink)manager).RecordEvent(
+                "queued_before_denial",
+                new Dictionary<string, object>()
+            );
+            manager.ApplyConsent(
+                new UserAnalyticsSettings { Consent = UserAnalyticsConsent.Denied }
+            );
+            servicesState = ServicesInitializationState.Initialized;
+            manager.ApplyConsent(
+                new UserAnalyticsSettings { Consent = UserAnalyticsConsent.Granted }
+            );
+            ((IAnalyticsEventSink)manager).RecordEvent(
+                "recorded_after_regrant",
+                new Dictionary<string, object>()
+            );
+
+            CollectionAssert.AreEqual(new[] { "recorded_after_regrant" }, recordedNames);
+        }
+
         /// <summary>
         /// Creates a manager backed by mutable test delegates.
         /// </summary>
