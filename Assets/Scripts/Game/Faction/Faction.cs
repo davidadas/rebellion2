@@ -179,16 +179,6 @@ namespace Rebellion.Game.Factions
         public Faction() { }
 
         /// <summary>
-        /// Returns maintenance headroom after adding a manufacturable item.
-        /// </summary>
-        /// <param name="item">The prospective item.</param>
-        /// <returns>The projected maintenance headroom.</returns>
-        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
-        {
-            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
-        }
-
-        /// <summary>
         /// Reserves one raw material for a facility or queues its request in arrival order.
         /// </summary>
         /// <param name="facility">The facility requesting raw material.</param>

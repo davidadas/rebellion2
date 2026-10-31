@@ -203,16 +203,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns whether a fleet has a surviving capital ship capable of entering hyperspace.
-        /// </summary>
-        /// <param name="fleet">The fleet whose withdrawal capability is being checked.</param>
-        /// <returns>True when at least one active capital ship has a hyperdrive.</returns>
-        internal static bool HasHyperdriveCapableShip(Fleet fleet)
-        {
-            return fleet != null && GetActiveCapitalShips(fleet).Any(ship => ship.Hyperdrive > 0);
-        }
-
-        /// <summary>
         /// Determines whether any opposing fleet projects a gravity well at the combat planet.
         /// </summary>
         /// <param name="fleets">The fleets attempting to retreat.</param>
@@ -288,29 +278,6 @@ namespace Rebellion.Gameplay
         internal static Fleet GetRepresentativeFleet(IReadOnlyList<Fleet> fleets)
         {
             return fleets == null || fleets.Count == 0 ? null : fleets[0];
-        }
-
-        /// <summary>
-        /// Determines whether two hostile active fleets still contest the same planet.
-        /// </summary>
-        /// <param name="attacker">Attacking fleet.</param>
-        /// <param name="defender">Defending fleet.</param>
-        /// <returns>True when both fleets remain stationary, active, hostile, and colocated.</returns>
-        internal static bool AreFleetsContestingPlanet(Fleet attacker, Fleet defender)
-        {
-            if (attacker == null || defender == null)
-                return false;
-
-            Planet attackerPlanet = attacker.GetParentOfType<Planet>();
-            Planet defenderPlanet = defender.GetParentOfType<Planet>();
-
-            return attackerPlanet != null
-                && attackerPlanet == defenderPlanet
-                && attacker.Movement == null
-                && defender.Movement == null
-                && HasActiveSpaceUnits(attacker)
-                && HasActiveSpaceUnits(defender)
-                && attacker.GetOwnerInstanceID() != defender.GetOwnerInstanceID();
         }
 
         /// <summary>
