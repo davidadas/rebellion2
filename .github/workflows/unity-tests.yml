@@ -377,17 +377,6 @@ jobs:
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
 
-      - name: Save imported Unity test Library
-        if: >-
-          ${{ !cancelled()
-              && steps.test-library.outputs.cache-hit != 'true'
-              && hashFiles('artifacts/editmode-results.xml') != ''
-              && hashFiles('Library/ScriptAssemblies/UnitTests.dll') != '' }}
-        uses: actions/cache/save@v4
-        with:
-          path: Library
-          key: ${{ steps.test-library.outputs.cache-primary-key }}
-
       - name: Upload Unity test results
         if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
         uses: actions/upload-artifact@v4
