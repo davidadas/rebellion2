@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.GameEvents;
+using Rebellion.Gameplay;
+using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.Util.IO;
 using Rebellion.Util.Reflection;
@@ -409,6 +413,73 @@ namespace Rebellion.Tests.Content
             yield return RecoverCommittedMultiplayerLoad(true, true);
         }
 
+        [UnityTest]
+        public IEnumerator ActivatePresentationAsync_ApplicationDestroyedDuringActivation_CancelsPendingInitialization()
+        {
+            yield return AssertActivationCanceled(destroyApplication: true);
+        }
+
+        [UnityTest]
+        public IEnumerator ActivatePresentationAsync_SceneDestroyedDuringActivation_CancelsPendingInitialization()
+        {
+            yield return AssertActivationCanceled(destroyApplication: false);
+        }
+
+        [UnityTest]
+        public IEnumerator PreloadAsync_ApplicationDestroyedDuringAudioLoad_CancelsPendingPreload()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            ContentAssets assets = bootstrap.GetContentAssets();
+            using CancellationTokenSource cancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(bootstrap.destroyCancellationToken);
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Audio = { "Application/Audio/pending" },
+            };
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+
+            DestroyApplication();
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!preload.IsCompleted && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.IsTrue(preload.IsCanceled, preload.Exception?.ToString());
+        }
+
+        [UnityTest]
+        public IEnumerator CutscenePlayback_SkippedVideo_ReleasesPlayerBeforeStartingNextVideo()
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
+                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
+            );
+            Assert.IsNotNull(clip);
+            CutsceneManager manager = bootstrap.GetCutsceneManager();
+            CutscenePlayer firstPlayer = null;
+            bool firstPlayerReleasedBeforeCompletion = false;
+            manager.Play(
+                clip,
+                () =>
+                {
+                    firstPlayerReleasedBeforeCompletion = firstPlayer == null;
+                    manager.Play(clip, null);
+                }
+            );
+            firstPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(firstPlayer);
+
+            firstPlayer.Skip();
+
+            Assert.IsFalse(firstPlayerReleasedBeforeCompletion);
+            yield return null;
+
+            Assert.IsTrue(firstPlayerReleasedBeforeCompletion);
+            CutscenePlayer secondPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
+            Assert.IsNotNull(secondPlayer);
+            Assert.AreNotSame(firstPlayer, secondPlayer);
+        }
+
         /// <summary>
         /// Exercises committed-load interruption through the actual ready view and application scene router.
         /// </summary>
@@ -555,37 +626,78 @@ namespace Rebellion.Tests.Content
             }
         }
 
-        [UnityTest]
-        public IEnumerator CutscenePlayback_SkippedVideo_ReleasesPlayerBeforeStartingNextVideo()
+        /// <summary>
+        /// Verifies that a caller-owned scene lifetime cancels pending strategy activation.
+        /// </summary>
+        /// <param name="destroyApplication">Whether to destroy the application or the strategy scene root.</param>
+        /// <returns>The cancellation regression sequence.</returns>
+        private IEnumerator AssertActivationCanceled(bool destroyApplication)
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
-                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
+            Task preload = Task.WhenAll(
+                bootstrap.InitializeMainMenuContentAsync(),
+                bootstrap.InitializeStrategyContentAsync()
             );
-            Assert.IsNotNull(clip);
-            CutsceneManager manager = bootstrap.GetCutsceneManager();
-            CutscenePlayer firstPlayer = null;
-            bool firstPlayerReleasedBeforeCompletion = false;
-            manager.Play(
-                clip,
-                () =>
-                {
-                    firstPlayerReleasedBeforeCompletion = firstPlayer == null;
-                    manager.Play(clip, null);
-                }
+            while (!preload.IsCompleted)
+                yield return null;
+            preload.GetAwaiter().GetResult();
+
+            ContentPack pack = bootstrap.GetContentPack();
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.GalaxySize = GameSize.Small;
+            GameRoot game = new GameBuilder(summary, pack.GameData).Build();
+            GameRuntime runtime = bootstrap.GetRuntime();
+            GameSession session = runtime.StartGame(game);
+            ContentAssets assets = bootstrap.GetContentAssets();
+            GameObject root = Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab"
+                )
             );
-            firstPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
-            Assert.IsNotNull(firstPlayer);
+            try
+            {
+                root.GetComponentInChildren<GameFlowController>(true).enabled = false;
+                DisableRendering(root);
+                StrategyController controller = root.GetComponentInChildren<StrategyController>(
+                    true
+                );
+                UIContext context = new UIContext(
+                    game,
+                    new FactionThemeLibrary(pack.GameData.FactionThemes),
+                    new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
+                    assets.GetTexture,
+                    assets.GetTextureContentBounds
+                );
+                using CancellationTokenSource cancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(
+                        controller.destroyCancellationToken,
+                        bootstrap.destroyCancellationToken
+                    );
+                controller.Initialize(
+                    session,
+                    runtime.GetActiveGameManager(),
+                    runtime,
+                    context,
+                    cancellation.Token
+                );
 
-            firstPlayer.Skip();
+                Task activation = controller.ActivatePresentationAsync(startMusic: false);
+                if (destroyApplication)
+                    DestroyApplication();
+                else
+                    Object.Destroy(root);
 
-            Assert.IsFalse(firstPlayerReleasedBeforeCompletion);
-            yield return null;
+                float deadline = Time.realtimeSinceStartup + 5f;
+                while (!activation.IsCompleted && Time.realtimeSinceStartup < deadline)
+                    yield return null;
 
-            Assert.IsTrue(firstPlayerReleasedBeforeCompletion);
-            CutscenePlayer secondPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
-            Assert.IsNotNull(secondPlayer);
-            Assert.AreNotSame(firstPlayer, secondPlayer);
+                Assert.IsTrue(activation.IsCanceled, activation.Exception?.ToString());
+            }
+            finally
+            {
+                if (root != null)
+                    Object.Destroy(root);
+            }
         }
 
         /// <summary>

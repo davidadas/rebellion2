@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -31,6 +32,7 @@ public sealed class GameFlowController : MonoBehaviour
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
     private IEnumerator activeTick;
+    private CancellationTokenSource presentationCancellation;
     private readonly Queue<string> cutsceneQueue = new Queue<string>();
 
     /// <summary>
@@ -59,9 +61,15 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private async void Start()
     {
+        CancellationToken cancellationToken = default;
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            presentationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                destroyCancellationToken,
+                bootstrap.destroyCancellationToken
+            );
+            cancellationToken = presentationCancellation.Token;
             await bootstrap.InitializeMainMenuContentAsync();
             if (!CanContinueStartup(bootstrap))
                 return;
@@ -76,7 +84,7 @@ public sealed class GameFlowController : MonoBehaviour
             if (runtime?.HasActiveGame == true)
             {
                 GameSession session = runtime.GetActiveGameSession();
-                InitializeStrategy(session);
+                InitializeStrategy(session, cancellationToken);
                 await strategyController.PrepareInitialContentAsync();
                 if (!CanContinueStartup(bootstrap))
                     return;
@@ -92,7 +100,7 @@ public sealed class GameFlowController : MonoBehaviour
                     return;
 
                 GameSession session = StartGameSession(loadedGame: true);
-                InitializeStrategy(session);
+                InitializeStrategy(session, cancellationToken);
                 await strategyController.PrepareInitialContentAsync();
                 if (!CanContinueStartup(bootstrap))
                     return;
@@ -100,8 +108,12 @@ public sealed class GameFlowController : MonoBehaviour
                 await ActivateGameplayAsync(session, false);
             }
             else
-                await StartNewGameAsync();
+                await StartNewGameAsync(cancellationToken);
         }
+        catch (OperationCanceledException exception)
+            when (cancellationToken.IsCancellationRequested
+                && exception.CancellationToken == cancellationToken
+            ) { }
         catch (Exception exception)
         {
             if (!Application.isPlaying || this == null)
@@ -165,10 +177,12 @@ public sealed class GameFlowController : MonoBehaviour
     }
 
     /// <summary>
-    /// Detaches session callbacks when the strategy scene is destroyed.
+    /// Cancels scene-owned presentation work and detaches session callbacks.
     /// </summary>
     private void OnDestroy()
     {
+        presentationCancellation?.Cancel();
+        presentationCancellation?.Dispose();
         DisposeActiveTick();
         planetDestructionCutsceneController?.Dispose();
 
@@ -220,8 +234,9 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Builds a new game and starts its configured faction introduction.
     /// </summary>
+    /// <param name="cancellationToken">The scene-owned presentation lifetime.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task StartNewGameAsync()
+    private async Task StartNewGameAsync(CancellationToken cancellationToken)
     {
         GameSummary summary = GameLaunchContext.Summary;
 
@@ -248,7 +263,7 @@ public sealed class GameFlowController : MonoBehaviour
         Task intro = deferIntro
             ? Task.CompletedTask
             : PlayFactionIntroAsync(game.GetPlayerFaction());
-        InitializeStrategy(session);
+        InitializeStrategy(session, cancellationToken);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
@@ -285,7 +300,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// Plays the configured faction introduction before entering gameplay.
     /// </summary>
     /// <param name="faction">The player faction.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <returns>A task representing completion or cancellation of the introduction.</returns>
     private Task PlayFactionIntroAsync(Faction faction)
     {
         if (faction == null)
@@ -294,9 +309,28 @@ public sealed class GameFlowController : MonoBehaviour
         if (!GameLaunchContext.PlayIntroCutscene)
             return Task.CompletedTask;
 
+        CancellationToken cancellationToken = presentationCancellation.Token;
+        cancellationToken.ThrowIfCancellationRequested();
         TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
         PlayFactionIntro(faction, () => completion.TrySetResult(true));
-        return completion.Task;
+        return WaitForIntroCompletionAsync(completion, cancellationToken);
+    }
+
+    /// <summary>
+    /// Waits for the introduction callback and releases its cancellation registration afterward.
+    /// </summary>
+    /// <param name="completion">The completion supplied to the introduction callback.</param>
+    /// <param name="cancellationToken">The scene-owned presentation lifetime.</param>
+    /// <returns>A task representing completion or cancellation of the introduction wait.</returns>
+    private static async Task WaitForIntroCompletionAsync(
+        TaskCompletionSource<bool> completion,
+        CancellationToken cancellationToken
+    )
+    {
+        using CancellationTokenRegistration registration = cancellationToken.Register(() =>
+            completion.TrySetCanceled(cancellationToken)
+        );
+        await completion.Task;
     }
 
     /// <summary>
@@ -367,7 +401,8 @@ public sealed class GameFlowController : MonoBehaviour
     /// Composes strategy UI for an active game session without revealing it or starting music.
     /// </summary>
     /// <param name="session">The active game session.</param>
-    private void InitializeStrategy(GameSession session)
+    /// <param name="cancellationToken">The scene-owned presentation lifetime.</param>
+    private void InitializeStrategy(GameSession session, CancellationToken cancellationToken)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
         ContentPack contentPack = bootstrap.GetContentPack();
@@ -410,7 +445,8 @@ public sealed class GameFlowController : MonoBehaviour
             session,
             bootstrap.GetRuntime().GetActiveGameManager(),
             bootstrap.GetRuntime(),
-            uiContext
+            uiContext,
+            cancellationToken
         );
     }
 

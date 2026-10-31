@@ -11,7 +11,7 @@ using UnityEngine;
 /// <summary>
 /// Sequences faction briefings and projects each segment onto the strategy map.
 /// </summary>
-public sealed class StrategyBriefingController
+public sealed class StrategyBriefingController : IDisposable
 {
     private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
@@ -20,6 +20,8 @@ public sealed class StrategyBriefingController
     private readonly Action playPresentationSfx;
     private readonly Func<ContentPreloadManifest, Task> preloadContent;
     private readonly Action<IEnumerable<string>> preloadSfx;
+    private readonly CancellationToken presentationCancellationToken;
+    private readonly CancellationTokenRegistration presentationCancellationRegistration;
     private readonly StrategyHudController strategyHudController;
 
     private StrategyBriefingTheme activeBriefing;
@@ -38,6 +40,7 @@ public sealed class StrategyBriefingController
     /// <param name="strategyHudController">Presents advisor animation playback.</param>
     /// <param name="galaxyMapController">Presents briefing map cues.</param>
     /// <param name="playPresentationSfx">Plays the map-presentation transition sound.</param>
+    /// <param name="presentationCancellationToken">The owning strategy presentation lifetime.</param>
     public StrategyBriefingController(
         Func<UIContext> getUIContext,
         Func<string, Texture2D> getTexture,
@@ -46,7 +49,8 @@ public sealed class StrategyBriefingController
         Action<IEnumerable<string>> preloadSfx,
         StrategyHudController strategyHudController,
         GalaxyMapController galaxyMapController,
-        Action playPresentationSfx
+        Action playPresentationSfx,
+        CancellationToken presentationCancellationToken
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
@@ -62,6 +66,8 @@ public sealed class StrategyBriefingController
             galaxyMapController ?? throw new ArgumentNullException(nameof(galaxyMapController));
         this.playPresentationSfx =
             playPresentationSfx ?? throw new ArgumentNullException(nameof(playPresentationSfx));
+        this.presentationCancellationToken = presentationCancellationToken;
+        presentationCancellationRegistration = presentationCancellationToken.Register(Abandon);
     }
 
     /// <summary>
@@ -73,6 +79,7 @@ public sealed class StrategyBriefingController
     /// </param>
     public void Play(StrategyBriefingTheme briefing, Action<bool> onCompleted)
     {
+        presentationCancellationToken.ThrowIfCancellationRequested();
         if (briefing == null || briefing.Segments.Count == 0)
         {
             onCompleted?.Invoke(false);
@@ -82,7 +89,9 @@ public sealed class StrategyBriefingController
             throw new InvalidOperationException("A strategy briefing is already active.");
 
         activeBriefing = briefing;
-        briefingCancellation = new CancellationTokenSource();
+        briefingCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            presentationCancellationToken
+        );
         completed = onCompleted;
         segmentIndex = 0;
         UIContext uiContext = getUIContext();
@@ -241,10 +250,17 @@ public sealed class StrategyBriefingController
 
             BeginSegmentPlayback(segment);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested
+                || presentationCancellationToken.IsCancellationRequested
+            ) { }
         catch (Exception exception)
         {
-            if (cancellationToken.IsCancellationRequested || activeBriefing != briefing)
+            if (
+                cancellationToken.IsCancellationRequested
+                || presentationCancellationToken.IsCancellationRequested
+                || activeBriefing != briefing
+            )
                 return;
 
             Debug.LogException(exception);
@@ -411,6 +427,28 @@ public sealed class StrategyBriefingController
             : factionView
                 .GetChildren<ISceneNode>(recursive: true, includeDisabled: true)
                 .FirstOrDefault(node => node.InstanceID == instanceId);
+    }
+
+    /// <summary>
+    /// Abandons managed briefing state without touching outgoing views or reporting completion.
+    /// </summary>
+    private void Abandon()
+    {
+        activeBriefing = null;
+        completed = null;
+        segmentIndex = 0;
+    }
+
+    /// <summary>
+    /// Releases cancellation resources owned by the briefing coordinator.
+    /// </summary>
+    public void Dispose()
+    {
+        presentationCancellationRegistration.Dispose();
+        briefingCancellation?.Cancel();
+        briefingCancellation?.Dispose();
+        briefingCancellation = null;
+        Abandon();
     }
 
     /// <summary>
