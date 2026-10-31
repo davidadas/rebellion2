@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -587,6 +590,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(ship.InstanceID, destinationItemId);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OnTargetSelected_OriginatingPresentationReplaced_DoesNotInvalidatePresentationAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(
+                _facilityActions,
+                _facilityActions,
+                _trackingActions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            GameFleet fleet = new()
+            {
+                InstanceID = "destination-fleet",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(fleet, _planet.Planet);
+            BeginManufacturingDestinationTargeting(view, window);
+            Assert.IsTrue(
+                _targetingController.TrySelectTarget(new StrategyMissionTarget(_planet, fleet))
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+            int dirtyCount = _dirtyCount;
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+        }
+
         [Test]
         public void OnContextMenuCommandSelected_ManufacturingStopConfirmed_ResetsDestinationToProducerPlanet()
         {
@@ -645,10 +689,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
-        private FacilityWindowController CreateController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private FacilityWindowController CreateController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new FacilityWindowController(
-                TestPlayerRequests.Create(_session, () => _playerFactionId),
+                playerRequests ?? TestPlayerRequests.Create(_session, () => _playerFactionId),
                 _constructionController,
                 () => _uiContext,
                 _targetingController,

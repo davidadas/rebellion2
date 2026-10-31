@@ -5,7 +5,7 @@ using Rebellion.Game.PlayerRequests;
 namespace Rebellion.PlayerRequests
 {
     /// <summary>
-    /// Executes single-player requests immediately through the same player-request boundary.
+    /// Executes single-player requests through the session's writable command boundary.
     /// </summary>
     internal sealed class LocalPlayerRequestDispatcher : IPlayerRequestDispatcher
     {
@@ -14,7 +14,7 @@ namespace Rebellion.PlayerRequests
         private readonly Action _stateChanged;
 
         /// <summary>
-        /// Binds immediate request execution to the active session and its local player.
+        /// Binds request execution to the active session and its local player.
         /// </summary>
         /// <param name="executor">The active session's domain executor.</param>
         /// <param name="getActorFactionID">The application's local player binding.</param>

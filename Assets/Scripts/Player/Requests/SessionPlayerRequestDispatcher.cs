@@ -31,7 +31,7 @@ namespace Rebellion.PlayerRequests
         /// Forwards a current session's request to its execution owner without applying it locally.
         /// </summary>
         /// <param name="request">The typed request submitted by an existing window.</param>
-        /// <returns>The owner's execution outcome, or rejection after the originating session ends.</returns>
+        /// <returns>The owner's execution outcome, or rejection when submission follows session end.</returns>
         public Task<PlayerRequestOutcome> ExecuteAsync(PlayerRequest request)
         {
             return _isSessionActive()

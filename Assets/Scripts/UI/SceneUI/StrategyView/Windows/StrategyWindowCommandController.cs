@@ -27,7 +27,7 @@ public sealed class StrategyWindowCommandController
     private readonly IRandomNumberProvider presentationRandom = new SystemRandomProvider(
         Environment.TickCount
     );
-    private readonly Func<string> getPlayerFactionId;
+    private readonly Func<UIContext> getUIContext;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -43,7 +43,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="services">Resolves commands and queries for the active game.</param>
     /// <param name="playerRequests">Completes player orders through the session action boundary.</param>
-    /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
+    /// <param name="getUIContext">Returns the active presentation context, or null after it ends.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
@@ -56,7 +56,7 @@ public sealed class StrategyWindowCommandController
         ConfirmDialogWindowController confirmDialogWindowController,
         IServiceLocator services,
         IPlayerRequestDispatcher playerRequests,
-        Func<string> getPlayerFactionId,
+        Func<UIContext> getUIContext,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
@@ -75,8 +75,7 @@ public sealed class StrategyWindowCommandController
         this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.playerRequests =
             playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
-        this.getPlayerFactionId =
-            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -184,11 +183,12 @@ public sealed class StrategyWindowCommandController
         IReadOnlyList<ISceneNode> items
     )
     {
+        GameRoot requestGame = getUIContext()?.Game;
         List<ISceneNode> sourceItems = CopyItems(items);
         if (!await TryMoveAsync(target, sourceItems))
             return false;
 
-        RefreshAfterMutation(sourceWindow);
+        RefreshAfterMutation(sourceWindow, requestGame);
         return true;
     }
 
@@ -241,9 +241,10 @@ public sealed class StrategyWindowCommandController
             transitTimeInDays,
             async () =>
             {
+                GameRoot requestGame = getUIContext()?.Game;
                 bool moved = await TryMoveAsync(target, sourceItems);
                 if (moved)
-                    RefreshAfterMutation(sourceWindow);
+                    RefreshAfterMutation(sourceWindow, requestGame);
                 return moved;
             }
         );
@@ -287,6 +288,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the route was committed.</returns>
     public async Task<bool> TryCommitFleetWaypointPlanAsync(StrategyWindowTargetingSource source)
     {
+        GameRoot requestGame = getUIContext()?.Game;
         if (
             source?.Action != StrategyMenuAction.WaypointMove
             || !(
@@ -301,7 +303,7 @@ public sealed class StrategyWindowCommandController
         )
             return false;
 
-        RefreshAfterWaypointMutation();
+        RefreshAfterWaypointMutation(requestGame);
         return true;
     }
 
@@ -326,6 +328,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when at least one waypoint was cleared.</returns>
     public async Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items)
     {
+        GameRoot requestGame = getUIContext()?.Game;
         if (
             !(
                 await playerRequests.ExecuteAsync(
@@ -338,7 +341,7 @@ public sealed class StrategyWindowCommandController
         )
             return false;
 
-        RefreshAfterWaypointMutation();
+        RefreshAfterWaypointMutation(requestGame);
         return true;
     }
 
@@ -387,6 +390,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             async () =>
             {
+                GameRoot requestGame = getUIContext()?.Game;
                 List<IManufacturable> manufacturables = sourceItems
                     .OfType<IManufacturable>()
                     .ToList();
@@ -402,7 +406,7 @@ public sealed class StrategyWindowCommandController
                     ).Accepted
                 )
                 {
-                    RefreshAfterMutation(sourceWindow);
+                    RefreshAfterMutation(sourceWindow, requestGame);
                     return true;
                 }
                 return false;
@@ -427,6 +431,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             async () =>
             {
+                GameRoot requestGame = getUIContext()?.Game;
                 List<IManufacturable> manufacturables = sourceItems
                     .OfType<IManufacturable>()
                     .ToList();
@@ -442,8 +447,9 @@ public sealed class StrategyWindowCommandController
                     ).Accepted
                 )
                 {
-                    onStopped?.Invoke();
-                    RefreshAfterMutation(sourceWindow);
+                    if (IsCurrentGame(requestGame))
+                        onStopped?.Invoke();
+                    RefreshAfterMutation(sourceWindow, requestGame);
                     return true;
                 }
                 return false;
@@ -466,6 +472,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             async () =>
             {
+                GameRoot requestGame = getUIContext()?.Game;
                 if (
                     (
                         await playerRequests.ExecuteAsync(
@@ -477,7 +484,7 @@ public sealed class StrategyWindowCommandController
                     ).Accepted
                 )
                 {
-                    RefreshAfterMutation(sourceWindow);
+                    RefreshAfterMutation(sourceWindow, requestGame);
                     return true;
                 }
                 return false;
@@ -536,8 +543,9 @@ public sealed class StrategyWindowCommandController
                     ItemIDs = items?.Select(item => item?.InstanceID).ToArray(),
                     DestinationID = destination?.InstanceID,
                 };
+        GameRoot requestGame = getUIContext()?.Game;
         bool moved = (await playerRequests.ExecuteAsync(action)).Accepted;
-        if (moved)
+        if (moved && IsCurrentGame(requestGame))
             PlayMoveVoice(items);
 
         return moved;
@@ -661,6 +669,7 @@ public sealed class StrategyWindowCommandController
         if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
             return false;
 
+        GameRoot requestGame = getUIContext()?.Game;
         string voicePath = GetMissionAbortVoicePath(missions);
         if (
             !(
@@ -671,11 +680,14 @@ public sealed class StrategyWindowCommandController
         )
             return false;
 
+        if (!IsCurrentGame(requestGame))
+            return true;
+
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
 
         if (sourceWindow != null)
-            RefreshAfterMutation(sourceWindow);
+            RefreshAfterMutation(sourceWindow, requestGame);
         else
         {
             rebuildSnapshot();
@@ -705,8 +717,12 @@ public sealed class StrategyWindowCommandController
     /// Clears source selection and refreshes strategy state after a domain mutation.
     /// </summary>
     /// <param name="sourceWindow">The window that owned the selection.</param>
-    private void RefreshAfterMutation(UIWindow sourceWindow)
+    /// <param name="requestGame">The game owning the completed request.</param>
+    private void RefreshAfterMutation(UIWindow sourceWindow, GameRoot requestGame)
     {
+        if (!IsCurrentGame(requestGame))
+            return;
+
         clearWindowSelection(sourceWindow);
         rebuildSnapshot();
         markDirty();
@@ -715,10 +731,24 @@ public sealed class StrategyWindowCommandController
     /// <summary>
     /// Rebuilds route projection without clearing the selection used by repeated waypoint targeting.
     /// </summary>
-    private void RefreshAfterWaypointMutation()
+    /// <param name="requestGame">The game owning the completed request.</param>
+    private void RefreshAfterWaypointMutation(GameRoot requestGame)
     {
+        if (!IsCurrentGame(requestGame))
+            return;
+
         rebuildSnapshot();
         markDirty();
+    }
+
+    /// <summary>
+    /// Checks whether a completed request still belongs to the active presentation.
+    /// </summary>
+    /// <param name="requestGame">The game captured before submitting the request.</param>
+    /// <returns>True when the originating game is still being presented.</returns>
+    private bool IsCurrentGame(GameRoot requestGame)
+    {
+        return requestGame != null && ReferenceEquals(requestGame, getUIContext()?.Game);
     }
 
     /// <summary>
@@ -727,7 +757,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getPlayerFactionId() ?? string.Empty;
+        return getUIContext()?.GetPlayerFactionInstanceID() ?? string.Empty;
     }
 
     /// <summary>

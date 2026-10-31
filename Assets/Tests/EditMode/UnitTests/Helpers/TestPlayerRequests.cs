@@ -16,7 +16,7 @@ public static class TestPlayerRequests
     /// </summary>
     /// <param name="session">The fixture-owned game session.</param>
     /// <param name="getActorFactionID">The explicit actor, or the game's configured player.</param>
-    /// <returns>The immediate domain dispatcher.</returns>
+    /// <returns>The session-bound domain dispatcher.</returns>
     public static IPlayerRequestDispatcher Create(
         GameSession session,
         Func<string> getActorFactionID = null
@@ -34,7 +34,7 @@ public static class TestPlayerRequests
     /// </summary>
     /// <param name="game">The fixture graph whose entities remain shared with the view.</param>
     /// <param name="getActorFactionID">The explicit actor, or the game's configured player.</param>
-    /// <returns>The immediate domain dispatcher.</returns>
+    /// <returns>The session-bound domain dispatcher.</returns>
     public static IPlayerRequestDispatcher Create(
         GameRoot game,
         Func<string> getActorFactionID = null

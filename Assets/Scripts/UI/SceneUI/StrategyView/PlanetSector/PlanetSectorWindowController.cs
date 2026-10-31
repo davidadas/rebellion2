@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -923,6 +924,7 @@ public sealed class PlanetSectorWindowController
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
                 : new List<ISceneNode>();
+        GameRoot requestGame = getUIContext()?.Game;
         CombatReport report = await fleetCommandController.ExecutePlanetaryCombatAsync(
             items,
             hit?.Planet,
@@ -931,8 +933,16 @@ public sealed class PlanetSectorWindowController
         if (report == null)
             return false;
 
-        actions.RefreshPlanetSectorState();
-        actions.OpenPlanetSectorBattleResult(report);
+        if (
+            view != null
+            && sessions.TryGetValue(view, out PlanetSectorWindowSession currentSession)
+            && ReferenceEquals(session, currentSession)
+            && ReferenceEquals(requestGame, getUIContext()?.Game)
+        )
+        {
+            actions.RefreshPlanetSectorState();
+            actions.OpenPlanetSectorBattleResult(report);
+        }
         return true;
     }
 

@@ -48,6 +48,7 @@ public sealed class MissionCreateWindowController
         new HashSet<MissionCreateWindowView>();
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<bool> getShowMissionOdds;
+    private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
@@ -94,6 +95,7 @@ public sealed class MissionCreateWindowController
         this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.playerRequests =
             playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -361,7 +363,17 @@ public sealed class MissionCreateWindowController
         try
         {
             session.Window.RequestFocus();
-            if (await TryStartMissionAsync(session))
+            GameRoot requestGame = getUIContext()?.Game;
+            bool started = await TryStartMissionAsync(session);
+            if (
+                view == null
+                || !sessions.TryGetValue(view, out MissionCreateWindowSession currentSession)
+                || !ReferenceEquals(session, currentSession)
+                || !ReferenceEquals(requestGame, getUIContext()?.Game)
+            )
+                return;
+
+            if (started)
             {
                 actions.RefreshAfterMissionCreation();
                 closeWindow(session.Window);
@@ -640,6 +652,7 @@ public sealed class MissionCreateWindowController
             missionPlanet,
             session.Target.Item
         );
+        GameRoot requestGame = getUIContext()?.Game;
         if (
             !services.GetService<MissionQueries>().CanCreateMission(context)
             || !(
@@ -663,7 +676,8 @@ public sealed class MissionCreateWindowController
         )
             return false;
 
-        PlayMissionStartVoice(context.MainParticipants, context.DecoyParticipants);
+        if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
+            PlayMissionStartVoice(context.MainParticipants, context.DecoyParticipants);
         return true;
     }
 

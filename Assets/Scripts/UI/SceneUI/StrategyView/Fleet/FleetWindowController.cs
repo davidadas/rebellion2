@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.PlayerRequests;
@@ -704,11 +705,15 @@ public sealed class FleetWindowController
         IReadOnlyList<ISceneNode> items
     )
     {
+        GameRoot requestGame = getUIContext()?.Game;
         if (!await fleetCommandController.TryCreateFleetFromCapitalShipsAsync(items))
             return false;
 
-        ClearSelection(sourceWindow);
-        actions.RefreshFleetState();
+        if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
+        {
+            ClearSelection(sourceWindow);
+            actions.RefreshFleetState();
+        }
         return true;
     }
 
@@ -733,6 +738,7 @@ public sealed class FleetWindowController
         if (targetPlanet == null)
             return false;
 
+        GameRoot requestGame = getUIContext()?.Game;
         CombatReport report = await fleetCommandController.ExecutePlanetaryCombatAsync(
             items,
             targetPlanet,
@@ -741,8 +747,11 @@ public sealed class FleetWindowController
         if (report == null)
             return false;
 
-        actions.RefreshFleetState();
-        actions.OpenFleetBattleResult(report);
+        if (windowLayer != null && ReferenceEquals(requestGame, getUIContext()?.Game))
+        {
+            actions.RefreshFleetState();
+            actions.OpenFleetBattleResult(report);
+        }
         return true;
     }
 
@@ -1365,6 +1374,7 @@ public sealed class FleetWindowController
         if (!TryGetSession(view, out FleetWindowSession session))
             return;
 
+        GameRoot requestGame = getUIContext()?.Game;
         if (session.RenameTarget != null && !string.IsNullOrEmpty(value))
         {
             PlayerRequestOutcome result = await playerRequests.ExecuteAsync(
@@ -1373,6 +1383,14 @@ public sealed class FleetWindowController
             if (!result.Accepted)
                 return;
         }
+        if (
+            view == null
+            || !TryGetSession(view, out FleetWindowSession currentSession)
+            || !ReferenceEquals(session, currentSession)
+            || !ReferenceEquals(requestGame, getUIContext()?.Game)
+        )
+            return;
+
         session.EndRename();
         markDirty();
     }

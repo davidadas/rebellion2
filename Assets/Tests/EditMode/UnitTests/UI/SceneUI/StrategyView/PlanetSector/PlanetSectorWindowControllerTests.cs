@@ -10,9 +10,11 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -617,6 +619,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryExecutePlanetaryCombatAsync_OriginatingPresentationReplaced_DoesNotOpenReportAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _fleetCommandController = CreateFleetCommandController(dispatcher);
+            _controller = CreateController();
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { }, _ => { });
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            CaptureFleetContext(view, window);
+            Task<bool> action = _controller.TryExecutePlanetaryCombatAsync(
+                view,
+                StrategyMenuAction.PlanetaryAssault
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+
+            completion.SetResult(new PlayerRequestOutcome(true, combatReport: new CombatReport()));
+            Assert.IsTrue(await action);
+
+            Assert.IsNull(_actions.LastBattleResult);
+        }
+
         [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
@@ -1026,12 +1058,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Creates fleet command controller.
         /// </summary>
         /// <returns>The created fleet command controller.</returns>
-        private StrategyFleetCommandController CreateFleetCommandController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private StrategyFleetCommandController CreateFleetCommandController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new StrategyFleetCommandController(
                 _session,
                 () => _game.GetPlayerFaction().InstanceID,
-                TestPlayerRequests.Create(_session, () => _game.GetPlayerFaction().InstanceID)
+                playerRequests
+                    ?? TestPlayerRequests.Create(
+                        _session,
+                        () => _game.GetPlayerFaction().InstanceID
+                    )
             );
         }
 

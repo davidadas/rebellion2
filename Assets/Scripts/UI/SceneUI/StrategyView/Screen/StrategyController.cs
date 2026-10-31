@@ -791,7 +791,7 @@ public sealed class StrategyController
             confirmDialogWindowController,
             session,
             runtime.PlayerRequests,
-            () => uiContext.GetPlayerFactionInstanceID(),
+            () => this != null ? uiContext : null,
             PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,

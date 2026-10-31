@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
@@ -439,6 +440,7 @@ public sealed class FacilityWindowController
         if (!manufacturingType.HasValue)
             return;
 
+        GameRoot requestGame = getUIContext()?.Game;
         Planet planet = session.Planet?.Planet;
         if (
             !(
@@ -453,7 +455,8 @@ public sealed class FacilityWindowController
         )
             return;
 
-        actions.RefreshFacilityState();
+        if (IsCurrentSession(view, session, requestGame))
+            actions.RefreshFacilityState();
     }
 
     /// <summary>
@@ -871,6 +874,7 @@ public sealed class FacilityWindowController
         if (destinationItem == null)
             destinationItemId = null;
 
+        GameRoot requestGame = getUIContext()?.Game;
         Planet producer = session.Planet?.Planet;
         if (
             destination == null
@@ -889,6 +893,9 @@ public sealed class FacilityWindowController
         {
             return;
         }
+
+        if (!IsCurrentSession(source.View, session, requestGame))
+            return;
 
         session.SetDestination(type.Value, destinationPlanetId, destinationItemId);
 
@@ -1187,6 +1194,25 @@ public sealed class FacilityWindowController
 
         session.SetActiveTab(tab);
         markDirty();
+    }
+
+    /// <summary>
+    /// Checks whether a completed request still belongs to the same open facility session.
+    /// </summary>
+    /// <param name="view">The view that submitted the request.</param>
+    /// <param name="session">The session captured before submission.</param>
+    /// <param name="requestGame">The game owning the request.</param>
+    /// <returns>True when the originating view, session, and game remain current.</returns>
+    private bool IsCurrentSession(
+        FacilityWindowView view,
+        FacilityWindowSession session,
+        GameRoot requestGame
+    )
+    {
+        return view != null
+            && sessions.TryGetValue(view, out FacilityWindowSession currentSession)
+            && ReferenceEquals(session, currentSession)
+            && ReferenceEquals(requestGame, getUIContext()?.Game);
     }
 
     /// <summary>

@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
@@ -284,6 +287,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task RequestStart_OriginatingPresentationReplaced_DoesNotRefreshItAsync(
+            bool replaceGame
+        )
+        {
+            SetBuildTemplates();
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(_actions);
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            view.RequestStart();
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.Zero(_actions.RefreshCount);
+        }
+
+        [Test]
+        public async Task RequestStart_DestroyedViewReceivesRejection_DoesNotInvalidatePresentationAsync()
+        {
+            SetBuildTemplates();
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            _controller = CreateController(
+                new RecordingPlayerRequestDispatcher(_ => completion.Task)
+            );
+            _controller.Initialize(_actions);
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            view.RequestStart();
+            _windowManager.DestroyWindow(window);
+            int dirtyBeforeCompletion = _dirtyCount;
+
+            completion.SetResult(new PlayerRequestOutcome(false));
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyBeforeCompletion, _dirtyCount);
+        }
+
         [Test]
         public void OpenFromAdvisor_AfterSuccessfulOrder_RemembersProductAcrossPlanets()
         {
@@ -495,11 +543,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
-        private ConstructionWindowController CreateController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private ConstructionWindowController CreateController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new ConstructionWindowController(
                 _session,
-                TestPlayerRequests.Create(_session, () => _playerFactionId),
+                playerRequests ?? TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
@@ -582,6 +633,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         private sealed class TestActions : IConstructionWindowActions
         {
+            public int RefreshCount { get; private set; }
+
             /// <summary>
             /// Opens construction info.
             /// </summary>
@@ -597,7 +650,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             /// <summary>
             /// Refreshes after construction.
             /// </summary>
-            public void RefreshAfterConstruction() { }
+            public void RefreshAfterConstruction() => RefreshCount++;
         }
     }
 }

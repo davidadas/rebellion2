@@ -133,7 +133,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     confirmController,
                     _session,
                     TestPlayerRequests.Create(_session, () => _playerFactionId),
-                    () => _playerFactionId,
+                    () => _uiContext,
                     _ => { },
                     _ => { },
                     () => { },
@@ -876,6 +876,139 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _rebuildCount);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryExecuteMoveAsync_OriginatingPresentationReplaced_DoesNotRefreshOrPlayVoiceAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _officer.VoiceSet.OrderPaths.Add("officer-order");
+            Task<bool> pending = _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _playedSfxCount);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryCommitFleetWaypointPlanAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            StrategyWindowTargetingSource source = new(
+                _sourceWindow,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new ISceneNode[] { CreateOperationalFleet() }
+            );
+            source.TryAppendWaypoint(_destination.Planet.InstanceID);
+            Task<bool> pending = _controller.TryCommitFleetWaypointPlanAsync(source);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ClearFleetWaypointsAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            Task<bool> pending = _controller.ClearFleetWaypointsAsync(
+                new ISceneNode[] { CreateOperationalFleet() }
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OpenStopConstructionConfirmWindow_OriginatingPresentationReplaced_DoesNotInvokeCallbackAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _specialForces.ManufacturingStatus = ManufacturingStatus.Building;
+            int callbackCount = 0;
+            _controller.OpenStopConstructionConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { _specialForces },
+                () => callbackCount++
+            );
+            ConfirmOpenDialog();
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.AreEqual(0, callbackCount);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryAbortMissionAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            DiplomacyMission mission = CreateWorkingMission("mission", _officer);
+            Task<bool> pending = _controller.TryAbortMissionAsync(mission.InstanceID);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        /// <summary>
+        /// Replaces the displayed game or ends presentation before an order completes.
+        /// </summary>
+        /// <param name="replaceGame">Whether a replacement game remains displayed.</param>
+        private void ReplacePresentation(bool replaceGame)
+        {
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame(out _, out _, out _));
+            else
+                _uiContext = null;
+        }
+
         /// <summary>
         /// Creates the shared controller with an explicit execution-completion boundary.
         /// </summary>
@@ -899,7 +1032,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 confirmController,
                 _session,
                 playerRequests,
-                () => _playerFactionId,
+                () => _uiContext,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,

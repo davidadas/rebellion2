@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -549,6 +550,7 @@ public sealed class ConstructionWindowController
         try
         {
             session.Window.RequestFocus();
+            GameRoot requestGame = getUIContext()?.Game;
             string playerFactionId = GetPlayerFactionID();
             IManufacturable selected = session.SelectedItem;
             FacilityWindowTab manufacturingTab = session.ManufacturingTab;
@@ -558,6 +560,14 @@ public sealed class ConstructionWindowController
                 selected,
                 session.BuildCount
             );
+            if (
+                view == null
+                || !sessions.TryGetValue(view, out ConstructionWindowSession currentSession)
+                || !ReferenceEquals(session, currentSession)
+                || !ReferenceEquals(requestGame, getUIContext()?.Game)
+            )
+                return;
+
             if (started)
             {
                 lastOrderedItemTypeIds[(playerFactionId, manufacturingTab)] = selected.GetTypeID();
