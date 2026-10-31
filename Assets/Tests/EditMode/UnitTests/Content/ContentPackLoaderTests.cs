@@ -189,6 +189,49 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void DiscoverInstalledPacks_MalformedPack_PreservesIssueWithoutBreakingValidPack()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-discovery-" + Guid.NewGuid().ToString("N")
+            );
+            WritePackDefinition(contentRoot, "Valid", "valid-pack", null);
+            string brokenPackRoot = Path.Combine(contentRoot, "Packs", "KelMod");
+            Directory.CreateDirectory(brokenPackRoot);
+            File.WriteAllText(
+                Path.Combine(brokenPackRoot, "pack.xml"),
+                "<ContentPack><ID>KelMod</ID>"
+            );
+            try
+            {
+                InstalledContentPack[] installed = ContentPackLoader
+                    .DiscoverInstalledPacks(contentRoot)
+                    .ToArray();
+
+                Assert.AreEqual(2, installed.Length);
+                InstalledContentPack broken = installed.Single(pack => pack.ID == "KelMod");
+                Assert.AreEqual("KelMod", broken.DisplayName);
+                Assert.IsNull(broken.Definition);
+                Assert.IsNotEmpty(broken.ErrorMessage);
+                CollectionAssert.AreEqual(
+                    new[] { "valid-pack" },
+                    ContentPackLoader.DiscoverPacks(contentRoot).Select(pack => pack.ID).ToArray()
+                );
+                Assert.DoesNotThrow(() =>
+                    ContentPackLoader.DiscoverModResolver(
+                        contentRoot,
+                        "valid-pack",
+                        Array.Empty<string>()
+                    )
+                );
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void DiscoverModResolver_DerivedPackMissingFile_UsesBasePackFile()
         {
             string contentRoot = CreateDerivedPackFixture(
@@ -232,6 +275,35 @@ namespace Rebellion.Tests.Content
                         Array.Empty<string>()
                     )
                 );
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
+        public void TryDiscoverModResolver_PackInheritanceCycle_ReturnsContentError()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-safe-discovery-" + Guid.NewGuid().ToString("N")
+            );
+            WritePackDefinition(contentRoot, "First", "first-pack", "second-pack");
+            WritePackDefinition(contentRoot, "Second", "second-pack", "first-pack");
+            try
+            {
+                bool discovered = ContentPackLoader.TryDiscoverModResolver(
+                    contentRoot,
+                    "first-pack",
+                    Array.Empty<string>(),
+                    out ContentFileResolver resolver,
+                    out string errorMessage
+                );
+
+                Assert.IsFalse(discovered);
+                Assert.IsNull(resolver);
+                StringAssert.Contains("cycle", errorMessage);
             }
             finally
             {

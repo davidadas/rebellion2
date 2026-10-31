@@ -26,6 +26,8 @@ public sealed class OptionsModRow
     public string DisplayName { get; }
     public bool Enabled { get; }
     public bool Loaded { get; }
+    public string ErrorMessage { get; }
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     /// <summary>
     /// Creates a loaded-mod row.
@@ -35,12 +37,14 @@ public sealed class OptionsModRow
     /// <param name="displayName">The player-facing mod name.</param>
     /// <param name="enabled">Whether the player wants the mod enabled after restarting.</param>
     /// <param name="loaded">Whether the mod is loaded in the current process.</param>
+    /// <param name="errorMessage">The reason the mod could not be loaded, if any.</param>
     public OptionsModRow(
         string id,
         string version,
         string displayName,
         bool enabled = true,
-        bool loaded = true
+        bool loaded = true,
+        string errorMessage = ""
     )
     {
         ID = id ?? string.Empty;
@@ -48,6 +52,7 @@ public sealed class OptionsModRow
         DisplayName = displayName ?? string.Empty;
         Enabled = enabled;
         Loaded = loaded;
+        ErrorMessage = errorMessage ?? string.Empty;
     }
 }
 
@@ -181,6 +186,8 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyList<OptionsModRow> Mods { get; }
     public string ContentPackLabel { get; }
     public bool ShowModsTab { get; }
+    public string StatusMessage { get; }
+    public bool StatusIsError { get; }
 
     public bool HasActiveGame { get; }
     public bool CanSave { get; }
@@ -213,6 +220,8 @@ public sealed class OptionsMenuRenderData
     /// <param name="showModsTab">Whether the host exposes content management.</param>
     /// <param name="graphicsValues">The current graphics values keyed by setting.</param>
     /// <param name="analyticsEnabled">Whether analytics collection is enabled.</param>
+    /// <param name="statusMessage">The result of the most recent settings action.</param>
+    /// <param name="statusIsError">Whether the settings status represents an error.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -238,7 +247,9 @@ public sealed class OptionsMenuRenderData
         string contentPackLabel = "",
         bool showModsTab = true,
         IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> graphicsValues = null,
-        bool analyticsEnabled = false
+        bool analyticsEnabled = false,
+        string statusMessage = "",
+        bool statusIsError = false
     )
     {
         X = x;
@@ -262,6 +273,8 @@ public sealed class OptionsMenuRenderData
         Mods = mods ?? Array.Empty<OptionsModRow>();
         ContentPackLabel = contentPackLabel ?? string.Empty;
         ShowModsTab = showModsTab;
+        StatusMessage = statusMessage ?? string.Empty;
+        StatusIsError = statusIsError;
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
         CanSave = canSave;

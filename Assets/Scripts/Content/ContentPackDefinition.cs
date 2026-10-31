@@ -77,6 +77,40 @@ public sealed class ContentPackDefinition
 }
 
 /// <summary>
+/// Describes one installed content-pack directory, including definitions that could not be read.
+/// </summary>
+internal sealed class InstalledContentPack
+{
+    internal string ID { get; }
+
+    internal string DisplayName { get; }
+
+    internal ContentPackDefinition Definition { get; }
+
+    internal string ErrorMessage { get; }
+
+    /// <summary>
+    /// Creates an installed content-pack description.
+    /// </summary>
+    /// <param name="id">The definition ID, or the directory name when unreadable.</param>
+    /// <param name="displayName">The player-facing pack name.</param>
+    /// <param name="definition">The parsed definition when available.</param>
+    /// <param name="errorMessage">The load error when the definition is unavailable.</param>
+    internal InstalledContentPack(
+        string id,
+        string displayName,
+        ContentPackDefinition definition,
+        string errorMessage
+    )
+    {
+        ID = id;
+        DisplayName = displayName;
+        Definition = definition;
+        ErrorMessage = errorMessage;
+    }
+}
+
+/// <summary>
 /// Associates a preload group identifier with its manifest.
 /// </summary>
 public sealed class ContentPreloadDefinition
