@@ -122,10 +122,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform page = (RectTransform)overlay.Find("ConsentPage");
             Assert.AreEqual(new Vector2(0f, 1f), page.anchorMin);
             Assert.AreEqual(new Vector2(0f, 1f), page.anchorMax);
-            Assert.AreEqual(new Vector2(247f, -148f), page.anchoredPosition);
-            Assert.AreEqual(new Vector2(360f, 185f), page.sizeDelta);
+            Assert.AreEqual(new Vector2(277f, -163f), page.anchoredPosition);
+            Assert.AreEqual(new Vector2(300f, 154f), page.sizeDelta);
             Assert.AreEqual(
-                new Vector2(358f, 183f),
+                new Vector2(298f, 152f),
                 ((RectTransform)page.Find("PanelFill")).sizeDelta
             );
 
@@ -149,8 +149,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform allowButton = (RectTransform)page.Find("AllowButton");
             RectTransform declineButton = (RectTransform)page.Find("DeclineButton");
             Assert.AreEqual(allowButton.anchoredPosition.y, declineButton.anchoredPosition.y);
-            Assert.AreEqual(new Vector2(153f, 28f), allowButton.sizeDelta);
-            Assert.AreEqual(new Vector2(139f, 28f), declineButton.sizeDelta);
+            Assert.AreEqual(new Vector2(128f, 23f), allowButton.sizeDelta);
+            Assert.AreEqual(new Vector2(116f, 23f), declineButton.sizeDelta);
             Assert.IsNotNull(
                 allowButton.Find("SurfaceMask/Surface").GetComponent<VerticalGradientEffect>()
             );
