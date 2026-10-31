@@ -233,6 +233,14 @@ namespace Rebellion.Tests.Util.Serialization
     }
 
     [PersistableObject]
+    public class ItemWithIgnoredInlineCollection
+    {
+        [PersistableIgnore]
+        [PersistableInlineCollection]
+        public List<ITestItem> Items { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
     public class ItemWithInvalidInlineCollection
     {
         [PersistableInlineCollection]
@@ -290,6 +298,188 @@ namespace Rebellion.Tests.Util.Serialization
     [TestFixture]
     public class GameSerializerTests
     {
+        [Test]
+        public void Deserialize_RuntimeTypeNamedMember_RestoresConcreteValue()
+        {
+            GameSerializer serializer = new(typeof(ItemWithRuntimeTypeName));
+            ItemWithRuntimeTypeName source = new()
+            {
+                Value = new SimpleItem { Name = "concrete value", Value = 42 },
+            };
+
+            ItemWithRuntimeTypeName restored = (ItemWithRuntimeTypeName)DeserializeFromString(
+                serializer,
+                SerializeToString(serializer, source)
+            );
+
+            Assert.That(restored.Value, Is.TypeOf<SimpleItem>());
+            Assert.That(((SimpleItem)restored.Value).Name, Is.EqualTo("concrete value"));
+            Assert.That(((SimpleItem)restored.Value).Value, Is.EqualTo(42));
+        }
+
+        [Test]
+        public void Serialize_MemberValueProvider_OverridesNestedValuesWithoutChangingSource()
+        {
+            NestedItem source = new()
+            {
+                Items = new List<SimpleItem>
+                {
+                    new SimpleItem { Name = "source", AttributeVariable = "source" },
+                },
+            };
+            GameSerializer serializer = new(
+                typeof(NestedItem),
+                new GameSerializerSettings
+                {
+                    MemberValueProvider = (member, target) =>
+                        member.Name
+                            is nameof(SimpleItem.Name)
+                                or nameof(SimpleItem.AttributeVariable)
+                            ? "encoded"
+                            : ReflectionHelper.GetMemberValue(member, target),
+                }
+            );
+
+            NestedItem restored = (NestedItem)DeserializeFromString(
+                serializer,
+                SerializeToString(serializer, source)
+            );
+
+            Assert.That(restored.Items[0].Name, Is.EqualTo("encoded"));
+            Assert.That(restored.Items[0].AttributeVariable, Is.EqualTo("encoded"));
+            Assert.That(source.Items[0].Name, Is.EqualTo("source"));
+            Assert.That(source.Items[0].AttributeVariable, Is.EqualTo("source"));
+        }
+
+        [Test]
+        public void Serialize_MemberValueProviderReturnsNull_OmitsValue()
+        {
+            GameSerializer serializer = new(
+                typeof(SimpleItem),
+                new GameSerializerSettings
+                {
+                    MemberValueProvider = (member, target) =>
+                        member.Name == nameof(SimpleItem.Name)
+                            ? null
+                            : ReflectionHelper.GetMemberValue(member, target),
+                }
+            );
+
+            string xml = SerializeToString(serializer, new SimpleItem { Name = "source" });
+
+            Assert.That(LoadDocument(xml).DocumentElement.SelectSingleNode("Name"), Is.Null);
+        }
+
+        [Test]
+        public void Deserialize_SecondRoot_RejectsDocument()
+        {
+            GameSerializer serializer = new(typeof(SimpleItem));
+
+            Assert.Throws<XmlException>(() =>
+                DeserializeFromString(serializer, "<SimpleItem /><SimpleItem />")
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Serialize_LineBreakPreservationEnabled_RoundTripsTextAndAttributeValues(
+            bool indent
+        )
+        {
+            SimpleItem item = new SimpleItem
+            {
+                Name = "First line\r\nSecond line\rThird line\nFourth line",
+                AttributeVariable = "First\r\nSecond\rThird\nFourth",
+            };
+            GameSerializer serializer = new GameSerializer(
+                typeof(SimpleItem),
+                new GameSerializerSettings
+                {
+                    Idendent = indent,
+                    IgnoreWhitespace = false,
+                    NewLineHandling = NewLineHandling.Entitize,
+                }
+            );
+
+            string xml = SerializeToString(serializer, item);
+            SimpleItem restored = (SimpleItem)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual(item.Name, restored.Name);
+            Assert.AreEqual(item.AttributeVariable, restored.AttributeVariable);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Serialize_WhitespacePreservationEnabled_RoundTripsNestedDictionaryText(
+            bool indent
+        )
+        {
+            ComplexItemWithDictionary item = new ComplexItemWithDictionary
+            {
+                StringObjectDict = new Dictionary<string, SimpleItem>
+                {
+                    {
+                        "key",
+                        new SimpleItem { Name = "\t\n  ", Value = 42 }
+                    },
+                },
+            };
+            GameSerializer serializer = new GameSerializer(
+                typeof(ComplexItemWithDictionary),
+                new GameSerializerSettings { Idendent = indent, IgnoreWhitespace = false }
+            );
+
+            string xml = SerializeToString(serializer, item);
+            ComplexItemWithDictionary restored = (ComplexItemWithDictionary)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            Assert.AreEqual(
+                item.StringObjectDict["key"].Name,
+                restored.StringObjectDict["key"].Name
+            );
+            Assert.AreEqual(42, restored.StringObjectDict["key"].Value);
+        }
+
+        [Test]
+        public void Serialize_CompactSettings_PreservesFormattedDocumentValues()
+        {
+            NestedItem item = new NestedItem
+            {
+                Identifier = "  leading and trailing  ",
+                Items = new List<SimpleItem>
+                {
+                    new SimpleItem
+                    {
+                        Name = "First line\nSecond <line> & value",
+                        Value = 42,
+                        AttributeVariable = "An attribute & value",
+                    },
+                    new SimpleItem { Name = string.Empty, Value = -7 },
+                },
+            };
+            GameSerializer formatted = new GameSerializer(typeof(NestedItem));
+            GameSerializer compact = new GameSerializer(
+                typeof(NestedItem),
+                new GameSerializerSettings { Idendent = false }
+            );
+
+            string formattedXml = SerializeToString(formatted, item);
+            string compactXml = SerializeToString(compact, item);
+            NestedItem restored = (NestedItem)DeserializeFromString(compact, compactXml);
+
+            Assert.AreEqual(LoadDocument(formattedXml).OuterXml, LoadDocument(compactXml).OuterXml);
+            StringAssert.Contains("<NestedItem><Identifier>", compactXml);
+            Assert.AreEqual(item.Identifier, restored.Identifier);
+            Assert.AreEqual(item.Items[0].Name, restored.Items[0].Name);
+            Assert.AreEqual(item.Items[0].AttributeVariable, restored.Items[0].AttributeVariable);
+            CollectionAssert.AreEqual(
+                item.Items.Select(value => value.Value),
+                restored.Items.Select(value => value.Value)
+            );
+        }
+
         [Test]
         public void Serialize_IncludedRuntimeTypeChanges_UsesCurrentElementName()
         {
@@ -417,6 +607,40 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(2, restored.Items.Count);
             Assert.AreEqual("first", restored.Items[0].Name);
             Assert.AreEqual("second", restored.Items[1].Name);
+        }
+
+        [Test]
+        public void Serialize_RepeatedInlineCollectionInstances_UsesCurrentInstanceValues()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
+            ItemWithInlineCollection first = new ItemWithInlineCollection();
+            first.Items.Add(new SimpleItem { Name = "first" });
+            ItemWithInlineCollection second = new ItemWithInlineCollection();
+            second.Items.Add(new SimpleItem { Name = "second" });
+
+            SerializeToString(serializer, first);
+            string xml = SerializeToString(serializer, second);
+
+            StringAssert.Contains("<Name>second</Name>", xml);
+            StringAssert.DoesNotContain("<Name>first</Name>", xml);
+        }
+
+        [Test]
+        public void Deserialize_PreviouslyWrittenIgnoredInlineCollection_PreservesReadOnlyCompatibility()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithIgnoredInlineCollection));
+            ItemWithIgnoredInlineCollection source = new ItemWithIgnoredInlineCollection();
+            source.Items.Add(new SimpleItem { Name = "omitted" });
+            string written = SerializeToString(serializer, source);
+            const string xml =
+                "<ItemWithIgnoredInlineCollection><SimpleItem><Name>loaded</Name></SimpleItem></ItemWithIgnoredInlineCollection>";
+
+            ItemWithIgnoredInlineCollection restored =
+                (ItemWithIgnoredInlineCollection)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual("loaded", restored.Items.Single().Name);
+            StringAssert.DoesNotContain("SimpleItem", written);
+            Assert.AreEqual(written, SerializeToString(serializer, restored));
         }
 
         [Test]

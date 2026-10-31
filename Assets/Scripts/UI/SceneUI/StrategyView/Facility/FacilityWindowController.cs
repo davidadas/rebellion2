@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
-using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -25,11 +27,6 @@ public interface IFacilityWindowActions
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
     void OpenFacilityInfo(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a facility command changes the game.
-    /// </summary>
-    void RefreshFacilityState();
 }
 
 /// <summary>
@@ -42,7 +39,7 @@ public sealed class FacilityWindowController
 {
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
-    private readonly IServiceLocator services;
+    private readonly IPlayerRequestDispatcher playerRequests;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<string, ISceneNode> findVisibleNode;
@@ -65,7 +62,7 @@ public sealed class FacilityWindowController
     /// <summary>
     /// Creates a facility feature controller.
     /// </summary>
-    /// <param name="services">Resolves the active game's manufacturing commands and state.</param>
+    /// <param name="playerRequests">Completes production requests through the session action boundary.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -76,7 +73,7 @@ public sealed class FacilityWindowController
     /// <param name="findVisibleNode">Finds a node in the faction-filtered galaxy view.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
-        IServiceLocator services,
+        IPlayerRequestDispatcher playerRequests,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -88,7 +85,8 @@ public sealed class FacilityWindowController
         Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
-        this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.playerRequests =
+            playerRequests ?? throw new ArgumentNullException(nameof(playerRequests));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.findVisibleNode =
             findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
@@ -360,7 +358,7 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="request">The completed context-menu request.</param>
     /// <param name="command">The selected context-menu command.</param>
-    public void OnContextMenuCommandSelected(
+    public async void OnContextMenuCommandSelected(
         ContextMenuRequest request,
         IContextMenuCommand command
     )
@@ -397,7 +395,7 @@ public sealed class FacilityWindowController
                 BeginContextTargeting(context, strategyCommand.Action);
                 break;
             case StrategyMenuAction.Reserve:
-                ToggleManufacturingReservation(view);
+                await ToggleManufacturingReservationAsync(view);
                 break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 ToggleManufacturingTracking(view);
@@ -424,7 +422,8 @@ public sealed class FacilityWindowController
     /// Toggles whether the advisor may use the represented manufacturing lane.
     /// </summary>
     /// <param name="view">The facility view whose manufacturing lane was selected.</param>
-    private void ToggleManufacturingReservation(FacilityWindowView view)
+    /// <returns>The pending reservation change.</returns>
+    private async Task ToggleManufacturingReservationAsync(FacilityWindowView view)
     {
         if (!TryGetSession(view, out FacilityWindowSession session))
             return;
@@ -437,16 +436,13 @@ public sealed class FacilityWindowController
             return;
 
         Planet planet = session.Planet?.Planet;
-        string playerFactionId = GetPlayerFactionID();
-        if (
-            services
-                .GetService<ManufacturingCommands>()
-                ?.ToggleManufacturingReservation(planet, manufacturingType.Value, playerFactionId)
-            != true
-        )
-            return;
-
-        actions.RefreshFacilityState();
+        await playerRequests.ExecuteAsync(
+            new ToggleManufacturingReservationRequest
+            {
+                ProducerPlanetID = planet?.InstanceID,
+                ManufacturingType = manufacturingType.Value,
+            }
+        );
     }
 
     /// <summary>
@@ -509,7 +505,7 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="request">The completed targeting request.</param>
     /// <param name="target">The selected strategy target.</param>
-    public void OnTargetSelected(TargetingRequest request, object target)
+    public async void OnTargetSelected(TargetingRequest request, object target)
     {
         if (
             request?.Source is not FacilityDestinationTargetingSource source
@@ -517,7 +513,7 @@ public sealed class FacilityWindowController
         )
             return;
 
-        SetManufacturingDestination(source, missionTarget);
+        await SetManufacturingDestinationAsync(source, missionTarget);
     }
 
     /// <summary>
@@ -838,7 +834,8 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="source">The destination targeting source.</param>
     /// <param name="target">The selected strategy target.</param>
-    private void SetManufacturingDestination(
+    /// <returns>The pending accepted delivery change.</returns>
+    private async Task SetManufacturingDestinationAsync(
         FacilityDestinationTargetingSource source,
         StrategyMissionTarget target
     )
@@ -863,22 +860,33 @@ public sealed class FacilityWindowController
         if (destinationItem == null)
             destinationItemId = null;
 
+        GameRoot requestGame = getUIContext()?.Game;
         Planet producer = session.Planet?.Planet;
-        string playerFactionId = GetPlayerFactionID();
-        ManufacturingCommands manufacturingSystem = services.GetService<ManufacturingCommands>();
         if (
             destination == null
             || producer == null
-            || manufacturingSystem?.RetargetManufacturingDestination(
-                producer,
-                type.Value,
-                destination,
-                playerFactionId
-            ) != true
+            || !(
+                await playerRequests.ExecuteAsync(
+                    new RetargetManufacturingRequest
+                    {
+                        ProducerPlanetID = producer.InstanceID,
+                        DestinationID = destination.InstanceID,
+                        ManufacturingType = type.Value,
+                    }
+                )
+            ).Accepted
         )
         {
             return;
         }
+
+        if (
+            source.View == null
+            || !TryGetSession(source.View, out FacilityWindowSession currentSession)
+            || !ReferenceEquals(session, currentSession)
+            || !ReferenceEquals(requestGame, getUIContext()?.Game)
+        )
+            return;
 
         session.SetDestination(type.Value, destinationPlanetId, destinationItemId);
 

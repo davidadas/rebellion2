@@ -23,6 +23,11 @@ namespace Rebellion.Gameplay
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
+        /// Gets whether completed operations still have gameplay reactions awaiting delivery.
+        /// </summary>
+        internal bool HasPendingResults => _pendingResults.Count > 0;
+
+        /// <summary>
         /// Creates a new ManufacturingCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>

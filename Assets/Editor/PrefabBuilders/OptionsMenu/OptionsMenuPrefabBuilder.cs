@@ -5,6 +5,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static MenuControlPrefabBuilder;
 using static MenuPrefabBuilder;
 
 /// <summary>
@@ -39,8 +40,6 @@ public static class OptionsMenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon";
     private const string _optionsKnobAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob";
-    private const string _contextMenuCheckMarkAddress =
-        "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
 
     /// <summary>
     /// Rebuilds the generated Options menu prefab.
@@ -116,7 +115,7 @@ public static class OptionsMenuPrefabBuilder
 
         BuildAudioPage(view, audioPage, accent, textColor);
 
-        BuildSaveLoadPage(view, saveLoadPage, accent, textColor, textDim);
+        BuildSaveLoadPage(view, saveLoadPage);
 
         BuildControlsPage(view, controlsPage, accent, textColor, textDim);
         BuildModsPage(view, modsPage, accent, textDim);
@@ -314,8 +313,7 @@ public static class OptionsMenuPrefabBuilder
             "GameLaunchSpeed",
             "Galaxy speed override",
             new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
-            162,
-            accent
+            162
         );
         OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
             gameplayPage,
@@ -563,8 +561,7 @@ public static class OptionsMenuPrefabBuilder
             "IdleBarLocation",
             "Idle Bar Location",
             new[] { "Top Right", "Top Left", "Bottom Right", "Bottom Left" },
-            44,
-            accent
+            44
         );
         UserInterfaceOption[] options =
         {
@@ -609,22 +606,16 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="label">The row label.</param>
     /// <param name="options">The dropdown options in presentation order.</param>
     /// <param name="y">The source-space row coordinate.</param>
-    /// <param name="accent">The Options accent color.</param>
     /// <returns>The generated dropdown.</returns>
     private static TMP_Dropdown CreateOptionsDropdownRow(
         Transform parent,
         string name,
         string label,
         IReadOnlyList<string> options,
-        int y,
-        Color accent
+        int y
     )
     {
-        const int controlWidth = 120;
-        const int controlRight = 349;
         const int controlHeight = 18;
-        const int itemHeight = 18;
-
         TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
         labelField.text = label;
         labelField.color = new Color(0.875f, 0.910f, 0.941f);
@@ -632,127 +623,12 @@ public static class OptionsMenuPrefabBuilder
         labelField.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(labelField.rectTransform, 20, y, 165, controlHeight);
 
-        Image surface = CreateSlicedImage(
-            $"{name}Dropdown",
+        return MenuControlPrefabBuilder.CreateDropdown(
             parent,
-            _menuBadgeAddress,
-            _badgeBorder,
-            controlRight - controlWidth,
-            y,
-            controlWidth,
-            controlHeight,
-            Color.white
+            name + "Dropdown",
+            options,
+            new RectInt(229, y, 120, controlHeight)
         );
-        surface.raycastTarget = true;
-        TMP_Dropdown dropdown = surface.gameObject.AddComponent<TMP_Dropdown>();
-        ApplyOptionsDropdownFeedback(dropdown, surface);
-
-        TextMeshProUGUI caption = CreateTextLabel("Label", surface.transform);
-        caption.color = new Color(0.875f, 0.910f, 0.941f);
-        caption.fontSize = 10;
-        caption.alignment = TextAlignmentOptions.MidlineLeft;
-        caption.overflowMode = TextOverflowModes.Ellipsis;
-        SetSourceRect(caption.rectTransform, 7, 1, controlWidth - 25, controlHeight - 2);
-        dropdown.captionText = caption;
-
-        TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform);
-        arrow.text = "V";
-        arrow.color = accent;
-        arrow.fontSize = 9;
-        arrow.alignment = TextAlignmentOptions.Center;
-        SetSourceRect(arrow.rectTransform, controlWidth - 19, 1, 14, controlHeight - 2);
-
-        int popupHeight = options.Count * itemHeight + 4;
-        Image templateImage = CreateSlicedImage(
-            "Template",
-            surface.transform,
-            _menuPanelAddress,
-            _panelBorder,
-            0,
-            controlHeight,
-            controlWidth,
-            popupHeight,
-            Color.white
-        );
-        templateImage.raycastTarget = true;
-        RectTransform template = templateImage.rectTransform;
-        ScrollRect scrollRect = templateImage.gameObject.AddComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.vertical = false;
-        scrollRect.inertia = false;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-
-        GameObject viewportObject = new GameObject(
-            "Viewport",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image),
-            typeof(Mask)
-        );
-        viewportObject.transform.SetParent(template, false);
-        RectTransform viewport = viewportObject.GetComponent<RectTransform>();
-        SetSourceRect(viewport, 2, 2, controlWidth - 4, popupHeight - 4);
-        Image viewportImage = viewportObject.GetComponent<Image>();
-        viewportImage.color = Color.white;
-        viewportImage.raycastTarget = true;
-        viewportObject.GetComponent<Mask>().showMaskGraphic = false;
-
-        GameObject contentObject = new GameObject("Content", typeof(RectTransform));
-        contentObject.transform.SetParent(viewport, false);
-        RectTransform content = contentObject.GetComponent<RectTransform>();
-        SetSourceRect(content, 0, 0, controlWidth - 4, options.Count * itemHeight);
-
-        Image itemImage = CreateSlicedImage(
-            "Item",
-            content,
-            _menuRowAddress,
-            _panelBorder,
-            0,
-            0,
-            controlWidth - 4,
-            itemHeight,
-            _buttonSurfaceColor
-        );
-        itemImage.raycastTarget = true;
-        Toggle item = itemImage.gameObject.AddComponent<Toggle>();
-        item.targetGraphic = itemImage;
-        item.transition = Selectable.Transition.SpriteSwap;
-        Sprite activeRowSprite = LoadSprite(_menuRowActiveAddress, _panelBorder);
-        SpriteState itemSprites = item.spriteState;
-        itemSprites.highlightedSprite = activeRowSprite;
-        itemSprites.selectedSprite = activeRowSprite;
-        itemSprites.pressedSprite = activeRowSprite;
-        item.spriteState = itemSprites;
-
-        RawImage checkmark = CreateRawImage(
-            "Item Checkmark",
-            itemImage.transform,
-            _contextMenuCheckMarkAddress,
-            5,
-            3,
-            10,
-            10
-        );
-        checkmark.color = accent;
-        item.graphic = checkmark;
-
-        TextMeshProUGUI itemLabel = CreateTextLabel("Item Label", itemImage.transform);
-        itemLabel.color = new Color(0.875f, 0.910f, 0.941f);
-        itemLabel.fontSize = 10;
-        itemLabel.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(itemLabel.rectTransform, 18, 1, controlWidth - 25, itemHeight - 2);
-
-        scrollRect.viewport = viewport;
-        scrollRect.content = content;
-        dropdown.template = template;
-        dropdown.itemText = itemLabel;
-        dropdown.options.Clear();
-        foreach (string option in options)
-            dropdown.options.Add(new TMP_Dropdown.OptionData(option));
-        dropdown.value = 0;
-        dropdown.RefreshShownValue();
-        template.gameObject.SetActive(false);
-        return dropdown;
     }
 
     /// <summary>
@@ -807,209 +683,11 @@ public static class OptionsMenuPrefabBuilder
     /// </summary>
     /// <param name="view">The Options view receiving the authored references.</param>
     /// <param name="saveLoadPage">The authored Save/Load page root.</param>
-    /// <param name="accent">The Options accent color.</param>
-    /// <param name="textColor">The primary Options text color.</param>
-    /// <param name="textDim">The secondary Options text color.</param>
-    private static void BuildSaveLoadPage(
-        OptionsMenuView view,
-        RectTransform saveLoadPage,
-        Color accent,
-        Color textColor,
-        Color textDim
-    )
+    private static void BuildSaveLoadPage(OptionsMenuView view, RectTransform saveLoadPage)
     {
-        OptionsSaveListView saveListView = EnableRuntimeComponent(
-            saveLoadPage.gameObject.AddComponent<OptionsSaveListView>()
-        );
-        TextMeshProUGUI savedGamesLabel = CreateOptionsSectionHeader(
-            saveLoadPage,
-            "SavedGamesLabel",
-            "SAVED GAMES",
-            13,
-            accent
-        );
-        savedGamesLabel.rectTransform.anchoredPosition = new Vector2(18f, -13f);
-        RawImage saveIcon = CreateRawImage(
-            "SaveIcon",
-            saveLoadPage,
-            "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_save_icon",
-            258,
-            11,
-            49,
-            23
-        );
-        Button saveButton = CreateButton(saveIcon);
-        saveIcon
-            .GetComponent<ContentPressVisualBinding>()
-            .SetAddresses(
-                "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_save_icon",
-                "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_save_icon_pressed"
-            );
-        RawImage saveDisabledIcon = CreateRawImage(
-            "SaveIconDisabled",
-            saveLoadPage,
-            "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_save_icon_disabled",
-            258,
-            11,
-            49,
-            23
-        );
-        saveDisabledIcon.gameObject.SetActive(false);
-        RawImage loadIcon = CreateRawImage(
-            "LoadIcon",
-            saveLoadPage,
-            "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_load_icon",
-            313,
-            11,
-            49,
-            23
-        );
-        Button loadButton = CreateButton(loadIcon);
-        loadIcon
-            .GetComponent<ContentPressVisualBinding>()
-            .SetAddresses(
-                "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_load_icon",
-                "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_load_icon_pressed"
-            );
-        RawImage loadDisabledIcon = CreateRawImage(
-            "LoadIconDisabled",
-            saveLoadPage,
-            "Application/OptionsMenu/UI/ui_settingsmenu_savedgames_load_icon_disabled",
-            313,
-            11,
-            49,
-            23
-        );
-        loadDisabledIcon.gameObject.SetActive(false);
-        ApplyOptionsButtonFeedback(saveButton, saveIcon);
-        ApplyOptionsButtonFeedback(loadButton, loadIcon);
-        ScrollAreaView saveSlotScrollArea = CreateScrollAreaView(
-            saveLoadPage,
-            "SaveSlotScrollArea",
-            18,
-            40,
-            349,
-            290,
-            0,
-            0,
-            337,
-            290,
-            337,
-            0,
-            12,
-            290,
-            out RectTransform slotContent
-        );
-        Image slotRowTemplate = CreateSlicedImage(
-            "SlotRowTemplate",
-            slotContent,
-            _menuRowAddress,
-            _panelBorder,
-            0,
-            0,
-            337,
-            28,
-            Color.white
-        );
-        slotRowTemplate.raycastTarget = true;
-        Button slotRowButton = slotRowTemplate.gameObject.AddComponent<Button>();
-        slotRowButton.targetGraphic = slotRowTemplate;
-        slotRowButton.transition = Selectable.Transition.None;
-        slotRowTemplate.gameObject.SetActive(false);
-        RawImage slotIconTemplate = CreateRawButton("SlotIconTemplate", slotContent, null);
-        slotIconTemplate.raycastTarget = false;
-        SetSourceRect(slotIconTemplate.rectTransform, 8, 4, 20, 20);
-        slotIconTemplate.gameObject.SetActive(false);
-        TextMeshProUGUI slotNameTemplate = CreateTextLabel("SlotNameTemplate", slotContent);
-        slotNameTemplate.text = "Save";
-        slotNameTemplate.color = textColor;
-        slotNameTemplate.fontSize = 12;
-        slotNameTemplate.alignment = TextAlignmentOptions.TopLeft;
-        slotNameTemplate.textWrappingMode = TextWrappingModes.NoWrap;
-        slotNameTemplate.overflowMode = TextOverflowModes.Truncate;
-        slotNameTemplate.raycastTarget = false;
-        SetSourceRect(slotNameTemplate.rectTransform, 34, 0, 271, 20);
-        slotNameTemplate.gameObject.SetActive(false);
-        TextMeshProUGUI slotMetaTemplate = CreateTextLabel("SlotDateTemplate", slotContent);
-        slotMetaTemplate.text = "Date";
-        slotMetaTemplate.color = textDim;
-        slotMetaTemplate.fontSize = 9;
-        slotMetaTemplate.alignment = TextAlignmentOptions.TopLeft;
-        slotMetaTemplate.raycastTarget = false;
-        SetSourceRect(slotMetaTemplate.rectTransform, 34, 16, 300, 10);
-        slotMetaTemplate.gameObject.SetActive(false);
-
-        GameObject deleteObject = new GameObject(
-            "SlotDeleteTemplate",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        deleteObject.transform.SetParent(slotContent, false);
-        Image deleteHit = deleteObject.GetComponent<Image>();
-        deleteHit.color = Color.clear;
-        deleteHit.raycastTarget = true;
-        SetSourceRect(deleteObject.GetComponent<RectTransform>(), 0, 0, 16, 16);
-        Button slotDeleteTemplate = deleteObject.AddComponent<Button>();
-        TextMeshProUGUI deleteGlyph = CreateTextLabel("Glyph", deleteObject.transform);
-        deleteGlyph.text = "×";
-        deleteGlyph.color = new Color(0.78f, 0.45f, 0.47f);
-        deleteGlyph.fontSize = 16;
-        deleteGlyph.alignment = TextAlignmentOptions.Midline;
-        deleteGlyph.raycastTarget = false;
-        SetSourceRect(deleteGlyph.rectTransform, 0, 0, 16, 16);
-        ApplyOptionsButtonFeedback(slotDeleteTemplate, deleteGlyph);
-        slotDeleteTemplate.gameObject.SetActive(false);
-
-        TMP_InputField slotRenameField = CreateTextInputField(
-            "SlotRenameField",
-            slotContent,
-            "Save name",
-            32,
-            0,
-            275,
-            16
-        );
-        Image renameBackground = slotRenameField.GetComponent<Image>();
-        renameBackground.color = new Color(0.08f, 0.10f, 0.13f, 0.98f);
-        slotRenameField.textComponent.fontSize = 12;
-        slotRenameField.textComponent.alignment = TextAlignmentOptions.Left;
-        StretchFillInputChild((RectTransform)slotRenameField.textComponent.transform);
-        slotRenameField.customCaretColor = true;
-        slotRenameField.caretColor = Color.white;
-        slotRenameField.caretWidth = 2;
-        slotRenameField.caretBlinkRate = 0.85f;
-        slotRenameField.characterLimit = SaveGameManager.MaxDisplayNameLength;
-        if (slotRenameField.placeholder is TextMeshProUGUI renamePlaceholder)
-        {
-            renamePlaceholder.fontSize = 12;
-            renamePlaceholder.alignment = TextAlignmentOptions.Left;
-            renamePlaceholder.color = new Color(0.60f, 0.65f, 0.72f);
-            StretchFillInputChild(renamePlaceholder.rectTransform);
-        }
-        slotRenameField.onFocusSelectAll = false;
-        slotRenameField.gameObject.SetActive(false);
-
-        AssignReference(view, "_saveListView", saveListView);
-        AssignReference(saveListView, "_saveButton", saveButton);
-        AssignReference(saveListView, "_loadButton", loadButton);
-        AssignReference(saveListView, "_saveDisabledImage", saveDisabledIcon);
-        AssignReference(saveListView, "_loadDisabledImage", loadDisabledIcon);
-        AssignReference(saveListView, "_scrollArea", saveSlotScrollArea);
-        AssignReference(saveListView, "_rowTemplate", slotRowTemplate);
-        AssignReference(saveListView, "_iconTemplate", slotIconTemplate);
-        AssignReference(saveListView, "_nameTemplate", slotNameTemplate);
-        AssignReference(saveListView, "_metaTemplate", slotMetaTemplate);
-        AssignReference(saveListView, "_deleteTemplate", slotDeleteTemplate);
-        AssignReference(saveListView, "_renameField", slotRenameField);
-        AssignReference(saveListView, "_rowIdleSprite", LoadSprite(_menuRowAddress, _panelBorder));
-        AssignReference(
-            saveListView,
-            "_rowActiveSprite",
-            LoadSprite(_menuRowActiveAddress, _panelBorder)
-        );
-        AssignString(saveListView, "_rowIdleSpriteAddress", _menuRowAddress);
-        AssignString(saveListView, "_rowActiveSpriteAddress", _menuRowActiveAddress);
+        OptionsSaveListView list = MenuControlPrefabBuilder.CreateSaveList(saveLoadPage);
+        list.name = "SaveLoadPage";
+        AssignReference(view, "_saveListView", list);
     }
 
     /// <summary>
@@ -1218,95 +896,6 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_applyButton", applyButton);
         AssignReference(view, "_defaultsButton", defaultsButton);
         AssignReference(view, "_confirmDialog", confirmDialog);
-    }
-
-    /// <summary>
-    /// Adds color feedback to a button.
-    /// </summary>
-    /// <param name="button">The button to restyle.</param>
-    /// <param name="target">The graphic to tint, or null to keep the button's target graphic.</param>
-    private static void ApplyOptionsButtonFeedback(Button button, Graphic target = null)
-    {
-        if (button == null)
-            return;
-
-        if (target != null)
-            button.targetGraphic = target;
-
-        button.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = button.colors;
-        colors.normalColor = new Color(0.88f, 0.91f, 0.96f);
-        colors.highlightedColor = Color.white;
-        colors.pressedColor = new Color(0.52f, 0.60f, 0.72f);
-        colors.selectedColor = colors.normalColor;
-        colors.disabledColor = new Color(0.45f, 0.48f, 0.54f, 0.4f);
-        colors.colorMultiplier = 1f;
-        colors.fadeDuration = 0.08f;
-        button.colors = colors;
-    }
-
-    /// <summary>
-    /// Adds visible pointer feedback to a dropdown's light-colored surface.
-    /// </summary>
-    /// <param name="dropdown">The dropdown to restyle.</param>
-    /// <param name="surface">The visible surface receiving the tint.</param>
-    private static void ApplyOptionsDropdownFeedback(TMP_Dropdown dropdown, Graphic surface)
-    {
-        if (dropdown == null || surface == null)
-            return;
-
-        dropdown.targetGraphic = surface;
-        dropdown.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = dropdown.colors;
-        colors.normalColor = new Color(0.76f, 0.82f, 0.90f, 1f);
-        colors.highlightedColor = Color.white;
-        colors.pressedColor = new Color(0.60f, 0.69f, 0.82f, 1f);
-        colors.selectedColor = colors.normalColor;
-        colors.disabledColor = new Color(0.45f, 0.48f, 0.54f, 0.4f);
-        colors.colorMultiplier = 1f;
-        colors.fadeDuration = 0.06f;
-        dropdown.colors = colors;
-    }
-
-    /// <summary>
-    /// Positions text inside an input field.
-    /// </summary>
-    /// <param name="child">The text or placeholder rect transform.</param>
-    private static void StretchFillInputChild(RectTransform child)
-    {
-        child.anchorMin = new Vector2(0f, 0f);
-        child.anchorMax = new Vector2(1f, 1f);
-        child.offsetMin = new Vector2(6f, -2f);
-        child.offsetMax = new Vector2(-6f, -2f);
-    }
-
-    /// <summary>
-    /// Creates an Options menu section header.
-    /// </summary>
-    /// <param name="parent">The page container.</param>
-    /// <param name="name">The header object name.</param>
-    /// <param name="caption">The header caption.</param>
-    /// <param name="y">The source-space header top.</param>
-    /// <param name="accent">The accent color.</param>
-    /// <returns>The header text field.</returns>
-    private static TextMeshProUGUI CreateOptionsSectionHeader(
-        RectTransform parent,
-        string name,
-        string caption,
-        int y,
-        Color accent
-    )
-    {
-        TextMeshProUGUI headerField = CreateTextLabel(name, parent);
-        UILayout.ConfigureMenuSectionHeading(headerField, caption, accent);
-        SetSourceRect(
-            headerField.rectTransform,
-            _optionsContentInset,
-            y,
-            200,
-            _optionsSectionHeaderHeight
-        );
-        return headerField;
     }
 
     /// <summary>
@@ -1811,36 +1400,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Converts a raw image into a button with content-driven pressed visuals.
-    /// </summary>
-    /// <param name="image">The image that receives pointer input.</param>
-    /// <returns>The generated button.</returns>
-    private static Button CreateButton(RawImage image)
-    {
-        image.raycastTarget = true;
-        Button button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.transition = Selectable.Transition.None;
-
-        RawImagePressVisual pressVisual = EnableRuntimeComponent(
-            image.gameObject.AddComponent<RawImagePressVisual>()
-        );
-        AssignReference(pressVisual, "image", image);
-        AssignReference(pressVisual, "button", button);
-        pressVisual.SetTextures(image.texture, null);
-
-        ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
-        if (textureBinding != null)
-        {
-            ContentPressVisualBinding pressBinding =
-                image.gameObject.AddComponent<ContentPressVisualBinding>();
-            pressBinding.SetAddresses(textureBinding.Address, null);
-            UnityEngine.Object.DestroyImmediate(textureBinding);
-        }
-        return button;
-    }
-
-    /// <summary>
     /// Assigns object references to a serialized array field.
     /// </summary>
     /// <typeparam name="T">The referenced Unity object type.</typeparam>
@@ -1873,19 +1432,6 @@ public static class OptionsMenuPrefabBuilder
     {
         SerializedObject serializedObject = new SerializedObject(target);
         FindRequiredProperty(target, serializedObject, propertyName).intValue = value;
-        serializedObject.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    /// <summary>
-    /// Assigns a string to a serialized component field.
-    /// </summary>
-    /// <param name="target">The component containing the serialized field.</param>
-    /// <param name="propertyName">The serialized field name.</param>
-    /// <param name="value">The string to assign.</param>
-    private static void AssignString(UnityEngine.Object target, string propertyName, string value)
-    {
-        SerializedObject serializedObject = new SerializedObject(target);
-        FindRequiredProperty(target, serializedObject, propertyName).stringValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 }

@@ -511,6 +511,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "Application/MainMenu/Audio/select",
                     "Application/MainMenu/Audio/galaxysize-select",
                     "Application/MainMenu/Audio/faction-select",
+                    "Application/MainMenu/Audio/multiplayer-select",
                 },
                 _view.GetAudioCuePaths()
             );

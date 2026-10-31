@@ -1080,6 +1080,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Render_UnrelatedRefresh_PreservesSaveEditorSelection()
+        {
+            EventSystem previous = EventSystem.current;
+            GameObject events = new GameObject(
+                "Options selection test",
+                typeof(EditModeEventSystem)
+            );
+            EditModeEventSystem eventSystem = events.GetComponent<EditModeEventSystem>();
+            try
+            {
+                eventSystem.Activate();
+                EventSystem.current = eventSystem;
+                OptionsMenuRenderData data = CreateRenderData(
+                    new OptionsSaveSlot("Create New Save", string.Empty, null, true, null)
+                );
+                _view.Render(data);
+                _root
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "SlotRow0")
+                    .onClick.Invoke();
+                TMP_InputField field = _saveListView.GetComponentInChildren<TMP_InputField>(true);
+                field.text = "Campaign draft";
+                eventSystem.SetSelectedGameObject(field.gameObject);
+
+                _view.Render(data);
+
+                Assert.AreSame(field.gameObject, eventSystem.currentSelectedGameObject);
+                Assert.AreEqual("Campaign draft", field.text);
+            }
+            finally
+            {
+                eventSystem.Deactivate();
+                UnityEngine.Object.DestroyImmediate(events);
+                if (previous != null)
+                    EventSystem.current = previous;
+            }
+        }
+
+        [Test]
         public void SaveList_Renaming_HidesStaticNameUntilEditingCloses()
         {
             OptionsSaveSlot savedGame = new OptionsSaveSlot(
@@ -1208,6 +1247,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<List<Image>>("_bindingBadgeImages")[0].GetComponent<Button>().onClick.Invoke();
 
             Assert.AreEqual(1, requestedRow);
+        }
+
+        private sealed class EditModeEventSystem : EventSystem
+        {
+            /// <summary>
+            /// Registers this test event system while outside the player loop.
+            /// </summary>
+            public void Activate() => base.OnEnable();
+
+            /// <summary>
+            /// Releases this test event system before destroying its owner.
+            /// </summary>
+            public void Deactivate() => base.OnDisable();
         }
 
         /// <summary>

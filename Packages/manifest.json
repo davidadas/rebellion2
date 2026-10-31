@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.playeveryware.eos": "https://github.com/EOS-Contrib/eos_plugin_for_unity_upm.git#v6.2.0",
     "com.unity.ai.navigation": "2.0.11",
     "com.unity.cloud.gltfast": "6.19.0",
     "com.unity.collab-proxy": "2.11.4",

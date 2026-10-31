@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,7 +37,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
         private Officer _officer;
-        private int _rebuildCount;
         private int _playedSfxCount;
         private int _transitRejectionCount;
         private int _underConstructionRejectionCount;
@@ -54,7 +56,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _clearedWindow = null;
             _dirtyCount = 0;
             _invalidOrderRejectionCount = 0;
-            _rebuildCount = 0;
             _playedSfxCount = 0;
             _transitRejectionCount = 0;
             _underConstructionRejectionCount = 0;
@@ -87,6 +88,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
                 _session,
+                TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -96,27 +98,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 () => { }
             );
             _missionCreateController.Initialize(new MissionCreateActions());
-            ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
-                () => _uiContext,
-                _ => { },
-                _windowLayer,
-                _windowManager,
-                () => new Vector2Int(120, 90),
-                window => _windowManager.DestroyWindow(window),
-                () => { }
-            );
-            _controller = new StrategyWindowCommandController(
-                _missionCreateController,
-                confirmController,
-                _session,
-                () => _playerFactionId,
-                _ => _playedSfxCount++,
-                window => _clearedWindow = window,
-                () => _rebuildCount++,
-                () => _dirtyCount++,
-                () => _invalidOrderRejectionCount++,
-                () => _transitRejectionCount++,
-                () => _underConstructionRejectionCount++
+            _controller = CreateController(
+                TestPlayerRequests.Create(_session, () => _playerFactionId)
             );
         }
 
@@ -147,19 +130,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     null,
                     confirmController,
                     _session,
-                    () => _playerFactionId,
+                    TestPlayerRequests.Create(_session, () => _playerFactionId),
+                    () => _uiContext,
                     _ => { },
                     _ => { },
-                    () => { },
                     () => { }
                 )
             );
         }
 
         [Test]
-        public void TryExecuteMove_InvalidSelection_ReturnsFalseWithoutCallbacks()
+        public async Task TryExecuteMoveAsync_InvalidSelection_ReturnsFalseWithoutCallbacksAsync()
         {
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, null),
                 Array.Empty<ISceneNode>()
@@ -167,14 +150,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsFalse(moved);
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
         }
 
         [Test]
-        public void TryExecuteMove_ValidSelection_ClearsSourceAndInvalidatesSnapshot()
+        public async Task TryExecuteMoveAsync_ValidSelection_ClearsSourceAndInvalidatesSnapshotAsync()
         {
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, null),
                 new ISceneNode[] { _officer }
@@ -182,12 +164,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsTrue(moved);
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
         [Test]
-        public void TryExecuteMove_FleetTarget_MergesSourceFleetIntoExactFleet()
+        public async Task TryExecuteMoveAsync_FleetTarget_MergesSourceFleetIntoExactFleetAsync()
         {
             Rebellion.Game.Units.Fleet sourceFleet = CreateOperationalFleet();
             CapitalShip sourceShip = sourceFleet.GetChildren<CapitalShip>().Single();
@@ -197,7 +178,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
             _game.AttachNode(destinationFleet, _destination.Planet);
 
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, destinationFleet),
                 new ISceneNode[] { sourceFleet }
@@ -210,7 +191,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void TryExecuteMove_MobileHeadquarters_UsesHeadquartersRelocationRules()
+        public async Task TryExecuteMoveAsync_MobileHeadquarters_UsesHeadquartersRelocationRulesAsync()
         {
             Planet origin = _officer.GetParentOfType<Planet>();
             Planet destination = _destination.Planet;
@@ -232,7 +213,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(headquarters, origin);
 
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, null),
                 new ISceneNode[] { headquarters }
@@ -246,17 +227,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void TryExecuteMove_AlreadyAtDestination_DoesNotPlayOrderAudio()
+        public async Task TryExecuteMoveAsync_AlreadyAtDestination_DoesNotPlayOrderAudioAsync()
         {
             _officer.VoiceSet.OrderPaths.Add("officer-order");
             StrategyMissionTarget target = new StrategyMissionTarget(_destination, null);
             Assert.IsTrue(
-                _controller.TryExecuteMove(_sourceWindow, target, new ISceneNode[] { _officer })
+                await _controller.TryExecuteMoveAsync(
+                    _sourceWindow,
+                    target,
+                    new ISceneNode[] { _officer }
+                )
             );
             _officer.Movement = null;
             _playedSfxCount = 0;
 
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 target,
                 new ISceneNode[] { _officer }
@@ -267,11 +252,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
+        public async Task TryExecuteMoveAsync_UnitInTransit_PlaysAdvisorRejectionAsync()
         {
             _officer.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
 
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, null),
                 new ISceneNode[] { _officer }
@@ -283,7 +268,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void TryExecuteMove_ShipUnderConstruction_PlaysAdvisorRejection()
+        public async Task TryExecuteMoveAsync_ShipUnderConstruction_PlaysAdvisorRejectionAsync()
         {
             CapitalShip ship = new CapitalShip
             {
@@ -298,7 +283,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _game.AttachNode(fleet, _destination.Planet);
             _game.AttachNode(ship, fleet);
 
-            bool moved = _controller.TryExecuteMove(
+            bool moved = await _controller.TryExecuteMoveAsync(
                 _sourceWindow,
                 new StrategyMissionTarget(_destination, ship),
                 new ISceneNode[] { _officer }
@@ -338,7 +323,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void TryCommitFleetWaypointPlan_StagedRoute_StartsFleetMovement()
+        public async Task TryCommitFleetWaypointPlanAsync_StagedRoute_StartsFleetMovementAsync()
         {
             Rebellion.Game.Units.Fleet fleet = CreateOperationalFleet();
             StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
@@ -353,7 +338,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new StrategyMissionTarget(_destination, null)
             );
 
-            bool committed = _controller.TryCommitFleetWaypointPlan(source);
+            bool committed = await _controller.TryCommitFleetWaypointPlanAsync(source);
 
             Assert.IsTrue(committed);
             Assert.AreSame(_destination.Planet, fleet.GetParent());
@@ -601,8 +586,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual("target", _officer.GetParentOfType<Planet>().InstanceID);
             Assert.IsNotNull(_officer.Movement);
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void OpenScrapConfirmWindow_UnconfirmedExecution_KeepsSelectionAndConfirmationWithoutRefresh()
+        {
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
+                Task.FromResult(
+                    new PlayerRequestOutcome(false, "Connection ended", outcomeKnown: false)
+                )
+            );
+            _controller = CreateController(dispatcher);
+            _controller.OpenScrapConfirmWindow(_sourceWindow, new ISceneNode[] { _specialForces });
+            int dirtyBeforeConfirmation = _dirtyCount;
+
+            ConfirmOpenDialog();
+
+            Assert.That(dispatcher.Requests.Count, Is.EqualTo(1));
+            Assert.That(_windowManager.Windows.Count, Is.EqualTo(1));
+            Assert.That(_clearedWindow, Is.Null);
+            Assert.That(_dirtyCount, Is.EqualTo(dirtyBeforeConfirmation));
+            Assert.That(
+                _game.GetSceneNodeByInstanceID<SpecialForces>(_specialForces.InstanceID),
+                Is.SameAs(_specialForces)
+            );
         }
 
         [Test]
@@ -672,7 +680,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsFalse(_officer.IsActive());
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
@@ -686,7 +693,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.IsTrue(_officer.IsActive());
             Assert.IsFalse(_officer.IsRetired);
-            Assert.AreEqual(0, _rebuildCount);
         }
 
         [Test]
@@ -732,33 +738,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(origin, _officer.GetParent());
             Assert.AreSame(origin, secondOfficer.GetParent());
             Assert.AreSame(_sourceWindow, _clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
         [Test]
-        public void TryAbortMission_WorkingPlayerMission_AbortsWithoutSourceWindow()
+        public async Task TryAbortMissionAsync_WorkingPlayerMission_AbortsWithoutSourceWindowAsync()
         {
             Planet origin = _officer.GetParentOfType<Planet>();
             DiplomacyMission mission = CreateWorkingMission("mission", _officer);
 
-            bool aborted = _controller.TryAbortMission(mission.InstanceID);
+            bool aborted = await _controller.TryAbortMissionAsync(mission.InstanceID);
 
             Assert.IsTrue(aborted);
             Assert.IsNull(mission.GetParent());
             Assert.AreSame(origin, _officer.GetParent());
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
         }
 
         [Test]
-        public void TryAbortMission_MissingMission_ReturnsFalseWithoutCallbacks()
+        public async Task TryAbortMissionAsync_MissingMission_ReturnsFalseWithoutCallbacksAsync()
         {
-            bool aborted = _controller.TryAbortMission("missing");
+            bool aborted = await _controller.TryAbortMissionAsync("missing");
 
             Assert.IsFalse(aborted);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
         }
 
@@ -787,8 +790,241 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(firstMission, _officer.GetParent());
             Assert.AreSame(secondMission, secondOfficer.GetParent());
             Assert.IsNull(_clearedWindow);
-            Assert.AreEqual(0, _rebuildCount);
             Assert.AreEqual(0, _dirtyCount);
+        }
+
+        [Test]
+        public async Task TryExecuteMoveAsync_NullSelectionMember_RejectsWithoutCallbacksAsync()
+        {
+            bool accepted = await _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { null }
+            );
+
+            Assert.IsFalse(accepted);
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _playedSfxCount);
+        }
+
+        [Test]
+        public async Task TryExecuteMoveAsync_PendingExecution_WaitsBeforeClearingSelectionOrPlayingVoiceAsync()
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion =
+                new TaskCompletionSource<PlayerRequestOutcome>();
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
+                completion.Task
+            );
+            _controller = CreateController(dispatcher);
+            _officer.VoiceSet.OrderPaths.AddRange(new[] { "first-order", "second-order" });
+            long randomIndex = _game.RandomIndex;
+
+            Task<bool> pending = _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsFalse(pending.IsCompleted);
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _playedSfxCount);
+            completion.SetResult(new PlayerRequestOutcome(true));
+            Assert.IsTrue(await pending);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(1, _playedSfxCount);
+            Assert.AreEqual(randomIndex, _game.RandomIndex);
+        }
+
+        [Test]
+        public async Task TryExecuteMoveAsync_RejectedExecution_PreservesSelectionAndPresentationAsync()
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion =
+                new TaskCompletionSource<PlayerRequestOutcome>();
+            RecordingPlayerRequestDispatcher dispatcher = new RecordingPlayerRequestDispatcher(_ =>
+                completion.Task
+            );
+            _controller = CreateController(dispatcher);
+            Task<bool> pending = _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+
+            MoveRequest request = dispatcher.Requests.Single() as MoveRequest;
+            Assert.IsNotNull(request);
+            CollectionAssert.AreEqual(new[] { _officer.InstanceID }, request.ItemIDs);
+            Assert.AreEqual(_destination.Planet.InstanceID, request.DestinationID);
+            completion.SetResult(new PlayerRequestOutcome(false, "Unavailable"));
+
+            Assert.IsFalse(await pending);
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _playedSfxCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryExecuteMoveAsync_OriginatingPresentationReplaced_DoesNotRefreshOrPlayVoiceAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _officer.VoiceSet.OrderPaths.Add("officer-order");
+            Task<bool> pending = _controller.TryExecuteMoveAsync(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.IsNull(_clearedWindow);
+            Assert.AreEqual(0, _playedSfxCount);
+            Assert.Zero(_dirtyCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryCommitFleetWaypointPlanAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            StrategyWindowTargetingSource source = new(
+                _sourceWindow,
+                StrategyMenuAction.WaypointMove,
+                0,
+                0,
+                new ISceneNode[] { CreateOperationalFleet() }
+            );
+            source.TryAppendWaypoint(_destination.Planet.InstanceID);
+            Task<bool> pending = _controller.TryCommitFleetWaypointPlanAsync(source);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.Zero(_dirtyCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ClearFleetWaypointsAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            Task<bool> pending = _controller.ClearFleetWaypointsAsync(
+                new ISceneNode[] { CreateOperationalFleet() }
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.Zero(_dirtyCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OpenStopConstructionConfirmWindow_OriginatingPresentationReplaced_DoesNotInvokeCallbackAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _specialForces.ManufacturingStatus = ManufacturingStatus.Building;
+            int callbackCount = 0;
+            _controller.OpenStopConstructionConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { _specialForces },
+                () => callbackCount++
+            );
+            ConfirmOpenDialog();
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.AreEqual(0, callbackCount);
+            Assert.Zero(_dirtyCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryAbortMissionAsync_OriginatingPresentationReplaced_DoesNotRefreshAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            DiplomacyMission mission = CreateWorkingMission("mission", _officer);
+            Task<bool> pending = _controller.TryAbortMissionAsync(mission.InstanceID);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            ReplacePresentation(replaceGame);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+
+            Assert.IsTrue(await pending);
+            Assert.Zero(_dirtyCount);
+        }
+
+        /// <summary>
+        /// Replaces the displayed game or ends presentation before an order completes.
+        /// </summary>
+        /// <param name="replaceGame">Whether a replacement game remains displayed.</param>
+        private void ReplacePresentation(bool replaceGame)
+        {
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame(out _, out _, out _));
+            else
+                _uiContext = null;
+        }
+
+        /// <summary>
+        /// Creates the shared controller with an explicit execution-completion boundary.
+        /// </summary>
+        /// <param name="playerRequests">Completes the fixture's player requests.</param>
+        /// <returns>The initialized shared command controller.</returns>
+        private StrategyWindowCommandController CreateController(
+            IPlayerRequestDispatcher playerRequests
+        )
+        {
+            ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
+                () => _uiContext,
+                _ => { },
+                _windowLayer,
+                _windowManager,
+                () => new Vector2Int(120, 90),
+                window => _windowManager.DestroyWindow(window),
+                () => { }
+            );
+            return new StrategyWindowCommandController(
+                _missionCreateController,
+                confirmController,
+                _session,
+                playerRequests,
+                () => _uiContext,
+                _ => _playedSfxCount++,
+                window => _clearedWindow = window,
+                () => _dirtyCount++,
+                () => _invalidOrderRejectionCount++,
+                () => _transitRejectionCount++,
+                () => _underConstructionRejectionCount++
+            );
         }
 
         /// <summary>
@@ -961,11 +1197,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private sealed class MissionCreateActions : IMissionCreateWindowActions
         {
-            /// <summary>
-            /// Refreshes after mission creation.
-            /// </summary>
-            public void RefreshAfterMissionCreation() { }
-
             /// <summary>
             /// Opens mission create info.
             /// </summary>

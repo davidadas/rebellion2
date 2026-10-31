@@ -8,7 +8,9 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -66,6 +68,247 @@ namespace Rebellion.Tests.Game
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_DefaultMode_PreservesDisabledSequence()
+        {
+            string first = _game.GenerateRuntimeIdentifier();
+            string second = _game.GenerateRuntimeIdentifier();
+
+            Assert.IsFalse(_game.UseDeterministicRuntimeIdentifiers);
+            Assert.IsTrue(Guid.TryParseExact(first, "N", out _));
+            Assert.AreNotEqual(first, second);
+            Assert.Zero(_game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_InterleavedGamesWithSameSeed_RepeatsIndependentSequence()
+        {
+            GameRoot first = CreateRuntimeIdentityGame(314159);
+            GameRoot second = CreateRuntimeIdentityGame(314159);
+            List<string> firstSequence = new List<string>();
+            List<string> secondSequence = new List<string>();
+
+            for (int index = 0; index < 32; index++)
+            {
+                firstSequence.Add(first.GenerateRuntimeIdentifier());
+                if (index % 2 == 1)
+                {
+                    secondSequence.Add(second.GenerateRuntimeIdentifier());
+                    secondSequence.Add(second.GenerateRuntimeIdentifier());
+                }
+            }
+
+            CollectionAssert.AreEqual(firstSequence, secondSequence);
+            Assert.AreEqual(firstSequence.Count, firstSequence.Distinct().Count());
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_DifferentSeeds_DoesNotReuseSequence()
+        {
+            GameRoot first = CreateRuntimeIdentityGame(314159);
+            GameRoot second = CreateRuntimeIdentityGame(-314159);
+
+            Assert.AreNotEqual(
+                first.GenerateRuntimeIdentifier(),
+                second.GenerateRuntimeIdentifier()
+            );
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_Enabled_DoesNotConsumeGameplayRandomness()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            game.Random.NextDouble();
+            long randomIndex = game.RandomIndex;
+
+            game.GenerateRuntimeIdentifier();
+            game.GenerateRuntimeIdentifier();
+
+            Assert.AreEqual(randomIndex, game.RandomIndex);
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_SerializedGame_ContinuesPersistedSequence()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            game.GenerateRuntimeIdentifier();
+            game.GenerateRuntimeIdentifier();
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(game)
+            );
+            Assert.IsTrue(restored.UseDeterministicRuntimeIdentifiers);
+
+            Assert.AreEqual(game.RuntimeIdentifierIndex, restored.RuntimeIdentifierIndex);
+            Assert.AreEqual(game.GenerateRuntimeIdentifier(), restored.GenerateRuntimeIdentifier());
+        }
+
+        [Test]
+        public void Random_SerializedAlternateSeed_ContinuesSameStream()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(123);
+            game.Random = new SystemRandomProvider(456);
+            game.Random.NextInt(int.MinValue, int.MaxValue);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(game)
+            );
+
+            Assert.That(restored.Summary.Seed, Is.EqualTo(123));
+            Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
+            Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
+            Assert.That(
+                restored.Random.NextInt(int.MinValue, int.MaxValue),
+                Is.EqualTo(game.Random.NextInt(int.MinValue, int.MaxValue))
+            );
+        }
+
+        [Test]
+        public void AttachNode_MissingRuntimeIdentity_AssignsBeforeParentRelationship()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            PlanetSector sector = new PlanetSector();
+
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = new Planet();
+            game.AttachNode(planet, sector);
+
+            Assert.AreEqual(sector.InstanceID, planet.ParentInstanceID);
+            Assert.AreSame(sector, game.GetSceneNodeByInstanceID<PlanetSector>(sector.InstanceID));
+            Assert.AreSame(planet, game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID));
+            Assert.AreEqual(2, game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_ExistingIdentity_PreservesIdentityAndSequence()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            PlanetSector sector = new PlanetSector { InstanceID = "existing-sector" };
+
+            game.AddSceneNodeByInstanceID(sector);
+
+            Assert.AreEqual("existing-sector", sector.InstanceID);
+            Assert.Zero(game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_MissingIdentity_UsesGameSequence()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            GameRoot equivalent = CreateRuntimeIdentityGame(314159);
+            PlanetSector sector = new PlanetSector();
+
+            game.AddSceneNodeByInstanceID(sector);
+
+            Assert.AreEqual(equivalent.GenerateRuntimeIdentifier(), sector.InstanceID);
+            Assert.AreSame(sector, game.GetSceneNodeByInstanceID<PlanetSector>(sector.InstanceID));
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_UnattachedCopiesAndQueries_DoNotAdvanceGameSequence()
+        {
+            GameRoot game = CreateRuntimeIdentityGame(314159);
+            GameRoot equivalent = CreateRuntimeIdentityGame(314159);
+            PlanetSector template = new PlanetSector { InstanceID = "template" };
+            template.CreateCopy();
+            _ = new GameRoot();
+            _ = new StatusMessage(MessageType.Advice, "Advice", "Body").InstanceID;
+
+            Assert.AreEqual(
+                equivalent.GenerateRuntimeIdentifier(),
+                game.GenerateRuntimeIdentifier()
+            );
+        }
+
+        [Test]
+        public void GenerateRuntimeIdentifier_InterleavedSessions_PreservesFleetAndMessageIdentities()
+        {
+            GameRoot first = CreateRuntimeIdentityGame(314159);
+            GameRoot second = CreateRuntimeIdentityGame(314159);
+            PrepareRuntimeIdentityPlanet(first);
+            PrepareRuntimeIdentityPlanet(second);
+            using GameSession firstSession = new GameSession(
+                first,
+                TestGameData.Create(first.Config)
+            );
+            using GameSession secondSession = new GameSession(
+                second,
+                TestGameData.Create(second.Config)
+            );
+            Fleet firstFleet = firstSession
+                .GetService<FleetCommands>()
+                .CreateAtPlanet(first.GetSceneNodeByInstanceID<Planet>("planet"), "owner");
+            Fleet secondFleet = secondSession
+                .GetService<FleetCommands>()
+                .CreateAtPlanet(second.GetSceneNodeByInstanceID<Planet>("planet"), "owner");
+            Message definition = new StatusMessage(MessageType.Advice, "Advice", "Body");
+            secondSession
+                .GetService<MessageCommands>()
+                .Deliver(
+                    new[]
+                    {
+                        new MessageDelivery
+                        {
+                            Recipient = second.GetFactionByOwnerInstanceID("owner"),
+                            Message = definition,
+                        },
+                    }
+                );
+            string secondMessageId = definition.InstanceID;
+            Message firstMessage = new StatusMessage(MessageType.Advice, "Advice", "Body");
+            firstSession
+                .GetService<MessageCommands>()
+                .Deliver(
+                    new[]
+                    {
+                        new MessageDelivery
+                        {
+                            Recipient = first.GetFactionByOwnerInstanceID("owner"),
+                            Message = firstMessage,
+                        },
+                    }
+                );
+
+            Assert.AreEqual(firstFleet.InstanceID, secondFleet.InstanceID);
+            Assert.AreEqual(secondMessageId, firstMessage.InstanceID);
+            Assert.AreEqual(first.RuntimeIdentifierIndex, second.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void Galaxy_ReplacingRoot_RemovesOutgoingRegistrations()
+        {
+            string previousRootID = _game.Galaxy.InstanceID;
+            GalaxyMap replacement = new() { InstanceID = "replacement-galaxy" };
+            _game.Galaxy = replacement;
+            Assert.IsFalse(_game.NodesByInstanceID.ContainsKey(previousRootID));
+            Assert.AreSame(replacement, _game.NodesByInstanceID[replacement.InstanceID]);
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedNode_DoesNotWriteDuplicateRegistryIDs()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "single-record-regiment",
+                    OwnerInstanceID = _faction1.InstanceID,
+                },
+                _planet
+            );
+            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
+                SerializationHelper.Serialize(_game)
+            );
+            Assert.AreEqual(
+                1,
+                document
+                    .Descendants()
+                    .Count(element =>
+                        !element.HasElements && element.Value == "single-record-regiment"
+                    )
+            );
         }
 
         [Test]
@@ -1045,6 +1288,28 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void RebuildSceneState_DeserializedPreviousParent_PreservesHistoryAndResolvesReference()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _fleet.LastParentInstanceID = _planetSector.InstanceID;
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+
+            restored.RebuildSceneState();
+
+            Fleet fleet = restored.GetSceneNodeByInstanceID<Fleet>(_fleet.InstanceID);
+            Assert.That(fleet.ParentInstanceID, Is.EqualTo(_planet.InstanceID));
+            Assert.That(fleet.LastParentInstanceID, Is.EqualTo(_planetSector.InstanceID));
+            Assert.That(
+                fleet.LastParentNode,
+                Is.SameAs(restored.GetSceneNodeByInstanceID<PlanetSector>(_planetSector.InstanceID))
+            );
+        }
+
+        [Test]
         public void RebuildSceneState_SerializedDestroyedPlanet_ClearsControlAndPreservesOrbitingFleet()
         {
             _game.AttachNode(_planetSector, _game.Galaxy);
@@ -1081,6 +1346,39 @@ namespace Rebellion.Tests.Game
                 restored
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
+            );
+        }
+
+        /// <summary>
+        /// Creates one game with an independent enabled runtime identity sequence.
+        /// </summary>
+        /// <param name="seed">The shared campaign seed.</param>
+        /// <returns>The configured game.</returns>
+        private static GameRoot CreateRuntimeIdentityGame(int seed)
+        {
+            GameRoot game = TestGame.Create(new GameSummary { Seed = seed }, TestConfig.Create());
+            game.UseDeterministicRuntimeIdentifiers = true;
+            return game;
+        }
+
+        /// <summary>
+        /// Adds one explicitly identified faction and planet without consuming runtime identities.
+        /// </summary>
+        /// <param name="game">The game to prepare for runtime commands.</param>
+        private static void PrepareRuntimeIdentityPlanet(GameRoot game)
+        {
+            game.GetFactions().Add(new Faction { InstanceID = "owner" });
+            game.SetFactionController("owner", "player", PlayerControllerType.Human);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(
+                new Planet
+                {
+                    InstanceID = "planet",
+                    OwnerInstanceID = "owner",
+                    IsColonized = true,
+                },
+                sector
             );
         }
 

@@ -196,17 +196,25 @@ namespace Rebellion.Gameplay
         internal void RefreshVisibleKnowledge()
         {
             foreach (Faction faction in _game.GetFactions())
+                _commands.ObservePlanets(faction, EnumerateVisiblePlanets(faction));
+        }
+
+        /// <summary>
+        /// Evaluates each planet's existing visibility rule only when its observation is requested.
+        /// </summary>
+        /// <param name="faction">The faction whose visible planets are enumerated.</param>
+        /// <returns>The visible planets in their existing sector and child order.</returns>
+        private IEnumerable<Planet> EnumerateVisiblePlanets(Faction faction)
+        {
+            foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
             {
-                foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
+                foreach (
+                    Planet planet in sector
+                        .GetChildren<Planet>()
+                        .Where(planet => _queries.IsPlanetVisible(planet, faction))
+                )
                 {
-                    foreach (
-                        Planet planet in sector
-                            .GetChildren<Planet>()
-                            .Where(planet => _queries.IsPlanetVisible(planet, faction))
-                    )
-                    {
-                        _commands.ObservePlanet(faction, planet);
-                    }
+                    yield return planet;
                 }
             }
         }

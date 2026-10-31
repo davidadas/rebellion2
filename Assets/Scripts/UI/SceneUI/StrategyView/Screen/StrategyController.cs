@@ -7,10 +7,12 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -158,6 +160,12 @@ public sealed class StrategyController
     private string PlayerFactionId => galaxyMapController?.PlayerFactionId ?? string.Empty;
 
     /// <summary>
+    /// Gets whether the active session has a connected peer available for strategy chat.
+    /// </summary>
+    bool IMessagesWindowActions.CanSendPeerChat =>
+        MultiplayerCoordinator.Instance?.CanSendPeerChat == true;
+
+    /// <summary>
     /// Initializes the strategy screen for the active game and UI context.
     /// </summary>
     /// <param name="activeSession">The runtime components used to compose the strategy controllers.</param>
@@ -197,10 +205,14 @@ public sealed class StrategyController
         strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
         runtime.GameReplaced += HandleGameReplaced;
+        runtime.GameStateChanged += RefreshStrategyState;
+        if (MultiplayerCoordinator.Instance != null)
+            MultiplayerCoordinator.Instance.StateChanged += MarkDirty;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
         session.Tick.TickProgressed += HandleManufacturingProgress;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
+        session.Pipeline.ResultsResolved += HandleCombatResultsResolved;
         session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
         session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
 
@@ -326,8 +338,13 @@ public sealed class StrategyController
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
             PlaySfx,
+            runtime.PlayerRequests,
             PlaySfxInstance,
             audioManager.GetLoadedSfxDuration
+        );
+        strategyHudController.BindNotificationContext(
+            () => session.Game.GetFactionPlayer(session.Game.GetPlayerFaction().InstanceID).UIState,
+            () => session.Game.CurrentTick
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
@@ -424,7 +441,8 @@ public sealed class StrategyController
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
             session,
-            () => uiContext.GetPlayerFactionInstanceID()
+            () => uiContext.GetPlayerFactionInstanceID(),
+            runtime.PlayerRequests
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -561,6 +579,7 @@ public sealed class StrategyController
             AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(
             fleetCommandController,
+            runtime.PlayerRequests,
             () => uiContext,
             targetingController,
             strategyWindowLayerView,
@@ -572,6 +591,7 @@ public sealed class StrategyController
         );
         constructionWindowController = new ConstructionWindowController(
             session,
+            runtime.PlayerRequests,
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,
@@ -582,7 +602,7 @@ public sealed class StrategyController
             galaxyMapController.FindVisibleNode
         );
         facilityWindowController = new FacilityWindowController(
-            session,
+            runtime.PlayerRequests,
             constructionWindowController,
             () => uiContext,
             targetingController,
@@ -605,6 +625,7 @@ public sealed class StrategyController
         );
         missionCreateWindowController = new MissionCreateWindowController(
             session,
+            runtime.PlayerRequests,
             () => uiContext,
             PlaySfx,
             strategyWindowLayerView,
@@ -644,6 +665,7 @@ public sealed class StrategyController
             MarkDirty
         );
         messagesWindowController = new MessagesWindowController(
+            runtime.PlayerRequests,
             PlaySfx,
             resourcePath => AudioManager.EnsureExists().PlaySfxInstance(resourcePath),
             () => uiContext,
@@ -709,11 +731,14 @@ public sealed class StrategyController
             windowPlacementController.GetOptionsWindowPosition,
             CloseWindow,
             bootstrap,
-            settingsRuntime.SaveGame,
-            bootstrap.LoadSave,
+            settingsRuntime.SaveGameAsync,
+            bootstrap.LoadSaveAsync,
             MarkDirty,
             saveGameManager,
-            showModsTab: false
+            showModsTab: false,
+            getSavedGames: () =>
+                MultiplayerCoordinator.Instance?.GetVisibleSavedGames(saveGameManager)
+                ?? saveGameManager.GetSavedGames()
         );
         _appInputController = bootstrap.GetInputController();
         if (_appInputController != null)
@@ -726,8 +751,8 @@ public sealed class StrategyController
                     .TryGetPendingCombat(out PendingCombatResult pending)
                     ? pending
                     : null,
-            () => session.Tick.ResolveCombatRetreat(PlayerFactionId),
-            () => session.Tick.ResolveCombat(true),
+            () => ResolvePendingCombatAsync(true),
+            () => ResolvePendingCombatAsync(false),
             () => uiContext,
             planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
             PlaySfx,
@@ -765,10 +790,10 @@ public sealed class StrategyController
             missionCreateWindowController,
             confirmDialogWindowController,
             session,
-            () => uiContext.GetPlayerFactionInstanceID(),
+            runtime.PlayerRequests,
+            () => this != null ? uiContext : null,
             PlaySfx,
             ClearWindowSelection,
-            RebuildSnapshot,
             MarkDirty,
             strategyHudController.PlayInvalidOrderRejected,
             strategyHudController.PlayInTransitOrderRejected,
@@ -1063,10 +1088,14 @@ public sealed class StrategyController
         {
             gameManager.GameSpeedChanged -= MarkDirty;
             runtime.GameReplaced -= HandleGameReplaced;
+            runtime.GameStateChanged -= RefreshStrategyState;
+            if (MultiplayerCoordinator.Instance != null)
+                MultiplayerCoordinator.Instance.StateChanged -= MarkDirty;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
             session.Tick.TickProgressed -= HandleManufacturingProgress;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
+            session.Pipeline.ResultsResolved -= HandleCombatResultsResolved;
             session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
             session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
         }
@@ -1103,7 +1132,7 @@ public sealed class StrategyController
         }
 
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            inputController?.SubmitTargeting();
+            HandleTargetingSubmit();
 
         if (battleAlertWindowController.SyncPendingCombatWindow())
         {
@@ -1123,6 +1152,39 @@ public sealed class StrategyController
         );
         if (dirty)
             Render();
+    }
+
+    /// <summary>
+    /// Completes a targeting submission without delaying the per-frame presentation loop.
+    /// </summary>
+    private async void HandleTargetingSubmit()
+    {
+        if (inputController != null)
+            await inputController.SubmitTargetingAsync();
+    }
+
+    /// <summary>
+    /// Submits a decision for the currently displayed encounter through the player action boundary.
+    /// </summary>
+    /// <param name="retreat">Whether the local side requests withdrawal.</param>
+    /// <returns>The completed battle result, or null while waiting or when the response was rejected.</returns>
+    private async Task<SpaceCombatResult> ResolvePendingCombatAsync(bool retreat)
+    {
+        if (
+            !session
+                .GetService<SpaceCombatCommands>()
+                .TryGetPendingCombat(out PendingCombatResult pending)
+        )
+            return null;
+        PlayerRequestOutcome result = await runtime.PlayerRequests.ExecuteAsync(
+            new ResolveCombatRequest
+            {
+                PlanetID = pending.PlanetInstanceID,
+                Tick = pending.Tick,
+                Retreat = retreat,
+            }
+        );
+        return result.Accepted ? result.SpaceCombatResult : null;
     }
 
     /// <summary>
@@ -1594,7 +1656,26 @@ public sealed class StrategyController
                 faction?.RefinedMaterials.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
                 StrategyHudController.GetUnacknowledgedMessageTypes(faction),
-                resourceBreakdown
+                resourceBreakdown,
+                session
+                    .Game.GetPlayers()
+                    .Where(player => player.ControllerType == PlayerControllerType.Human)
+                    .Select(player => new StrategyHudPlayerSpeedSelection(
+                        player.DisplayName
+                            ?? session
+                                .Game.GetFactionByOwnerInstanceID(player.FactionID)
+                                ?.DisplayName
+                            ?? player.FactionID,
+                        player.RequestedGameSpeed ?? gameManager.GetGameSpeed(),
+                        player.FactionID,
+                        player.GameSpeedSelectionRevision,
+                        player.FactionID == faction.InstanceID,
+                        uiContext.GetTheme(player.FactionID).GetPrimaryColor()
+                    )),
+                MultiplayerCoordinator.Instance?.IsMultiplayerGame == true
+                && !MultiplayerCoordinator.Instance.IsSynchronized
+                    ? MultiplayerCoordinator.Instance.Status
+                    : string.Empty
             )
         );
     }
@@ -1948,6 +2029,15 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Presents completed encounters from the same simulation pipeline on either participant.
+    /// </summary>
+    /// <param name="results">The settled results released by the active simulation.</param>
+    private void HandleCombatResultsResolved(IReadOnlyList<GameResult> results)
+    {
+        battleAlertWindowController.PresentResolvedResults(results);
+    }
+
+    /// <summary>
     /// Pauses after an enemy bombardment against the player's faction when configured.
     /// </summary>
     /// <param name="result">The result.</param>
@@ -2062,6 +2152,7 @@ public sealed class StrategyController
     {
         strategyMusicController.Reset();
         strategyHudController.ResetSession();
+        battleAlertWindowController.ResetSession();
         targetingController?.Cancel();
         contextMenuController?.Cancel();
         strategyContextMenu?.Reset();
@@ -2206,6 +2297,38 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Submits a response for the exact speed proposal displayed by the HUD.
+    /// </summary>
+    /// <param name="requestingFactionID">The proposing faction.</param>
+    /// <param name="speed">The displayed requested speed.</param>
+    /// <param name="revision">The displayed proposal revision.</param>
+    /// <param name="accept">Whether to accept the proposal.</param>
+    async void IStrategyHudActions.RespondToSpeedRequest(
+        string requestingFactionID,
+        TickSpeed speed,
+        long revision,
+        bool accept
+    )
+    {
+        try
+        {
+            await runtime.PlayerRequests.ExecuteAsync(
+                new RespondToSpeedRequest
+                {
+                    RequestingFactionID = requestingFactionID,
+                    Speed = speed,
+                    Revision = revision,
+                    Accept = accept,
+                }
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing the session cancels responses whose completion is no longer known.
+        }
+    }
+
+    /// <summary>
     /// Sets the simulation speed selected from the HUD speed menu.
     /// </summary>
     /// <param name="speed">The selected simulation speed.</param>
@@ -2221,17 +2344,6 @@ public sealed class StrategyController
     void IStrategyHudActions.RequestHudRender()
     {
         dirty = true;
-    }
-
-    /// <summary>
-    /// Processes advisor automation for the supplied faction and refreshes strategy state.
-    /// </summary>
-    /// <param name="faction">The faction whose automation should be processed.</param>
-    void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
-    {
-        session?.GetService<AdvisorAutomationCommands>()?.ProcessFaction(faction);
-        session?.GetService<NamingCommands>()?.ProcessFaction(faction);
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2284,14 +2396,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebuilds strategy state after a successful construction order.
-    /// </summary>
-    void IConstructionWindowActions.RefreshAfterConstruction()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
     /// Opens Encyclopedia information for the active facility selection.
     /// </summary>
     /// <param name="target">The resolved facility information target.</param>
@@ -2307,14 +2411,6 @@ public sealed class StrategyController
     void IFacilityWindowActions.OpenFacilityStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a facility command changes the game.
-    /// </summary>
-    void IFacilityWindowActions.RefreshFacilityState()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2347,20 +2443,12 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebuilds shared strategy state after a fleet command changes the game.
-    /// </summary>
-    void IFleetWindowActions.RefreshFleetState()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
     /// Assigns one selected live officer to a command post for a strategy feature window.
     /// </summary>
     /// <param name="items">The selected strategy-window items or snapshots.</param>
     /// <param name="rank">The requested command rank.</param>
     /// <returns>True when an appointment changed.</returns>
-    bool IOfficerCommandActions.TrySetOfficerCommand(
+    async Task<bool> IOfficerCommandActions.TrySetOfficerCommandAsync(
         IReadOnlyList<ISceneNode> items,
         OfficerRank rank
     )
@@ -2369,9 +2457,11 @@ public sealed class StrategyController
         if (selectedOfficer == null)
             return false;
 
-        return session
-                ?.GetService<PersonnelCommands>()
-                ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
+        return (
+            await runtime.PlayerRequests.ExecuteAsync(
+                new SetOfficerRankRequest { OfficerID = selectedOfficer.InstanceID, Rank = rank }
+            )
+        ).Accepted;
     }
 
     /// <summary>
@@ -2390,22 +2480,6 @@ public sealed class StrategyController
     void IDefenseWindowActions.OpenDefenseStatusWindow(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a stationed officer's command changes.
-    /// </summary>
-    void IDefenseWindowActions.RefreshDefenseState()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
-    /// Rebuilds shared strategy state after a planet-sector command changes the game.
-    /// </summary>
-    void IPlanetSectorWindowActions.RefreshPlanetSectorState()
-    {
-        RefreshStrategyState();
     }
 
     /// <summary>
@@ -2488,14 +2562,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebuilds strategy state after a mission is created.
-    /// </summary>
-    void IMissionCreateWindowActions.RefreshAfterMissionCreation()
-    {
-        RefreshStrategyState();
-    }
-
-    /// <summary>
     /// Opens the Encyclopedia from the Mission Create information control.
     /// </summary>
     void IMissionCreateWindowActions.OpenMissionCreateInfo()
@@ -2520,13 +2586,26 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Sends the submitted text through ordered peer delivery.
+    /// </summary>
+    /// <param name="rawText">The nonempty text exactly as submitted.</param>
+    /// <returns>True when the connected session accepted the message for delivery.</returns>
+    Task<bool> IMessagesWindowActions.SendPeerChatAsync(string rawText)
+    {
+        MultiplayerCoordinator coordinator = MultiplayerCoordinator.Instance;
+        return coordinator == null
+            ? Task.FromResult(false)
+            : coordinator.SendPeerChatAsync(rawText);
+    }
+
+    /// <summary>
     /// Aborts the active mission represented by a continuing mission report.
     /// </summary>
     /// <param name="missionInstanceId">The active mission identifier.</param>
     /// <returns>True when the mission was aborted.</returns>
-    bool IMessagesWindowActions.TryAbortMission(string missionInstanceId)
+    Task<bool> IMessagesWindowActions.TryAbortMissionAsync(string missionInstanceId)
     {
-        return windowCommandController.TryAbortMission(missionInstanceId);
+        return windowCommandController.TryAbortMissionAsync(missionInstanceId);
     }
 
     /// <summary>
@@ -3853,6 +3932,7 @@ public sealed class StrategyController
             if (
                 context.performed
                 && !briefingActive
+                && _appInputController?.ShortcutsSuppressed != true
                 && _optionsMenuController?.IsOpen != true
                 && !UIInputFocus.IsTextEntryActive()
             )
@@ -3872,12 +3952,7 @@ public sealed class StrategyController
         if (gameManager == null)
             return;
 
-        TickSpeed current = gameManager.GetGameSpeed();
-        gameManager.SetGameSpeed(
-            faster
-                ? AppInputController.GetFasterGameSpeed(current)
-                : AppInputController.GetSlowerGameSpeed(current)
-        );
+        gameManager.StepGameSpeed(faster);
     }
 
     /// <summary>

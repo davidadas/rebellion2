@@ -98,7 +98,14 @@ public sealed class ContextMenuPanelView : MonoBehaviour
         {
             ContextMenuCommandItem item = commands[index];
             GetCommandView(index)
-                .Render(item, GetCommandColor(item, visuals), hasIconColumn, width, index);
+                .Render(
+                    item,
+                    GetCommandColor(item, visuals),
+                    hasIconColumn,
+                    width,
+                    index,
+                    visuals.ActiveColor
+                );
         }
 
         for (int index = commandCount; index < commandViews.Count; index++)

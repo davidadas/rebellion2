@@ -1,15 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
@@ -96,6 +99,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() =>
                 new FleetWindowController(
                     null,
+                    TestPlayerRequests.Create(_session, () => _playerFactionId),
                     () => _uiContext,
                     _targetingController,
                     _windowLayer,
@@ -890,6 +894,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(view.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OnContextMenuCommandSelected_OriginatingPresentationReplaced_DoesNotOpenReportAsync(
+            bool replaceGame
+        )
+        {
+            _planet.Planet.OwnerInstanceID = _opposingFactionId;
+            _fleet.GetChildren<CapitalShip>()[0].Bombardment = 1;
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _fleetCommandController = CreateFleetCommandController(dispatcher);
+            _controller = CreateController();
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.PlanetaryBombardment)
+                .SubmenuCommands.Single(item =>
+                    item.Action == StrategyMenuAction.GeneralBombardment
+                );
+            _controller.OnContextMenuCommandSelected(request, command);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                UnityEngine.Object.DestroyImmediate(_rootObject);
+
+            completion.SetResult(new PlayerRequestOutcome(true, combatReport: new CombatReport()));
+            await Task.Yield();
+
+            Assert.IsNull(_actions.LastBattleResult);
+        }
+
         [Test]
         public void OnContextMenuCommandSelected_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
@@ -935,7 +985,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNotNull(_actions.LastBattleResult);
             Assert.AreEqual(CombatReportType.Bombardment, _actions.LastBattleResult.CombatType);
             Assert.AreEqual(BombardmentType.General, _actions.LastBattleResult.BombardmentType);
-            Assert.AreEqual(1, _actions.RefreshCount);
         }
 
         [Test]
@@ -984,6 +1033,54 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(ship.HasAssignedName);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task OnContextMenuCommandSelected_RenamePresentationReplaced_DoesNotInvalidatePresentationAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
+            ContextMenuRequest request = _controller.CreateContextMenuForFleet(
+                _planet,
+                _fleet,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Rename);
+            _controller.OnContextMenuCommandSelected(request, command);
+            FleetWindowView view = _windowManager.FindWindowView<FleetWindowView>(_ => true);
+            UIWindow window = view.GetComponent<UIWindow>();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+            input.SetTextWithoutNotify("Renamed fleet");
+            input.onSubmit.Invoke(input.text);
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+            int dirtyCount = _dirtyCount;
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+        }
+
         [Test]
         public void OnContextMenuCommandSelected_OfficerRank_RoutesAppointmentAndRefreshes()
         {
@@ -1029,7 +1126,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(selected);
             Assert.AreEqual(1, _actions.OfficerCommandCount);
             Assert.AreEqual(OfficerRank.Admiral, _actions.LastOfficerRank);
-            Assert.AreEqual(1, _actions.RefreshCount);
         }
 
         [Test]
@@ -1046,10 +1142,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
-        private FleetWindowController CreateController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private FleetWindowController CreateController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new FleetWindowController(
                 _fleetCommandController,
+                playerRequests ?? TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _targetingController,
                 _windowLayer,
@@ -1064,11 +1164,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// Creates fleet command controller.
         /// </summary>
         /// <returns>The created fleet command controller.</returns>
-        private StrategyFleetCommandController CreateFleetCommandController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private StrategyFleetCommandController CreateFleetCommandController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new StrategyFleetCommandController(
                 _session,
-                () => _game.GetPlayerFaction().InstanceID
+                () => _game.GetPlayerFaction().InstanceID,
+                playerRequests
+                    ?? TestPlayerRequests.Create(
+                        _session,
+                        () => _game.GetPlayerFaction().InstanceID
+                    )
             );
         }
 
@@ -1252,8 +1360,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             public bool OfficerCommandResult { get; set; }
 
-            public int RefreshCount { get; private set; }
-
             public bool IsIdleBarEnabled => true;
 
             /// <summary>
@@ -1365,24 +1471,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             ) { }
 
             /// <summary>
-            /// Refreshes fleet state.
-            /// </summary>
-            public void RefreshFleetState()
-            {
-                RefreshCount++;
-            }
-
-            /// <summary>
             /// Attempts to assign the selected officer to a command post.
             /// </summary>
             /// <param name="items">The selected items.</param>
             /// <param name="rank">The requested command rank.</param>
             /// <returns>True when the appointment changed.</returns>
-            public bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+            public Task<bool> TrySetOfficerCommandAsync(
+                IReadOnlyList<ISceneNode> items,
+                OfficerRank rank
+            )
             {
                 OfficerCommandCount++;
                 LastOfficerRank = rank;
-                return OfficerCommandResult;
+                return Task.FromResult(OfficerCommandResult);
             }
 
             /// <summary>
@@ -1402,13 +1503,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="target">The target.</param>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryExecuteMove(
+            public Task<bool> TryExecuteMoveAsync(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             )
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             /// <summary>
@@ -1439,7 +1540,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// </summary>
             /// <param name="source">The source.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+            public Task<bool> TryCommitFleetWaypointPlanAsync(
+                StrategyWindowTargetingSource source
+            ) => Task.FromResult(false);
 
             /// <summary>
             /// Attempts undo fleet waypoint plan.
@@ -1453,7 +1556,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items) =>
+                Task.FromResult(false);
         }
     }
 }

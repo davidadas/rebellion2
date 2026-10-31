@@ -95,6 +95,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(data.FrameTexture);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Project_OneParticipantResponded_ShowsReceiptsWithoutRevealingChoices(
+            bool viewAsAttacker
+        )
+        {
+            var scene = CreateScene();
+            PendingCombatResult pending = new()
+            {
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                RequiresBothResponses = true,
+                AttackerRetreatResponse = false,
+            };
+            BattleAlertWindowRenderData data = new BattleAlertWindowProjector().Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                viewAsAttacker ? _playerFactionId : _opponentFactionId,
+                10,
+                20,
+                scene.Context,
+                scene.Planet
+            );
+
+            Assert.AreEqual(
+                viewAsAttacker ? "Waiting for player" : string.Empty,
+                data.Pending.ResponseStatus
+            );
+            Assert.AreEqual(viewAsAttacker, data.Pending.CommandButtons[1].Selected);
+            Assert.IsFalse(data.Pending.CommandButtons[0].Selected);
+            StringAssert.DoesNotContain("responses", data.Pending.Title);
+        }
+
         [Test]
         public void Project_PendingSecondForces_ReturnsFleetHierarchyWithoutPlanetDuplicates()
         {

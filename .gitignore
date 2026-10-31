@@ -49,6 +49,12 @@ Assets/TextMesh Pro/
 /_recordings/
 /_screenshots/
 /Assets/Resources/
+
+# Local Epic Online Services credentials and platform configuration.
+/Assets/StreamingAssets/EOS/
+# Generated multiplayer UI previews are rebuilt from their editor tools.
+/Assets/Editor/Preview/MultiplayerGenerated/
+/Assets/Editor/Preview/MultiplayerGenerated.meta
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
 

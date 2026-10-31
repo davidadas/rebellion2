@@ -105,6 +105,11 @@ namespace Rebellion.Game.Factions
         // Research Status.
         public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
 
+        /// <summary>
+        /// Gets or sets the last tick in which this faction's control loss shifted sector support.
+        /// </summary>
+        public int LastControlSupportShiftTick { get; set; } = -1;
+
         [PersistableIgnore]
         public Dictionary<
             ResearchDiscipline,
@@ -129,6 +134,17 @@ namespace Rebellion.Game.Factions
             get => _refinedMaterialStockpile;
             set => _refinedMaterialStockpile = value;
         }
+
+        /// <summary>
+        /// Gets or sets whether the current maintenance shortfall has already been reported.
+        /// </summary>
+        public bool MaintenanceShortfallNotified { get; set; }
+
+        /// <summary>
+        /// Gets or sets the next automatic scrap pulse, or null when no shortfall timer is active.
+        /// </summary>
+        public int? NextMaintenanceAutoscrapTick { get; set; }
+
         public List<string> PendingRawMaterialFacilityIDs { get; set; } = new List<string>();
         public List<string> PendingRefinedMaterialFacilityIDs { get; set; } = new List<string>();
 

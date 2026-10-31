@@ -1437,7 +1437,7 @@ namespace Rebellion.Gameplay.Scripting
                     );
                 }
 
-                node.IsEnabled = action.State == SceneNodeState.Active;
+                context.Game.SetNodeEnabled(node, action.State == SceneNodeState.Active);
             }
             return;
         }
@@ -1926,7 +1926,7 @@ namespace Rebellion.Gameplay.Scripting
             for (int index = 0; index < action.Count; index++)
             {
                 ISceneNode unit = unitFactory.Create(action.TypeID, action.OwnerFactionInstanceID);
-                unit.InstanceID = Guid.NewGuid().ToString("N");
+                unit.InstanceID = context.Game.GenerateRuntimeIdentifier();
                 yield return unit;
             }
         }

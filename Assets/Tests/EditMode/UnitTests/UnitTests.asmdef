@@ -5,6 +5,7 @@
     ],
     "references": [
         "GameAssembly",
+        "NativeAudit",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",

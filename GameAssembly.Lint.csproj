@@ -55,6 +55,42 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference
+      Include="com.Epic.OnlineServices"
+      Condition="Exists('$(UnityManagedAssembliesPath)/com.Epic.OnlineServices.dll') Or Exists('Library/ScriptAssemblies/com.Epic.OnlineServices.dll')"
+    >
+      <HintPath Condition="Exists('$(UnityManagedAssembliesPath)/com.Epic.OnlineServices.dll')"
+        >$(UnityManagedAssembliesPath)/com.Epic.OnlineServices.dll</HintPath
+      >
+      <HintPath Condition="!Exists('$(UnityManagedAssembliesPath)/com.Epic.OnlineServices.dll')"
+        >Library/ScriptAssemblies/com.Epic.OnlineServices.dll</HintPath
+      >
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="com.playeveryware.eos.core"
+      Condition="Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.core.dll') Or Exists('Library/ScriptAssemblies/com.playeveryware.eos.core.dll')"
+    >
+      <HintPath Condition="Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.core.dll')"
+        >$(UnityManagedAssembliesPath)/com.playeveryware.eos.core.dll</HintPath
+      >
+      <HintPath Condition="!Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.core.dll')"
+        >Library/ScriptAssemblies/com.playeveryware.eos.core.dll</HintPath
+      >
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="com.playeveryware.eos"
+      Condition="Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.dll') Or Exists('Library/ScriptAssemblies/com.playeveryware.eos.dll')"
+    >
+      <HintPath Condition="Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.dll')"
+        >$(UnityManagedAssembliesPath)/com.playeveryware.eos.dll</HintPath
+      >
+      <HintPath Condition="!Exists('$(UnityManagedAssembliesPath)/com.playeveryware.eos.dll')"
+        >Library/ScriptAssemblies/com.playeveryware.eos.dll</HintPath
+      >
+      <Private>false</Private>
+    </Reference>
+    <Reference
       Include="UnityEngine"
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.dll')"
     >
@@ -171,6 +207,19 @@
       <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="Newtonsoft.Json"
+      Condition="Exists('$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Library/PackageCache/com.unity.nuget.newtonsoft-json*/Runtime/Newtonsoft.Json.dll"
+      Condition="!Exists('$(UnityManagedAssembliesPath)/Newtonsoft.Json.dll')"
+    >
+      <Private>false</Private>
+    </Reference>
     <Reference Include="glTFast" Condition="Exists('Library/ScriptAssemblies/glTFast.dll')">
       <HintPath>Library/ScriptAssemblies/glTFast.dll</HintPath>
       <Private>false</Private>
@@ -178,6 +227,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
+    <Compile Include="Assets/Tests/NativeAudit/**/*.cs" />
     <!-- The generated Input System actions live in their own assembly (Rebellion.InputActions).
          Compile the source directly so the Rebellion.Input namespace resolves without depending on
          the project's compiled Library output, which CI's lint stage may not have built yet. The

@@ -19,6 +19,45 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [Test]
+        public void RequestMove_DeterministicPeerGames_AssignsSameMovementGroupWithoutRandomDraws()
+        {
+            (
+                GameRoot first,
+                _,
+                Planet firstDestination,
+                Officer firstOfficer,
+                MovementCommands firstCommands
+            ) = BuildScene();
+            (
+                GameRoot second,
+                _,
+                Planet secondDestination,
+                Officer secondOfficer,
+                MovementCommands secondCommands
+            ) = BuildScene();
+            first.Summary.Seed = 314159;
+            second.Summary.Seed = 314159;
+            first.UseDeterministicRuntimeIdentifiers = true;
+            second.UseDeterministicRuntimeIdentifiers = true;
+            long firstRandomIndex = first.RandomIndex;
+            long secondRandomIndex = second.RandomIndex;
+
+            firstCommands.RequestMove(firstOfficer, firstDestination);
+            secondCommands.RequestMove(secondOfficer, secondDestination);
+
+            Assert.IsNotNull(firstOfficer.Movement);
+            Assert.IsNotNull(secondOfficer.Movement);
+            Assert.AreEqual(
+                firstOfficer.Movement.MovementGroupID,
+                secondOfficer.Movement.MovementGroupID
+            );
+            Assert.AreEqual(1, first.RuntimeIdentifierIndex);
+            Assert.AreEqual(first.RuntimeIdentifierIndex, second.RuntimeIdentifierIndex);
+            Assert.AreEqual(firstRandomIndex, first.RandomIndex);
+            Assert.AreEqual(secondRandomIndex, second.RandomIndex);
+        }
+
         [TestCase(typeof(Building))]
         [TestCase(typeof(Regiment))]
         [TestCase(typeof(SpecialForces))]

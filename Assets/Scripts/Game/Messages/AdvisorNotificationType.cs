@@ -26,5 +26,6 @@ namespace Rebellion.Game.Messages
         HanSoloIntelligenceUpdate,
         Bombardment,
         PlanetaryAssault,
+        ChatReceived,
     }
 }

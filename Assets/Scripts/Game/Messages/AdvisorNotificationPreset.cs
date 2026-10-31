@@ -27,6 +27,7 @@ namespace Rebellion.Game.Messages
         SubjectReport,
         SubjectCaptured,
         SubjectReleased,
+        ChatReceived,
     }
 
     /// <summary>
@@ -69,6 +70,7 @@ namespace Rebellion.Game.Messages
                     AdvisorNotificationType.PrisonerEscaped,
                 AdvisorNotificationPreset.InterceptedCommunication =>
                     AdvisorNotificationType.InterceptedCommunication,
+                AdvisorNotificationPreset.ChatReceived => AdvisorNotificationType.ChatReceived,
                 AdvisorNotificationPreset.Bombardment => AdvisorNotificationType.Bombardment,
                 AdvisorNotificationPreset.PlanetaryAssault =>
                     AdvisorNotificationType.PlanetaryAssault,

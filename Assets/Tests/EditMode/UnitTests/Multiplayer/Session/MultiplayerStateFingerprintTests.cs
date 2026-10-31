@@ -1,0 +1,204 @@
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Multiplayer;
+using Rebellion.Util.Random;
+
+namespace Rebellion.Tests.Multiplayer
+{
+    [TestFixture]
+    public sealed class MultiplayerStateFingerprintTests
+    {
+        private GameSession _source;
+        private GameSession _restored;
+
+        /// <summary>
+        /// Creates independent source and restored sessions for continuation comparisons.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary.Seed = 123;
+            game.GetFactions().Add(new Faction { InstanceID = "owner" });
+            game.SetFactionController("owner", "participant", PlayerControllerType.Human);
+            _source = new GameSession(game, TestGameData.Create(game.Config));
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
+            _source.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            _restored = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_source.Game.Config)
+            );
+        }
+
+        /// <summary>
+        /// Releases both session-owned service scopes.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            _source.Dispose();
+            _restored.Dispose();
+        }
+
+        [Test]
+        public void ComputeSimulation_EquivalentRecovery_ReturnsSameFingerprint()
+        {
+            Assert.AreEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_LocalUIChange_IgnoresPresentation()
+        {
+            _restored.Game.GetFactionPlayer("owner").UIState.GetOrCreateSection("Selection").Values[
+                "selected"
+            ] = "local-selection";
+
+            Assert.AreEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_FactionRuntimeRuleChange_DetectsDifference()
+        {
+            _restored.Game.GetFactionByOwnerInstanceID("owner").Settings.BattleLossLoyaltyDivisor++;
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_RuntimeConfigurationChanged_DetectsDifference()
+        {
+            _restored.Game.Config.Production.MaintenanceShortfallAutoscrapInterval++;
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void ComputeSimulation_DifferentActualRandomSeed_DetectsDifference()
+        {
+            GameRoot state = _restored.Game;
+            state.Random = new SystemRandomProvider(456, state.RandomIndex);
+            _restored.ReplaceGame(state);
+            Assert.AreEqual(_source.Game.Summary.Seed, _restored.Game.Summary.Seed);
+            Assert.AreEqual(_source.Game.RandomIndex, _restored.Game.RandomIndex);
+
+            Assert.AreNotEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void VerifyLoadedGame_EquivalentContinuation_AdmitsRestoredSession()
+        {
+            string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
+            Assert.AreEqual(
+                expected,
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
+            );
+        }
+
+        [Test]
+        public void VerifyLoadedGame_ChangedRestoredRule_RejectsBeforeGameplay()
+        {
+            string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
+            _restored.Game.GetFactionByOwnerInstanceID("owner").Settings.BattleLossLoyaltyDivisor++;
+            Assert.Throws<System.InvalidOperationException>(() =>
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
+            );
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        public void VerifyLoadedGame_MissingSourceFingerprint_RejectsBeforeGameplay(string expected)
+        {
+            Assert.Throws<System.InvalidOperationException>(() =>
+                MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
+            );
+        }
+
+        [Test]
+        public void VerifyLoadedGame_ActualSeedDiffersFromSummary_PreservesNextWideDraw()
+        {
+            _source.Dispose();
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary.Seed = 123;
+            game.Random = new SystemRandomProvider(456);
+            game.Random.NextInt(int.MinValue, int.MaxValue);
+            _source = new GameSession(game, TestGameData.Create(game.Config));
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
+            _restored.Dispose();
+            _restored = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_source.Game.Config)
+            );
+
+            MultiplayerStateFingerprint.VerifyLoadedGame(
+                _restored,
+                MultiplayerStateFingerprint.ComputeSimulation(_source)
+            );
+            Assert.AreEqual(
+                _source.Game.Random.NextInt(int.MinValue, int.MaxValue),
+                _restored.Game.Random.NextInt(int.MinValue, int.MaxValue)
+            );
+        }
+
+        [Test]
+        public void VerifyLoadedGame_RepeatedRecoveryAndDraws_PreservesIndependentContinuation()
+        {
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_source);
+                _restored.Dispose();
+                _restored = new GameSession(
+                    MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                    TestGameData.Create(_source.Game.Config)
+                );
+                MultiplayerStateFingerprint.VerifyLoadedGame(
+                    _restored,
+                    MultiplayerStateFingerprint.ComputeSimulation(_source)
+                );
+
+                for (int draw = 0; draw < 8; draw++)
+                    Assert.AreEqual(
+                        _source.Game.Random.NextInt(int.MinValue, int.MaxValue),
+                        _restored.Game.Random.NextInt(int.MinValue, int.MaxValue)
+                    );
+            }
+        }
+
+        [Test]
+        public void ComputeSimulation_ReplacedModelRandomWithoutServiceRebind_RejectsSplitOwnership()
+        {
+            _restored.Game.Random = new SystemRandomProvider(456);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [Test]
+        public void Compute_UnassignedPrototypeIdentity_DoesNotAllocateIdentifier()
+        {
+            CapitalShip prototype = new() { TypeID = "prototype" };
+
+            MultiplayerStateFingerprint.Compute(prototype);
+
+            Assert.IsNull(prototype.PeekInstanceID());
+        }
+    }
+}

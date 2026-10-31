@@ -54,6 +54,125 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
 
+For native UI audits, pass `-nativeAuditBuild` to `StandalonePlayerBuild.Build` and use a
+separate player output directory. This adds the `REBELLION_NATIVE_AUDIT` compilation symbol;
+`Assets/Tests/NativeAudit` requires that symbol in standalone players. Launch each audit player
+with its own absolute `-nativeAuditControl` directory. Without that launch argument, the observer
+does not start. Ordinary builds omit the symbol.
+
+Write one JSON command to a temporary file, then rename it to `request.json` in that directory.
+Commands have a unique numeric `id` and an `operation`: `state`, `point`, `capture`, or `wait`.
+For example, `{"id":1,"operation":"point","target":"MultiplayerButton"}` resolves the
+center of a unique active control, its event-system raycasts, and public UI state. Exact hierarchy
+paths disambiguate repeated names. Coordinates use Unity's viewport origin at the bottom left.
+The completed response is published once as `response-1.json`; captures also create `frame-1.png`.
+Use a fresh control directory for each process and never reuse command IDs within it.
+
+For native service audits, explicit `browse`, `host`, `join`, `ready`, `launch`, `resume`, `save`,
+`quicksave`, `load`, `speed`, and `fight` commands call the existing public service contracts.
+`key` queues a virtual Input System keyboard press and release. These commands do not invoke
+private callbacks. Poll `operationPending`, then check `operationSucceeded`, coordinator status,
+and the resulting scene and files: completion of a service call alone does not establish admission.
+`fight` submits one explicit local Fight response; it does not automate future battles.
+Simulation profiling stays in the editor/headless runners. The network simulation runner records
+per-day tick, step, barrier, and verification durations with `Stopwatch`. Ordinary gameplay has
+no phase-trace collector or native timing commands.
+
+Service audits do not establish physical input delivery. Drive input through the operating system
+when testing actual shortcuts and controls, and verify the resulting UI, checkpoint, or save
+independently. A resolved pointer target does not prove a click was delivered. State responses include active control paths,
+interactivity, enabled action names, shortcut suppression, and selected-control focus; they omit
+input-field contents and credentials. Scene queries run only for explicit commands, with request
+polling at five hertz. Keep both audit clients on the same compiled build and use isolated saves.
+
+## Multiplayer synchronization
+
+`GameRuntime` selects the session owner before constructing simulation services. Multiplayer
+campaigns require an `IGameSessionOwner`; presentation reports readiness for that specific session
+and never replaces its execution owner. Local and network player requests use the session's writable
+command boundary. Commands wait while a tick executes, and network commands also wait for the
+completed day's verification barrier.
+
+Admission compares a source identity embedded in the compiled game assembly and a SHA-256 digest
+of the composed gameplay catalog. The source identity covers production scripts, assembly settings,
+package dependencies and Unity version; it is independent of checkout paths and line endings.
+Content checks apply to joining, content changes, shared loads and reconnects. Pack/version labels
+alone do not admit a peer. After changing source inputs, allow Unity's identity regeneration and
+script compilation to finish before testing or building.
+
+Each launch, shared load and reconnect receives an initialization identity. Readiness, recovery
+snapshots and gameplay packets from an outgoing initialization cannot enter its replacement.
+Each initialization transfers one world; its receipt must match the payload hash and restored-world
+fingerprint.
+Completed commands include their queued movement and manufacturing reactions before the caller
+receives success. Tick completion and the handoff to human combat input also settle these reactions.
+Persistence admission rejects pending reactions; requesting a save does not flush gameplay work.
+Ownership-changing operations also publish their returned facts before completion. A constant-time
+pending-fact counter rejects unfinished ownership reactions instead of persisting observer tables.
+Normal loading also settles derived-state rebuild work before exposing a savable session.
+Mission roster baselines are saved as IDs on the mission. Victory suppression belongs only to the
+live session, which ends through the campaign-ending flow.
+
+Planet notifications use the existing result bus plus model support/presence observables.
+Authored activation changes use the same mutation boundary, including sector reactivation. They
+reconcile affected locations after gameplay reactions; only suppression changes include other planets
+in the affected sectors. Planet subscriptions are enumerated once when a session connects. Normal
+batches with no relevant changes do not scan the world. Loading silently initializes the notification
+baseline. Resource diversion is computed once per producing planet per resource phase and does not
+depend on notification history. Uprising progression remains timed simulation work.
+
+Rejoining follows room ownership while simulation authority retains the campaign's authenticated
+host role. The shared persistence channel is created after the agreed state handshake. Initial
+synchronization, shared loading, and rejoining use the same persisted world contract and ordinary
+loading methods. Both peers load the selected world before comparing loaded-state fingerprints;
+there is no separate simulation recovery envelope, loader, or reference-aware recovery codec.
+
+Manual saves and reconnect checkpoints require completed turn processing, including battle
+decisions. Disconnect handling lets an executing tick finish. If it stops awaiting battle input,
+the survivor restores the last completed checkpoint; progress since that checkpoint is lost.
+Both players respond again when the encounter occurs. Requested launch/save/load checkpoints are
+captured before another day starts; no full-world checkpoint is added to the per-day loop.
+Coordinated loads detect encounters in an agreed turn after synchronization.
+
+A rejoin offer transfers one ordinary world payload. Its receiver acknowledges the existing
+initial-state barrier after normal loading and presentation startup, using the same receipt checks
+as initial synchronization. The supplier can be either authenticated participant. The supplied
+world remains blocked against persistence until acknowledgment, so a local save cannot change its
+shared-save token during admission. The accepted rejoin names update the reserved host/guest names
+and retained lobby presentation without changing its approved setup. Rejoining code is in
+`MultiplayerCoordinator.Rejoin`.
+
+The active RNG seed and ID-generation mode are normal world properties; their positions/counters
+were already persisted. A faction saves its last control-loss support-shift tick through normal
+persistence, preserving the existing once-per-faction-per-tick rule across ordinary saves as well.
+Research timers were already saved normally. Loading keeps the same initialization and derived
+state rebuilding for both participants. Completed-day verification checks persisted state and
+runtime rules while excluding participant UI state and runtime parent-object caches.
+A mismatch or execution failure stops replay without retrying a potentially applied action.
+
+Simulation verification performs one graph traversal per completed multiplayer day per peer, after
+the tick iterator releases its execution boundary. The headless network runner measures its cost;
+verification is not a frame-loop poll.
+
+Scene-node lookup uses a standard dictionary rebuilt from the decoded hierarchy. Save files and
+network snapshots do not preserve a second registry membership list, dictionary storage positions,
+or vacant slots. Faction ownership indexes are also rebuilt from the hierarchy. Random automatic
+scrapping orders eligible units by ordinal ID before drawing an index; acquisition history is not
+saved. Manufacturing queues are rebuilt from saved producer IDs and sequence values.
+
+Human participants select their own game speed. The effective clock uses the slowest human
+selection in the order Pause, Very Slow, Slow, Medium, Fast. Either player can pause; time advances
+only when neither remains paused. A faster preference takes effect as the slower participant raises
+their selection, without requiring identical choices. Keyboard stepping follows the local selection.
+The strategy HUD shows the effective clock, both acknowledged choices, and faster-speed requests.
+
+Each human side in a pending fleet encounter must respond before resolution. A single human facing
+an AI side resolves after that human's response. If either side selects withdrawal, its existing
+withdrawal eligibility and movement rules apply; when both select withdrawal, both plans are
+prepared before either is applied and the encounter is a draw. The battle window shows response
+receipt without exposing the other participant's choice. Pending responses belong to the runtime
+continuation and survive recovery.
+
 ## Code organization
 
 `Game` contains game objects, authored configuration and instructions, and campaign state. These types can own behavior, including their own calculations and invariants. They depend only on `Game`, `SceneGraph`, and `Util` within this codebase.
@@ -62,10 +181,13 @@ content under `Assets/Content/` was not embedded in the player.
 
 | Area | Ownership |
 | --- | --- |
+| `Game/Player/Requests` | Player request parameters, request kinds, and execution outcomes. |
+| `Gameplay/PlayerRequests` | Request execution against the active session and its gameplay commands. |
+| `App/PlayerRequests` | Local delivery and rejection of requests from an ended or replaced session. |
 | `Game/Scripting` | Authored action, conditional, selector, binding, and trigger instructions. |
-| `Game/Scripting/Events` | Event definitions, schedules, and saved activation history. |
+| `Game/GameEvents` | Event definitions, schedules, and saved activation history. |
 | `Gameplay/Scripting` | Interpretation, evaluation, temporary execution contexts, and gameplay action handling. |
-| `Gameplay/Scripting/Events` | Event validation, activation, and campaign tick/result integration. |
+| `Gameplay/GameEvents` | Event validation, activation, and campaign tick/result integration. |
 | `Gameplay` (root) | Session construction, service registration, tick scheduling, and result delivery. |
 
 Gameplay feature folders retain commands for operations, queries for inspection and estimates, tick processors for time-driven work, and observers for result-driven reactions. A supporting class does not need its own tick to belong to a gameplay feature.

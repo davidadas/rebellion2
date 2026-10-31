@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.UI.SceneUI.MainMenu.Multiplayer;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
@@ -285,6 +286,8 @@ public static class MainMenuPrefabBuilder
         SerializedObject serializedView = new SerializedObject(view);
         serializedView.FindProperty("newGameSettingsButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "NewGameSettingsButton");
+        serializedView.FindProperty("multiplayerButton").objectReferenceValue =
+            FindRequiredComponent<Button>(root, "MultiplayerButton");
         serializedView.FindProperty("loadGameButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "LoadGameButton");
         serializedView.FindProperty("exitButton").objectReferenceValue =
@@ -350,6 +353,11 @@ public static class MainMenuPrefabBuilder
             ("VictoryConditionButton", EventTriggerType.PointerUp, _selectSfxPath),
             ("VictoryConditionIcon", EventTriggerType.PointerUp, _selectSfxPath),
             ("NewGameSettingsButton", EventTriggerType.PointerUp, _selectSfxPath),
+            (
+                "MultiplayerButton",
+                EventTriggerType.PointerDown,
+                "Application/MainMenu/Audio/multiplayer-select"
+            ),
         };
 
         List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)> bindings =
@@ -420,6 +428,13 @@ public static class MainMenuPrefabBuilder
             "_newGameSettingsPrefab",
             AssetDatabase.LoadAssetAtPath<NewGameSettingsView>(
                 NewGameSettingsPrefabBuilder.PrefabPath
+            )
+        );
+        AssignReference(
+            controller,
+            "_multiplayerMenuPrefab",
+            AssetDatabase.LoadAssetAtPath<MultiplayerMenuOverlay>(
+                MultiplayerMenuPrefabBuilder.PrefabPath
             )
         );
         return controller;
@@ -531,6 +546,11 @@ public static class MainMenuPrefabBuilder
         );
         FillParent(modalLayer.GetComponent<RectTransform>());
         overlay.SetActive(false);
+        CommonUIPrefabBuilder.CreateMultiplayerSessionEndNotice(
+            parent,
+            overlay.GetComponent<UIWindowManager>(),
+            true
+        );
     }
 
     /// <summary>
@@ -547,6 +567,7 @@ public static class MainMenuPrefabBuilder
         BuildExitButton(controls.transform);
         BuildCreditsButton(controls.transform);
         BuildNewGameSettingsButton(controls.transform);
+        BuildMultiplayerButton(controls.transform);
         BuildLoadGameButton(controls.transform);
         BuildFactionLaunchButton(
             controls.transform,
@@ -589,6 +610,56 @@ public static class MainMenuPrefabBuilder
         button.targetGraphic = face;
         button.transition = Selectable.Transition.None;
         AddPointerUpTrigger(obj.GetComponent<EventTrigger>());
+    }
+
+    /// <summary>
+    /// Authors the multiplayer monitor control in its bottom-left cockpit position.
+    /// </summary>
+    /// <param name="parent">The main-menu controls layer.</param>
+    private static void BuildMultiplayerButton(Transform parent)
+    {
+        GameObject buttonObject = NewChild(
+            "MultiplayerButton",
+            parent,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(PerspectiveImage),
+            typeof(Button),
+            typeof(EventTrigger)
+        );
+        buttonObject.layer = 5;
+        PerspectiveImage image = buttonObject.GetComponent<PerspectiveImage>();
+        Rect bounds = new Rect(0.1722801f, 0.05278285f, 0.065058485f, 0.13881326f);
+        UIQuadrilateral corners = new UIQuadrilateral(
+            new Vector2(0.026555566f, -2.6678687e-11f),
+            new Vector2(8.031459e-11f, 0.97144955f),
+            new Vector2(0.9871366f, 1.0000001f),
+            new Vector2(1f, 0.042613905f)
+        );
+        UIQuadrilateral surface = new UIQuadrilateral(
+            new Vector2(12f / 51f, 0),
+            new Vector2(0, 42f / 61f),
+            new Vector2(40f / 51f, 1),
+            new Vector2(1, 22f / 61f)
+        );
+        image.rectTransform.anchorMin = bounds.min;
+        image.rectTransform.anchorMax = bounds.max;
+        image.rectTransform.offsetMin = image.rectTransform.offsetMax = Vector2.zero;
+        image.rectTransform.localRotation = Quaternion.identity;
+        image.Configure(corners, surface.Transform(corners.ToMatrix()));
+        SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon");
+        Button button = buttonObject.GetComponent<Button>();
+        button.transition = Selectable.Transition.SpriteSwap;
+        button.targetGraphic = image;
+        SpriteState spriteState = button.spriteState;
+        spriteState.highlightedSprite = null;
+        spriteState.pressedSprite = LoadSprite(
+            "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon_pressed"
+        );
+        spriteState.selectedSprite = null;
+        spriteState.disabledSprite = null;
+        button.spriteState = spriteState;
+        AddPointerUpTrigger(buttonObject.GetComponent<EventTrigger>());
     }
 
     /// <summary>
@@ -2411,8 +2482,8 @@ public static class MainMenuPrefabBuilder
         public readonly Vector3 Tilt;
 
         // A static rotation applied to the spinning pivot itself (not the model). Because the spin
-        // is incremental in the pivot's local space, this tilts the whole spin — e.g. a nose-down
-        // attitude on a barrel-rolling ship — without making the roll wobble.
+        // is incremental in the pivot's local space, this tilts the whole spin â€” e.g. a nose-down
+        // attitude on a barrel-rolling ship â€” without making the roll wobble.
         public readonly Vector3 PivotTilt;
 
         public readonly Vector3 PivotPosition;

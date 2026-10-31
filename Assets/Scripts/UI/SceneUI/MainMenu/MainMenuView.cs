@@ -21,8 +21,13 @@ public sealed class MainMenuView : MonoBehaviour
         "Application/MainMenu/UI/ui_mainmenu_hq_icon";
     private const string _exitAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_exit_";
     private const string _loadAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_load_";
+    private const string _multiplayerAnimationRoot =
+        "Application/MainMenu/UI/ui_mainmenu_multiplayer_";
+    private const float _multiplayerAnimationFrameIntervalSeconds = 0.066f;
     private const string _creditsPressedSpriteAddress =
         "Application/MainMenu/UI/ui_mainmenu_credits_icon_pressed";
+    private const string _multiplayerPressedSpriteAddress =
+        "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon_pressed";
     private const int _commandAnimationFrameCount = 30;
     private const float _exitAnimationFrameIntervalSeconds = 1f / 60f;
     private const float _loadAnimationFrameIntervalSeconds = 1.7666667f / 30f;
@@ -146,6 +151,9 @@ public sealed class MainMenuView : MonoBehaviour
     private Button newGameSettingsButton;
 
     [SerializeField]
+    private Button multiplayerButton;
+
+    [SerializeField]
     private AutoRotate newGameSettingsSpinner;
 
     [Header("Launch Options")]
@@ -210,6 +218,10 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     internal UIWindowManager OptionsWindowManager => optionsWindowManager;
 
+    private Sprite[] multiplayerAnimationFrames = Array.Empty<Sprite>();
+    private int multiplayerAnimationFrameIndex;
+    private float multiplayerAnimationElapsedSeconds;
+
     /// <summary>
     /// Occurs when the player selects a galaxy size.
     /// </summary>
@@ -245,7 +257,15 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     public event Action CreditsRequested;
 
+    /// <summary>
+    /// Occurs when the player requests the custom-game editor.
+    /// </summary>
     public event Action NewGameSettingsRequested;
+
+    /// <summary>
+    /// Occurs when the player requests multiplayer setup.
+    /// </summary>
+    public event Action MultiplayerRequested;
 
     /// <summary>
     /// Occurs when a configured pointer interaction requests an audio cue.
@@ -257,6 +277,16 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (multiplayerButton?.IsInteractable() == true)
+            AdvanceAnimation(
+                multiplayerButton.targetGraphic as Image,
+                multiplayerAnimationFrames,
+                _multiplayerAnimationFrameIntervalSeconds,
+                ref multiplayerAnimationFrameIndex,
+                ref multiplayerAnimationElapsedSeconds,
+                Time.unscaledDeltaTime
+            );
+
         AdvanceAnimation(
             exitButton?.targetGraphic as Image,
             exitAnimationFrames,
@@ -343,9 +373,19 @@ public sealed class MainMenuView : MonoBehaviour
             _creditsPressedSpriteAddress
         );
         creditsButton.spriteState = creditsSpriteState;
+        SpriteState multiplayerSpriteState = multiplayerButton.spriteState;
+        multiplayerSpriteState.pressedSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _multiplayerPressedSpriteAddress
+        );
+        multiplayerSpriteState.highlightedSprite = null;
+        multiplayerSpriteState.selectedSprite = null;
+        multiplayerSpriteState.disabledSprite = null;
+        multiplayerButton.spriteState = multiplayerSpriteState;
         exitConfirmationDialog.InitializeContent(contentAssets);
         exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
         loadAnimationFrames = LoadAnimationFrames(contentAssets, _loadAnimationRoot);
+        multiplayerAnimationFrames = LoadAnimationFrames(contentAssets, _multiplayerAnimationRoot);
         foreach (Sprite frame in loadAnimationFrames)
             frame.texture.filterMode = FilterMode.Bilinear;
         ContentBindings
@@ -353,6 +393,7 @@ public sealed class MainMenuView : MonoBehaviour
             .texture.filterMode = FilterMode.Bilinear;
         ResetAnimation(exitButton?.targetGraphic as Image, exitAnimationFrames);
         ResetAnimation(loadGameButton?.targetGraphic as Image, loadAnimationFrames);
+        ResetAnimation(multiplayerButton?.targetGraphic as Image, multiplayerAnimationFrames);
     }
 
     /// <summary>
@@ -470,6 +511,7 @@ public sealed class MainMenuView : MonoBehaviour
             || creditsButton == null
             || victoryConditionButton == null
             || newGameSettingsButton == null
+            || multiplayerButton == null
             || newGameSettingsSpinner == null
             || victoryConditionIcon == null
             || victoryConditionText == null
@@ -590,6 +632,7 @@ public sealed class MainMenuView : MonoBehaviour
         BindButton(creditsButton, () => CreditsRequested?.Invoke());
         BindButton(victoryConditionButton, () => VictoryConditionToggleRequested?.Invoke());
         BindButton(newGameSettingsButton, () => NewGameSettingsRequested?.Invoke());
+        BindButton(multiplayerButton, () => MultiplayerRequested?.Invoke());
 
         foreach (GalaxySizeBinding binding in galaxySizeBindings)
         {

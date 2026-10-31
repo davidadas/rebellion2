@@ -24,6 +24,15 @@ namespace Rebellion.Gameplay
             PlanetSmugglingState
         >(StringComparer.Ordinal);
 
+        private readonly Dictionary<string, PlanetSmugglingState> _productionStates = new(
+            StringComparer.Ordinal
+        );
+
+        /// <summary>
+        /// Starts the production phase with fresh derived rates, computed once per producing planet.
+        /// </summary>
+        internal void BeginProduction() => _productionStates.Clear();
+
         private sealed class PlanetSmugglingState
         {
             public int DiversionPercent { get; set; }
@@ -129,15 +138,15 @@ namespace Rebellion.Gameplay
         )
         {
             Planet planet = facility?.GetParentOfType<Planet>();
-            if (
-                quantity <= 0
-                || planet == null
-                || !_states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state)
-                || state.DiversionPercent <= 0
-            )
-            {
+            if (quantity <= 0 || planet == null)
                 return (null, 0);
+            if (!_productionStates.TryGetValue(planet.InstanceID, out PlanetSmugglingState state))
+            {
+                state = CalculateSmugglingState(planet);
+                _productionStates.Add(planet.InstanceID, state);
             }
+            if (state == null || state.DiversionPercent <= 0)
+                return (null, 0);
 
             Faction beneficiary = FindFaction(state.BeneficiaryInstanceID);
             int divertedQuantity = 0;
@@ -158,6 +167,7 @@ namespace Rebellion.Gameplay
         /// <param name="results">The result collection receiving changes.</param>
         internal void RefreshPlanet(Planet planet, List<GameResult> results)
         {
+            _productionStates.Remove(planet.InstanceID);
             _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState previous);
             PlanetSmugglingState current = CalculateSmugglingState(planet);
 
@@ -314,6 +324,7 @@ namespace Rebellion.Gameplay
             if (
                 controller == null
                 || beneficiary == null
+                || !planet.IsActive()
                 || !planet.IsColonized
                 || planet.IsDestroyed
             )

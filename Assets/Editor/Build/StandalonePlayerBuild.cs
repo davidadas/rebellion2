@@ -17,6 +17,8 @@ public static class StandalonePlayerBuild
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
+    private const string _nativeAuditArgument = "-nativeAuditBuild";
+
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
 
     /// <summary>
@@ -200,6 +202,9 @@ public static class StandalonePlayerBuild
             locationPathName = outputPath,
             target = target,
             options = UnityEditor.BuildOptions.None,
+            extraScriptingDefines = Environment.GetCommandLineArgs().Contains(_nativeAuditArgument)
+                ? new[] { "REBELLION_NATIVE_AUDIT" }
+                : Array.Empty<string>(),
         };
 
         bool originalDiagnosticsEnabled = UnityEditor

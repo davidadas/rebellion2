@@ -52,6 +52,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Render_PlainTextMessage_DisplaysMarkupLiterallyAndRestoresAuthoredFormatting()
+        {
+            TextMeshProUGUI header = FindText("DetailHeaderTextField");
+            TextMeshProUGUI template = FindText("DetailLineTextTemplate");
+            bool headerRichText = header.richText;
+            bool lineRichText = template.richText;
+            const string literal = "<b>literal</b>";
+            MessagesDetailPanelRenderData data = new MessagesDetailPanelRenderData(
+                "chat",
+                literal,
+                literal,
+                _cardTexture,
+                _overlayTexture,
+                _iconTexture,
+                false,
+                false,
+                plainText: true
+            );
+
+            _view.Render(data);
+
+            Assert.IsFalse(header.richText);
+            Assert.AreEqual(literal, header.text);
+            Assert.IsTrue(FindDetailLines().All(line => !line.richText));
+            Assert.AreEqual(literal, FindDetailLines().Single().text);
+            _view.Render(CreateDetail("Authored", false, false));
+            Assert.AreEqual(headerRichText, header.richText);
+            Assert.IsTrue(FindDetailLines().All(line => line.richText == lineRichText));
+        }
+
+        [Test]
         public void Render_Detail_AppliesScaledArtworkHeaderNavigationAndLines()
         {
             RawImage card = FindComponent<RawImage>("DetailCardImage");

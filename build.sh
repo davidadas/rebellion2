@@ -159,7 +159,7 @@ do_lint() {
             -verbosity:normal \
             "${extra_args[@]}"
         echo ""
-        for test_project in UnitTests.csproj; do
+        for test_project in UnitTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
             fi

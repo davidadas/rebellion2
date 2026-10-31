@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -870,13 +871,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// <param name="target">The target.</param>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryExecuteMove(
+            public Task<bool> TryExecuteMoveAsync(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             )
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             /// <summary>
@@ -907,7 +908,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// </summary>
             /// <param name="source">The source.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+            public Task<bool> TryCommitFleetWaypointPlanAsync(
+                StrategyWindowTargetingSource source
+            ) => Task.FromResult(false);
 
             /// <summary>
             /// Attempts undo fleet waypoint plan.
@@ -921,7 +924,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items) =>
+                Task.FromResult(false);
         }
 
         private sealed class StatusDoubleClickTarget

@@ -70,6 +70,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
+        public void Show_ParticipantSelections_PreservesOwnerColorsInSharedRows()
+        {
+            Color32[] colors = { new(255, 0, 0, 255), new(0, 255, 0, 255) };
+            StrategyMenuCommand command = new(
+                StrategyMenuAction.GameSpeedFast,
+                "Fast",
+                true,
+                selectionColors: colors
+            );
+
+            _presenter.Show(new StrategyContextMenuData(_window, 20, 30, 100, new[] { command }));
+            _presenter.RenderCurrent();
+
+            UISelectionFrameView[] frames = FindRenderedRows(FindRenderedPanels().Single())
+                .Single()
+                .GetComponentsInChildren<UISelectionFrameView>();
+            CollectionAssert.AreEqual(
+                colors,
+                frames
+                    .Select(frame => (Color32)frame.GetComponentInChildren<Image>().color)
+                    .ToArray()
+            );
+        }
+
+        [Test]
         public void Show_Commands_FiltersNullAndRendersNestedPresentation()
         {
             StrategyMenuCommand child = new StrategyMenuCommand(

@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Generation;
+using Rebellion.Multiplayer;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -145,7 +146,18 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        if (activeGameManager?.TryAdvanceTickTimer(Time.deltaTime) == true)
+        activeSession.PumpCommands();
+        if (activeSession.CommandFailure != null)
+        {
+            if (MultiplayerCoordinator.Instance?.IsMultiplayerGame == true)
+                MultiplayerCoordinator.Instance.ReportGameplayFailure(activeSession.CommandFailure);
+            else
+                activeGameManager.SetGameSpeed(TickSpeed.Paused);
+            return;
+        }
+
+        bool beginTick = AppBootstrap.Instance.GetRuntime().TryBeginGameTick(Time.deltaTime);
+        if (beginTick)
         {
             activeTick = activeSession.Tick.ProcessTickIncrementally();
             AdvanceActiveTick();
@@ -165,6 +177,14 @@ public sealed class GameFlowController : MonoBehaviour
             activeSession.Pipeline.HeadquartersLost -= HandleHeadquartersLost;
             activeSession.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
         }
+        MultiplayerCoordinator multiplayer = MultiplayerCoordinator.Instance;
+        if (multiplayer?.IsMultiplayerGame == true)
+        {
+            if (multiplayer.IsTransferringScene)
+                multiplayer.DetachGameForSceneTransfer(AppBootstrap.Instance?.GetRuntime());
+            else
+                multiplayer.Disconnect();
+        }
     }
 
     /// <summary>
@@ -172,10 +192,20 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void AdvanceActiveTick()
     {
-        if (activeTick?.MoveNext() != false)
-            return;
-
-        DisposeActiveTick();
+        try
+        {
+            if (activeTick?.MoveNext() != false)
+                return;
+            DisposeActiveTick();
+        }
+        catch (Exception exception)
+        {
+            DisposeActiveTick();
+            if (MultiplayerCoordinator.Instance?.IsMultiplayerGame == true)
+                MultiplayerCoordinator.Instance.ReportGameplayFailure(exception);
+            else
+                throw;
+        }
     }
 
     /// <summary>
@@ -204,17 +234,20 @@ public sealed class GameFlowController : MonoBehaviour
 
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
         GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
-        game = builder.Build();
+        GameRoot restoredGame = GameLaunchContext.IsMultiplayer
+            ? MultiplayerCoordinator.EnsureExists().RestoredGame
+            : null;
+        game = restoredGame ?? builder.Build();
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
         bool deferIntro =
             GameLaunchContext.PlayIntroCutscene && LoadingScreenController.IsLoadInProgress;
+        GameSession session = StartGameSession(loadedGame: restoredGame != null);
         Task intro = deferIntro
             ? Task.CompletedTask
             : PlayFactionIntroAsync(game.GetPlayerFaction());
-        GameSession session = StartGameSession(loadedGame: false);
         InitializeStrategy(session);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
@@ -292,11 +325,18 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
-        ApplyGameLaunchSpeed(
-            runtime.GetActiveGameManager(),
-            bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
-        );
+        MultiplayerCoordinator multiplayer = GameLaunchContext.IsMultiplayer
+            ? MultiplayerCoordinator.EnsureExists()
+            : null;
+        IGameSessionOwner owner = multiplayer;
+        GameSession session = loadedGame
+            ? runtime.StartLoadedGame(game, owner)
+            : runtime.StartGame(game, owner);
+        if (multiplayer?.IsRejoining != true)
+            ApplyGameLaunchSpeed(
+                runtime.GetActiveGameManager(),
+                bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
+            );
         return session;
     }
 
@@ -320,7 +360,7 @@ public sealed class GameFlowController : MonoBehaviour
             GameLaunchSpeed.Fast => TickSpeed.Fast,
             _ => throw new ArgumentOutOfRangeException(nameof(speed), speed, null),
         };
-        gameManager.SetGameSpeed(tickSpeed);
+        gameManager.ApplyGameSpeed(tickSpeed);
     }
 
     /// <summary>
@@ -473,15 +513,26 @@ public sealed class GameFlowController : MonoBehaviour
             strategyController.PlayBriefing(() =>
             {
                 metadata.OpeningBriefingCompleted = true;
-                activeSession = session;
-                activeGameManager = clock;
+                EnableSessionTicks(session, clock);
             });
         }
         else
         {
-            activeSession = session;
-            activeGameManager = clock;
+            EnableSessionTicks(session, clock);
         }
+    }
+
+    /// <summary>
+    /// Marks presentation ready before advertising this session to the other multiplayer peer.
+    /// </summary>
+    /// <param name="session">The prepared simulation session.</param>
+    /// <param name="clock">The prepared application clock.</param>
+    private void EnableSessionTicks(GameSession session, GameManager clock)
+    {
+        if (!AppBootstrap.Instance.GetRuntime().NotifyPresentationReady(session))
+            return;
+        activeSession = session;
+        activeGameManager = clock;
     }
 
     /// <summary>
@@ -642,6 +693,7 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         bootstrap.GetRuntime()?.EndGame();
+        MultiplayerCoordinator.Instance?.Disconnect();
         bootstrap.LoadScene("MainMenu");
     }
 }

@@ -25,6 +25,7 @@ public static class UIBuilderMenu
             LoadingScreenPrefabBuilder.Rebuild();
             RebuildOptionsMenuAndDependencies();
             NewGameSettingsPrefabBuilder.Rebuild();
+            MultiplayerMenuPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
         });
@@ -69,6 +70,7 @@ public static class UIBuilderMenu
         {
             RebuildOptionsMenuAndDependencies();
             NewGameSettingsPrefabBuilder.Rebuild();
+            MultiplayerMenuPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
         });
         SaveAndRefresh();

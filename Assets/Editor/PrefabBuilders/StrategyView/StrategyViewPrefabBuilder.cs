@@ -851,6 +851,7 @@ public static class StrategyViewPrefabBuilder
         UIWindowManager windowManager = EnableRuntimeComponent(
             windows.AddComponent<UIWindowManager>()
         );
+        CommonUIPrefabBuilder.CreateMultiplayerSessionEndNotice(ui.transform, windowManager, false);
         StrategyWindowLayerView windowsView = EnableRuntimeComponent(
             windows.AddComponent<StrategyWindowLayerView>()
         );
@@ -860,7 +861,65 @@ public static class StrategyViewPrefabBuilder
         );
         IdleBarView idleBar = CreateIdleBarView(windows.transform);
         RectTransform hudPopoverLayer = CreateChildLayer(_hudPopoverLayerName, windows.transform);
+        RectTransform noticeRoot = CreateChildLayer("SessionNotice", hudPopoverLayer);
+        SetSourceRect(noticeRoot, 200, 38, 400, 28);
+        UIRequestNoticeView notice = EnableRuntimeComponent(
+            noticeRoot.gameObject.AddComponent<UIRequestNoticeView>()
+        );
+        TextMeshProUGUI noticeText = CreateResourceBreakdownText(
+            "NoticeText",
+            string.Empty,
+            noticeRoot,
+            0,
+            0,
+            348,
+            28,
+            TextAlignmentOptions.MidlineLeft,
+            fontSize: 9f
+        );
+        noticeText.textWrappingMode = TextWrappingModes.Normal;
+        RawImage acceptImage = CreateRawImage(
+            "Accept",
+            noticeRoot,
+            _confirmButtonPreviewPath,
+            354,
+            5
+        );
+        SetSourceRect(acceptImage.rectTransform, 354, 5, 18, 18);
+        Button accept = CreateButton(acceptImage);
+        SetPressedBindingAddress(acceptImage, _confirmButtonDownPreviewPath);
+        RawImage declineImage = CreateRawImage(
+            "Decline",
+            noticeRoot,
+            _cancelButtonPreviewPath,
+            378,
+            5
+        );
+        SetSourceRect(declineImage.rectTransform, 378, 5, 18, 18);
+        Button decline = CreateButton(declineImage);
+        SetPressedBindingAddress(declineImage, _cancelButtonDownPreviewPath);
+        HorizontalLayoutGroup noticeLayout =
+            noticeRoot.gameObject.AddComponent<HorizontalLayoutGroup>();
+        noticeLayout.spacing = 6;
+        noticeLayout.childAlignment = TextAnchor.MiddleLeft;
+        noticeLayout.childControlWidth = true;
+        noticeLayout.childControlHeight = false;
+        noticeLayout.childForceExpandWidth = false;
+        noticeLayout.childForceExpandHeight = false;
+        foreach (Button response in new[] { accept, decline })
+        {
+            LayoutElement size = response.gameObject.AddComponent<LayoutElement>();
+            size.minWidth = size.preferredWidth = 18;
+            size.minHeight = size.preferredHeight = 18;
+        }
+        AssignReference(notice, "messageText", noticeText);
+        AssignReference(notice, "acceptButton", accept);
+        AssignReference(notice, "declineButton", decline);
+        noticeRoot.gameObject.SetActive(false);
+        AssignReference(hudView, "sessionNotice", notice);
         RectTransform modalWindowLayer = CreateChildLayer(_modalWindowLayerName, windows.transform);
+        RectTransform sessionNoticeLayer = CreateChildLayer("SessionNotices", windows.transform);
+        noticeRoot.SetParent(sessionNoticeLayer, false);
         resourceBreakdownPanels.Add(
             CreateResourceBreakdownPanel(
                 "RawMaterialsPanel",
@@ -5280,10 +5339,13 @@ public static class StrategyViewPrefabBuilder
         for (int index = 0; index < detailLayerOrder.Length; index++)
             detailLayerOrder[index].SetAsLastSibling();
 
+        MessagesChatComposerView chatComposer = BuildMessagesChatComposer(window.transform);
+
         Transform[] windowLayerOrder =
         {
             indexPanelTransform,
             detailPanelTransform,
+            chatComposer.transform,
             overlay.transform,
             commandBarTransform,
         };
@@ -5295,6 +5357,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "commandBar", commandBar);
         AssignReference(view, "indexPanel", indexPanel);
         AssignReference(view, "detailPanel", detailPanel);
+        AssignReference(view, "chatComposer", chatComposer);
 
         AssignReference(commandBar, "buttonStripImage", buttonStrip);
         AssignReference(commandBar, "closeButtonImage", closeButtonImage);
@@ -5496,6 +5559,91 @@ public static class StrategyViewPrefabBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return saved.GetComponent<MessagesWindowView>();
+    }
+
+    /// <summary>
+    /// Authors a player-message editor from the shared native text and button controls.
+    /// </summary>
+    /// <param name="parent">The owning Messages window.</param>
+    /// <returns>The configured chat editor.</returns>
+    private static MessagesChatComposerView BuildMessagesChatComposer(Transform parent)
+    {
+        RectTransform panel = CreateSourceRectLayer("ChatComposer", parent, 470, 331);
+        MessagesChatComposerView composer = EnableRuntimeComponent(
+            panel.gameObject.AddComponent<MessagesChatComposerView>()
+        );
+        RawImage body = CreateRawButton(
+            "ChatBodyImage",
+            panel,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_body"
+        );
+        SetSourceRect(body.rectTransform, 12, 13, 400, 306);
+        body.raycastTarget = true;
+        RawImage strip = CreateRawButton(
+            "ChatHeaderStripImage",
+            panel,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_strip"
+        );
+        SetSourceRect(strip.rectTransform, 12, 13, 400, 18);
+        TextMeshProUGUI heading = CreateTextLabel("ChatHeading", panel);
+        heading.text = "Send message";
+        heading.color = Color.white;
+        heading.fontSize = 13;
+        SetSourceRect(heading.rectTransform, 22, 13, 376, 18);
+
+        TMP_InputField draftInput = CreateTextInputField(
+            "ChatDraftInput",
+            panel,
+            string.Empty,
+            20,
+            39,
+            384,
+            224
+        );
+        draftInput.lineType = TMP_InputField.LineType.MultiLineNewline;
+        draftInput.characterLimit = 0;
+        draftInput.richText = false;
+        draftInput.restoreOriginalTextOnEscape = false;
+        SetSourceRect(draftInput.textViewport, 4, 4, 376, 216);
+        SetSourceRect(draftInput.textComponent.rectTransform, 0, 0, 376, 216);
+        draftInput.textComponent.fontSize = 13;
+        draftInput.textComponent.textWrappingMode = TextWrappingModes.Normal;
+        draftInput.textComponent.alignment = TextAlignmentOptions.TopLeft;
+        draftInput.textComponent.richText = false;
+        if (draftInput.placeholder is TMP_Text placeholder)
+            placeholder.text = string.Empty;
+
+        TextMeshProUGUI status = CreateTextLabel("ChatStatus", panel);
+        status.text = string.Empty;
+        status.color = Color.white;
+        status.fontSize = 11;
+        status.richText = false;
+        status.textWrappingMode = TextWrappingModes.Normal;
+        SetSourceRect(status.rectTransform, 22, 278, 208, 34);
+        Button cancel = MenuPrefabBuilder.CreateMenuActionButton(
+            panel,
+            "ChatCancelButton",
+            "Cancel",
+            240,
+            Color.white
+        );
+        SetSourceRect(cancel.transform as RectTransform, 240, 282, 76, 22);
+        Button send = MenuPrefabBuilder.CreateMenuActionButton(
+            panel,
+            "ChatSendButton",
+            "Send",
+            326,
+            Color.white
+        );
+        SetSourceRect(send.transform as RectTransform, 326, 282, 76, 22);
+        send.interactable = false;
+
+        AssignReference(composer, "draftInput", draftInput);
+        AssignReference(composer, "sendButton", send);
+        AssignReference(composer, "cancelButton", cancel);
+        AssignReference(composer, "statusText", status);
+        panel.gameObject.SetActive(false);
+        return composer;
     }
 
     /// <summary>
@@ -6523,7 +6671,9 @@ public static class StrategyViewPrefabBuilder
                 27
             );
             commandButtonImages.Add(image);
-            commandButtons.Add(CreateButton(image));
+            Button commandButton = CreateButton(image);
+            CommonUIPrefabBuilder.CreateSelectionFrame(image.rectTransform);
+            commandButtons.Add(commandButton);
             commandButtonPressVisuals.Add(image.GetComponent<RawImagePressVisual>());
         }
 
@@ -7660,6 +7810,11 @@ public static class StrategyViewPrefabBuilder
         AssignReference(commandView, "iconPanel", iconPanel);
         AssignReference(commandView, "iconImage", iconImage);
         AssignReference(commandView, "commandTextField", commandTextField);
+        AssignReference(
+            commandView,
+            "selectionFrame",
+            CommonUIPrefabBuilder.CreateSelectionFrame(command.GetComponent<RectTransform>())
+        );
         AssignInt(presenter, "speedMenuWidth", _speedContextMenuWidth);
         AssignInt(presenter, "facilityMenuWidth", _facilityContextMenuWidth);
         AssignInt(presenter, "fleetMenuWidth", _fleetContextMenuWidth);

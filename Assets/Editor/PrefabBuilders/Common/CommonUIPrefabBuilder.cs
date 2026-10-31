@@ -16,6 +16,8 @@ public static class CommonUIPrefabBuilder
         "Assets/Prefabs/UI/Common/ConfirmationDialog.prefab";
     private const string _confirmationDialogTexturePath =
         "Application/Common/UI/ui_common_confirmation_dialog.png";
+    private const string _acknowledgmentDialogTexturePath =
+        "Application/Common/UI/ui_common_acknowledgment_dialog.png";
     private const string _confirmationYesTexturePath =
         "Application/Common/UI/ui_common_confirmation_yes_button.png";
     private const string _confirmationYesPressedTexturePath =
@@ -490,6 +492,56 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
+    /// Authors an independently visible native notice while sharing the scene's modal window registry.
+    /// </summary>
+    /// <param name="parent">The scene UI root outside presentation groups concealed during loading.</param>
+    /// <param name="windowManager">The scene's existing window manager.</param>
+    /// <param name="isMainMenu">Whether acknowledgment occurs after the scene has already returned to the menu.</param>
+    internal static void CreateMultiplayerSessionEndNotice(
+        Transform parent,
+        UIWindowManager windowManager,
+        bool isMainMenu
+    )
+    {
+        GameObject root = CreateRectObject("MultiplayerSessionEndNotice", parent);
+        FillParent(root.GetComponent<RectTransform>());
+        Canvas canvas = root.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 2000;
+        CanvasScaler scaler = root.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.3333f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        root.AddComponent<GraphicRaycaster>();
+
+        ConfirmationDialogView template = InstantiateConfirmationDialog(root.transform);
+        template.name = "SessionEndDialogTemplate";
+        template.gameObject.AddComponent<UIWindow>();
+        SetSourceRect(
+            template.GetComponent<RectTransform>(),
+            0,
+            0,
+            _confirmationSurfaceWidth,
+            _confirmationSurfaceHeight
+        );
+        template.gameObject.SetActive(false);
+
+        MultiplayerSessionEndController controller =
+            root.AddComponent<MultiplayerSessionEndController>();
+        controller.enabled = true;
+        AssignReference(controller, "windowManager", windowManager);
+        AssignReference(controller, "dialogTemplate", template);
+        SerializedObject serialized = new SerializedObject(controller);
+        serialized.FindProperty("isMainMenu").boolValue = isMainMenu;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        PersistenceFailureNoticeController persistence =
+            root.AddComponent<PersistenceFailureNoticeController>();
+        AssignReference(persistence, "windowManager", windowManager);
+        AssignReference(persistence, "dialogTemplate", template);
+    }
+
+    /// <summary>
     /// Authors and saves the canonical confirmation dialog prefab.
     /// </summary>
     /// <returns>The saved confirmation dialog prefab root.</returns>
@@ -566,6 +618,21 @@ public static class CommonUIPrefabBuilder
         SetSourceRect(message.rectTransform, 160, 172, 320, 100);
 
         AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "confirmationBackgroundTexture", background.texture);
+        AssignReference(
+            view,
+            "acknowledgmentBackgroundTexture",
+            LoadRequiredTexture(_acknowledgmentDialogTexturePath)
+        );
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("confirmationButtonPosition").vector2Value = confirmImage
+            .rectTransform
+            .anchoredPosition;
+        serializedView.FindProperty("acknowledgmentButtonPosition").vector2Value = new Vector2(
+            290f,
+            -284f
+        );
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
         AssignColor(view, "messageTextColor", Color.white);
         AssignReference(view, "confirmButtonImage", confirmImage);
         AssignReference(view, "confirmButton", confirmButton);
@@ -630,5 +697,43 @@ public static class CommonUIPrefabBuilder
             throw new System.MissingMemberException(target.GetType().Name, propertyName);
         property.colorValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Authors a reusable selection frame that follows its containing control's bounds.
+    /// </summary>
+    /// <param name="parent">The control to mark as selected.</param>
+    /// <returns>The authored selection frame.</returns>
+    public static UISelectionFrameView CreateSelectionFrame(RectTransform parent)
+    {
+        GameObject root = new GameObject("SelectionFrame", typeof(RectTransform));
+        root.transform.SetParent(parent, false);
+        FillParent(root.GetComponent<RectTransform>());
+        UISelectionFrameView view = root.AddComponent<UISelectionFrameView>();
+        Image[] edges = new Image[4];
+        Vector2[] starts = { new(0, 1), new(0, 0), new(0, 0), new(1, 0) };
+        Vector2[] ends = { new(1, 1), new(1, 0), new(0, 1), new(1, 1) };
+        Vector2[] minimum = { new(0, -1), Vector2.zero, Vector2.zero, new(-1, 0) };
+        Vector2[] maximum = { Vector2.zero, new(0, 1), new(1, 0), Vector2.zero };
+        for (int i = 0; i < edges.Length; i++)
+        {
+            GameObject edge = new GameObject("Edge" + i, typeof(RectTransform), typeof(Image));
+            edge.transform.SetParent(root.transform, false);
+            RectTransform rect = edge.GetComponent<RectTransform>();
+            rect.anchorMin = starts[i];
+            rect.anchorMax = ends[i];
+            rect.offsetMin = minimum[i];
+            rect.offsetMax = maximum[i];
+            edges[i] = edge.GetComponent<Image>();
+            edges[i].raycastTarget = false;
+        }
+        SerializedObject serialized = new SerializedObject(view);
+        SerializedProperty array = serialized.FindProperty("edges");
+        array.arraySize = edges.Length;
+        for (int i = 0; i < edges.Length; i++)
+            array.GetArrayElementAtIndex(i).objectReferenceValue = edges[i];
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        root.SetActive(false);
+        return view;
     }
 }

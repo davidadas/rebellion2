@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders immutable Messages snapshots and emits semantic interaction gestures.
 /// </summary>
-public sealed class MessagesWindowView : MonoBehaviour
+public sealed class MessagesWindowView : MonoBehaviour, ICancelable
 {
     [SerializeField]
     private UIWindow windowShell;
@@ -25,12 +25,27 @@ public sealed class MessagesWindowView : MonoBehaviour
     [SerializeField]
     private MessagesDetailPanelView detailPanel;
 
+    [SerializeField]
+    private MessagesChatComposerView chatComposer;
+
     private bool initialized;
+    private bool renderedDetail;
+    private bool renderedComposer;
 
     /// <summary>
     /// Raised when the semantic chat command is requested.
     /// </summary>
     public event Action<MessagesWindowView> ChatRequested;
+
+    /// <summary>
+    /// Raised when the player changes the unmodified multiline chat draft.
+    /// </summary>
+    public event Action<MessagesWindowView, string> PeerChatDraftChanged;
+
+    /// <summary>
+    /// Raised when the active chat editor requests submission.
+    /// </summary>
+    public event Action<MessagesWindowView> PeerChatSendRequested;
 
     /// <summary>
     /// Raised when the owning strategy window should close.
@@ -135,18 +150,43 @@ public sealed class MessagesWindowView : MonoBehaviour
         UILayout.SetImageTexture(overlayFrameImage, data.OverlayFrameTexture);
         commandBar.Render(data.CommandBar);
 
-        if (data.DetailVisible)
+        bool restoreIndexFocus = renderedComposer && data.Composer == null && !data.DetailVisible;
+        renderedDetail = data.DetailVisible;
+        renderedComposer = data.Composer != null;
+        if (data.Composer != null)
         {
+            indexPanel.Hide();
+            detailPanel.Hide();
+            chatComposer.Render(data.Composer);
+        }
+        else if (data.DetailVisible)
+        {
+            chatComposer.Hide();
             indexPanel.Hide();
             detailPanel.Render(data.DetailPanel);
         }
         else
         {
+            chatComposer.Hide();
             detailPanel.Hide();
             indexPanel.Render(data.IndexPanel);
         }
 
         gameObject.SetActive(true);
+        if (restoreIndexFocus)
+            EventSystem.current?.SetSelectedGameObject(indexPanel.gameObject);
+    }
+
+    /// <summary>
+    /// Returns detail or a chat draft to the index before the owning window can close.
+    /// </summary>
+    /// <returns>True when a panel inside the window handled cancellation.</returns>
+    public bool TryCancel()
+    {
+        if (!renderedDetail && !renderedComposer)
+            return false;
+        IndexRequested?.Invoke(this);
+        return true;
     }
 
     /// <summary>
@@ -171,7 +211,7 @@ public sealed class MessagesWindowView : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        if (!CanNavigateRows())
+        if (!CanNavigateRows() || renderedComposer)
             return;
 
         Keyboard keyboard = Keyboard.current;
@@ -233,6 +273,9 @@ public sealed class MessagesWindowView : MonoBehaviour
         detailPanel.MissionChoiceControlPressed += HandleControlPressed;
         detailPanel.MissionContinueRequested += HandleMissionContinueRequested;
         detailPanel.MissionAbortRequested += HandleMissionAbortRequested;
+        chatComposer.DraftChanged += HandlePeerChatDraftChanged;
+        chatComposer.SendRequested += HandlePeerChatSendRequested;
+        chatComposer.CancelRequested += HandleIndexRequested;
         initialized = true;
     }
 
@@ -273,6 +316,30 @@ public sealed class MessagesWindowView : MonoBehaviour
             detailPanel.MissionContinueRequested -= HandleMissionContinueRequested;
             detailPanel.MissionAbortRequested -= HandleMissionAbortRequested;
         }
+
+        if (chatComposer != null)
+        {
+            chatComposer.DraftChanged -= HandlePeerChatDraftChanged;
+            chatComposer.SendRequested -= HandlePeerChatSendRequested;
+            chatComposer.CancelRequested -= HandleIndexRequested;
+        }
+    }
+
+    /// <summary>
+    /// Emits unmodified player-message input to the controller-owned session.
+    /// </summary>
+    /// <param name="rawText">The entered multiline draft.</param>
+    private void HandlePeerChatDraftChanged(string rawText)
+    {
+        PeerChatDraftChanged?.Invoke(this, rawText);
+    }
+
+    /// <summary>
+    /// Emits the player-message submission gesture.
+    /// </summary>
+    private void HandlePeerChatSendRequested()
+    {
+        PeerChatSendRequested?.Invoke(this);
     }
 
     /// <summary>
@@ -464,5 +531,7 @@ public sealed class MessagesWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/IndexPanel is missing.");
         if (detailPanel == null)
             throw new MissingReferenceException($"{name}/DetailPanel is missing.");
+        if (chatComposer == null)
+            throw new MissingReferenceException($"{name}/ChatComposer is missing.");
     }
 }

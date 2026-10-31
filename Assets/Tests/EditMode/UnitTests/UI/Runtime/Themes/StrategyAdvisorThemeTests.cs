@@ -6,6 +6,42 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     [TestFixture]
     public class StrategyAdvisorThemeTests
     {
+        [TestCase("FNALL1", "InterceptedCommunication", 121)]
+        [TestCase("FNEMP1", "GeneralReport", 71)]
+        public void GetNotification_ChatReceived_ResolvesDistinctSpeechAndGatedProtocol(
+            string factionID,
+            string protocolAnimation,
+            int protocolFrames
+        )
+        {
+            StrategyAdvisorTheme theme = TestContent
+                .CreateThemeLibrary()
+                .GetTheme(factionID)
+                .StrategyAdvisor;
+
+            StrategyAdvisorNotificationTheme notification = theme.GetNotification(
+                AdvisorNotificationType.ChatReceived,
+                null,
+                AdvisorSubjectNotification.None
+            );
+
+            Assert.IsNotNull(notification);
+            Assert.AreEqual("StandardAlert", notification.Droid.Animation);
+            Assert.IsFalse(notification.Droid.RequiresAnnouncementsEnabled);
+            Assert.AreEqual("chat-received", notification.Protocol.Audio);
+            Assert.AreEqual(50, notification.MaxPendingTicks);
+            Assert.AreEqual(60, notification.RepeatCooldownTicks);
+            Assert.AreEqual(protocolAnimation, notification.Protocol.Animation);
+            Assert.AreEqual(protocolFrames, notification.Protocol.FrameCount);
+            Assert.IsTrue(notification.Protocol.RequiresAnnouncementsEnabled);
+            Assert.IsNotNull(
+                TestContent.Pack.FileResolver.ResolveFile(
+                    theme.GetAudioPath(notification.Protocol.Audio),
+                    ".wav"
+                )
+            );
+        }
+
         [Test]
         public void GetNotification_GeneralNotification_ReturnsSemanticPresentation()
         {

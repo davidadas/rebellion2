@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -9,6 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -21,7 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
     public class BattleAlertWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";
-        private const string _opponentFactionId = "FNIMP1";
+        private const string _opponentFactionId = "FNEMP1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
@@ -31,6 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private GameRoot _game;
         private PendingCombatResult _pending;
         private SpaceCombatResult _resolveResult;
+        private GameResultPipeline _pipeline;
+        private TaskCompletionSource<SpaceCombatResult> _resolutionCompletion;
         private GameObject _rootObject;
         private int _stopMusicCount;
         private UIContext _uiContext;
@@ -50,6 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             _dirtyCount = 0;
             _pending = null;
             _resolveResult = null;
+            _resolutionCompletion = null;
             _stopMusicCount = 0;
             _playedSfx.Clear();
             _playedTracks.Clear();
@@ -97,6 +102,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             _controller = CreateController();
             _actions = new TestActions();
             _controller.Initialize(_actions);
+            GameResultBus results = new GameResultBus();
+            _pipeline = new GameResultPipeline(() => results, () => null);
+            _pipeline.ResultsResolved += _controller.PresentResolvedResults;
         }
 
         /// <summary>
@@ -114,8 +122,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<ArgumentNullException>(() =>
                 new BattleAlertWindowController(
                     null,
-                    () => _resolveResult,
-                    () => _resolveResult,
+                    () => Task.FromResult(_resolveResult),
+                    () => Task.FromResult(_resolveResult),
                     () => _uiContext,
                     _ => _visiblePlanet,
                     _ => { },
@@ -282,6 +290,255 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(1, _stopMusicCount);
             Assert.AreEqual(1, _actions.RebuildCount);
             Assert.AreEqual(2, _dirtyCount);
+        }
+
+        [Test]
+        public void PresentResolvedResults_RemoteCombat_PreservesWindowAndPresentsResult()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _pending = null;
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(2, _playedTracks.Count);
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.AreEqual(1, _actions.RebuildCount);
+            Assert.IsFalse(_controller.SyncPendingCombatWindow());
+        }
+
+        [Test]
+        public void PresentResolvedResults_DismissedDuplicate_DoesNotReopenOrReplayAudio()
+        {
+            _pending = null;
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            BattleAlertWindowView view = _controller.FindWindow();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.RequestClose();
+            int dirtyCount = _dirtyCount;
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.SyncPendingCombatWindow();
+
+            Assert.IsNull(_controller.FindWindow());
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _playedTracks.Count);
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.AreEqual(dirtyCount, _dirtyCount);
+        }
+
+        [Test]
+        public void PresentResolvedResults_UninvolvedFaction_DoesNotOpenWindow()
+        {
+            _pending = null;
+            _resolveResult.AttackerOwnerInstanceID = "third-faction";
+            _resolveResult.DefenderOwnerInstanceID = "fourth-faction";
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.IsNull(_controller.FindWindow());
+            Assert.IsEmpty(_playedTracks);
+            Assert.AreEqual(0, _actions.RebuildCount);
+        }
+
+        [TestCase(_playerFactionId, 0)]
+        [TestCase(_opponentFactionId, 1)]
+        public void PresentResolvedResults_ExplicitWithdrawal_PreservesParticipantAudio(
+            string retreatingFactionID,
+            int playedTracks
+        )
+        {
+            _pending = null;
+            _resolveResult.ManualRetreatingFactionID = retreatingFactionID;
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.IsTrue(_controller.HasCombatResult(_controller.FindWindow()));
+            Assert.AreEqual(playedTracks, _playedTracks.Count);
+            Assert.AreEqual(1, _stopMusicCount);
+        }
+
+        [TestCase(BattleAlertChoice.Retreat)]
+        [TestCase(BattleAlertChoice.AutoResolve)]
+        public async Task PresentResolvedResults_LocalRequestCompletes_DoesNotReplayPresentationAsync(
+            BattleAlertChoice choice
+        )
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _resolutionCompletion = new TaskCompletionSource<SpaceCombatResult>();
+            view.RequestChoice(choice);
+            _pending = null;
+            _resolveResult.ManualRetreatingFactionID =
+                choice == BattleAlertChoice.Retreat ? _playerFactionId : null;
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            int tracks = _playedTracks.Count;
+            int stopped = _stopMusicCount;
+            int dirty = _dirtyCount;
+
+            _resolutionCompletion.SetResult(_resolveResult);
+            await _resolutionCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(tracks, _playedTracks.Count);
+            Assert.AreEqual(stopped, _stopMusicCount);
+            Assert.AreEqual(dirty, _dirtyCount);
+            Assert.AreEqual(1, _actions.RebuildCount);
+        }
+
+        [Test]
+        public void PresentResolvedResults_NewerPendingEncounter_DefersWithoutReplacingDecision()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _pending = new PendingCombatResult
+            {
+                Tick = _resolveResult.Tick + 1,
+                PlanetInstanceID = _retreatPlanet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.SyncPendingCombatWindow();
+
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.IsFalse(_controller.HasCombatResult(view));
+            Assert.AreEqual(
+                BattleAlertWindowMode.Pending,
+                _controller.CreateRenderData(view, _playerFactionId, 0, 0).Mode
+            );
+            Assert.AreEqual(1, _playedTracks.Count);
+
+            _pending = null;
+            _controller.SyncPendingCombatWindow();
+
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(2, _playedTracks.Count);
+        }
+
+        [Test]
+        public void PresentResolvedResults_OpenResult_QueuesNextOutcomeUntilClose()
+        {
+            _pending = null;
+            _controller.OpenResult(
+                new BombardmentResult
+                {
+                    Planet = _resolveResult.Planet,
+                    AttackerOwnerInstanceID = _playerFactionId,
+                    DefenderOwnerInstanceID = _opponentFactionId,
+                }
+            );
+            BattleAlertWindowView firstView = _controller.FindWindow();
+
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.AreEqual(
+                "Orbital bombardment of Corellia",
+                _controller.CreateRenderData(firstView, _playerFactionId, 0, 0).Result.Title
+            );
+            Assert.IsEmpty(_playedTracks);
+            UIComponentTestHelper.InvokeLifecycle(firstView, "Awake");
+            firstView.RequestClose();
+            _controller.SyncPendingCombatWindow();
+
+            BattleAlertWindowView resultView = _controller.FindWindow();
+            Assert.IsTrue(_controller.HasCombatResult(resultView));
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            Assert.AreEqual(1, _playedTracks.Count);
+        }
+
+        [Test]
+        public void ResetSession_GameReplaced_DoesNotPresentQueuedOldOutcome()
+        {
+            _pending = null;
+            _controller.OpenResult(
+                new BombardmentResult
+                {
+                    Planet = _resolveResult.Planet,
+                    AttackerOwnerInstanceID = _playerFactionId,
+                    DefenderOwnerInstanceID = _opponentFactionId,
+                }
+            );
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.ResetSession();
+            foreach (UIWindow window in _windowManager.Windows.ToArray())
+                _windowManager.DestroyWindow(window);
+            GameRoot replacement = CreateGame(out Planet planet, out _, out _);
+            _uiContext.ReplaceGame(replacement);
+            _visiblePlanet = planet;
+
+            bool changed = _controller.SyncPendingCombatWindow();
+
+            Assert.IsFalse(changed);
+            Assert.IsNull(_controller.FindWindow());
+            Assert.IsEmpty(_playedTracks);
+        }
+
+        [Test]
+        public void ResetSession_GameReplaced_PresentsNewOutcomes()
+        {
+            _pending = null;
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.ResetSession();
+            foreach (UIWindow window in _windowManager.Windows.ToArray())
+                _windowManager.DestroyWindow(window);
+            GameRoot replacement = CreateGame(
+                out Planet planet,
+                out GameFleet playerFleet,
+                out GameFleet opponentFleet
+            );
+            planet.DisplayName = "Replacement world";
+            _uiContext.ReplaceGame(replacement);
+            _visiblePlanet = planet;
+            SpaceCombatResult result = new()
+            {
+                Planet = planet,
+                AttackerFleet = playerFleet,
+                DefenderFleet = opponentFleet,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Winner = CombatSide.Defender,
+            };
+
+            _pipeline.ProcessResults(new[] { result }, processMessages: false);
+
+            BattleAlertWindowView view = _controller.FindWindow();
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.That(
+                _controller.CreateRenderData(view, _playerFactionId, 0, 0).Result.Title,
+                Does.Contain("Replacement world")
+            );
+        }
+
+        [Test]
+        public async Task PresentResolvedResults_DismissedBeforeLocalCompletion_DoesNotReplaceNewDecisionAsync()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _resolutionCompletion = new TaskCompletionSource<SpaceCombatResult>();
+            view.RequestChoice(BattleAlertChoice.AutoResolve);
+            _pending = null;
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            view.RequestClose();
+            _pending = new PendingCombatResult
+            {
+                Tick = _resolveResult.Tick + 1,
+                PlanetInstanceID = _retreatPlanet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+            _controller.SyncPendingCombatWindow();
+            BattleAlertWindowView nextView = _controller.FindWindow();
+            int tracks = _playedTracks.Count;
+
+            _resolutionCompletion.SetResult(_resolveResult);
+            await _resolutionCompletion.Task;
+            await Task.Yield();
+
+            Assert.AreSame(nextView, _controller.FindWindow());
+            Assert.IsFalse(_controller.HasCombatResult(nextView));
+            Assert.AreEqual(tracks, _playedTracks.Count);
         }
 
         [Test]
@@ -505,8 +762,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             return new BattleAlertWindowController(
                 () => _pending,
-                () => _resolveResult,
-                () => _resolveResult,
+                () => ResolveCombatAsync(true),
+                () => ResolveCombatAsync(false),
                 () => _uiContext,
                 instanceId =>
                     _retreatPlanet?.InstanceID == instanceId ? _retreatPlanet
@@ -521,6 +778,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 window => _windowManager.DestroyWindow(window),
                 () => _dirtyCount++
             );
+        }
+
+        /// <summary>
+        /// Releases a fixture combat outcome through the same pipeline boundary as the live session.
+        /// </summary>
+        /// <param name="retreat">Whether the local participant explicitly requested withdrawal.</param>
+        /// <returns>The fixture-controlled execution completion.</returns>
+        private Task<SpaceCombatResult> ResolveCombatAsync(bool retreat)
+        {
+            if (_resolutionCompletion != null)
+                return _resolutionCompletion.Task;
+            if (_resolveResult != null)
+            {
+                _resolveResult.ManualRetreatingFactionID = retreat ? _playerFactionId : null;
+                _pending = null;
+                _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            }
+            return Task.FromResult(_resolveResult);
         }
 
         /// <summary>

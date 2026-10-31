@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -19,8 +20,10 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Generation;
+using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -69,6 +72,471 @@ namespace Rebellion.Tests.Gameplay
         public void TearDown()
         {
             _session.Dispose();
+        }
+
+        [Test]
+        public void ReplaceGame_QueuedProduction_RebuildsPriorityWithoutChangingSavedSequences()
+        {
+            _planet.EnergyCapacity = 2;
+            Building first = new Building
+            {
+                InstanceID = "recovery-first-order",
+                OwnerInstanceID = _faction.InstanceID,
+                ProducerPlanetID = _planet.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingQueueSequence = 51,
+                ManufacturingProgress = 3,
+            };
+            Building second = new Building
+            {
+                InstanceID = "recovery-second-order",
+                OwnerInstanceID = _faction.InstanceID,
+                ProducerPlanetID = _planet.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingQueueSequence = 19,
+                ManufacturingProgress = 7,
+            };
+            _game.AttachNode(first, _planet);
+            _game.AttachNode(second, _planet);
+            _planet.ManufacturingQueue[ManufacturingType.Building] = new List<IManufacturable>
+            {
+                second,
+                first,
+            };
+            long randomPosition = _game.RandomIndex;
+            long identityPosition = _game.RuntimeIdentifierIndex;
+            int published = 0;
+            _session.Pipeline.ResultsResolved += _ => published++;
+
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_game.Config)
+            );
+
+            List<IManufacturable> queue = recovered
+                .Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID)
+                .ManufacturingQueue[ManufacturingType.Building];
+            CollectionAssert.AreEqual(
+                new[] { second.InstanceID, first.InstanceID },
+                queue.Select(item => item.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new long[] { 19, 51 },
+                queue.Select(item => item.ManufacturingQueueSequence)
+            );
+            CollectionAssert.AreEqual(
+                new double[] { 7, 3 },
+                queue.Select(item => item.ManufacturingProgress)
+            );
+            Assert.That(first.ManufacturingQueueSequence, Is.EqualTo(51));
+            Assert.That(second.ManufacturingQueueSequence, Is.EqualTo(19));
+            Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
+            Assert.That(_game.RuntimeIdentifierIndex, Is.EqualTo(identityPosition));
+            Assert.That(published, Is.Zero);
+        }
+
+        [Test]
+        public void Capture_ExecutingIncrementalTick_RejectsWithoutInterruptingIterator()
+        {
+            _game.Config.AI.TickInterval = 1;
+            _game.SetFactionController(_faction.InstanceID, "recovery-ai", PlayerControllerType.AI);
+            IEnumerator iterator = _session.Tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.That(iterator.MoveNext(), Is.True);
+
+                Assert.That(_session.CanCaptureSettledState, Is.False);
+                Assert.Throws<InvalidOperationException>(() =>
+                    MultiplayerSnapshotCodec.Capture(_session)
+                );
+                Assert.That(_session.Tick.CanAcceptPlayerActions, Is.False);
+            }
+            finally
+            {
+                (iterator as IDisposable)?.Dispose();
+            }
+        }
+
+        [Test]
+        public void Capture_ResultObserverDispatch_RejectsReentrantCapture()
+        {
+            bool observed = false;
+            using IDisposable observation = _session.Results.Observe<GameResult>(_ =>
+            {
+                observed = true;
+                Assert.That(_session.CanCaptureSettledState, Is.False);
+                Assert.Throws<InvalidOperationException>(() =>
+                    MultiplayerSnapshotCodec.Capture(_session)
+                );
+            });
+
+            _session.Pipeline.ProcessResults(
+                new GameResult[]
+                {
+                    new MaintenanceRequiredResult
+                    {
+                        Faction = _faction,
+                        Amount = 1,
+                        Tick = _game.CurrentTick,
+                    },
+                },
+                processMessages: false
+            );
+
+            Assert.That(observed, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+        }
+
+        [Test]
+        public void Capture_PendingHumanCombat_RejectsWithoutChangingBattle()
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-opponent" };
+            _game.GetFactions().Add(opponent);
+            _game.SetFactionController(
+                _faction.InstanceID,
+                "recovery-human",
+                PlayerControllerType.Human
+            );
+            Fleet first = CreateCombatFleet(
+                _game,
+                "recovery-own-fleet",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            Fleet second = CreateCombatFleet(
+                _game,
+                "recovery-other-fleet",
+                opponent.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            _session.Tick.ProcessTick();
+            int tick = _game.CurrentTick;
+            long randomPosition = _game.RandomIndex;
+
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+            Assert.That(_session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.True);
+            Assert.That(first.IsInCombat && second.IsInCombat, Is.True);
+            Assert.That(_game.CurrentTick, Is.EqualTo(tick));
+            Assert.That(_game.RandomIndex, Is.EqualTo(randomPosition));
+            Assert.That(_session.Tick.IsSettled, Is.False);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ReplaceGame_OwnershipTransfer_RebuildsFactionMembership(bool enabled)
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-transfer-owner" };
+            _game.GetFactions().Add(opponent);
+            Regiment first = new Regiment
+            {
+                InstanceID = "recovery-first-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+                IsEnabled = enabled,
+            };
+            Regiment second = new Regiment
+            {
+                InstanceID = "recovery-second-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            _game.AttachNode(first, _planet);
+            _game.AttachNode(second, _planet);
+            _game.ChangeOwnership(first, opponent.InstanceID);
+            _game.ChangeOwnership(first, _faction.InstanceID);
+
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash));
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_game.Config)
+            );
+            Faction restoredFaction = recovered.Game.GetFactionByOwnerInstanceID(
+                _faction.InstanceID
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                restoredFaction
+                    .GetOwnedUnitsByType<Regiment>(includeDisabled: true)
+                    .Select(unit => unit.InstanceID)
+            );
+            Assert.That(
+                restoredFaction.GetOwnedUnitsByType<Regiment>(),
+                Has.Count.EqualTo(enabled ? 2 : 1)
+            );
+            Assert.That(
+                recovered
+                    .Game.GetFactionByOwnerInstanceID(opponent.InstanceID)
+                    .GetOwnedUnitsByType<Regiment>(includeDisabled: true),
+                Is.Empty
+            );
+            Assert.That(
+                MultiplayerStateFingerprint.VerifyLoadedGame(
+                    recovered,
+                    MultiplayerStateFingerprint.ComputeSimulation(_session)
+                ),
+                Is.Not.Empty
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ReplaceGame_PendingCombat_RestoresCompletedCheckpointAndAllowsNewDecision(
+            bool retreat
+        )
+        {
+            Faction opponent = new Faction { InstanceID = "recovery-resolve-opponent" };
+            _game.GetFactions().Add(opponent);
+            _game.SetFactionController(
+                _faction.InstanceID,
+                "recovery-resolve-human",
+                PlayerControllerType.Human
+            );
+            _game.UseDeterministicRuntimeIdentifiers = true;
+            Planet safePlanet = new Planet
+            {
+                InstanceID = "recovery-safe-planet",
+                OwnerInstanceID = _faction.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+            };
+            _game.AttachNode(safePlanet, _planet.GetParent());
+            Fleet ownFleet = CreateCombatFleet(
+                _game,
+                "recovery-resolve-own",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            ownFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 1;
+            CreateCombatFleet(
+                _game,
+                "recovery-resolve-other",
+                opponent.InstanceID,
+                _planet,
+                1000,
+                100
+            );
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
+            );
+            string fingerprint = MultiplayerStateFingerprint.ComputeSimulation(_session);
+            int completedTick = _game.CurrentTick;
+            int completed = 0;
+            _session.Tick.TickCompleted += () => completed++;
+            _session.Tick.ProcessTick();
+            Assert.That(_session.Tick.IsSettled, Is.False);
+
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
+            );
+
+            Assert.That(_session.Tick.IsSettled, Is.True);
+            Assert.That(_session.Game.CurrentTick, Is.EqualTo(completedTick));
+            Assert.That(_session.GetService<SpaceCombatCommands>().HasPendingDecision, Is.False);
+            Assert.That(
+                _session.Game.GetSceneNodesByType<Fleet>().All(fleet => !fleet.IsInCombat),
+                Is.True
+            );
+            Assert.That(
+                MultiplayerStateFingerprint.VerifyLoadedGame(_session, fingerprint),
+                Is.Not.Empty
+            );
+            _session.Tick.ProcessTick();
+            Assert.That(
+                _session
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pending),
+                Is.True
+            );
+            Assert.That(pending.AttackerHasResponded || pending.DefenderHasResponded, Is.False);
+            SpaceCombatResult result = retreat
+                ? _session.Tick.ResolveCombatRetreat(_faction.InstanceID)
+                : _session.Tick.ResolveCombat(autoResolve: true);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(_session.Tick.IsSettled, Is.True);
+            Assert.That(_session.Game.CurrentTick, Is.EqualTo(completedTick + 1));
+            Assert.That(completed, Is.EqualTo(1));
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+        }
+
+        [Test]
+        public void ReplaceGame_DecodedBoundary_PreservesFacadesAndSubscriptionsWhileDetachingOldProducers()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "recovery-old-regiment",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(regiment, _planet);
+            MaintenanceCommands previousCommands = _session.GetService<MaintenanceCommands>();
+            GameTickProcessor tick = _session.Tick;
+            GameResultPipeline pipeline = _session.Pipeline;
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+            GameRoot decoded = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
+            int observed = 0;
+            pipeline.ResultsResolved += _ => observed++;
+
+            _session.ReplaceGame(decoded);
+            Assert.That(
+                previousCommands.TryScrap(new IManufacturable[] { regiment }, _faction.InstanceID),
+                Is.True
+            );
+            Assert.That(observed, Is.Zero);
+            _session.Pipeline.ProcessResults(
+                new GameResult[]
+                {
+                    new MaintenanceRequiredResult
+                    {
+                        Faction = _session.Game.GetFactions().Single(),
+                        Amount = 1,
+                    },
+                },
+                processMessages: false
+            );
+
+            Assert.That(_session.Tick, Is.SameAs(tick));
+            Assert.That(_session.Pipeline, Is.SameAs(pipeline));
+            Assert.That(_session.Game, Is.SameAs(decoded));
+            Assert.That(observed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ReplaceGame_SuppressionShipWithPreviousParentID_RebuildsMembership()
+        {
+            Fleet fleet = CreateCombatFleet(
+                _game,
+                "recovery-suppression-fleet",
+                _faction.InstanceID,
+                _planet,
+                1000,
+                0
+            );
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.SectorSuppression = 7;
+            Fleet historicalParent = new Fleet { InstanceID = "recovery-detached-history" };
+            ship.LastParentNode = historicalParent;
+            ship.LastParentInstanceID = historicalParent.InstanceID;
+            string parentID = ship.ParentInstanceID;
+            CompleteModelChanges(_session);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_game.Config)
+            );
+
+            CapitalShip restoredShip = recovered.Game.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID
+            );
+            PlanetSector sector = restoredShip.GetParentOfType<PlanetSector>();
+            Assert.That(sector.GetSectorSuppressionDivisor(_faction.InstanceID), Is.EqualTo(7));
+            Assert.That(restoredShip.ParentInstanceID, Is.EqualTo(parentID));
+            Assert.That(restoredShip.LastParentInstanceID, Is.EqualTo(historicalParent.InstanceID));
+            Assert.That(restoredShip.LastParentNode, Is.Null);
+            Assert.That(
+                recovered.Game.GetSceneNodeByInstanceID<Fleet>(historicalParent.InstanceID),
+                Is.Null
+            );
+        }
+
+        [Test]
+        public void ReplaceGame_MissionRosterChanged_PreservesExistingAbortDetection()
+        {
+            ReconnaissanceMission mission = new ReconnaissanceMission
+            {
+                InstanceID = "recovery-roster-mission",
+                OwnerInstanceID = _faction.InstanceID,
+                LocationInstanceID = _planet.InstanceID,
+            };
+            _game.AttachNode(mission, _planet);
+            Officer first = new Officer
+            {
+                InstanceID = "recovery-roster-first",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            Officer second = new Officer
+            {
+                InstanceID = "recovery-roster-second",
+                OwnerInstanceID = _faction.InstanceID,
+            };
+            _game.AttachNode(first, mission);
+            _game.AttachNode(second, mission);
+            mission.Initiate(20);
+            _game.MoveNode(first, _planet);
+            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(_session);
+
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash),
+                TestGameData.Create(_game.Config)
+            );
+
+            Mission restored = recovered.Game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID);
+            Assert.That(restored.GetMainParticipants().Count, Is.EqualTo(1));
+            Assert.That(
+                restored.GetAbortReason(recovered.Game),
+                Is.EqualTo(MissionCompletionReason.Failure)
+            );
+        }
+
+        [Test]
+        public void Capture_UnpublishedOwnershipChange_RequiresCompletedReactions()
+        {
+            Faction opponent = new() { InstanceID = "ownership-opponent" };
+            _game.GetFactions().Add(opponent);
+            PlanetOwnershipChangedResult change = _session
+                .GetService<PlanetaryControlCommands>()
+                .TransferPlanet(_planet, opponent);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+
+            _session
+                .ExecuteCommandAsync(() =>
+                {
+                    _session.Pipeline.ProcessResults(
+                        new GameResult[] { change },
+                        processMessages: false
+                    );
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            _session.ReplaceGame(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash)
+            );
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash),
+                TestGameData.Create(_game.Config)
+            );
+
+            Assert.That(
+                recovered.Game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID).OwnerInstanceID,
+                Is.EqualTo(opponent.InstanceID)
+            );
+            Assert.That(
+                MultiplayerStateFingerprint.ComputeSimulation(recovered),
+                Is.EqualTo(MultiplayerStateFingerprint.ComputeSimulation(_session))
+            );
         }
 
         [TestCase(false)]
@@ -194,6 +662,7 @@ namespace Rebellion.Tests.Gameplay
                 Planet producer = loaded.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
                 Faction owner = loaded.GetFactionByOwnerInstanceID(_faction.InstanceID);
 
+                Assert.That(session.CanCaptureSettledState, Is.True);
                 Assert.IsNull(producer.OwnerInstanceID);
                 Assert.IsEmpty(producer.GetManufacturingQueue());
                 Assert.IsNull(loaded.GetSceneNodeByInstanceID<ISceneNode>(localOrder.InstanceID));
@@ -2666,6 +3135,294 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
+        [Test]
+        public void ExecuteCommandAsync_ProductionQueued_CompletesCreationCallbacksBeforeSaving()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            int creations = 0;
+            using IDisposable subscription = _session.Results.Subscribe<GameObjectCreatedResult>(
+                results => creations += results.Count
+            );
+
+            Task<bool> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet)
+            );
+
+            Assert.That(command.Result, Is.True);
+            Assert.That(creations, Is.EqualTo(1));
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+            Assert.That(_session.GetService<ManufacturingCommands>().HasPendingResults, Is.False);
+            MultiplayerSnapshot checkpoint = MultiplayerSnapshotCodec.Capture(_session);
+            using GameSession recovered = new GameSession(
+                MultiplayerSnapshotCodec.Restore(checkpoint.Payload, checkpoint.Hash),
+                TestGameData.Create(_game.Config)
+            );
+            int replayedCreations = 0;
+            using IDisposable restoredSubscription =
+                recovered.Results.Subscribe<GameObjectCreatedResult>(results =>
+                    replayedCreations += results.Count
+                );
+            recovered.Tick.ProcessTick();
+            Assert.That(replayedCreations, Is.Zero);
+        }
+
+        [Test]
+        public void CanCaptureSettledState_UnprocessedProduction_RejectedUntilOperationCompletes()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            Assert.That(
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet),
+                Is.True
+            );
+
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+            Assert.That(_session.ExecuteCommandAsync(() => true).Result, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.True);
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_UnpublishedOwnershipFact_RejectsIncompleteOperation()
+        {
+            Faction opponent = new() { InstanceID = "ownership-opponent" };
+            _game.GetFactions().Add(opponent);
+
+            Task<PlanetOwnershipChangedResult> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<PlanetaryControlCommands>().TransferPlanet(_planet, opponent)
+            );
+
+            Assert.That(command.IsFaulted, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.Throws<InvalidOperationException>(() =>
+                MultiplayerSnapshotCodec.Capture(_session)
+            );
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_CreationCallbackThrows_PreventsCheckpointAndLaterCommands()
+        {
+            _planet.EnergyCapacity = 2;
+            Building item = new()
+            {
+                InstanceID = "queued",
+                OwnerInstanceID = _faction.InstanceID,
+                ConstructionCost = 1,
+            };
+            using IDisposable subscription = _session.Results.Subscribe<GameObjectCreatedResult>(
+                _ => throw new InvalidOperationException("reaction failed")
+            );
+
+            Task<bool> command = _session.ExecuteCommandAsync(() =>
+                _session.GetService<ManufacturingCommands>().Enqueue(_planet, item, _planet)
+            );
+
+            Assert.That(command.IsFaulted, Is.True);
+            Assert.That(_session.CanCaptureSettledState, Is.False);
+            Assert.That(_session.ExecuteCommandAsync(() => true).IsFaulted, Is.True);
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_SuspendedTick_DefersUntilTickFinishes()
+        {
+            _game.SetGameSpeed(TickSpeed.Fast);
+            IEnumerator tick = _session.Tick.ProcessTickIncrementally();
+            try
+            {
+                Assert.IsTrue(tick.MoveNext());
+                Task<int> command = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+                Assert.IsFalse(command.IsCompleted);
+                while (tick.MoveNext()) { }
+                _session.PumpCommands();
+                Assert.AreEqual(1, command.GetAwaiter().GetResult());
+            }
+            finally
+            {
+                (tick as IDisposable)?.Dispose();
+            }
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_ResultObserver_DefersUntilWholePipelineReturns()
+        {
+            Task<int> command = null;
+            _session.Pipeline.ResultsResolved += _ =>
+            {
+                command = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+                Assert.IsFalse(command.IsCompleted);
+                _session.PumpCommands();
+                Assert.IsFalse(command.IsCompleted);
+            };
+            _session.Pipeline.ProcessResults(new[] { CreateSupportShift() }, false);
+            _session.PumpCommands();
+            Assert.AreEqual(1, command.GetAwaiter().GetResult());
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_ReentrantSubmission_PreservesSubmissionOrder()
+        {
+            List<int> order = new();
+            Task<int> nested = null;
+            Task<int> first = _session.ExecuteCommandAsync(() =>
+            {
+                order.Add(1);
+                nested = _session.ExecuteCommandAsync(() =>
+                {
+                    order.Add(3);
+                    return 3;
+                });
+                Assert.IsFalse(nested.IsCompleted);
+                order.Add(2);
+                return 1;
+            });
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, order);
+            Assert.AreEqual(1, first.Result);
+            Assert.AreEqual(3, nested.Result);
+        }
+
+        [Test]
+        public void ReplaceGame_QueuedCommand_CancelsWithoutMutatingReplacement()
+        {
+            Task<int> command = null;
+            _session.Pipeline.ResultsResolved += _ =>
+                command = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+            _session.Pipeline.ProcessResults(new[] { CreateSupportShift() }, false);
+            _session.ReplaceGame(TestGame.Create(TestConfig.Create()));
+            _session.PumpCommands();
+            Assert.IsTrue(command.IsCanceled);
+            Assert.AreEqual(0, _planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void Dispose_QueuedCommand_CancelsWithoutExecution()
+        {
+            Task<int> command = null;
+            _session.Pipeline.ResultsResolved += _ =>
+                command = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+            _session.Pipeline.ProcessResults(new[] { CreateSupportShift() }, false);
+            _session.Dispose();
+            Assert.IsTrue(command.IsCanceled);
+            Assert.AreEqual(0, _planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_ThrowingMutation_StopsSubsequentCommandsAndTicks()
+        {
+            InvalidOperationException failure = new("mutation failure");
+            Task<int> pending = null;
+            Task<int> failed = _session.ExecuteCommandAsync<int>(() =>
+            {
+                _planet.EnergyCapacity++;
+                pending = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+                throw failure;
+            });
+            Assert.AreSame(failure, failed.Exception.InnerException);
+            Assert.AreSame(failure, _session.CommandFailure);
+            Assert.IsTrue(pending.IsCanceled);
+            Assert.IsTrue(_session.ExecuteCommandAsync(() => 1).IsFaulted);
+            _game.SetGameSpeed(TickSpeed.Fast);
+            _session.Tick.ProcessTick();
+            Assert.AreEqual(0, _game.CurrentTick);
+            Assert.AreEqual(1, _planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void ReplaceGame_InsideCommand_RejectsReplacementBeforeChangingGraph()
+        {
+            GameRoot replacement = TestGame.Create(TestConfig.Create());
+            _session
+                .ExecuteCommandAsync(() =>
+                {
+                    Assert.Throws<InvalidOperationException>(() =>
+                        _session.ReplaceGame(replacement)
+                    );
+                    return 0;
+                })
+                .GetAwaiter()
+                .GetResult();
+            Assert.AreSame(_game, _session.Game);
+        }
+
+        [Test]
+        public void ExecuteCommandAsync_WorkerSubmission_RejectsBeforeMutation()
+        {
+            Task worker = Task.Run(() =>
+                Assert.Throws<InvalidOperationException>(() =>
+                    _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity)
+                )
+            );
+            worker.GetAwaiter().GetResult();
+            Assert.AreEqual(0, _planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void CanCaptureSettledState_CompletedTick_AllowsSaveWhileKeepingCommandsDeferred()
+        {
+            bool observed = false;
+            _game.SetGameSpeed(TickSpeed.Fast);
+            _session.Tick.TickCompleted += () =>
+            {
+                observed = true;
+                Assert.IsTrue(_session.CanCaptureSettledState);
+                Assert.IsFalse(_session.CanExecuteCommands);
+            };
+            _session.Tick.ProcessTick();
+            Assert.IsTrue(observed);
+        }
+
+        [Test]
+        public void CanCaptureSettledState_ExecutingCommand_BlocksSave()
+        {
+            _session
+                .ExecuteCommandAsync(() =>
+                {
+                    Assert.IsFalse(_session.CanCaptureSettledState);
+                    return 0;
+                })
+                .GetAwaiter()
+                .GetResult();
+            Assert.IsTrue(_session.CanCaptureSettledState);
+        }
+
+        [Test]
+        public void ReplaceGame_AfterCommandFailure_ResumesAgainstReplacement()
+        {
+            Task<int> failed = _session.ExecuteCommandAsync<int>(() =>
+                throw new InvalidOperationException("failed mutation")
+            );
+            Assert.IsTrue(failed.IsFaulted);
+            _session.ReplaceGame(TestGame.Create(TestConfig.Create()));
+            Assert.IsNull(_session.CommandFailure);
+            Assert.AreEqual(42, _session.ExecuteCommandAsync(() => 42).GetAwaiter().GetResult());
+        }
+
+        [Test]
+        public void CancelPendingCommands_AuthorityChange_DiscardsUnstartedMutation()
+        {
+            Task<int> command = null;
+            _session.Pipeline.ResultsResolved += _ =>
+                command = _session.ExecuteCommandAsync(() => ++_planet.EnergyCapacity);
+            _session.Pipeline.ProcessResults(new[] { CreateSupportShift() }, false);
+            _session.CancelPendingCommands();
+            _session.PumpCommands();
+            Assert.IsTrue(command.IsCanceled);
+            Assert.AreEqual(0, _planet.EnergyCapacity);
+            Assert.IsTrue(_session.CanExecuteCommands);
+        }
+
         /// <summary>
         /// Creates an existing support result that exercises a registered gameplay reaction.
         /// </summary>
@@ -3078,6 +3835,25 @@ namespace Rebellion.Tests.Gameplay
                 new EncyclopediaEntries(),
                 new FactionThemes()
             );
+        }
+
+        /// <summary>
+        /// Completes fixture mutations while isolating tests from cosmetic message creation.
+        /// </summary>
+        /// <param name="session">The session owning the fixture changes.</param>
+        private static void CompleteModelChanges(GameSession session)
+        {
+            session
+                .ExecuteCommandAsync(() =>
+                {
+                    session.Pipeline.ProcessResults(
+                        Array.Empty<GameResult>(),
+                        processMessages: false
+                    );
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
         }
     }
 }

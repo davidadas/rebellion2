@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using UnityEngine;
 
@@ -16,9 +17,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Action<UIWindow> _closeWindow;
     private readonly Action _markDirty;
     private readonly AppBootstrap _bootstrap;
-    private readonly Func<string, string, bool> _saveGame;
-    private readonly Func<string, bool> _loadSave;
+    private readonly Func<string, string, Task<bool>> _saveGame;
+    private readonly Func<string, Task<bool>> _loadSave;
     private readonly SaveGameManager _saveGameManager;
+    private readonly Func<IReadOnlyList<SaveGameEntry>> _getSavedGames;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
     private readonly IReadOnlyList<ContentPackDefinition> _availablePacks;
@@ -39,6 +41,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
+    private bool _persistencePending;
     private string _selectedPackID;
     private ContentFileResolver _selectedModResolver;
     private readonly HashSet<string> _selectedDisabledModIDs = new HashSet<string>(
@@ -64,6 +67,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="markDirty">Marks the menu data as changed.</param>
     /// <param name="saveGameManager">The save-game persistence service.</param>
     /// <param name="showModsTab">Whether the owning scene exposes content management.</param>
+    /// <param name="getSavedGames">Lists saves through the active persistence owner's role visibility policy.</param>
     public OptionsMenuController(
         OptionsMenuView prefab,
         Transform windowParent,
@@ -71,11 +75,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
         AppBootstrap bootstrap,
-        Func<string, string, bool> saveGame,
-        Func<string, bool> loadSave,
+        Func<string, string, Task<bool>> saveGame,
+        Func<string, Task<bool>> loadSave,
         Action markDirty,
         SaveGameManager saveGameManager,
-        bool showModsTab = true
+        bool showModsTab = true,
+        Func<IReadOnlyList<SaveGameEntry>> getSavedGames = null
     )
     {
         _prefab = prefab;
@@ -91,6 +96,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _saveGameManager =
             saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
         _showModsTab = showModsTab;
+        _getSavedGames = getSavedGames ?? (() => _saveGameManager.GetSavedGames());
         _contentAssets = _bootstrap.GetContentAssets();
         _factionThemeLibrary = new FactionThemeLibrary(
             _bootstrap.GetContentPack().GameData.FactionThemes
@@ -520,34 +526,51 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="slot">The edited row index.</param>
     /// <param name="newName">The typed name.</param>
     /// <param name="submitted">Whether Return submitted the edit.</param>
-    private void HandleSlotRenamed(int slot, string newName, bool submitted)
+    private async void HandleSlotRenamed(int slot, string newName, bool submitted)
     {
-        if (slot < 0 || slot >= _saveSlots.Count || string.IsNullOrWhiteSpace(newName))
+        if (
+            _persistencePending
+            || slot < 0
+            || slot >= _saveSlots.Count
+            || string.IsNullOrWhiteSpace(newName)
+        )
             return;
 
-        if (_saveSlots[slot].IsCreateNew)
+        if (!_saveSlots[slot].IsCreateNew && submitted && HasActiveGame())
         {
-            if (!CreateNamedSave(newName))
-                return;
-            _selectedSlot = -1;
+            RequestSaveOverwrite(_saveSlots[slot], newName);
+            return;
         }
-        else
+
+        UIWindow requestedWindow = _window;
+        _persistencePending = true;
+        try
         {
-            string fileName = _saveSlots[slot].FileName;
-            if (submitted && HasActiveGame())
+            string selectedFileName = null;
+            if (_saveSlots[slot].IsCreateNew)
             {
-                RequestSaveOverwrite(_saveSlots[slot], newName);
-                return;
+                if (!await CreateNamedSaveAsync(newName))
+                    return;
             }
             else
-                _saveGameManager.SetSaveDisplayName(fileName, newName);
-            RefreshSaveSlots(fileName);
-            _markDirty();
-            return;
-        }
+            {
+                selectedFileName = _saveSlots[slot].FileName;
+                _saveGameManager.SetSaveDisplayName(selectedFileName, newName);
+            }
 
-        RefreshSaveSlots();
-        _markDirty();
+            if (_disposed || !ReferenceEquals(_window, requestedWindow))
+                return;
+            RefreshSaveSlots(selectedFileName);
+            _markDirty();
+        }
+        catch (OperationCanceledException)
+        {
+            // A closed coordinated session cannot acknowledge a pending save.
+        }
+        finally
+        {
+            _persistencePending = false;
+        }
     }
 
     /// <summary>
@@ -556,7 +579,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="slot">The row index to delete.</param>
     private void HandleSlotDeleteRequested(int slot)
     {
-        if (slot < 0 || slot >= _saveSlots.Count || _saveSlots[slot].IsCreateNew)
+        if (
+            _persistencePending
+            || slot < 0
+            || slot >= _saveSlots.Count
+            || _saveSlots[slot].IsCreateNew
+        )
             return;
 
         string fileName = _saveSlots[slot].FileName;
@@ -578,7 +606,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleSaveRequested()
     {
-        if (!CanSaveGame() || !IsSelectedExistingSave())
+        if (_persistencePending || !CanSaveGame() || !IsSelectedExistingSave())
             return;
 
         OptionsSaveSlot slot = _saveSlots[_selectedSlot];
@@ -586,40 +614,69 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Confirms replacement of one save without depending on the later row selection.
+    /// Confirms replacement of a captured save and awaits its persistence owner before refreshing.
     /// </summary>
     /// <param name="slot">The existing save to replace.</param>
     /// <param name="displayName">The display name to persist after confirmation.</param>
     private void RequestSaveOverwrite(OptionsSaveSlot slot, string displayName)
     {
-        if (!CanSaveGame())
+        if (_persistencePending || !CanSaveGame())
             return;
 
         string fileName = slot.FileName;
+        UIWindow requestedWindow = _window;
         RequestConfirm(
             $"Overwrite \"{slot.Name}\"?",
-            () =>
+            async () =>
             {
-                if (!OverwriteSave(fileName, displayName))
+                if (_persistencePending)
                     return;
-                RefreshSaveSlots(fileName);
-                _markDirty();
+                _persistencePending = true;
+                try
+                {
+                    if (!await OverwriteSaveAsync(fileName, displayName))
+                        return;
+                    if (_disposed || !ReferenceEquals(_window, requestedWindow))
+                        return;
+                    RefreshSaveSlots(fileName);
+                    _markDirty();
+                }
+                catch (OperationCanceledException)
+                {
+                    // A closed coordinated session cannot acknowledge a pending save.
+                }
+                finally
+                {
+                    _persistencePending = false;
+                }
             }
         );
     }
 
     /// <summary>
-    /// Closes the overlay before loading the selected existing save.
+    /// Closes the overlay after the selected save's persistence owner acknowledges loading.
     /// </summary>
-    private void HandleLoadRequested()
+    private async void HandleLoadRequested()
     {
-        if (!IsSelectedExistingSave())
+        if (_persistencePending || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
-        Close();
-        if (!_loadSave(fileName))
-            Open(OptionsMenuTab.SaveLoad);
+        UIWindow requestedWindow = _window;
+        _persistencePending = true;
+        try
+        {
+            if (await _loadSave(fileName) && ReferenceEquals(_window, requestedWindow))
+                Close();
+        }
+        catch (OperationCanceledException)
+        {
+            // A canceled coordinated load leaves the current Options view available.
+        }
+        finally
+        {
+            _persistencePending = false;
+        }
     }
 
     /// <summary>
@@ -649,29 +706,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void RefreshSaveSlots(string selectedFileName = null)
     {
         _saveSlots.Clear();
-        if (CanSaveGame())
+        if (HasActiveGame())
             _saveSlots.Add(new OptionsSaveSlot("Create New Save", string.Empty, null, true, null));
 
-        foreach (SaveGameEntry entry in _saveGameManager.GetSavedGames())
+        foreach (SaveGameEntry entry in _getSavedGames())
         {
-            string displayName = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
-                ? entry.FileName
-                : entry.Metadata.SaveDisplayName;
-            string date =
-                entry.Metadata != null
-                    ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
-                    : string.Empty;
             _saveSlots.Add(
-                new OptionsSaveSlot(
-                    displayName,
-                    date,
-                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
-                    false,
-                    entry.FileName,
-                    entry.Metadata?.IsCustomGame == true
-                        ? "Custom"
-                        : entry.Metadata?.Difficulty?.ToString(),
-                    entry.Metadata?.CurrentTick
+                OptionsSaveSlot.FromSave(
+                    entry,
+                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID)
                 )
             );
         }
@@ -701,10 +744,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     /// <param name="displayName">The requested display name.</param>
     /// <returns>True when the save was written.</returns>
-    private bool CreateNamedSave(string displayName)
+    private Task<bool> CreateNamedSaveAsync(string displayName)
     {
         if (!CanSaveGame())
-            return false;
+            return Task.FromResult(false);
 
         string fileName = "save_" + Guid.NewGuid().ToString("N");
         return _saveGame(fileName, displayName);
@@ -716,10 +759,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="fileName">The save identifier.</param>
     /// <param name="displayName">The display name to persist.</param>
     /// <returns>True when the save was written.</returns>
-    private bool OverwriteSave(string fileName, string displayName)
+    private Task<bool> OverwriteSaveAsync(string fileName, string displayName)
     {
         if (!CanSaveGame() || string.IsNullOrEmpty(fileName))
-            return false;
+            return Task.FromResult(false);
 
         return _saveGame(fileName, displayName);
     }
@@ -1157,14 +1200,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Checks whether the active game is at a stable save boundary.
     /// </summary>
-    /// <returns>True when the runtime permits a new save snapshot.</returns>
+    /// <returns>True when the runtime can accept a save request.</returns>
     private bool CanSaveGame()
     {
-        return _bootstrap.GetRuntime()?.CanSave == true;
+        return _bootstrap.GetRuntime()?.CanRequestSave == true;
     }
 
     /// <summary>
-    /// Pauses the active game and switches global input to the menu context.
+    /// Captures the local speed preference, requests a pause, and switches input to the menu context.
     /// </summary>
     private void PauseGame()
     {
@@ -1173,13 +1216,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         _bootstrap.GetInputController()?.PushContext(InputContext.Menu);
-        _speedBeforeOptions = gameManager.GetGameSpeed();
+        _speedBeforeOptions = gameManager.GetPlayerRequestedGameSpeed();
         gameManager.SetGameSpeed(TickSpeed.Paused);
         _gamePaused = true;
     }
 
     /// <summary>
-    /// Restores the game and input state captured when Options opened.
+    /// Restores the local speed preference and input state captured when Options opened.
     /// </summary>
     private void ResumeGame()
     {

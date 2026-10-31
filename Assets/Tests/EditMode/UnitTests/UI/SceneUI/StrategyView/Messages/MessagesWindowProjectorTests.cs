@@ -160,7 +160,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 false,
                 false,
                 12,
-                24
+                24,
+                canComposeChat: true
             );
 
             Assert.IsFalse(data.DetailVisible);
@@ -267,6 +268,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Project_ChatDetail_RequiresLiteralTextRendering()
+        {
+            Message message = CreateMessage("chat", "<b>literal</b>", MessageType.Chat);
+            message.Body = "<i>raw</i>";
+
+            MessagesWindowRenderData data = MessagesWindowProjector.Project(
+                _uiContext,
+                new[] { message },
+                MessagesTab.Chat,
+                true,
+                message.InstanceID,
+                new[] { message.InstanceID },
+                true,
+                true,
+                1,
+                2,
+                missionContinuationChoiceVisible: false
+            );
+
+            Assert.IsTrue(data.DetailPanel.PlainText);
+            Assert.AreEqual("<b>literal</b>", data.DetailPanel.Header);
+            Assert.AreEqual("<i>raw</i>", data.DetailPanel.Text);
+        }
+
+        [Test]
         public void Project_DetailPanel_ReturnsSelectedMessageAndNavigationCommands()
         {
             Message first = CreateMessage("first", "First", MessageType.Fleet);
@@ -287,7 +313,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 true,
                 1,
                 2,
-                true
+                true,
+                canComposeChat: true
             );
 
             Assert.IsTrue(data.DetailVisible);
@@ -394,7 +421,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void Project_ChatIndex_ReturnsPressedDisabledChatCommand()
+        public void Project_ChatIndexWithPeer_ReturnsEnabledChatCommand()
         {
             MessagesWindowRenderData data = MessagesWindowProjector.Project(
                 _uiContext,
@@ -406,12 +433,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 true,
                 false,
                 0,
-                0
+                0,
+                canComposeChat: true
             );
 
             Assert.IsFalse(data.CommandBar.DisplayButton.Enabled);
             Assert.IsTrue(data.CommandBar.ChatButton.Visible);
-            Assert.IsFalse(data.CommandBar.ChatButton.Enabled);
+            Assert.IsTrue(data.CommandBar.ChatButton.Enabled);
         }
 
         [Test]
@@ -433,6 +461,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsNull(data.OverlayFrameTexture);
             Assert.IsNull(data.CommandBar.ButtonStripTexture);
             Assert.IsEmpty(data.IndexPanel.Rows);
+        }
+
+        /// <summary>
+        /// Verifies that composing is independent of the message index and detail selection.
+        /// </summary>
+        [Test]
+        public void Project_OpenComposer_PreservesDraftAndHidesOtherPanels()
+        {
+            MessagesWindowRenderData data = MessagesWindowProjector.Project(
+                _uiContext,
+                Array.Empty<Message>(),
+                MessagesTab.Fleet,
+                false,
+                null,
+                null,
+                true,
+                false,
+                0,
+                0,
+                canComposeChat: true,
+                composerDraft: "  Multiline\ndraft  "
+            );
+
+            Assert.IsFalse(data.DetailVisible);
+            Assert.IsNull(data.IndexPanel);
+            Assert.IsNull(data.DetailPanel);
+            Assert.AreEqual("  Multiline\ndraft  ", data.Composer.Draft);
+            Assert.IsFalse(data.CommandBar.DisplayButton.Visible);
+            Assert.IsTrue(data.CommandBar.IndexButton.Visible);
+        }
+
+        [Test]
+        public void Project_PeerUnavailable_DisablesChatCommand()
+        {
+            MessagesWindowRenderData data = MessagesWindowProjector.Project(
+                _uiContext,
+                Array.Empty<Message>(),
+                MessagesTab.All,
+                false,
+                null,
+                null,
+                true,
+                false,
+                0,
+                0,
+                canComposeChat: false
+            );
+
+            Assert.IsFalse(data.CommandBar.ChatButton.Enabled);
         }
 
         /// <summary>

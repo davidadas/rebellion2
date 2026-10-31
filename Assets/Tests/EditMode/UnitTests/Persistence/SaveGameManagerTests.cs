@@ -1,0 +1,2486 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Xml;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.GameEvents;
+using Rebellion.Game.Messages;
+using Rebellion.Game.UIState;
+using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
+
+namespace Rebellion.Tests.Persistence
+{
+    [TestFixture]
+    public class SaveGameManagerTests
+    {
+        private const string _defaultSaveFileName = "SaveGameManagerTest";
+
+        private string _saveDirectoryPath;
+        private string _saveFileName;
+        private SaveGameManager _saveGameManager;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                nameof(SaveGameManagerTests),
+                Guid.NewGuid().ToString("N")
+            );
+            _saveFileName = _defaultSaveFileName;
+            _saveGameManager = new SaveGameManager(_saveDirectoryPath);
+        }
+
+        /// <summary>
+        /// Executes teardown.
+        /// </summary>
+        [TearDown]
+        public void Teardown()
+        {
+            // Cleanup code after each test.
+            if (Directory.Exists(_saveDirectoryPath))
+                Directory.Delete(_saveDirectoryPath, true);
+        }
+
+        [Test]
+        public void Constructor_NoDirectoryOverride_UsesDefaultDirectory()
+        {
+            SaveGameManager manager = new SaveGameManager(
+                _saveDirectoryPath,
+                new[] { "application", "-batchmode" }
+            );
+
+            Assert.AreEqual(_saveDirectoryPath, manager.GetSaveDirectoryPath());
+        }
+
+        [Test]
+        public void Constructor_AbsoluteDirectoryOverride_UsesOverrideWithoutCreatingDirectory()
+        {
+            string overridePath = Path.Combine(_saveDirectoryPath, "isolated");
+
+            SaveGameManager manager = new SaveGameManager(
+                Path.Combine(_saveDirectoryPath, "default"),
+                new[] { "application", "-saveDirectory", overridePath }
+            );
+
+            Assert.AreEqual(Path.GetFullPath(overridePath), manager.GetSaveDirectoryPath());
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void SaveGameData_ProcessDirectoryOverride_WritesOnlyToSelectedDirectory()
+        {
+            string defaultPath = Path.Combine(_saveDirectoryPath, "default");
+            string overridePath = Path.Combine(_saveDirectoryPath, "isolated");
+            SaveGameManager manager = new SaveGameManager(
+                defaultPath,
+                new[] { "application", "-saveDirectory", overridePath }
+            );
+
+            manager.SaveGameData(new GameRoot(), _saveFileName);
+
+            Assert.IsTrue(File.Exists(Path.Combine(overridePath, _saveFileName + ".sav")));
+            Assert.IsFalse(Directory.Exists(defaultPath));
+        }
+
+        [Test]
+        public void Constructor_MissingDirectoryOverrideValue_RejectsBeforeCreatingDirectory()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(_saveDirectoryPath, new[] { "application", "-saveDirectory" })
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [TestCase("")]
+        [TestCase("relative-directory")]
+        [TestCase("../relative-directory")]
+        public void Constructor_NonAbsoluteDirectoryOverride_RejectsBeforeCreatingDirectory(
+            string overridePath
+        )
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_DuplicateDirectoryOverride_RejectsBeforeCreatingDirectory()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[]
+                    {
+                        "application",
+                        "-saveDirectory",
+                        _saveDirectoryPath,
+                        "-saveDirectory",
+                        _saveDirectoryPath,
+                    }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_InvalidDirectoryOverride_RejectsBeforeCreatingDirectory()
+        {
+            string overridePath =
+                _saveDirectoryPath + Path.DirectorySeparatorChar + "invalid\0directory";
+
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void Constructor_FileDirectoryOverride_RejectsWithoutChangingFile()
+        {
+            Directory.CreateDirectory(_saveDirectoryPath);
+            string overridePath = Path.Combine(_saveDirectoryPath, "existing-file");
+            File.WriteAllText(overridePath, "Existing data");
+
+            Assert.Throws<ArgumentException>(() =>
+                new SaveGameManager(
+                    _saveDirectoryPath,
+                    new[] { "application", "-saveDirectory", overridePath }
+                )
+            );
+
+            Assert.AreEqual("Existing data", File.ReadAllText(overridePath));
+        }
+
+        [Test]
+        public void SaveGameData_ValidGameState_SavesToFile()
+        {
+            // Generate a game given a summary.
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Easy,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Abundant,
+                PlayerFactionID = "FNALL1",
+            };
+
+            // Save the file to disk for testing.
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            // Check if the file was created.
+            string filePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            bool fileExists = File.Exists(filePath);
+            Assert.IsTrue(fileExists, "Save file was not created.");
+        }
+
+        [Test]
+        public void SaveGameData_GameSummary_WritesStableSummaryElementAndLoads()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    PlayerFactionID = "FNALL1",
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string serialized = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+            StringAssert.Contains("<Summary>", serialized);
+            StringAssert.DoesNotContain("<Setup>", serialized);
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(GameDifficulty.Hard, restored.Summary.Difficulty);
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+        }
+
+        [Test]
+        public void SaveGameData_SettledState_WritesCompactPayloadAndLoads()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 123,
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+            StringAssert.DoesNotContain("\n", xml);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(123, restored.CurrentTick);
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+        }
+
+        [TestCase("   ")]
+        [TestCase("\t\n \t")]
+        [TestCase("\r\n \r")]
+        [TestCase("First line\r\nSecond line\rThird line")]
+        public void SaveGameData_ChatText_RestoresRawBody(string body)
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            faction.Messages[MessageType.Chat] = new List<Message>
+            {
+                new StatusMessage(MessageType.Chat, "Message from another player", body),
+            };
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+            };
+            game.GetFactions().Add(faction);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(
+                body,
+                restored.GetFactions().Single().Messages[MessageType.Chat].Single().Body
+            );
+        }
+
+        [Test]
+        public void LoadGameData_StandardSummaryXml_RestoresSetupWithoutCustomSettings()
+        {
+            const string xml =
+                @"<GameRoot>
+                    <Summary>
+                        <GalaxySize>Small</GalaxySize>
+                        <Difficulty>Hard</Difficulty>
+                        <VictoryCondition>Headquarters</VictoryCondition>
+                        <ResourceAvailability>Abundant</ResourceAvailability>
+                        <StartingFactionIDs><String>FNALL1</String><String>FNEMP1</String></StartingFactionIDs>
+                        <PlayerFactionID>FNALL1</PlayerFactionID>
+                        <PackID>pack</PackID>
+                        <PackVersion>1.0</PackVersion>
+                        <ScenarioID>scenario</ScenarioID>
+                        <ModIDs><String>mod</String></ModIDs>
+                        <ModVersions><String>2.0</String></ModVersions>
+                        <Seed>1729</Seed>
+                    </Summary>
+                    <CurrentTick>42</CurrentTick>
+                </GameRoot>";
+            Directory.CreateDirectory(_saveDirectoryPath);
+            File.WriteAllText(_saveGameManager.GetSaveFilePath(_saveFileName), xml);
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameSize.Small, restored.Summary.GalaxySize);
+            Assert.AreEqual(GameDifficulty.Hard, restored.Summary.Difficulty);
+            Assert.AreEqual(GameVictoryCondition.Headquarters, restored.Summary.VictoryCondition);
+            Assert.AreEqual(
+                GameResourceAvailability.Abundant,
+                restored.Summary.ResourceAvailability
+            );
+            CollectionAssert.AreEqual(
+                new[] { "FNALL1", "FNEMP1" },
+                restored.Summary.StartingFactionIDs
+            );
+            Assert.AreEqual("FNALL1", restored.Summary.PlayerFactionID);
+            Assert.AreEqual("pack", restored.Summary.PackID);
+            Assert.AreEqual("1.0", restored.Summary.PackVersion);
+            Assert.AreEqual("scenario", restored.Summary.ScenarioID);
+            CollectionAssert.AreEqual(new[] { "mod" }, restored.Summary.ModIDs);
+            CollectionAssert.AreEqual(new[] { "2.0" }, restored.Summary.ModVersions);
+            Assert.AreEqual(1729, restored.Summary.Seed);
+            Assert.AreEqual(42, restored.CurrentTick);
+            Assert.IsNull(restored.Summary.CustomSettings);
+            Assert.IsFalse(restored.Summary.IsCustomGame);
+            Assert.IsFalse(restored.Metadata.IsCustomGame);
+        }
+
+        [Test]
+        public void SaveGameData_SavingListenerMutatesGame_SerializesUpdatedState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            _saveGameManager.Saving += () => game.CurrentTick = 42;
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(42, loaded.CurrentTick);
+        }
+
+        [Test]
+        public void SaveGameData_GameWithPlayers_SerializesPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            StringAssert.Contains(
+                "<Players>",
+                File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName))
+            );
+        }
+
+        [Test]
+        public void LoadGameData_SavedPlayers_RestoresPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Player player = loadedGame.GetFactionPlayer("FNALL1");
+            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+        }
+
+        [Test]
+        public async Task LoadGameDataAsync_SavedGame_RestoresGameAsync()
+        {
+            GameRoot game = new GameRoot
+            {
+                CurrentTick = 73,
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            Assert.AreEqual(73, loadedGame.CurrentTick);
+        }
+
+        [Test]
+        public void LoadGameData_SavedStrategyWindows_RestoresWindowState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            game.GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Add(new WindowState("Planet.Fleet", "PLANET1", 123, 45, 0, 0, 2));
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            WindowState state = loadedGame
+                .GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Single();
+            Assert.AreEqual("Planet.Fleet", state.GetWindowTypeID());
+            Assert.AreEqual("PLANET1", state.GetTargetInstanceID());
+            Assert.AreEqual(123, state.GetX());
+            Assert.AreEqual(45, state.GetY());
+            Assert.AreEqual(2, state.GetZOrder());
+        }
+
+        [Test]
+        public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 10,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            game.CurrentTick = 20;
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+            CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
+        }
+
+        [Test]
+        public void SaveGameData_NewCampaign_AssignsPersistentIdentity()
+        {
+            GameRoot game = new GameRoot();
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            Assert.IsTrue(Guid.TryParseExact(game.Metadata.CampaignID, "N", out _));
+            Assert.AreEqual(
+                game.Metadata.CampaignID,
+                _saveGameManager.LoadGameData(_saveFileName).Metadata.CampaignID
+            );
+        }
+
+        [Test]
+        public void SaveGameData_LoadedCampaign_RetainsExistingIdentity()
+        {
+            string campaignId = Guid.NewGuid().ToString("N");
+            GameRoot game = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = campaignId },
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+
+            _saveGameManager.SaveGameData(loaded, "second-save");
+
+            Assert.AreEqual(
+                campaignId,
+                _saveGameManager.LoadGameData("second-save").Metadata.CampaignID
+            );
+        }
+
+        [Test]
+        public void LoadGameData_LegacyCampaign_DoesNotAssignIdentityOrRewriteSave()
+        {
+            const string legacyXml =
+                "<GameRoot><Metadata/><CurrentTick>100</CurrentTick></GameRoot>";
+            Directory.CreateDirectory(_saveDirectoryPath);
+            string legacyPath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            File.WriteAllText(legacyPath, legacyXml);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.IsNull(loaded.Metadata.CampaignID);
+            Assert.AreEqual(legacyXml, File.ReadAllText(legacyPath));
+        }
+
+        [Test]
+        public void SaveGameData_InvalidCampaignIdentity_RejectsBeforeCreatingDirectory()
+        {
+            GameRoot game = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = "../another-campaign" },
+            };
+
+            Assert.Throws<ArgumentException>(() =>
+                _saveGameManager.SaveGameData(game, _saveFileName)
+            );
+
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                loadedGame.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        [TestCase(62)]
+        [TestCase(63)]
+        public void SaveGameData_SupplementaryCharacterAtNameLimit_PreservesCompleteCharacters(
+            int prefixLength
+        )
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            string prefix = new('N', prefixLength);
+            string expected = prefixLength == 62 ? prefix + "\U0001F680" : prefix;
+
+            _saveGameManager.SaveGameData(game, _saveFileName, prefix + "\U0001F680 suffix");
+
+            Assert.AreEqual(
+                expected,
+                _saveGameManager.LoadGameData(_saveFileName).Metadata.SaveDisplayName
+            );
+        }
+
+        [TestCase(1)]
+        [TestCase(0xD800)]
+        public void SaveGameData_InvalidDisplayName_RejectsBeforeChangingCheckpoint(int character)
+        {
+            GameRoot game = new GameRoot();
+            game.Metadata.SaveDisplayName = "Existing name";
+            DateTime savedAt = game.Metadata.LastSavedUtc;
+            int captureCount = 0;
+            _saveGameManager.Saving += () => captureCount++;
+
+            Assert.Throws<XmlException>(() =>
+                _saveGameManager.SaveGameData(game, _saveFileName, "Name " + (char)character)
+            );
+
+            Assert.AreEqual("Existing name", game.Metadata.SaveDisplayName);
+            Assert.AreEqual(savedAt, game.Metadata.LastSavedUtc);
+            Assert.Zero(captureCount);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void SaveGameData_GameWithSummary_StoresPlayerFactionInMetadata()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNEMP1",
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
+        }
+
+        [Test]
+        public void SaveGameData_QuickSaveFileName_StoresQuicksaveDisplayName()
+        {
+            _saveFileName = SaveGameManager.QuickSaveFileName;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [TestCase(true, null)]
+        [TestCase(false, null)]
+        [TestCase(true, " ")]
+        [TestCase(false, " ")]
+        public async Task SaveGameDataAsync_MultiplayerQuicksave_StoresDefaultDisplayNameAsync(
+            bool host,
+            string displayName
+        )
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string fileName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                host,
+                SaveGameManager.QuickSaveFileName
+            );
+
+            await _saveGameManager.SaveGameDataAsync(game, fileName, displayName);
+            GameRoot loaded = _saveGameManager.LoadGameData(fileName);
+
+            Assert.AreEqual("Quicksave", loaded.Metadata.SaveDisplayName);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task SaveGameDataAsync_MultiplayerQuicksaveWithLabel_PreservesExplicitDisplayNameAsync(
+            bool host
+        )
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string fileName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                host,
+                SaveGameManager.QuickSaveFileName
+            );
+
+            await _saveGameManager.SaveGameDataAsync(game, fileName, "Named checkpoint");
+            GameRoot loaded = _saveGameManager.LoadGameData(fileName);
+
+            Assert.AreEqual("Named checkpoint", loaded.Metadata.SaveDisplayName);
+        }
+
+        [Test]
+        public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void SaveGameData_MetadataWithExistingVersion_OverwritesWithCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
+            for (int tick = 100; tick <= 400; tick += 100)
+            {
+                game.CurrentTick = tick;
+                Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            }
+
+            string[] autosaves = Directory.GetFiles(
+                _saveDirectoryPath,
+                $"{SaveGameManager.AutosaveFilePrefix}*.sav"
+            );
+
+            Assert.AreEqual(2, autosaves.Length);
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix
+                            + game.Metadata.CampaignID
+                            + "_0000000300"
+                    )
+                )
+            );
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix
+                            + game.Metadata.CampaignID
+                            + "_0000000400"
+                    )
+                )
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_ConfiguredCadence_WritesOnlyAtCadence()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), CurrentTick = 99 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsFalse(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+
+            game.CurrentTick = 100;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            Assert.AreEqual(
+                1,
+                Directory
+                    .GetFiles(_saveDirectoryPath, $"{SaveGameManager.AutosaveFilePrefix}*.sav")
+                    .Length
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_DifferentCampaignsAtSameTick_WritesDistinctSaves()
+        {
+            GameRoot first = new GameRoot { CurrentTick = 100 };
+            GameRoot second = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(second, settings));
+
+            CollectionAssert.AreEquivalent(
+                new[] { first.Metadata.CampaignID, second.Metadata.CampaignID },
+                _saveGameManager.GetSavedGames().Select(entry => entry.Metadata.CampaignID)
+            );
+            Assert.AreNotEqual(first.Metadata.CampaignID, second.Metadata.CampaignID);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_ExceedsOneCampaignRetention_PreservesOtherCampaign()
+        {
+            GameRoot first = new GameRoot { CurrentTick = 100 };
+            GameRoot second = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(1);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(second, settings));
+            string secondFile = _saveGameManager
+                .GetSavedGames()
+                .Single(entry => entry.Metadata.CampaignID == second.Metadata.CampaignID)
+                .FileName;
+            byte[] originalSecondSave = File.ReadAllBytes(
+                _saveGameManager.GetSaveFilePath(secondFile)
+            );
+            first.CurrentTick = 200;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(first, settings));
+
+            Assert.AreEqual(2, _saveGameManager.GetSavedGames().Count);
+            CollectionAssert.AreEqual(
+                originalSecondSave,
+                File.ReadAllBytes(_saveGameManager.GetSaveFilePath(secondFile))
+            );
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_RotatesHistory_PreservesLegacyManualAndQuickSaves()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            _saveGameManager.SaveGameData(game, "manual-save");
+            _saveGameManager.SaveQuickGameData(game);
+            string campaignPrefix = SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID;
+            string prefixedManual = campaignPrefix + "_manual";
+            _saveGameManager.SaveGameData(game, prefixedManual);
+            string legacyName = SaveGameManager.AutosaveFilePrefix + "0000000100";
+            string legacyPath = _saveGameManager.GetSaveFilePath(legacyName);
+            const string legacyXml =
+                "<GameRoot><Metadata/><CurrentTick>100</CurrentTick></GameRoot>";
+            File.WriteAllText(legacyPath, legacyXml);
+            string[] protectedNames =
+            {
+                "manual-save",
+                SaveGameManager.QuickSaveFileName,
+                prefixedManual,
+                legacyName,
+            };
+            Dictionary<string, byte[]> protectedBytes = protectedNames.ToDictionary(
+                name => name,
+                name => File.ReadAllBytes(_saveGameManager.GetSaveFilePath(name))
+            );
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(1);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            game.CurrentTick = 200;
+
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+
+            foreach (string fileName in protectedNames)
+                CollectionAssert.AreEqual(
+                    protectedBytes[fileName],
+                    File.ReadAllBytes(_saveGameManager.GetSaveFilePath(fileName))
+                );
+            Assert.AreEqual(5, Directory.GetFiles(_saveDirectoryPath, "*.sav").Length);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_Disabled_DoesNotCreateHistoryOrCampaignIdentity()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings { AutosaveEnabled = false };
+
+            bool saved = _saveGameManager.ProcessAutosaveTick(game, settings);
+
+            Assert.IsFalse(saved);
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+            Assert.IsNull(game.Metadata.CampaignID);
+        }
+
+        [Test]
+        public void ProcessAutosaveTick_PublicationFails_DoesNotPruneExistingHistory()
+        {
+            GameRoot game = new GameRoot { CurrentTick = 100 };
+            UserGameplaySettings settings = new UserGameplaySettings();
+            settings.SetAutosavesToKeep(2);
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            game.CurrentTick = 200;
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(game, settings));
+            string[] previousFiles = Directory.GetFiles(_saveDirectoryPath, "*.sav");
+            Dictionary<string, byte[]> previousBytes = previousFiles.ToDictionary(
+                path => path,
+                File.ReadAllBytes
+            );
+            game.CurrentTick = 300;
+            settings.SetAutosavesToKeep(1);
+            string blockedPath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000300"
+            );
+            Directory.CreateDirectory(blockedPath);
+
+            bool saved = _saveGameManager.ProcessAutosaveTick(game, settings);
+
+            Assert.IsFalse(saved);
+            CollectionAssert.AreEquivalent(
+                previousFiles,
+                Directory.GetFiles(_saveDirectoryPath, "*.sav")
+            );
+            foreach (string path in previousFiles)
+                CollectionAssert.AreEqual(previousBytes[path], File.ReadAllBytes(path));
+            CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
+        }
+
+        [Test]
+        public void SaveGameData_CustomDisplayName_StoresDisplayName()
+        {
+            SaveGameManager manager = _saveGameManager;
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+            };
+
+            manager.SaveGameData(game, _saveFileName, "Coruscant Campaign");
+            GameRoot loadedGame = manager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [Test]
+        public void SaveGameData_ValidGame_WritesMetadataSidecar()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    PlayerFactionID = "FNALL1",
+                },
+                CurrentTick = 42,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName, "Core Worlds");
+
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(_saveFileName)));
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(_saveFileName, entry.FileName);
+            Assert.AreEqual("Core Worlds", entry.Metadata.SaveDisplayName);
+            Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
+            Assert.AreEqual(GameDifficulty.Hard, entry.Metadata.Difficulty);
+            Assert.AreEqual(42, entry.Metadata.CurrentTick);
+        }
+
+        [Test]
+        public void SaveGameData_CustomGame_WritesCustomGameMetadata()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    GalaxySize = GameSize.Small,
+                    CustomSettings = new CustomGameSettings
+                    {
+                        GenerationConfig = new GameGenerationConfig(),
+                    },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.IsTrue(metadata.IsCustomGame);
+            Assert.AreEqual(GameDifficulty.Hard, metadata.Difficulty);
+            Assert.AreEqual(GameSize.Small, restored.Summary.GalaxySize);
+        }
+
+        [Test]
+        public void GetSaveMetadata_SavedContentIdentity_ReturnsContentIdentity()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    PackID = "pack",
+                    PackVersion = "2.0.0",
+                    ScenarioID = "scenario",
+                    ModIDs = new[] { "mod" },
+                    ModVersions = new[] { "3.0.0" },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+
+            Assert.AreEqual("pack", metadata.PackID);
+            Assert.AreEqual("2.0.0", metadata.PackVersion);
+            Assert.AreEqual("scenario", metadata.ScenarioID);
+            CollectionAssert.AreEqual(new[] { "mod" }, metadata.ModIDs);
+            CollectionAssert.AreEqual(new[] { "3.0.0" }, metadata.ModVersions);
+        }
+
+        [Test]
+        public void GetSavedGames_LegacyMetadataWithoutSaveDetails_LeavesDetailsUnset()
+        {
+            Directory.CreateDirectory(_saveDirectoryPath);
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { Difficulty = GameDifficulty.Hard },
+                Metadata = new GameMetadata { SaveDisplayName = "Legacy Save" },
+                CurrentTick = 42,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameMetadata legacyMetadata = new GameMetadata
+            {
+                SaveDisplayName = "Legacy Save",
+                LastSavedUtc = DateTime.UtcNow,
+            };
+            GameSerializer serializer = new GameSerializer(
+                typeof(GameMetadata),
+                new GameSerializerSettings { RootName = "Metadata" }
+            );
+            using (
+                FileStream stream = new FileStream(
+                    _saveGameManager.GetSaveMetadataFilePath(_saveFileName),
+                    FileMode.Create
+                )
+            )
+            {
+                serializer.Serialize(stream, legacyMetadata);
+            }
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+
+            Assert.AreEqual("Legacy Save", entry.Metadata.SaveDisplayName);
+            Assert.IsNull(entry.Metadata.Difficulty);
+            Assert.IsNull(entry.Metadata.CurrentTick);
+        }
+
+        [Test]
+        public void MaxDisplayNameLength_Default_Is64Characters()
+        {
+            Assert.AreEqual(64, SaveGameManager.MaxDisplayNameLength);
+        }
+
+        [Test]
+        public void SetSaveDisplayName_OverlongName_TruncatesMetadataName()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            _saveGameManager.SaveGameData(game, _saveFileName, "Initial Name");
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SetSaveDisplayName(_saveFileName, overlongName);
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                entry.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        [Test]
+        public void GetSavedGames_SaveWithoutSidecar_RecreatesSidecar()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName, "Recovered Slot");
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(_saveFileName);
+            File.Delete(metadataPath);
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+
+            Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
+            Assert.IsTrue(File.Exists(metadataPath));
+        }
+
+        [Test]
+        public void GetSavedGames_CorruptSidecar_ReadsMainSave()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName, "Recovered Slot");
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(_saveFileName);
+            File.WriteAllText(metadataPath, "<Metadata>");
+            File.SetLastWriteTimeUtc(metadataPath, DateTime.UtcNow.AddMinutes(1));
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+
+            Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
+        }
+
+        [Test]
+        public void LoadGameData_ValidSavedFile_LoadsGame()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Easy,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Abundant,
+                PlayerFactionID = "FNALL1",
+            };
+
+            // Save the game to disk.
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            // Load the game from file.
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(
+                loadedGame.Summary.GalaxySize,
+                summary.GalaxySize,
+                "Galaxy size does not match."
+            );
+            Assert.AreEqual(
+                loadedGame.Summary.Difficulty,
+                summary.Difficulty,
+                "Difficulty does not match."
+            );
+            Assert.AreEqual(
+                loadedGame.Summary.VictoryCondition,
+                summary.VictoryCondition,
+                "Victory condition does not match."
+            );
+            Assert.AreEqual(
+                loadedGame.Summary.ResourceAvailability,
+                summary.ResourceAvailability,
+                "Resource availability does not match."
+            );
+            Assert.AreEqual(
+                loadedGame.Summary.PlayerFactionID,
+                summary.PlayerFactionID,
+                "Player faction ID does not match."
+            );
+        }
+
+        [Test]
+        public void LoadGameData_ValidSavedGame_ReconstitutesSceneGraph()
+        {
+            // Create planet sectors.
+            PlanetSector planetSector = new PlanetSector { DisplayName = "Planet Sector" };
+            List<PlanetSector> planetSectors = new List<PlanetSector> { planetSector };
+
+            // Create galaxy map.
+            GalaxyMap galaxy = new GalaxyMap();
+            galaxy.AddChildren(planetSectors);
+
+            // Generate the game summary.
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Easy,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Abundant,
+                PlayerFactionID = "FNALL1",
+            };
+
+            // Create the game.
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = galaxy };
+
+            // Create planets.
+            Planet planet = new Planet { DisplayName = "Planet" };
+            game.AttachNode(planet, planetSector);
+
+            // Create fleets.
+            Fleet fleet = new Fleet();
+            game.AttachNode(fleet, planet);
+
+            // Create capital ships.
+            CapitalShip capitalShip = new CapitalShip();
+            game.AttachNode(capitalShip, fleet);
+
+            // Create officers.
+            Officer officer = new Officer();
+            game.AttachNode(officer, capitalShip);
+
+            // Save the game to disk.
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            // Load the game from file.
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            // // Verify the scene graph is reconstituted.
+            PlanetSector loadedPlanetSector = loadedGame.Galaxy.GetChildren<PlanetSector>()[0];
+            Planet loadedPlanet = loadedPlanetSector.GetChildren<Planet>()[0];
+            Fleet loadedFleet = loadedPlanet.GetChildren<Fleet>()[0];
+            CapitalShip loadedCapitalShip = loadedFleet.GetChildren<CapitalShip>()[0];
+            Officer loadedOfficer = loadedCapitalShip.GetChildren<Officer>()[0];
+
+            Assert.AreEqual(planetSector.InstanceID, loadedPlanet.GetParent().InstanceID);
+            Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
+            Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);
+        }
+
+        [Test]
+        public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            int futureVersion = GameMetadata.CurrentSaveVersion + 99;
+            string bumped = xml.Replace(
+                $"<SaveVersion>{GameMetadata.CurrentSaveVersion}</SaveVersion>",
+                $"<SaveVersion>{futureVersion}</SaveVersion>"
+            );
+            File.WriteAllText(saveFilePath, bumped);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            string stripped = System.Text.RegularExpressions.Regex.Replace(
+                xml,
+                @"\s*<SaveVersion>\d+</SaveVersion>",
+                string.Empty
+            );
+            File.WriteAllText(saveFilePath, stripped);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void LoadGameData_UnknownElement_SkipsElement()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 20,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace(
+                    "<GameRoot>",
+                    "<GameRoot><FutureField><Nested>future value</Nested></FutureField>"
+                );
+            File.WriteAllText(savePath, xml);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+        }
+
+        [Test]
+        public async Task LoadGameDataAsync_UnknownElement_SkipsElementWithoutWarningAsync()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 20,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<GameRoot>", "<GameRoot><FutureField/>");
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithFactionAndPlanet_PreservesGameState()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Hard,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Abundant,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                CurrentTick = 150,
+                GameSpeed = TickSpeed.Fast,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(150, loadedGame.CurrentTick);
+            Assert.AreEqual(TickSpeed.Fast, loadedGame.GameSpeed);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventPool_PreservesEventPool()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameEvent event1 = new GameEvent
+            {
+                InstanceID = "EVENT1",
+                Schedule = new GameEventSchedule
+                {
+                    RandomInterval = new RandomInterval { MinimumTicks = 300, MaximumTicks = 400 },
+                },
+            };
+            GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetEventPool().AddRange(new[] { event1, event2 });
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(2, loadedGame.GetEventPool().Count);
+            Assert.AreEqual("EVENT1", loadedGame.GetEventPool()[0].InstanceID);
+            Assert.AreEqual("EVENT2", loadedGame.GetEventPool()[1].InstanceID);
+            Assert.AreEqual(300, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MaximumTicks);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithCompletedEvents_PreservesEventStates()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                EventRuntime = new GameEventRuntimeState
+                {
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        ["EVENT1"] = new GameEventState { IsComplete = true },
+                        ["EVENT2"] = new GameEventState { IsComplete = true },
+                        ["EVENT3"] = new GameEventState { IsComplete = true },
+                    },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(3, loadedGame.EventRuntime.States.Count);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT1"].IsComplete);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT2"].IsComplete);
+            Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsComplete);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventState_PreservesScheduleAndHistory()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    States = new Dictionary<string, GameEventState>
+                    {
+                        {
+                            "STORY_EVENT",
+                            new GameEventState
+                            {
+                                IsInitialized = true,
+                                NextEligibleTick = 412,
+                                ActivationCount = 3,
+                                LastActivationTick = 400,
+                            }
+                        },
+                    },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            GameEventState state = loadedGame.EventRuntime.States["STORY_EVENT"];
+            Assert.IsTrue(state.IsInitialized);
+            Assert.AreEqual(412, state.NextEligibleTick);
+            Assert.AreEqual(3, state.ActivationCount);
+            Assert.AreEqual(400, state.LastActivationTick);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventVariables_PreservesStoryState()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    Variables = new Dictionary<string, int>
+                    {
+                        { "luke.dagobah.stage", 8 },
+                        { "luke.heritage.revealed", 1 },
+                    },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(8, loadedGame.EventRuntime.GetVariable("luke.dagobah.stage"));
+            Assert.AreEqual(1, loadedGame.EventRuntime.GetVariable("luke.heritage.revealed"));
+        }
+
+        // TODO: Officer serialization needs investigation - officers have complex initialization requirements
+        // [Test]
+        // public void SaveAndLoadGame_PreservesUnrecruitedOfficers() { ... }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithFactions_PreservesFactions()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Faction faction1 = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction1);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(1, loadedGame.GetFactions().Count);
+            Assert.AreEqual("FNALL1", loadedGame.GetFactions()[0].InstanceID);
+            Assert.AreEqual("Alliance", loadedGame.GetFactions()[0].DisplayName);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_FleetNameSequence_PreservesNextNumber()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Fleet fleet = loadedGame.GetFactions().Single().CreateFleet();
+
+            Assert.AreEqual("Fleet 3", fleet.GetDisplayName());
+        }
+
+        [Test]
+        public void LoadGameData_SaveWithoutFleetNameSequence_LoadsFaction()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<NextFleetNumber>2</NextFleetNumber>", string.Empty);
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNALL1", loadedGame.GetFactions().Single().InstanceID);
+        }
+
+        [Test]
+        public void SaveGameData_PlayerWithUIState_WritesUIState()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+
+            StringAssert.Contains("<UIStateSections>", xml);
+            StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
+            StringAssert.Contains("<Values>", xml);
+            StringAssert.Contains("<Key>GalacticInformationFilter</Key>", xml);
+            StringAssert.Contains("<Value>IdleConstructionYards</Value>", xml);
+            StringAssert.Contains("<IgnoredItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>OFFICER1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Entity</ItemTypeID>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Ship</ItemTypeID>", xml);
+            StringAssert.Contains("<ItemTypeID>Troop</ItemTypeID>", xml);
+            StringAssert.Contains("<BookmarkedItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET2</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Fleet</ItemTypeID>", xml);
+            StringAssert.Contains("<X>45</X>", xml);
+            StringAssert.Contains("<Y>55</Y>", xml);
+        }
+
+        [Test]
+        public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+            PlayerUIState uiState = game.GetPlayers().Single().UIState;
+            UIStateSection section = uiState.GetOrCreateSection("Strategy");
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            PlayerUIState loadedUIState = _saveGameManager
+                .LoadGameData(_saveFileName)
+                .GetPlayers()
+                .Single()
+                .UIState;
+            UIStateSection loadedSection = loadedUIState.GetOrCreateSection("Strategy");
+
+            Assert.AreEqual("Strategy", loadedSection.SectionID);
+            CollectionAssert.AreEquivalent(section.Values, loadedSection.Values);
+            CollectionAssert.AreEqual(
+                section.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID)),
+                loadedSection.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID))
+            );
+            CollectionAssert.AreEqual(
+                section.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
+                ),
+                loadedSection.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
+                )
+            );
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithMetadata_PreservesMetadata()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameMetadata metadata = new GameMetadata
+            {
+                SaveDisplayName = "Test Save",
+                PlayerFactionID = "FNALL1",
+                OpeningBriefingCompleted = true,
+                LastSavedUtc = new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Metadata = metadata,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.IsNotNull(loadedGame.Metadata);
+            Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
+            Assert.AreEqual("FNALL1", loadedGame.Metadata.PlayerFactionID);
+            Assert.IsTrue(loadedGame.Metadata.OpeningBriefingCompleted);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithSummaryFields_PreservesAllGameSummaryFields()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Hard,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Limited,
+                PlayerFactionID = "FNEMP1",
+                StartingFactionIDs = new string[] { "FNALL1", "FNEMP1" },
+            };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(GameSize.Large, loadedGame.Summary.GalaxySize);
+            Assert.AreEqual(GameDifficulty.Hard, loadedGame.Summary.Difficulty);
+            Assert.AreEqual(GameVictoryCondition.Conquest, loadedGame.Summary.VictoryCondition);
+            Assert.AreEqual(
+                GameResourceAvailability.Limited,
+                loadedGame.Summary.ResourceAvailability
+            );
+            Assert.AreEqual("FNEMP1", loadedGame.Summary.PlayerFactionID);
+            Assert.AreEqual(2, loadedGame.Summary.StartingFactionIDs.Length);
+            Assert.AreEqual("FNALL1", loadedGame.Summary.StartingFactionIDs[0]);
+            Assert.AreEqual("FNEMP1", loadedGame.Summary.StartingFactionIDs[1]);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEmptyCollections_PreservesEmptyCollections()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                EventRuntime = new GameEventRuntimeState(),
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.IsNotNull(loadedGame.GetFactions());
+            Assert.AreEqual(0, loadedGame.GetFactions().Count);
+            Assert.IsNotNull(loadedGame.GetEventPool());
+            Assert.AreEqual(0, loadedGame.GetEventPool().Count);
+            Assert.IsNotNull(loadedGame.EventRuntime.States);
+            Assert.AreEqual(0, loadedGame.EventRuntime.States.Count);
+            Assert.IsNotNull(loadedGame.GetUnrecruitedOfficers());
+            Assert.AreEqual(0, loadedGame.GetUnrecruitedOfficers().Count);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithMultipleEvents_PreservesMultipleEvents()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            List<GameEvent> events = new List<GameEvent>();
+            for (int i = 0; i < 10; i++)
+            {
+                events.Add(new GameEvent { InstanceID = $"EVENT{i}" });
+            }
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetEventPool().AddRange(events);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(10, loadedGame.GetEventPool().Count);
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.AreEqual($"EVENT{i}", loadedGame.GetEventPool()[i].InstanceID);
+            }
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithLargeEventSet_PreservesLargeCompletedEventSet()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Dictionary<string, GameEventState> eventStates =
+                new Dictionary<string, GameEventState>();
+            for (int i = 0; i < 50; i++)
+            {
+                eventStates.Add($"EVENT{i}", new GameEventState { IsComplete = true });
+            }
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                EventRuntime = new GameEventRuntimeState { States = eventStates },
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(50, loadedGame.EventRuntime.States.Count);
+            for (int i = 0; i < 50; i++)
+            {
+                Assert.IsTrue(loadedGame.EventRuntime.States[$"EVENT{i}"].IsComplete);
+            }
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithAllTickSpeeds_PreservesTickSpeedEnumValues()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            TickSpeed[] speeds = new TickSpeed[]
+            {
+                TickSpeed.Paused,
+                TickSpeed.VerySlow,
+                TickSpeed.Slow,
+                TickSpeed.Medium,
+                TickSpeed.Fast,
+            };
+
+            foreach (TickSpeed speed in speeds)
+            {
+                GameRoot game = new GameRoot
+                {
+                    Summary = summary,
+                    GameSpeed = speed,
+                    Galaxy = new GalaxyMap(),
+                };
+
+                _saveGameManager.SaveGameData(game, _saveFileName);
+                GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+                Assert.AreEqual(
+                    speed,
+                    loadedGame.GameSpeed,
+                    $"GameSpeed {speed} was not preserved"
+                );
+            }
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithHighTickCount_PreservesHighTickCount()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                CurrentTick = 999999,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(999999, loadedGame.CurrentTick);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithFogSnapshots_PreservesFogState()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
+            {
+                Planets = new Dictionary<string, PlanetSnapshot>
+                {
+                    {
+                        "CORUSCANT",
+                        new PlanetSnapshot
+                        {
+                            TickCaptured = 100,
+                            OwnerInstanceID = "FNEMP1",
+                            NumRawResourceNodes = 7,
+                            HasManufacturingIntelligence = true,
+                            ManufacturingQueueItems = new List<IManufacturable>
+                            {
+                                new Building
+                                {
+                                    InstanceID = "BUILDING_1",
+                                    DisplayName = "Queued Shipyard",
+                                    ManufacturingProgress = 25,
+                                    ManufacturingStatus = ManufacturingStatus.Building,
+                                },
+                            },
+                            PopularSupport = new Dictionary<string, int>
+                            {
+                                { "FNEMP1", 90 },
+                                { "FNALL1", 10 },
+                            },
+                        }
+                    },
+                },
+            };
+
+            alliance.Fog.PlanetToSector["CORUSCANT"] = "SECTOR1";
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
+            Assert.IsNotNull(loadedAlliance);
+
+            Assert.AreEqual(1, loadedAlliance.Fog.Snapshots.Count);
+            Assert.IsTrue(loadedAlliance.Fog.Snapshots.ContainsKey("SECTOR1"));
+
+            PlanetSectorSnapshot loadedPlanetSectorSnapshot = loadedAlliance.Fog.Snapshots[
+                "SECTOR1"
+            ];
+            Assert.AreEqual(1, loadedPlanetSectorSnapshot.Planets.Count);
+
+            PlanetSnapshot loadedPlanetSnapshot = loadedPlanetSectorSnapshot.Planets["CORUSCANT"];
+            Assert.AreEqual(100, loadedPlanetSnapshot.TickCaptured);
+            Assert.AreEqual("FNEMP1", loadedPlanetSnapshot.OwnerInstanceID);
+            Assert.AreEqual(7, loadedPlanetSnapshot.NumRawResourceNodes);
+            Assert.AreEqual(2, loadedPlanetSnapshot.PopularSupport.Count);
+            Assert.AreEqual(90, loadedPlanetSnapshot.PopularSupport["FNEMP1"]);
+            Assert.AreEqual(10, loadedPlanetSnapshot.PopularSupport["FNALL1"]);
+            Assert.IsTrue(loadedPlanetSnapshot.HasManufacturingIntelligence);
+            Assert.AreEqual(1, loadedPlanetSnapshot.ManufacturingQueueItems.Count);
+            Building queuedBuilding = loadedPlanetSnapshot.ManufacturingQueueItems[0] as Building;
+            Assert.IsNotNull(queuedBuilding);
+            Assert.AreEqual("BUILDING_1", queuedBuilding.InstanceID);
+            Assert.AreEqual("Queued Shipyard", queuedBuilding.DisplayName);
+            Assert.AreEqual(25, queuedBuilding.ManufacturingProgress);
+            Assert.AreEqual(ManufacturingStatus.Building, queuedBuilding.ManufacturingStatus);
+
+            Assert.AreEqual(1, loadedAlliance.Fog.PlanetToSector.Count);
+            Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["CORUSCANT"]);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEmptyFogState_PreservesFogState()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
+            Assert.IsNotNull(loadedAlliance);
+            Assert.IsNotNull(loadedAlliance.Fog);
+            Assert.AreEqual(0, loadedAlliance.Fog.Snapshots.Count);
+            Assert.AreEqual(0, loadedAlliance.Fog.EntityLastSeenAt.Count);
+            Assert.AreEqual(0, loadedAlliance.Fog.PlanetToSector.Count);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithFogEntityTracking_PreservesFogState()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
+            {
+                Planets = new Dictionary<string, PlanetSnapshot>
+                {
+                    {
+                        "PLANET1",
+                        new PlanetSnapshot { TickCaptured = 50, OwnerInstanceID = "FNEMP1" }
+                    },
+                },
+            };
+
+            alliance.Fog.EntityLastSeenAt["OFF1"] = "PLANET1";
+            alliance.Fog.EntityLastSeenAt["FLEET1"] = "PLANET1";
+            alliance.Fog.EntityLastSeenAt["REG1"] = "PLANET1";
+            alliance.Fog.PlanetToSector["PLANET1"] = "SECTOR1";
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
+            PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SECTOR1"].Planets[
+                "PLANET1"
+            ];
+
+            Assert.AreEqual(50, loadedSnapshot.TickCaptured);
+            Assert.AreEqual("FNEMP1", loadedSnapshot.OwnerInstanceID);
+            Assert.AreEqual(3, loadedAlliance.Fog.EntityLastSeenAt.Count);
+            Assert.AreEqual("PLANET1", loadedAlliance.Fog.EntityLastSeenAt["OFF1"]);
+            Assert.AreEqual("PLANET1", loadedAlliance.Fog.EntityLastSeenAt["FLEET1"]);
+            Assert.AreEqual("PLANET1", loadedAlliance.Fog.EntityLastSeenAt["REG1"]);
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithMultipleFogSnapshots_PreservesFogState()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            alliance.Fog.Snapshots["SECTOR1"] = new PlanetSectorSnapshot
+            {
+                Planets = new Dictionary<string, PlanetSnapshot>
+                {
+                    {
+                        "PLANET1",
+                        new PlanetSnapshot { TickCaptured = 10, OwnerInstanceID = "FNEMP1" }
+                    },
+                },
+            };
+
+            alliance.Fog.Snapshots["SECTOR2"] = new PlanetSectorSnapshot
+            {
+                Planets = new Dictionary<string, PlanetSnapshot>
+                {
+                    {
+                        "PLANET2",
+                        new PlanetSnapshot { TickCaptured = 20, OwnerInstanceID = "FNEMP1" }
+                    },
+                    {
+                        "PLANET3",
+                        new PlanetSnapshot { TickCaptured = 30, OwnerInstanceID = "FNALL1" }
+                    },
+                },
+            };
+
+            alliance.Fog.PlanetToSector["PLANET1"] = "SECTOR1";
+            alliance.Fog.PlanetToSector["PLANET2"] = "SECTOR2";
+            alliance.Fog.PlanetToSector["PLANET3"] = "SECTOR2";
+
+            GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(alliance);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Faction loadedAlliance = loadedGame.GetFactions().Find(f => f.InstanceID == "FNALL1");
+
+            Assert.AreEqual(2, loadedAlliance.Fog.Snapshots.Count);
+            Assert.AreEqual(1, loadedAlliance.Fog.Snapshots["SECTOR1"].Planets.Count);
+            Assert.AreEqual(2, loadedAlliance.Fog.Snapshots["SECTOR2"].Planets.Count);
+            Assert.AreEqual(
+                10,
+                loadedAlliance.Fog.Snapshots["SECTOR1"].Planets["PLANET1"].TickCaptured
+            );
+            Assert.AreEqual(
+                20,
+                loadedAlliance.Fog.Snapshots["SECTOR2"].Planets["PLANET2"].TickCaptured
+            );
+            Assert.AreEqual(
+                30,
+                loadedAlliance.Fog.Snapshots["SECTOR2"].Planets["PLANET3"].TickCaptured
+            );
+
+            Assert.AreEqual(3, loadedAlliance.Fog.PlanetToSector.Count);
+            Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
+            Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
+            Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+        }
+
+        [TestCase("../escape")]
+        [TestCase("folder/save")]
+        [TestCase("folder\\save")]
+        [TestCase("C:\\outside")]
+        [TestCase(".")]
+        [TestCase("save.")]
+        [TestCase("save ")]
+        public void GetSaveFilePath_UnownedIdentifier_RejectsBeforeCreatingDirectory(
+            string fileName
+        )
+        {
+            Assert.Throws<ArgumentException>(() => _saveGameManager.GetSaveFilePath(fileName));
+            Assert.IsFalse(Directory.Exists(_saveDirectoryPath));
+        }
+
+        [Test]
+        public void GetMultiplayerSaveFileName_ParticipantCopies_PreservesCampaignAndRoleIsolation()
+        {
+            string campaignID = Guid.NewGuid().ToString("N");
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                campaignID,
+                false,
+                "save_20261027_010203"
+            );
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                campaignID,
+                true,
+                guestName
+            );
+
+            Assert.AreEqual("mp_" + campaignID + "_guest_save_20261027_010203", guestName);
+            Assert.AreEqual("mp_" + campaignID + "_host_save_20261027_010203", hostName);
+            Assert.AreNotEqual(hostName, guestName);
+            Assert.IsTrue(
+                SaveGameManager.TryParseMultiplayerSaveFileName(
+                    guestName,
+                    out string parsedCampaignID,
+                    out bool isHost,
+                    out string logicalName
+                )
+            );
+            Assert.AreEqual(campaignID, parsedCampaignID);
+            Assert.IsFalse(isHost);
+            Assert.AreEqual("save_20261027_010203", logicalName);
+        }
+
+        [Test]
+        public void SaveGameDataWithMetadata_PeerCopy_PersistsExactSharedCheckpointMetadata()
+        {
+            GameRoot host = BuildMultiplayerGame();
+            host.CurrentTick = 40;
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                host.Metadata.CampaignID,
+                true,
+                "checkpoint"
+            );
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                host.Metadata.CampaignID,
+                false,
+                "checkpoint"
+            );
+            GameRoot singlePlayer = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = host.Metadata.CampaignID },
+            };
+            _saveGameManager.SaveGameData(singlePlayer, "checkpoint", "Single-player source");
+            byte[] singlePlayerBytes = File.ReadAllBytes(
+                _saveGameManager.GetSaveFilePath("checkpoint")
+            );
+            _saveGameManager.SaveGameData(host, hostName, "Shared checkpoint");
+            GameRoot guest = BuildMultiplayerGame();
+            guest.CurrentTick = host.CurrentTick;
+            DateTime savedAt = host.Metadata.LastSavedUtc;
+
+            _saveGameManager.SaveGameDataWithMetadata(guest, guestName, host.Metadata);
+
+            GameMetadata restoredHost = _saveGameManager.LoadGameData(hostName).Metadata;
+            GameMetadata restoredGuest = _saveGameManager.LoadGameData(guestName).Metadata;
+            Assert.AreEqual(savedAt, guest.Metadata.LastSavedUtc);
+            Assert.AreEqual(restoredHost.LastSavedUtc, restoredGuest.LastSavedUtc);
+            Assert.AreEqual(restoredHost.SharedSaveToken, restoredGuest.SharedSaveToken);
+            Assert.AreEqual(restoredHost.CampaignID, restoredGuest.CampaignID);
+            Assert.AreEqual(restoredHost.SaveVersion, restoredGuest.SaveVersion);
+            Assert.AreEqual(restoredHost.SaveDisplayName, restoredGuest.SaveDisplayName);
+            Assert.IsTrue(restoredGuest.IsMultiplayer);
+            Assert.AreEqual("authenticated-host", restoredGuest.MultiplayerCampaign.HostUserID);
+            Assert.AreEqual("authenticated-guest", restoredGuest.MultiplayerCampaign.GuestUserID);
+            Assert.AreEqual("FNALL1", restoredGuest.MultiplayerCampaign.HostFactionID);
+            Assert.AreEqual("FNEMP1", restoredGuest.MultiplayerCampaign.GuestFactionID);
+            CollectionAssert.AreEqual(
+                singlePlayerBytes,
+                File.ReadAllBytes(_saveGameManager.GetSaveFilePath("checkpoint"))
+            );
+        }
+
+        [Test]
+        public void ProcessMultiplayerAutosaveTick_Rotation_PreservesSinglePlayerGuestManualAndOtherCampaignFiles()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 2,
+            };
+            GameRoot singlePlayer = new GameRoot
+            {
+                Metadata = new GameMetadata { CampaignID = game.Metadata.CampaignID },
+            };
+            singlePlayer.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessAutosaveTick(singlePlayer, settings));
+            string singlePlayerName =
+                SaveGameManager.AutosaveFilePrefix + game.Metadata.CampaignID + "_0000000020";
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                false,
+                "autosave_0000000020"
+            );
+            string manualName = SaveGameManager.GetMultiplayerSaveFileName(
+                game.Metadata.CampaignID,
+                true,
+                "autosave_0000000020_manual"
+            );
+            _saveGameManager.SaveGameData(game, guestName, "Guest copy");
+            _saveGameManager.SaveGameData(game, manualName, "Manual checkpoint");
+            GameRoot otherCampaign = BuildMultiplayerGame();
+            otherCampaign.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(otherCampaign, settings));
+            foreach (int tick in new[] { 20, 40, 60 })
+            {
+                game.CurrentTick = tick;
+                Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(game, settings));
+            }
+
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(singlePlayerName)));
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(guestName)));
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveFilePath(manualName)));
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            otherCampaign.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+            Assert.IsFalse(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+            foreach (int tick in new[] { 40, 60 })
+                Assert.IsTrue(
+                    File.Exists(
+                        _saveGameManager.GetSaveFilePath(
+                            SaveGameManager.GetMultiplayerSaveFileName(
+                                game.Metadata.CampaignID,
+                                true,
+                                "autosave_" + tick.ToString("D10")
+                            )
+                        )
+                    )
+                );
+        }
+
+        [Test]
+        public void ProcessMultiplayerAutosaveTick_PublicationFailure_ReportsFailureWithoutPruningHistory()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.IsTrue(_saveGameManager.ProcessMultiplayerAutosaveTick(game, settings));
+            game.CurrentTick = 40;
+            string failedPath = _saveGameManager.GetSaveFilePath(
+                SaveGameManager.GetMultiplayerSaveFileName(
+                    game.Metadata.CampaignID,
+                    true,
+                    "autosave_0000000040"
+                )
+            );
+            Directory.CreateDirectory(failedPath);
+
+            Assert.Throws<IOException>(() =>
+                _saveGameManager.ProcessMultiplayerAutosaveTick(game, settings)
+            );
+
+            Assert.IsTrue(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                )
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void GetSavedGames_RoleFilter_KeepsOwnMultiplayerCopiesAndSinglePlayerSources(
+            bool isHost
+        )
+        {
+            GameRoot multiplayer = BuildMultiplayerGame();
+            string hostName = SaveGameManager.GetMultiplayerSaveFileName(
+                multiplayer.Metadata.CampaignID,
+                true,
+                "checkpoint"
+            );
+            string guestName = SaveGameManager.GetMultiplayerSaveFileName(
+                multiplayer.Metadata.CampaignID,
+                false,
+                "checkpoint"
+            );
+            _saveGameManager.SaveGameData(multiplayer, hostName, "Host checkpoint");
+            _saveGameManager.SaveGameData(multiplayer, guestName, "Guest checkpoint");
+            _saveGameManager.SaveGameData(
+                new GameRoot(),
+                "single-player-source",
+                "Single-player source"
+            );
+
+            IReadOnlyList<SaveGameEntry> visible = _saveGameManager.GetSavedGames(isHost);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "single-player-source", isHost ? hostName : guestName },
+                visible.Select(entry => entry.FileName)
+            );
+            Assert.AreEqual(3, _saveGameManager.GetSavedGames().Count);
+        }
+
+        [Test]
+        public async Task SaveGameDataAsync_CallerMutatesAfterCapture_PreservesPayloadAndMetadataAsync()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+            game.CurrentTick = 42;
+
+            Task publication = _saveGameManager.SaveGameDataAsync(
+                game,
+                _saveFileName,
+                "Captured checkpoint"
+            );
+            game.CurrentTick = 99;
+            game.Metadata.SaveDisplayName = "Later metadata";
+            game.GetPlayers().Single().UIState.UIStateSections.Single().Values[
+                "GalacticInformationFilter"
+            ] = "Later presentation";
+            await publication;
+
+            GameRoot restored = _saveGameManager.LoadGameData(_saveFileName);
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+            Assert.That(restored.CurrentTick, Is.EqualTo(42));
+            Assert.That(restored.Metadata.SaveDisplayName, Is.EqualTo("Captured checkpoint"));
+            Assert.That(metadata.SaveDisplayName, Is.EqualTo("Captured checkpoint"));
+            Assert.That(
+                restored.GetPlayers().Single().UIState.UIStateSections.Single().Values[
+                    "GalacticInformationFilter"
+                ],
+                Is.EqualTo("IdleConstructionYards")
+            );
+        }
+
+        [Test]
+        public async Task SaveGameDataAsync_SavingListenerUpdatesModel_CapturesOnCallingThreadAsync()
+        {
+            GameRoot game = new GameRoot();
+            int caller = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            int callbackThread = 0;
+            _saveGameManager.Saving += () =>
+            {
+                callbackThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                game.CurrentTick = 42;
+            };
+
+            await _saveGameManager.SaveGameDataAsync(game, _saveFileName);
+
+            Assert.That(callbackThread, Is.EqualTo(caller));
+            Assert.That(_saveGameManager.LoadGameData(_saveFileName).CurrentTick, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task SaveGameDataWithMetadataAsync_LaterMetadataMutation_PreservesHostCheckpointAsync()
+        {
+            GameRoot host = BuildMultiplayerGame();
+            host.CurrentTick = 40;
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            await _saveGameManager.SaveGameDataAsync(host, "host", "Shared checkpoint");
+            DateTime savedAt = host.Metadata.LastSavedUtc;
+            string token = host.Metadata.SharedSaveToken;
+            GameRoot guest = BuildMultiplayerGame();
+            guest.CurrentTick = 40;
+
+            Task publication = _saveGameManager.SaveGameDataWithMetadataAsync(
+                guest,
+                "guest",
+                host.Metadata
+            );
+            host.Metadata.SaveDisplayName = "Later host state";
+            host.Metadata.SharedSaveToken = Guid.NewGuid().ToString("N");
+            await publication;
+
+            GameMetadata restored = _saveGameManager.LoadGameData("guest").Metadata;
+            GameMetadata cache = _saveGameManager.GetSaveMetadata("guest");
+            Assert.That(restored.LastSavedUtc, Is.EqualTo(savedAt));
+            Assert.That(restored.SharedSaveToken, Is.EqualTo(token));
+            Assert.That(cache.SharedSaveToken, Is.EqualTo(token));
+            Assert.That(cache.SaveDisplayName, Is.EqualTo("Shared checkpoint"));
+        }
+
+        [Test]
+        public async Task ProcessMultiplayerAutosaveTickAsync_LaterSettingsMutation_UsesCapturedRotationAsync()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            string campaignID = game.Metadata.CampaignID;
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.That(
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings),
+                Is.True
+            );
+            game.CurrentTick = 40;
+
+            Task<bool> publication = _saveGameManager.ProcessMultiplayerAutosaveTickAsync(
+                game,
+                settings
+            );
+            settings.AutosavesToKeep = 99;
+            game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
+            Assert.That(await publication, Is.True);
+
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            campaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                ),
+                Is.False
+            );
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            campaignID,
+                            true,
+                            "autosave_0000000040"
+                        )
+                    )
+                ),
+                Is.True
+            );
+        }
+
+        [Test]
+        public async Task ProcessMultiplayerAutosaveTickAsync_PublicationFailure_PreservesPriorRestorePointAsync()
+        {
+            GameRoot game = BuildMultiplayerGame();
+            UserGameplaySettings settings = new UserGameplaySettings
+            {
+                AutosaveIntervalTicks = 20,
+                AutosavesToKeep = 1,
+            };
+            game.CurrentTick = 20;
+            Assert.That(
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings),
+                Is.True
+            );
+            game.CurrentTick = 40;
+            Directory.CreateDirectory(
+                _saveGameManager.GetSaveFilePath(
+                    SaveGameManager.GetMultiplayerSaveFileName(
+                        game.Metadata.CampaignID,
+                        true,
+                        "autosave_0000000040"
+                    )
+                )
+            );
+
+            IOException failure = null;
+            try
+            {
+                await _saveGameManager.ProcessMultiplayerAutosaveTickAsync(game, settings);
+            }
+            catch (IOException exception)
+            {
+                failure = exception;
+            }
+            Assert.That(failure, Is.Not.Null);
+
+            Assert.That(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.GetMultiplayerSaveFileName(
+                            game.Metadata.CampaignID,
+                            true,
+                            "autosave_0000000020"
+                        )
+                    )
+                ),
+                Is.True
+            );
+            Assert.That(Directory.GetFiles(_saveDirectoryPath, "*.tmp"), Is.Empty);
+        }
+
+        /// <summary>
+        /// Creates a multiplayer-classified graph with explicit authenticated ownership.
+        /// </summary>
+        /// <returns>The saveable multiplayer graph.</returns>
+        private static GameRoot BuildMultiplayerGame()
+        {
+            return new GameRoot
+            {
+                Metadata = new GameMetadata
+                {
+                    CampaignID = Guid.NewGuid().ToString("N"),
+                    MultiplayerCampaign = new MultiplayerCampaignIdentity
+                    {
+                        HostUserID = "authenticated-host",
+                        GuestUserID = "authenticated-guest",
+                        HostFactionID = "FNALL1",
+                        GuestFactionID = "FNEMP1",
+                    },
+                },
+            };
+        }
+
+        /// <summary>
+        /// Creates a saveable game containing independently excluded idle-bar identities.
+        /// </summary>
+        /// <returns>The configured saveable game.</returns>
+        private static GameRoot BuildGameWithIgnoredItems()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            PlayerUIState uiState = new PlayerUIState
+            {
+                UIStateSections = new List<UIStateSection>
+                {
+                    new UIStateSection
+                    {
+                        SectionID = "Strategy",
+                        Values = new Dictionary<string, string>
+                        {
+                            { "GalacticInformationFilter", "IdleConstructionYards" },
+                        },
+                        BookmarkedItems = new List<BookmarkedItem>
+                        {
+                            new BookmarkedItem
+                            {
+                                SlotIndex = 2,
+                                TargetInstanceID = "PLANET2",
+                                ItemTypeID = "Fleet",
+                                X = 45,
+                                Y = 55,
+                            },
+                        },
+                        IgnoredItems = new List<IgnoredItem>
+                        {
+                            new IgnoredItem
+                            {
+                                TargetInstanceID = "OFFICER1",
+                                ItemTypeID = "Entity",
+                            },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Ship" },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Troop" },
+                        },
+                    },
+                },
+            };
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = faction.InstanceID },
+                Galaxy = new GalaxyMap(),
+            };
+            game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            game.GetPlayers().Single().UIState = uiState;
+            return game;
+        }
+    }
+} // namespace Rebellion.Tests.Persistence

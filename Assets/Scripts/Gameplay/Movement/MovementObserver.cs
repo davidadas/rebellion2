@@ -513,7 +513,7 @@ namespace Rebellion.Gameplay
             {
                 TransitTicks = _queries.CalculateTransitTicks(occupant, origin, destinationPlanet),
                 TicksElapsed = 0,
-                MovementGroupID = Guid.NewGuid().ToString("N"),
+                MovementGroupID = _game.GenerateRuntimeIdentifier(),
                 OriginPosition = origin.GetPosition(),
                 CurrentPosition = origin.GetPosition(),
             };

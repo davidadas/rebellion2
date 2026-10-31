@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Rebellion.Persistence;
 using UnityEngine;
 
 /// <summary>
@@ -19,6 +20,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Gets the active application bootstrap instance.
     /// </summary>
     public static AppBootstrap Instance { get; private set; }
+
+    /// <summary>
+    /// Gets the storage failure awaiting acknowledgment in the active scene.
+    /// </summary>
+    public PersistenceFailureNotice PersistenceNotice { get; } = new();
 
     [SerializeField]
     private AppInputController inputController;
@@ -206,10 +212,11 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
         );
+        _runtime.PersistenceFailed += HandlePersistenceFailure;
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSaveAsync);
         LoadingScreenController.Prepare(this);
     }
 
@@ -255,12 +262,25 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Ends an interrupted shared load before or after its local Continue presentation has completed.
+    /// Committed content stays active while the application returns to the main menu.
+    /// </summary>
+    /// <param name="interruption">The optional connection or synchronization failure to present.</param>
+    /// <returns>True when an available application or active loading owner accepted recovery.</returns>
+    internal static bool RecoverInterruptedMultiplayerLoad(Exception interruption = null)
+    {
+        return LoadingScreenController.RecoverInterruptedMultiplayerLoad(Instance, interruption);
+    }
+
+    /// <summary>
     /// Loads a save under the exact content identity recorded in its metadata.
     /// </summary>
     /// <param name="fileName">The save identifier to load.</param>
     /// <returns>True when loading or content reconstruction was started.</returns>
     internal bool LoadSave(string fileName)
     {
+        if (_runtime?.HasCoordinatedPersistence == true)
+            return false;
         if (string.IsNullOrWhiteSpace(fileName))
             return false;
 
@@ -273,6 +293,18 @@ public sealed class AppBootstrap : MonoBehaviour
 
         LoadingScreenController.LoadSave(this, fileName);
         return true;
+    }
+
+    /// <summary>
+    /// Awaits shared loading when coordinated, otherwise starts the saved content's scene transition.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True after coordinated loading completes or the local scene transition starts.</returns>
+    internal Task<bool> LoadSaveAsync(string fileName)
+    {
+        return _runtime?.HasCoordinatedPersistence == true
+            ? _runtime.LoadGameAsync(fileName)
+            : Task.FromResult(LoadSave(fileName));
     }
 
     /// <summary>
@@ -414,6 +446,8 @@ public sealed class AppBootstrap : MonoBehaviour
         _graphicsManager = null;
         _mainMenuApplicationPreload = null;
         _strategyApplicationPreload = null;
+        if (_runtime != null)
+            _runtime.PersistenceFailed -= HandlePersistenceFailure;
         _runtime = null;
         _mainMenuContentTask = null;
         _strategyContentTask = null;
@@ -425,6 +459,22 @@ public sealed class AppBootstrap : MonoBehaviour
     private void OnApplicationQuit()
     {
         _userSettingsManager?.Save();
+    }
+
+    /// <summary>
+    /// Publishes a storage notice only for the runtime still owned by this application.
+    /// </summary>
+    /// <param name="runtime">The runtime that requested persistence.</param>
+    /// <param name="operation">The operation that could not complete.</param>
+    /// <param name="exception">The exception already recorded in the application log.</param>
+    private void HandlePersistenceFailure(
+        GameRuntime runtime,
+        PersistenceOperation operation,
+        Exception exception
+    )
+    {
+        if (ReferenceEquals(_runtime, runtime))
+            PersistenceNotice.Show(operation);
     }
 
     /// <summary>
