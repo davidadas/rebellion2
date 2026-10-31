@@ -654,8 +654,8 @@ internal sealed class CustomGameSettingsSession
         AddPlanetSupportEntries();
         currentGenerationSection = "STARTING FACILITIES";
         AddFacilityEntries();
-        currentGenerationSection = "STARTING GARRISONS AND SUPPORT";
-        AddUnitAndBalanceEntries();
+        currentGenerationSection = "STARTING GARRISONS";
+        AddStartingGarrisonEntries();
         currentGenerationSection = "LIVE GARRISON REQUIREMENTS";
         AddGarrisonRuleEntries();
         currentGenerationSection = "MOVEMENT";
@@ -1434,9 +1434,9 @@ internal sealed class CustomGameSettingsSession
     }
 
     /// <summary>
-    /// Adds low-support garrison and post-generation balance controls.
+    /// Adds starting garrison controls for planets with low support.
     /// </summary>
-    private void AddUnitAndBalanceEntries()
+    private void AddStartingGarrisonEntries()
     {
         AddGeneration(
             NewGameSettingsCategory.WorldGeneration,
@@ -1457,26 +1457,6 @@ internal sealed class CustomGameSettingsSession
             int.MaxValue,
             config => config.UnitDeployment.SupportDeficitPerGarrisonTroop,
             (config, value) => config.UnitDeployment.SupportDeficitPerGarrisonTroop = value
-        );
-        AddGeneration(
-            NewGameSettingsCategory.WorldGeneration,
-            "support-boost-per-unit",
-            "Support per Starting Force",
-            "Each starting regiment, fighter squadron, or fleet adds this many owner-support points to its planet. Range: 0 or higher.",
-            0,
-            int.MaxValue,
-            config => config.Balance.SupportBoostPerUnit,
-            (config, value) => config.Balance.SupportBoostPerUnit = value
-        );
-        AddGeneration(
-            NewGameSettingsCategory.WorldGeneration,
-            "maximum-military-support",
-            "Maximum Starting Force Support",
-            "Most owner-support points a planet can gain from its starting regiments, fighter squadrons, and fleets. Range: 0 or higher.",
-            0,
-            int.MaxValue,
-            config => config.Balance.MaxMilitaryPresenceBoost,
-            (config, value) => config.Balance.MaxMilitaryPresenceBoost = value
         );
     }
 

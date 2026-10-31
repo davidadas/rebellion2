@@ -326,6 +326,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void GameplayPage_AnalyticsSection_UsesSpecificHeading()
+        {
+            TMP_Text header = _root
+                .GetComponentsInChildren<TMP_Text>(true)
+                .Single(text => text.name == "AnalyticsHeader");
+
+            Assert.AreEqual("ANALYTICS", header.text);
+        }
+
+        [Test]
         public void GameplayPage_AutosaveFields_RenderAndRaiseEnteredValues()
         {
             string interval = null;

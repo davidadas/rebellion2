@@ -21,8 +21,10 @@ public sealed class GameRuntime
     private readonly ContentPack _contentPack;
     private readonly SaveGameManager _saveGameManager;
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
+    private readonly IAnalyticsEventSink _analyticsSink;
     private GameSession _activeGameSession;
     private GameManager _gameManager;
+    private CampaignAnalyticsTracker _campaignAnalyticsTracker;
     private bool _operationsBlocked;
     private IGamePersistenceCoordinator _persistenceCoordinator;
     private SessionPlayerRequestDispatcher _playerRequests;
@@ -75,15 +77,18 @@ public sealed class GameRuntime
     /// <param name="contentPack">The active content pack.</param>
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
     /// <param name="getGameplaySettings">Returns the current gameplay settings.</param>
+    /// <param name="analyticsSink">Receives consented campaign analytics.</param>
     internal GameRuntime(
         ContentPack contentPack,
         SaveGameManager saveGameManager = null,
-        Func<UserGameplaySettings> getGameplaySettings = null
+        Func<UserGameplaySettings> getGameplaySettings = null,
+        IAnalyticsEventSink analyticsSink = null
     )
     {
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
         _getGameplaySettings = getGameplaySettings;
+        _analyticsSink = analyticsSink;
     }
 
     /// <summary>
@@ -119,7 +124,9 @@ public sealed class GameRuntime
     /// <returns>The created game session.</returns>
     public GameSession StartGame(GameRoot game, IGameSessionOwner owner = null)
     {
-        return ReplaceSession(game, owner);
+        GameSession session = ReplaceSession(game, owner);
+        StartCampaignAnalytics(session, true);
+        return session;
     }
 
     /// <summary>
@@ -132,6 +139,7 @@ public sealed class GameRuntime
     {
         GameSession session = ReplaceSession(game, owner);
         ReconcileLoadedSession();
+        StartCampaignAnalytics(session, false);
         return session;
     }
 
@@ -267,6 +275,7 @@ public sealed class GameRuntime
         }
         finally
         {
+            StopCampaignAnalytics();
             _sessionOwner = null;
             _activeGameSession.Tick.TickCompleted -= HandleTickCompleted;
             _gameManager.ApplyGameSpeed(TickSpeed.Paused);
@@ -541,10 +550,52 @@ public sealed class GameRuntime
         ValidateGameContent(game);
         ReconcileStaticContent(game);
         _activeGameSession.ReplaceGame(game);
+        StopCampaignAnalytics();
         _gameManager.Reset();
         _operationsBlocked = false;
         GameReplaced?.Invoke(_activeGameSession.Game);
         ReconcileLoadedSession();
+        StartCampaignAnalytics(_activeGameSession, false);
+    }
+
+    /// <summary>
+    /// Connects campaign analytics to one active game session when the build supports collection.
+    /// </summary>
+    /// <param name="session">The active game session.</param>
+    /// <param name="newCampaign">Whether the session created this campaign.</param>
+    private void StartCampaignAnalytics(GameSession session, bool newCampaign)
+    {
+        if (_analyticsSink?.IsAvailable != true || session == null)
+            return;
+
+        try
+        {
+            _campaignAnalyticsTracker = new CampaignAnalyticsTracker(
+                session.Game,
+                _analyticsSink,
+                newCampaign
+            );
+            session.Tick.TickCompleted += _campaignAnalyticsTracker.RecordTickCompleted;
+        }
+        catch (Exception exception)
+        {
+            _campaignAnalyticsTracker = null;
+            Debug.LogWarning($"Campaign analytics could not start: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Disconnects the active campaign analytics tracker.
+    /// </summary>
+    private void StopCampaignAnalytics()
+    {
+        CampaignAnalyticsTracker tracker = _campaignAnalyticsTracker;
+        if (tracker == null)
+            return;
+
+        if (_activeGameSession != null)
+            _activeGameSession.Tick.TickCompleted -= tracker.RecordTickCompleted;
+        _campaignAnalyticsTracker = null;
     }
 
     /// <summary>

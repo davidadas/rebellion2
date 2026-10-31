@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -26,40 +27,42 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(100, planet.GetPopularSupport("FNEMP1"));
         }
 
-        [Test]
-        public void Seed_OwnedPlanetWithMilitaryPresence_BoostsOwnerSupport()
+        [TestCase(2, 0, 0)]
+        [TestCase(0, 1, 0)]
+        [TestCase(0, 0, 2)]
+        [TestCase(2, 1, 2)]
+        public void Seed_OwnedPlanetWithMilitaryPresence_PreservesPopularSupport(
+            int regiments,
+            int fleets,
+            int starfighters
+        )
         {
             Planet planet = MakePlanet("p1", "FNALL1");
             planet.SetPopularSupport("FNALL1", 50);
-            planet.AddChild(new Regiment { InstanceID = "r1", OwnerInstanceID = "FNALL1" });
-            planet.AddChild(new Regiment { InstanceID = "r2", OwnerInstanceID = "FNALL1" });
+            planet.SetPopularSupport("FNEMP1", 50);
+            for (int index = 0; index < regiments; index++)
+                planet.AddChild(
+                    new Regiment { InstanceID = $"regiment-{index}", OwnerInstanceID = "FNALL1" }
+                );
+            for (int index = 0; index < fleets; index++)
+                planet.AddChild(
+                    new Fleet { InstanceID = $"fleet-{index}", OwnerInstanceID = "FNALL1" }
+                );
+            for (int index = 0; index < starfighters; index++)
+                planet.AddChild(
+                    new Starfighter { InstanceID = $"fighter-{index}", OwnerInstanceID = "FNALL1" }
+                );
             PlanetSector sector = MakeSector(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
 
             new BalanceSeeder().Seed(BuildContext(sector, factions));
 
-            Assert.AreEqual(54, planet.GetPopularSupport("FNALL1"));
+            Assert.AreEqual(50, planet.GetPopularSupport("FNALL1"));
+            Assert.AreEqual(50, planet.GetPopularSupport("FNEMP1"));
         }
 
         [Test]
-        public void Seed_HighMilitaryPresence_BoostCappedAtMaxBoost()
-        {
-            Planet planet = MakePlanet("p1", "FNALL1");
-            planet.SetPopularSupport("FNALL1", 50);
-            for (int i = 0; i < 20; i++)
-            {
-                planet.AddChild(new Regiment { InstanceID = $"r{i}", OwnerInstanceID = "FNALL1" });
-            }
-            PlanetSector sector = MakeSector(planet);
-            Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
-
-            new BalanceSeeder().Seed(BuildContext(sector, factions));
-
-            Assert.AreEqual(60, planet.GetPopularSupport("FNALL1"));
-        }
-
-        [Test]
-        public void Seed_MaximumSupportBoost_SaturatesAtFullSupport()
+        public void Seed_PersistedSupportSettings_PreservesPopularSupport()
         {
             Planet planet = MakePlanet("p1", "FNALL1");
             planet.SetPopularSupport("FNALL1", 50);
@@ -67,12 +70,18 @@ namespace Rebellion.Tests.Generation
             PlanetSector sector = MakeSector(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
             GenerationContext context = BuildContext(sector, factions);
-            context.Config.Balance.SupportBoostPerUnit = int.MaxValue;
-            context.Config.Balance.MaxMilitaryPresenceBoost = int.MaxValue;
+            context.Config = SerializationHelper.Deserialize<GameGenerationConfig>(
+                @"<GameGenerationConfig>
+  <Balance>
+    <SupportBoostPerUnit>2147483647</SupportBoostPerUnit>
+    <MaxMilitaryPresenceBoost>2147483647</MaxMilitaryPresenceBoost>
+  </Balance>
+</GameGenerationConfig>"
+            );
 
             new BalanceSeeder().Seed(context);
 
-            Assert.AreEqual(100, planet.GetPopularSupport("FNALL1"));
+            Assert.AreEqual(50, planet.GetPopularSupport("FNALL1"));
         }
 
         [Test]

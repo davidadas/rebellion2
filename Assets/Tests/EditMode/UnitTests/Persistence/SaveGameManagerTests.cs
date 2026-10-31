@@ -1518,6 +1518,7 @@ namespace Rebellion.Tests.Persistence
         [Test]
         public void SaveAndLoadGame_GameWithMetadata_PreservesMetadata()
         {
+            const string campaignID = "0123456789abcdef0123456789abcdef";
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
@@ -1531,6 +1532,7 @@ namespace Rebellion.Tests.Persistence
             {
                 SaveDisplayName = "Test Save",
                 PlayerFactionID = "FNALL1",
+                CampaignID = campaignID,
                 OpeningBriefingCompleted = true,
                 LastSavedUtc = new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
             };
@@ -1548,6 +1550,7 @@ namespace Rebellion.Tests.Persistence
             Assert.IsNotNull(loadedGame.Metadata);
             Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
             Assert.AreEqual("FNALL1", loadedGame.Metadata.PlayerFactionID);
+            Assert.AreEqual(campaignID, loadedGame.Metadata.CampaignID);
             Assert.IsTrue(loadedGame.Metadata.OpeningBriefingCompleted);
         }
 
