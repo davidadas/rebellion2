@@ -371,7 +371,6 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -contentPath /github/workspace/.ci/rebellion2-media/Content -executeMethod UIBuilderMenu.BuildAll
