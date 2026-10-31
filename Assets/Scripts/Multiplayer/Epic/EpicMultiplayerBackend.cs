@@ -52,10 +52,12 @@ namespace Rebellion.Multiplayer
         private EpicMultiplayerPeer _peer;
         private string _lobbyId;
         private ProductUserId _remoteUser;
-        private string _recoveryCampaignID;
+        private bool _usingRecoveryPeer;
         private bool _ownsLobby;
         private bool _disposed;
         private int _sessionVersion;
+        private Task<IMultiplayerPeer> _openingGame;
+        private Task _closingGame = Task.CompletedTask;
 
         /// <summary>
         /// Gets the current lobby identifier, when hosting or joined.
@@ -146,7 +148,7 @@ namespace Rebellion.Multiplayer
                     nameof(remoteUserID)
                 );
             _peer?.Dispose();
-            _recoveryCampaignID = campaignID;
+            _usingRecoveryPeer = true;
             _remoteUser = counterpart;
             _peer = new EpicMultiplayerPeer(
                 _platform.GetP2PInterface(),
@@ -185,18 +187,36 @@ namespace Rebellion.Multiplayer
         /// <param name="game">The host's game metadata.</param>
         /// <param name="cancellationToken">Cancels this hosting operation and removes any late-created lobby.</param>
         /// <returns>The hosted peer connection.</returns>
-        public async Task<IMultiplayerPeer> HostAsync(
+        public Task<IMultiplayerPeer> HostAsync(
             MultiplayerGameListing game,
             CancellationToken cancellationToken
         )
         {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            if (_lobbyId != null || _peer != null)
+            if (_lobbyId != null || _peer != null || _openingGame?.IsCompleted == false)
                 throw new InvalidOperationException(
                     "Leave the current game before hosting another."
                 );
             int sessionVersion = ++_sessionVersion;
+            return _openingGame = CreateGameAsync(game, sessionVersion, cancellationToken);
+        }
+
+        /// <summary>
+        /// Creates the owned room after the outgoing admission and membership cleanup finish.
+        /// </summary>
+        /// <param name="game">The metadata to publish for the owned room.</param>
+        /// <param name="sessionVersion">The admission scope that owns the native request.</param>
+        /// <param name="cancellationToken">Cancels admission and removes any late-created room.</param>
+        /// <returns>The hosted peer after its listing is published.</returns>
+        private async Task<IMultiplayerPeer> CreateGameAsync(
+            MultiplayerGameListing game,
+            int sessionVersion,
+            CancellationToken cancellationToken
+        )
+        {
+            await _closingGame;
+            EnsureCurrentSession(sessionVersion, cancellationToken);
             TaskCompletionSource<string> created = new(
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
@@ -311,18 +331,36 @@ namespace Rebellion.Multiplayer
         /// <param name="game">The selected public game.</param>
         /// <param name="cancellationToken">Cancels joining and leaves any late-joined lobby.</param>
         /// <returns>The guest peer connection.</returns>
-        public async Task<IMultiplayerPeer> JoinAsync(
+        public Task<IMultiplayerPeer> JoinAsync(
             MultiplayerGameListing game,
             CancellationToken cancellationToken
         )
         {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            if (_lobbyId != null || _peer != null)
+            if (_lobbyId != null || _peer != null || _openingGame?.IsCompleted == false)
                 throw new InvalidOperationException(
                     "Leave the current game before joining another."
                 );
             int sessionVersion = ++_sessionVersion;
+            return _openingGame = JoinGameAsync(game, sessionVersion, cancellationToken);
+        }
+
+        /// <summary>
+        /// Admits the selected room after any previous native admission and cleanup finish.
+        /// </summary>
+        /// <param name="game">The selected browser listing.</param>
+        /// <param name="sessionVersion">The admission scope that owns this request.</param>
+        /// <param name="cancellationToken">Cancels admission and removes any late-joined membership.</param>
+        /// <returns>The admitted peer connected to the room owner.</returns>
+        private async Task<IMultiplayerPeer> JoinGameAsync(
+            MultiplayerGameListing game,
+            int sessionVersion,
+            CancellationToken cancellationToken
+        )
+        {
+            await _closingGame;
+            EnsureCurrentSession(sessionVersion, cancellationToken);
             LobbySearch search = CreateSearch();
             LobbyDetails details = null;
             EpicMultiplayerPeer peer = null;
@@ -422,13 +460,15 @@ namespace Rebellion.Multiplayer
         public Task LeaveAsync(bool preserveRoom = false)
         {
             _sessionVersion++;
+            Task opening = _openingGame;
+            _openingGame = null;
             string lobbyId = _lobbyId;
             bool owner = _ownsLobby;
             _peer?.Dispose();
             ClearSession(lobbyId);
-            return lobbyId == null
-                ? Task.CompletedTask
-                : CloseLobbyAsync(lobbyId, owner && !preserveRoom);
+            Task closing =
+                lobbyId == null ? _closingGame : CloseLobbyAsync(lobbyId, owner && !preserveRoom);
+            return _closingGame = FinishLeavingAsync(opening, closing);
         }
 
         /// <summary>
@@ -462,7 +502,7 @@ namespace Rebellion.Multiplayer
                 _ownsLobby = data.TargetUserId.Equals(_localUser);
                 return;
             }
-            if (_recoveryCampaignID != null)
+            if (_usingRecoveryPeer)
             {
                 if (
                     data.CurrentStatus == LobbyMemberStatus.Closed
@@ -667,6 +707,26 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
+        /// Finishes an outgoing admission and its cleanup before another join can use the same room.
+        /// </summary>
+        /// <param name="opening">The outgoing admission, whose caller retains its failure.</param>
+        /// <param name="closing">The previously pending or newly requested membership removal.</param>
+        /// <returns>The completion of both outgoing operations.</returns>
+        private static async Task FinishLeavingAsync(Task opening, Task closing)
+        {
+            try
+            {
+                if (opening != null)
+                    await opening;
+            }
+            catch (Exception)
+            {
+                // The admission caller owns its error; its cleanup has finished before this task completes.
+            }
+            await closing;
+        }
+
+        /// <summary>
         /// Reports asynchronous cleanup failures during application teardown.
         /// </summary>
         /// <returns>The pending cleanup.</returns>
@@ -695,7 +755,7 @@ namespace Rebellion.Multiplayer
             _lobbyId = null;
             _ownsLobby = false;
             _remoteUser = null;
-            _recoveryCampaignID = null;
+            _usingRecoveryPeer = false;
             _peer = null;
         }
 

@@ -9,13 +9,12 @@ using UnityEngine;
 namespace Rebellion.Multiplayer
 {
     /// <summary>
-    /// Binds a recoverable room to its authenticated participants and exact simulation content.
+    /// Binds a recoverable campaign to its authenticated participants and exact simulation content.
     /// </summary>
     [Serializable]
     internal sealed class MultiplayerRecoveryRecord
     {
         public int version = 1;
-        public string lobbyID;
         public string campaignID;
         public string gameName;
         public string hostName;
@@ -61,7 +60,7 @@ namespace Rebellion.Multiplayer
         /// Checks the transport-authenticated counterpart against the saved reservation.
         /// </summary>
         /// <param name="localUserID">The locally authenticated account.</param>
-        /// <param name="remoteUserID">The account admitted by lobby membership.</param>
+        /// <param name="remoteUserID">The counterpart authenticated by the transport.</param>
         public void ValidatePeer(string localUserID, string remoteUserID)
         {
             MultiplayerRole role = GetRole(localUserID);
@@ -153,7 +152,6 @@ namespace Rebellion.Multiplayer
                 version != 1
                 || string.IsNullOrWhiteSpace(gameName)
                 || !Guid.TryParseExact(campaignID, "N", out _)
-                || string.IsNullOrWhiteSpace(lobbyID)
                 || string.IsNullOrWhiteSpace(hostUserID)
                 || string.IsNullOrWhiteSpace(guestUserID)
                 || hostUserID == guestUserID
@@ -189,7 +187,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reads only the small room locator, leaving the simulation payload on disk.
+        /// Reads only the campaign reservation, leaving the simulation payload on disk.
         /// </summary>
         /// <param name="userID">The authenticated account owning this local copy.</param>
         /// <returns>The last atomic record, or null when the account has no checkpoint.</returns>
@@ -215,7 +213,7 @@ namespace Rebellion.Multiplayer
         /// Captures owned bytes and publishes the record and its sole world payload as one durable file.
         /// </summary>
         /// <param name="userID">The local authenticated account.</param>
-        /// <param name="record">The matching room locator and checkpoint identity.</param>
+        /// <param name="record">The matching participant reservation and checkpoint identity.</param>
         /// <param name="snapshot">The complete compressed runtime continuation.</param>
         /// <returns>The atomic durable publication.</returns>
         public Task WriteAsync(
@@ -276,11 +274,11 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Checks the file signature and account binding before exposing room metadata.
+        /// Checks the file signature and account binding before exposing campaign metadata.
         /// </summary>
         /// <param name="reader">The local checkpoint reader.</param>
         /// <param name="userID">The authenticated local account.</param>
-        /// <returns>The validated room locator.</returns>
+        /// <returns>The validated campaign reservation.</returns>
         private static MultiplayerRecoveryRecord ReadHeader(BinaryReader reader, string userID)
         {
             if (reader.ReadString() != _signature)

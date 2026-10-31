@@ -52,7 +52,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reads the small last-session locator after authentication without decoding its world.
+        /// Reads the small campaign reservation after authentication without decoding its world.
         /// </summary>
         private void RefreshRecoveryRecord()
         {
@@ -331,7 +331,7 @@ namespace Rebellion.Multiplayer
         /// Publishes owned checkpoint bytes without letting a departed connection cancel durable storage.
         /// </summary>
         /// <param name="userID">The authenticated local account captured before publication.</param>
-        /// <param name="record">The immutable room and checkpoint metadata.</param>
+        /// <param name="record">The immutable participant and checkpoint metadata.</param>
         /// <param name="snapshot">The captured continuation bytes.</param>
         /// <returns>The observed durable publication.</returns>
         private async Task PublishRecoveryAsync(
@@ -356,14 +356,13 @@ namespace Rebellion.Multiplayer
         /// Records original participant roles independently of room ownership migration.
         /// </summary>
         /// <param name="hash">The exact captured continuation hash.</param>
-        /// <returns>The account-bound room locator and content contract.</returns>
+        /// <returns>The account-bound checkpoint identity and content contract.</returns>
         private MultiplayerRecoveryRecord CreateRecoveryRecord(string hash)
         {
             GameRoot game = _runtime.GetActiveGame();
             MultiplayerCampaignIdentity identity = game.Metadata.MultiplayerCampaign;
             return new MultiplayerRecoveryRecord
             {
-                lobbyID = _backend.LobbyId ?? _recoveryRecord?.lobbyID,
                 campaignID = game.Metadata.CampaignID,
                 gameName = _gameName,
                 hostName = game.GetFactionPlayer(identity.HostFactionID).DisplayName,
@@ -596,7 +595,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Releases connection-scoped recovery work while retaining the durable last-session locator.
+        /// Releases connection-scoped recovery work while retaining the durable campaign reservation.
         /// </summary>
         private void ResetRecovery()
         {

@@ -10,13 +10,12 @@ namespace Rebellion.Tests.Multiplayer
     {
         [TestCase("host", MultiplayerRole.Host)]
         [TestCase("guest", MultiplayerRole.Guest)]
-        public void GetRole_RoomOwnershipChanges_PreservesOriginalSimulationRole(
+        public void GetRole_ReservedParticipant_PreservesOriginalSimulationRole(
             string userID,
             MultiplayerRole role
         )
         {
             MultiplayerRecoveryRecord record = CreateRecord();
-            record.lobbyID = "replacement-room";
             Assert.AreEqual(role, record.GetRole(userID));
         }
 
@@ -107,11 +106,10 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void ValidateOffer_RecreatedRoomWithNewCheckpoint_AcceptsSameCampaign()
+        public void ValidateOffer_NewCheckpoint_AcceptsSameCampaign()
         {
             MultiplayerRecoveryRecord record = CreateRecord();
             MultiplayerRecoveryRecord offered = Clone(record);
-            offered.lobbyID = "replacement-room";
             offered.snapshotHash = "new-checkpoint";
             Assert.DoesNotThrow(() => record.ValidateOffer(offered));
         }
@@ -213,7 +211,6 @@ namespace Rebellion.Tests.Multiplayer
         internal static MultiplayerRecoveryRecord CreateRecord() =>
             new()
             {
-                lobbyID = "room",
                 campaignID = Guid.NewGuid().ToString("N"),
                 gameName = "Recovery game",
                 hostName = "First player",

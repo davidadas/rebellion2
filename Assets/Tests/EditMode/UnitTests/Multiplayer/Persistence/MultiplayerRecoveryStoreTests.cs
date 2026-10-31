@@ -101,14 +101,38 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public async Task WriteAsync_NewStoreInstance_RetainsRoomAndOriginalRoleAsync()
+        public async Task WriteAsync_NewStoreInstance_RetainsCampaignAndOriginalRoleAsync()
         {
             await WriteCheckpointAsync("guest");
             MultiplayerRecoveryStore restarted = new(_directory);
             MultiplayerRecoveryRecord record = restarted.ReadRecord("guest");
-            Assert.AreEqual(_record.lobbyID, record.lobbyID);
+            Assert.AreEqual(_record.campaignID, record.campaignID);
             Assert.AreEqual(MultiplayerRole.Guest, record.GetRole("guest"));
             Assert.AreEqual(_record.campaignID, restarted.ReadState("guest").Metadata.CampaignID);
+        }
+
+        [Test]
+        public async Task ReadRecord_LegacyLobbyField_RestoresCampaignReservationAsync()
+        {
+            await WriteCheckpointAsync("guest");
+            string path = Directory.GetFiles(_directory).Single();
+            using BinaryReader reader = new(new MemoryStream(File.ReadAllBytes(path)));
+            string signature = reader.ReadString();
+            string header = reader.ReadString();
+            byte[] payload = reader.ReadBytes(
+                checked((int)(reader.BaseStream.Length - reader.BaseStream.Position))
+            );
+            header = header.Insert(header.LastIndexOf('}'), ",\"lobbyID\":\"obsolete-room\"");
+            using (BinaryWriter writer = new(File.Create(path), Encoding.UTF8))
+            {
+                writer.Write(signature);
+                writer.Write(header);
+                writer.Write(payload);
+            }
+
+            MultiplayerRecoveryRecord record = _store.ReadRecord("guest");
+            Assert.That(record.campaignID, Is.EqualTo(_record.campaignID));
+            Assert.That(record.GetRole("guest"), Is.EqualTo(MultiplayerRole.Guest));
         }
 
         [Test]
