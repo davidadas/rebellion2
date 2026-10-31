@@ -1339,33 +1339,30 @@ namespace Rebellion.Util.Serialization
         private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
 
         // Reflection metadata is expensive to compute and stable per type, so it is memoized.
-        private static readonly Dictionary<
+        private static readonly ConcurrentDictionary<
             (Type, OperationType),
             IReadOnlyList<MemberInfo>
-        > _persistableMembersCache =
-            new Dictionary<(Type, OperationType), IReadOnlyList<MemberInfo>>();
+        > _persistableMembersCache = new();
 
-        private static readonly Dictionary<
+        private static readonly ConcurrentDictionary<
             (Type, OperationType),
             IReadOnlyList<MemberInfo>
-        > _persistableAttributesCache =
-            new Dictionary<(Type, OperationType), IReadOnlyList<MemberInfo>>();
+        > _persistableAttributesCache = new();
 
-        private static readonly Dictionary<
+        private static readonly ConcurrentDictionary<
             (Type, OperationType),
             MemberInfo
-        > _inlineCollectionMemberCache = new Dictionary<(Type, OperationType), MemberInfo>();
+        > _inlineCollectionMemberCache = new();
 
-        private static readonly Dictionary<
+        private static readonly ConcurrentDictionary<
             (Type, OperationType),
             IDictionary<string, MemberInfo>
-        > _persistableAttributeMapCache =
-            new Dictionary<(Type, OperationType), IDictionary<string, MemberInfo>>();
+        > _persistableAttributeMapCache = new();
 
-        private static readonly Dictionary<
+        private static readonly ConcurrentDictionary<
             Type,
             IDictionary<string, MemberInfo>
-        > _elementMemberLookupCache = new Dictionary<Type, IDictionary<string, MemberInfo>>();
+        > _elementMemberLookupCache = new();
 
         public enum OperationType
         {

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
@@ -293,6 +295,22 @@ namespace Rebellion.Tests.Util.Serialization
         /// Creates an item whose value uses its runtime type as its XML name.
         /// </summary>
         public ItemWithRuntimeTypeName() { }
+    }
+
+    public interface IConcurrentSerializationItem
+    {
+        int Value { get; set; }
+        string Label { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ConcurrentSerializationItem<TFirst, TSecond> : IConcurrentSerializationItem
+    {
+        [PersistableMember]
+        public int Value { get; set; }
+
+        [PersistableAttribute]
+        public string Label { get; set; }
     }
 
     [TestFixture]
@@ -2279,6 +2297,86 @@ namespace Rebellion.Tests.Util.Serialization
                 stream.Seek(0, SeekOrigin.Begin);
                 serializer.DeserializeNode<SimpleItem>(stream);
             });
+        }
+
+        [Test]
+        public async Task Serialize_ConcurrentColdTypes_RoundTripsEveryIndependentValue()
+        {
+            Type[] scalarTypes =
+            {
+                typeof(int),
+                typeof(long),
+                typeof(string),
+                typeof(byte),
+                typeof(short),
+                typeof(double),
+                typeof(float),
+                typeof(decimal),
+                typeof(DateTime),
+                typeof(Guid),
+                typeof(bool),
+                typeof(char),
+                typeof(ulong),
+                typeof(uint),
+                typeof(ushort),
+                typeof(sbyte),
+            };
+            Type[] markers = scalarTypes
+                .Concat(scalarTypes.Select(type => type.MakeArrayType()))
+                .ToArray();
+            const int workerCount = 8;
+            int typesPerWorker = markers.Length * markers.Length / workerCount;
+            using Barrier start = new Barrier(workerCount);
+            Task<int>[] workers = Enumerable
+                .Range(0, workerCount)
+                .Select(worker =>
+                    Task.Factory.StartNew(
+                        () =>
+                        {
+                            if (!start.SignalAndWait(TimeSpan.FromSeconds(10)))
+                                throw new TimeoutException(
+                                    "Serialization workers did not start together."
+                                );
+                            for (int index = 0; index < typesPerWorker; index++)
+                            {
+                                int expected = worker * typesPerWorker + index;
+                                Type type = typeof(ConcurrentSerializationItem<,>).MakeGenericType(
+                                    markers[expected / markers.Length],
+                                    markers[expected % markers.Length]
+                                );
+                                IConcurrentSerializationItem item = (IConcurrentSerializationItem)
+                                    Activator.CreateInstance(type);
+                                item.Value = expected;
+                                item.Label = "Independent " + expected;
+                                GameSerializer serializer = new GameSerializer(
+                                    type,
+                                    new GameSerializerSettings { RootName = "Item" }
+                                );
+                                using StringWriter xml = new StringWriter();
+                                serializer.Serialize(xml, item);
+                                using StringReader input = new StringReader(xml.ToString());
+                                IConcurrentSerializationItem restored =
+                                    (IConcurrentSerializationItem)serializer.Deserialize(input);
+                                if (restored.Value != expected || restored.Label != item.Label)
+                                    throw new InvalidDataException(
+                                        "Concurrent serialization changed an independent value."
+                                    );
+                            }
+                            return typesPerWorker;
+                        },
+                        CancellationToken.None,
+                        TaskCreationOptions.LongRunning,
+                        TaskScheduler.Default
+                    )
+                )
+                .ToArray();
+
+            Task<int[]> all = Task.WhenAll(workers);
+            Task finished = await Task.WhenAny(all, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.That(finished, Is.SameAs(all), "Concurrent serialization did not complete.");
+            int[] completed = await all;
+
+            Assert.That(completed.Sum(), Is.EqualTo(markers.Length * markers.Length));
         }
 
         /// <summary>
