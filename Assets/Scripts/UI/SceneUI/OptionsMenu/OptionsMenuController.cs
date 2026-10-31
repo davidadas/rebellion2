@@ -240,7 +240,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 _showModsTab,
-                _settingsSession.GetGraphicsValues()
+                _settingsSession.GetGraphicsValues(),
+                _settingsSession.Analytics.IsEnabled
             )
         );
     }
@@ -431,6 +432,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
+        target.AnalyticsToggleRequested += HandleAnalyticsToggle;
         target.UserInterfaceToggleRequested += HandleUserInterfaceToggle;
         target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
         target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
@@ -994,6 +996,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Toggles analytics collection and marks settings dirty.
+    /// </summary>
+    private void HandleAnalyticsToggle()
+    {
+        _settingsSession.ToggleAnalytics();
+        _markDirty();
+    }
+
+    /// <summary>
     /// Toggles a user-interface option and marks settings dirty.
     /// </summary>
     /// <param name="option">The user-interface option to toggle.</param>
@@ -1114,6 +1125,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.AnalyticsToggleRequested -= HandleAnalyticsToggle;
         destroyed.UserInterfaceToggleRequested -= HandleUserInterfaceToggle;
         destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
         destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;

@@ -100,6 +100,86 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_AnalyticsConsentPage_BlocksInputAndStartsHidden()
+        {
+            Transform overlay = _prefabRoot.transform.Find("UI/AnalyticsConsentCanvas");
+            Assert.IsNotNull(overlay);
+            Assert.IsFalse(overlay.gameObject.activeSelf);
+            Assert.AreEqual(1100, overlay.GetComponent<Canvas>().sortingOrder);
+            Assert.IsNotNull(overlay.GetComponent<CanvasGroup>());
+
+            AnalyticsConsentView consentView = overlay.GetComponent<AnalyticsConsentView>();
+            Assert.IsNotNull(consentView);
+            Assert.DoesNotThrow(consentView.VerifyReferences);
+            Assert.IsTrue(overlay.Find("InputBlocker").GetComponent<Image>().raycastTarget);
+            Assert.AreEqual(
+                new Color(0f, 0f, 0f, 0.9f),
+                overlay.Find("InputBlocker").GetComponent<Image>().color
+            );
+            RawImage backdrop = overlay.Find("Backdrop").GetComponent<RawImage>();
+            Assert.IsFalse(backdrop.raycastTarget);
+            Assert.AreEqual(Color.clear, backdrop.color);
+            RectTransform page = (RectTransform)overlay.Find("ConsentPage");
+            Assert.AreEqual(new Vector2(0f, 1f), page.anchorMin);
+            Assert.AreEqual(new Vector2(0f, 1f), page.anchorMax);
+            Assert.AreEqual(new Vector2(277f, -163f), page.anchoredPosition);
+            Assert.AreEqual(new Vector2(300f, 154f), page.sizeDelta);
+            Assert.AreEqual(
+                new Vector2(298f, 152f),
+                ((RectTransform)page.Find("PanelFill")).sizeDelta
+            );
+
+            Transform backgroundTransform = page.Find("Background");
+            Image background = backgroundTransform.GetComponent<Image>();
+            Assert.AreEqual(Image.Type.Sliced, background.type);
+            Assert.AreEqual(new Color(0.34f, 0.37f, 0.40f, 0.50f), background.color);
+            Assert.IsNull(backgroundTransform.GetComponent<Outline>());
+            Assert.AreEqual("OPTIONAL", page.Find("Optional").GetComponent<TextMeshProUGUI>().text);
+            Assert.AreEqual(
+                "HELP US IMPROVE",
+                page.Find("Heading").GetComponent<TextMeshProUGUI>().text
+            );
+            Assert.AreEqual(
+                "Share optional analytics to help us improve the game.\nYou can change this any time in Settings.",
+                page.Find("Body").GetComponent<TextMeshProUGUI>().text
+            );
+            Assert.IsNull(page.Find("Plea"));
+            Assert.IsNull(page.Find("SobEmoji"));
+
+            RectTransform allowButton = (RectTransform)page.Find("AllowButton");
+            RectTransform declineButton = (RectTransform)page.Find("DeclineButton");
+            Assert.AreEqual(allowButton.anchoredPosition.y, declineButton.anchoredPosition.y);
+            Assert.AreEqual(new Vector2(128f, 23f), allowButton.sizeDelta);
+            Assert.AreEqual(new Vector2(116f, 23f), declineButton.sizeDelta);
+            Assert.IsNotNull(
+                allowButton.Find("SurfaceMask/Surface").GetComponent<VerticalGradientEffect>()
+            );
+            Assert.IsNotNull(
+                declineButton.Find("SurfaceMask/Surface").GetComponent<VerticalGradientEffect>()
+            );
+            Assert.AreEqual(
+                new Color(0.31f, 0.82f, 0.87f, 0.70f),
+                allowButton.GetComponent<Image>().color
+            );
+            Assert.AreEqual(
+                new Color(0.50f, 0.53f, 0.56f, 0.58f),
+                declineButton.GetComponent<Image>().color
+            );
+            Assert.IsNull(allowButton.GetComponent<Outline>());
+            Assert.IsNull(declineButton.GetComponent<Outline>());
+            Assert.IsNull(allowButton.GetComponent<ContentSpriteBinding>());
+            Assert.IsNull(declineButton.GetComponent<ContentSpriteBinding>());
+
+            Button allow = allowButton.GetComponent<Button>();
+            Button decline = declineButton.GetComponent<Button>();
+            Assert.AreEqual(Navigation.Mode.Explicit, allow.navigation.mode);
+            Assert.AreSame(decline, allow.navigation.selectOnRight);
+            Assert.AreSame(allow, decline.navigation.selectOnLeft);
+            Assert.AreSame(allow, allow.navigation.selectOnUp);
+            Assert.AreSame(decline, decline.navigation.selectOnDown);
+        }
+
+        [Test]
         public void AuthoredPrefab_ExitConfirmation_BlockerFillsMainMenu()
         {
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
