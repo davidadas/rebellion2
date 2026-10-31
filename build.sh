@@ -255,7 +255,7 @@ do_coverage() {
     run_unity_editmode_tests \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

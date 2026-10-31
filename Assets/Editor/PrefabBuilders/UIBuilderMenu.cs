@@ -5,6 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 /// <summary>
 /// The only Unity menu surface for rebuilding generated UI.
@@ -19,16 +20,19 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build All UI %#u", false, 0)]
     public static void BuildAll()
     {
+        Stopwatch total = Stopwatch.StartNew();
         RunInAuthoringScene(() =>
         {
-            BootPrefabBuilder.Rebuild();
-            LoadingScreenPrefabBuilder.Rebuild();
-            RebuildOptionsMenuAndDependencies();
-            NewGameSettingsPrefabBuilder.Rebuild();
-            MainMenuPrefabBuilder.Rebuild();
-            StrategyViewPrefabBuilder.Rebuild();
+            MeasureBuild("boot", BootPrefabBuilder.Rebuild);
+            MeasureBuild("loading screen", LoadingScreenPrefabBuilder.Rebuild);
+            MeasureBuild("options menu", RebuildOptionsMenuAndDependencies);
+            MeasureBuild("new game settings", NewGameSettingsPrefabBuilder.Rebuild);
+            MeasureBuild("main menu", MainMenuPrefabBuilder.Rebuild);
+            MeasureBuild("strategy view", StrategyViewPrefabBuilder.Rebuild);
         });
         SaveAndRefresh();
+        total.Stop();
+        Debug.Log($"Generated UI timing: total={total.ElapsedMilliseconds} ms.");
     }
 
     /// <summary>
@@ -193,6 +197,19 @@ public static class UIBuilderMenu
     {
         CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
         OptionsMenuPrefabBuilder.Rebuild();
+    }
+
+    /// <summary>
+    /// Measures one generated UI build phase and reports its elapsed time.
+    /// </summary>
+    /// <param name="label">The sentence-case phase label written to the editor log.</param>
+    /// <param name="build">The generated UI work to execute.</param>
+    private static void MeasureBuild(string label, Action build)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        build();
+        stopwatch.Stop();
+        Debug.Log($"Generated UI timing: {label}={stopwatch.ElapsedMilliseconds} ms.");
     }
 
     /// <summary>

@@ -341,7 +341,6 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
@@ -389,4 +388,48 @@ jobs:
               sys.exit(1)
 
           print("OK: all coverage thresholds met")
+          EOF
+
+      - name: Summarize coverage risk hotspots
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          coverage_files = sorted(
+              path
+              for path in Path("CodeCoverage").rglob("*.xml")
+              if "Report" not in path.parts
+          )
+          hotspots = []
+          for coverage_file in coverage_files:
+              root = ET.parse(coverage_file).getroot()
+              for method in root.iter("Method"):
+                  complexity = int(method.get("cyclomaticComplexity", 0))
+                  crap_score = float(method.get("crapScore", 0))
+                  name = method.findtext("Name", "Unknown method")
+                  if complexity > 15 or crap_score >= 15:
+                      hotspots.append((crap_score, complexity, name))
+
+          hotspots.sort(reverse=True)
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if not summary_path:
+              raise RuntimeError("GITHUB_STEP_SUMMARY is unavailable")
+
+          with open(summary_path, "a", encoding="utf-8") as summary:
+              summary.write("## Coverage risk hotspots\n\n")
+              summary.write(
+                  f"Found {len(hotspots)} methods with cyclomatic complexity above 15 "
+                  "or CRAP score of at least 15.\n\n"
+              )
+              if hotspots:
+                  summary.write("| CRAP score | Complexity | Method |\n")
+                  summary.write("| ---: | ---: | --- |\n")
+                  for crap_score, complexity, name in hotspots[:20]:
+                      safe_name = name.replace("|", "\\|")
+                      summary.write(
+                          f"| {crap_score:.2f} | {complexity} | `{safe_name}` |\n"
+                      )
           EOF
