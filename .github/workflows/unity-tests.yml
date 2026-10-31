@@ -127,13 +127,19 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-            Library-
+      - name: Restore private Unity cache
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
+          CACHE_CURRENT_REVISION: ${{ github.sha }}
+        run: |
+          Tools/CI/private-unity-cache.sh restore \
+            build "${{ matrix.targetPlatform }}" \
+            "$CACHE_BASE_REVISION" "$CACHE_CURRENT_REVISION" \
+            "${{ needs.resolve-media.outputs.sha }}"
 
       - name: Pre-pull Unity Docker image
         run: |
@@ -161,6 +167,21 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
           buildMethod: StandalonePlayerBuild.Build
+
+      - name: Save private Unity cache
+        if: github.event_name == 'push'
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
+          CACHE_CURRENT_REVISION: ${{ github.sha }}
+        run: |
+          Tools/CI/private-unity-cache.sh save \
+            build "${{ matrix.targetPlatform }}" \
+            "$CACHE_BASE_REVISION" "$CACHE_CURRENT_REVISION" \
+            "${{ needs.resolve-media.outputs.sha }}"
 
       - name: Reset package files
         run: |
@@ -308,13 +329,19 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-test-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-test-
-            Library-
+      - name: Restore private Unity cache
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
+          CACHE_CURRENT_REVISION: ${{ github.sha }}
+        run: |
+          Tools/CI/private-unity-cache.sh restore \
+            test editmode \
+            "$CACHE_BASE_REVISION" "$CACHE_CURRENT_REVISION" \
+            "${{ needs.resolve-media.outputs.sha }}"
 
       - name: Prepare Vulkan-enabled Unity test image
         run: |
@@ -433,3 +460,18 @@ jobs:
                           f"| {crap_score:.2f} | {complexity} | `{safe_name}` |\n"
                       )
           EOF
+
+      - name: Save private Unity cache
+        if: github.event_name == 'push'
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
+          CACHE_CURRENT_REVISION: ${{ github.sha }}
+        run: |
+          Tools/CI/private-unity-cache.sh save \
+            test editmode \
+            "$CACHE_BASE_REVISION" "$CACHE_CURRENT_REVISION" \
+            "${{ needs.resolve-media.outputs.sha }}"
