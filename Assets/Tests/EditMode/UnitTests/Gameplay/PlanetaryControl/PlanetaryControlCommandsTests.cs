@@ -1184,7 +1184,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_RetainsOwnerWithoutControllingSupport()
+        public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
             _game.ChangeOwnership(planet, "empire");
@@ -1194,12 +1194,16 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = ReconcilePlanet(planet);
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-            Assert.IsEmpty(results);
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(result => result.Planet == planet && result.NewOwner == null)
+            );
         }
 
         [Test]
-        public void ReconcilePlanet_ColonizedPlanetWithoutController_RetainsPopulationOwnerAndBuildings()
+        public void ReconcilePlanet_ColonizedPlanetWithoutController_NeutralizesBuildingsAndRetainsSupport()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 55);
@@ -1216,13 +1220,13 @@ namespace Rebellion.Tests.Gameplay
 
             ReconcilePlanet(_targetPlanet);
 
-            Assert.AreEqual(_empire.InstanceID, _targetPlanet.GetOwnerInstanceID());
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
             Assert.IsTrue(_targetPlanet.IsColonized);
             Assert.AreEqual(55, _targetPlanet.GetPopularSupport(_empire.InstanceID));
             Assert.AreEqual(45, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(_empire.InstanceID, mine.GetOwnerInstanceID());
+            Assert.IsNull(mine.GetOwnerInstanceID());
             Assert.AreSame(_targetPlanet, mine.GetParent());
-            CollectionAssert.Contains(_empire.GetOwnedUnitsByType<Building>(), mine);
+            CollectionAssert.DoesNotContain(_empire.GetOwnedUnitsByType<Building>(), mine);
         }
 
         [Test]
