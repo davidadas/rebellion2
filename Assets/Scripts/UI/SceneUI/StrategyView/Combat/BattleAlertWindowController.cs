@@ -125,6 +125,14 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Discards outcomes queued by the game being replaced.
+    /// </summary>
+    public void ResetSession()
+    {
+        completedCombats.Clear();
+    }
+
+    /// <summary>
     /// Subscribes the controller to a battle-alert view exactly once.
     /// </summary>
     /// <param name="view">The battle-alert view to bind.</param>

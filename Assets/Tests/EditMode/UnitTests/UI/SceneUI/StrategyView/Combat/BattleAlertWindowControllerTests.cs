@@ -23,7 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
     public class BattleAlertWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";
-        private const string _opponentFactionId = "FNIMP1";
+        private const string _opponentFactionId = "FNEMP1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
@@ -447,6 +447,69 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(_controller.HasCombatResult(resultView));
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _playedTracks.Count);
+        }
+
+        [Test]
+        public void ResetSession_GameReplaced_DoesNotPresentQueuedOldOutcome()
+        {
+            _pending = null;
+            _controller.OpenResult(
+                new BombardmentResult
+                {
+                    Planet = _resolveResult.Planet,
+                    AttackerOwnerInstanceID = _playerFactionId,
+                    DefenderOwnerInstanceID = _opponentFactionId,
+                }
+            );
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.ResetSession();
+            foreach (UIWindow window in _windowManager.Windows.ToArray())
+                _windowManager.DestroyWindow(window);
+            GameRoot replacement = CreateGame(out Planet planet, out _, out _);
+            _uiContext.ReplaceGame(replacement);
+            _visiblePlanet = planet;
+
+            bool changed = _controller.SyncPendingCombatWindow();
+
+            Assert.IsFalse(changed);
+            Assert.IsNull(_controller.FindWindow());
+            Assert.IsEmpty(_playedTracks);
+        }
+
+        [Test]
+        public void ResetSession_GameReplaced_PresentsNewOutcomes()
+        {
+            _pending = null;
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            _controller.ResetSession();
+            foreach (UIWindow window in _windowManager.Windows.ToArray())
+                _windowManager.DestroyWindow(window);
+            GameRoot replacement = CreateGame(
+                out Planet planet,
+                out GameFleet playerFleet,
+                out GameFleet opponentFleet
+            );
+            planet.DisplayName = "Replacement world";
+            _uiContext.ReplaceGame(replacement);
+            _visiblePlanet = planet;
+            SpaceCombatResult result = new()
+            {
+                Planet = planet,
+                AttackerFleet = playerFleet,
+                DefenderFleet = opponentFleet,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Winner = CombatSide.Defender,
+            };
+
+            _pipeline.ProcessResults(new[] { result }, processMessages: false);
+
+            BattleAlertWindowView view = _controller.FindWindow();
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.That(
+                _controller.CreateRenderData(view, _playerFactionId, 0, 0).Result.Title,
+                Does.Contain("Replacement world")
+            );
         }
 
         [Test]

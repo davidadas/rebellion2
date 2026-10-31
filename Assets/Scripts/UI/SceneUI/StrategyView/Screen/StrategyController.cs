@@ -2152,6 +2152,7 @@ public sealed class StrategyController
     {
         strategyMusicController.Reset();
         strategyHudController.ResetSession();
+        battleAlertWindowController.ResetSession();
         targetingController?.Cancel();
         contextMenuController?.Cancel();
         strategyContextMenu?.Reset();
