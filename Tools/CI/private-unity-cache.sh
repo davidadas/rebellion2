@@ -9,10 +9,10 @@ current_revision="${5:?current revision is required}"
 media_revision="${6:?media revision is required}"
 
 : "${UNITY_VERSION:?UNITY_VERSION is required}"
-: "${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required}"
-: "${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required}"
-: "${R2_ENDPOINT:?R2_ENDPOINT is required}"
-: "${R2_BUCKET:?R2_BUCKET is required}"
+: "${UNITY_CACHE_R2_ACCESS_KEY_ID:?UNITY_CACHE_R2_ACCESS_KEY_ID is required}"
+: "${UNITY_CACHE_R2_SECRET_ACCESS_KEY:?UNITY_CACHE_R2_SECRET_ACCESS_KEY is required}"
+: "${UNITY_CACHE_R2_ENDPOINT:?UNITY_CACHE_R2_ENDPOINT is required}"
+: "${UNITY_CACHE_R2_BUCKET:?UNITY_CACHE_R2_BUCKET is required}"
 
 command -v aws >/dev/null 2>&1 || {
     echo "The AWS CLI is required for the private Unity cache."
@@ -23,8 +23,8 @@ command -v zstd >/dev/null 2>&1 || {
     exit 1
 }
 
-export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+export AWS_ACCESS_KEY_ID="$UNITY_CACHE_R2_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$UNITY_CACHE_R2_SECRET_ACCESS_KEY"
 export AWS_DEFAULT_REGION=auto
 export AWS_EC2_METADATA_DISABLED=true
 
@@ -46,18 +46,18 @@ object_key() {
 
 object_exists() {
     local key="$1"
-    aws --endpoint-url "$R2_ENDPOINT" s3api head-object \
-        --bucket "$R2_BUCKET" \
+    aws --endpoint-url "$UNITY_CACHE_R2_ENDPOINT" s3api head-object \
+        --bucket "$UNITY_CACHE_R2_BUCKET" \
         --key "$key" >/dev/null 2>&1
 }
 
 restore_key() {
     local key="$1"
     echo "Restoring private Unity cache: $key"
-    aws --endpoint-url "$R2_ENDPOINT" s3 cp \
-        "s3://$R2_BUCKET/$key" "$archive_path" --no-progress
-    aws --endpoint-url "$R2_ENDPOINT" s3 cp \
-        "s3://$R2_BUCKET/$key.sha256" "$checksum_path" --no-progress
+    aws --endpoint-url "$UNITY_CACHE_R2_ENDPOINT" s3 cp \
+        "s3://$UNITY_CACHE_R2_BUCKET/$key" "$archive_path" --no-progress
+    aws --endpoint-url "$UNITY_CACHE_R2_ENDPOINT" s3 cp \
+        "s3://$UNITY_CACHE_R2_BUCKET/$key.sha256" "$checksum_path" --no-progress
 
     local expected_checksum
     expected_checksum="$(tr -d '[:space:]' < "$checksum_path")"
@@ -106,10 +106,10 @@ save_cache() {
         --file="$archive_path" --directory="$workspace" Library
     sha256sum "$archive_path" | awk '{print $1}' > "$checksum_path"
 
-    aws --endpoint-url "$R2_ENDPOINT" s3 cp \
-        "$archive_path" "s3://$R2_BUCKET/$key" --no-progress
-    aws --endpoint-url "$R2_ENDPOINT" s3 cp \
-        "$checksum_path" "s3://$R2_BUCKET/$key.sha256" --no-progress
+    aws --endpoint-url "$UNITY_CACHE_R2_ENDPOINT" s3 cp \
+        "$archive_path" "s3://$UNITY_CACHE_R2_BUCKET/$key" --no-progress
+    aws --endpoint-url "$UNITY_CACHE_R2_ENDPOINT" s3 cp \
+        "$checksum_path" "s3://$UNITY_CACHE_R2_BUCKET/$key.sha256" --no-progress
     rm -f "$archive_path" "$checksum_path"
     echo "Private Unity cache saved."
 }

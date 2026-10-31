@@ -129,10 +129,10 @@ jobs:
 
       - name: Restore private Unity cache
         env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          UNITY_CACHE_R2_ACCESS_KEY_ID: ${{ secrets.UNITY_CACHE_R2_ACCESS_KEY_ID }}
+          UNITY_CACHE_R2_SECRET_ACCESS_KEY: ${{ secrets.UNITY_CACHE_R2_SECRET_ACCESS_KEY }}
+          UNITY_CACHE_R2_ENDPOINT: ${{ vars.UNITY_CACHE_R2_ENDPOINT }}
+          UNITY_CACHE_R2_BUCKET: ${{ vars.UNITY_CACHE_R2_BUCKET }}
           CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
           CACHE_CURRENT_REVISION: ${{ github.sha }}
         run: |
@@ -171,10 +171,10 @@ jobs:
       - name: Save private Unity cache
         if: github.event_name == 'push'
         env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          UNITY_CACHE_R2_ACCESS_KEY_ID: ${{ secrets.UNITY_CACHE_R2_ACCESS_KEY_ID }}
+          UNITY_CACHE_R2_SECRET_ACCESS_KEY: ${{ secrets.UNITY_CACHE_R2_SECRET_ACCESS_KEY }}
+          UNITY_CACHE_R2_ENDPOINT: ${{ vars.UNITY_CACHE_R2_ENDPOINT }}
+          UNITY_CACHE_R2_BUCKET: ${{ vars.UNITY_CACHE_R2_BUCKET }}
           CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
           CACHE_CURRENT_REVISION: ${{ github.sha }}
         run: |
@@ -331,10 +331,10 @@ jobs:
 
       - name: Restore private Unity cache
         env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          UNITY_CACHE_R2_ACCESS_KEY_ID: ${{ secrets.UNITY_CACHE_R2_ACCESS_KEY_ID }}
+          UNITY_CACHE_R2_SECRET_ACCESS_KEY: ${{ secrets.UNITY_CACHE_R2_SECRET_ACCESS_KEY }}
+          UNITY_CACHE_R2_ENDPOINT: ${{ vars.UNITY_CACHE_R2_ENDPOINT }}
+          UNITY_CACHE_R2_BUCKET: ${{ vars.UNITY_CACHE_R2_BUCKET }}
           CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
           CACHE_CURRENT_REVISION: ${{ github.sha }}
         run: |
@@ -464,10 +464,10 @@ jobs:
       - name: Save private Unity cache
         if: github.event_name == 'push'
         env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          UNITY_CACHE_R2_ACCESS_KEY_ID: ${{ secrets.UNITY_CACHE_R2_ACCESS_KEY_ID }}
+          UNITY_CACHE_R2_SECRET_ACCESS_KEY: ${{ secrets.UNITY_CACHE_R2_SECRET_ACCESS_KEY }}
+          UNITY_CACHE_R2_ENDPOINT: ${{ vars.UNITY_CACHE_R2_ENDPOINT }}
+          UNITY_CACHE_R2_BUCKET: ${{ vars.UNITY_CACHE_R2_BUCKET }}
           CACHE_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.sha }}
           CACHE_CURRENT_REVISION: ${{ github.sha }}
         run: |
