@@ -275,6 +275,52 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_HeadquartersDestroyedAtOtherHeadquarters_PreservesOtherMarker()
+        {
+            (GameRoot game, Faction faction, _, Planet destination, Building headquarters) =
+                CreateGame(isMobile: true);
+            Faction otherFaction = new Faction
+            {
+                InstanceID = "other",
+                HQInstanceID = destination.InstanceID,
+            };
+            game.GetFactions().Add(otherFaction);
+            destination.OwnerInstanceID = otherFaction.InstanceID;
+            destination.IsHeadquarters = true;
+            faction.HQInstanceID = null;
+            headquarters.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 10 };
+
+            new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = headquarters,
+                        Context = destination,
+                    },
+                }
+            );
+
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsTrue(destination.IsHeadquarters);
+            Assert.AreEqual(destination.InstanceID, otherFaction.HQInstanceID);
+        }
+
+        [Test]
+        public void ReconcileState_DisabledPersistedHeadquarters_PreservesHeadquarters()
+        {
+            (GameRoot game, Faction faction, Planet origin, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            origin.IsEnabled = false;
+
+            new HeadquartersObserver(game).ReconcileState();
+
+            Assert.AreEqual(headquarters.InstanceID, faction.HeadquartersUnitInstanceID);
+            Assert.IsFalse(faction.HasLostHeadquarters);
+        }
+
+        [Test]
         public void ReconcileState_LegacyHeadquartersInTransit_RestoresUnitIdentity()
         {
             (GameRoot game, Faction faction, _, _, Building headquarters) = CreateGame(
@@ -288,6 +334,22 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(headquarters.InstanceID, faction.HeadquartersUnitInstanceID);
             Assert.IsFalse(faction.HasLostHeadquarters);
+        }
+
+        [Test]
+        public void ReconcileState_LegacyStationaryHeadquartersWithoutLocation_RecordsLoss()
+        {
+            (GameRoot game, Faction faction, _, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            faction.HeadquartersUnitInstanceID = null;
+            faction.HQInstanceID = null;
+
+            new HeadquartersObserver(game).ReconcileState();
+
+            Assert.IsNull(faction.HeadquartersUnitInstanceID);
+            Assert.IsTrue(faction.HasLostHeadquarters);
+            Assert.IsNull(headquarters.Movement);
         }
 
         /// <summary>

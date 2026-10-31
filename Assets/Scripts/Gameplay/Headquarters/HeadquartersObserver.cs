@@ -65,7 +65,8 @@ namespace Rebellion.Gameplay
                 if (!string.IsNullOrEmpty(faction.HeadquartersUnitInstanceID))
                 {
                     Building persistedHeadquarters = _game.GetSceneNodeByInstanceID<Building>(
-                        faction.HeadquartersUnitInstanceID
+                        faction.HeadquartersUnitInstanceID,
+                        includeDisabled: true
                     );
                     if (
                         persistedHeadquarters == null
@@ -85,7 +86,8 @@ namespace Rebellion.Gameplay
                 List<Building> locatedCandidates = candidates
                     .Where(building =>
                         string.IsNullOrEmpty(faction.HQInstanceID)
-                        || building.GetParentOfType<Planet>()?.InstanceID == faction.HQInstanceID
+                            ? building.Movement != null
+                            : building.GetParentOfType<Planet>()?.InstanceID == faction.HQInstanceID
                     )
                     .ToList();
                 Building headquarters = locatedCandidates.Count == 1 ? locatedCandidates[0] : null;
@@ -356,10 +358,14 @@ namespace Rebellion.Gameplay
         /// <param name="location">The headquarters location, when available.</param>
         private void MarkHeadquartersLost(Faction faction, Planet location)
         {
-            Planet markedPlanet = _game.GetSceneNodeByInstanceID<Planet>(faction.HQInstanceID);
+            string headquartersPlanetInstanceID = faction.HQInstanceID;
+            Planet markedPlanet = _game.GetSceneNodeByInstanceID<Planet>(
+                headquartersPlanetInstanceID,
+                includeDisabled: true
+            );
             if (markedPlanet != null)
                 markedPlanet.IsHeadquarters = false;
-            if (location != null)
+            if (location != null && location.InstanceID == headquartersPlanetInstanceID)
                 location.IsHeadquarters = false;
 
             faction.HQInstanceID = null;
