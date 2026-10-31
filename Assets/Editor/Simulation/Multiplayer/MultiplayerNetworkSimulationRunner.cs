@@ -759,6 +759,7 @@ public static class MultiplayerNetworkSimulationRunner
         private bool _guestCombatRequired;
         private CombatSubmission _hostCombatSubmission;
         private CombatSubmission _guestCombatSubmission;
+        private DayTiming _dayTiming;
 
         public MultiplayerGameSession Host { get; }
         public MultiplayerGameSession Guest { get; }
@@ -836,6 +837,7 @@ public static class MultiplayerNetworkSimulationRunner
             bool guestComplete = false;
             try
             {
+                _dayTiming = timing;
                 while (!hostComplete || !guestComplete || !Host.CanBeginHostTick)
                 {
                     bool progressed = await PumpAsync();
@@ -875,6 +877,7 @@ public static class MultiplayerNetworkSimulationRunner
             }
             finally
             {
+                _dayTiming = null;
                 (hostTick as IDisposable)?.Dispose();
                 (guestTick as IDisposable)?.Dispose();
             }
@@ -1000,8 +1003,31 @@ public static class MultiplayerNetworkSimulationRunner
             progressed |= await FlushAsync(_guestPeer, _guestOutgoing);
             progressed |= Drain(_hostPeer, Host);
             progressed |= Drain(_guestPeer, Guest);
+            long started = Stopwatch.GetTimestamp();
             Host.Pump();
+            if (_dayTiming != null)
+            {
+                double elapsed =
+                    (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
+                _dayTiming.hostPumpMilliseconds += elapsed;
+                _dayTiming.hostMaximumPumpMilliseconds = Math.Max(
+                    _dayTiming.hostMaximumPumpMilliseconds,
+                    elapsed
+                );
+            }
+            started = Stopwatch.GetTimestamp();
             Guest.Pump();
+            if (_dayTiming != null)
+            {
+                double elapsed =
+                    (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
+                _dayTiming.guestPumpMilliseconds += elapsed;
+                _dayTiming.guestMaximumPumpMilliseconds = Math.Max(
+                    _dayTiming.guestMaximumPumpMilliseconds,
+                    elapsed
+                );
+                _dayTiming.pumpCalls++;
+            }
             if (Host.Failure != null)
                 throw new InvalidOperationException(
                     "The host stopped ordered replay.",
@@ -1275,7 +1301,7 @@ public static class MultiplayerNetworkSimulationRunner
     }
 
     /// <summary>
-    /// Separates simulation step execution, full-state verification, and the complete network barrier.
+    /// Separates simulation execution, ordered-session pumping, diagnostic verification, and the network barrier.
     /// </summary>
     [Serializable]
     private sealed class DayTiming
@@ -1285,6 +1311,11 @@ public static class MultiplayerNetworkSimulationRunner
         public double guestTickMilliseconds;
         public List<double> hostStepMilliseconds = new List<double>();
         public List<double> guestStepMilliseconds = new List<double>();
+        public int pumpCalls;
+        public double hostPumpMilliseconds;
+        public double guestPumpMilliseconds;
+        public double hostMaximumPumpMilliseconds;
+        public double guestMaximumPumpMilliseconds;
         public double barrierMilliseconds;
         public double verificationMilliseconds;
     }
