@@ -374,8 +374,10 @@ namespace Rebellion.Multiplayer
                     MultiplayerChatMessage message = JsonUtility.FromJson<MultiplayerChatMessage>(
                         Encoding.UTF8.GetString(_chatReceiveBuffer, 0, checked((int)length))
                     );
-                    if (!string.IsNullOrWhiteSpace(message?.text))
-                        GeneralChatReceived?.Invoke(message);
+                    if (string.IsNullOrWhiteSpace(message?.text))
+                        continue;
+                    message.isSystem = false;
+                    GeneralChatReceived?.Invoke(message);
                 }
                 catch (ArgumentException) { }
             }
