@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using System.Xml;
 using Rebellion.Game;
 using Rebellion.Gameplay;
@@ -116,13 +117,29 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Compresses and authenticates bytes produced by an explicitly selected snapshot schema.
+        /// Completes independent compression and hashing of captured bytes before returning their envelope.
         /// </summary>
-        /// <param name="state">The complete uncompressed schema payload.</param>
+        /// <param name="state">The complete uncompressed schema payload, unchanged until this call returns.</param>
         /// <returns>The bounded snapshot envelope.</returns>
         internal static MultiplayerSnapshot CapturePayload(byte[] state)
         {
-            return new MultiplayerSnapshot(Compress(state), ComputeHash(state));
+            Task<string> hashing = Task.Run(() => ComputeHash(state));
+            byte[] compressed;
+            try
+            {
+                compressed = Compress(state);
+            }
+            catch
+            {
+                // Finish the owned hash job while preserving the compression failure.
+                try
+                {
+                    hashing.GetAwaiter().GetResult();
+                }
+                catch (Exception) { }
+                throw;
+            }
+            return new MultiplayerSnapshot(compressed, hashing.GetAwaiter().GetResult());
         }
 
         /// <summary>

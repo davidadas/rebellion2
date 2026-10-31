@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -358,6 +360,33 @@ namespace Rebellion.Tests.Multiplayer
                 Is.EqualTo(game.Metadata.LastSavedUtc.Ticks)
             );
             Assert.That(restored.Metadata.LastSavedUtc.Kind, Is.EqualTo(kind));
+        }
+
+        [Test]
+        public async Task Capture_ConcurrentIndependentWorlds_RestoresEachState()
+        {
+            Task<(string Expected, string Actual)>[] captures = Enumerable
+                .Range(0, 8)
+                .Select(index =>
+                    Task.Run(() =>
+                    {
+                        GameRoot game = CreateGame();
+                        game.CurrentTick += index;
+                        game.Summary.Seed += index;
+                        string expected = CanonicalXml(game);
+                        MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(game);
+                        GameRoot restored = MultiplayerSnapshotCodec.Restore(
+                            snapshot.Payload,
+                            snapshot.Hash
+                        );
+                        return (Expected: expected, Actual: CanonicalXml(restored));
+                    })
+                )
+                .ToArray();
+
+            (string Expected, string Actual)[] restoredStates = await Task.WhenAll(captures);
+
+            Assert.That(restoredStates.All(state => state.Expected == state.Actual), Is.True);
         }
 
         /// <summary>
