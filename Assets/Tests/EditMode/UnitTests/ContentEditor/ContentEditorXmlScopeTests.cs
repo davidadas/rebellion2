@@ -13,28 +13,16 @@ namespace Rebellion.Tests.ContentEditor
         private ContentPackEditorProject project;
 
         /// <summary>
-        /// Creates a fixture-owned derived pack over installed content.
+        /// Creates independent records for scoped XML editing.
         /// </summary>
         [SetUp]
         public void SetUp()
         {
-            string root = ContentPackLoader.ResolveContentRootPath();
-            string baseline = ContentPackLoader
-                .DiscoverPacks(root)
-                .First(pack => string.IsNullOrEmpty(pack.BasePackID))
-                .ID;
             folder = Path.Combine(
                 Path.GetTempPath(),
                 "editor-scope-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorStorage.CreateInFolder(
-                root,
-                baseline,
-                folder,
-                "scope-test",
-                "Scope test",
-                "1.0.0"
-            );
+            project = ContentEditorTestData.CreateProject(folder);
         }
 
         /// <summary>

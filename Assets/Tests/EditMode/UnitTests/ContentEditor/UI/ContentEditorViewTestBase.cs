@@ -144,16 +144,6 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         /// <summary>
-        /// Identifies a projected property including its repeated-entry context.
-        /// </summary>
-        /// <param name="field">The projected property.</param>
-        /// <returns>The comparable authored field identity.</returns>
-        protected static string FieldIdentity(ContentPackEditorField field)
-        {
-            return field.Group + "|" + string.Join("/", field.SectionPath) + "|" + field.Name;
-        }
-
-        /// <summary>
         /// Finds the visible diplomacy control in the dedicated officer form.
         /// </summary>
         /// <returns>The shared text input.</returns>

@@ -13,27 +13,16 @@ namespace Rebellion.Tests.ContentEditor
         private ContentPackEditorCatalog events;
 
         /// <summary>
-        /// Opens an isolated derived pack over the installed event definitions.
+        /// Opens independent event definitions for document editing.
         /// </summary>
         [SetUp]
         public void SetUp()
         {
-            string contentRoot = ContentPackLoader.ResolveContentRootPath();
-            ContentPackDefinition source = ContentPackLoader
-                .DiscoverPacks(contentRoot)
-                .First(pack => string.IsNullOrEmpty(pack.BasePackID));
             folder = Path.Combine(
                 Path.GetTempPath(),
                 "editor-event-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorStorage.CreateInFolder(
-                contentRoot,
-                source.ID,
-                folder,
-                "event-test",
-                "Event test",
-                "1.0.0"
-            );
+            project = ContentEditorTestData.CreateProject(folder);
             events = project.GetCatalogs().First(catalog => catalog.CanAddEvent);
         }
 

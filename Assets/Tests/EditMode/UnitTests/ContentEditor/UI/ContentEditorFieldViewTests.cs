@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.ContentEditor.UI
 {
@@ -45,6 +47,56 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             if (canvas != null)
                 Object.DestroyImmediate(canvas);
+        }
+
+        [TestCase("Officers", "RecruitingFactionInstanceIDs")]
+        [TestCase("Starfighters", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Capital ships", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Troops", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Special forces", "ManufacturingFactionInstanceIDs")]
+        [TestCase("Buildings", "ManufacturingFactionInstanceIDs")]
+        public void Render_NewUnit_LetsTheAuthorChooseEitherOrBothFactions(
+            string category,
+            string member
+        )
+        {
+            project = ContentEditorTestData.CreateProject(
+                Path.Combine(contentRoot, "WorkingProject")
+            );
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == category);
+            ContentPackEditorRecord unit = project.AddUnit(catalog);
+            control.Submitted += (field, values) => project.SetFieldValues(field, values);
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, unit.GetField(member)),
+                null,
+                null,
+                null
+            );
+            ContentEditorFieldView field = control;
+            UICheckboxView[] choices = field.GetComponentsInChildren<UICheckboxView>();
+            Assert.AreEqual(project.GetFactionOptions().Count, choices.Length);
+            Assert.IsTrue(choices.All(choice => !choice.GetComponent<Toggle>().isOn));
+            Assert.IsEmpty(unit.GetField(member).Values);
+            var other = project.GetFactionOptions().Last();
+            UICheckboxView selected = choices.Single(choice =>
+                choice.GetComponentInChildren<TMP_Text>().text == other.Value
+            );
+            UIComponentTestHelper.InvokeLifecycle(selected, "Awake");
+            selected.GetComponent<Toggle>().isOn = true;
+            CollectionAssert.AreEqual(new[] { other.Key }, unit.GetField(member).Values);
+            foreach (UICheckboxView choice in choices.Where(choice => choice != selected))
+            {
+                UIComponentTestHelper.InvokeLifecycle(choice, "Awake");
+                choice.GetComponent<Toggle>().isOn = true;
+            }
+            CollectionAssert.AreEquivalent(
+                project.GetFactionOptions().Keys,
+                unit.GetField(member).Values
+            );
+            control.Commit();
+            Assert.IsFalse(control.HasError);
         }
 
         [TestCase(340)]

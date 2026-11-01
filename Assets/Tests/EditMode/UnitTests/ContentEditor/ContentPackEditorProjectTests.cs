@@ -12,6 +12,61 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase("Officers", "RecruitingFactionInstanceIDs", 0)]
+        [TestCase("Officers", "RecruitingFactionInstanceIDs", 1)]
+        [TestCase("Capital ships", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Capital ships", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Starfighters", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Starfighters", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Troops", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Troops", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Special forces", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Special forces", "ManufacturingFactionInstanceIDs", 1)]
+        [TestCase("Buildings", "ManufacturingFactionInstanceIDs", 0)]
+        [TestCase("Buildings", "ManufacturingFactionInstanceIDs", 1)]
+        public void AddUnit_ExistingFaction_AssignsOnlyThatFactionAndSupportsUndo(
+            string category,
+            string member,
+            int factionIndex
+        )
+        {
+            ContentPackEditorProject project = ContentEditorTestData.CreateProject(
+                Path.Combine(contentRoot, "WorkingProject")
+            );
+            string faction = project
+                .GetFactionOptions()
+                .Keys.OrderBy(id => id, StringComparer.Ordinal)
+                .ElementAt(factionIndex);
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == category);
+            int before = catalog.Records.Count;
+
+            ContentPackEditorRecord created = project.AddUnit(catalog, faction);
+
+            Assert.AreEqual(before + 1, catalog.Records.Count);
+            CollectionAssert.AreEqual(new[] { faction }, created.GetField(member).Values);
+            Assert.IsTrue(string.IsNullOrEmpty(created.Element.Element("OwnerInstanceID")?.Value));
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                before,
+                project
+                    .GetCatalogs()
+                    .Single(item => item.Document == catalog.Document)
+                    .Records.Count
+            );
+            Assert.IsTrue(project.Redo());
+            CollectionAssert.AreEqual(
+                new[] { faction },
+                project
+                    .GetCatalogs()
+                    .Single(item => item.Document == catalog.Document)
+                    .Records.Last()
+                    .GetField(member)
+                    .Values
+            );
+        }
+
         [Test]
         public void AddFaction_BlankDefinition_RegistersEmptyCatalogsWithoutWritingFiles()
         {

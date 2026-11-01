@@ -19,28 +19,16 @@ namespace Rebellion.Tests.ContentEditor
                 .Single(record => record.Kind == "GameGenerationConfig");
 
         /// <summary>
-        /// Creates an isolated inherited pack for setup edits.
+        /// Creates independent starting-setup definitions for collection edits.
         /// </summary>
         [SetUp]
         public void SetUp()
         {
-            string contentRoot = ContentPackLoader.ResolveContentRootPath();
-            string source = ContentPackLoader
-                .DiscoverPacks(contentRoot)
-                .First(pack => string.IsNullOrEmpty(pack.BasePackID))
-                .ID;
             folder = Path.Combine(
                 Path.GetTempPath(),
                 "editor-setup-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorStorage.CreateInFolder(
-                contentRoot,
-                source,
-                folder,
-                "setup-test",
-                "Setup test",
-                "1.0.0"
-            );
+            project = ContentEditorTestData.CreateProject(folder);
         }
 
         /// <summary>
@@ -57,10 +45,9 @@ namespace Rebellion.Tests.ContentEditor
         public void GetCollection_MissingCollection_DoesNotCreateAnOverride()
         {
             var record = Setup;
+            XElement ship = record.Element.Descendants("FixedFleetShip").First();
+            ship.Element("Cargo")?.Remove();
             string before = record.Catalog.Document.Text;
-            XElement ship = record
-                .Element.Descendants("FixedFleetShip")
-                .First(entry => entry.Element("Cargo") == null);
             var collection = project.GetCollection(record, ship, "Cargo");
             Assert.IsNotNull(collection);
             Assert.AreEqual(before, record.Catalog.Document.Text);

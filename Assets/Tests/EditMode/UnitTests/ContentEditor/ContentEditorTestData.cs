@@ -31,6 +31,13 @@ namespace Rebellion.Tests.ContentEditor
                 string target = Path.Combine(basePack, Path.GetRelativePath(fixtures, source));
                 Directory.CreateDirectory(Path.GetDirectoryName(target));
                 XDocument xml = XDocument.Load(source);
+                foreach (XElement playable in xml.Descendants("PlayableFactionIDs"))
+                    playable
+                        .Elements()
+                        .Where(element =>
+                            element.Value != xml.Root.Element("DefaultPlayerFactionID").Value
+                        )
+                        .Remove();
                 if (xml.Root.Name == "GameEvents")
                     xml.Root.RemoveNodes();
                 if (xml.Root.Name == "MessageDefinitions")

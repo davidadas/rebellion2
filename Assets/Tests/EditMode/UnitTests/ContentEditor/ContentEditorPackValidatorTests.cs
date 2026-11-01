@@ -104,6 +104,16 @@ namespace Rebellion.Tests.ContentEditor
             System.Xml.Linq.XDocument xml = System.Xml.Linq.XDocument.Parse(
                 generation.Document.Text
             );
+            if (location == "weighted building")
+                xml.Descendants("CoreFacilityTable")
+                    .First()
+                    .AddFirst(
+                        new System.Xml.Linq.XElement(
+                            "WeightedFacilityEntry",
+                            new System.Xml.Linq.XElement("CumulativeWeight", 0),
+                            new System.Xml.Linq.XElement("TypeID", "missing-generation-reference")
+                        )
+                    );
             System.Xml.Linq.XElement target = location switch
             {
                 "weighted unit" => xml.Descendants("WeightedUnitEntry")
