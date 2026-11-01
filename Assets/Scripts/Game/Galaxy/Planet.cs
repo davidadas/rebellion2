@@ -1487,14 +1487,20 @@ namespace Rebellion.Game.Galaxy
         /// <returns>An enumerable of child nodes.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return _fleets
-                .Cast<ISceneNode>()
-                .Concat(_officers)
-                .Concat(_missions)
-                .Concat(_regiments)
-                .Concat(_specialForces)
-                .Concat(_starfighters)
-                .Concat(_buildings);
+            foreach (Fleet fleet in _fleets)
+                yield return fleet;
+            foreach (Officer officer in _officers)
+                yield return officer;
+            foreach (Mission mission in _missions)
+                yield return mission;
+            foreach (Regiment regiment in _regiments)
+                yield return regiment;
+            foreach (SpecialForces unit in _specialForces)
+                yield return unit;
+            foreach (Starfighter fighter in _starfighters)
+                yield return fighter;
+            foreach (Building building in _buildings)
+                yield return building;
         }
     }
 }

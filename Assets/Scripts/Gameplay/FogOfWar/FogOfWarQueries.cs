@@ -208,8 +208,10 @@ namespace Rebellion.Gameplay
         )
         {
             string factionId = faction.InstanceID;
-            IEnumerable<Officer> controlledOfficers = masterPlanet
-                .GetChildren<Officer>()
+            IReadOnlyList<ISceneNode> masterChildren = masterPlanet.GetChildren();
+            IReadOnlyList<ISceneNode> viewChildren = viewPlanet.GetChildren(includeDisabled: true);
+            IEnumerable<Officer> controlledOfficers = masterChildren
+                .OfType<Officer>()
                 .Where(officer =>
                     officer.OwnerInstanceID == factionId && !officer.IsCaptured
                     || officer.IsCaptured && officer.CaptorInstanceID == factionId
@@ -222,38 +224,35 @@ namespace Rebellion.Gameplay
 
             viewPlanet.SetChildren(
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Fleet>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Fleet>()
+                    viewChildren.OfType<Fleet>(),
+                    masterChildren
+                        .OfType<Fleet>()
                         .Where(fleet =>
                             fleet.OwnerInstanceID == factionId
                             && fleet.GetChildren<CapitalShip>().Count > 0
                         )
                 ),
+                MergeMissingByInstanceID(viewChildren.OfType<Officer>(), controlledOfficers),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Officer>(includeDisabled: true),
-                    controlledOfficers
-                ),
-                MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Regiment>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Regiment>()
+                    viewChildren.OfType<Regiment>(),
+                    masterChildren
+                        .OfType<Regiment>()
                         .Where(unit => unit.OwnerInstanceID == factionId)
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<SpecialForces>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<SpecialForces>()
+                    viewChildren.OfType<SpecialForces>(),
+                    masterChildren
+                        .OfType<SpecialForces>()
                         .Where(unit => unit.OwnerInstanceID == factionId)
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Starfighter>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Starfighter>()
+                    viewChildren.OfType<Starfighter>(),
+                    masterChildren
+                        .OfType<Starfighter>()
                         .Where(unit => unit.OwnerInstanceID == factionId)
                 ),
-                viewPlanet.GetChildren<Mission>(includeDisabled: true),
-                viewPlanet.GetChildren<Building>(includeDisabled: true)
+                viewChildren.OfType<Mission>(),
+                viewChildren.OfType<Building>()
             );
         }
 
@@ -350,12 +349,13 @@ namespace Rebellion.Gameplay
             PlanetSnapshot planetSnapshot
         )
         {
+            IReadOnlyList<ISceneNode> masterChildren = masterPlanet.GetChildren();
             viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
 
-            IEnumerable<Officer> officers = masterPlanet
-                .GetChildren<Officer>()
+            IEnumerable<Officer> officers = masterChildren
+                .OfType<Officer>()
                 .Where(officer =>
                     FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
                 )
@@ -364,8 +364,8 @@ namespace Rebellion.Gameplay
                         ? officer
                         : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
                 );
-            IEnumerable<Fleet> fleets = masterPlanet
-                .GetChildren<Fleet>()
+            IEnumerable<Fleet> fleets = masterChildren
+                .OfType<Fleet>()
                 .Where(fleet =>
                     fleet.GetChildren<CapitalShip>().Count > 0
                     && FogOfWarRecorder.IsObservableAtPlanet(fleet, faction.InstanceID)
@@ -376,22 +376,22 @@ namespace Rebellion.Gameplay
                         : FogOfWarRecorder.CopyObservedFleetForSnapshot(fleet, faction.InstanceID)
                 )
                 .Where(fleet => fleet != null);
-            IEnumerable<Regiment> regiments = masterPlanet
-                .GetChildren<Regiment>()
+            IEnumerable<Regiment> regiments = masterChildren
+                .OfType<Regiment>()
                 .Where(regiment => IsVisibleWithoutManufacturingIntelligence(regiment, faction))
                 .Select(regiment => ViewUnit(regiment, faction));
-            IEnumerable<SpecialForces> specialForces = masterPlanet
-                .GetChildren<SpecialForces>()
+            IEnumerable<SpecialForces> specialForces = masterChildren
+                .OfType<SpecialForces>()
                 .Where(unit => IsVisibleWithoutManufacturingIntelligence(unit, faction))
                 .Select(unit => ViewUnit(unit, faction));
-            IEnumerable<Starfighter> starfighters = masterPlanet
-                .GetChildren<Starfighter>()
+            IEnumerable<Starfighter> starfighters = masterChildren
+                .OfType<Starfighter>()
                 .Where(starfighter =>
                     IsVisibleWithoutManufacturingIntelligence(starfighter, faction)
                 )
                 .Select(starfighter => ViewUnit(starfighter, faction));
-            IEnumerable<Building> buildings = masterPlanet
-                .GetChildren<Building>()
+            IEnumerable<Building> buildings = masterChildren
+                .OfType<Building>()
                 .Where(building => IsVisibleWithoutManufacturingIntelligence(building, faction))
                 .Select(building => ViewUnit(building, faction));
 

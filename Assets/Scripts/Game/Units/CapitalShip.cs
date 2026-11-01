@@ -808,11 +808,14 @@ namespace Rebellion.Game.Units
         /// <returns>The children carried by this ship.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return _officers
-                .Cast<ISceneNode>()
-                .Concat(_starfighters)
-                .Concat(_regiments)
-                .Concat(_specialForces);
+            foreach (Officer officer in _officers)
+                yield return officer;
+            foreach (Starfighter fighter in _starfighters)
+                yield return fighter;
+            foreach (Regiment regiment in _regiments)
+                yield return regiment;
+            foreach (SpecialForces unit in _specialForces)
+                yield return unit;
         }
     }
 }

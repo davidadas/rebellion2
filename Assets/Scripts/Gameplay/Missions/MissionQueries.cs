@@ -441,8 +441,9 @@ namespace Rebellion.Gameplay
                 if (mission == null && !TryCreateMission(context, out mission))
                     return null;
 
+                IReadOnlyList<IMissionParticipant> mainParticipants = mission.GetMainParticipants();
                 double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
-                    mission.GetMainParticipants(),
+                    mainParticipants,
                     _game,
                     context.Location as Planet,
                     context.SelectedTarget,
@@ -450,6 +451,8 @@ namespace Rebellion.Gameplay
                 );
                 if (objectiveSuccessProbability < minimumOverallProbability)
                     return null;
+                IReadOnlyList<IMissionParticipant> decoyParticipants =
+                    mission.GetDecoyParticipants();
                 double foilProbability;
                 double personnelLossProbability;
                 if (includePersonnelLoss)
@@ -458,7 +461,9 @@ namespace Rebellion.Gameplay
                         mission,
                         context.Location as Planet,
                         context.SelectedTarget ?? context.Location,
-                        observedDetectorSource
+                        observedDetectorSource,
+                        mainParticipants,
+                        decoyParticipants
                     );
                 }
                 else
@@ -470,7 +475,9 @@ namespace Rebellion.Gameplay
                         observedDetectorSource,
                         minimumOverallProbability,
                         objectiveSuccessProbability,
-                        reusableDecoys
+                        reusableDecoys,
+                        mainParticipants,
+                        decoyParticipants
                     );
                     if (!estimatedFoil.HasValue)
                         return null;
@@ -501,6 +508,8 @@ namespace Rebellion.Gameplay
         /// <param name="minimumOverallProbability">The required success percentage, or zero for an unbounded query.</param>
         /// <param name="objectiveSuccessProbability">The team's objective success percentage.</param>
         /// <param name="reusableDecoys">Whether decoys may be reused to calculate an optimistic bound.</param>
+        /// <param name="mainParticipants">The active primary roster captured for this synchronous evaluation.</param>
+        /// <param name="allDecoys">The active decoy roster captured for this synchronous evaluation.</param>
         /// <returns>The cumulative foil percentage, or null when the requested floor is unreachable.</returns>
         private double? EstimateFoilProbability(
             Mission mission,
@@ -513,15 +522,16 @@ namespace Rebellion.Gameplay
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
-            double minimumOverallProbability = 0,
-            double objectiveSuccessProbability = 100,
-            bool reusableDecoys = false
+            double minimumOverallProbability,
+            double objectiveSuccessProbability,
+            bool reusableDecoys,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
             if (mission == null || target == null)
                 return 0;
 
-            IReadOnlyList<IMissionParticipant> allDecoys = mission.GetDecoyParticipants();
             BigInteger availableDecoys =
                 allDecoys.Count == 0
                     ? BigInteger.Zero
@@ -531,16 +541,15 @@ namespace Rebellion.Gameplay
                 { availableDecoys, 1d },
             };
 
-            List<Planet> origins = mission
-                .GetAllParticipants()
+            List<Planet> origins = mainParticipants
+                .Concat(allDecoys)
                 .Select(participant => participant.GetParentOfType<Planet>())
                 .Where(planet => planet != null)
                 .Distinct()
                 .ToList();
             foreach (Planet origin in origins)
             {
-                IReadOnlyList<IMissionParticipant> mainParticipants = mission
-                    .GetMainParticipants()
+                IReadOnlyList<IMissionParticipant> departingParticipants = mainParticipants
                     .Where(participant => participant.GetParentOfType<Planet>() == origin)
                     .ToList();
                 if (
@@ -549,7 +558,7 @@ namespace Rebellion.Gameplay
                         origin,
                         objective,
                         MissionEncounterPhase.DepartureStart,
-                        mainParticipants,
+                        departingParticipants,
                         allDecoys,
                         GetDecoyIndexesAtPlanet(allDecoys, origin),
                         observedDetectorSource,
@@ -566,7 +575,7 @@ namespace Rebellion.Gameplay
                         origin,
                         objective,
                         MissionEncounterPhase.DepartureComplete,
-                        mainParticipants,
+                        departingParticipants,
                         allDecoys,
                         GetDecoyIndexesAtPlanet(allDecoys, origin),
                         observedDetectorSource,
@@ -586,7 +595,7 @@ namespace Rebellion.Gameplay
                     target,
                     objective,
                     MissionEncounterPhase.Arrival,
-                    mission.GetMainParticipants(),
+                    mainParticipants,
                     allDecoys,
                     allDecoyIndexes,
                     observedDetectorSource,
@@ -603,7 +612,7 @@ namespace Rebellion.Gameplay
                     target,
                     objective,
                     MissionEncounterPhase.PreObjective,
-                    mission.GetMainParticipants(),
+                    mainParticipants,
                     allDecoys,
                     allDecoyIndexes,
                     observedDetectorSource,
@@ -1061,6 +1070,8 @@ namespace Rebellion.Gameplay
         /// <param name="observedDetectorSource">
         /// Optional source of detector candidates from the caller's observed state.
         /// </param>
+        /// <param name="mainParticipants">The active primary roster captured for this synchronous evaluation.</param>
+        /// <param name="allDecoys">The active decoy roster captured for this synchronous evaluation.</param>
         /// <returns>The cumulative foil and personnel-loss percentages.</returns>
         private (double FoilProbability, double PersonnelLossProbability) EstimateEncounterOdds(
             Mission mission,
@@ -1072,13 +1083,14 @@ namespace Rebellion.Gameplay
                 MissionEncounterPhase,
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
-            > observedDetectorSource
+            > observedDetectorSource,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
             if (mission == null || target == null)
                 return (0, 0);
 
-            IReadOnlyList<IMissionParticipant> allDecoys = mission.GetDecoyParticipants();
             BigInteger availableDecoys =
                 allDecoys.Count == 0
                     ? BigInteger.Zero
@@ -1090,16 +1102,15 @@ namespace Rebellion.Gameplay
             double foilProbability = 0;
             double personnelLossProbability = 0;
 
-            List<Planet> origins = mission
-                .GetAllParticipants()
+            List<Planet> origins = mainParticipants
+                .Concat(allDecoys)
                 .Select(participant => participant.GetParentOfType<Planet>())
                 .Where(planet => planet != null)
                 .Distinct()
                 .ToList();
             foreach (Planet origin in origins)
             {
-                IReadOnlyList<IMissionParticipant> mainParticipants = mission
-                    .GetMainParticipants()
+                IReadOnlyList<IMissionParticipant> departingParticipants = mainParticipants
                     .Where(participant => participant.GetParentOfType<Planet>() == origin)
                     .ToList();
                 IReadOnlyList<int> decoyIndexes = GetDecoyIndexesAtPlanet(allDecoys, origin);
@@ -1108,7 +1119,7 @@ namespace Rebellion.Gameplay
                     origin,
                     objective,
                     MissionEncounterPhase.DepartureStart,
-                    mainParticipants,
+                    departingParticipants,
                     allDecoys,
                     decoyIndexes,
                     observedDetectorSource,
@@ -1121,7 +1132,7 @@ namespace Rebellion.Gameplay
                     origin,
                     objective,
                     MissionEncounterPhase.DepartureComplete,
-                    mainParticipants,
+                    departingParticipants,
                     allDecoys,
                     decoyIndexes,
                     observedDetectorSource,
@@ -1137,7 +1148,7 @@ namespace Rebellion.Gameplay
                 target,
                 objective,
                 MissionEncounterPhase.Arrival,
-                mission.GetMainParticipants(),
+                mainParticipants,
                 allDecoys,
                 allDecoyIndexes,
                 observedDetectorSource,
@@ -1150,7 +1161,7 @@ namespace Rebellion.Gameplay
                 target,
                 objective,
                 MissionEncounterPhase.PreObjective,
-                mission.GetMainParticipants(),
+                mainParticipants,
                 allDecoys,
                 allDecoyIndexes,
                 observedDetectorSource,

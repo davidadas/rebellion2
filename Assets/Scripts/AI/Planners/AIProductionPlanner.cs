@@ -158,6 +158,7 @@ namespace Rebellion.AI.Planners
                     context.StrategicPlan.GetInfrastructurePlanets(demand.BuildingType).ToList()
             );
             var references = new Dictionary<BuildingType, ILookup<string, Planet>>();
+            var capacities = new Dictionary<(Planet Planet, BuildingType Type, int Target), int>();
             foreach (
                 string sectorId in eligible
                     .Values.SelectMany(planets => planets)
@@ -198,7 +199,8 @@ namespace Rebellion.AI.Planners
                     capacityDemands,
                     sectorPlanets,
                     referencePlanets,
-                    placementScorer
+                    placementScorer,
+                    capacities
                 );
                 if (best == null)
                     continue;
@@ -259,6 +261,7 @@ namespace Rebellion.AI.Planners
         /// <param name="sectorPlanets">Eligible destinations indexed by facility category.</param>
         /// <param name="referencePlanets">The fixed demand destination for each unfinished category.</param>
         /// <param name="placementScorer">The facility destination scorer.</param>
+        /// <param name="capacities">Capacity queries shared while strategic allocations remain unchanged.</param>
         /// <returns>The preferred trial layout before any allocation is committed.</returns>
         private static Dictionary<
             (BuildingType Type, int Index),
@@ -269,7 +272,8 @@ namespace Rebellion.AI.Planners
             IReadOnlyList<AIProductionDemand> capacityDemands,
             IReadOnlyDictionary<BuildingType, List<Planet>> sectorPlanets,
             IReadOnlyDictionary<BuildingType, Planet> referencePlanets,
-            AIInfrastructurePlacementScorer placementScorer
+            AIInfrastructurePlacementScorer placementScorer,
+            IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
         )
         {
             Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
@@ -283,7 +287,8 @@ namespace Rebellion.AI.Planners
                     order,
                     sectorPlanets,
                     referencePlanets,
-                    placementScorer
+                    placementScorer,
+                    capacities
                 );
                 double constructionCoverage = layout
                     .Where(entry => entry.Key.Type == BuildingType.ConstructionFacility)
@@ -337,6 +342,7 @@ namespace Rebellion.AI.Planners
         /// <param name="sectorPlanets">The fixed eligible destinations by category.</param>
         /// <param name="referencePlanets">The fixed demand destinations by category.</param>
         /// <param name="placementScorer">The facility destination scorer.</param>
+        /// <param name="capacities">Capacity queries shared while strategic allocations remain unchanged.</param>
         /// <returns>A trial layout without mutating the strategic allocations.</returns>
         private static Dictionary<
             (BuildingType Type, int Index),
@@ -346,7 +352,8 @@ namespace Rebellion.AI.Planners
             IReadOnlyList<AIProductionDemand> order,
             IReadOnlyDictionary<BuildingType, List<Planet>> sectorPlanets,
             IReadOnlyDictionary<BuildingType, Planet> referencePlanets,
-            AIInfrastructurePlacementScorer placementScorer
+            AIInfrastructurePlacementScorer placementScorer,
+            IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
         )
         {
             var layout =
@@ -365,13 +372,20 @@ namespace Rebellion.AI.Planners
                 };
                 int hubTarget = 0;
                 Func<Planet, int> availableSpace = planet =>
-                    Math.Max(
-                        0,
-                        context.StrategicPlan.GetReclaimableInfrastructureSpace(
+                {
+                    var key = (planet, type, hubTarget);
+                    if (!capacities.TryGetValue(key, out int capacity))
+                    {
+                        capacity = context.StrategicPlan.GetReclaimableInfrastructureSpace(
                             planet,
                             type,
                             hubTarget
-                        )
+                        );
+                        capacities.Add(key, capacity);
+                    }
+                    return Math.Max(
+                        0,
+                        capacity
                             - layout
                                 .Where(entry =>
                                     entry.Value.Planet == planet && entry.Key.Type != type
@@ -384,6 +398,7 @@ namespace Rebellion.AI.Planners
                                     )
                                 )
                     );
+                };
                 IReadOnlyList<int> targets = context.StrategicPlan.GetInfrastructureHubTargets(
                     type
                 );

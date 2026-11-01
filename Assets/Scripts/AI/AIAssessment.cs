@@ -115,13 +115,14 @@ namespace Rebellion.AI
                 string Owner,
                 ISceneNode Location,
                 string TargetOwner,
+                bool PlanetaryObjective,
                 string MainParticipants,
                 string DecoyParticipants,
                 bool OperationalOnly,
                 Planet Departure
             ),
             (double Foil, double PersonnelLoss)
-        > _sabotageBuildingRisks = new();
+        > _sabotageEncounterRisks = new();
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -1890,18 +1891,21 @@ namespace Rebellion.AI
                     key.Owner,
                     key.Location,
                     TargetOwner: context.SelectedTarget?.GetOwnerInstanceID(),
+                    PlanetaryObjective: MissionQueries.UsesPlanetaryDetectors(
+                        MissionEncounterPhase.PreObjective,
+                        context.SelectedTarget
+                    ),
                     key.MainParticipants,
                     key.DecoyParticipants,
                     key.OperationalOnly,
                     key.Departure
                 );
-                bool sharesBuildingEncounters =
+                bool sharesSabotageEncounters =
                     context.MissionTypeID == MissionTypeIDs.Sabotage
-                    && context.SelectedTarget is Building building
-                    && building.GetParent() is Planet;
+                    && context.SelectedTarget is IManufacturable;
                 if (
-                    sharesBuildingEncounters
-                    && _sabotageBuildingRisks.TryGetValue(riskKey, out var risk)
+                    sharesSabotageEncounters
+                    && _sabotageEncounterRisks.TryGetValue(riskKey, out var risk)
                 )
                 {
                     Mission mission;
@@ -1928,8 +1932,8 @@ namespace Rebellion.AI
                         minimumOverallProbability,
                         departure
                     );
-                    if (sharesBuildingEncounters && odds != null)
-                        _sabotageBuildingRisks[riskKey] = (
+                    if (sharesSabotageEncounters && odds != null)
+                        _sabotageEncounterRisks[riskKey] = (
                             odds.FoilProbability,
                             odds.PersonnelLossProbability
                         );

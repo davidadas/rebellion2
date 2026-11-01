@@ -256,7 +256,7 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        /// Copies direct children while sharing ancestor validation within this snapshot only.
+        /// Copies direct children while sharing each parent hierarchy's validation within this query only.
         /// </summary>
         /// <typeparam name="T">The child type to include.</typeparam>
         /// <param name="includeDisabled">Whether inactive children may be returned.</param>
@@ -264,29 +264,45 @@ namespace Rebellion.SceneGraph
         private IReadOnlyList<T> GetDirectChildren<T>(bool includeDisabled)
             where T : class, ISceneNode
         {
-            List<T> children = new List<T>();
+            List<T> children = null;
             bool? containerIsActive = null;
+            ISceneNode sharedParent = null;
+            bool? sharedParentIsActive = null;
             foreach (ISceneNode child in EnumerateChildren())
             {
                 if (!includeDisabled)
                 {
-                    if (ReferenceEquals(child.GetParent(), this))
+                    if (!child.IsEnabled)
+                        continue;
+                    ISceneNode parent = child.GetParent();
+                    if (ReferenceEquals(parent, this))
                     {
-                        if (!child.IsEnabled)
-                            continue;
                         containerIsActive ??= IsActive();
                         if (!containerIsActive.Value)
                             continue;
                     }
-                    else if (!child.IsActive())
-                        continue;
+                    else
+                    {
+                        if (
+                            !sharedParentIsActive.HasValue || !ReferenceEquals(sharedParent, parent)
+                        )
+                        {
+                            sharedParent = parent;
+                            sharedParentIsActive = child.IsActive();
+                        }
+                        if (!sharedParentIsActive.Value)
+                            continue;
+                    }
                 }
 
                 if (child is T matchingChild)
+                {
+                    children ??= new List<T>();
                     children.Add(matchingChild);
+                }
             }
 
-            return children.AsReadOnly();
+            return children == null ? Array.Empty<T>() : children.AsReadOnly();
         }
 
         /// <summary>
