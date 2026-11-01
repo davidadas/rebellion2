@@ -48,6 +48,15 @@ public sealed class InputManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Disables every created action map before Unity suspends this manager or reloads scripts.
+    /// </summary>
+    private void OnDisable()
+    {
+        if (_actions != null)
+            DisableAllActionMaps();
+    }
+
+    /// <summary>
     /// Disables and disposes the generated input action wrapper.
     /// </summary>
     private void OnDestroy()

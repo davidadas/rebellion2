@@ -65,8 +65,9 @@ jobs:
 
   build:
     name: Build (${{ matrix.targetPlatform }})
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [lint, resolve-media]
+    needs: resolve-media
     environment: production
     permissions:
       contents: read
@@ -74,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform: ${{ fromJSON(github.event_name == 'pull_request' && '["StandaloneLinux64"]' || '["StandaloneWindows64", "StandaloneLinux64", "StandaloneOSX"]') }}
+        targetPlatform: [StandaloneWindows64, StandaloneLinux64, StandaloneOSX]
 
     steps:
       - name: Checkout repository
@@ -89,7 +90,7 @@ jobs:
           lfs: false
           path: .ci/rebellion2-media
 
-      - name: Pull media LFS from R2
+      - name: Pull media LFS and Unity image
         working-directory: .ci/rebellion2-media
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -97,6 +98,23 @@ jobs:
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
+          case "${{ matrix.targetPlatform }}" in
+            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
+            StandaloneWindows64) MODULE="windows-mono" ;;
+            StandaloneOSX)       MODULE="mac-mono" ;;
+          esac
+          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
+          (
+            for attempt in 1 2 3; do
+              docker pull "$IMAGE" && exit 0
+              echo "Attempt $attempt failed, retrying in 30s..."
+              sleep 30
+            done
+            exit 1
+          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+          pull_pid=$!
+          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
@@ -121,6 +139,13 @@ jobs:
             exit 1
           fi
 
+          if ! wait "$pull_pid"; then
+            cat "$RUNNER_TEMP/unity-image-pull.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/unity-image-pull.log"
+          trap - EXIT
+
       - name: Install media
         run: |
           mkdir -p Assets/Content Assets/Art/Models/MainMenu
@@ -129,59 +154,6 @@ jobs:
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
-
-      - name: Restore Unity build Library
-        id: build-library
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            Library/Bee
-            Library/BuildPlayerData
-            Library/ScriptAssemblies
-            Library/ShaderCache
-          key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-
-      - name: Restore prepared runtime UI
-        id: runtime-ui
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            Assets/Prefabs
-            Assets/Prefabs.meta
-            Assets/Resources/UI
-            Assets/Scenes
-            Assets/Scenes.meta
-          key: >-
-            RuntimeUI-${{ needs.resolve-media.outputs.sha }}-${{
-              hashFiles(
-                'Assets/Editor/Content/**',
-                'Assets/Editor/PrefabBuilders/**',
-                'Assets/Editor/SceneBuilders/**',
-                'Assets/Scripts/ContentEditor/UI/**',
-                'Assets/Scripts/UI/**',
-                'Assets/Shaders/**',
-                'Packages/manifest.json',
-                'Packages/packages-lock.json',
-                'ProjectSettings/**'
-              )
-            }}
-
-      - name: Pre-pull Unity Docker image
-        run: |
-          case "${{ matrix.targetPlatform }}" in
-            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
-            StandaloneWindows64) MODULE="windows-mono" ;;
-            StandaloneOSX)       MODULE="mac-mono" ;;
-          esac
-          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
-          for attempt in 1 2 3; do
-            docker pull "$IMAGE" && exit 0
-            echo "Attempt $attempt failed, retrying in 30s..."
-            sleep 30
-          done
-          exit 1
 
       - name: Build project
         id: unity-build
@@ -197,33 +169,6 @@ jobs:
           buildMethod: StandalonePlayerBuild.Build
           buildName: rebellion2
           buildsPath: build
-          customParameters: ${{ steps.runtime-ui.outputs.cache-hit == 'true' && '-skipRuntimeUIBuild' || '' }}
-
-      - name: Save prepared runtime UI
-        if: >-
-          ${{ !cancelled()
-              && steps.unity-build.outcome == 'success'
-              && steps.runtime-ui.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            Assets/Prefabs
-            Assets/Prefabs.meta
-            Assets/Resources/UI
-            Assets/Scenes
-            Assets/Scenes.meta
-          key: ${{ steps.runtime-ui.outputs.cache-primary-key }}
-
-      - name: Save compiled Unity build Library
-        if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            Library/Bee
-            Library/BuildPlayerData
-            Library/ScriptAssemblies
-            Library/ShaderCache
-          key: ${{ steps.build-library.outputs.cache-primary-key }}
 
       - name: Package verified desktop bundle
         shell: bash
@@ -236,15 +181,6 @@ jobs:
             --platform "${{ matrix.targetPlatform }}" \
             --build-dir "build/${{ matrix.targetPlatform }}" \
             --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
-
-      - name: Upload desktop bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: rebellion2-${{ matrix.targetPlatform }}
-          path: dist/rebellion2-${{ matrix.targetPlatform }}.*
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
 
       - name: Reset package files
         run: |
@@ -260,14 +196,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-lint-${{ github.sha }}
-          restore-keys: |
-            Library-lint-
-            Library-
 
       - name: Install tools
         run: |
@@ -337,7 +265,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: [lint, resolve-media]
+    needs: resolve-media
     environment: production
     permissions:
       checks: write
@@ -357,7 +285,7 @@ jobs:
           lfs: false
           path: .ci/rebellion2-media
 
-      - name: Pull media LFS from R2
+      - name: Pull media LFS and Unity image
         working-directory: .ci/rebellion2-media
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -365,6 +293,18 @@ jobs:
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
+          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          (
+            for attempt in 1 2 3; do
+              docker pull "$BASE_IMAGE" && exit 0
+              echo "Attempt $attempt failed, retrying in 30s..."
+              sleep 30
+            done
+            exit 1
+          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+          pull_pid=$!
+          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
@@ -389,6 +329,13 @@ jobs:
             exit 1
           fi
 
+          if ! wait "$pull_pid"; then
+            cat "$RUNNER_TEMP/unity-image-pull.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/unity-image-pull.log"
+          trap - EXIT
+
       - name: Install media
         run: |
           mkdir -p Assets/Content Assets/Art/Models/MainMenu
@@ -401,7 +348,6 @@ jobs:
       - name: Prepare Vulkan-enabled Unity test image
         run: |
           BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
-          docker pull "$BASE_IMAGE"
           docker build \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --tag rebellion2-unity-test:vulkan \

@@ -107,6 +107,31 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [Test]
+        public void EnabledState_InitializedController_DisablesAndRestoresGlobalActions()
+        {
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+
+            try
+            {
+                controller.Initialize(inputManager, new CancelStack(), null);
+                InputActionMap globalActions = inputManager.Asset.FindActionMap("Global", true);
+                Assert.IsTrue(globalActions.enabled);
+
+                root.SetActive(false);
+                Assert.IsFalse(globalActions.enabled);
+
+                root.SetActive(true);
+                Assert.IsTrue(globalActions.enabled);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void GetSlowerGameSpeed_SupportedSpeeds_StepsTowardPaused()
         {
             Assert.AreEqual(
