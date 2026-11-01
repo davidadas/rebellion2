@@ -53,6 +53,7 @@ require_command() {
 }
 
 run_unity_editmode_tests() {
+    rm -f -- "$TEST_RESULTS"
     "$UNITY" \
         -runTests \
         -testPlatform EditMode \
@@ -62,6 +63,11 @@ run_unity_editmode_tests() {
         -batchmode \
         -nographics \
         "$@"
+
+    if [ ! -s "$TEST_RESULTS" ]; then
+        echo "FAIL: Unity exited without writing test results: $TEST_RESULTS"
+        return 1
+    fi
 }
 
 parse_coverage_percent() {
