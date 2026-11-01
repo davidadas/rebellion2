@@ -359,6 +359,12 @@ namespace Rebellion.Game
 
             public int MinimumAttackStrength { get; set; }
 
+            public int SupportOpportunityMinimumAttackStrengthPercent { get; set; } = 100;
+
+            public int SupportOpportunityMaximumIntelAgeTicks { get; set; }
+
+            public int SupportOpportunityMaximumTravelTicks { get; set; }
+
             public int MinimumMobileCombatStrength { get; set; }
 
             public int MobileCombatStrengthPerPlanet { get; set; }
@@ -668,6 +674,15 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIProductionUtilityConfig
         {
+            public AIConsiderationConfig IndustrialDefense { get; set; } =
+                new AIConsiderationConfig();
+
+            public AIConsiderationConfig FacilityAvailability { get; set; } =
+                new AIConsiderationConfig();
+
+            public AIConsiderationConfig LocalConstructionGrowth { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig CompletionTime { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig InterruptionCost { get; set; } =

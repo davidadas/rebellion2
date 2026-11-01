@@ -901,7 +901,32 @@ namespace Rebellion.AI.Planners
             }
 
             if (demand.ExistingOrder != null)
+            {
+                if (demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+                {
+                    Planet producer = context.Game.GetSceneNodeByInstanceID<Planet>(
+                        demand.ExistingOrder.ProducerPlanetID
+                    );
+                    Technology continuationProduct = GetUnlockedTechnologies(
+                            context,
+                            demand.ManufacturingType
+                        )
+                        .FirstOrDefault(technology =>
+                            technology.GetReference().GetTypeID()
+                            == demand.ExistingOrder.GetTypeID()
+                        );
+                    if (producer != null && continuationProduct != null)
+                        proposals.Add(
+                            new AIManufactureProposal(
+                                demand,
+                                producer,
+                                continuationProduct,
+                                distributesDemand: false
+                            )
+                        );
+                }
                 return;
+            }
 
             Technology product = GetUnlockedTechnology(context, demand);
             if (product == null)
@@ -942,7 +967,8 @@ namespace Rebellion.AI.Planners
                         remainingQuantity,
                         producerPlanets,
                         proposals,
-                        distributesDemand: false
+                        distributesDemand: demand.Kind
+                            == AIProductionDemandKind.ConstructionFacility
                     );
                 else
                     AddEquivalentProducerProposal(
@@ -1372,30 +1398,10 @@ namespace Rebellion.AI.Planners
         /// <returns>The available maintenance budget.</returns>
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
         {
-            if (IsFacilityExpansionDemand(demand))
-                return GetFacilityMaintenanceBudget(context);
-
-            if (demand.UsesDefensiveReserve)
-                return GetDefensiveMaintenanceBudget(context);
-
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
-            );
-        }
-
-        /// <summary>
-        /// Returns the maintenance budget allocated to production-facility expansion.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The remaining facility maintenance budget.</returns>
-        private int GetFacilityMaintenanceBudget(AITurnContext context)
-        {
-            return Math.Max(
-                0,
-                context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                    - context.GetMinimumManufacturingHeadroom(demand)
             );
         }
 
@@ -1710,7 +1716,7 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
-            int maintenanceBudget = GetFacilityMaintenanceBudget(context);
+            int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
             int maintenanceLimit =
                 building.MaintenanceCost > 0
                     ? maintenanceBudget / building.MaintenanceCost
@@ -1931,6 +1937,10 @@ namespace Rebellion.AI.Planners
                 .Where(technology =>
                     technology.GetReference() is CapitalShip capitalShip
                     && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID)
+                    && (
+                        demand.DestinationFleet?.Order?.OrderType != FleetOrderType.Defend
+                        || !capitalShip.HasRole(CapitalShipRole.Transport)
+                    )
                     && (!capitalShip.CanDestroyPlanets || demand.PlanetDestroyerDeficit > 0)
                     && (producer == null || CanBuildCapitalShip(context, producer, capitalShip))
                 )
@@ -2359,47 +2369,27 @@ namespace Rebellion.AI.Planners
                     ) == null
                 )
             );
-            producers =
-                mode == ProducerMode.FacilityExpansion
-                    ? eligibleProducers
-                        .OrderBy(planet =>
-                            context.Assessment.GetProductionBacklogTicks(
-                                planet,
-                                ManufacturingType.Building
-                            )
-                        )
-                        .ThenByDescending(planet =>
-                            context.Assessment.GetPlanetProductionRate(
-                                planet,
-                                ManufacturingType.Building
-                            )
-                        )
-                        .ThenBy(planet =>
-                            destinationPlanet == null
-                                ? 0
-                                : destinationPlanet.GetRawDistanceTo(planet)
-                        )
-                        .ThenBy(planet => planet.InstanceID)
-                        .ToList()
-                    : eligibleProducers
-                        .OrderBy(planet =>
-                            GetProducerFulfillmentTicks(
-                                context,
-                                demand,
-                                product,
-                                quantity,
-                                planet,
-                                destinationPlanet
-                            )
-                        )
-                        .ThenByDescending(planet =>
-                            context.Assessment.GetPlanetProductionRate(
-                                planet,
-                                demand.ManufacturingType
-                            )
-                        )
-                        .ThenBy(planet => planet.InstanceID)
-                        .ToList();
+            producers = eligibleProducers
+                .OrderBy(planet =>
+                    GetProducerFulfillmentTicks(
+                        context,
+                        demand,
+                        product,
+                        quantity,
+                        planet,
+                        destinationPlanet
+                    )
+                )
+                .ThenByDescending(planet =>
+                    context.Assessment.GetPlanetProductionRate(planet, demand.ManufacturingType)
+                )
+                .ThenBy(planet =>
+                    mode == ProducerMode.FacilityExpansion && destinationPlanet != null
+                        ? destinationPlanet.GetRawDistanceTo(planet)
+                        : 0
+                )
+                .ThenBy(planet => planet.InstanceID)
+                .ToList();
             _producerPlanets.Add(key, producers);
             return producers;
         }
@@ -2413,7 +2403,7 @@ namespace Rebellion.AI.Planners
         /// <param name="quantity">The quantity required by the demand.</param>
         /// <param name="producer">The candidate producer.</param>
         /// <param name="destinationPlanet">The destination planet, when available.</param>
-        /// <returns>Estimated arrival ticks for fleet reinforcements, otherwise raw distance.</returns>
+        /// <returns>Estimated arrival ticks for facility expansion and fleet reinforcements, otherwise raw distance.</returns>
         private double GetProducerFulfillmentTicks(
             AITurnContext context,
             AIProductionDemand demand,
@@ -2423,7 +2413,11 @@ namespace Rebellion.AI.Planners
             Planet destinationPlanet
         )
         {
-            if (demand.DestinationFleet != null && product is IMovable movable)
+            bool expandsFacilities = IsFacilityExpansionDemand(demand);
+            if (
+                (demand.DestinationFleet != null || expandsFacilities)
+                && product is IMovable movable
+            )
             {
                 return GetReinforcementArrivalTicks(
                     context,
@@ -2431,7 +2425,7 @@ namespace Rebellion.AI.Planners
                     demand.DeliveryDestination,
                     product,
                     movable,
-                    quantity
+                    expandsFacilities ? 1 : quantity
                 );
             }
 
@@ -2525,6 +2519,16 @@ namespace Rebellion.AI.Planners
         {
             if (demand?.ManufacturingType != ManufacturingType.Ship)
                 return true;
+
+            if (
+                demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                && producer != demand.DestinationPlanet
+                && context.Assessment.GetPlanetProductionFacilityCount(
+                    demand.DestinationPlanet,
+                    ManufacturingType.Ship
+                ) > 0
+            )
+                return false;
 
             int shipyardCount = context.Assessment.GetPlanetProductionFacilityCount(
                 producer,

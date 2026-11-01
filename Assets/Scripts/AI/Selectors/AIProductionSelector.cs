@@ -36,6 +36,10 @@ namespace Rebellion.AI.Selectors
         private readonly Dictionary<string, BuildingType> _reservedFacilityRoles = new(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<
+            (string PlanetId, BuildingType Type),
+            int
+        > _selectedFacilityCounts = new();
         private readonly HashSet<string> _drainingProducerStreams = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _continuedBuildingCounts = new(
             StringComparer.Ordinal
@@ -320,7 +324,7 @@ namespace Rebellion.AI.Selectors
                     return false;
                 }
                 if (requirement.Contribution((CapitalShip)proposal.Product.GetReference()) <= 0)
-                    return TryCreateNextFleetProposal(context, proposal, out selectedProposal);
+                    return TryCreateNextProductionProposal(context, proposal, out selectedProposal);
             }
             int equivalentProducerCount = proposal.ManufacturingCount;
             if (TryResolveProducer(context, proposal, out selectedProposal))
@@ -346,7 +350,7 @@ namespace Rebellion.AI.Selectors
 
             if (
                 proposal.CapitalShipChoices.Count > 0
-                && TryCreateNextFleetProposal(context, proposal, out selectedProposal)
+                && TryCreateNextProductionProposal(context, proposal, out selectedProposal)
             )
                 return true;
             selectedProposal = proposal;
@@ -354,19 +358,35 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Chooses a fresh hull for uncovered fleet needs and ranks its remaining producer options.
+        /// Selects another available producer for an uncovered construction or fleet requirement.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
-        /// <param name="request">The original hull and producer catalogue.</param>
+        /// <param name="request">The original product and producer alternatives.</param>
         /// <param name="next">The next independently selected and scored production request.</param>
-        /// <returns>True when an available producer can fill an uncovered fleet capability.</returns>
-        internal bool TryCreateNextFleetProposal(
+        /// <returns>True when an available producer can fill the remaining requirement.</returns>
+        internal bool TryCreateNextProductionProposal(
             AITurnContext context,
             AIManufactureProposal request,
             out AIManufactureProposal next
         )
         {
             next = null;
+            if (request.Demand.Kind == AIProductionDemandKind.ConstructionFacility)
+            {
+                AIManufactureProposal[] producers = new[] { request }
+                    .Concat(request.ProducerAlternatives)
+                    .Where(candidate => CanSelect(context, candidate))
+                    .ToArray();
+                foreach (AIManufactureProposal candidate in producers)
+                    candidate.SetScore(_scorer.Score(context, candidate));
+                producers = producers.OrderByDescending(candidate => candidate.Score).ToArray();
+                if (producers.Length == 0)
+                    return false;
+                next = new AIManufactureProposal(producers);
+                next.SetScore(producers[0].Score);
+                return true;
+            }
+
             if (request.CapitalShipChoices.Count == 0)
                 return false;
             AIProductionDemand remaining = _selectionState.GetRemainingFleetDemand(
@@ -484,10 +504,10 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the action can reserve its maintenance cost.</returns>
         internal bool CanReserve(AITurnContext context, AIManufactureProposal proposal)
         {
-            return _selectionState.CanReserve(GetReservations(proposal))
+            return _selectionState.CanReserve(GetReservations(proposal, shareConstruction: true))
                 && (proposal.IsContinuation || !WouldExceedMaintenanceHeadroom(context, proposal))
                 && CanReserveIdleShipyardCapacity(context, proposal)
-                && CanReserveFacilityRole(proposal);
+                && CanReserveFacilityRole(context, proposal);
         }
 
         /// <summary>
@@ -536,11 +556,11 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Prioritizes completing a sector's primary industrial pair within existing expansion slots.
+        /// Orders industrial choices by scored value, using hub progress to break ties.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposals">Ranked proposals whose unrelated domain positions are preserved.</param>
-        /// <returns>The proposals with viable industrial steps ordered ahead of further expansion.</returns>
+        /// <returns>The proposals with industrial slots ordered by utility and then hub progress.</returns>
         internal List<AIProposal> OrderInfrastructureProduction(
             AITurnContext context,
             IEnumerable<AIProposal> proposals
@@ -550,7 +570,7 @@ namespace Rebellion.AI.Selectors
             Dictionary<string, (BuildingType NextType, double Completion)> development = new(
                 StringComparer.Ordinal
             );
-            Dictionary<AIProposal, (bool NextStep, double Completion)> priorities = new();
+            Dictionary<AIProposal, (bool NextStep, double Investment)> priorities = new();
             foreach (AIManufactureProposal proposal in ordered.OfType<AIManufactureProposal>())
             {
                 if (
@@ -575,7 +595,34 @@ namespace Rebellion.AI.Selectors
                 bool nextStep =
                     proposal.Demand.InfrastructureHubIndex == 0
                     && proposal.Demand.BuildingType == step.NextType;
-                priorities.Add(proposal, (nextStep, nextStep ? step.Completion : 0));
+                double progress = nextStep ? step.Completion : 0;
+                double localGrowth = nextStep
+                    ? System.Math.Clamp(
+                        AIUtility.Evaluate(
+                            AIProductionProposalScorer.GetLocalConstructionGrowth(
+                                context,
+                                proposal
+                            ),
+                            context
+                                .Game
+                                .Config
+                                .AI
+                                .Selection
+                                .ProductionUtility
+                                .LocalConstructionGrowth
+                        ),
+                        0,
+                        1
+                    )
+                    : 0;
+                double availabilityCost = AIUtility.Evaluate(
+                    AIProductionProposalScorer.GetFacilityAvailabilityInput(context, proposal),
+                    context.Game.Config.AI.Selection.ProductionUtility.FacilityAvailability
+                );
+                priorities.Add(
+                    proposal,
+                    (nextStep, progress + (1 - progress) * localGrowth - availabilityCost)
+                );
             }
 
             foreach (
@@ -588,9 +635,9 @@ namespace Rebellion.AI.Selectors
                 int[] slots = group.ToArray();
                 AIProposal[] ranked = slots
                     .Select(index => ordered[index])
-                    .OrderByDescending(proposal => priorities[proposal].NextStep)
-                    .ThenByDescending(proposal => priorities[proposal].Completion)
-                    .ThenByDescending(proposal => proposal.Score)
+                    .OrderByDescending(proposal => proposal.Score)
+                    .ThenByDescending(proposal => priorities[proposal].NextStep)
+                    .ThenByDescending(proposal => priorities[proposal].Investment)
                     .ToArray();
                 for (int index = 0; index < slots.Length; index++)
                     ordered[slots[index]] = ranked[index];
@@ -666,11 +713,11 @@ namespace Rebellion.AI.Selectors
             return proposal?.CanSelect(context) == true
                 && CanReplaceCurrentOrder(context, proposal)
                 && FillsUncommittedFleetNeed(context, proposal)
-                && _selectionState.CanReserve(GetReservations(proposal))
+                && _selectionState.CanReserve(GetReservations(proposal, shareConstruction: true))
                 && HasProducerCapacity(proposal)
                 && GetAvailableDestinationEnergy(context, proposal)
                     >= proposal.GetManufacturingCount()
-                && CanReserveFacilityRole(proposal)
+                && CanReserveFacilityRole(context, proposal)
                 && ContinuesProductionStream(proposal);
         }
 
@@ -728,17 +775,41 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Returns whether a facility proposal preserves the destination's role for this turn.
+        /// Checks the destination's facility role and remaining declared construction-hub target.
         /// </summary>
+        /// <param name="context">The turn containing allocated industrial hub targets.</param>
         /// <param name="proposal">The manufacturing action to inspect.</param>
-        /// <returns>True when the destination is unreserved or reserved for the same facility category.</returns>
-        private bool CanReserveFacilityRole(AIManufactureProposal proposal)
+        /// <returns>True when the facility fits its declared target and preserves the destination role.</returns>
+        private bool CanReserveFacilityRole(AITurnContext context, AIManufactureProposal proposal)
         {
             if (
                 proposal?.IsProductionFacilityExpansion != true
                 || proposal.Destination is not Planet destination
             )
                 return true;
+
+            int target = context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                destination,
+                proposal.Demand.BuildingType
+            );
+            if (
+                proposal.Demand.Kind == AIProductionDemandKind.ConstructionFacility
+                && target > 0
+                && !proposal.ContinuesExistingOrder
+            )
+            {
+                _selectedFacilityCounts.TryGetValue(
+                    (destination.InstanceID, proposal.Demand.BuildingType),
+                    out int selected
+                );
+                if (
+                    destination.GetTotalBuildingTypeCount(proposal.Demand.BuildingType)
+                        + selected
+                        + proposal.GetManufacturingCount()
+                    > target
+                )
+                    return false;
+            }
 
             return !_reservedFacilityRoles.TryGetValue(
                     destination.InstanceID,
@@ -757,7 +828,15 @@ namespace Rebellion.AI.Selectors
                 proposal?.IsProductionFacilityExpansion == true
                 && proposal.Destination is Planet destination
             )
+            {
                 _reservedFacilityRoles[destination.InstanceID] = proposal.Demand.BuildingType;
+                if (!proposal.ContinuesExistingOrder)
+                {
+                    var key = (destination.InstanceID, proposal.Demand.BuildingType);
+                    _selectedFacilityCounts.TryGetValue(key, out int count);
+                    _selectedFacilityCounts[key] = count + proposal.GetManufacturingCount();
+                }
+            }
         }
 
         /// <summary>
@@ -985,8 +1064,12 @@ namespace Rebellion.AI.Selectors
         /// Returns typed reservations for a production proposal.
         /// </summary>
         /// <param name="proposal">Production proposal to inspect.</param>
+        /// <param name="shareConstruction">Whether another producer may expand a construction hub already claimed this turn.</param>
         /// <returns>Reservations required by the proposal.</returns>
-        private static List<AISelectionReservation> GetReservations(AIProposal proposal)
+        private List<AISelectionReservation> GetReservations(
+            AIProposal proposal,
+            bool shareConstruction = false
+        )
         {
             List<AISelectionReservation> reservations = new();
             if (proposal is AIFacilityRemovalProposal removal)
@@ -1052,6 +1135,15 @@ namespace Rebellion.AI.Selectors
                 && building.GetBuildingType()
                     is BuildingType.Shipyard
                         or BuildingType.ConstructionFacility
+                && !(
+                    shareConstruction
+                    && manufacture.Demand.Kind == AIProductionDemandKind.ConstructionFacility
+                    && _reservedFacilityRoles.TryGetValue(
+                        destinationPlanet.InstanceID,
+                        out var role
+                    )
+                    && role == BuildingType.ConstructionFacility
+                )
             )
                 Add(
                     reservations,

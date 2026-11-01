@@ -177,7 +177,11 @@ namespace Rebellion.AI.Proposals
 
             if (order.OrderType == FleetOrderType.Defend)
                 return context.Assessment.IsOwnedPlanet(TargetPlanet)
-                    && context.StrategicPlan.GetDefenseStrength(TargetPlanet) > 0;
+                    && context.StrategicPlan.GetDefenseStrength(TargetPlanet) > 0
+                    && (
+                        Unit is not CapitalShip capitalShip
+                        || !capitalShip.HasRole(CapitalShipRole.Transport)
+                    );
 
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

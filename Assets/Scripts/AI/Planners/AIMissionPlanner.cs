@@ -45,10 +45,6 @@ namespace Rebellion.AI.Planners
         private List<Planet> _sabotageCandidates;
         private readonly List<IMissionParticipant> _sabotageParticipants = new();
         private readonly List<AIMissionProposal> _sabotageTeams = new();
-        private readonly Dictionary<
-            Planet,
-            (Planet Target, double Score)
-        > _assemblingSabotageCampaigns = new();
 
         // Research Disciplines.
         private readonly ResearchDiscipline[] _researchDisciplines =
@@ -92,7 +88,6 @@ namespace Rebellion.AI.Planners
             _sabotageTargets.Clear();
             _sabotageParticipants.Clear();
             _sabotageTeams.Clear();
-            _assemblingSabotageCampaigns.Clear();
             BuildActiveMissionIndexes(context.Assessment.ActiveMissions);
             _diplomacyCandidates = null;
             _preferredRecruiter = null;
@@ -135,12 +130,6 @@ namespace Rebellion.AI.Planners
                     .ToArray()
             )
             {
-                if (
-                    _assemblingSabotageCampaigns.Values.Any(campaign =>
-                        campaign.Target.InstanceID == mission.TargetPlanet.InstanceID
-                    )
-                )
-                    continue;
                 int missionCount = GetSabotageMissionCount(context, mission);
                 if (missionCount <= 1)
                     continue;
@@ -1116,7 +1105,7 @@ namespace Rebellion.AI.Planners
                             departure,
                             GetSabotageMissionCount(context, protectedTeam)
                         );
-                if (waiting != null && waiting.WaitingTicks <= 0)
+                if (waiting?.WaitingTicks <= 0)
                     continue;
                 MissionOdds odds = EvaluateSabotageTeam(context, protectedTeam, departure);
                 if (
@@ -1153,15 +1142,6 @@ namespace Rebellion.AI.Planners
                 }
                 else
                 {
-                    double score = new AIMissionProposalScorer().Score(context, waiting);
-                    if (
-                        score > 0
-                        && (
-                            !_assemblingSabotageCampaigns.TryGetValue(departure, out var campaign)
-                            || score > campaign.Score
-                        )
-                    )
-                        _assemblingSabotageCampaigns[departure] = (planet, score);
                     if (waiting.Participants.Count == 0)
                         return true;
                     if (!waiting.CanSelect(context))
@@ -1513,50 +1493,8 @@ namespace Rebellion.AI.Planners
                 )
                 .ThenBy(target => target.InstanceID)
                 .ToList();
-            if (targets.Count > 0)
-            {
-                double highestPriority = AIMissionProposalScorer.GetSabotageTargetValue(
-                    context,
-                    planet,
-                    targets[0]
-                );
-                targets.RemoveAll(target =>
-                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
-                    != highestPriority
-                );
-            }
-            targets = SelectDistinctSabotageTargetTypes(targets);
             _sabotageTargets.Add(planet.InstanceID, targets);
             return targets;
-        }
-
-        /// <summary>
-        /// Keeps the highest-priority representative of each manufacturable definition. Destroying
-        /// another identical unit at the same planet has the same strategic value, so duplicate
-        /// definitions do not need separate mission candidates.
-        /// </summary>
-        /// <param name="orderedTargets">Targets in descending strategic-priority order.</param>
-        /// <returns>One deterministic representative per manufacturable definition.</returns>
-        private static List<IManufacturable> SelectDistinctSabotageTargetTypes(
-            IEnumerable<IManufacturable> orderedTargets
-        )
-        {
-            HashSet<string> seenTypeIds = new HashSet<string>(StringComparer.Ordinal);
-            List<IManufacturable> distinctTargets = new List<IManufacturable>();
-            foreach (IManufacturable target in orderedTargets)
-            {
-                string typeId = target?.TypeID;
-                if (string.IsNullOrEmpty(typeId))
-                {
-                    distinctTargets.Add(target);
-                    continue;
-                }
-
-                if (seenTypeIds.Add(typeId))
-                    distinctTargets.Add(target);
-            }
-
-            return distinctTargets;
         }
 
         /// <summary>

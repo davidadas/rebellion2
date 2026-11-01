@@ -110,10 +110,17 @@ namespace Rebellion.AI.Demands
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
         public bool IsEmergencyDefense { get; }
+
+        /// <summary>
+        /// Gets whether this turn's shield requirement protects multiple committed or planned construction yards.
+        /// </summary>
+        public bool ProtectsConstructionHub { get; }
         public IManufacturable ExistingOrder { get; }
         public bool IsProductionFiller =>
             Kind == AIProductionDemandKind.IdleSpecialForces
-            || Kind == AIProductionDemandKind.PlanetaryDefense && !IsEmergencyDefense;
+            || Kind == AIProductionDemandKind.PlanetaryDefense
+                && !IsEmergencyDefense
+                && !ProtectsConstructionHub;
         public bool UsesIdleShipyardCapacity { get; }
         public int InfrastructureHubIndex { get; }
 
@@ -169,6 +176,7 @@ namespace Rebellion.AI.Demands
         /// <param name="isEmergencyDefense">Whether a known hostile fleet requires immediate static defense.</param>
         /// <param name="existingOrder">The queued order whose continuation is being evaluated.</param>
         /// <param name="deliveryDestination">The container receiving production before final fleet assignment, or null for direct delivery.</param>
+        /// <param name="protectsConstructionHub">Whether this shield requirement protects multiple committed or planned construction yards.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -199,7 +207,8 @@ namespace Rebellion.AI.Demands
             int combatStrengthDeficit = 0,
             bool isEmergencyDefense = false,
             IManufacturable existingOrder = null,
-            ContainerNode deliveryDestination = null
+            ContainerNode deliveryDestination = null,
+            bool protectsConstructionHub = false
         )
         {
             Id = id;
@@ -215,6 +224,7 @@ namespace Rebellion.AI.Demands
             ReferencePlanet = referencePlanet;
             EstablishesInitialShield = establishesInitialShield;
             IsEmergencyDefense = isEmergencyDefense;
+            ProtectsConstructionHub = protectsConstructionHub;
             ExistingOrder = existingOrder;
             UsesIdleShipyardCapacity = usesIdleShipyardCapacity;
             ProductTypeId = productTypeId;
@@ -271,7 +281,8 @@ namespace Rebellion.AI.Demands
                 CombatStrengthDeficit,
                 IsEmergencyDefense,
                 ExistingOrder,
-                DeliveryDestination
+                DeliveryDestination,
+                ProtectsConstructionHub
             );
         }
 
@@ -389,7 +400,8 @@ namespace Rebellion.AI.Demands
                 combatStrengthDeficit: remaining[AIFleetCapability.CombatStrength],
                 isEmergencyDefense: IsEmergencyDefense,
                 existingOrder: ExistingOrder,
-                deliveryDestination: DeliveryDestination
+                deliveryDestination: DeliveryDestination,
+                protectsConstructionHub: ProtectsConstructionHub
             );
         }
 

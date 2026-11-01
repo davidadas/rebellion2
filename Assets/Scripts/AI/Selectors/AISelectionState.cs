@@ -15,6 +15,7 @@ namespace Rebellion.AI.Selectors
         private readonly HashSet<AISelectionReservation> _reservations = new();
         private readonly Dictionary<string, List<CapitalShip>> _fleetReinforcements = new();
         private readonly HashSet<CapitalShip> _departingCapitalShips = new();
+        private readonly HashSet<string> _capitalShipTransferTargets = new();
 
         /// <summary>
         /// Returns whether all requested resources remain available.
@@ -41,6 +42,37 @@ namespace Rebellion.AI.Selectors
                                 )
                             );
                 }) != true;
+        }
+
+        /// <summary>
+        /// Checks transfer resources while allowing useful hulls to share a receiving fleet.
+        /// </summary>
+        /// <param name="proposal">The proposed transfer.</param>
+        /// <param name="reservations">Resources requested by the transfer.</param>
+        /// <returns>True when exclusive resources remain available.</returns>
+        internal bool CanReserveTransferResources(
+            AITransferUnitProposal proposal,
+            IEnumerable<AISelectionReservation> reservations
+        )
+        {
+            if (
+                proposal.Unit is not CapitalShip
+                || proposal.Destination is not Fleet fleet
+                || !_capitalShipTransferTargets.Contains(fleet.InstanceID)
+            )
+                return CanReserve(reservations);
+
+            return CanReserve(
+                reservations.Where(reservation =>
+                    reservation.PrimaryId != fleet.InstanceID
+                    || reservation.Kind
+                        is not (
+                            AISelectionReservationKind.ContainerTransferTarget
+                            or AISelectionReservationKind.FleetTransferTarget
+                            or AISelectionReservationKind.FleetCapitalReinforcement
+                        )
+                )
+            );
         }
 
         /// <summary>
@@ -160,6 +192,7 @@ namespace Rebellion.AI.Selectors
         {
             if (proposal.Unit is CapitalShip ship)
             {
+                _capitalShipTransferTargets.Add(proposal.TargetFleet.InstanceID);
                 ReserveFleetHull(proposal.TargetFleet, ship);
                 _departingCapitalShips.Add(ship);
             }

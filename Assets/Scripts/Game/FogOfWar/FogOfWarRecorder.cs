@@ -574,6 +574,13 @@ namespace Rebellion.Game.FogOfWar
             if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
                 UpdatePlanetState(snapshot, planet, currentTick);
             snapshot.RevealedCategories = accumulatedCategories;
+            if (
+                categories.HasFlag(
+                    PlanetIntelligenceCategory.CapitalShips
+                        | PlanetIntelligenceCategory.Starfighters
+                )
+            )
+                snapshot.OrbitalTickCaptured = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories);
             UpdateFleetIntelligence(faction, planet, snapshot, categories, accumulatedCategories);
             UpdateGroundForceIntelligence(faction, planet, snapshot, categories);
@@ -972,6 +979,7 @@ namespace Rebellion.Game.FogOfWar
             );
 
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
+            planetSnapshot.OrbitalTickCaptured = currentTick;
             AddOfficersToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
             AddFleetsToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
             AddEntityCopiesToSnapshot(

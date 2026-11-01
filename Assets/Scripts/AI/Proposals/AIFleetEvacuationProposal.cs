@@ -159,16 +159,10 @@ namespace Rebellion.AI.Proposals
             AIAttackDemand demand = context.GetAttackDemand(hostilePlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
-            bool canBombardDefenders =
-                context.Assessment.GetDefendingRegimentCount(hostilePlanet) > 0
-                && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(hostilePlanet);
-            int requiredRegiments = canBombardDefenders
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-            int requiredStrength = canBombardDefenders ? 0 : demand.RegimentStrength;
-            return context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= requiredStrength
+            var groundRequirements = context.GetAttackRegimentRequirements(hostilePlanet, fleet);
+            return context.Assessment.GetReadyFleetRegimentCount(fleet) >= groundRequirements.Count
+                && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= groundRequirements.Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, hostilePlanet)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
         }

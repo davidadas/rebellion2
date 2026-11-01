@@ -109,9 +109,16 @@ namespace Rebellion.AI.Scorers
                 AIUtility.Fulfillment(demandPressure, config.DemandUtility),
                 config.DemandUtility
             );
+            score.Add(GetIndustrialDefenseInput(context, proposal), utility.IndustrialDefense);
             double colonyFoundationInput = GetColonyFoundationInput(proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
+            {
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
+                score.Add(
+                    GetLocalConstructionGrowth(context, proposal),
+                    utility.LocalConstructionGrowth
+                );
+            }
             score.Add(
                 GetHeadquartersReinforcementInput(context, proposal),
                 utility.HeadquartersReinforcement
@@ -121,12 +128,21 @@ namespace Rebellion.AI.Scorers
                 utility.TravelCost
             );
 
+            bool scoresFacilityAvailability =
+                proposal.IsProductionFacilityExpansion && utility.FacilityAvailability.Weight > 0;
+            if (scoresFacilityAvailability)
+                score.AddCost(
+                    GetFacilityAvailabilityInput(context, proposal),
+                    utility.FacilityAvailability
+                );
+
             if (proposal.CurrentOrder != null)
             {
-                score.AddCost(
-                    AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
-                    utility.CompletionTime
-                );
+                if (!scoresFacilityAvailability)
+                    score.AddCost(
+                        AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
+                        utility.CompletionTime
+                    );
                 score.AddCost(
                     AIUtility.Fulfillment(
                         GetInterruptionCost(context, proposal),
@@ -525,6 +541,39 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Measures unmet protection supplied locally by fighters or to an active construction hub by shields.
+        /// </summary>
+        /// <param name="context">The faction turn supplying operational facility counts.</param>
+        /// <param name="proposal">The proposed defensive production.</param>
+        /// <returns>The fraction of the protective requirement still unmet, or zero for other work.</returns>
+        private static double GetIndustrialDefenseInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            AIProductionDemand demand = proposal.Demand;
+            Planet destination = demand.DestinationPlanet;
+            if (destination == null || demand.TargetCount <= 0)
+                return 0;
+
+            bool protectsShipyard =
+                demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                && proposal.ProducerPlanet == destination
+                && context.Assessment.GetPlanetProductionFacilityCount(
+                    destination,
+                    ManufacturingType.Ship
+                ) > 0;
+            bool protectsConstruction =
+                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                && proposal.Product.GetReference() is Building building
+                && building.IsPlanetaryShieldGenerator()
+                && demand.ProtectsConstructionHub;
+            return protectsShipyard || protectsConstruction
+                ? AIUtility.Fulfillment(demand.QuantityNeeded, demand.TargetCount)
+                : 0;
+        }
+
+        /// <summary>
         /// Calculates urgency for restoring economy capacity.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -879,6 +928,73 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Normalizes the time until a proposed facility can supply its destination.
+        /// </summary>
+        /// <param name="context">The turn supplying delivery estimates and utility tuning.</param>
+        /// <param name="proposal">The facility order and its exact producer.</param>
+        /// <returns>The configured availability cost input, or zero when disabled.</returns>
+        internal static double GetFacilityAvailabilityInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            var consideration = context
+                .Game
+                .Config
+                .AI
+                .Selection
+                .ProductionUtility
+                .FacilityAvailability;
+            return consideration.Weight > 0
+                ? AIUtility.Fulfillment(
+                    GetFacilityAvailabilityTicks(context, proposal),
+                    consideration
+                )
+                : 0;
+        }
+
+        /// <summary>
+        /// Estimates when one proposed facility will finish production and reach its destination.
+        /// </summary>
+        /// <param name="context">The turn supplying manufactured movement estimates.</param>
+        /// <param name="proposal">The facility order and its exact producer.</param>
+        /// <returns>Production plus delivery ticks, or the maximum duration when unavailable.</returns>
+        private static double GetFacilityAvailabilityTicks(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            IManufacturable facility = proposal.Product.GetReference();
+            int? productionTicks = proposal.ContinuesExistingOrder
+                ? ManufacturingQueries.EstimateCompletionTicks(
+                    proposal.ProducerPlanet,
+                    proposal.CurrentOrder
+                )
+                : ManufacturingQueries.EstimateManufacturingTicks(
+                    proposal.ProducerPlanet,
+                    facility,
+                    1
+                );
+            if (!productionTicks.HasValue)
+                return double.MaxValue;
+            if (proposal.Destination == proposal.ProducerPlanet)
+                return productionTicks.Value;
+            if (
+                facility is not IMovable movable
+                || context.MovementQueries == null
+                || !context.MovementQueries.TryEstimateManufacturedTransitTicks(
+                    movable,
+                    proposal.ProducerPlanet,
+                    proposal.Destination,
+                    out int deliveryTicks,
+                    context.Faction.InstanceID
+                )
+            )
+                return double.MaxValue;
+            return (double)productionTicks.Value + deliveryTicks;
+        }
+
+        /// <summary>
         /// Estimates the completion time of the competing continuation or replacement.
         /// </summary>
         /// <param name="proposal">The action involving an existing manufacturing order.</param>
@@ -938,18 +1054,51 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the travel penalty for fleet reinforcement production.
+        /// Measures the immediate throughput gain of expanding an assigned construction hub locally.
+        /// </summary>
+        /// <param name="context">The faction's current hub allocations.</param>
+        /// <param name="proposal">The exact producer and construction-facility order.</param>
+        /// <returns>The fractional increase in local throughput, capped at a doubling.</returns>
+        internal static double GetLocalConstructionGrowth(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            Planet producer = proposal.ProducerPlanet;
+            if (
+                proposal.Demand.Kind != AIProductionDemandKind.ConstructionFacility
+                || proposal.Destination != producer
+                || proposal.Product.GetReference() is not Building building
+                || building.GetProcessRate() <= 0
+                || context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    producer,
+                    BuildingType.ConstructionFacility
+                ) <= producer.GetProductionFacilityCount(ManufacturingType.Building)
+            )
+                return 0;
+            double addedRate = 1d / building.GetProcessRate();
+            double currentRate = producer.GetProductionRate(ManufacturingType.Building);
+            return currentRate > 0 ? Math.Clamp(addedRate / currentRate, 0, 1) : 0;
+        }
+
+        /// <summary>
+        /// Returns the travel penalty for fleet reinforcement and facility expansion production.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
         /// <returns>The travel penalty.</returns>
         private double GetTravelCost(AITurnContext context, AIManufactureProposal proposal)
         {
-            if (proposal?.Demand?.Destination is not Fleet destinationFleet)
+            if (proposal?.Demand == null)
                 return 0;
 
             Planet producerPlanet = proposal.ProducerPlanet;
-            Planet destinationPlanet = context.Assessment.GetFleetPlanet(destinationFleet);
+            Planet destinationPlanet = proposal.Demand.Destination switch
+            {
+                Fleet destinationFleet => context.Assessment.GetFleetPlanet(destinationFleet),
+                Planet destination when proposal.IsProductionFacilityExpansion => destination,
+                _ => null,
+            };
             if (producerPlanet == null || destinationPlanet == null)
                 return 0;
 

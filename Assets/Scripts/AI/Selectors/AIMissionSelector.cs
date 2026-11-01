@@ -291,9 +291,8 @@ namespace Rebellion.AI.Selectors
                 else if (staging.Mission.MissionTypeID == MissionTypeIDs.Sabotage)
                     Add(
                         reservations,
-                        AISelectionReservationKind.MissionAtPlanet,
-                        staging.Mission.TargetPlanet.InstanceID,
-                        MissionTypeIDs.Sabotage
+                        AISelectionReservationKind.MissionTarget,
+                        staging.Mission.SelectedTarget?.InstanceID
                     );
                 return reservations;
             }

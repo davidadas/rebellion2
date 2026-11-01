@@ -76,6 +76,7 @@ namespace Rebellion.AI
                     0,
                     (long)_assessment.RefinedMaterialStockpile
                         - _assessment.NearTermRefinedMaterialCommitment
+                        + _assessment.NearTermRefinedMaterialProduction
                         + ExpectedDiplomacyRefinedMaterialGain
                 );
                 return _assessment.RefinedMaterialSupply <= 0
@@ -538,7 +539,7 @@ namespace Rebellion.AI
                 Math.Min(
                     1,
                     (double)_assessment.GetFactionPopularSupport(target) / ownershipThreshold
-                )
+                ) * _assessment.GetPlanetEconomicDevelopment(target)
             );
             double uncontestedShare =
                 1 - (double)known.Count(_assessment.IsEnemyPlanet) / planetCount;
@@ -592,7 +593,12 @@ namespace Rebellion.AI
                 0,
                 targetCount
                     - planet.GetTotalBuildingTypeCount(buildingType)
-                    - GetConstructionSpace(planet, buildingType, false)
+                    - GetConstructionSpace(
+                        planet,
+                        buildingType,
+                        false,
+                        plannedInfrastructureCount: targetCount
+                    )
             );
             if (needed == 0)
                 return Array.Empty<Building>();
@@ -839,7 +845,7 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Values known neutral industrial capacity and missing hub sites in established sectors.
+        /// Values known neutral industrial capacity and missing hub sites in established or neutral sectors.
         /// </summary>
         /// <param name="planet">The neutral planet being considered for acquisition.</param>
         /// <returns>The greatest industrial benefit from zero through one.</returns>
@@ -857,13 +863,19 @@ namespace Rebellion.AI
                 return value;
 
             string systemId = _assessment.GetPlanetSystemId(planet);
+            bool isNeutralSector = _assessment
+                .GetKnownSystemPlanets(systemId)
+                .All(_assessment.IsNeutralPlanet);
             foreach (BuildingType type in _infrastructureTargets.Keys)
             {
                 List<Planet> owned = GetInfrastructurePlanets(type)
                     .Where(candidate => _assessment.GetPlanetSystemId(candidate) == systemId)
                     .ToList();
                 int target = GetInfrastructureHubTargets(type).FirstOrDefault(count => count > 0);
-                int deficit = GetInfrastructureDeficit(owned, type);
+                int deficit =
+                    owned.Count == 0 && isNeutralSector
+                        ? target
+                        : GetInfrastructureDeficit(owned, type);
                 if (target <= 0 || deficit <= 0)
                     continue;
 
@@ -880,8 +892,13 @@ namespace Rebellion.AI
                 );
                 if (
                     !owned.Any(candidate => CanAllocateInfrastructureHub(candidate, type, target))
-                    && GetConstructionSpace(planet, type, false, acquiring: true)
-                        >= Math.Max(0, target - planet.GetTotalBuildingTypeCount(type))
+                    && GetConstructionSpace(
+                        planet,
+                        type,
+                        false,
+                        acquiring: true,
+                        plannedInfrastructureCount: target
+                    ) >= Math.Max(0, target - planet.GetTotalBuildingTypeCount(type))
                 )
                     benefit = 1;
                 value = Math.Max(value, benefit * Math.Min(1, deficit / (double)target));
@@ -904,6 +921,20 @@ namespace Rebellion.AI
                 && targets.TryGetValue(buildingType, out int target)
                 ? target
                 : 0;
+        }
+
+        /// <summary>
+        /// Identifies planets with multiple committed or planned construction yards.
+        /// </summary>
+        /// <param name="planet">The current or planned construction site.</param>
+        /// <returns>True when the site is intended to contain more than one construction yard.</returns>
+        public bool IsConstructionHub(Planet planet)
+        {
+            return planet?.IsDestroyed == false
+                && Math.Max(
+                    planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility),
+                    GetAllocatedInfrastructureTarget(planet, BuildingType.ConstructionFacility)
+                ) > 1;
         }
 
         /// <summary>
@@ -934,19 +965,26 @@ namespace Rebellion.AI
                 BuildingType.Shipyard,
                 selectedBuildings
             );
-            if (construction.Target <= 0 || shipyards.Target <= 0)
+            int hubCount = 0;
+            double completion = 0;
+            if (construction.Target > 0)
+            {
+                completion += Math.Min(1, construction.Committed / (double)construction.Target);
+                hubCount++;
+            }
+            if (shipyards.Target > 0)
+            {
+                completion += Math.Min(1, shipyards.Committed / (double)shipyards.Target);
+                hubCount++;
+            }
+            if (hubCount == 0)
                 return default;
 
             BuildingType next =
                 construction.Committed < construction.Target ? BuildingType.ConstructionFacility
                 : shipyards.Committed < shipyards.Target ? BuildingType.Shipyard
                 : BuildingType.None;
-            double completion =
-                (
-                    Math.Min(1, construction.Committed / (double)construction.Target)
-                    + Math.Min(1, shipyards.Committed / (double)shipyards.Target)
-                ) / 2;
-            return (next, completion);
+            return (next, completion / hubCount);
         }
 
         /// <summary>
@@ -1006,10 +1044,38 @@ namespace Rebellion.AI
         )
         {
             int committed = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
-            return Math.Min(
+            int target = Math.Min(
                 Math.Max(0, preferredCount),
-                committed + GetAvailableConstructionSpace(planet, buildingType)
+                committed
+                    + Math.Max(
+                        0,
+                        GetConstructionSpace(
+                            planet,
+                            buildingType,
+                            false,
+                            plannedInfrastructureCount: preferredCount
+                        )
+                    )
             );
+            if (
+                buildingType == BuildingType.ConstructionFacility
+                && target <= 1
+                && preferredCount > 0
+            )
+                target = Math.Min(
+                    preferredCount,
+                    committed
+                        + Math.Max(
+                            0,
+                            GetConstructionSpace(
+                                planet,
+                                buildingType,
+                                false,
+                                plannedInfrastructureCount: 1
+                            )
+                        )
+                );
+            return target;
         }
 
         /// <summary>
@@ -1029,8 +1095,12 @@ namespace Rebellion.AI
                 && targetCount > 0
                 && planet?.IsDestroyed == false
                 && _assessment.IsOwnedPlanet(planet)
-                && GetConstructionSpace(planet, buildingType, false)
-                    >= Math.Max(0, targetCount - planet.GetTotalBuildingTypeCount(buildingType));
+                && GetConstructionSpace(
+                    planet,
+                    buildingType,
+                    false,
+                    plannedInfrastructureCount: targetCount
+                ) >= Math.Max(0, targetCount - planet.GetTotalBuildingTypeCount(buildingType));
         }
 
         /// <summary>
@@ -1149,6 +1219,28 @@ namespace Rebellion.AI
                 : config.StarfighterRequirementDefault;
             if (
                 !planet.IsHeadquarters
+                && hasShipProduction
+                && !_assessment.IsPlanetThreatened(planet)
+            )
+                baseline = IntegerMath.ScaleByPercent(
+                    baseline,
+                    config.UnthreatenedInfrastructureStarfighterBaselinePercent
+                );
+            int shieldLimit = _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            if (
+                shieldLimit > 0
+                && _assessment
+                    .GetPlanetBuildings(planet)
+                    .Count(building =>
+                        building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                        && building.IsPlanetaryShieldGenerator()
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    ) >= shieldLimit
+            )
+                return 0;
+            if (
+                !planet.IsHeadquarters
                 && !_assessment.IsPlanetThreatened(planet)
                 && !hasShipProduction
             )
@@ -1205,22 +1297,27 @@ namespace Rebellion.AI
                 return limit;
             bool hasInfrastructure =
                 plannedInfrastructure
-                || _infrastructureTargetsByPlanetId.ContainsKey(planet.InstanceID)
+                || IsConstructionHub(planet)
+                || GetAllocatedInfrastructureTarget(planet, BuildingType.Shipyard) > 0
+                || GetAllocatedInfrastructureTarget(planet, BuildingType.TrainingFacility) > 0
                 || planet
                     .GetAllBuildings()
                     .Any(building =>
                         building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
-                        && IsInfrastructureType(building.BuildingType)
+                        && building.BuildingType
+                            is BuildingType.Shipyard
+                                or BuildingType.TrainingFacility
                     );
+            int industrialTarget = hasInfrastructure
+                ? Math.Clamp(_game.Config.AI.Infrastructure.IndustrialShieldTargetCount, 0, limit)
+                : 0;
             if (
                 _assessment.GetFactionPopularSupport(planet)
                     < _game.Config.AI.Garrison.SupportThreshold
                 || _assessment.GetDefensiveSupportRisk(planet) > 0
             )
-                return Math.Min(1, limit);
-            return hasInfrastructure
-                ? Math.Clamp(_game.Config.AI.Infrastructure.IndustrialShieldTargetCount, 0, limit)
-                : 0;
+                return Math.Max(industrialTarget, Math.Min(1, limit));
+            return industrialTarget;
         }
 
         /// <summary>
@@ -1251,13 +1348,15 @@ namespace Rebellion.AI
         /// <param name="isEmergencyDefense">Whether an immediate defense takes priority over unfinished industry.</param>
         /// <param name="selectedBuildings">Building counts already accepted for this destination.</param>
         /// <param name="acquiring">Whether to evaluate a neutral planet's industrial layout after acquisition.</param>
+        /// <param name="plannedInfrastructureCount">The prospective completed facility target, or zero when adding one facility.</param>
         /// <returns>The signed remaining space before clamping an overcommitted layout.</returns>
         private int GetConstructionSpace(
             Planet planet,
             BuildingType buildingType,
             bool isEmergencyDefense,
             IReadOnlyDictionary<BuildingType, int> selectedBuildings = null,
-            bool acquiring = false
+            bool acquiring = false,
+            int plannedInfrastructureCount = 0
         )
         {
             if (
@@ -1296,17 +1395,27 @@ namespace Rebellion.AI
                 || _assessment.IsPriorityDefensePlanet(planet)
                 || _assessment.IsPlanetThreatened(planet)
                 || _assessment.GetHostileFleets(planet).Any();
+            bool protectsPlannedInfrastructure =
+                buildingType is BuildingType.Shipyard or BuildingType.TrainingFacility
+                || buildingType == BuildingType.ConstructionFacility
+                    && (
+                        plannedInfrastructureCount > 0
+                            ? plannedInfrastructureCount
+                            : planet.GetTotalBuildingTypeCount(buildingType) + 1
+                    ) > 1;
             int shieldDeficit = protectsLayout
                 ? Math.Max(
                     0,
                     (
                         acquiring
-                            ? Math.Clamp(
-                                _game.Config.AI.Infrastructure.IndustrialShieldTargetCount,
-                                0,
-                                _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
-                            )
-                            : GetPlanetaryShieldTarget(planet, IsInfrastructureType(buildingType))
+                            ? protectsPlannedInfrastructure || IsConstructionHub(planet)
+                                ? Math.Clamp(
+                                    _game.Config.AI.Infrastructure.IndustrialShieldTargetCount,
+                                    0,
+                                    _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                                )
+                                : 0
+                            : GetPlanetaryShieldTarget(planet, protectsPlannedInfrastructure)
                     )
                         - CountCommittedDefense(planet, true)
                         - GetSelectedBuildingCount(selectedBuildings, BuildingType.Defense)
@@ -1555,6 +1664,13 @@ namespace Rebellion.AI
             )
                 return false;
 
+            if (capitalShip.HasRole(CapitalShipRole.Transport))
+                return true;
+
+            int requiredDefense = GetDefenseStrength(planet);
+            if (fleet.Order == null && requiredDefense <= 0)
+                return true;
+
             List<CapitalShip> remaining = fleet
                 .GetChildren<CapitalShip>()
                 .Where(ship =>
@@ -1572,7 +1688,6 @@ namespace Rebellion.AI
                 return false;
 
             int remainingCombat = remaining.Sum(_assessment.GetReadyCapitalShipCombatValue);
-            int requiredDefense = GetDefenseStrength(planet);
             if (fleet.Order?.OrderType == FleetOrderType.Defend)
                 return remainingCombat >= requiredDefense;
 

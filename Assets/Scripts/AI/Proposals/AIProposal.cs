@@ -10,6 +10,7 @@ namespace Rebellion.AI.Proposals
         Mandatory,
         Critical,
         MaintenanceRecovery,
+        Recruitment,
     }
 
     /// <summary>

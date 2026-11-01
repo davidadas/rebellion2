@@ -116,10 +116,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         || setupCollections.Any(view => view.gameObject.activeSelf && view.HasOpenChoice)
         || collectionDropdown.IsExpanded
         || curveDropdown.IsExpanded
-        || fieldViews.Any(field => field.gameObject.activeSelf && field.HasOpenChoice);
+        || fieldViews.Any(view => view.gameObject.activeSelf && view.HasOpenChoice);
     public TextInputHistory InvalidTextHistory =>
         fieldViews
-            .FirstOrDefault(field => field.gameObject.activeSelf && field.HasError)
+            .FirstOrDefault(view => view.gameObject.activeSelf && view.HasError)
             ?.GetComponentInChildren<TMP_InputField>()
             ?.GetComponent<TextInputHistory>();
 

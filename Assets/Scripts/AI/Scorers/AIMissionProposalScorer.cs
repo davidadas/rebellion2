@@ -477,7 +477,7 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the urgency of refreshing intelligence for an active attack target.
+        /// Returns intelligence urgency for assigned attacks and nearby support bombardment opportunities.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The mission proposal to inspect.</param>
@@ -487,16 +487,22 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal proposal
         )
         {
-            if (
-                proposal.MissionTypeID != MissionTypeIDs.Espionage
-                || !context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
-            )
+            if (proposal.MissionTypeID != MissionTypeIDs.Espionage)
+                return 0;
+
+            double priority = context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
+                ? 1
+                : GetSupportBombardmentIntelPriority(context, proposal.TargetPlanet);
+            if (priority <= 0)
                 return 0;
 
             if (!context.Assessment.HasMissionDefenseIntelligence(proposal.TargetPlanet))
-                return 1;
+                return priority;
 
-            int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
+            int age = Math.Max(
+                context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet),
+                context.Assessment.GetPlanetOrbitalIntelAge(proposal.TargetPlanet)
+            );
             int refreshInterval = Math.Max(
                 1,
                 context.Game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks
@@ -504,13 +510,69 @@ namespace Rebellion.AI.Scorers
             if (age < refreshInterval)
                 return 0;
 
-            return AIUtility.Fulfillment(
-                age,
-                Math.Max(
-                    1,
-                    context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
+            return priority
+                * AIUtility.Fulfillment(
+                    age,
+                    Math.Max(
+                        1,
+                        context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Scores inspection of favorable-support planets by the travel time of available bombardment forces.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="planet">The prospective bombardment target.</param>
+        /// <returns>Normalized intelligence priority, decreasing as the nearest useful force takes longer to arrive.</returns>
+        private static double GetSupportBombardmentIntelPriority(
+            AITurnContext context,
+            Planet planet
+        )
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            if (
+                context.MovementQueries == null
+                || config.SupportOpportunityMinimumAttackStrengthPercent >= 100
+                || !context.Assessment.HasSupportAdvantage(planet)
+                || context.Assessment.HasMissionDefenseIntelligence(planet)
+                    && context.Assessment.GetDefendingRegimentCount(planet) == 0
+            )
+                return 0;
+
+            double priority = 0;
+            foreach (Fleet fleet in context.Assessment.OwnedFleets)
+            {
+                if (
+                    fleet.RoleType == FleetRoleType.Colonization
+                    || fleet.Movement != null
+                    || fleet.IsInCombat
+                    || !context.StrategicPlan.CanFleetDepart(fleet)
+                    || context.Assessment.GetFleetBombardmentStrength(fleet)
+                        <= context.Assessment.GetBombardmentShieldStrength(planet)
                 )
-            );
+                    continue;
+
+                Planet origin = context.Assessment.GetFleetPlanet(fleet);
+                if (origin == null)
+                    continue;
+
+                int travelTicks = context.MovementQueries.CalculateTransitTicks(
+                    fleet,
+                    origin,
+                    planet
+                );
+                priority = Math.Max(
+                    priority,
+                    AIUtility.Fulfillment(
+                        Math.Max(0, config.SupportOpportunityMaximumTravelTicks),
+                        Math.Max(1, travelTicks)
+                    )
+                );
+            }
+
+            return priority;
         }
 
         /// <summary>
@@ -823,13 +885,15 @@ namespace Rebellion.AI.Scorers
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             bool isCoreWorld = sector?.SectorType == PlanetSectorType.Core;
             score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
+            double development = context.Assessment.GetPlanetEconomicDevelopment(planet);
             PlanetSector headquartersSector =
                 context.Assessment.FactionHeadquarters?.GetParentOfType<PlanetSector>();
             if (headquartersSector != null && sector?.InstanceID == headquartersSector.InstanceID)
-                score.Add(1, utility.HeadquartersSector);
+                score.Add(development, utility.HeadquartersSector);
             if (utility.SystemPresence.Weight > 0)
                 score.Add(
-                    context.Assessment.GetOwnedSystemPresenceRatio(sector?.InstanceID),
+                    context.Assessment.GetOwnedSystemPresenceRatio(sector?.InstanceID)
+                        * development,
                     utility.SystemPresence
                 );
 

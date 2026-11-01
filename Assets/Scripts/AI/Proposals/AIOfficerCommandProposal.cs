@@ -82,7 +82,7 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
             if (aboard)
-                return OfficerCommandQueries.CanChangeCommand(Officer, Rank);
+                return PersonnelQueries.CanChangeCommand(Officer, Rank);
 
             return context.Movement != null
                 && Fleet.Movement == null
@@ -118,7 +118,7 @@ namespace Rebellion.AI.Proposals
             if (
                 Officer.GetParentOfType<Fleet>() == Fleet
                 && Officer.CurrentRank != Rank
-                && OfficerCommandQueries.CanChangeCommand(Officer, Rank)
+                && PersonnelQueries.CanChangeCommand(Officer, Rank)
             )
                 context.OfficerCommands.TrySetRank(
                     Officer.InstanceID,

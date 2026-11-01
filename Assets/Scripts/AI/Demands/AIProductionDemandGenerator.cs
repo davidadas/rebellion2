@@ -399,7 +399,9 @@ namespace Rebellion.AI.Demands
                 targetCount: targetCount,
                 baseDemandPercent: basePercent,
                 establishesInitialShield: isInitialShield,
-                isEmergencyDefense: context.Assessment.GetHostileFleets(planet).Any()
+                isEmergencyDefense: context.Assessment.GetHostileFleets(planet).Any(),
+                protectsConstructionHub: buildingType == BuildingType.Defense
+                    && context.StrategicPlan.IsConstructionHub(planet)
             );
         }
 
@@ -767,9 +769,7 @@ namespace Rebellion.AI.Demands
         /// <returns>True when economy expansion is required.</returns>
         private static bool NeedsExpansion(AITurnContext context)
         {
-            return context.Assessment.PendingRawMaterialRequestCount > 0
-                || context.Assessment.PendingRefinedMaterialRequestCount > 0
-                || context.StrategicPlan.EconomyPlanningRefinedMaterialPercent
+            return context.StrategicPlan.EconomyPlanningRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom < 0
                 || context.StrategicPlan.EconomyPlanningMaintenanceHeadroom
@@ -1738,12 +1738,7 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            if (demand == null)
-                return 0;
-            return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
+            return context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Count;
         }
 
         /// <summary>
@@ -1759,9 +1754,7 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
-            return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
-                ? 0
-                : context.GetAttackDemand(targetPlanet, fleet)?.RegimentStrength ?? 0;
+            return context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Strength;
         }
 
         /// <summary>
@@ -1812,9 +1805,11 @@ namespace Rebellion.AI.Demands
                 int pressure;
                 bool initialShield = false;
                 bool emergency = false;
+                bool constructionShield = false;
                 if (order is Building building && destination is Planet planet)
                 {
                     bool shield = building.IsPlanetaryShieldGenerator();
+                    constructionShield = shield && context.StrategicPlan.IsConstructionHub(planet);
                     kind = AIProductionDemandKind.PlanetaryDefense;
                     target = shield
                         ? GetPlanetaryShieldCount(context, planet)
@@ -1938,7 +1933,8 @@ namespace Rebellion.AI.Demands
                         deficitCount: deficit,
                         establishesInitialShield: initialShield,
                         isEmergencyDefense: emergency,
-                        existingOrder: order
+                        existingOrder: order,
+                        protectsConstructionHub: constructionShield
                     )
                 );
             }

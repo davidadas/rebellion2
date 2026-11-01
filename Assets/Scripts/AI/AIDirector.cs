@@ -27,7 +27,7 @@ namespace Rebellion.AI
         private readonly MissionEncounterOdds.Cache _missionEncounterCache;
         private readonly MovementCommands _movement;
         private readonly HeadquartersCommands _headquarters;
-        private readonly OfficerCommandCommands _officerCommands;
+        private readonly PersonnelCommands _officerCommands;
         private readonly ManufacturingCommands _manufacturing;
         private readonly MaintenanceCommands _maintenance;
         private readonly BombardmentCommands _bombardment;
@@ -79,7 +79,7 @@ namespace Rebellion.AI
             IRandomNumberProvider random,
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
-            OfficerCommandCommands officerCommands = null,
+            PersonnelCommands officerCommands = null,
             GameResultBus results = null,
             GameDataCatalog gameData = null
         )

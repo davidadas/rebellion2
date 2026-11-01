@@ -14,6 +14,14 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIMissionProposal : AIProposal
     {
+        /// <summary>
+        /// Gives recruitment first claim on its personnel before competing assignments.
+        /// </summary>
+        internal override AIProposalPriority Priority =>
+            MissionTypeID == MissionTypeIDs.Recruitment
+                ? AIProposalPriority.Recruitment
+                : base.Priority;
+
         // Cached Identity.
         private readonly string _sortKey;
 

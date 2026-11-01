@@ -161,6 +161,36 @@ namespace Rebellion.AI.Phases
                     )
                         continue;
                     selectedProposal = selectedManufactureProposal;
+                    if (
+                        manufactureProposal.IsProductionFacilityExpansion
+                        && !ReferenceEquals(manufactureProposal, selectedManufactureProposal)
+                    )
+                    {
+                        productionSelector.ScoreResolved(
+                            context,
+                            manufactureProposal,
+                            selectedManufactureProposal
+                        );
+                        AIManufactureProposal resolved = new(
+                            new[] { selectedManufactureProposal }
+                                .Concat(
+                                    manufactureProposal.ProducerAlternatives.Where(candidate =>
+                                        candidate.ProducerPlanet
+                                        != selectedManufactureProposal.ProducerPlanet
+                                    )
+                                )
+                                .ToArray()
+                        );
+                        resolved.SetScore(selectedManufactureProposal.Score);
+                        pending.AddLast(resolved);
+                        pending = new LinkedList<AIProposal>(
+                            productionSelector.OrderInfrastructureProduction(
+                                context,
+                                GetSortedProposals(context, pending, false)
+                            )
+                        );
+                        continue;
+                    }
                 }
 
                 if (
@@ -220,10 +250,10 @@ namespace Rebellion.AI.Phases
                         productionSelector.OrderInfrastructureProduction(context, pending)
                     );
                 if (
-                    proposal is AIManufactureProposal fleetRequest
-                    && productionSelector.TryCreateNextFleetProposal(
+                    proposal is AIManufactureProposal productionRequest
+                    && productionSelector.TryCreateNextProductionProposal(
                         context,
-                        fleetRequest,
+                        productionRequest,
                         out AIManufactureProposal next
                     )
                 )

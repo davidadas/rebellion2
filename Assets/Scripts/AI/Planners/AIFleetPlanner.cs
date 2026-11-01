@@ -287,6 +287,12 @@ namespace Rebellion.AI.Planners
                 || fleet.Movement != null
                 || fleet.IsInCombat
                 || !fleet.HasOperationalCapitalShips()
+                || !fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        !ship.HasRole(CapitalShipRole.Transport)
+                        && context.Assessment.GetReadyCapitalShipCombatValue(ship) > 0
+                    )
                 || !context.StrategicPlan.CanFleetDepart(fleet)
             )
                 return false;
@@ -351,6 +357,12 @@ namespace Rebellion.AI.Planners
                 && fleet.Movement == null
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
+                && fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        !ship.HasRole(CapitalShipRole.Transport)
+                        && context.Assessment.GetReadyCapitalShipCombatValue(ship) > 0
+                    )
                 && (
                     context.Assessment.GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
                     || context.StrategicPlan.CanFleetDepart(fleet)
@@ -590,8 +602,7 @@ namespace Rebellion.AI.Planners
             }
 
             bool mayLeaveCampaign = IsBlockedByShields(context, fleet, targetPlanet);
-            if (!mayLeaveCampaign)
-                proposals.Add(continuation);
+            proposals.Add(continuation);
 
             AddRetargetAttackOrderProposals(
                 context,
@@ -600,17 +611,6 @@ namespace Rebellion.AI.Planners
                 mayLeaveCampaign,
                 proposals
             );
-            if (mayLeaveCampaign)
-            {
-                proposals.Add(
-                    new AIFleetAttackProposal(
-                        fleet,
-                        order.OrderType,
-                        FleetOrderStatus.Returning,
-                        targetPlanet
-                    )
-                );
-            }
         }
 
         /// <summary>
@@ -1644,7 +1644,8 @@ namespace Rebellion.AI.Planners
 
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
-                return context.Assessment.GetProjectedFleetCombatValue(targetFleet)
+                return !capitalShip.HasRole(CapitalShipRole.Transport)
+                    && context.Assessment.GetProjectedFleetCombatValue(targetFleet)
                         < context.StrategicPlan.GetDefenseStrength(targetPlanet)
                     && context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip) > 0;
             }
@@ -1667,131 +1668,12 @@ namespace Rebellion.AI.Planners
             CapitalShip capitalShip
         )
         {
-            if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
-            {
-                int requiredDefense = context.StrategicPlan.GetDefenseStrength(targetPlanet);
-                int defenseGap = Math.Max(
-                    0,
-                    requiredDefense - context.Assessment.GetProjectedFleetCombatValue(targetFleet)
-                );
-                return Math.Min(
-                    defenseGap,
-                    context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip)
-                );
-            }
-
-            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet, targetFleet);
-            int requiredCombat = attackDemand?.CombatStrength ?? 0;
-            int requiredRegiments = context
-                .GetAttackRegimentRequirements(targetPlanet, targetFleet, true)
-                .Count;
-            int requiredRegimentStrength = context
-                .GetAttackRegimentRequirements(targetPlanet, targetFleet, true)
-                .Strength;
-            int requiredBombardment = attackDemand?.BombardmentStrength ?? 0;
-
-            int additionalBombardment =
-                context.Assessment.GetProjectedCapitalShipBombardmentStrength(
-                    targetFleet,
-                    capitalShip
-                );
-            if (
-                context
-                    .GetAttackRegimentRequirements(
-                        targetPlanet,
-                        targetFleet,
-                        true,
-                        additionalBombardment
-                    )
-                    .Count < requiredRegiments
-                || context
-                    .GetAttackRegimentRequirements(
-                        targetPlanet,
-                        targetFleet,
-                        true,
-                        additionalBombardment
-                    )
-                    .Strength < requiredRegimentStrength
-            )
-                return _scorer.ScoreTransferReadinessGain(
-                    context,
-                    targetFleet,
-                    targetPlanet,
-                    capitalShip
-                );
-
-            int currentRegimentCapacity = context.Assessment.GetFleetRegimentCapacity(targetFleet);
-            if (currentRegimentCapacity < requiredRegiments)
-            {
-                return GetFulfillmentGain(
-                    currentRegimentCapacity,
-                    context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
-                    requiredRegiments
-                );
-            }
-
-            int currentBombardment = context.Assessment.GetProjectedFleetBombardmentStrength(
-                targetFleet
+            return _scorer.ScoreTransferReadinessGain(
+                context,
+                targetFleet,
+                targetPlanet,
+                capitalShip
             );
-            if (currentBombardment < requiredBombardment)
-            {
-                return GetFulfillmentGain(
-                    currentBombardment,
-                    context.Assessment.GetProjectedCapitalShipBombardmentStrength(
-                        targetFleet,
-                        capitalShip
-                    ),
-                    requiredBombardment
-                );
-            }
-
-            int currentRegimentCount = context.Assessment.GetFleetLoadedRegimentCount(targetFleet);
-            int currentRegimentStrength =
-                context.Assessment.GetProjectedFleetRegimentAttackStrength(targetFleet);
-            if (
-                currentRegimentCount < requiredRegiments
-                || currentRegimentStrength < requiredRegimentStrength
-            )
-            {
-                return GetFulfillmentGain(
-                        currentRegimentCount,
-                        context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip),
-                        requiredRegiments
-                    )
-                    + GetFulfillmentGain(
-                        currentRegimentStrength,
-                        context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
-                            targetFleet,
-                            capitalShip
-                        ),
-                        requiredRegimentStrength
-                    );
-            }
-
-            return GetFulfillmentGain(
-                context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet),
-                context.Assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
-                    capitalShip
-                ),
-                requiredCombat
-            );
-        }
-
-        /// <summary>
-        /// Returns the normalized requirement gain from one reinforcement.
-        /// </summary>
-        /// <param name="current">Current requirement value.</param>
-        /// <param name="contribution">Candidate contribution.</param>
-        /// <param name="target">Required target value.</param>
-        /// <returns>The fulfillment gain from zero through one.</returns>
-        private double GetFulfillmentGain(double current, double contribution, double target)
-        {
-            if (target <= 0 || contribution <= 0)
-                return 0;
-
-            double before = Math.Min(1, Math.Max(0, current / target));
-            double after = Math.Min(1, Math.Max(0, (current + contribution) / target));
-            return after - before;
         }
 
         /// <summary>

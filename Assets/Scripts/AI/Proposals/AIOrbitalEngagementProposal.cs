@@ -271,24 +271,17 @@ namespace Rebellion.AI.Proposals
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
             if (demand == null)
                 return false;
-            bool canBombardDefenders =
-                context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
-            int requiredRegiments = canBombardDefenders
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-            int requiredRegimentStrength = canBombardDefenders ? 0 : demand.RegimentStrength;
+            var required = context.GetAttackRegimentRequirements(targetPlanet, Fleet);
             int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
                 Fleet
             );
             return Fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0
                 && availableCombat >= demand.CombatStrength
-                && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= requiredRegiments
+                && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= required.Count
+                && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= required.Count
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= requiredRegimentStrength
+                    >= required.Strength
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
                     >= demand.BombardmentStrength
                 && (

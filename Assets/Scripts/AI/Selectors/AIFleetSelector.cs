@@ -31,8 +31,11 @@ namespace Rebellion.AI.Selectors
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
             List<AISelectionReservation> reservations = GetReservations(proposal);
+            bool resourcesAvailable = proposal is AITransferUnitProposal resourceTransfer
+                ? _state.CanReserveTransferResources(resourceTransfer, reservations)
+                : _state.CanReserve(reservations);
             if (
-                !_state.CanReserve(reservations)
+                !resourcesAvailable
                 || proposal?.CanSelect(context) != true
                 || proposal is AITransferUnitProposal transfer
                     && !_state.CanReserveTransfer(context, transfer)

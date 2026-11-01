@@ -92,12 +92,13 @@ namespace Rebellion.AI.Proposals
 
         internal override AIProposalPriority Priority =>
             Demand?.IsEmergencyDefense == true ? AIProposalPriority.Mandatory
+            : Demand?.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+            && Destination == ProducerPlanet
+                ? AIProposalPriority.Mandatory
             : Demand?.Kind == AIProductionDemandKind.IdleSpecialForces ? AIProposalPriority.Filler
             : Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
             || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
                 ? AIProposalPriority.Mandatory
-            : Demand?.Kind == AIProductionDemandKind.PlanetaryDefense
-                ? AIProposalPriority.DeferredPlanetaryDefense
             : AIProposalPriority.Optional;
 
         /// <summary>
@@ -360,18 +361,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>The required maintenance headroom.</returns>
         public int GetMinimumMaintenanceHeadroom(AITurnContext context)
         {
-            if (Demand?.RestoresMaintenanceCapacity == true)
-                return 0;
-
-            int reserve = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
-            if (Demand?.UsesDefensiveReserve != true)
-                return reserve;
-
-            int percentageFloor = IntegerMath.ScaleByPercentRoundedUp(
-                context.Assessment.MaintenanceCapacity,
-                context.Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
-            );
-            return Math.Max(reserve, percentageFloor);
+            return context.GetMinimumManufacturingHeadroom(Demand);
         }
 
         /// <summary>

@@ -19,6 +19,7 @@ namespace Rebellion.AI.Demands
         public int BombardmentStrength { get; }
         public int ShieldStrength { get; }
         public bool IsAssaultBlockedByShields { get; }
+        public bool IsSupportOpportunity { get; }
 
         /// <summary>
         /// Creates the measured attack demand for one known planet.
@@ -35,6 +36,7 @@ namespace Rebellion.AI.Demands
         /// <param name="bombardmentStrength">The bombardment strength required to penetrate shields.</param>
         /// <param name="isAssaultBlockedByShields">Whether shields currently block a ground assault.</param>
         /// <param name="shieldStrength">The shield strength expected when the fleet attacks.</param>
+        /// <param name="isSupportOpportunity">Whether a nearby bombardment can exploit recently observed favorable support.</param>
         public AIAttackDemand(
             Planet targetPlanet,
             int combatStrength,
@@ -47,7 +49,8 @@ namespace Rebellion.AI.Demands
             int occupationRegimentCount,
             int bombardmentStrength,
             bool isAssaultBlockedByShields,
-            int shieldStrength = 0
+            int shieldStrength = 0,
+            bool isSupportOpportunity = false
         )
         {
             TargetPlanet = targetPlanet;
@@ -62,6 +65,19 @@ namespace Rebellion.AI.Demands
             BombardmentStrength = bombardmentStrength;
             IsAssaultBlockedByShields = isAssaultBlockedByShields;
             ShieldStrength = shieldStrength;
+            IsSupportOpportunity = isSupportOpportunity;
+        }
+
+        /// <summary>
+        /// Returns the ground force needed for the assigned attack objective.
+        /// </summary>
+        /// <param name="canBombardDefenders">Whether available bombardment can remove the known garrison.</param>
+        /// <returns>The required regiment count and attack strength.</returns>
+        internal (int Count, int Strength) GetRegimentRequirements(bool canBombardDefenders)
+        {
+            if (!canBombardDefenders)
+                return (RegimentCount, RegimentStrength);
+            return IsSupportOpportunity ? (0, 0) : (OccupationRegimentCount, 0);
         }
     }
 }

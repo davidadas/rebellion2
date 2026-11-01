@@ -11,6 +11,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
@@ -40,7 +41,7 @@ namespace Rebellion.AI
         public MovementQueries MovementQueries { get; }
         public HeadquartersCommands Headquarters { get; }
         public HeadquartersQueries HeadquartersQueries { get; }
-        public OfficerCommandCommands OfficerCommands { get; }
+        public PersonnelCommands OfficerCommands { get; }
         public ManufacturingCommands Manufacturing { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
@@ -144,7 +145,7 @@ namespace Rebellion.AI
             GalaxyMap factionView = null,
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
-            OfficerCommandCommands officerCommands = null,
+            PersonnelCommands officerCommands = null,
             MissionQueries missionQueries = null
         )
         {
@@ -299,15 +300,15 @@ namespace Rebellion.AI
             AIAttackDemand demand = GetAttackDemand(planet, fleet);
             if (demand == null)
                 return (0, 0);
-            return Assessment.CanBombardDefenders(
-                fleet,
-                planet,
-                projected,
-                additionalBombardmentStrength,
-                demand.ShieldStrength
-            )
-                ? (demand.OccupationRegimentCount, 0)
-                : (demand.RegimentCount, demand.RegimentStrength);
+            return demand.GetRegimentRequirements(
+                Assessment.CanBombardDefenders(
+                    fleet,
+                    planet,
+                    projected,
+                    additionalBombardmentStrength,
+                    demand.ShieldStrength
+                )
+            );
         }
 
         /// <summary>
@@ -505,6 +506,36 @@ namespace Rebellion.AI
                 if (proposal != null)
                     _selectedProposals.Add(proposal);
             }
+        }
+
+        /// <summary>
+        /// Returns the real maintenance capacity that must remain after one production order.
+        /// </summary>
+        /// <param name="demand">The production need being funded.</param>
+        /// <returns>The upkeep buffer after accounting for the demand's economic role.</returns>
+        internal int GetMinimumManufacturingHeadroom(AIProductionDemand demand)
+        {
+            if (demand?.RestoresMaintenanceCapacity == true)
+                return 0;
+
+            int reserve = Game.Config.AI.Selection.MaintenanceHeadroomReserve;
+            if (
+                demand?.Kind
+                    is AIProductionDemandKind.ConstructionFacility
+                        or AIProductionDemandKind.Shipyard
+                && demand.InfrastructureHubIndex == 0
+            )
+                return Math.Max(0, reserve - StrategicPlan.ExpectedDiplomacyMaintenanceGain);
+
+            return demand?.UsesDefensiveReserve == true
+                ? Math.Max(
+                    reserve,
+                    IntegerMath.ScaleByPercentRoundedUp(
+                        Assessment.MaintenanceCapacity,
+                        Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
+                    )
+                )
+                : reserve;
         }
 
         /// <summary>

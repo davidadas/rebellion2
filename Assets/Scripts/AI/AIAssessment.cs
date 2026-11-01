@@ -48,6 +48,10 @@ namespace Rebellion.AI
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, double> _planetEconomicOutputs = new(
+            StringComparer.Ordinal
+        );
+        private double? _highestDiplomacyEconomicOutput;
         private readonly Dictionary<string, double> _farthestEnemyPlanetDistances = new Dictionary<
             string,
             double
@@ -291,6 +295,11 @@ namespace Rebellion.AI
         public int RefinedMaterialStockpile { get; }
 
         public int NearTermRefinedMaterialCommitment { get; }
+
+        /// <summary>
+        /// Gets refined materials current facilities can supply during the commitment horizon.
+        /// </summary>
+        public int NearTermRefinedMaterialProduction { get; }
 
         public int ProjectedRefinedMaterialPercent { get; }
 
@@ -746,6 +755,31 @@ namespace Rebellion.AI
                     starfighter.ManufacturingStatus != ManufacturingStatus.Complete
                 );
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
+            if (game?.Config != null && faction != null)
+            {
+                var operating = new ResourceProductionQueries(game).GetOperatingEconomy(
+                    faction,
+                    Array.Empty<Building>()
+                );
+                int horizon = Math.Max(
+                    0,
+                    game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+                );
+                NearTermRefinedMaterialProduction = (int)
+                    Math.Min(
+                        int.MaxValue,
+                        Math.Max(
+                            0,
+                            Math.Floor(
+                                Math.Min(
+                                    faction.RawMaterialStockpile
+                                        + operating.RawOutputPerTick * horizon,
+                                    operating.RefinedOutputPerTick * horizon
+                                )
+                            )
+                        )
+                    );
+            }
             long projectedRefinedMaterials = Math.Max(
                 0,
                 (long)RefinedMaterialStockpile - NearTermRefinedMaterialCommitment
@@ -921,6 +955,31 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the age of the last complete orbital observation independently of partial reports.
+        /// </summary>
+        /// <param name="planet">The planet whose orbital memory is evaluated.</param>
+        /// <returns>The observation age in ticks, or the maximum integer when unknown.</returns>
+        public int GetPlanetOrbitalIntelAge(Planet planet)
+        {
+            if (planet == null || _faction?.Fog == null || _game == null)
+                return int.MaxValue;
+            if (
+                IsOwnedPlanet(planet)
+                || GetFriendlyFleets(planet)
+                    .Any(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+            )
+                return 0;
+            if (
+                !_faction.Fog.PlanetToSector.TryGetValue(planet.InstanceID, out string sectorId)
+                || !_faction.Fog.Snapshots.TryGetValue(sectorId, out PlanetSectorSnapshot sector)
+                || !sector.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot)
+                || snapshot.OrbitalTickCaptured < 0
+            )
+                return int.MaxValue;
+            return Math.Max(0, _game.CurrentTick - snapshot.OrbitalTickCaptured);
+        }
+
+        /// <summary>
         /// Returns whether intelligence is recent enough to initiate a headquarters attack.
         /// </summary>
         /// <param name="planet">The prospective attack target.</param>
@@ -1030,6 +1089,55 @@ namespace Rebellion.AI
                     + planet.GetProductionRate(ManufacturingType.Building)
                     + planet.GetProductionRate(ManufacturingType.Ship)
                     + planet.GetProductionRate(ManufacturingType.Troop)
+            );
+        }
+
+        /// <summary>
+        /// Returns a planet's completed economic throughput relative to known diplomacy targets.
+        /// </summary>
+        /// <param name="planet">The known planet to evaluate.</param>
+        /// <returns>Economic development from zero through one.</returns>
+        public double GetPlanetEconomicDevelopment(Planet planet)
+        {
+            _highestDiplomacyEconomicOutput ??= KnownColonizedPlanets
+                .Where(candidate =>
+                    !candidate.IsDestroyed
+                    && (IsOwnedPlanet(candidate) || IsNeutralPlanet(candidate))
+                )
+                .Select(GetPlanetEconomicOutput)
+                .DefaultIfEmpty()
+                .Max();
+            double highest = _highestDiplomacyEconomicOutput.Value;
+            return planet != null && highest > 0
+                ? Math.Clamp(GetPlanetEconomicOutput(planet) / highest, 0, 1)
+                : 0;
+        }
+
+        /// <summary>
+        /// Measures completed resource and manufacturing throughput without political support bonuses.
+        /// </summary>
+        /// <param name="planet">The known planet whose facilities are measured.</param>
+        /// <returns>The combined nominal output of its completed economic facilities.</returns>
+        private double GetPlanetEconomicOutput(Planet planet)
+        {
+            return GetOrAdd(
+                _planetEconomicOutputs,
+                planet.InstanceID,
+                () =>
+                    GetPlanetBuildings(planet)
+                        .Where(building =>
+                            building.ManufacturingStatus == ManufacturingStatus.Complete
+                            && building.Movement == null
+                            && building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                            && building.GetProcessRate() > 0
+                            && building.GetBuildingType()
+                                is BuildingType.Mine
+                                    or BuildingType.Refinery
+                                    or BuildingType.ConstructionFacility
+                                    or BuildingType.Shipyard
+                                    or BuildingType.TrainingFacility
+                        )
+                        .Sum(building => 1d / building.GetProcessRate())
             );
         }
 
@@ -1156,6 +1264,20 @@ namespace Rebellion.AI
                         .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                         .ToList()
             );
+        }
+
+        /// <summary>
+        /// Returns all known planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The indexed known planets, or an empty collection.</returns>
+        internal IReadOnlyList<Planet> GetKnownSystemPlanets(string systemId)
+        {
+            return
+                !string.IsNullOrEmpty(systemId)
+                && _knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
+                ? planets
+                : Array.Empty<Planet>();
         }
 
         /// <summary>
@@ -1292,6 +1414,30 @@ namespace Rebellion.AI
                 return 0;
 
             return planet.GetPopularSupport(_faction.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns whether a colonized enemy planet has greater support for this faction than its owner.
+        /// </summary>
+        /// <param name="planet">The known planet.</param>
+        /// <returns>True when local support favors this faction over the controlling enemy.</returns>
+        public bool HasSupportAdvantage(Planet planet)
+        {
+            string ownerId = planet?.GetOwnerInstanceID();
+            return planet?.IsColonized == true
+                && !string.IsNullOrEmpty(ownerId)
+                && ownerId != _faction?.InstanceID
+                && GetFactionPopularSupport(planet) > planet.GetPopularSupport(ownerId);
+        }
+
+        /// <summary>
+        /// Returns whether removing a known enemy garrison can exploit favorable popular support.
+        /// </summary>
+        /// <param name="planet">The known enemy planet.</param>
+        /// <returns>True when an enemy garrison holds a colonized planet against greater friendly support.</returns>
+        public bool HasSupportBombardmentOpportunity(Planet planet)
+        {
+            return HasSupportAdvantage(planet) && GetDefendingRegimentCount(planet) > 0;
         }
 
         /// <summary>
