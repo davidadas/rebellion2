@@ -218,7 +218,9 @@ public static class MenuPrefabBuilder
         );
         TextMeshProUGUI header = CreateTextLabel("HeaderTextField", root.transform);
         header.color = new Color(0.875f, 0.910f, 0.941f);
-        header.fontSize = 22;
+        header.enableAutoSizing = true;
+        header.fontSizeMin = 16f;
+        header.fontSizeMax = 22f;
         header.alignment = TextAlignmentOptions.Midline;
         SetSourceRect(header.rectTransform, 41, 32, 155, 26);
         TextMeshProUGUI page = CreateTextLabel("PageTitleTextField", root.transform);

@@ -218,9 +218,6 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             return;
 
         header.text = "CUSTOM GAME";
-        header.enableAutoSizing = false;
-        header.fontSize = 22f;
-        UILayout.SetSourceRect(header.rectTransform, 41, 32, 174, 26);
     }
 
     /// <summary>
