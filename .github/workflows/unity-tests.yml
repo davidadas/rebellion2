@@ -328,6 +328,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
+        shell: bash
         run: |
           BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
           (
@@ -387,6 +388,7 @@ jobs:
 
       - name: Prepare Vulkan-enabled Unity test image
         if: steps.unity-image-cache.outputs.cache-hit != 'true'
+        shell: bash
         run: |
           BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
           docker build \
@@ -395,7 +397,7 @@ jobs:
             --file .github/docker/unity-tests.Dockerfile \
             .github/docker
           docker save rebellion2-unity-test:vulkan \
-            | zstd --threads=0 -3 --output "$RUNNER_TEMP/unity-tooling-image.tar.zst"
+            | zstd --threads=0 -3 -o "$RUNNER_TEMP/unity-tooling-image.tar.zst"
 
       - name: Cache Unity tooling image
         if: steps.unity-image-cache.outputs.cache-hit != 'true'
