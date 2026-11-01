@@ -212,7 +212,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void HandleOptionsMenuRequested()
     {
-        if (_analyticsConsentView.IsVisible)
+        if (mainMenuCanvas?.enabled != true || _analyticsConsentView.IsVisible)
             return;
 
         if (TryCancel())
