@@ -468,7 +468,7 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current faction turn.</param>
         /// <param name="demands">The requirements after industrial allocation.</param>
         /// <returns>The requirements with economic destinations assigned.</returns>
-        private static List<AIProductionDemand> ExpandEconomyDemands(
+        private List<AIProductionDemand> ExpandEconomyDemands(
             AITurnContext context,
             IEnumerable<AIProductionDemand> demands
         )
@@ -494,8 +494,8 @@ namespace Rebellion.AI.Planners
 
                 IEnumerable<Planet> targets =
                     demand.Kind == AIProductionDemandKind.Mine
-                        ? FindMineTargets(context, demand.QuantityNeeded)
-                        : FindRefineryTargets(context, demand.QuantityNeeded, mineTargetIds);
+                        ? FindMineTargets(context, demand)
+                        : FindRefineryTargets(context, demand, mineTargetIds);
                 foreach (Planet target in targets)
                 {
                     expanded.Add(
@@ -550,55 +550,108 @@ namespace Rebellion.AI.Planners
         /// Returns candidate planets for new mines.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets.</param>
+        /// <param name="demand">The mine capacity requirement.</param>
         /// <returns>Ranked mine destinations.</returns>
-        private static IEnumerable<Planet> FindMineTargets(AITurnContext context, int count)
+        private IEnumerable<Planet> FindMineTargets(
+            AITurnContext context,
+            AIProductionDemand demand
+        )
         {
-            return count <= 0
+            return demand.QuantityNeeded <= 0
                 ? Enumerable.Empty<Planet>()
-                : GetBuildingDestinations(context, BuildingType.Mine)
-                    .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
-                    .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
-                    .ThenBy(planet => planet.InstanceID)
-                    .Take(count);
+                : RankEconomyDestinations(
+                        context,
+                        demand,
+                        GetBuildingDestinations(context, BuildingType.Mine)
+                            .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
+                            .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
+                            .ThenByDescending(planet => planet.GetAvailableEnergy())
+                            .ThenBy(planet => planet.InstanceID)
+                    )
+                    .Take(demand.QuantityNeeded);
         }
 
         /// <summary>
         /// Returns candidate planets for new refineries.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets.</param>
+        /// <param name="demand">The refinery capacity requirement.</param>
         /// <param name="excludedPlanetIds">Planets already selected for mines.</param>
         /// <returns>Ranked refinery destinations.</returns>
-        private static IEnumerable<Planet> FindRefineryTargets(
+        private IEnumerable<Planet> FindRefineryTargets(
             AITurnContext context,
-            int count,
+            AIProductionDemand demand,
             HashSet<string> excludedPlanetIds
         )
         {
+            int count = demand.QuantityNeeded;
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            List<Planet> targets = GetBuildingDestinations(context, BuildingType.Refinery)
-                .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
-                .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
-                .ThenBy(planet => planet.InstanceID)
+            List<Planet> targets = RankEconomyDestinations(
+                    context,
+                    demand,
+                    GetBuildingDestinations(context, BuildingType.Refinery)
+                        .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
+                        .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                        .ThenByDescending(planet => planet.GetAvailableEnergy())
+                        .ThenBy(planet => planet.InstanceID)
+                )
                 .Take(count)
                 .ToList();
             if (targets.Count >= count)
                 return targets;
 
             targets.AddRange(
-                GetBuildingDestinations(context, BuildingType.Refinery)
-                    .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
-                    .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
-                    .ThenBy(planet => planet.InstanceID)
+                RankEconomyDestinations(
+                        context,
+                        demand,
+                        GetBuildingDestinations(context, BuildingType.Refinery)
+                            .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
+                            .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                            .ThenByDescending(planet => planet.GetAvailableEnergy())
+                            .ThenBy(planet => planet.InstanceID)
+                    )
                     .Take(count - targets.Count)
             );
             return targets;
+        }
+
+        /// <summary>
+        /// Orders economic sites by the earliest delivery from currently usable construction lanes.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demand">The economic capacity requirement.</param>
+        /// <param name="destinations">Eligible sites in tie-breaking preference order.</param>
+        /// <returns>The eligible sites ordered by estimated production and transit time.</returns>
+        private IEnumerable<Planet> RankEconomyDestinations(
+            AITurnContext context,
+            AIProductionDemand demand,
+            IEnumerable<Planet> destinations
+        )
+        {
+            IManufacturable product = GetUnlockedTechnology(context, demand)?.GetReference();
+            if (product is not IMovable movable)
+                return destinations;
+
+            Planet[] producers = context.Assessment.OwnedPlanets
+                .Where(planet => CanProduce(context, planet, ManufacturingType.Building))
+                .ToArray();
+            return destinations.OrderBy(destination =>
+                producers
+                    .Select(producer =>
+                        GetReinforcementArrivalTicks(
+                            context,
+                            producer,
+                            destination,
+                            product,
+                            movable,
+                            1
+                        )
+                    )
+                    .DefaultIfEmpty(int.MaxValue)
+                    .Min()
+            );
         }
 
         /// <summary>

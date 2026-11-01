@@ -612,7 +612,7 @@ namespace Rebellion.AI
             }
             if (
                 _assessment.ProjectedMaintenanceHeadroom
-                < _game.Config.AI.Selection.MaintenanceHeadroomTarget
+                < _game.Config.AI.Selection.MaintenanceHeadroomReserve
             )
             {
                 _resourceReclamationCache[key] = Array.Empty<Building>();
@@ -701,7 +701,7 @@ namespace Rebellion.AI
                     / 100d;
                 if (
                     after.MaintenanceHeadroom - hubMaintenance
-                        < _game.Config.AI.Selection.MaintenanceHeadroomTarget
+                        < _game.Config.AI.Selection.MaintenanceHeadroomReserve
                     || after.RawOutputPerTick <= 0
                     || after.RefinedOutputPerTick <= 0
                     || materials < materialReserve
@@ -718,11 +718,11 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns capacity available to a full hub after affordable resource reclamation.
+        /// Returns capacity for the largest affordable hub within the requested size.
         /// </summary>
         /// <param name="planet">The proposed hub destination.</param>
         /// <param name="buildingType">The production category being assigned.</param>
-        /// <param name="targetCount">The full hub target.</param>
+        /// <param name="targetCount">The maximum completed hub size.</param>
         /// <returns>Actual free capacity plus the exact eligible resource reclamation.</returns>
         internal int GetReclaimableInfrastructureSpace(
             Planet planet,
@@ -730,6 +730,21 @@ namespace Rebellion.AI
             int targetCount
         )
         {
+            int currentCount = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
+            int maximumTarget = Math.Min(targetCount, planet?.EnergyCapacity ?? 0);
+            for (int candidate = maximumTarget; candidate > currentCount; candidate--)
+            {
+                int space = GetConstructionSpace(
+                    planet,
+                    buildingType,
+                    false,
+                    plannedInfrastructureCount: candidate
+                );
+                if (space < candidate - currentCount)
+                    space += GetResourceFacilitiesToReclaim(planet, buildingType, candidate).Count;
+                if (space >= candidate - currentCount)
+                    return Math.Max(0, space);
+            }
             return Math.Max(
                 0,
                 GetConstructionSpace(
@@ -738,7 +753,6 @@ namespace Rebellion.AI
                     false,
                     plannedInfrastructureCount: targetCount
                 )
-                    + GetResourceFacilitiesToReclaim(planet, buildingType, targetCount).Count
             );
         }
 
@@ -1439,7 +1453,10 @@ namespace Rebellion.AI
                 : 0;
             if (buildingType != BuildingType.Defense)
                 available -= shieldDeficit;
-            if (buildingType is not BuildingType.Defense and not BuildingType.Weapon)
+            if (
+                buildingType is not BuildingType.Defense and not BuildingType.Weapon
+                && !IsInfrastructureType(buildingType)
+            )
                 available -= weaponDeficit;
             return available;
         }

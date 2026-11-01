@@ -77,7 +77,7 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            AddAttackOrderProposal(context, activeAttackTargetIds, proposals);
+            AddAttackOrderProposals(context, activeAttackTargetIds, proposals);
 
             AddCapitalShipTransferProposals(context, proposals);
             AddPlanetRegimentTransferProposals(context, proposals);
@@ -539,14 +539,16 @@ namespace Rebellion.AI.Planners
                     && CanStartAttackOrder(context, fleet)
                 )
                 {
-                    followOn = SelectAttack(
-                        context,
-                        new[] { fleet },
-                        context.Assessment.EnemyPlanets.Where(target =>
-                            !HasAttackFleetForTarget(context, target, fleet)
-                        ),
-                        requireReady: true
-                    );
+                    Planet[] followOnTargets = context.Assessment.EnemyPlanets
+                        .Where(target => !HasAttackFleetForTarget(context, target, fleet))
+                        .ToArray();
+                    followOn =
+                        SelectAttack(
+                            context,
+                            new[] { fleet },
+                            followOnTargets,
+                            requireReady: true
+                        ) ?? SelectAttack(context, new[] { fleet }, followOnTargets);
                 }
 
                 if (followOn != null)
@@ -976,29 +978,30 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds the strongest new attack order proposal for the faction.
+        /// Adds the strongest new attack option for each eligible idle fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="activeAttackTargetIds">Planets already assigned to attack fleets.</param>
         /// <param name="proposals">The proposal list to update.</param>
-        private void AddAttackOrderProposal(
+        private void AddAttackOrderProposals(
             AITurnContext context,
             HashSet<string> activeAttackTargetIds,
             List<AIProposal> proposals
         )
         {
-            IEnumerable<Planet> targets = context.Assessment.EnemyPlanets.Where(target =>
-                !activeAttackTargetIds.Contains(target.InstanceID)
-            );
-            AIFleetAttackProposal proposal = SelectAttack(
-                context,
-                context.Assessment.OwnedFleets.Where(fleet =>
+            Planet[] targets = context.Assessment.EnemyPlanets
+                .Where(target => !activeAttackTargetIds.Contains(target.InstanceID))
+                .ToArray();
+            foreach (
+                Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
                     fleet.Order == null && CanStartAttackOrder(context, fleet)
-                ),
-                targets
-            );
-            if (proposal != null)
-                proposals.Add(proposal);
+                )
+            )
+            {
+                AIFleetAttackProposal proposal = SelectAttack(context, new[] { fleet }, targets);
+                if (proposal != null)
+                    proposals.Add(proposal);
+            }
         }
 
         /// <summary>

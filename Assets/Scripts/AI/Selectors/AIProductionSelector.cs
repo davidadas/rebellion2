@@ -265,7 +265,7 @@ namespace Rebellion.AI.Selectors
                     context.Assessment.ProjectedMaintenanceHeadroom
                         - _selectedMaintenanceCost
                         - lostHeadroom
-                    < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
+                    < context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
                 )
                     return false;
                 ReserveMaintenanceCost(lostHeadroom);
