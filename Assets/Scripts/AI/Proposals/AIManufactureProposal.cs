@@ -96,8 +96,7 @@ namespace Rebellion.AI.Proposals
             && Destination == ProducerPlanet
                 ? AIProposalPriority.Mandatory
             : Demand?.Kind == AIProductionDemandKind.IdleSpecialForces ? AIProposalPriority.Filler
-            : Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
-            || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
+            : Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
                 ? AIProposalPriority.Mandatory
             : AIProposalPriority.Optional;
 

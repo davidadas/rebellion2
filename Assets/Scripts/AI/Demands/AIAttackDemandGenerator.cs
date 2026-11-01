@@ -52,7 +52,11 @@ namespace Rebellion.AI.Demands
                     || demand
                         .TargetPlanet.GetAllStarfighters()
                         .Any(fighter => fighter.Movement != null);
-                if (!hasInbound && !IsSupportOpportunityTarget(context, demand.TargetPlanet))
+                if (
+                    !hasInbound
+                    && !IsSupportOpportunityTarget(context, demand.TargetPlanet)
+                    && !IsLocalAttackTarget(context, demand.TargetPlanet)
+                )
                     continue;
                 foreach (
                     Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
@@ -95,12 +99,23 @@ namespace Rebellion.AI.Demands
                 && (long)context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
                     + arrivalTicks
                     <= Math.Max(0, config.SupportOpportunityMaximumIntelAgeTicks);
-            int minimum = supportOpportunity
-                ? IntegerMath.ScaleByPercent(
-                    config.MinimumAttackStrength,
-                    Math.Clamp(config.SupportOpportunityMinimumAttackStrengthPercent, 0, 100)
-                )
-                : config.MinimumAttackStrength;
+            bool localAttack =
+                IsLocalAttackTarget(context, demand.TargetPlanet)
+                && arrivalTicks <= Math.Max(0, config.LocalAttackMaximumTravelTicks)
+                && (long)
+                    Math.Max(
+                        context.Assessment.GetPlanetIntelAge(demand.TargetPlanet),
+                        context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
+                    ) + arrivalTicks
+                    <= Math.Max(0, config.LocalAttackMaximumIntelAgeTicks);
+            int minimumPercent = Math.Min(
+                supportOpportunity ? config.SupportOpportunityMinimumAttackStrengthPercent : 100,
+                localAttack ? config.LocalAttackMinimumStrengthPercent : 100
+            );
+            int minimum = IntegerMath.ScaleByPercent(
+                config.MinimumAttackStrength,
+                Math.Clamp(minimumPercent, 0, 100)
+            );
             int combat = IntegerMath.ScaleByPercent(
                 Math.Max(minimum, orbital),
                 GetIntelReservePercent(context, demand.TargetPlanet)
@@ -134,7 +149,7 @@ namespace Rebellion.AI.Demands
                 blockedByShields ? (int)Math.Min(int.MaxValue, (long)shields.Strength + 1) : 0,
                 blockedByShields,
                 shields.Strength,
-                supportOpportunity
+                supportOpportunity && HasBombardmentSupportReserve(context, demand.TargetPlanet)
             );
         }
 
@@ -302,6 +317,29 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
+        /// Checks whether recent orbital intelligence permits a smaller local attack force.
+        /// </summary>
+        /// <param name="context">The faction's observed targets and local attack settings.</param>
+        /// <param name="planet">The prospective target.</param>
+        /// <returns>True for recently observed non-headquarters targets without known interdiction.</returns>
+        private static bool IsLocalAttackTarget(AITurnContext context, Planet planet)
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            AIAssessment assessment = context.Assessment;
+            return config.LocalAttackMinimumStrengthPercent < 100
+                && planet?.IsHeadquarters == false
+                && assessment.IsEnemyPlanet(planet)
+                && Math.Max(
+                    assessment.GetPlanetIntelAge(planet),
+                    assessment.GetPlanetOrbitalIntelAge(planet)
+                ) <= Math.Max(0, config.LocalAttackMaximumIntelAgeTicks)
+                && !assessment
+                    .GetHostileFleets(planet)
+                    .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                    .Any(ship => ship.HasGravityWell);
+        }
+
+        /// <summary>
         /// Checks whether recent orbital memory exposes a garrison whose removal benefits support.
         /// </summary>
         /// <param name="context">The faction's known defenses and attack settings.</param>
@@ -319,6 +357,27 @@ namespace Rebellion.AI.Demands
                     .GetHostileFleets(planet)
                     .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                     .Any(ship => ship.HasGravityWell);
+        }
+
+        /// <summary>
+        /// Checks whether favorable support can survive a civilian hit before the garrison is cleared.
+        /// </summary>
+        /// <param name="context">The faction and configured political reactions.</param>
+        /// <param name="planet">The prospective bombardment target.</param>
+        /// <returns>True when an occupation force is unnecessary after one full support penalty.</returns>
+        private static bool HasBombardmentSupportReserve(AITurnContext context, Planet planet)
+        {
+            Faction faction = context.Faction;
+            int sectorPenalty =
+                planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                    ? faction.Settings.CivilianBombardmentCoreSupportPenalty
+                    : faction.Settings.CivilianBombardmentOuterRimSupportPenalty;
+            long penalty =
+                Math.Min(0, context.Game.Config.Combat.Bombardment.CivilianSupportPenalty)
+                + (long)Math.Min(0, sectorPenalty);
+            long projectedSupport = context.Assessment.GetFactionPopularSupport(planet) + penalty;
+            long opposingSupport = planet.GetPopularSupport(planet.GetOwnerInstanceID()) - penalty;
+            return projectedSupport > opposingSupport;
         }
 
         /// <summary>

@@ -511,7 +511,7 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Orders competing fleet production by score, using fleet priority to break score ties.
+        /// Orders competing fleet production by campaign priority, then by each request's score.
         /// </summary>
         /// <param name="context">The faction turn containing ranked fleet needs.</param>
         /// <param name="proposals">Globally ranked proposals to order without moving other domains.</param>
@@ -536,13 +536,13 @@ namespace Rebellion.AI.Selectors
                 int[] slots = group.ToArray();
                 AIProposal[] ordered = slots
                     .Select(index => proposals[index])
-                    .OrderByDescending(proposal => proposal.Score)
-                    .ThenBy(proposal =>
+                    .OrderBy(proposal =>
                         ((AIManufactureProposal)proposal).Demand.DestinationFleet is Fleet fleet
                         && ranks.TryGetValue(fleet.InstanceID, out int rank)
                             ? rank
                             : int.MaxValue
                     )
+                    .ThenByDescending(proposal => proposal.Score)
                     .ThenBy(proposal =>
                         ((AIManufactureProposal)proposal).Demand.Kind
                         == AIProductionDemandKind.FleetCapitalShip

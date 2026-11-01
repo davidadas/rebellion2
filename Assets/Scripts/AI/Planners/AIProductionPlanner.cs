@@ -415,15 +415,9 @@ namespace Rebellion.AI.Planners
                                     !layout.Any(entry =>
                                         entry.Key.Type == type && entry.Value.Planet == planet
                                     )
-                                    && (
-                                        type == BuildingType.ConstructionFacility
-                                            ? planet.GetTotalBuildingTypeCount(type)
-                                                + availableSpace(planet)
-                                                > 0
-                                            : planet.GetTotalBuildingTypeCount(type)
-                                                + availableSpace(planet)
-                                                >= preferred
-                                    )
+                                    && planet.GetTotalBuildingTypeCount(type)
+                                        + availableSpace(planet)
+                                        > 0
                                 )
                                 .ToList(),
                             reference,
@@ -435,14 +429,10 @@ namespace Rebellion.AI.Planners
                         .FirstOrDefault();
                     if (destination == null)
                         continue;
-                    int target =
-                        type == BuildingType.ConstructionFacility
-                            ? Math.Min(
-                                preferred,
-                                destination.GetTotalBuildingTypeCount(type)
-                                    + availableSpace(destination)
-                            )
-                            : preferred;
+                    int target = Math.Min(
+                        preferred,
+                        destination.GetTotalBuildingTypeCount(type) + availableSpace(destination)
+                    );
                     layout.Add((type, index), (destination, target));
                 }
             }

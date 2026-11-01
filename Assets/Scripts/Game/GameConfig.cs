@@ -359,6 +359,12 @@ namespace Rebellion.Game
 
             public int MinimumAttackStrength { get; set; }
 
+            public int LocalAttackMinimumStrengthPercent { get; set; } = 100;
+
+            public int LocalAttackMaximumIntelAgeTicks { get; set; }
+
+            public int LocalAttackMaximumTravelTicks { get; set; }
+
             public int SupportOpportunityMinimumAttackStrengthPercent { get; set; } = 100;
 
             public int SupportOpportunityMaximumIntelAgeTicks { get; set; }
