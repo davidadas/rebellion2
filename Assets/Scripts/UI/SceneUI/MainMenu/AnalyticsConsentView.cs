@@ -47,10 +47,11 @@ public sealed class AnalyticsConsentView : MonoBehaviour
     private void OnEnable()
     {
         VerifyReferences();
+        _canvasGroup.alpha = 0f;
+        _canvasGroup.interactable = false;
         BindControls();
         ConfigureNavigation();
-        FocusInitialControl();
-        _canvasGroup.alpha = 0f;
+        SuspendCurrentSelection();
         _captureRoutine = StartCoroutine(CaptureBackdrop());
     }
 
@@ -67,6 +68,7 @@ public sealed class AnalyticsConsentView : MonoBehaviour
 
         ReleaseBackdrop();
         _canvasGroup.alpha = 1f;
+        _canvasGroup.interactable = true;
         RestorePreviousSelection();
         if (!_bound)
             return;
@@ -91,6 +93,9 @@ public sealed class AnalyticsConsentView : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
+        if (!_canvasGroup.interactable)
+            return;
+
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem == null)
             return;
@@ -176,10 +181,14 @@ public sealed class AnalyticsConsentView : MonoBehaviour
                 RenderTexture.ReleaseTemporary(eighthResolution);
             if (capture != null)
                 Destroy(capture);
-
-            _canvasGroup.alpha = 1f;
-            _captureRoutine = null;
         }
+
+        _canvasGroup.alpha = 1f;
+        yield return new WaitForEndOfFrame();
+
+        _canvasGroup.interactable = true;
+        FocusInitialControl();
+        _captureRoutine = null;
     }
 
     /// <summary>
@@ -236,7 +245,20 @@ public sealed class AnalyticsConsentView : MonoBehaviour
     }
 
     /// <summary>
-    /// Saves the prior selection and focuses the primary consent choice.
+    /// Saves and clears the prior selection while the consent page is not yet visible.
+    /// </summary>
+    private void SuspendCurrentSelection()
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+            return;
+
+        _previousSelection = eventSystem.currentSelectedGameObject;
+        eventSystem.SetSelectedGameObject(null);
+    }
+
+    /// <summary>
+    /// Focuses the primary consent choice after the page has rendered visibly.
     /// </summary>
     private void FocusInitialControl()
     {
@@ -244,7 +266,6 @@ public sealed class AnalyticsConsentView : MonoBehaviour
         if (eventSystem == null)
             return;
 
-        _previousSelection = eventSystem.currentSelectedGameObject;
         eventSystem.SetSelectedGameObject(_allowButton.gameObject);
     }
 
