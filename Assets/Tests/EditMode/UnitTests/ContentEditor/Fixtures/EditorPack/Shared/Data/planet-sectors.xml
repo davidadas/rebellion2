@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PlanetSectors>
+  <PlanetSector>
+    <DisplayName>Sesswenna</DisplayName>
+    <SectorType>Core</SectorType>
+    <Visibility>Small</Visibility>
+    <Importance>High</Importance>
+    <TypeID>PSSEW</TypeID>
+    <PositionX>240</PositionX>
+    <PositionY>95</PositionY>
+    <Planets>
+      <Planet>
+        <TypeID>PLSEW01</TypeID>
+        <InstanceID>YAGA_MINOR</InstanceID>
+        <DisplayName>Yaga Minor</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Sesswenna                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>Yaga Minor  is a  planet which is known throughout the galaxy for its major shipbuilding facilities.  Since it is in the Sesswenna sector it is near the center of power for the Empire.</EncyclopediaDescription>
+        <PositionX>259</PositionX>
+        <PositionY>98</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/blue-brown-continental-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-blue-brown-continental</EncyclopediaImagePath>
+      </Planet>
+      <Planet>
+        <TypeID>PLSEW02</TypeID>
+        <InstanceID>CHANDRILA</InstanceID>
+        <DisplayName>Chandrila</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Sesswenna                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>Chandrila is a lush world covered with woods and trees. Chandrila is also the homeworld of Alliance leader Mon Mothma.</EncyclopediaDescription>
+        <PositionX>243</PositionX>
+        <PositionY>100</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/white-clouded-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-white-clouded</EncyclopediaImagePath>
+      </Planet>
+      <Planet>
+        <TypeID>PLSEW03</TypeID>
+        <InstanceID>GHORMAN</InstanceID>
+        <DisplayName>Ghorman</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Sesswenna                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>The site of the infamous Ghorman massacre, an early atrocity committed by the Empire when then Governor Tarkin purposefully landed his ship on top of a crowd of peaceful demonstrators. The massacre has been commemorated every year on its anniversary by those opposed to Emperor Palpatine's New Order. The Massacre was responsible for convincing Bail Organa of Alderaan to join the Alliance.</EncyclopediaDescription>
+        <PositionX>274</PositionX>
+        <PositionY>105</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/shadowed-green-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-shadowed-green</EncyclopediaImagePath>
+      </Planet>
+    </Planets>
+  </PlanetSector>
+  <PlanetSector>
+    <DisplayName>Corellian</DisplayName>
+    <SectorType>Core</SectorType>
+    <Visibility>Small</Visibility>
+    <Importance>High</Importance>
+    <TypeID>PSCOR</TypeID>
+    <PositionX>206</PositionX>
+    <PositionY>160</PositionY>
+    <Planets>
+      <Planet>
+        <TypeID>PLCOR01</TypeID>
+        <InstanceID>XYQUINE</InstanceID>
+        <DisplayName>Xyquine</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Corellian                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>Xyquine is one of the many inhabitable planets of the Corellian Sector.  Xyquine has quite a diverse array of life in its many regions.</EncyclopediaDescription>
+        <PositionX>215</PositionX>
+        <PositionY>163</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/temperate-clouded-blue-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-temperate-clouded-blue</EncyclopediaImagePath>
+      </Planet>
+      <Planet>
+        <TypeID>PLCOR02</TypeID>
+        <InstanceID>DRALL</InstanceID>
+        <DisplayName>Drall</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Corellian                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>Drall is a pleasant, temperate planet with a lighter gravity than standard.  As with other worlds in the Corellian system, Drall has a vast, subterranean planetary repulsorlift located near the equator. It was presumably used in ancient times to move the planet into its current position from an unknown location.</EncyclopediaDescription>
+        <PositionX>212</PositionX>
+        <PositionY>172</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/oceanic-blue-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-oceanic-blue</EncyclopediaImagePath>
+      </Planet>
+      <Planet>
+        <TypeID>PLCOR03</TypeID>
+        <InstanceID>TALUS</InstanceID>
+        <DisplayName>Talus</DisplayName>
+        <EncyclopediaStats>
+          <EncyclopediaEntryStat>
+            <Label>Sector</Label>
+            <Value>Corellian                 Type: Core System</Value>
+          </EncyclopediaEntryStat>
+        </EncyclopediaStats>
+        <EncyclopediaDescription>Talus shares its orbit with its sister planet Tralus, they both have the same center of gravity.  Talus has a myriad of climates throughout its atmosphere that would be hospitable to a great many galactic citizens.</EncyclopediaDescription>
+        <PositionX>211</PositionX>
+        <PositionY>181</PositionY>
+        <PlanetIconPath>Pack/Shared/Planets/blue-brown-continental-planet-icon</PlanetIconPath>
+        <EncyclopediaImagePath>Pack/Shared/Planets/ui-encyclopedia-system-blue-brown-continental</EncyclopediaImagePath>
+      </Planet>
+    </Planets>
+  </PlanetSector>
+</PlanetSectors>

@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Regiments>
+  <Regiment>
+    <TypeID>REEM001</TypeID>
+    <DisplayName>Imperial Fleet Regiment</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/Regiments/REEM001/display</DisplayImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/Regiments/REEM001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>7</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>20</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial fleet regiments are the mainstay troops aboard capital ships.  They assist in conducting ground assault missions and are generally better equipped than regular army regiments.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>7</ConstructionCost>
+    <MaintenanceCost>5</MaintenanceCost>
+    <AttackRating>5</AttackRating>
+    <DefenseRating>3</DefenseRating>
+    <BombardmentDefense>2</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>20</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REEM002</TypeID>
+    <DisplayName>Imperial Army Regiment</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/Regiments/REEM002/display</DisplayImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/Regiments/REEM002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>15</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Army regiments comprise the largest percentage of Imperial ground troops.  Army regiments are armored the same as fleet regiments, but do not carry the firepower of their fleet counterparts.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <AttackRating>3</AttackRating>
+    <DefenseRating>5</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>15</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+</Regiments>

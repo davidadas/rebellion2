@@ -1,0 +1,265 @@
+<?xml version='1.0' encoding='utf-8'?>
+<CapitalShips>
+  <CapitalShip>
+    <TypeID>CSAL001</TypeID>
+    <UprisingDefense>19</UprisingDefense>
+    <DisplayName>Alliance Dreadnaught</DisplayName>
+    <ShipNamePoolID>B</ShipNamePoolID>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>44</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>33</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>40		20		70		70</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. The Alliance has refit many of these ancient vessels with automated controls and faster sublight engines.  Many of these became what are known as Rebel Assault Frigates.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>44</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>33</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>1</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>20</int>
+            <int>70</int>
+            <int>70</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>7</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL002</TypeID>
+    <UprisingDefense>15</UprisingDefense>
+    <DisplayName>Bulk Cruiser</DisplayName>
+    <ShipNamePoolID>B</ShipNamePoolID>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/CapitalShips/CSAL002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>15		0		30		30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The aging bulk cruiser class of capital ships has existed since the time of the Old Republic.  Extremely reliable and rugged, the cruiser has become one of the mainstay ships of the Alliance fleet.  Sporting a reasonable amount of firepower and shielding, the cruiser is suited for most any type of operation.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>30</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>30</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>15</int>
+            <int>0</int>
+            <int>30</int>
+            <int>30</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>6</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+</CapitalShips>

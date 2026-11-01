@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Starfighters>
+  <Starfighter>
+    <TypeID>SFAL01</TypeID>
+    <UprisingDefense>0</UprisingDefense>
+    <DisplayName>Y-Wing Squadron</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL01/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>Yes</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The older, twin-engine Y-wing still sees lots of action in the Alliance fleet.  Mounting a turreted laser cannon and ion cannon, in addition to heavier armor, the Y-wing a good choice for heavy assault missions.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>5</ConstructionCost>
+    <MaintenanceCost>4</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>12</DetectionRating>
+    <Bombardment>2</Bombardment>
+    <ShieldStrength>5</ShieldStrength>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>8</SublightSpeed>
+    <Agility>4</Agility>
+    <LaserCannon>5</LaserCannon>
+    <IonCannon>3</IonCannon>
+    <Torpedoes>8</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>12</IonRange>
+    <TorpedoRange>7</TorpedoRange>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Starfighter>
+  <Starfighter>
+    <TypeID>SFAL02</TypeID>
+    <UprisingDefense>0</UprisingDefense>
+    <DisplayName>X-Wing Squadron</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Starfighters/SFAL02/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>Yes</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>15</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Designed by the Incom Corporation, the T-65 X-wing is a small, single-pilot starfighter with exceptional maneuverability.  Mounting laser cannons on the tips of its four S-foils, the X-wing can bring an impressive amount of firepower against a single target.  The X-wing also mounts an efficient hyperdrive and shield generator.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>5</ConstructionCost>
+    <MaintenanceCost>4</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>15</DetectionRating>
+    <Bombardment>1</Bombardment>
+    <ShieldStrength>5</ShieldStrength>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>8</SublightSpeed>
+    <Agility>5</Agility>
+    <LaserCannon>8</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>4</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>0</IonRange>
+    <TorpedoRange>7</TorpedoRange>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Starfighter>
+</Starfighters>

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ContentPack>
+  <ID>editor-fixture</ID>
+  <Version>1.0.0</Version>
+  <DisplayName>Editor fixture</DisplayName>
+  <DefaultScenarioID>standard</DefaultScenarioID>
+  <MainMenuMusicPath>Application/MainMenu/Audio/battle-of-endor-1-medley</MainMenuMusicPath>
+  <PlanetSectorsPath>Shared/Data/planet-sectors.xml</PlanetSectorsPath>
+  <BuildingsPath>Data/buildings.xml</BuildingsPath>
+  <OfficerTraitsPath>Shared/Data/officer-traits.xml</OfficerTraitsPath>
+  <GameEventsPath>Shared/Data/game-events.xml</GameEventsPath>
+  <MessageDefinitionsPath>Shared/Data/message-definitions.xml</MessageDefinitionsPath>
+  <EncyclopediaEntriesPath>Shared/Data/encyclopedia-entries.xml</EncyclopediaEntriesPath>
+  <NeutralThemePath>Shared/Strategy/UI/Neutral/theme.xml</NeutralThemePath>
+  <FactionPaths>
+    <Path>Factions/Alliance/faction.xml</Path>
+    <Path>Factions/Empire/faction.xml</Path>
+  </FactionPaths>
+  <ScenarioPaths>
+    <Path>Scenarios/Standard/scenario.xml</Path>
+  </ScenarioPaths>
+</ContentPack>
