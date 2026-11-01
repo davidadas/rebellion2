@@ -529,7 +529,7 @@ namespace Rebellion.AI.Selectors
             foreach (
                 IGrouping<AIProposalPriority, int> group in Enumerable
                     .Range(0, proposals.Count)
-                    .Where(index => IsAttackFleetProduction(proposals[index]))
+                    .Where(index => IsFleetProductionRequest(proposals[index]))
                     .GroupBy(index => proposals[index].Priority)
             )
             {
@@ -649,13 +649,15 @@ namespace Rebellion.AI.Selectors
         /// Identifies manufacturing actions competing to assemble an attack fleet.
         /// </summary>
         /// <param name="proposal">The globally ranked action.</param>
-        /// <returns>True for battle fleet reinforcement and new battle fleet seeds.</returns>
-        private static bool IsAttackFleetProduction(AIProposal proposal)
+        /// <returns>True for battle fleet reinforcement and new fleet seeds.</returns>
+        private static bool IsFleetProductionRequest(AIProposal proposal)
         {
             if (proposal is not AIManufactureProposal manufacture)
                 return false;
             AIProductionDemand demand = manufacture.Demand;
-            return demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip
+            return demand?.Kind
+                    is AIProductionDemandKind.FleetSeedCapitalShip
+                        or AIProductionDemandKind.ColonizationFleetSeedCapitalShip
                 || demand?.Kind
                     is AIProductionDemandKind.FleetCapitalShip
                         or AIProductionDemandKind.FleetStarfighter

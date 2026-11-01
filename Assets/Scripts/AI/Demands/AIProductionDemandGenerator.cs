@@ -1448,7 +1448,6 @@ namespace Rebellion.AI.Demands
             int readyCapacity = context.Assessment.GetReadyFleetRegimentCapacity(fleet);
             if (
                 readyCapacity >= required.Count
-                || context.Assessment.GetReadyFleetRegimentAttackStrength(fleet) < required.Strength
                 || !context.GetAttackReadiness(fleet, target, required.Count).FleetReady
             )
                 return 0;
