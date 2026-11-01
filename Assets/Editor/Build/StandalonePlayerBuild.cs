@@ -19,6 +19,7 @@ public static class StandalonePlayerBuild
     private const string _buildVersionArgument = "-buildVersion";
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
+    private const string _skipRuntimeUIBuildArgument = "-skipRuntimeUIBuild";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
 
     /// <summary>
@@ -50,8 +51,10 @@ public static class StandalonePlayerBuild
                 target,
                 outputPath,
                 enableDiagnostics: false,
-                enableAnalytics: false
+                enableAnalytics: false,
+                prepareRuntimeUI: true
             );
+            ContentPackEditorBuild.BuildBesideGame(target, builtPlayerPath, false);
             LaunchPlayer(target, builtPlayerPath, contentPath);
         }
         finally
@@ -66,7 +69,7 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform that was built.</param>
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="contentPath">The external development content root.</param>
-    private static void LaunchPlayer(
+    internal static void LaunchPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
         string contentPath
@@ -116,11 +119,17 @@ public static class StandalonePlayerBuild
 #if UNITY_STANDALONE_OSX
             ApplyBuildArchitecture(target);
 #endif
-            BuildPlayer(
+            string builtPlayerPath = BuildPlayer(
                 target,
                 outputPath,
                 HasArgument(_enableDiagnosticsArgument),
-                HasArgument(_enableAnalyticsArgument)
+                HasArgument(_enableAnalyticsArgument),
+                !HasArgument(_skipRuntimeUIBuildArgument)
+            );
+            ContentPackEditorBuild.BuildBesideGame(
+                target,
+                builtPlayerPath,
+                HasArgument(_enableDiagnosticsArgument)
             );
         }
         finally
@@ -171,18 +180,27 @@ public static class StandalonePlayerBuild
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
     /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
+    /// <param name="prepareRuntimeUI">Whether to regenerate stripped runtime UI before building.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
         bool enableDiagnostics,
-        bool enableAnalytics
+        bool enableAnalytics,
+        bool prepareRuntimeUI
     )
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
-        UIBuilderMenu.BuildRuntimeUI();
-        return BuildGeneratedPlayer(target, outputPath, enableDiagnostics, enableAnalytics);
+        if (prepareRuntimeUI)
+            UIBuilderMenu.BuildRuntimeUI();
+        return BuildGeneratedPlayer(
+            target,
+            outputPath,
+            enableDiagnostics,
+            new[] { _bootScenePath, _mainMenuScenePath, _strategyScenePath },
+            enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>()
+        );
     }
 
     /// <summary>
@@ -191,13 +209,15 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The normalized player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
-    /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
+    /// <param name="scenes">The generated scenes to include in the player.</param>
+    /// <param name="extraScriptingDefines">Build-only symbols that select companion assemblies.</param>
     /// <returns>The platform-correct player artifact path.</returns>
-    private static string BuildGeneratedPlayer(
+    internal static string BuildGeneratedPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
         bool enableDiagnostics,
-        bool enableAnalytics
+        string[] scenes,
+        string[] extraScriptingDefines
     )
     {
         string outputDirectory = Path.GetDirectoryName(outputPath);
@@ -205,7 +225,6 @@ public static class StandalonePlayerBuild
         {
             Directory.CreateDirectory(outputDirectory);
         }
-        string[] scenes = { _bootScenePath, _mainMenuScenePath, _strategyScenePath };
         string missingScene = scenes.FirstOrDefault(path => !File.Exists(path));
         if (missingScene != null)
             throw new FileNotFoundException("Generated player scene not found.", missingScene);
@@ -216,9 +235,7 @@ public static class StandalonePlayerBuild
             locationPathName = outputPath,
             target = target,
             options = UnityEditor.BuildOptions.None,
-            extraScriptingDefines = enableAnalytics
-                ? new[] { _analyticsScriptingDefine }
-                : Array.Empty<string>(),
+            extraScriptingDefines = extraScriptingDefines,
         };
 
         bool originalDiagnosticsEnabled = UnityEditor
@@ -257,18 +274,16 @@ public static class StandalonePlayerBuild
     }
 
     /// <summary>
-    /// Adds the macOS application-bundle extension when a build caller supplies a directory-like
-    /// artifact path, so the post-build output check matches what Unity actually writes.
+    /// Adds the desktop artifact extension when a build caller supplies only its base name.
     /// </summary>
     /// <param name="target">The desktop platform being built.</param>
     /// <param name="outputPath">The requested player artifact path.</param>
     /// <returns>The output path Unity creates for the target platform.</returns>
     private static string NormalizeOutputPath(UnityEditor.BuildTarget target, string outputPath)
     {
-        return
-            target == UnityEditor.BuildTarget.StandaloneOSX
-            && !outputPath.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
-            ? outputPath + ".app"
+        string extension = "." + GetDefaultArtifact(target).Extension;
+        return !outputPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+            ? outputPath + extension
             : outputPath;
     }
 

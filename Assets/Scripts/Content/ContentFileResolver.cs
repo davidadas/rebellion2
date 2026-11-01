@@ -25,6 +25,11 @@ public sealed class ContentFileResolver
 
     public string PackRootPath { get; }
 
+    /// <summary>
+    /// Gets the selected pack and its inherited layers in resolution order.
+    /// </summary>
+    public IReadOnlyList<string> PackRootPaths => packRoots;
+
     public IReadOnlyList<ContentModDefinition> Mods { get; }
 
     /// <summary>
@@ -36,6 +41,20 @@ public sealed class ContentFileResolver
     /// Gets discovered mods whose definitions could not be loaded safely.
     /// </summary>
     public IReadOnlyList<ContentModIssue> ModIssues { get; }
+
+    /// <summary>
+    /// Gets the user-content directory beside the installed Content directory.
+    /// </summary>
+    /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <returns>The absolute Mods directory.</returns>
+    public static string ResolveModsRootPath(string contentRootPath)
+    {
+        return Path.Combine(
+            Directory.GetParent(Path.GetFullPath(contentRootPath))?.FullName
+                ?? throw new InvalidOperationException("The content root has no parent directory."),
+            _modsDirectoryName
+        );
+    }
 
     /// <summary>
     /// Creates a resolver over explicit mod content roots in ascending load order.
@@ -95,11 +114,7 @@ public sealed class ContentFileResolver
         IEnumerable<string> fallbackPackRootPaths = null
     )
     {
-        string modsRoot = Path.Combine(
-            Directory.GetParent(Path.GetFullPath(contentRootPath))?.FullName
-                ?? throw new InvalidOperationException("The content root has no parent directory."),
-            _modsDirectoryName
-        );
+        string modsRoot = ResolveModsRootPath(contentRootPath);
         if (!Directory.Exists(modsRoot))
             return new ContentFileResolver(
                 contentRootPath,
@@ -355,6 +370,10 @@ public sealed class ContentFileResolver
         string normalizedAddress
     )
     {
+        if (string.Equals(normalizedAddress, _applicationScopeName, StringComparison.Ordinal))
+            return Path.GetFullPath(applicationRootPath);
+        if (string.Equals(normalizedAddress, _packScopeName, StringComparison.Ordinal))
+            return Path.GetFullPath(packRootPath);
         if (normalizedAddress.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal))
         {
             return ResolveWithinRoot(

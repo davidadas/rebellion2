@@ -99,7 +99,19 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
-        _availablePacks = ContentPackLoader.DiscoverInstalledPacks(contentPack.ContentRootPath);
+        _availablePacks = _showModsTab
+            ? ContentPackLoader.DiscoverInstalledPacks(contentPack.ContentRootPath)
+            : new[]
+            {
+                new InstalledContentPack(
+                    contentPack.Definition.ID,
+                    string.IsNullOrWhiteSpace(contentPack.Definition.DisplayName)
+                        ? contentPack.Definition.ID
+                        : contentPack.Definition.DisplayName,
+                    contentPack.Definition,
+                    string.Empty
+                ),
+            };
         ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
@@ -341,10 +353,18 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Rediscovers compatible mods for the pending content-pack selection.
+    /// Discovers installed choices or retains the already resolved content for a loaded folder.
     /// </summary>
     private void RefreshSelectedModResolver()
     {
+        ContentPack contentPack = _bootstrap.GetContentPack();
+        if (!_showModsTab)
+        {
+            _selectedPackError = string.Empty;
+            _selectedModResolver = contentPack.FileResolver;
+            return;
+        }
+
         InstalledContentPack selectedPack = GetSelectedPack();
         _selectedPackError = selectedPack?.ErrorMessage ?? string.Empty;
         _selectedModResolver = null;
@@ -352,7 +372,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         ContentPackLoader.TryDiscoverModResolver(
-            _bootstrap.GetContentPack().ContentRootPath,
+            contentPack.ContentRootPath,
             selectedPack.ID,
             _selectedDisabledModIDs,
             out _selectedModResolver,

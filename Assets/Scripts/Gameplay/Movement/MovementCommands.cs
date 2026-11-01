@@ -1443,8 +1443,9 @@ namespace Rebellion.Gameplay
         {
             string destinationOwner = destinationPlanet.GetOwnerInstanceID();
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
-            return !string.IsNullOrEmpty(destinationOwner)
-                && destinationOwner != movableOwner
+            bool ownershipChanged = destinationOwner != movableOwner;
+            return ownershipChanged
+                && (movable is Building || !string.IsNullOrEmpty(destinationOwner))
                 && !MovementQueries.CanEnterHostileOrbit(movable, destination);
         }
 

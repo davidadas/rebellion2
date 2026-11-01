@@ -130,6 +130,37 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(tabs[(int)OptionsMenuTab.SaveLoad].gameObject.activeSelf);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Open_LoadedPackNotInstalled_UsesLoadedContent(bool showModsTab)
+        {
+            _controller.Dispose();
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            string installedID = contentPack.Definition.ID;
+            try
+            {
+                contentPack.Definition.ID = "uninstalled-pack-" + Guid.NewGuid().ToString("N");
+                _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = contentPack
+                    .Definition
+                    .ID;
+                _controller = CreateController(GetPrefab(), showModsTab);
+
+                OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+
+                Assert.IsTrue(_controller.IsOpen);
+                Assert.AreEqual(
+                    showModsTab,
+                    GetField<Button[]>(view, "_tabButtons")[
+                        (int)OptionsMenuTab.Mods
+                    ].gameObject.activeSelf
+                );
+            }
+            finally
+            {
+                contentPack.Definition.ID = installedID;
+            }
+        }
+
         [Test]
         public void TryCancel_OpenWindow_ClosesWindow()
         {

@@ -228,6 +228,32 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Converts a planet-image position in this window back into a galaxy-coordinate offset.
+    /// </summary>
+    /// <param name="position">The planet image's source-space top-left position.</param>
+    /// <returns>The corresponding integer offset from the sector origin.</returns>
+    public Vector2Int UnprojectPlanetPosition(Vector2 position)
+    {
+        Rect bounds = ((RectTransform)transform).rect;
+        return new Vector2Int(
+            Mathf.RoundToInt(
+                position.x
+                    * sectorCoordinateRange
+                    / (sectorCoordinateScaleX * bounds.width)
+                    * galaxyProjectionWidth
+                    / galaxyProjectionSourceRange
+            ),
+            Mathf.RoundToInt(
+                (position.y - planetPositionOffsetY)
+                    * sectorCoordinateRange
+                    / (sectorCoordinateScaleY * bounds.height)
+                    * galaxyProjectionHeight
+                    / galaxyProjectionSourceRange
+            )
+        );
+    }
+
+    /// <summary>
     /// Reverses one projected galaxy coordinate delta using authored projection geometry.
     /// </summary>
     /// <param name="delta">The projected coordinate delta.</param>
@@ -238,6 +264,46 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         return projectedExtent == 0f
             ? delta
             : delta * galaxyProjectionSourceRange / projectedExtent;
+    }
+
+    /// <summary>
+    /// Gets the usable planet area below the title and inside the window frame.
+    /// </summary>
+    /// <returns>The source-space interior available to complete planet presentations.</returns>
+    public Rect GetPlanetAreaSourceRect()
+    {
+        Rect bounds = ((RectTransform)transform).rect;
+        float top =
+            -sectorNameTextField.rectTransform.anchoredPosition.y
+            - sectorNameTextField.rectTransform.rect.yMin
+            + 2;
+        return Rect.MinMaxRect(2, top, bounds.width - 2, bounds.height - 2);
+    }
+
+    /// <summary>
+    /// Converts a source-space rectangle into continuous sector-relative coordinates.
+    /// </summary>
+    /// <param name="bounds">The window source-space rectangle.</param>
+    /// <returns>The matching sector-relative rectangle before coordinate rounding.</returns>
+    public Rect UnprojectPlanetBounds(Rect bounds)
+    {
+        Rect windowBounds = ((RectTransform)transform).rect;
+        float xScale =
+            sectorCoordinateRange
+            / (sectorCoordinateScaleX * windowBounds.width)
+            * galaxyProjectionWidth
+            / galaxyProjectionSourceRange;
+        float yScale =
+            sectorCoordinateRange
+            / (sectorCoordinateScaleY * windowBounds.height)
+            * galaxyProjectionHeight
+            / galaxyProjectionSourceRange;
+        return new Rect(
+            bounds.x * xScale,
+            (bounds.y - planetPositionOffsetY) * yScale,
+            bounds.width * xScale,
+            bounds.height * yScale
+        );
     }
 
     /// <summary>

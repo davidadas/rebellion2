@@ -33,10 +33,7 @@ namespace Rebellion.Tests.App
         [UnitySetUp]
         public IEnumerator SetUp()
         {
-            string settingsPath = Path.Combine(
-                Application.persistentDataPath,
-                "user-settings.json"
-            );
+            string settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
             SessionState.SetString(
                 _settingsBackupKey,
                 File.Exists(settingsPath)
@@ -78,10 +75,7 @@ namespace Rebellion.Tests.App
             DestroyApplication();
             yield return null;
             yield return new ExitPlayMode();
-            string settingsPath = Path.Combine(
-                Application.persistentDataPath,
-                "user-settings.json"
-            );
+            string settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
             string settingsBackup = SessionState.GetString(_settingsBackupKey, "-");
             if (settingsBackup == "-")
                 File.Delete(settingsPath);

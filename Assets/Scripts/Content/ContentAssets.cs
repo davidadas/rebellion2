@@ -530,10 +530,17 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         try
         {
             ThrowIfDisposed();
-            string filePath = ResolveAssetFile(path, ".wav");
+            string filePath = ResolveAssetFile(path, ".wav", ".ogg", ".mp3");
+            AudioType audioType = Path.GetExtension(filePath).ToLowerInvariant() switch
+            {
+                ".wav" => AudioType.WAV,
+                ".ogg" => AudioType.OGGVORBIS,
+                ".mp3" => AudioType.MPEG,
+                _ => throw new IOException("Unsupported audio format. Use WAV, OGG, or MP3."),
+            };
             using UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(
                 new Uri(filePath).AbsoluteUri,
-                AudioType.WAV
+                audioType
             );
             UnityWebRequestAsyncOperation operation = request.SendWebRequest();
             while (!operation.isDone)

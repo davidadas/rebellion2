@@ -13,6 +13,43 @@ public static class UILayout
     public const float HdPixelsPerSourceUnit = 4.5f;
 
     /// <summary>
+    /// Places controls at their preferred widths, wrapping complete controls onto further rows.
+    /// </summary>
+    /// <param name="items">The ordered controls and their preferred widths.</param>
+    /// <param name="availableWidth">The containing row width.</param>
+    /// <param name="rowHeight">The height of each control.</param>
+    /// <param name="gap">The spacing between controls and rows.</param>
+    /// <returns>The occupied height.</returns>
+    public static float ArrangeWrappingRow(
+        IReadOnlyList<(RectTransform Rect, float Width)> items,
+        float availableWidth,
+        float rowHeight,
+        float gap
+    )
+    {
+        float x = 0,
+            y = 0;
+        foreach (var item in items)
+        {
+            float width = Mathf.Min(item.Width, Mathf.Max(1, availableWidth));
+            if (x > 0 && x + width > availableWidth)
+            {
+                x = 0;
+                y += rowHeight + gap;
+            }
+            SetSourceRect(
+                item.Rect,
+                Mathf.RoundToInt(x),
+                Mathf.RoundToInt(y),
+                Mathf.RoundToInt(width),
+                Mathf.RoundToInt(rowHeight)
+            );
+            x += width + gap;
+        }
+        return items.Count == 0 ? 0 : y + rowHeight;
+    }
+
+    /// <summary>
     /// Applies the shared centered presentation used by editable menu numbers.
     /// </summary>
     /// <param name="input">The input field to configure.</param>
