@@ -793,12 +793,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds alternative targets within an assembling fleet's current campaign.
+        /// Adds campaign alternatives and ready attacks for an assembling fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet being retargeted.</param>
         /// <param name="currentPlanet">Fleet's current planet.</param>
-        /// <param name="mayLeaveCampaign">Whether targets outside the current system are eligible.</param>
+        /// <param name="mayLeaveCampaign">Whether unready targets outside the current system are eligible.</param>
         /// <param name="proposals">Proposal list to update.</param>
         /// <returns>True when at least one alternative target was added.</returns>
         private bool AddRetargetAttackOrderProposals(
@@ -816,22 +816,23 @@ namespace Rebellion.AI.Planners
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
                     && context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
-                    && (
-                        mayLeaveCampaign
-                        || context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
-                    )
                     && !HasAttackFleetForTarget(context, targetPlanet, fleet)
                 )
             )
             {
-                proposals.Add(
-                    new AIFleetAttackProposal(
-                        fleet,
-                        FleetOrderType.Attack,
-                        GetInitialAttackStatus(currentPlanet, targetPlanet),
-                        targetPlanet
-                    )
+                AIFleetAttackProposal alternative = new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    GetInitialAttackStatus(currentPlanet, targetPlanet),
+                    targetPlanet
                 );
+                if (
+                    !mayLeaveCampaign
+                    && context.Assessment.GetPlanetSystemId(targetPlanet) != campaignSystemId
+                    && !alternative.CanLaunch(context)
+                )
+                    continue;
+                proposals.Add(alternative);
                 addedProposal = true;
             }
 

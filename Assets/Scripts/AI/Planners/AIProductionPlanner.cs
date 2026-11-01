@@ -1078,7 +1078,6 @@ namespace Rebellion.AI.Planners
                         context,
                         demand,
                         candidate.Product.GetReference(),
-                        1,
                         candidate.ProducerPlanet,
                         destination
                     )
@@ -2399,7 +2398,6 @@ namespace Rebellion.AI.Planners
                         context,
                         demand,
                         product,
-                        quantity,
                         planet,
                         destinationPlanet
                     )
@@ -2424,24 +2422,18 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The demand being fulfilled.</param>
         /// <param name="product">The product to manufacture.</param>
-        /// <param name="quantity">The quantity required by the demand.</param>
         /// <param name="producer">The candidate producer.</param>
         /// <param name="destinationPlanet">The destination planet, when available.</param>
-        /// <returns>Estimated arrival ticks for facility expansion and fleet reinforcements, otherwise raw distance.</returns>
+        /// <returns>Estimated arrival ticks for one movable product, otherwise raw distance.</returns>
         private double GetProducerFulfillmentTicks(
             AITurnContext context,
             AIProductionDemand demand,
             IManufacturable product,
-            int quantity,
             Planet producer,
             Planet destinationPlanet
         )
         {
-            bool expandsFacilities = IsFacilityExpansionDemand(demand);
-            if (
-                (demand.DestinationFleet != null || expandsFacilities)
-                && product is IMovable movable
-            )
+            if (product is IMovable movable)
             {
                 return GetReinforcementArrivalTicks(
                     context,
@@ -2449,7 +2441,7 @@ namespace Rebellion.AI.Planners
                     demand.DeliveryDestination,
                     product,
                     movable,
-                    expandsFacilities ? 1 : quantity
+                    1
                 );
             }
 

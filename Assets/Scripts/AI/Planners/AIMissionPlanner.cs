@@ -1331,7 +1331,14 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
+            var targets = GetOfficerTargetCandidates(context);
+            if (
+                !participant.CanPerformMission(MissionTypeIDs.Abduction)
+                && !participant.CanPerformMission(MissionTypeIDs.Assassination)
+            )
+                return;
+
+            foreach ((Planet planet, Officer targetOfficer) in targets)
             {
                 bool interception = context.Assessment.TryGetOfficerMissionWindow(
                     targetOfficer,
@@ -1339,13 +1346,7 @@ namespace Rebellion.AI.Planners
                     out _,
                     out _
                 );
-                Officer selectedTarget = targetOfficer;
-                if (interception)
-                {
-                    selectedTarget = (Officer)targetOfficer.CreateCopy();
-                    selectedTarget.SetParent(targetOfficer.GetParent());
-                    selectedTarget.Movement = null;
-                }
+                Officer selectedTarget = null;
                 foreach (
                     string missionType in new[]
                     {
@@ -1369,6 +1370,16 @@ namespace Rebellion.AI.Planners
                             )
                     )
                         continue;
+                    if (selectedTarget == null)
+                    {
+                        selectedTarget = targetOfficer;
+                        if (interception)
+                        {
+                            selectedTarget = (Officer)targetOfficer.CreateCopy();
+                            selectedTarget.SetParent(targetOfficer.GetParent());
+                            selectedTarget.Movement = null;
+                        }
+                    }
                     AIMissionProposal proposal = new(
                         new[] { participant },
                         missionType,
@@ -1397,6 +1408,18 @@ namespace Rebellion.AI.Planners
             AIMissionProposal proposal
         )
         {
+            if (
+                !proposal.CanSelect(context)
+                || !context.Assessment.TryGetOfficerMissionWindow(
+                    proposal.TargetOfficer,
+                    out int arrivalTicks,
+                    out _,
+                    out _
+                )
+                || arrivalTicks <= 0
+            )
+                return;
+
             foreach (
                 Planet destination in context
                     .Assessment.OwnedPlanets.OrderBy(candidate =>

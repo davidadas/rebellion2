@@ -1271,7 +1271,23 @@ namespace Rebellion.AI.Scorers
                 );
             }
 
-            return GetAverage(viability.ToArray());
+            double score = GetAverage(viability.ToArray());
+            if (
+                demand != null
+                && context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Strength > 0
+                && fleet.GetCurrentRegimentCount() >= demand.RegimentCount
+            )
+            {
+                score *= GetFulfillmentRatio(
+                    assessment.GetPlanetaryAssaultSuccessPercent(
+                        fleet,
+                        targetPlanet,
+                        projected: true
+                    ),
+                    context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
+                );
+            }
+            return score;
         }
 
         /// <summary>
