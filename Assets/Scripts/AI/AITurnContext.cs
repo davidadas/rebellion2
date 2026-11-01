@@ -367,10 +367,12 @@ namespace Rebellion.AI
         /// </summary>
         /// <param name="fleet">The attacking fleet.</param>
         /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="additionalRegimentCapacity">Additional ready troop berths to assess without changing the fleet.</param>
         /// <returns>Whether the fleet and its regiments satisfy their launch requirements.</returns>
         internal (bool FleetReady, bool RegimentsReady) GetAttackReadiness(
             Fleet fleet,
-            Planet planet
+            Planet planet,
+            int additionalRegimentCapacity = 0
         )
         {
             AIAttackDemand demand = GetAttackDemand(planet, fleet);
@@ -388,7 +390,9 @@ namespace Rebellion.AI
             if (
                 combat <= 0
                 || combat < demand.CombatStrength
-                || Assessment.GetReadyFleetRegimentCapacity(fleet) < required.Count
+                || (long)Assessment.GetReadyFleetRegimentCapacity(fleet)
+                    + Math.Max(0, additionalRegimentCapacity)
+                    < required.Count
                 || Assessment.GetFleetBombardmentStrength(fleet) < demand.BombardmentStrength
             )
                 return default;

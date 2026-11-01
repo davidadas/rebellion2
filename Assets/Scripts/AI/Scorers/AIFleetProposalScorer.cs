@@ -582,7 +582,7 @@ namespace Rebellion.AI.Scorers
             );
             score.Add(ScoreAttackTravelEfficiency(context, fleet, target), utility.TravelTime);
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
-            return ApplyIntelAgeRisk(context, target, GetSelectionValue(score));
+            return ApplyIntelAgeRisk(context, fleet, target, GetSelectionValue(score));
         }
 
         /// <summary>
@@ -705,18 +705,20 @@ namespace Rebellion.AI.Scorers
                         config.AttackUtility.HeadquartersBuildupCost
                     );
             }
-            return ApplyIntelAgeRisk(context, targetPlanet, value);
+            return ApplyIntelAgeRisk(context, fleet, targetPlanet, value);
         }
 
         /// <summary>
-        /// Reduces offensive priority according to intelligence age without changing force requirements.
+        /// Reduces offensive priority according to expected intelligence age at arrival.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet whose remaining journey is assessed.</param>
         /// <param name="targetPlanet">The prospective attack target.</param>
         /// <param name="score">The target's priority before intelligence risk.</param>
         /// <returns>The priority after the configured proportional reduction.</returns>
         private static double ApplyIntelAgeRisk(
             AITurnContext context,
+            Fleet fleet,
             Planet targetPlanet,
             double score
         )
@@ -725,23 +727,33 @@ namespace Rebellion.AI.Scorers
                 * (
                     1
                     - AIUtility.Evaluate(
-                        ScoreIntelAgeRisk(context, targetPlanet),
+                        ScoreIntelAgeRisk(context, fleet, targetPlanet),
                         context.Game.Config.AI.FleetDeployment.AttackUtility.IntelAgeRisk
                     )
                 );
         }
 
         /// <summary>
-        /// Returns normalized intelligence age beyond the offensive grace period.
+        /// Returns normalized arrival-time intelligence age beyond the offensive grace period.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet whose remaining journey is assessed.</param>
         /// <param name="targetPlanet">The prospective attack target.</param>
         /// <returns>The normalized intelligence-age risk.</returns>
-        private static double ScoreIntelAgeRisk(AITurnContext context, Planet targetPlanet)
+        private static double ScoreIntelAgeRisk(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet
+        )
         {
             int age = context.Assessment.GetPlanetIntelAge(targetPlanet);
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            long staleAge = Math.Max(0L, (long)age - config.AttackIntelAgeGraceTicks);
+            long staleAge = Math.Max(
+                0L,
+                (long)age
+                    + context.GetAttackArrivalTicks(fleet, targetPlanet)
+                    - config.AttackIntelAgeGraceTicks
+            );
             return age < int.MaxValue
                 ? AIUtility.Fulfillment(staleAge, config.AttackUtility.IntelAgeRisk)
                 : 1;

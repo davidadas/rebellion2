@@ -1308,6 +1308,12 @@ namespace Rebellion.AI.Demands
                     ? context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
                 : GetDesiredRegimentCount(context, fleet);
             int regimentCapacityDeficit = targetRegimentCapacity - fleet.GetRegimentCapacity();
+            int launchTransportDeficit = GetFleetLaunchTransportDeficit(
+                context,
+                fleet,
+                targetPlanet
+            );
+            regimentCapacityDeficit = Math.Max(regimentCapacityDeficit, launchTransportDeficit);
             int projectedBombardment = context.Assessment.GetProjectedFleetBombardmentStrength(
                 fleet
             );
@@ -1396,7 +1402,9 @@ namespace Rebellion.AI.Demands
                     BuildingType.None,
                     fleet,
                     quantityNeeded: 1,
-                    capitalShipRole: isColonizationFleet || isColonizationOrder
+                    capitalShipRole: isColonizationFleet
+                    || isColonizationOrder
+                    || launchTransportDeficit > 0
                         ? AICapitalShipProductionRole.TroopTransport
                         : AICapitalShipProductionRole.None,
                     targetCount: _completeDemandPercent,
@@ -1417,6 +1425,45 @@ namespace Rebellion.AI.Demands
                     escortDeficit: escortDeficit
                 )
             );
+        }
+
+        /// <summary>
+        /// Measures troop capacity still preventing an otherwise operational attack from departing.
+        /// Dedicated transports already ordered cover this need while unfinished combat hulls do not.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="fleet">The fleet preparing its assigned attack.</param>
+        /// <param name="target">The assigned enemy planet, or null without an attack.</param>
+        /// <returns>The additional troop berths needed to unblock departure.</returns>
+        private static int GetFleetLaunchTransportDeficit(
+            AITurnContext context,
+            Fleet fleet,
+            Planet target
+        )
+        {
+            if (target == null || fleet.Order?.OrderType != FleetOrderType.Attack)
+                return 0;
+
+            var required = context.GetAttackRegimentRequirements(target, fleet);
+            int readyCapacity = context.Assessment.GetReadyFleetRegimentCapacity(fleet);
+            if (
+                readyCapacity >= required.Count
+                || context.Assessment.GetReadyFleetRegimentAttackStrength(fleet) < required.Strength
+                || !context.GetAttackReadiness(fleet, target, required.Count).FleetReady
+            )
+                return 0;
+
+            long pendingTransportCapacity = fleet
+                .GetChildren<CapitalShip>()
+                .Where(ship =>
+                    ship.HasRole(CapitalShipRole.Transport)
+                    && (
+                        ship.ManufacturingStatus != ManufacturingStatus.Complete
+                        || ship.Movement != null
+                    )
+                )
+                .Sum(ship => (long)ship.RegimentCapacity);
+            return (int)Math.Max(0L, required.Count - readyCapacity - pendingTransportCapacity);
         }
 
         /// <summary>

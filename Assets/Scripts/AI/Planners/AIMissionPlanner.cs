@@ -485,11 +485,6 @@ namespace Rebellion.AI.Planners
             List<IMissionParticipant> availableParticipants = context
                 .Assessment.AvailableMissionParticipants.Where(participant =>
                     !jediTrainers.Contains(participant)
-                    && (
-                        participant is not SpecialForces specialForces
-                        || context.GetSpecialForcesIntent(specialForces)
-                            == SpecialForcesIntent.PrimaryAgent
-                    )
                 )
                 .ToList();
 

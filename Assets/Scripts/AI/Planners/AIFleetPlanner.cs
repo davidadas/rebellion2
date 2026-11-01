@@ -1610,6 +1610,20 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
+            if (
+                sourceFleet.Order == null
+                && CanStartAttackOrder(context, sourceFleet)
+                && SelectAttack(
+                    context,
+                    new[] { sourceFleet },
+                    context.Assessment.EnemyPlanets.Where(target =>
+                        !HasAttackFleetForTarget(context, target, sourceFleet)
+                    ),
+                    requireReady: true
+                ) != null
+            )
+                return false;
+
             Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
             return sourcePlanet != null
                 && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID;
