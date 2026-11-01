@@ -105,6 +105,22 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void Validate_PersistedSupportSettings_AcceptsDocument()
+        {
+            string xml = CreateGenerationXml(string.Empty)
+                .Replace(
+                    "</GameGenerationConfig>",
+                    @"<Balance>
+    <SupportBoostPerUnit>2</SupportBoostPerUnit>
+    <MaxMilitaryPresenceBoost>10</MaxMilitaryPresenceBoost>
+  </Balance>
+</GameGenerationConfig>"
+                );
+
+            Assert.DoesNotThrow(() => ValidateGenerationConfigXml(xml));
+        }
+
         /// <summary>
         /// Validates generation config xml.
         /// </summary>
@@ -257,10 +273,6 @@ namespace Rebellion.Tests.Content
       </FactionBudget>
     </FactionBudgets>
   </UnitDeployment>
-  <Balance>
-    <SupportBoostPerUnit>0</SupportBoostPerUnit>
-    <MaxMilitaryPresenceBoost>0</MaxMilitaryPresenceBoost>
-  </Balance>
 </GameGenerationConfig>";
         }
     }

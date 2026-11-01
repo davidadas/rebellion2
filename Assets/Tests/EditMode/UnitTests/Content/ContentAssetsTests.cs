@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -144,6 +145,61 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public async Task PreloadAsync_CanceledBetweenFrames_CancelsBeforeDisposedAssetAccessAsync()
+        {
+            using ContentAssets assets = CreateAssets();
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Textures = { _textureAddress, "Application/Textures/missing" },
+            };
+
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+            cancellation.Cancel();
+            assets.Dispose();
+
+            try
+            {
+                await preload;
+                Assert.Fail("The abandoned preload should have been canceled.");
+            }
+            catch (OperationCanceledException)
+            {
+                Assert.IsTrue(preload.IsCanceled);
+            }
+        }
+
+        [Test]
+        public async Task PreloadAsync_CanceledDuringAudioLoad_CancelsBeforeDisposedAssetAccessAsync()
+        {
+            ContentAssets assets = CreateAssets();
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            ContentPreloadManifest manifest = new ContentPreloadManifest
+            {
+                TexturesPerFrame = 1,
+                Audio = { "Application/Audio/pending" },
+            };
+
+            Task preload = assets.PreloadAsync(manifest, cancellation.Token);
+            cancellation.Cancel();
+            assets.Dispose();
+
+            try
+            {
+                await preload;
+                Assert.Fail("The abandoned audio preload should have been canceled.");
+            }
+            catch (OperationCanceledException exception)
+            {
+                Assert.AreEqual(cancellation.Token, exception.CancellationToken);
+                Assert.IsTrue(preload.IsCanceled);
+            }
+
+            await Task.Yield();
+        }
+
+        [Test]
         public void GetVideoUrl_ExistingAddress_ReturnsExistingLocalFile()
         {
             using ContentAssets assets = CreateAssets();
@@ -193,6 +249,36 @@ namespace Rebellion.Tests.Content
                     assets.GetPreloadedAudio("Application/Audio/pending")
                 );
             }
+        }
+
+        [TestCase(".wav")]
+        [TestCase(".ogg")]
+        [TestCase(".mp3")]
+        public async Task LoadAudioAsync_SupportedCodec_DecodesNonSilentSamplesAsync(
+            string extension
+        )
+        {
+            string directory = Path.Combine(_packRoot, "Audio");
+            Directory.CreateDirectory(directory);
+            File.Copy(
+                Path.Combine(
+                    "Assets",
+                    "Tests",
+                    "EditMode",
+                    "UnitTests",
+                    "Content",
+                    "AudioFixtures",
+                    "tone" + extension
+                ),
+                Path.Combine(directory, "tone" + extension)
+            );
+            using ContentAssets assets = CreateAssets();
+            AudioClip clip = await assets.LoadAudioAsync("Pack/Audio/tone");
+            Assert.IsNotNull(clip);
+            Assert.Greater(clip.samples, 0);
+            float[] samples = new float[clip.samples * clip.channels];
+            Assert.IsTrue(clip.GetData(samples, 0));
+            Assert.IsTrue(Array.Exists(samples, sample => Mathf.Abs(sample) > 0.01f));
         }
 
         /// <summary>

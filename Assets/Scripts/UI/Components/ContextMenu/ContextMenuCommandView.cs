@@ -27,6 +27,15 @@ public sealed class ContextMenuCommandView
     [SerializeField]
     private TextMeshProUGUI commandTextField;
 
+    [SerializeField]
+    private TextMeshProUGUI shortcutTextField;
+
+    [SerializeField]
+    private RectTransform submenuIndicator;
+
+    [SerializeField]
+    private int iconVerticalOffset = 4;
+
     private bool initialized;
     private RectInt rootTemplateRect;
     private RectInt iconPanelTemplateRect;
@@ -114,7 +123,8 @@ public sealed class ContextMenuCommandView
 
         int textX = textTemplateRect.x + (hasIconColumn ? GetIconColumnWidth() : 0);
         int rightPadding = rootTemplateRect.width - textTemplateRect.x - textTemplateRect.width;
-        int textWidth = Mathf.Max(0, panelWidth - textX - rightPadding);
+        int suffixWidth = GetSuffixWidth(item);
+        int textWidth = Mathf.Max(0, panelWidth - textX - rightPadding - suffixWidth);
         UILayout.SetSourceRect(
             commandTextField.rectTransform,
             textX,
@@ -124,6 +134,33 @@ public sealed class ContextMenuCommandView
         );
         commandTextField.text = item?.Text ?? string.Empty;
         commandTextField.color = color;
+
+        if (shortcutTextField != null)
+        {
+            bool showShortcut = !string.IsNullOrEmpty(item?.Shortcut);
+            shortcutTextField.gameObject.SetActive(showShortcut);
+            shortcutTextField.text = item?.Shortcut ?? string.Empty;
+            shortcutTextField.color = color;
+            UILayout.SetSourceRect(
+                shortcutTextField.rectTransform,
+                panelWidth - rightPadding - suffixWidth,
+                textTemplateRect.y,
+                suffixWidth,
+                textTemplateRect.height
+            );
+        }
+        if (submenuIndicator != null)
+        {
+            submenuIndicator.gameObject.SetActive(item?.HasSubmenu == true);
+            Vector2 size = submenuIndicator.sizeDelta;
+            UILayout.SetSourceRect(
+                submenuIndicator,
+                panelWidth - rightPadding - Mathf.RoundToInt(size.x),
+                Mathf.RoundToInt((rootTemplateRect.height - size.y) / 2),
+                Mathf.RoundToInt(size.x),
+                Mathf.RoundToInt(size.y)
+            );
+        }
 
         gameObject.SetActive(true);
     }
@@ -153,6 +190,31 @@ public sealed class ContextMenuCommandView
         int rightPadding = rootTemplateRect.width - textTemplateRect.x - textTemplateRect.width;
         Vector2 preferredSize = commandTextField.GetPreferredValues(text ?? string.Empty);
         return Mathf.CeilToInt(textX + preferredSize.x + rightPadding);
+    }
+
+    /// <summary>
+    /// Includes authored shortcut and submenu slots when measuring one command.
+    /// </summary>
+    /// <param name="command">The command being measured.</param>
+    /// <param name="hasIconColumn">Whether the panel reserves an icon column.</param>
+    /// <returns>The complete required panel width.</returns>
+    internal int GetMinimumPanelWidth(ContextMenuCommandItem command, bool hasIconColumn)
+    {
+        return GetMinimumPanelWidth(command?.Text, hasIconColumn) + GetSuffixWidth(command);
+    }
+
+    /// <summary>
+    /// Measures only optional presentation slots that the row template actually provides.
+    /// </summary>
+    /// <param name="command">The command to measure.</param>
+    /// <returns>The reserved source-space width.</returns>
+    private int GetSuffixWidth(ContextMenuCommandItem command)
+    {
+        if (shortcutTextField != null && !string.IsNullOrEmpty(command?.Shortcut))
+            return Mathf.CeilToInt(shortcutTextField.GetPreferredValues(command.Shortcut).x) + 20;
+        return submenuIndicator != null && command?.HasSubmenu == true
+            ? Mathf.RoundToInt(submenuIndicator.sizeDelta.x) + 16
+            : 0;
     }
 
     /// <summary>
@@ -260,7 +322,11 @@ public sealed class ContextMenuCommandView
     private RectInt GetIconRect(Texture texture, bool centerNativeIcon)
     {
         if (!centerNativeIcon || texture == null)
-            return CenterVertically(iconTemplateRect.width, iconTemplateRect.height, 4);
+            return CenterVertically(
+                iconTemplateRect.width,
+                iconTemplateRect.height,
+                iconVerticalOffset
+            );
 
         Vector2Int size = UILayout.GetTextureSourceSize(texture);
         if (size.x <= 0 || size.y <= 0)

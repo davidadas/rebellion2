@@ -12,6 +12,7 @@ public sealed class UserSettings
     public UserVideoSettings Video = new UserVideoSettings();
     public UserInputSettings Input = new UserInputSettings();
     public UserContentSettings Content = new UserContentSettings();
+    public UserAnalyticsSettings Analytics = new UserAnalyticsSettings();
 
     /// <summary>
     /// Ensures nested settings are present and normalized.
@@ -24,11 +25,13 @@ public sealed class UserSettings
         Video ??= new UserVideoSettings();
         Input ??= new UserInputSettings();
         Content ??= new UserContentSettings();
+        Analytics ??= new UserAnalyticsSettings();
 
         Gameplay.Normalize();
         UserInterface.Normalize();
         Audio.Normalize();
         Video.Normalize();
         Content.Normalize();
+        Analytics.Normalize();
     }
 }

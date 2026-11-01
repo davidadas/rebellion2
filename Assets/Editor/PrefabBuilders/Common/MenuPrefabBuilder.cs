@@ -26,6 +26,7 @@ public static class MenuPrefabBuilder
     internal const string _menuFrameGlowAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_frame_overlay";
     internal const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/MenuScrollArea.prefab";
+    internal const string FlatScrollAreaPath = "Assets/Prefabs/UI/Common/FlatScrollArea.prefab";
     internal const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     internal static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
     internal static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
@@ -37,6 +38,7 @@ public static class MenuPrefabBuilder
     internal static void RebuildSharedPrefabs()
     {
         BuildScrollAreaPrefab();
+        BuildScrollAreaPrefab(MenuControlStyle.Flat);
         BuildWindowPrefab();
         BuildButtonPrefab(_navigationPrefabPath, _menuRowAddress, _panelBorder, 163, 28, 13);
         BuildButtonPrefab(_actionPrefabPath, _menuBadgeAddress, _badgeBorder, 76, 22, 11);
@@ -45,7 +47,8 @@ public static class MenuPrefabBuilder
     /// <summary>
     /// Authors the menu theme once on the shared scroll control without replacing its behavior.
     /// </summary>
-    private static void BuildScrollAreaPrefab()
+    /// <param name="style">The surface style to author.</param>
+    private static void BuildScrollAreaPrefab(MenuControlStyle style = MenuControlStyle.Textured)
     {
         ScrollAreaView view = CommonUIPrefabBuilder.CreateScrollAreaView(
             "Assets/Prefabs/UI/Common/ScrollArea.prefab",
@@ -57,16 +60,16 @@ public static class MenuPrefabBuilder
             out _
         );
         Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
-        Image thumb = CreateScrollControlSurface(scrollbar.handleRect);
+        Image thumb = CreateScrollControlSurface(scrollbar.handleRect, style);
         ApplyMenuSurfaceFeedback(scrollbar, thumb);
         CreateScrollThumbGrip(thumb.rectTransform);
         foreach (Button button in scrollbar.GetComponentsInChildren<Button>(true))
         {
             RectTransform rect = button.transform as RectTransform;
             SetSourceRect(rect, 0, 0, 12, 12);
-            Image surface = CreateScrollControlSurface(rect);
+            Image surface = CreateScrollControlSurface(rect, style);
             ApplyMenuSurfaceFeedback(button, surface);
-            TextMeshProUGUI arrow = CreateTextLabel("Arrow", rect);
+            TextMeshProUGUI arrow = CreateTextLabel("Arrow", rect, style);
             arrow.text = button.name == "ScrollUpButtonImage" ? "\u25b2" : "\u25bc";
             arrow.fontSize = 8;
             arrow.color = new Color(0.373f, 0.659f, 0.925f);
@@ -78,7 +81,10 @@ public static class MenuPrefabBuilder
         track.color = new Color32(15, 23, 33, 255);
         track.raycastTarget = false;
         view.SetLayout(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(12, 24));
-        SaveGeneratedPrefabAsset(view.gameObject, _scrollAreaPrefabPath);
+        SaveGeneratedPrefabAsset(
+            view.gameObject,
+            style == MenuControlStyle.Flat ? FlatScrollAreaPath : _scrollAreaPrefabPath
+        );
         UnityEngine.Object.DestroyImmediate(view.gameObject);
     }
 
@@ -87,13 +93,14 @@ public static class MenuPrefabBuilder
     /// </summary>
     /// <param name="parent">The existing handle or arrow rectangle.</param>
     /// <returns>The surface receiving pointer and hover feedback.</returns>
-    private static Image CreateScrollControlSurface(RectTransform parent)
+    /// <param name="style">The authored surface style.</param>
+    private static Image CreateScrollControlSurface(RectTransform parent, MenuControlStyle style)
     {
         UnityEngine.Object.DestroyImmediate(parent.GetComponent<ContentPressVisualBinding>());
         UnityEngine.Object.DestroyImmediate(parent.GetComponent<RawImagePressVisual>());
         UnityEngine.Object.DestroyImmediate(parent.GetComponent<ContentTextureBinding>());
         UnityEngine.Object.DestroyImmediate(parent.GetComponent<RawImage>());
-        Image surface = CreateSlicedImage(
+        Image surface = CreateStyledImage(
             "Surface",
             parent,
             _menuRowAddress,
@@ -102,11 +109,12 @@ public static class MenuPrefabBuilder
             0,
             12,
             12,
-            Color.white
+            Color.white,
+            style
         );
         FillParent(surface.rectTransform);
         surface.raycastTarget = true;
-        return CreateMenuControlSurface(surface);
+        return style == MenuControlStyle.Flat ? surface : CreateMenuControlSurface(surface);
     }
 
     /// <summary>
@@ -412,6 +420,7 @@ public static class MenuPrefabBuilder
     /// <param name="x">The source-space left position.</param>
     /// <param name="color">The label color.</param>
     /// <param name="width">The source-space button width.</param>
+    /// <param name="style">The authored surface style.</param>
     /// <returns>The configured button.</returns>
     internal static Button CreateMenuActionButton(
         Transform parent,
@@ -419,10 +428,33 @@ public static class MenuPrefabBuilder
         string label,
         int x,
         Color color,
-        int width = 76
+        int width = 76,
+        MenuControlStyle style = MenuControlStyle.Textured
     )
     {
-        Button button = InstantiatePrefabComponent<Button>(_actionPrefabPath, parent);
+        Button button;
+        if (style == MenuControlStyle.Flat)
+        {
+            Image frame = CreateStyledImage(
+                name,
+                parent,
+                null,
+                Vector4.zero,
+                0,
+                0,
+                width,
+                22,
+                Color.white,
+                style
+            );
+            button = frame.gameObject.AddComponent<Button>();
+            button.targetGraphic = frame;
+            button.transition = Selectable.Transition.ColorTint;
+            TextMeshProUGUI caption = CreateTextLabel("Label", frame.transform, style);
+            FillParent(caption.rectTransform);
+        }
+        else
+            button = InstantiatePrefabComponent<Button>(_actionPrefabPath, parent);
         button.name = name;
         SetSourceRect((RectTransform)button.transform, x, 408, width, 22);
         TextMeshProUGUI text = FindRequiredChild<TextMeshProUGUI>(button.transform, "Label");
@@ -614,15 +646,19 @@ public static class MenuPrefabBuilder
     /// </summary>
     /// <param name="name">The generated object name.</param>
     /// <param name="parent">The label's parent.</param>
+    /// <param name="style">The authored label style.</param>
     /// <returns>The generated text label.</returns>
-    internal static TextMeshProUGUI CreateTextLabel(string name, Transform parent)
+    internal static TextMeshProUGUI CreateTextLabel(
+        string name,
+        Transform parent,
+        MenuControlStyle style = MenuControlStyle.Textured
+    )
     {
         GameObject labelObject = new GameObject(
             name,
             typeof(RectTransform),
             typeof(CanvasRenderer),
-            typeof(TextMeshProUGUI),
-            typeof(Shadow)
+            typeof(TextMeshProUGUI)
         );
         labelObject.transform.SetParent(parent, false);
 
@@ -635,9 +671,12 @@ public static class MenuPrefabBuilder
         label.overflowMode = TextOverflowModes.Overflow;
         label.raycastTarget = false;
 
-        Shadow shadow = labelObject.GetComponent<Shadow>();
-        shadow.effectColor = Color.black;
-        shadow.effectDistance = new Vector2(1f, -1f);
+        if (style == MenuControlStyle.Textured)
+        {
+            Shadow shadow = labelObject.AddComponent<Shadow>();
+            shadow.effectColor = Color.black;
+            shadow.effectDistance = new Vector2(1f, -1f);
+        }
         return label;
     }
 
@@ -1013,5 +1052,48 @@ public static class MenuPrefabBuilder
         if (property == null)
             throw new MissingMemberException(target.GetType().Name, propertyName);
         return property;
+    }
+
+    /// <summary>
+    /// Authors a textured or flat surface without adding bindings that a consumer must remove.
+    /// </summary>
+    /// <param name="name">The generated object name.</param>
+    /// <param name="parent">The owning transform.</param>
+    /// <param name="address">The texture address used by a textured surface.</param>
+    /// <param name="border">The sliced-image border.</param>
+    /// <param name="x">The left coordinate.</param>
+    /// <param name="y">The top coordinate.</param>
+    /// <param name="width">The surface width.</param>
+    /// <param name="height">The surface height.</param>
+    /// <param name="color">The initial surface color.</param>
+    /// <param name="style">The authored surface style.</param>
+    /// <returns>The generated surface.</returns>
+    internal static Image CreateStyledImage(
+        string name,
+        Transform parent,
+        string address,
+        Vector4 border,
+        int x,
+        int y,
+        int width,
+        int height,
+        Color color,
+        MenuControlStyle style
+    )
+    {
+        if (style == MenuControlStyle.Textured)
+            return CreateSlicedImage(name, parent, address, border, x, y, width, height, color);
+        GameObject root = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        if (parent != null)
+            root.transform.SetParent(parent, false);
+        Image image = root.GetComponent<Image>();
+        image.color = color;
+        SetSourceRect(image.rectTransform, x, y, width, height);
+        return image;
     }
 }

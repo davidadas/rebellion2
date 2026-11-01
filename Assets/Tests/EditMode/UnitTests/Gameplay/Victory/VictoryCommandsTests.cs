@@ -22,11 +22,11 @@ namespace Rebellion.Tests.Gameplay
             IReadOnlyList<VictoryResult> published = null;
             commands.ResultsProduced += results => published = results;
 
-            VictoryResult result = commands.TryDeclareVictory(winner, loser);
+            VictoryResult result = commands.TryDeclareVictory(winner);
 
             Assert.IsNotNull(result);
             Assert.AreSame(winner, result.Winner);
-            Assert.AreSame(loser, result.Loser);
+            CollectionAssert.AreEqual(new[] { loser }, result.DefeatedFactions);
             Assert.AreSame(result, published.Single());
             Assert.AreEqual(game.CurrentTick, result.Tick);
         }
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
-            Assert.AreEqual(empire, victory.Loser);
+            CollectionAssert.AreEqual(new[] { empire }, victory.DefeatedFactions);
         }
 
         [Test]
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
-            Assert.AreEqual(empire, victory.Loser);
+            CollectionAssert.AreEqual(new[] { empire }, victory.DefeatedFactions);
         }
 
         [Test]
@@ -247,6 +247,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildingType = BuildingType.Headquarters,
             };
             game.AttachNode(headquarters, empireHQ);
+            empire.HasLostHeadquarters = true;
 
             VictoryResult victory = CaptureVictory(
                 system,
@@ -255,11 +256,26 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
-            Assert.AreEqual(empire, victory.Loser);
+            CollectionAssert.AreEqual(new[] { empire }, victory.DefeatedFactions);
         }
 
         [Test]
-        public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
+        public void ProcessTick_CandidateHasLostHeadquarters_DoesNotDeclareVictory()
+        {
+            (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
+                GameVictoryCondition.Headquarters
+            );
+            rebels.HasLostHeadquarters = true;
+            List<VictoryResult> published = new List<VictoryResult>();
+            system.ResultsProduced += published.AddRange;
+
+            CreateTickProcessor(game, system).ProcessTick(game);
+
+            Assert.IsEmpty(published);
+        }
+
+        [Test]
+        public void ProcessTick_EnemyHeadquartersRemains_DoesNotDeclareVictory()
         {
             (
                 GameRoot game,
@@ -288,6 +304,7 @@ namespace Rebellion.Tests.Gameplay
                 },
                 empireHQ
             );
+            empire.HasLostHeadquarters = true;
 
             Faction thirdFaction = new Faction
             {
@@ -314,25 +331,32 @@ namespace Rebellion.Tests.Gameplay
                 thirdHeadquartersPlanet,
                 game.GetSceneNodeByInstanceID<PlanetSector>("sector1")
             );
-            game.AttachNode(
-                new Building
-                {
-                    InstanceID = "third-mobile-hq",
-                    TypeID = "BDHQ01",
-                    OwnerInstanceID = thirdFaction.InstanceID,
-                    BuildingType = BuildingType.Headquarters,
-                },
-                thirdHeadquartersPlanet
-            );
+            Building thirdHeadquarters = new Building
+            {
+                InstanceID = "third-mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = thirdFaction.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            game.AttachNode(thirdHeadquarters, thirdHeadquartersPlanet);
+            thirdFaction.HeadquartersUnitInstanceID = thirdHeadquarters.InstanceID;
+            List<VictoryResult> published = new List<VictoryResult>();
+            system.ResultsProduced += published.AddRange;
 
-            VictoryResult victory = CaptureVictory(
-                system,
-                () => CreateTickProcessor(game, system).ProcessTick(game)
-            );
+            CreateTickProcessor(game, system).ProcessTick(game);
 
-            Assert.IsNotNull(victory);
+            Assert.IsEmpty(published);
+
+            game.ChangeOwnership(thirdHeadquarters, rebels.InstanceID);
+            thirdFaction.HasLostHeadquarters = true;
+            CreateTickProcessor(game, system).ProcessTick(game);
+
+            VictoryResult victory = published.Single();
             Assert.AreSame(rebels, victory.Winner);
-            Assert.AreSame(empire, victory.Loser);
+            CollectionAssert.AreEquivalent(
+                new[] { empire, thirdFaction },
+                victory.DefeatedFactions
+            );
         }
 
         /// <summary>
@@ -411,6 +435,18 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(empireHQ, planetSector);
             empire.HQInstanceID = "hq_empire";
+
+            Planet rebelHQ = new Planet
+            {
+                InstanceID = "hq_rebels",
+                OwnerInstanceID = rebels.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(rebelHQ, planetSector);
+            rebels.HQInstanceID = rebelHQ.InstanceID;
 
             return (game, empire, rebels, empireHQ, new VictoryCommands(game));
         }

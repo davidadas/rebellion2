@@ -241,6 +241,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void RebuildDerivedState()
         {
+            GetService<HeadquartersObserver>().ReconcileState();
             _gameData.BindOfficerTraits(GetPersistedOfficers());
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)

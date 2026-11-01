@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -306,6 +307,70 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 await Task.Yield();
 
                 Assert.IsTrue(skipped);
+                Assert.AreNotSame(second, GetProtocolImage(rootObject).texture);
+                Assert.IsFalse(sfxPreloaded);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(second);
+                UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public async Task Play_PresentationCanceledDuringSegmentPreload_AbandonsWithoutCompletingAsync()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            StrategyBriefingSegmentTheme firstSegment = CreateSegment("First");
+            StrategyBriefingSegmentTheme secondSegment = CreateSegment("Second");
+            secondSegment.Audio = "SecondVoice";
+            briefing.Segments.Add(firstSegment);
+            briefing.Segments.Add(secondSegment);
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D first = new Texture2D(1, 1);
+            Texture2D second = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = CreateTextures(advisorTheme, idle);
+            textures[briefing.GetFramePath("First", 0)] = first;
+            textures[briefing.GetFramePath("Second", 0)] = second;
+            TaskCompletionSource<bool> segmentReady = new TaskCompletionSource<bool>();
+            bool loadRequested = false;
+            bool sfxPreloaded = false;
+            using CancellationTokenSource presentationCancellation = new CancellationTokenSource();
+            using CancellationTokenRegistration registration =
+                presentationCancellation.Token.Register(() =>
+                    segmentReady.TrySetCanceled(presentationCancellation.Token)
+                );
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                using StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    textures,
+                    rootObject,
+                    _ =>
+                    {
+                        loadRequested = true;
+                        return segmentReady.Task;
+                    },
+                    _ => sfxPreloaded = true,
+                    presentationCancellation.Token
+                );
+                StrategyAdvisorView advisorView =
+                    rootObject.GetComponentInChildren<StrategyAdvisorView>();
+                bool? skipped = null;
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
+                advisorView.AdvanceAnimation(0.5f);
+                await WaitUntilAsync(() => loadRequested);
+
+                presentationCancellation.Cancel();
+                await Task.Yield();
+
+                Assert.IsNull(skipped);
                 Assert.AreNotSame(second, GetProtocolImage(rootObject).texture);
                 Assert.IsFalse(sfxPreloaded);
             }
@@ -643,6 +708,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <param name="rootObject">The root object.</param>
         /// <param name="preloadContent">The preload content.</param>
         /// <param name="preloadSfx">The preload sfx.</param>
+        /// <param name="presentationCancellationToken">The presentation cancellation token.</param>
         /// <returns>The created controller.</returns>
         private static StrategyBriefingController CreateController(
             GameRoot game,
@@ -650,7 +716,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             IReadOnlyDictionary<string, Texture2D> textures,
             GameObject rootObject,
             Func<ContentPreloadManifest, Task> preloadContent = null,
-            Action<IEnumerable<string>> preloadSfx = null
+            Action<IEnumerable<string>> preloadSfx = null,
+            CancellationToken presentationCancellationToken = default
         )
         {
             FactionTheme factionTheme = new FactionTheme { StrategyAdvisor = advisorTheme };
@@ -679,7 +746,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 preloadSfx ?? (_ => { }),
                 hudController,
                 mapController,
-                () => { }
+                () => { },
+                presentationCancellationToken
             );
         }
 

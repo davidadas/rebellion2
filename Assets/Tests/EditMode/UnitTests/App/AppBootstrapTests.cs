@@ -27,7 +27,7 @@ namespace Rebellion.Tests.App
         [SetUp]
         public void SetUp()
         {
-            _settingsPath = Path.Combine(Application.persistentDataPath, "user-settings.json");
+            _settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
             _settingsBytes = File.Exists(_settingsPath) ? File.ReadAllBytes(_settingsPath) : null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);

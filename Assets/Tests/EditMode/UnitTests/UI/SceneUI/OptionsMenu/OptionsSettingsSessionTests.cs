@@ -263,6 +263,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void ToggleAnalytics_ChangedThenReverted_RestoresUndecidedChoice()
+        {
+            _session.ToggleAnalytics();
+            Assert.IsTrue(_session.IsDirty);
+            Assert.AreEqual(UserAnalyticsConsent.Granted, _session.Analytics.Consent);
+
+            _session.Revert();
+
+            Assert.IsFalse(_session.IsDirty);
+            Assert.AreEqual(UserAnalyticsConsent.Undecided, _session.Analytics.Consent);
+        }
+
+        [Test]
         public void RestoreDefaults_GameplaySelected_RestoresGameplayAndPreservesUserInterfaceSettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);

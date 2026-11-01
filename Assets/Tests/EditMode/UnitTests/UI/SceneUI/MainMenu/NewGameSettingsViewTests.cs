@@ -1465,7 +1465,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "RIM COLONIZATION",
                     "STARTING PLANET SUPPORT",
                     "STARTING FACILITIES",
-                    "STARTING GARRISONS AND SUPPORT",
+                    "STARTING GARRISONS",
                     "LIVE GARRISON REQUIREMENTS",
                     "MOVEMENT",
                 },

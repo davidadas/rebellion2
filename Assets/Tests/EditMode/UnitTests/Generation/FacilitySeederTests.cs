@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
@@ -238,6 +239,55 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_MobileHeadquarters_RecordsDeployedBuildingIdentity()
+        {
+            PlanetSector sector = CreateCore(energy: 1, rawNodes: 0);
+            Planet headquartersPlanet = sector.GetChildren<Planet>()[0];
+            Faction faction = new Faction
+            {
+                InstanceID = "FNALL1",
+                HQInstanceID = headquartersPlanet.InstanceID,
+                Settings = new FactionSettings
+                {
+                    Headquarters = new HeadquartersSettings
+                    {
+                        FacilityTypeID = "BDHQ01",
+                        IsMobile = true,
+                    },
+                },
+            };
+            GalaxyClassificationResult classification = new GalaxyClassificationResult();
+            classification.FactionHQs[faction.InstanceID] = headquartersPlanet;
+            GameGenerationConfig rules = CreateRules();
+            rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
+            {
+                new HQFacilityLoadout
+                {
+                    PlanetTypeID = GameGenerationConfig.FactionHqSentinel,
+                    FactionID = faction.InstanceID,
+                    FacilityTypeIDs = new List<string> { "BDHQ01" },
+                },
+            };
+            Building[] templates = CreateTemplates()
+                .Append(
+                    new Building { TypeID = "BDHQ01", BuildingType = BuildingType.Headquarters }
+                )
+                .ToArray();
+
+            List<Building> deployed = SeedFacilities(
+                new[] { sector },
+                templates,
+                rules,
+                classification,
+                new StubRNG(),
+                new[] { faction }
+            );
+
+            Building headquarters = deployed.Single(building => building.TypeID == "BDHQ01");
+            Assert.AreEqual(headquarters.InstanceID, faction.HeadquartersUnitInstanceID);
+        }
+
+        [Test]
         public void Seed_HQLoadoutExceedsEnergy_RaisesEnergyCapacity()
         {
             PlanetSector sector = CreateCore(energy: 2, rawNodes: 0);
@@ -309,13 +359,15 @@ namespace Rebellion.Tests.Generation
         /// <param name="config">The config.</param>
         /// <param name="classification">The classification.</param>
         /// <param name="rng">The rng.</param>
+        /// <param name="factions">The factions receiving headquarters identities.</param>
         /// <returns>The result of seed facilities.</returns>
         private static List<Building> SeedFacilities(
             PlanetSector[] sectors,
             Building[] templates,
             GameGenerationConfig config,
             GalaxyClassificationResult classification,
-            IRandomNumberProvider rng
+            IRandomNumberProvider rng,
+            Faction[] factions = null
         )
         {
             GenerationContext ctx = new GenerationContext
@@ -325,6 +377,7 @@ namespace Rebellion.Tests.Generation
                 Config = config,
                 Classification = classification,
                 Rng = rng,
+                Factions = factions,
             };
             new FacilitySeeder().Seed(ctx);
             return ctx.DeployedBuildings;

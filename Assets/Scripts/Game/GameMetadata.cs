@@ -44,6 +44,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(OpeningBriefingCompleted))]
         private bool _openingBriefingCompleted;
 
+        [PersistableMember(Name = nameof(CampaignID))]
+        private string _campaignId;
+
         [PersistableMember(Name = nameof(LastSavedUtc))]
         private DateTime _lastSavedUtc;
 
@@ -125,6 +128,16 @@ namespace Rebellion.Game
         {
             get => _openingBriefingCompleted;
             set => _openingBriefingCompleted = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the anonymous identifier shared by analytics sessions for this campaign.
+        /// </summary>
+        [PersistableIgnore]
+        public string CampaignID
+        {
+            get => _campaignId;
+            set => _campaignId = value;
         }
 
         [PersistableIgnore]

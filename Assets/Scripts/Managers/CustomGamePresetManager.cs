@@ -49,7 +49,7 @@ public sealed class CustomGamePresetManager
     /// Creates a manager using the application's persistent custom-game directory.
     /// </summary>
     public CustomGamePresetManager()
-        : this(Path.Combine(Application.persistentDataPath, "custom-games")) { }
+        : this(Path.Combine(UserDataPaths.Root, "custom-games")) { }
 
     /// <summary>
     /// Creates a manager using an explicit storage directory.

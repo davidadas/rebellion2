@@ -7895,6 +7895,32 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
+    /// Creates a star-cluster preview from the gameplay view's authored geometry.
+    /// </summary>
+    /// <param name="parent">The editor's source map.</param>
+    /// <returns>The reusable star-cluster view.</returns>
+    internal static PlanetSectorClusterView CreateGalaxyClusterPreview(Transform parent) =>
+        Object.Instantiate(BuildPlanetSectorClusterPrefab(), parent, false);
+
+    /// <summary>
+    /// Creates an authoring preview using the same window geometry and planet controls as gameplay.
+    /// </summary>
+    /// <param name="parent">The editor map surface.</param>
+    /// <returns>The self-contained preview without gameplay window actions.</returns>
+    internal static PlanetSectorWindowView CreateSectorPreview(Transform parent)
+    {
+        PlanetSectorPlanetView template = Object.Instantiate(BuildPlanetSectorPlanetPrefab());
+        GameObject window = CreatePlanetSectorWindowObject("SectorPreview", template);
+        window.transform.SetParent(parent, false);
+        template.transform.SetParent(window.transform, false);
+        template.gameObject.SetActive(false);
+        Object.DestroyImmediate(window.GetComponent<UIWindow>());
+        Object.DestroyImmediate(window.transform.Find("SwapButtonImage").gameObject);
+        Object.DestroyImmediate(window.transform.Find("CloseButtonImage").gameObject);
+        return window.GetComponent<PlanetSectorWindowView>();
+    }
+
+    /// <summary>
     /// Authors a Planet Sector window hierarchy before prefab serialization.
     /// </summary>
     /// <param name="name">The window object name.</param>

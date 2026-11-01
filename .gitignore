@@ -31,6 +31,7 @@ Unity_lic.alf
 package.json
 yarn.lock
 node_modules
+**/__pycache__/
 
 # VS Extensions
 **/*.vs
@@ -44,6 +45,8 @@ Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
+/Assets/Mods/
+/Assets/Mods.meta
 
 # Local captures
 /_recordings/
@@ -87,12 +90,14 @@ CLAUDE.md
 **/*.ini
 *.bak
 *.log
-# 3D model assets (binaries, materials, render textures, metas) live in
-# rebellion2-media and sync to disk. Nothing under MainMenu is tracked here.
+# Unity artwork and model assets live in rebellion2-media and sync to disk.
 Assets/Art/Models/**/*.fbx
 Assets/Art/Models/**/*.png
 Assets/Art/Models/MainMenu/
 /Assets/Art/MainMenu/
+/Assets/Art/ContentEditor/
+/Assets/Art/ContentEditor.meta
 
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
+/Assets/GameIcon.meta

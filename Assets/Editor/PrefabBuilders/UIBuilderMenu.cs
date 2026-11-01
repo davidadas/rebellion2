@@ -27,6 +27,7 @@ public static class UIBuilderMenu
             NewGameSettingsPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
+            ContentPackEditorPrefabBuilder.Rebuild();
         });
         SaveAndRefresh();
     }
@@ -51,6 +52,7 @@ public static class UIBuilderMenu
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
+                "Assets/Prefabs/UI/ContentPackEditor",
             }
         );
         foreach (string prefabGuid in prefabGuids)
@@ -115,6 +117,32 @@ public static class UIBuilderMenu
     public static void BuildBoot()
     {
         RunInAuthoringScene(BootPrefabBuilder.Rebuild);
+        SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Rebuilds the standalone content-pack editor UI.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Content Pack Editor UI", false, 24)]
+    public static void BuildContentPackEditor()
+    {
+        RunInAuthoringScene(ContentPackEditorPrefabBuilder.Rebuild);
+        SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Builds companion-editor UI and removes development media references from its templates.
+    /// </summary>
+    public static void BuildRuntimeContentPackEditor()
+    {
+        BuildContentPackEditor();
+        foreach (
+            string guid in AssetDatabase.FindAssets(
+                "t:Prefab",
+                new[] { "Assets/Prefabs/UI/Common", "Assets/Prefabs/UI/ContentPackEditor" }
+            )
+        )
+            RemoveDevelopmentContentReferences(AssetDatabase.GUIDToAssetPath(guid));
         SaveAndRefresh();
     }
 

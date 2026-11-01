@@ -9,7 +9,7 @@ using Rebellion.Game;
 /// </summary>
 public sealed class ContentPack
 {
-    private readonly IReadOnlyDictionary<string, ContentPreloadManifest> preloadManifests;
+    private readonly Dictionary<string, ContentPreloadManifest> preloadManifests;
 
     /// <summary>
     /// Gets the absolute root of the external content directory.
@@ -76,12 +76,24 @@ public sealed class ContentPack
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         GameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
-        this.preloadManifests =
-            preloadManifests ?? throw new ArgumentNullException(nameof(preloadManifests));
+        this.preloadManifests = new Dictionary<string, ContentPreloadManifest>(
+            preloadManifests ?? throw new ArgumentNullException(nameof(preloadManifests)),
+            StringComparer.Ordinal
+        );
+        this.preloadManifests.TryGetValue("strategy", out ContentPreloadManifest strategyExtras);
+        this.preloadManifests["strategy"] = ContentPreloadBuilder.CreateStrategy(
+            gameData,
+            strategyExtras
+        );
+        if (!this.preloadManifests.ContainsKey("main-menu"))
+            this.preloadManifests.Add(
+                "main-menu",
+                new ContentPreloadManifest { TexturesPerFrame = 36 }
+            );
     }
 
     /// <summary>
-    /// Gets a required preload manifest declared by this pack.
+    /// Gets the derived startup assets and optional extras for a named loading phase.
     /// </summary>
     /// <param name="preloadID">The preload group identifier.</param>
     /// <returns>The configured preload manifest.</returns>
@@ -156,5 +168,28 @@ public sealed class ContentPack
             && string.Equals(scenarioID, Scenario.ID, StringComparison.Ordinal)
             && (modIDs ?? Array.Empty<string>()).SequenceEqual(activeModIDs)
             && (modVersions ?? Array.Empty<string>()).SequenceEqual(activeModVersions);
+    }
+
+    /// <summary>
+    /// Creates detached new-game settings using this pack's scenario and active content identity.
+    /// </summary>
+    /// <returns>The authored default game settings.</returns>
+    public GameSummary CreateDefaultGameSummary()
+    {
+        string[] startingFactionIds = Scenario.PlayableFactionIDs.ToArray();
+        return new GameSummary
+        {
+            Difficulty = GameDifficulty.Easy,
+            GalaxySize = GameSize.Large,
+            VictoryCondition = GameVictoryCondition.Conquest,
+            ResourceAvailability = GameResourceAvailability.Normal,
+            PlayerFactionID = Scenario.DefaultPlayerFactionID,
+            StartingFactionIDs = startingFactionIds,
+            PackID = Definition.ID,
+            PackVersion = Definition.Version,
+            ScenarioID = Scenario.ID,
+            ModIDs = FileResolver.Mods.Select(mod => mod.ID).ToArray(),
+            ModVersions = FileResolver.Mods.Select(mod => mod.Version).ToArray(),
+        };
     }
 }

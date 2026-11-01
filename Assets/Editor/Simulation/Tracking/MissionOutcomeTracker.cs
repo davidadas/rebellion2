@@ -37,8 +37,8 @@ public static partial class HeadlessSimulationRunner
     {
         public string WinnerFactionId;
         public string Winner;
-        public string LoserFactionId;
-        public string Loser;
+        public string[] DefeatedFactionIds;
+        public string[] DefeatedFactions;
         public int Tick;
         public string Mode;
     }

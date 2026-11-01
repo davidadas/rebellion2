@@ -96,7 +96,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
-        _availablePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+        _availablePacks = _showModsTab
+            ? ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath)
+            : new[] { contentPack.Definition };
         ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
@@ -240,7 +242,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 _showModsTab,
-                _settingsSession.GetGraphicsValues()
+                _settingsSession.GetGraphicsValues(),
+                _settingsSession.Analytics.IsEnabled
             )
         );
     }
@@ -322,15 +325,22 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Rediscovers compatible mods for the pending content-pack selection.
+    /// Discovers installed choices or retains the already resolved content for a loaded folder.
     /// </summary>
     private void RefreshSelectedModResolver()
     {
-        _selectedModResolver = ContentPackLoader.DiscoverModResolver(
-            _bootstrap.GetContentPack().ContentRootPath,
-            _selectedPackID,
-            _selectedDisabledModIDs
-        );
+        ContentPack contentPack = _bootstrap.GetContentPack();
+        _selectedModResolver =
+            _showModsTab
+            && _availablePacks.Any(pack =>
+                string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
+            )
+                ? ContentPackLoader.DiscoverModResolver(
+                    contentPack.ContentRootPath,
+                    _selectedPackID,
+                    _selectedDisabledModIDs
+                )
+                : contentPack.FileResolver;
     }
 
     /// <summary>
@@ -431,6 +441,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
+        target.AnalyticsToggleRequested += HandleAnalyticsToggle;
         target.UserInterfaceToggleRequested += HandleUserInterfaceToggle;
         target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
         target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
@@ -994,6 +1005,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Toggles analytics collection and marks settings dirty.
+    /// </summary>
+    private void HandleAnalyticsToggle()
+    {
+        _settingsSession.ToggleAnalytics();
+        _markDirty();
+    }
+
+    /// <summary>
     /// Toggles a user-interface option and marks settings dirty.
     /// </summary>
     /// <param name="option">The user-interface option to toggle.</param>
@@ -1114,6 +1134,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.AnalyticsToggleRequested -= HandleAnalyticsToggle;
         destroyed.UserInterfaceToggleRequested -= HandleUserInterfaceToggle;
         destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
         destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;

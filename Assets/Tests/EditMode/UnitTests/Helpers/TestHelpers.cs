@@ -1000,11 +1000,6 @@ public static class GenerationContextFactory
                     FixedFleets = new List<FixedFleet>(),
                     FactionBudgets = new List<FactionBudget>(),
                 },
-                Balance = new BalanceSection
-                {
-                    SupportBoostPerUnit = 2,
-                    MaxMilitaryPresenceBoost = 10,
-                },
             },
             GameConfig = new GameConfig
             {
