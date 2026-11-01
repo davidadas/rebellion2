@@ -19,7 +19,6 @@ public static class StandalonePlayerBuild
     private const string _buildVersionArgument = "-buildVersion";
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
-    private const string _skipRuntimeUIBuildArgument = "-skipRuntimeUIBuild";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
 
     /// <summary>
@@ -51,8 +50,7 @@ public static class StandalonePlayerBuild
                 target,
                 outputPath,
                 enableDiagnostics: false,
-                enableAnalytics: false,
-                prepareRuntimeUI: true
+                enableAnalytics: false
             );
             ContentPackEditorBuild.BuildBesideGame(target, builtPlayerPath, false);
             LaunchPlayer(target, builtPlayerPath, contentPath);
@@ -123,8 +121,7 @@ public static class StandalonePlayerBuild
                 target,
                 outputPath,
                 HasArgument(_enableDiagnosticsArgument),
-                HasArgument(_enableAnalyticsArgument),
-                !HasArgument(_skipRuntimeUIBuildArgument)
+                HasArgument(_enableAnalyticsArgument)
             );
             ContentPackEditorBuild.BuildBesideGame(
                 target,
@@ -180,20 +177,17 @@ public static class StandalonePlayerBuild
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="enableDiagnostics">Whether the built player may report engine diagnostics.</param>
     /// <param name="enableAnalytics">Whether the built player may send opted-in analytics.</param>
-    /// <param name="prepareRuntimeUI">Whether to regenerate stripped runtime UI before building.</param>
     /// <returns>The platform-correct player artifact path.</returns>
     private static string BuildPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
         bool enableDiagnostics,
-        bool enableAnalytics,
-        bool prepareRuntimeUI
+        bool enableAnalytics
     )
     {
         _ = GetDefaultArtifact(target);
         outputPath = NormalizeOutputPath(target, outputPath);
-        if (prepareRuntimeUI)
-            UIBuilderMenu.BuildRuntimeUI();
+        UIBuilderMenu.BuildRuntimeUI();
         return BuildGeneratedPlayer(
             target,
             outputPath,
