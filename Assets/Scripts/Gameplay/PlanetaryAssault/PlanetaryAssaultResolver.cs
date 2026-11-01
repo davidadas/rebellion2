@@ -165,18 +165,20 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet being assaulted.</param>
         /// <param name="config">The planetary-assault rules.</param>
         /// <param name="minimumRemainingRegiments">The ready regiments that must survive capture.</param>
+        /// <param name="projected">Whether to include regiments and transports already committed to the fleets.</param>
         /// <returns>The conservative capture chance with the required survivors, from zero through one hundred.</returns>
         public static int EstimateSuccessPercent(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
             GameConfig.PlanetaryAssaultConfig config,
-            int minimumRemainingRegiments = 1
+            int minimumRemainingRegiments = 1,
+            bool projected = false
         )
         {
             if (fleets?.Any() != true || planet == null || config == null)
                 return 0;
 
-            List<AssaultTroop> attackers = SnapshotAttackers(fleets);
+            List<AssaultTroop> attackers = SnapshotAttackers(fleets, projected);
             minimumRemainingRegiments = Math.Max(1, minimumRemainingRegiments);
             if (attackers.Count < minimumRemainingRegiments)
                 return 0;
@@ -217,16 +219,17 @@ namespace Rebellion.Gameplay
                 )
                     continue;
 
-                double groundSuccessProbability = minimumRemainingRegiments == 1
-                    ? CalculateGroundSuccessProbability(
-                        attackerWinProbabilities.Take(survivorCount),
-                        defenders.Count
-                    )
-                    : CalculateGroundOccupationProbability(
-                        attackerWinProbabilities.Take(survivorCount).ToArray(),
-                        defenders.Count,
-                        minimumRemainingRegiments
-                    );
+                double groundSuccessProbability =
+                    minimumRemainingRegiments == 1
+                        ? CalculateGroundSuccessProbability(
+                            attackerWinProbabilities.Take(survivorCount),
+                            defenders.Count
+                        )
+                        : CalculateGroundOccupationProbability(
+                            attackerWinProbabilities.Take(survivorCount).ToArray(),
+                            defenders.Count,
+                            minimumRemainingRegiments
+                        );
                 successProbability += casualtyProbabilities[casualties] * groundSuccessProbability;
             }
 
@@ -442,18 +445,27 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Captures the active carried regiments participating in an assault.
+        /// Captures carried regiments for a ready force or its committed reinforcements.
         /// </summary>
         /// <param name="fleets">The fleets supplying assault troops.</param>
-        /// <returns>The active regiments paired with their carrier ships.</returns>
-        private static List<AssaultTroop> SnapshotAttackers(IEnumerable<Fleet> fleets)
+        /// <param name="projected">Whether unfinished and travelling reinforcements are included.</param>
+        /// <returns>The selected regiments paired with their carrier ships.</returns>
+        private static List<AssaultTroop> SnapshotAttackers(
+            IEnumerable<Fleet> fleets,
+            bool projected = false
+        )
         {
             return fleets
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
-                .Where(IsActiveAssaultUnit)
+                .Where(ship =>
+                    projected
+                        ? ship.ManufacturingStatus != ManufacturingStatus.Complete
+                            || ship.CurrentHullStrength > 0
+                        : IsActiveAssaultUnit(ship)
+                )
                 .SelectMany(ship =>
                     ship.GetChildren<Regiment>()
-                        .Where(IsActiveAssaultUnit)
+                        .Where(regiment => projected || IsActiveAssaultUnit(regiment))
                         .Select(regiment => new AssaultTroop { Regiment = regiment, Ship = ship })
                 )
                 .ToList();

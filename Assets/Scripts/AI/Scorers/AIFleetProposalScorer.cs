@@ -658,7 +658,7 @@ namespace Rebellion.AI.Scorers
                 utility.TravelTime
             );
             score.AddCost(
-                ScoreExpectedLossRisk(context, fleet, targetPlanet),
+                ScoreExpectedLossRisk(context, fleet, targetPlanet) * readiness.Score,
                 utility.ExpectedLossRisk
             );
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
@@ -1384,8 +1384,13 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             List<double> risks = new List<double>();
-            int orbitalDefense = assessment.GetStrongestHostileFleetCombatValueAgainstCapitalShips(
-                targetPlanet
+            int orbitalDefense = Math.Max(
+                assessment.GetStrongestHostileFleetCombatValueAgainstCapitalShips(targetPlanet),
+                assessment.GetReachableHostileFleetStrength(
+                    targetPlanet,
+                    context.GetAttackArrivalTicks(fleet, targetPlanet),
+                    context.MovementQueries
+                )
             );
             if (orbitalDefense > 0)
             {
@@ -1420,7 +1425,7 @@ namespace Rebellion.AI.Scorers
                 );
             }
 
-            return GetAverage(risks.ToArray());
+            return risks.Count > 0 ? risks.Max() : 0;
         }
 
         /// <summary>

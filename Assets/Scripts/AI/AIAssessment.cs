@@ -35,6 +35,10 @@ namespace Rebellion.AI
             IReadOnlyList<(int? Ticks, int Strength)>
         > _shieldArrivals = new(StringComparer.Ordinal);
 
+        private readonly Dictionary<(string Planet, int Ticks), int> _reachableHostileStrengths =
+            new();
+        private IReadOnlyList<(Fleet Fleet, Planet Planet, int Age)> _knownHostileFleetLocations;
+
         private readonly HashSet<string> _heldOfficerIDs;
         private readonly GameRoot _game;
         private readonly Faction _faction;
@@ -443,6 +447,82 @@ namespace Rebellion.AI
             var result = (combat, capitalFirepower, fighterFirepower, fighters);
             _arrivalOrbitalCapabilities.Add(key, result);
             return result;
+        }
+
+        /// <summary>
+        /// Measures the strongest observed mobile fleet that could respond before an attack arrives.
+        /// </summary>
+        /// <param name="planet">The prospective attack destination.</param>
+        /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
+        /// <param name="movement">The movement queries used to estimate response time.</param>
+        /// <returns>The strongest reachable observed force against capital ships.</returns>
+        internal int GetReachableHostileFleetStrength(
+            Planet planet,
+            int arrivalTicks,
+            MovementQueries movement
+        )
+        {
+            if (planet == null || movement == null || arrivalTicks == int.MaxValue)
+                return 0;
+            var key = (Planet: planet.InstanceID, Ticks: Math.Max(0, arrivalTicks));
+            if (_reachableHostileStrengths.TryGetValue(key, out int cached))
+                return cached;
+
+            _knownHostileFleetLocations ??= FactionViewPlanets
+                .SelectMany(location =>
+                    location
+                        .GetChildren<Fleet>()
+                        .Where(fleet =>
+                            !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                            && fleet.GetOwnerInstanceID() != _faction.InstanceID
+                        )
+                        .Select(fleet =>
+                            (
+                                Fleet: fleet,
+                                Planet: location,
+                                Age: fleet.Movement
+                                    is { IsObservation: true, ObservedAtTick: int observedAtTick }
+                                    ? Math.Max(0, _game.CurrentTick - observedAtTick)
+                                    : GetPlanetOrbitalIntelAge(location)
+                            )
+                        )
+                )
+                .Where(observation => observation.Age < int.MaxValue)
+                .OrderBy(observation => observation.Age)
+                .ThenBy(observation => observation.Planet.InstanceID, StringComparer.Ordinal)
+                .GroupBy(observation => observation.Fleet.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
+
+            int strongest = 0;
+            foreach (var observation in _knownHostileFleetLocations)
+            {
+                Fleet fleet = observation.Fleet;
+                if (!MovementQueries.CanTravelBetweenPlanets(fleet))
+                    continue;
+                long responseTicks = Math.Max(
+                    0L,
+                    (long)(fleet.Movement?.TicksRemaining() ?? 0) - observation.Age
+                );
+                if (observation.Planet.InstanceID != planet.InstanceID)
+                    responseTicks += movement.CalculateTransitTicks(
+                        fleet,
+                        observation.Planet,
+                        planet
+                    );
+                if (responseTicks > key.Ticks)
+                    continue;
+
+                strongest = Math.Max(
+                    strongest,
+                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShips(
+                        fleet,
+                        _game.Config.Combat.SpaceCombat
+                    )
+                );
+            }
+            _reachableHostileStrengths.Add(key, strongest);
+            return strongest;
         }
 
         /// <summary>
@@ -3396,11 +3476,13 @@ namespace Rebellion.AI
         /// <param name="fleet">Fleet assigned to the attack.</param>
         /// <param name="targetPlanet">Planet being attacked.</param>
         /// <param name="minimumRemainingRegiments">The ready regiments that must survive capture.</param>
+        /// <param name="projected">Whether to include troops and transports already committed to the fleet.</param>
         /// <returns>The conservative capture chance with the required survivors, from zero through one hundred.</returns>
         public int GetPlanetaryAssaultSuccessPercent(
             Fleet fleet,
             Planet targetPlanet,
-            int minimumRemainingRegiments = 1
+            int minimumRemainingRegiments = 1,
+            bool projected = false
         )
         {
             if (fleet == null || targetPlanet == null || _game?.Config == null)
@@ -3410,7 +3492,8 @@ namespace Rebellion.AI
                 new List<Fleet> { fleet },
                 targetPlanet,
                 _game.Config.Combat.PlanetaryAssault,
-                minimumRemainingRegiments
+                minimumRemainingRegiments,
+                projected
             );
         }
 

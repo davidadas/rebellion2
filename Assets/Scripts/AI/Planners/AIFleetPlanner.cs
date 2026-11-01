@@ -421,9 +421,41 @@ namespace Rebellion.AI.Planners
             Planet evacuationDestination = GetEvacuationDestination(context, fleet, currentPlanet);
             if (evacuationDestination != null)
             {
-                proposals.Add(
-                    new AIFleetEvacuationProposal(fleet, currentPlanet, evacuationDestination)
-                );
+                AIFleetAttackProposal alternative = null;
+                if (
+                    order?.OrderType == FleetOrderType.Attack
+                    && order.TargetPlanetId == currentPlanet.InstanceID
+                    && CanStartAttackOrder(context, fleet)
+                    && context.Assessment.GetHostileFleets(currentPlanet).Count == 0
+                    && context.GetAttackDemand(currentPlanet, fleet)?.OrbitalStrength == 0
+                )
+                {
+                    alternative = SelectAttack(
+                        context,
+                        new[] { fleet },
+                        context.Assessment.EnemyPlanets.Where(target =>
+                            target.InstanceID != currentPlanet.InstanceID
+                            && !HasAttackFleetForTarget(context, target, fleet)
+                            && context.GetAttackArrivalTicks(fleet, target)
+                                <= Math.Max(
+                                    0,
+                                    context
+                                        .Game
+                                        .Config
+                                        .AI
+                                        .FleetDeployment
+                                        .LocalAttackMaximumTravelTicks
+                                )
+                        ),
+                        requireReady: true
+                    );
+                }
+                if (alternative != null)
+                    proposals.Add(alternative);
+                else
+                    proposals.Add(
+                        new AIFleetEvacuationProposal(fleet, currentPlanet, evacuationDestination)
+                    );
                 return;
             }
 

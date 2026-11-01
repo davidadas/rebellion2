@@ -199,7 +199,8 @@ namespace Rebellion.AI.Proposals
                         Fleet,
                         liveTarget,
                         occupationCount
-                    ) >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
+                    )
+                    >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
             }
 
             if (shouldAssault)
@@ -407,9 +408,7 @@ namespace Rebellion.AI.Proposals
             if (order.TargetPlanetId == TargetPlanet.InstanceID)
                 return true;
 
-            return order.Status is FleetOrderStatus.Building or FleetOrderStatus.Staging
-                && Fleet.Movement == null
-                && !Fleet.IsInCombat;
+            return Fleet.Movement == null && !Fleet.IsInCombat;
         }
 
         /// <summary>

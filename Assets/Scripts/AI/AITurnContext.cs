@@ -300,7 +300,7 @@ namespace Rebellion.AI
             AIAttackDemand demand = GetAttackDemand(planet, fleet);
             if (demand == null)
                 return (0, 0);
-            return demand.GetRegimentRequirements(
+            var required = demand.GetRegimentRequirements(
                 Assessment.CanBombardDefenders(
                     fleet,
                     planet,
@@ -312,6 +312,28 @@ namespace Rebellion.AI
                     ? Assessment.GetFleetRegimentCapacity(fleet)
                     : Assessment.GetReadyFleetRegimentCapacity(fleet)
             );
+            if (
+                required.Strength > 0
+                && !demand.IsAssaultBlockedByShields
+                && fleet?.Order?.OrderType == FleetOrderType.Attack
+                && fleet.Order.TargetPlanetId == planet.InstanceID
+                && Assessment.IsEnemyPlanet(planet)
+            )
+            {
+                int committedCount = projected
+                    ? fleet.GetCurrentRegimentCount()
+                    : Assessment.GetReadyFleetRegimentCount(fleet);
+                if (
+                    committedCount >= required.Count
+                    && Assessment.GetPlanetaryAssaultSuccessPercent(
+                        fleet,
+                        planet,
+                        projected: projected
+                    ) < Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
+                )
+                    required.Count = committedCount + 1;
+            }
+            return required;
         }
 
         /// <summary>
