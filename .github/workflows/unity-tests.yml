@@ -102,7 +102,9 @@ jobs:
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
+            if git lfs pull \
+              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
+              --exclude="Content/**/*.mp4"; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -113,6 +115,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
+          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
@@ -131,11 +134,39 @@ jobs:
         id: build-library
         uses: actions/cache/restore@v4
         with:
-          path: Library
+          path: |
+            Library/Bee
+            Library/BuildPlayerData
+            Library/ScriptAssemblies
+            Library/ShaderCache
           key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
           restore-keys: |
             Library-build-${{ matrix.targetPlatform }}-
-            Library-
+
+      - name: Restore prepared runtime UI
+        id: runtime-ui
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            Assets/Prefabs
+            Assets/Prefabs.meta
+            Assets/Resources/UI
+            Assets/Scenes
+            Assets/Scenes.meta
+          key: >-
+            RuntimeUI-${{ needs.resolve-media.outputs.sha }}-${{
+              hashFiles(
+                'Assets/Editor/Content/**',
+                'Assets/Editor/PrefabBuilders/**',
+                'Assets/Editor/SceneBuilders/**',
+                'Assets/Scripts/ContentEditor/UI/**',
+                'Assets/Scripts/UI/**',
+                'Assets/Shaders/**',
+                'Packages/manifest.json',
+                'Packages/packages-lock.json',
+                'ProjectSettings/**'
+              )
+            }}
 
       - name: Pre-pull Unity Docker image
         run: |
@@ -166,12 +197,32 @@ jobs:
           buildMethod: StandalonePlayerBuild.Build
           buildName: rebellion2
           buildsPath: build
+          customParameters: ${{ steps.runtime-ui.outputs.cache-hit == 'true' && '-skipRuntimeUIBuild' || '' }}
+
+      - name: Save prepared runtime UI
+        if: >-
+          ${{ !cancelled()
+              && steps.unity-build.outcome == 'success'
+              && steps.runtime-ui.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            Assets/Prefabs
+            Assets/Prefabs.meta
+            Assets/Resources/UI
+            Assets/Scenes
+            Assets/Scenes.meta
+          key: ${{ steps.runtime-ui.outputs.cache-primary-key }}
 
       - name: Save compiled Unity build Library
         if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
-          path: Library
+          path: |
+            Library/Bee
+            Library/BuildPlayerData
+            Library/ScriptAssemblies
+            Library/ShaderCache
           key: ${{ steps.build-library.outputs.cache-primary-key }}
 
       - name: Package verified desktop bundle
@@ -319,7 +370,9 @@ jobs:
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
+            if git lfs pull \
+              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
+              --exclude="Content/**/*.mp4"; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -330,6 +383,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
+          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
@@ -343,16 +397,6 @@ jobs:
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
-
-      - name: Restore Unity test Library
-        id: test-library
-        uses: actions/cache/restore@v4
-        with:
-          path: Library
-          key: Library-test-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-test-
-            Library-
 
       - name: Prepare Vulkan-enabled Unity test image
         run: |
@@ -380,23 +424,11 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
-
-      - name: Save imported Unity test Library
-        if: >-
-          ${{ !cancelled()
-              && steps.test-library.outputs.cache-hit != 'true'
-              && hashFiles('artifacts/editmode-results.xml') != ''
-              && hashFiles('Library/ScriptAssemblies/UnitTests.dll') != '' }}
-        uses: actions/cache/save@v4
-        with:
-          path: Library
-          key: ${{ steps.test-library.outputs.cache-primary-key }}
 
       - name: Upload Unity test results
         if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
