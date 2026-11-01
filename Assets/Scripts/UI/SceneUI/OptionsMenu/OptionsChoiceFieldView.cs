@@ -35,6 +35,7 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
         valueField = value ?? throw new ArgumentNullException(nameof(value));
         previousButton = previous ?? throw new ArgumentNullException(nameof(previous));
         nextButton = next ?? throw new ArgumentNullException(nameof(next));
+        valueField.alignment = TextAlignmentOptions.Capline;
         BindControls();
     }
 

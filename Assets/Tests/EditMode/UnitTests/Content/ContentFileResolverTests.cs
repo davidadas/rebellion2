@@ -252,20 +252,56 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void Discover_ModWithoutBasePackVersion_ThrowsInvalidDataException()
+        public void Discover_InvalidDefinitions_SkipsThemAndLoadsValidMod()
         {
-            string modRoot = Path.Combine(_root, "Mods", "ShipRebalance");
+            Directory.CreateDirectory(Path.Combine(_root, "Mods", "MissingDefinition"));
+            string incompleteModRoot = Path.Combine(_root, "Mods", "Incomplete");
             WriteFile(
-                modRoot,
+                incompleteModRoot,
                 "mod.xml",
-                "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
-                    + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                "<ContentModDefinition><ID>incomplete</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Incomplete</DisplayName><BasePackID>base-pack</BasePackID>"
                     + "</ContentModDefinition>"
             );
-
-            Assert.Throws<InvalidDataException>(() =>
-                ContentFileResolver.Discover(_contentRoot, _packRoot, "base-pack", "1.0.0")
+            string malformedModRoot = Path.Combine(_root, "Mods", "Malformed");
+            WriteFile(malformedModRoot, "mod.xml", "<ContentModDefinition><ID>malformed</ID>");
+            string validModRoot = Path.Combine(_root, "Mods", "Valid");
+            WriteFile(
+                validModRoot,
+                "mod.xml",
+                "<ContentModDefinition><ID>valid</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Valid</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "<BasePackVersion>1.0.0</BasePackVersion>"
+                    + "</ContentModDefinition>"
             );
+            string validFile = WriteFile(validModRoot, "Content/Pack/Data/ships.xml", "valid");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            CollectionAssert.AreEqual(new[] { "valid" }, resolver.Mods.Select(mod => mod.ID));
+            CollectionAssert.AreEqual(
+                new[] { "valid" },
+                resolver.AvailableMods.Select(mod => mod.ID)
+            );
+            Assert.AreEqual(3, resolver.ModIssues.Count);
+            ContentModIssue incomplete = resolver.ModIssues.Single(issue =>
+                issue.ID == "incomplete"
+            );
+            Assert.AreEqual("Incomplete", incomplete.DisplayName);
+            StringAssert.Contains("BasePackVersion", incomplete.Message);
+            ContentModIssue malformed = resolver.ModIssues.Single(issue => issue.ID == "Malformed");
+            Assert.AreEqual("Malformed", malformed.DisplayName);
+            Assert.IsNotEmpty(malformed.Message);
+            ContentModIssue missing = resolver.ModIssues.Single(issue =>
+                issue.ID == "MissingDefinition"
+            );
+            StringAssert.Contains("mod.xml", missing.Message);
+            Assert.AreEqual(validFile, resolver.ResolveFile("Pack/Data/ships.xml"));
         }
 
         [Test]

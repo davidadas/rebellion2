@@ -21,7 +21,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly SaveGameManager _saveGameManager;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
-    private readonly IReadOnlyList<ContentPackDefinition> _availablePacks;
+    private readonly IReadOnlyList<InstalledContentPack> _availablePacks;
     private readonly bool _showModsTab;
 
     private readonly OptionsSettingsSession _settingsSession;
@@ -39,8 +39,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
-    private string _selectedPackID;
+    private int _selectedPackIndex = -1;
     private ContentFileResolver _selectedModResolver;
+    private string _selectedPackError = string.Empty;
+    private string _statusMessage = string.Empty;
+    private bool _statusIsError;
     private readonly HashSet<string> _selectedDisabledModIDs = new HashSet<string>(
         StringComparer.Ordinal
     );
@@ -97,8 +100,18 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
         _availablePacks = _showModsTab
-            ? ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath)
-            : new[] { contentPack.Definition };
+            ? ContentPackLoader.DiscoverInstalledPacks(contentPack.ContentRootPath)
+            : new[]
+            {
+                new InstalledContentPack(
+                    contentPack.Definition.ID,
+                    string.IsNullOrWhiteSpace(contentPack.Definition.DisplayName)
+                        ? contentPack.Definition.ID
+                        : contentPack.Definition.DisplayName,
+                    contentPack.Definition,
+                    string.Empty
+                ),
+            };
         ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
@@ -110,7 +123,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         );
         _bindingSession = new OptionsBindingSession(bindings);
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
-        _bindingSession.PresentationChanged += _markDirty;
+        _bindingSession.PresentationChanged += MarkDirty;
         _bindingSession.ConflictRequested += HandleBindingConflictRequested;
         _bootstrap.GetCancelStack()?.Register(this);
     }
@@ -137,6 +150,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.Begin();
+        _statusMessage = string.Empty;
+        _statusIsError = false;
         ResetContentSelection();
         _bindingSession.Rebuild();
         _activeTab = IsTabAvailable(initialTab) ? initialTab : OptionsMenuTab.Gameplay;
@@ -202,7 +217,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _settingsSession.Revert();
         Close();
         _bindingSession.Changed -= _settingsSession.MarkInputChanged;
-        _bindingSession.PresentationChanged -= _markDirty;
+        _bindingSession.PresentationChanged -= MarkDirty;
         _bindingSession.ConflictRequested -= HandleBindingConflictRequested;
         _bindingSession.Dispose();
         _bootstrap.GetCancelStack()?.Unregister(this);
@@ -240,10 +255,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.UserInterface.IdleBarLocation,
                 _settingsSession.Gameplay.GameLaunchSpeed,
                 BuildModRows().ToArray(),
-                GetSelectedPack()?.DisplayName ?? _selectedPackID,
+                GetSelectedPack()?.DisplayName ?? _bootstrap.GetContentPack().Definition.ID,
                 _showModsTab,
                 _settingsSession.GetGraphicsValues(),
-                _settingsSession.Analytics.IsEnabled
+                _settingsSession.Analytics.IsEnabled,
+                _statusMessage,
+                _statusIsError
             )
         );
     }
@@ -255,6 +272,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private IEnumerable<OptionsModRow> BuildModRows()
     {
         ContentFileResolver resolver = _selectedModResolver;
+        if (resolver == null)
+            return Array.Empty<OptionsModRow>();
+
         HashSet<string> disabledIDs = new HashSet<string>(
             _selectedDisabledModIDs,
             StringComparer.Ordinal
@@ -263,13 +283,24 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetContentPack().FileResolver.Mods.Select(mod => mod.ID),
             StringComparer.Ordinal
         );
-        return resolver.AvailableMods.Select(mod => new OptionsModRow(
-            mod.ID,
-            mod.Version,
-            mod.DisplayName,
-            !disabledIDs.Contains(mod.ID),
-            loadedIDs.Contains(mod.ID)
-        ));
+        return resolver
+            .AvailableMods.Select(mod => new OptionsModRow(
+                mod.ID,
+                mod.Version,
+                mod.DisplayName,
+                !disabledIDs.Contains(mod.ID),
+                loadedIDs.Contains(mod.ID)
+            ))
+            .Concat(
+                resolver.ModIssues.Select(issue => new OptionsModRow(
+                    issue.ID,
+                    string.Empty,
+                    issue.DisplayName,
+                    false,
+                    false,
+                    issue.Message
+                ))
+            );
     }
 
     /// <summary>
@@ -279,24 +310,27 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleModToggle(int index)
     {
         ContentFileResolver resolver = _selectedModResolver;
+        if (resolver == null)
+            return;
+
         if (index < 0 || index >= resolver.AvailableMods.Count)
             return;
 
         string id = resolver.AvailableMods[index].ID;
         if (!_selectedDisabledModIDs.Add(id))
             _selectedDisabledModIDs.Remove(id);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
-    /// Gets the definition selected for the next application start.
+    /// Gets the installed pack selected for the next application start.
     /// </summary>
-    /// <returns>The selected pack definition, or null when unavailable.</returns>
-    private ContentPackDefinition GetSelectedPack()
+    /// <returns>The selected installed pack, or null when unavailable.</returns>
+    private InstalledContentPack GetSelectedPack()
     {
-        return _availablePacks.FirstOrDefault(pack =>
-            string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
-        );
+        return _selectedPackIndex >= 0 && _selectedPackIndex < _availablePacks.Count
+            ? _availablePacks[_selectedPackIndex]
+            : null;
     }
 
     /// <summary>
@@ -308,20 +342,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_availablePacks.Count < 2 || delta == 0)
             return;
 
-        int currentIndex = -1;
-        for (int index = 0; index < _availablePacks.Count; index++)
-        {
-            if (string.Equals(_availablePacks[index].ID, _selectedPackID, StringComparison.Ordinal))
-            {
-                currentIndex = index;
-                break;
-            }
-        }
-        int nextIndex =
+        int currentIndex =
+            _selectedPackIndex >= 0 && _selectedPackIndex < _availablePacks.Count
+                ? _selectedPackIndex
+                : 0;
+        _selectedPackIndex =
             (currentIndex + Math.Sign(delta) + _availablePacks.Count) % _availablePacks.Count;
-        _selectedPackID = _availablePacks[nextIndex].ID;
         RefreshSelectedModResolver();
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -330,17 +358,26 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void RefreshSelectedModResolver()
     {
         ContentPack contentPack = _bootstrap.GetContentPack();
-        _selectedModResolver =
-            _showModsTab
-            && _availablePacks.Any(pack =>
-                string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
-            )
-                ? ContentPackLoader.DiscoverModResolver(
-                    contentPack.ContentRootPath,
-                    _selectedPackID,
-                    _selectedDisabledModIDs
-                )
-                : contentPack.FileResolver;
+        if (!_showModsTab)
+        {
+            _selectedPackError = string.Empty;
+            _selectedModResolver = contentPack.FileResolver;
+            return;
+        }
+
+        InstalledContentPack selectedPack = GetSelectedPack();
+        _selectedPackError = selectedPack?.ErrorMessage ?? string.Empty;
+        _selectedModResolver = null;
+        if (selectedPack == null || !string.IsNullOrWhiteSpace(_selectedPackError))
+            return;
+
+        ContentPackLoader.TryDiscoverModResolver(
+            contentPack.ContentRootPath,
+            selectedPack.ID,
+            _selectedDisabledModIDs,
+            out _selectedModResolver,
+            out _selectedPackError
+        );
     }
 
     /// <summary>
@@ -349,7 +386,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void ResetContentSelection()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        _selectedPackID = ResolveSavedPackID(content);
+        _selectedPackIndex = ResolveSavedPackIndex(content);
         _selectedDisabledModIDs.Clear();
         foreach (string disabledModID in content.DisabledModIDs ?? Array.Empty<string>())
             _selectedDisabledModIDs.Add(disabledModID);
@@ -357,18 +394,40 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Resolves the persisted pack selection to an available pack.
+    /// Resolves the persisted pack selection to an installed pack.
     /// </summary>
     /// <param name="content">The persisted content settings.</param>
-    /// <returns>The persisted pack ID when available; otherwise the loaded pack ID.</returns>
-    private string ResolveSavedPackID(UserContentSettings content)
+    /// <returns>The selected installed-pack index.</returns>
+    private int ResolveSavedPackIndex(UserContentSettings content)
     {
-        string savedPackID = content.ActivePackID;
-        return _availablePacks.Any(pack =>
-            string.Equals(pack.ID, savedPackID, StringComparison.Ordinal)
-        )
-            ? savedPackID
-            : _bootstrap.GetContentPack().Definition.ID;
+        int savedPackIndex = ResolvePackIndex(content.ActivePackID);
+        return savedPackIndex >= 0
+            ? savedPackIndex
+            : ResolvePackIndex(_bootstrap.GetContentPack().Definition.ID);
+    }
+
+    /// <summary>
+    /// Resolves one pack ID to a specific installed entry, preferring a readable definition over
+    /// an error entry that uses its directory name as a fallback ID.
+    /// </summary>
+    /// <param name="packID">The persisted or catalog-selected pack ID.</param>
+    /// <returns>The selected installed-pack index, or -1 when no installation matches.</returns>
+    private int ResolvePackIndex(string packID)
+    {
+        int firstMatch = -1;
+        for (int index = 0; index < _availablePacks.Count; index++)
+        {
+            InstalledContentPack pack = _availablePacks[index];
+            if (!string.Equals(pack.ID, packID, StringComparison.Ordinal))
+                continue;
+
+            if (firstMatch < 0)
+                firstMatch = index;
+            if (pack.Definition != null && string.IsNullOrWhiteSpace(pack.ErrorMessage))
+                return index;
+        }
+
+        return firstMatch;
     }
 
     /// <summary>
@@ -378,8 +437,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool IsContentSelectionDirty()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        string savedPackID = ResolveSavedPackID(content);
-        return !string.Equals(_selectedPackID, savedPackID, StringComparison.Ordinal)
+        return _selectedPackIndex != ResolveSavedPackIndex(content)
             || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
     }
 
@@ -388,8 +446,36 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void ApplyContentSelection()
     {
-        if (_bootstrap.ReloadContent(_selectedPackID, _selectedDisabledModIDs.ToArray()))
+        if (_selectedModResolver == null || !string.IsNullOrWhiteSpace(_selectedPackError))
+        {
+            SetStatus(BuildContentErrorStatus("Content pack"), true);
+            return;
+        }
+
+        if (_selectedModResolver.ModIssues.Count > 0)
+        {
+            SetStatus(BuildContentErrorStatus("Mod"), true);
+            return;
+        }
+
+        InstalledContentPack selectedPack = GetSelectedPack();
+        if (
+            selectedPack != null
+            && _bootstrap.ReloadContent(selectedPack.ID, _selectedDisabledModIDs.ToArray())
+        )
             Close();
+        else
+            SetStatus("Content settings could not be applied.", true);
+    }
+
+    /// <summary>
+    /// Builds player-facing content failure guidance using the player log filename.
+    /// </summary>
+    /// <param name="contentType">The player-facing content type.</param>
+    /// <returns>A concise failure message containing the player log filename.</returns>
+    private static string BuildContentErrorStatus(string contentType)
+    {
+        return $"{contentType} could not be loaded. See Player.log for details.";
     }
 
     /// <summary>
@@ -509,7 +595,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _saveSlotsLoaded = true;
         }
 
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -750,6 +836,28 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Clears stale action feedback and refreshes the menu presentation.
+    /// </summary>
+    private void MarkDirty()
+    {
+        _statusMessage = string.Empty;
+        _statusIsError = false;
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Displays the result of a settings action and refreshes the menu presentation.
+    /// </summary>
+    /// <param name="message">The player-facing result.</param>
+    /// <param name="isError">Whether the result represents a failure.</param>
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message ?? string.Empty;
+        _statusIsError = isError;
+        _markDirty();
+    }
+
+    /// <summary>
     /// Persists the currently previewed settings to disk.
     /// </summary>
     private void HandleApply()
@@ -761,7 +869,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.Commit();
-        _markDirty();
+        SetStatus("Settings applied.", false);
     }
 
     /// <summary>
@@ -813,7 +921,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.RestoreDefaults(_activeTab);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -824,14 +932,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         string defaultPackID = ContentPackLoader.GetDefaultPackID(
             _bootstrap.GetContentPack().ContentRootPath
         );
-        _selectedPackID = _availablePacks.Any(pack =>
-            string.Equals(pack.ID, defaultPackID, StringComparison.Ordinal)
-        )
-            ? defaultPackID
-            : _bootstrap.GetContentPack().Definition.ID;
+        _selectedPackIndex = ResolvePackIndex(defaultPackID);
+        if (_selectedPackIndex < 0)
+            _selectedPackIndex = ResolvePackIndex(_bootstrap.GetContentPack().Definition.ID);
         _selectedDisabledModIDs.Clear();
         RefreshSelectedModResolver();
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -991,7 +1097,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleTacticalToggle(UserTacticalOption option)
     {
         _settingsSession.ToggleTactical(option);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1001,7 +1107,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleGameplayToggle(UserGameplayOption option)
     {
         _settingsSession.ToggleGameplay(option);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1020,7 +1126,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleUserInterfaceToggle(UserInterfaceOption option)
     {
         _settingsSession.ToggleUserInterface(option);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1030,7 +1136,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleIdleBarLocationRequested(IdleBarLocation location)
     {
         _settingsSession.SetIdleBarLocation(location);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1040,7 +1146,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleGameLaunchSpeedRequested(GameLaunchSpeed speed)
     {
         _settingsSession.SetGameLaunchSpeed(speed);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1051,7 +1157,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (int.TryParse(value, out int ticks))
             _settingsSession.SetAutosaveInterval(ticks);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1062,7 +1168,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (int.TryParse(value, out int count))
             _settingsSession.SetAutosavesToKeep(count);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1072,7 +1178,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleResolutionStep(int delta)
     {
         _settingsSession.StepResolution(delta);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1082,7 +1188,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleFullScreenStep(int delta)
     {
         _settingsSession.StepFullScreen(delta);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1093,7 +1199,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleGraphicsStep(UserGraphicsSetting setting, int delta)
     {
         _settingsSession.StepGraphics(setting, delta);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>
@@ -1104,7 +1210,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleVolumeChanged(int channel, float value)
     {
         _settingsSession.SetVolume(channel, value);
-        _markDirty();
+        MarkDirty();
     }
 
     /// <summary>

@@ -1194,6 +1194,17 @@ public static class OptionsMenuPrefabBuilder
             out _
         );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
+        TextMeshProUGUI settingsStatus = CreateTextLabel(
+            "SettingsStatusTextField",
+            settingsActions
+        );
+        settingsStatus.text = string.Empty;
+        settingsStatus.color = textDim;
+        settingsStatus.fontSize = 10;
+        settingsStatus.alignment = TextAlignmentOptions.Bottom;
+        settingsStatus.textWrappingMode = TextWrappingModes.Normal;
+        settingsStatus.overflowMode = TextOverflowModes.Ellipsis;
+        SetSourceRect(settingsStatus.rectTransform, 250, 370, 300, 32);
         Button defaultsButton = CreateMenuActionButton(
             settingsActions,
             "DefaultsButton",
@@ -1226,6 +1237,7 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_mainMenuButton", mainMenuButton);
         AssignReference(view, "_quitButton", quitButton);
         AssignReference(view, "_settingsActions", settingsActions.gameObject);
+        AssignReference(view, "_settingsStatusTextField", settingsStatus);
         AssignReference(view, "_applyButton", applyButton);
         AssignReference(view, "_defaultsButton", defaultsButton);
         AssignReference(view, "_confirmDialog", confirmDialog);

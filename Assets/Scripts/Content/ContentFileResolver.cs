@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -37,6 +38,11 @@ public sealed class ContentFileResolver
     public IReadOnlyList<ContentModDefinition> AvailableMods { get; }
 
     /// <summary>
+    /// Gets discovered mods whose definitions could not be loaded safely.
+    /// </summary>
+    public IReadOnlyList<ContentModIssue> ModIssues { get; }
+
+    /// <summary>
     /// Gets the user-content directory beside the installed Content directory.
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
@@ -58,6 +64,7 @@ public sealed class ContentFileResolver
     /// <param name="modContentRootPaths">The mod content roots in ascending load order.</param>
     /// <param name="mods">The definitions corresponding to the mod content roots.</param>
     /// <param name="availableMods">All compatible definitions, including disabled mods.</param>
+    /// <param name="modIssues">The discovered mod-definition failures.</param>
     /// <param name="fallbackPackRootPaths">Inherited pack roots in nearest-to-farthest order.</param>
     public ContentFileResolver(
         string contentRootPath,
@@ -65,6 +72,7 @@ public sealed class ContentFileResolver
         IEnumerable<string> modContentRootPaths = null,
         IEnumerable<ContentModDefinition> mods = null,
         IEnumerable<ContentModDefinition> availableMods = null,
+        IEnumerable<ContentModIssue> modIssues = null,
         IEnumerable<string> fallbackPackRootPaths = null
     )
     {
@@ -84,6 +92,7 @@ public sealed class ContentFileResolver
             .ToArray();
         Mods = (mods ?? Enumerable.Empty<ContentModDefinition>()).ToArray();
         AvailableMods = (availableMods ?? Mods).ToArray();
+        ModIssues = (modIssues ?? Enumerable.Empty<ContentModIssue>()).ToArray();
     }
 
     /// <summary>
@@ -116,6 +125,7 @@ public sealed class ContentFileResolver
         List<string> contentRoots = new List<string>();
         List<ContentModDefinition> definitions = new List<ContentModDefinition>();
         List<ContentModDefinition> availableDefinitions = new List<ContentModDefinition>();
+        List<ContentModIssue> issues = new List<ContentModIssue>();
         HashSet<string> disabledIDs = new HashSet<string>(
             disabledModIDs ?? Enumerable.Empty<string>(),
             StringComparer.Ordinal
@@ -129,28 +139,51 @@ public sealed class ContentFileResolver
         {
             string definitionPath = Path.Combine(modRoot, _modDefinitionFileName);
             if (!File.Exists(definitionPath))
+            {
+                string folderName = Path.GetFileName(modRoot);
+                const string message = "Content mod definition 'mod.xml' was not found.";
+                issues.Add(new ContentModIssue(folderName, folderName, message));
+                GameLogger.Warning($"Skipping content mod folder '{modRoot}': {message}");
                 continue;
+            }
 
-            ContentModDefinition definition = DeserializeDefinition(definitionPath);
-            if (string.IsNullOrWhiteSpace(definition.BasePackID))
-                ValidateDefinition(definition, definitionPath);
-            if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
-                continue;
-            if (string.IsNullOrWhiteSpace(definition.BasePackVersion))
-                ValidateDefinition(definition, definitionPath);
-            if (
-                !string.Equals(
-                    definition.BasePackVersion,
-                    basePackVersion,
-                    StringComparison.Ordinal
+            ContentModDefinition definition = null;
+            try
+            {
+                definition = DeserializeDefinition(definitionPath);
+                if (string.IsNullOrWhiteSpace(definition.BasePackID))
+                    ValidateDefinition(definition);
+                if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
+                    continue;
+                if (string.IsNullOrWhiteSpace(definition.BasePackVersion))
+                    ValidateDefinition(definition);
+                if (
+                    !string.Equals(
+                        definition.BasePackVersion,
+                        basePackVersion,
+                        StringComparison.Ordinal
+                    )
                 )
-            )
-                continue;
-            ValidateDefinition(definition, definitionPath);
-            if (!ids.Add(definition.ID))
-                throw new InvalidDataException(
-                    $"Multiple content mods declare ID '{definition.ID}'."
+                    continue;
+                ValidateDefinition(definition);
+                if (!ids.Add(definition.ID))
+                    throw new InvalidDataException(
+                        $"Multiple content mods declare ID '{definition.ID}'."
+                    );
+            }
+            catch (Exception exception) when (IsInvalidModDefinitionException(exception))
+            {
+                string folderName = Path.GetFileName(modRoot);
+                string id = string.IsNullOrWhiteSpace(definition?.ID) ? folderName : definition.ID;
+                string displayName = string.IsNullOrWhiteSpace(definition?.DisplayName)
+                    ? id
+                    : definition.DisplayName;
+                issues.Add(new ContentModIssue(id, displayName, exception.Message));
+                GameLogger.Warning(
+                    $"Skipping invalid content mod definition '{definitionPath}': {exception.Message}"
                 );
+                continue;
+            }
 
             availableDefinitions.Add(definition);
             if (!disabledIDs.Contains(definition.ID))
@@ -166,6 +199,7 @@ public sealed class ContentFileResolver
             contentRoots,
             definitions,
             availableDefinitions,
+            issues,
             fallbackPackRootPaths
         );
     }
@@ -429,18 +463,44 @@ public sealed class ContentFileResolver
     /// Validates the required identity fields of one compatible mod definition.
     /// </summary>
     /// <param name="definition">The definition to validate.</param>
-    /// <param name="definitionPath">The source path used in validation errors.</param>
-    private static void ValidateDefinition(ContentModDefinition definition, string definitionPath)
+    private static void ValidateDefinition(ContentModDefinition definition)
     {
-        if (
-            string.IsNullOrWhiteSpace(definition.ID)
-            || string.IsNullOrWhiteSpace(definition.Version)
-            || string.IsNullOrWhiteSpace(definition.DisplayName)
-            || string.IsNullOrWhiteSpace(definition.BasePackID)
-            || string.IsNullOrWhiteSpace(definition.BasePackVersion)
-        )
+        ValidateRequiredDefinitionField(definition.ID, nameof(definition.ID));
+        ValidateRequiredDefinitionField(definition.Version, nameof(definition.Version));
+        ValidateRequiredDefinitionField(definition.DisplayName, nameof(definition.DisplayName));
+        ValidateRequiredDefinitionField(definition.BasePackID, nameof(definition.BasePackID));
+        ValidateRequiredDefinitionField(
+            definition.BasePackVersion,
+            nameof(definition.BasePackVersion)
+        );
+    }
+
+    /// <summary>
+    /// Validates one required content-mod definition field.
+    /// </summary>
+    /// <param name="value">The deserialized field value.</param>
+    /// <param name="fieldName">The XML element name.</param>
+    private static void ValidateRequiredDefinitionField(string value, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
             throw new InvalidDataException(
-                $"Content mod definition is incomplete: {definitionPath}"
+                $"Content mod definition is missing required field '{fieldName}'."
             );
+    }
+
+    /// <summary>
+    /// Determines whether a definition failure is isolated to mod-authored data or its file.
+    /// </summary>
+    /// <param name="exception">The failure raised while reading one definition.</param>
+    /// <returns><see langword="true"/> when discovery can safely skip the definition.</returns>
+    private static bool IsInvalidModDefinitionException(Exception exception)
+    {
+        return exception
+            is InvalidDataException
+                or IOException
+                or UnauthorizedAccessException
+                or InvalidOperationException
+                or System.Xml.XmlException
+                or FormatException;
     }
 }

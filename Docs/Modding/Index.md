@@ -46,12 +46,13 @@ Create a new folder directly inside `Mods`. For this example, create `ModExample
   <Version>1.0.0</Version>
   <DisplayName>Mod Example</DisplayName>
   <BasePackID>classic-galactic-civil-war</BasePackID>
+  <BasePackVersion>1.0.0</BasePackVersion>
 </ContentModDefinition>
 ```
 
 `ID` is the stable identifier stored in saves, `Version` identifies the installed revision, and
-`DisplayName` is shown in the game. `BasePackID` limits the mod to that content pack. Omit
-`BasePackID` only when the mod is compatible with every content pack.
+`DisplayName` is shown in the game. `BasePackID` and `BasePackVersion` identify the exact content
+pack release the mod supports.
 
 ### 3. Add replacement content
 
@@ -90,7 +91,9 @@ Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears 
 
 Use the switch to enable or disable the mod, then select **Apply**. The game reloads the selected
 content and returns to the main menu without closing. If the mod does not appear, confirm that
-`mod.xml` is directly inside the mod folder and that its `BasePackID` matches the active content pack.
+`mod.xml` is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
+active content pack. Invalid definitions are skipped without preventing other mods from loading; the
+game log identifies the invalid file and reason.
 
 Mods load by folder name in ordinal order. If two enabled mods replace the same file, the later
 folder wins. Custom load-order controls are not yet supported. Files not supplied by a mod fall back
