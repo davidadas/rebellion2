@@ -987,10 +987,21 @@ namespace Rebellion.AI
         /// <returns>True for non-headquarters targets or headquarters within the configured age limit.</returns>
         public bool HasCurrentHeadquartersAttackIntel(Planet planet)
         {
+            return HasCurrentHeadquartersAttackIntel(planet, 0);
+        }
+
+        /// <summary>
+        /// Returns whether headquarters intelligence remains usable after the expected journey.
+        /// </summary>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <param name="arrivalTicks">Ticks until the attacking fleet reaches the target.</param>
+        /// <returns>True for non-headquarters targets or intelligence within the arrival-time age limit.</returns>
+        internal bool HasCurrentHeadquartersAttackIntel(Planet planet, int arrivalTicks)
+        {
             return planet != null
                 && (
                     !planet.IsHeadquarters
-                    || GetPlanetIntelAge(planet)
+                    || (long)GetPlanetIntelAge(planet) + Math.Max(0, arrivalTicks)
                         <= Math.Max(
                             0,
                             _game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks

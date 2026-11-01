@@ -553,7 +553,7 @@ namespace Rebellion.AI.Planners
             if (
                 fleet.Movement == null
                 && !fleet.IsInCombat
-                && !context.Assessment.HasCurrentHeadquartersAttackIntel(targetPlanet)
+                && !context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
             )
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
@@ -783,7 +783,7 @@ namespace Rebellion.AI.Planners
             foreach (
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
-                    && context.Assessment.HasCurrentHeadquartersAttackIntel(targetPlanet)
+                    && context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
                     && (
                         mayLeaveCampaign
                         || context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
@@ -986,7 +986,7 @@ namespace Rebellion.AI.Planners
             AIFleetAttackProposal selected = null;
             IReadOnlyList<Fleet> availableFleets = fleets.ToList();
             IEnumerable<(Planet Target, double UpperBound)> orderedTargets = targets
-                .Where(context.Assessment.HasCurrentHeadquartersAttackIntel)
+                .Where(target => context.Assessment.HasCurrentHeadquartersAttackIntel(target))
                 .Select(target =>
                     (
                         Target: target,

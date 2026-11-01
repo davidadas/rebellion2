@@ -79,18 +79,7 @@ namespace Rebellion.AI.Demands
             Planet origin = context.Assessment.GetFleetPlanet(fleet);
             if (origin == null)
                 return demand;
-            int arrivalTicks = fleet.Movement?.TicksRemaining() ?? 0;
-            if (origin.InstanceID != demand.TargetPlanet.InstanceID)
-                arrivalTicks = (int)
-                    Math.Min(
-                        int.MaxValue,
-                        (long)arrivalTicks
-                            + context.MovementQueries.CalculateTransitTicks(
-                                fleet,
-                                origin,
-                                demand.TargetPlanet
-                            )
-                    );
+            int arrivalTicks = context.GetAttackArrivalTicks(fleet, demand.TargetPlanet);
             var defense = context.Assessment.GetHostileOrbitalCapabilitiesAtArrival(
                 demand.TargetPlanet,
                 arrivalTicks

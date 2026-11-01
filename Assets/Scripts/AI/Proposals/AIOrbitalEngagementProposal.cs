@@ -210,7 +210,7 @@ namespace Rebellion.AI.Proposals
                 order?.Status != FleetOrderStatus.Returning
                 && Fleet.Movement == null
                 && !Fleet.IsInCombat
-                && !context.Assessment.HasCurrentHeadquartersAttackIntel(knownTarget)
+                && !context.HasCurrentHeadquartersAttackIntel(Fleet, knownTarget)
             )
                 return false;
 

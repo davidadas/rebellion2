@@ -54,7 +54,7 @@ namespace Rebellion.AI.Planners
                         fleet.Order.Status == FleetOrderStatus.Returning
                         || fleet.Movement != null
                         || fleet.IsInCombat
-                        || context.Assessment.HasCurrentHeadquartersAttackIntel(target)
+                        || context.HasCurrentHeadquartersAttackIntel(fleet, target)
                     )
                 )
                     proposals.Add(new AIOrbitalEngagementProposal(fleet, target, origin));
@@ -98,7 +98,7 @@ namespace Rebellion.AI.Planners
                 .Any(ship => ship.HasGravityWell);
             return context.Assessment.EnemyPlanets.Where(target =>
                 target.InstanceID != origin.InstanceID
-                && context.Assessment.HasCurrentHeadquartersAttackIntel(target)
+                && context.HasCurrentHeadquartersAttackIntel(fleet, target)
                 && (context.Assessment.IsAttackPreparationTarget(target) || hasGravityWell)
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
                 && context.CanWinOrbitalCombat(fleet, target)

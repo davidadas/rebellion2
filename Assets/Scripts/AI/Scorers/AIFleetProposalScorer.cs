@@ -1448,7 +1448,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the attack can be scored.</returns>
         private bool CanScoreAttack(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            if (fleet == null || targetPlanet == null)
+            if (
+                fleet == null
+                || targetPlanet == null
+                || !context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
+            )
                 return false;
 
             if (fleet.RoleType != FleetRoleType.Battle)

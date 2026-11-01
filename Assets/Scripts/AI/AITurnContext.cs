@@ -331,6 +331,38 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Estimates the remaining journey to one fleet's prospective attack target.
+        /// </summary>
+        /// <param name="fleet">The fleet being assessed.</param>
+        /// <param name="planet">The known destination.</param>
+        /// <returns>The arrival delay, or the maximum integer when the fleet has no known location.</returns>
+        internal int GetAttackArrivalTicks(Fleet fleet, Planet planet)
+        {
+            Planet origin = Assessment.GetFleetPlanet(fleet);
+            if (origin == null || planet == null || MovementQueries == null)
+                return int.MaxValue;
+
+            long arrivalTicks = fleet.Movement?.TicksRemaining() ?? 0;
+            if (origin.InstanceID != planet.InstanceID)
+                arrivalTicks += MovementQueries.CalculateTransitTicks(fleet, origin, planet);
+            return (int)Math.Min(int.MaxValue, arrivalTicks);
+        }
+
+        /// <summary>
+        /// Checks headquarters intelligence at the time a fleet is expected to reach its target.
+        /// </summary>
+        /// <param name="fleet">The fleet whose journey is assessed.</param>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>True when the headquarters age limit permits this journey.</returns>
+        internal bool HasCurrentHeadquartersAttackIntel(Fleet fleet, Planet planet)
+        {
+            return Assessment.HasCurrentHeadquartersAttackIntel(
+                planet,
+                planet?.IsHeadquarters == true ? GetAttackArrivalTicks(fleet, planet) : 0
+            );
+        }
+
+        /// <summary>
         /// Separates fleet launch readiness from the regiments needed to complete the attack.
         /// </summary>
         /// <param name="fleet">The attacking fleet.</param>
@@ -345,7 +377,7 @@ namespace Rebellion.AI
             if (
                 fleet == null
                 || demand == null
-                || !Assessment.HasCurrentHeadquartersAttackIntel(planet)
+                || !HasCurrentHeadquartersAttackIntel(fleet, planet)
                 || !StrategicPlan.CanFleetDepart(fleet)
                 || !fleet.HasOperationalCapitalShips()
             )
