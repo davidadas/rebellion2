@@ -1938,7 +1938,7 @@ namespace Rebellion.AI.Planners
             Planet producer = null
         )
         {
-            return GetUnlockedTechnologies(context, ManufacturingType.Ship)
+            List<Technology> technologies = GetUnlockedTechnologies(context, ManufacturingType.Ship)
                 .Where(technology =>
                     technology.GetReference() is CapitalShip capitalShip
                     && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID)
@@ -1953,6 +1953,25 @@ namespace Rebellion.AI.Planners
                     technology => technology.GetReference().GetTypeID(),
                     StringComparer.Ordinal
                 )
+                .ToList();
+            if (demand.CapitalShipRole != AICapitalShipProductionRole.TroopTransport)
+                return technologies;
+
+            List<Technology> transports = technologies
+                .Where(technology =>
+                    CanFillCapitalShipRole(
+                        (CapitalShip)technology.GetReference(),
+                        AICapitalShipProductionRole.TroopTransport
+                    )
+                )
+                .ToList();
+            if (transports.Count == 0)
+                return transports;
+            int minimumCost = transports.Min(technology =>
+                technology.GetReference().GetConstructionCost()
+            );
+            return transports
+                .Where(technology => technology.GetReference().GetConstructionCost() == minimumCost)
                 .ToList();
         }
 

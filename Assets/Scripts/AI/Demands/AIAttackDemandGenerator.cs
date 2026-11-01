@@ -101,16 +101,34 @@ namespace Rebellion.AI.Demands
                     <= Math.Max(0, config.SupportOpportunityMaximumIntelAgeTicks);
             bool localAttack =
                 IsLocalAttackTarget(context, demand.TargetPlanet)
-                && arrivalTicks <= Math.Max(0, config.LocalAttackMaximumTravelTicks)
-                && (long)
-                    Math.Max(
-                        context.Assessment.GetPlanetIntelAge(demand.TargetPlanet),
-                        context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
-                    ) + arrivalTicks
-                    <= Math.Max(0, config.LocalAttackMaximumIntelAgeTicks);
+                && arrivalTicks <= Math.Max(0, config.LocalAttackMaximumTravelTicks);
+            int localMinimumPercent = 100;
+            if (localAttack)
+            {
+                long graceAge = Math.Max(0, config.LocalAttackMaximumIntelAgeTicks);
+                long arrivalAge =
+                    (long)
+                        Math.Max(
+                            context.Assessment.GetPlanetIntelAge(demand.TargetPlanet),
+                            context.Assessment.GetPlanetOrbitalIntelAge(demand.TargetPlanet)
+                        ) + arrivalTicks;
+                double staleRisk = Math.Clamp(
+                    (arrivalAge - graceAge)
+                        / (double)Math.Max(1L, GetLocalAttackIntelSaturationAge(config) - graceAge),
+                    0,
+                    1
+                );
+                int localFloorPercent = Math.Clamp(
+                    config.LocalAttackMinimumStrengthPercent,
+                    0,
+                    100
+                );
+                localMinimumPercent = (int)
+                    Math.Ceiling(localFloorPercent + (100 - localFloorPercent) * staleRisk);
+            }
             int minimumPercent = Math.Min(
                 supportOpportunity ? config.SupportOpportunityMinimumAttackStrengthPercent : 100,
-                localAttack ? config.LocalAttackMinimumStrengthPercent : 100
+                localMinimumPercent
             );
             int minimum = IntegerMath.ScaleByPercent(
                 config.MinimumAttackStrength,
@@ -329,17 +347,32 @@ namespace Rebellion.AI.Demands
         {
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             AIAssessment assessment = context.Assessment;
+            int age = Math.Max(
+                assessment.GetPlanetIntelAge(planet),
+                assessment.GetPlanetOrbitalIntelAge(planet)
+            );
             return config.LocalAttackMinimumStrengthPercent < 100
                 && planet?.IsHeadquarters == false
                 && assessment.IsEnemyPlanet(planet)
-                && Math.Max(
-                    assessment.GetPlanetIntelAge(planet),
-                    assessment.GetPlanetOrbitalIntelAge(planet)
-                ) <= Math.Max(0, config.LocalAttackMaximumIntelAgeTicks)
+                && age < int.MaxValue
+                && age <= GetLocalAttackIntelSaturationAge(config)
                 && !assessment
                     .GetHostileFleets(planet)
                     .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                     .Any(ship => ship.HasGravityWell);
+        }
+
+        /// <summary>
+        /// Returns the intelligence age at which a local attack needs the full baseline force.
+        /// </summary>
+        /// <param name="config">The local attack grace window and staleness reserve intervals.</param>
+        /// <returns>The age where the local force reduction has completely expired.</returns>
+        private static long GetLocalAttackIntelSaturationAge(
+            GameConfig.AIFleetDeploymentConfig config
+        )
+        {
+            return (long)Math.Max(1, config.LocalAttackMaximumIntelAgeTicks)
+                * Math.Max(1, config.StaleIntelReserveSaturationIntervals);
         }
 
         /// <summary>

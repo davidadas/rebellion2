@@ -326,12 +326,15 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether the fleet has enough force to leave staging.
+        /// Returns whether an observed orbital situation and the ready force permit departure.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>True if the fleet is ready to launch.</returns>
         internal bool CanLaunch(AITurnContext context)
         {
+            if (context.Assessment.GetPlanetOrbitalIntelAge(TargetPlanet) == int.MaxValue)
+                return false;
+
             var readiness = context.GetAttackReadiness(Fleet, TargetPlanet);
             return readiness.FleetReady && readiness.RegimentsReady;
         }

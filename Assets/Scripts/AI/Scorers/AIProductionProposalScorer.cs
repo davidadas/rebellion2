@@ -138,9 +138,12 @@ namespace Rebellion.AI.Scorers
 
             if (proposal.CurrentOrder != null)
             {
-                if (!scoresFacilityAvailability)
-                    score.AddCost(
-                        AIUtility.Fulfillment(GetCompletionTime(proposal), utility.CompletionTime),
+                if (proposal.ContinuesExistingOrder && !scoresFacilityAvailability)
+                    score.Add(
+                        AIUtility.Fulfillment(
+                            GetCompletedProductionTicks(proposal),
+                            utility.CompletionTime
+                        ),
                         utility.CompletionTime
                     );
                 score.AddCost(
@@ -995,27 +998,27 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Estimates the completion time of the competing continuation or replacement.
+        /// Measures factory time already completed on the current order.
         /// </summary>
-        /// <param name="proposal">The action involving an existing manufacturing order.</param>
-        /// <returns>The estimated production ticks, or zero when no job is being displaced.</returns>
-        private static double GetCompletionTime(AIManufactureProposal proposal)
+        /// <param name="proposal">The action continuing or competing with the current order.</param>
+        /// <returns>The completed production ticks, or zero when no reliable estimate exists.</returns>
+        private static double GetCompletedProductionTicks(AIManufactureProposal proposal)
         {
             IManufacturable current = proposal.CurrentOrder;
             if (current == null)
                 return 0;
-            return (
-                    proposal.ContinuesExistingOrder
-                        ? ManufacturingQueries.EstimateCompletionTicks(
-                            proposal.ProducerPlanet,
-                            current
-                        )
-                        : ManufacturingQueries.EstimateManufacturingTicks(
-                            proposal.ProducerPlanet,
-                            proposal.Product.GetReference(),
-                            proposal.GetManufacturingCount()
-                        )
-                ) ?? double.MaxValue;
+            int? total = ManufacturingQueries.EstimateManufacturingTicks(
+                proposal.ProducerPlanet,
+                current,
+                1
+            );
+            int? remaining = ManufacturingQueries.EstimateCompletionTicks(
+                proposal.ProducerPlanet,
+                current
+            );
+            return total.HasValue && remaining.HasValue
+                ? Math.Max(0, total.Value - remaining.Value)
+                : 0;
         }
 
         /// <summary>
@@ -1039,18 +1042,7 @@ namespace Rebellion.AI.Scorers
             );
             if (relevance <= 0)
                 return 0;
-            int? total = ManufacturingQueries.EstimateManufacturingTicks(
-                proposal.ProducerPlanet,
-                current,
-                1
-            );
-            int? remaining = ManufacturingQueries.EstimateCompletionTicks(
-                proposal.ProducerPlanet,
-                current
-            );
-            return total.HasValue && remaining.HasValue
-                ? relevance * Math.Max(0, total.Value - remaining.Value)
-                : 0;
+            return relevance * GetCompletedProductionTicks(proposal);
         }
 
         /// <summary>
