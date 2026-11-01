@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Selectors
@@ -101,7 +102,14 @@ namespace Rebellion.AI.Selectors
                 || proposal.SourceContainer is not Fleet donor
             )
                 return true;
-            if (!context.StrategicPlan.CanReleaseCapitalShip(donor, ship, _departingCapitalShips))
+            if (
+                !context.StrategicPlan.CanReleaseCapitalShip(
+                    donor,
+                    ship,
+                    _departingCapitalShips,
+                    proposal.TargetFleet
+                )
+            )
                 return false;
             AIProductionDemand demand = context.ProductionDemands.FirstOrDefault(candidate =>
                 candidate.Kind == AIProductionDemandKind.FleetCapitalShip
@@ -194,7 +202,11 @@ namespace Rebellion.AI.Selectors
             {
                 _capitalShipTransferTargets.Add(proposal.TargetFleet.InstanceID);
                 ReserveFleetHull(proposal.TargetFleet, ship);
-                _departingCapitalShips.Add(ship);
+                if (
+                    proposal.SourceContainer.GetParentOfType<Planet>()
+                    != proposal.Destination.GetParentOfType<Planet>()
+                )
+                    _departingCapitalShips.Add(ship);
             }
         }
 

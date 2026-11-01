@@ -133,7 +133,11 @@ namespace Rebellion.AI.Proposals
             {
                 if (
                     Unit is CapitalShip capitalShip
-                        ? !context.StrategicPlan.CanReleaseCapitalShip(sourceFleet, capitalShip)
+                        ? !context.StrategicPlan.CanReleaseCapitalShip(
+                            sourceFleet,
+                            capitalShip,
+                            destinationFleet: TargetFleet
+                        )
                         : !CanMoveFromSourceFleet(sourceFleet)
                 )
                     return false;

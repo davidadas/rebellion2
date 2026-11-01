@@ -612,7 +612,7 @@ namespace Rebellion.AI
             }
             if (
                 _assessment.ProjectedMaintenanceHeadroom
-                < _game.Config.AI.Selection.MaintenanceHeadroomReserve
+                < _game.Config.AI.Selection.MaintenanceHeadroomTarget
             )
             {
                 _resourceReclamationCache[key] = Array.Empty<Building>();
@@ -701,7 +701,7 @@ namespace Rebellion.AI
                     / 100d;
                 if (
                     after.MaintenanceHeadroom - hubMaintenance
-                        < _game.Config.AI.Selection.MaintenanceHeadroomReserve
+                        < _game.Config.AI.Selection.MaintenanceHeadroomTarget
                     || after.RawOutputPerTick <= 0
                     || after.RefinedOutputPerTick <= 0
                     || materials < materialReserve
@@ -1649,17 +1649,19 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether a completed hull can leave an idle or locally defending fleet
-        /// without violating its defense commitment.
+        /// Returns whether a completed hull can transfer from an idle or locally defending
+        /// fleet without abandoning its planet's defense commitment.
         /// </summary>
         /// <param name="fleet">The potential donor fleet.</param>
         /// <param name="capitalShip">The hull to release, including its carried units.</param>
-        /// <param name="committedTransfers">Other hulls already selected to leave this turn.</param>
+        /// <param name="committedTransfers">Other hulls already selected to leave the planet this turn.</param>
+        /// <param name="destinationFleet">The receiving fleet, when evaluating a transfer.</param>
         /// <returns>True when the remaining ready force can retain its assignment.</returns>
         public bool CanReleaseCapitalShip(
             Fleet fleet,
             CapitalShip capitalShip,
-            IReadOnlyCollection<CapitalShip> committedTransfers = null
+            IReadOnlyCollection<CapitalShip> committedTransfers = null,
+            Fleet destinationFleet = null
         )
         {
             if (
@@ -1685,8 +1687,23 @@ namespace Rebellion.AI
                         fleet.Order.OrderType != FleetOrderType.Defend
                         || fleet.Order.TargetPlanetId != planet.InstanceID
                     )
-                || GetDefenseCommitment(planet).HoldAllLocalFleets
             )
+                return false;
+
+            if (
+                destinationFleet != null
+                && destinationFleet != fleet
+                && destinationFleet.RoleType == FleetRoleType.Battle
+                && destinationFleet.GetOwnerInstanceID() == fleet.GetOwnerInstanceID()
+                && destinationFleet.GetParentOfType<Planet>() == planet
+                && destinationFleet.Movement == null
+                && !destinationFleet.IsInCombat
+                && destinationFleet.Order?.OrderType == FleetOrderType.Defend
+                && destinationFleet.Order.TargetPlanetId == planet.InstanceID
+            )
+                return true;
+
+            if (GetDefenseCommitment(planet).HoldAllLocalFleets)
                 return false;
 
             if (capitalShip.HasRole(CapitalShipRole.Transport))

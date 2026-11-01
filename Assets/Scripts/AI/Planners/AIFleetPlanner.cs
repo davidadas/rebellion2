@@ -542,13 +542,12 @@ namespace Rebellion.AI.Planners
                     Planet[] followOnTargets = context.Assessment.EnemyPlanets
                         .Where(target => !HasAttackFleetForTarget(context, target, fleet))
                         .ToArray();
-                    followOn =
-                        SelectAttack(
-                            context,
-                            new[] { fleet },
-                            followOnTargets,
-                            requireReady: true
-                        ) ?? SelectAttack(context, new[] { fleet }, followOnTargets);
+                    followOn = SelectAttack(
+                        context,
+                        new[] { fleet },
+                        followOnTargets,
+                        requireReady: true
+                    );
                 }
 
                 if (followOn != null)
@@ -1689,7 +1688,13 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            if (!context.StrategicPlan.CanReleaseCapitalShip(sourceFleet, capitalShip))
+            if (
+                !context.StrategicPlan.CanReleaseCapitalShip(
+                    sourceFleet,
+                    capitalShip,
+                    destinationFleet: targetFleet
+                )
+            )
                 return false;
 
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
