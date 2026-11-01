@@ -130,44 +130,6 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - name: Restore Unity build Library
-        id: build-library
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            Library/Bee
-            Library/BuildPlayerData
-            Library/ScriptAssemblies
-            Library/ShaderCache
-          key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-
-      - name: Restore prepared runtime UI
-        id: runtime-ui
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            Assets/Prefabs
-            Assets/Prefabs.meta
-            Assets/Resources/UI
-            Assets/Scenes
-            Assets/Scenes.meta
-          key: >-
-            RuntimeUI-${{ needs.resolve-media.outputs.sha }}-${{
-              hashFiles(
-                'Assets/Editor/Content/**',
-                'Assets/Editor/PrefabBuilders/**',
-                'Assets/Editor/SceneBuilders/**',
-                'Assets/Scripts/ContentEditor/UI/**',
-                'Assets/Scripts/UI/**',
-                'Assets/Shaders/**',
-                'Packages/manifest.json',
-                'Packages/packages-lock.json',
-                'ProjectSettings/**'
-              )
-            }}
-
       - name: Pre-pull Unity Docker image
         run: |
           case "${{ matrix.targetPlatform }}" in
@@ -197,33 +159,6 @@ jobs:
           buildMethod: StandalonePlayerBuild.Build
           buildName: rebellion2
           buildsPath: build
-          customParameters: ${{ steps.runtime-ui.outputs.cache-hit == 'true' && '-skipRuntimeUIBuild' || '' }}
-
-      - name: Save prepared runtime UI
-        if: >-
-          ${{ !cancelled()
-              && steps.unity-build.outcome == 'success'
-              && steps.runtime-ui.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            Assets/Prefabs
-            Assets/Prefabs.meta
-            Assets/Resources/UI
-            Assets/Scenes
-            Assets/Scenes.meta
-          key: ${{ steps.runtime-ui.outputs.cache-primary-key }}
-
-      - name: Save compiled Unity build Library
-        if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            Library/Bee
-            Library/BuildPlayerData
-            Library/ScriptAssemblies
-            Library/ShaderCache
-          key: ${{ steps.build-library.outputs.cache-primary-key }}
 
       - name: Package verified desktop bundle
         shell: bash
@@ -236,15 +171,6 @@ jobs:
             --platform "${{ matrix.targetPlatform }}" \
             --build-dir "build/${{ matrix.targetPlatform }}" \
             --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
-
-      - name: Upload desktop bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: rebellion2-${{ matrix.targetPlatform }}
-          path: dist/rebellion2-${{ matrix.targetPlatform }}.*
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
 
       - name: Reset package files
         run: |
@@ -260,14 +186,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-lint-${{ github.sha }}
-          restore-keys: |
-            Library-lint-
-            Library-
 
       - name: Install tools
         run: |
