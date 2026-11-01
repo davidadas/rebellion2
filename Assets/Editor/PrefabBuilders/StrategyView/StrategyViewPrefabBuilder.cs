@@ -7200,8 +7200,20 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The generated planet-sector cluster view.</returns>
     private static PlanetSectorClusterView BuildPlanetSectorClusterPrefab()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_planetSectorClusterPrefabPath));
+        GameObject root = CreatePlanetSectorClusterObject();
+        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorClusterPrefabPath);
+        Object.DestroyImmediate(root);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        return saved.GetComponent<PlanetSectorClusterView>();
+    }
 
+    /// <summary>
+    /// Authors a planet-sector cluster hierarchy without writing a shared prefab asset.
+    /// </summary>
+    /// <returns>The generated cluster hierarchy root.</returns>
+    private static GameObject CreatePlanetSectorClusterObject()
+    {
         GameObject root = new GameObject("PlanetSectorCluster", typeof(RectTransform));
         PlanetSectorClusterView view = EnableRuntimeComponent(
             root.AddComponent<PlanetSectorClusterView>()
@@ -7244,11 +7256,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "starImageTemplate", starTemplate);
         AssignReference(view, "headquartersImageTemplate", headquartersTemplate);
 
-        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorClusterPrefabPath);
-        Object.DestroyImmediate(root);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        return saved.GetComponent<PlanetSectorClusterView>();
+        return root;
     }
 
     /// <summary>
@@ -7882,6 +7890,18 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The generated planet-sector planet view.</returns>
     private static PlanetSectorPlanetView BuildPlanetSectorPlanetPrefab()
     {
+        GameObject root = CreatePlanetSectorPlanetObject();
+        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorPlanetPrefabPath);
+        Object.DestroyImmediate(root);
+        return saved.GetComponent<PlanetSectorPlanetView>();
+    }
+
+    /// <summary>
+    /// Authors a planet view hierarchy without writing a shared prefab asset.
+    /// </summary>
+    /// <returns>The generated planet hierarchy root.</returns>
+    private static GameObject CreatePlanetSectorPlanetObject()
+    {
         GameObject root = new GameObject("PlanetSectorPlanet", typeof(RectTransform));
         root.SetActive(false);
         PlanetSectorPlanetView planetView = EnableRuntimeComponent(
@@ -8029,9 +8049,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(planetView, "supportBarFillImage", supportBar.Fill);
 
         root.SetActive(true);
-        GameObject saved = SaveGeneratedPrefabAsset(root, _planetSectorPlanetPrefabPath);
-        Object.DestroyImmediate(root);
-        return saved.GetComponent<PlanetSectorPlanetView>();
+        return root;
     }
 
     /// <summary>
@@ -8054,8 +8072,12 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     /// <param name="parent">The editor's source map.</param>
     /// <returns>The reusable star-cluster view.</returns>
-    internal static PlanetSectorClusterView CreateGalaxyClusterPreview(Transform parent) =>
-        Object.Instantiate(BuildPlanetSectorClusterPrefab(), parent, false);
+    internal static PlanetSectorClusterView CreateGalaxyClusterPreview(Transform parent)
+    {
+        GameObject root = CreatePlanetSectorClusterObject();
+        root.transform.SetParent(parent, false);
+        return root.GetComponent<PlanetSectorClusterView>();
+    }
 
     /// <summary>
     /// Creates an authoring preview using the same window geometry and planet controls as gameplay.
@@ -8064,7 +8086,8 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The self-contained preview without gameplay window actions.</returns>
     internal static PlanetSectorWindowView CreateSectorPreview(Transform parent)
     {
-        PlanetSectorPlanetView template = Object.Instantiate(BuildPlanetSectorPlanetPrefab());
+        PlanetSectorPlanetView template = CreatePlanetSectorPlanetObject()
+            .GetComponent<PlanetSectorPlanetView>();
         GameObject window = CreatePlanetSectorWindowObject("SectorPreview", template);
         window.transform.SetParent(parent, false);
         template.transform.SetParent(window.transform, false);
