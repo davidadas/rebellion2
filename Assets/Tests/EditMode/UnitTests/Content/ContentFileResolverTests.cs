@@ -251,6 +251,32 @@ namespace Rebellion.Tests.Content
             Assert.IsEmpty(resolver.AvailableMods);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Discover_ContentPackFolder_DoesNotReportModIssues(bool malformed)
+        {
+            string packRoot = Path.Combine(_root, "Mods", "UserPack");
+            WriteFile(
+                packRoot,
+                "pack.xml",
+                malformed
+                    ? "<ContentPack>"
+                    : "<ContentPack><ID>user-pack</ID><Version>1.0.0</Version>"
+                        + "<BasePackID>base-pack</BasePackID></ContentPack>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.IsEmpty(resolver.Mods);
+            Assert.IsEmpty(resolver.AvailableMods);
+            Assert.IsEmpty(resolver.ModIssues);
+        }
+
         [Test]
         public void Discover_InvalidDefinitions_SkipsThemAndLoadsValidMod()
         {
@@ -265,7 +291,9 @@ namespace Rebellion.Tests.Content
             );
             string malformedModRoot = Path.Combine(_root, "Mods", "Malformed");
             WriteFile(malformedModRoot, "mod.xml", "<ContentModDefinition><ID>malformed</ID>");
+            WriteFile(malformedModRoot, "pack.xml", "<ContentPack/>");
             string validModRoot = Path.Combine(_root, "Mods", "Valid");
+            WriteFile(validModRoot, "pack.xml", "<ContentPack/>");
             WriteFile(
                 validModRoot,
                 "mod.xml",

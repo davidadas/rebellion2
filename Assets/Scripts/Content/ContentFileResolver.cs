@@ -15,6 +15,7 @@ public sealed class ContentFileResolver
     private const string _applicationAddressPrefix = _applicationScopeName + "/";
     private const string _packAddressPrefix = _packScopeName + "/";
     private const string _modDefinitionFileName = "mod.xml";
+    private const string _packDefinitionFileName = "pack.xml";
     private const string _modContentDirectoryName = "Content";
     private const string _modsDirectoryName = "Mods";
 
@@ -140,6 +141,9 @@ public sealed class ContentFileResolver
             string definitionPath = Path.Combine(modRoot, _modDefinitionFileName);
             if (!File.Exists(definitionPath))
             {
+                if (File.Exists(Path.Combine(modRoot, _packDefinitionFileName)))
+                    continue;
+
                 string folderName = Path.GetFileName(modRoot);
                 const string message = "Content mod definition 'mod.xml' was not found.";
                 issues.Add(new ContentModIssue(folderName, folderName, message));
