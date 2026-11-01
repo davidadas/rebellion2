@@ -263,10 +263,22 @@ jobs:
         run: UnityManagedAssembliesPath="$PWD/.unity-lint-assemblies" bash build.sh lint
 
   test:
-    name: Test
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     needs: resolve-media
     environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Test
+            mode: test
+            coverage: false
+            parameters: -nographics -releaseCodeOptimization -executeMethod UIBuilderMenu.BuildAll
+          - name: Coverage
+            mode: coverage
+            coverage: true
+            parameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
     permissions:
       checks: write
       contents: read
@@ -372,23 +384,56 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
-          customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
+          customParameters: ${{ matrix.parameters }}
+          coverageEnabled: ${{ matrix.coverage }}
+          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly"
+          checkName: ${{ matrix.name }} results
           cliVersion: v0.1.65
+
+      - name: Summarize test execution time
+        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        env:
+          TEST_RUN_NAME: ${{ matrix.name }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+          from datetime import datetime
+          from pathlib import Path
+
+          root = ET.parse("artifacts/editmode-results.xml").getroot()
+          cases = [case for case in root.iter("test-case")
+                   if "start-time" in case.attrib and "end-time" in case.attrib]
+          first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
+          last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
+          seconds = (last - first).total_seconds()
+          summary = (
+              f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
+              f"{root.attrib['passed']}/{root.attrib['total']} passed; "
+              f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped.\n\n"
+              f"First test start to final test end: **{seconds:.1f}s**. "
+              "This includes transitions between tests and excludes initial Unity setup.\n"
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write(summary)
+          EOF
 
       - name: Upload Unity test results
         if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: editmode-test-results
+          name: ${{ matrix.mode }}-editmode-test-results
           path: artifacts/editmode-results.xml
           retention-days: 7
 
       - uses: actions/setup-dotnet@v4
+        if: matrix.mode == 'test'
         with:
           dotnet-version: '8.0.x'
 
       - name: Check compiled architecture
+        if: matrix.mode == 'test'
         run: |
           set -euo pipefail
           test -f Library/ScriptAssemblies/GameAssembly.dll
@@ -411,6 +456,7 @@ jobs:
             --no-build --logger "console;verbosity=normal"
 
       - name: Check coverage threshold
+        if: matrix.mode == 'coverage'
         run: |
           python3 - <<'EOF'
           import sys
