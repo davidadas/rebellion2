@@ -36,7 +36,7 @@ public static class NewGameSettingsPrefabBuilder
         rect.sizeDelta = new Vector2(454f, 341f);
         RectTransform contentRoot = CreateMenuWindowContent(
             rect,
-            "CUSTOM GAME",
+            "Customize",
             out TextMeshProUGUI header,
             out TextMeshProUGUI title
         );

@@ -1965,6 +1965,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .transform.Find("ContentRoot/HeaderTextField")
                 .GetComponent<TMP_Text>();
 
+            Assert.AreEqual("Customize", header.text);
             Assert.AreEqual(expected.alignment, header.alignment);
             Assert.AreEqual(expected.enableAutoSizing, header.enableAutoSizing);
             Assert.AreEqual(expected.fontSizeMin, header.fontSizeMin);

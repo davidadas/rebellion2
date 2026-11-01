@@ -217,7 +217,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         if (header == null)
             return;
 
-        header.text = "CUSTOM GAME";
+        header.text = "Customize";
     }
 
     /// <summary>
@@ -321,7 +321,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         applyButton.GetComponentInChildren<TMP_Text>().text = "START GAME";
         Transform header = transform.Find("ContentRoot/HeaderTextField");
         if (header != null)
-            header.GetComponent<TMP_Text>().text = "CUSTOM GAME";
+            header.GetComponent<TMP_Text>().text = "Customize";
         RefreshPresetSlots(true);
         SelectCategory(
             this.optionsMenuPrefab == null
