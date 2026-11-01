@@ -979,6 +979,136 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_TracksIndependentSchedules()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet first = new Planet { InstanceID = "first", OwnerInstanceID = "alliance" };
+            Planet second = new Planet { InstanceID = "second", OwnerInstanceID = "empire" };
+            _game.AttachNode(first, sector);
+            _game.AttachNode(second, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
+                },
+                Actions = new List<GameAction>
+                {
+                    new ChangeRawResourceNodesAction { PlanetBinding = "target", Amount = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            Assert.AreEqual(110, eventState.ScopedStates[first.InstanceID].NextEligibleTick);
+            Assert.AreEqual(110, eventState.ScopedStates[second.InstanceID].NextEligibleTick);
+
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, first.NumRawResourceNodes);
+            Assert.AreEqual(1, second.NumRawResourceNodes);
+            Assert.AreEqual(1, eventState.ScopedStates[first.InstanceID].ActivationCount);
+            Assert.AreEqual(1, eventState.ScopedStates[second.InstanceID].ActivationCount);
+            Assert.AreEqual(2, eventState.ActivationCount);
+            Assert.AreEqual(110, eventState.LastActivationTick);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_RearmsAfterNeutralInterval()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "alliance" };
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
+                Actions = new List<GameAction>
+                {
+                    new ChangeRawResourceNodesAction { PlanetBinding = "target", Amount = 1 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            planet.OwnerInstanceID = null;
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            Assert.IsFalse(eventState.ScopedStates.ContainsKey(planet.InstanceID));
+
+            planet.OwnerInstanceID = "empire";
+            _game.CurrentTick = 120;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(150, eventState.ScopedStates[planet.InstanceID].NextEligibleTick);
+            Assert.Zero(planet.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OwnedPlanetScope_PreservesScheduleAcrossOwnerChange()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "alliance" };
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SCOPED",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+
+            _game.CurrentTick = 100;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            planet.OwnerInstanceID = "empire";
+            _game.CurrentTick = 110;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[
+                planet.InstanceID
+            ];
+            Assert.AreEqual(130, state.NextEligibleTick);
+            Assert.Zero(state.ActivationCount);
+        }
+
+        [Test]
         public void ProcessScheduledEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });

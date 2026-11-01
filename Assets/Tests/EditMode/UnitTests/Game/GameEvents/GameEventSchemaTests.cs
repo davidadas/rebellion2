@@ -195,6 +195,25 @@ namespace Rebellion.Tests.Game.GameEvents
         }
 
         [Test]
+        public void Validate_ScopedCategoryReveal_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>INFORMANTS</InstanceID>
+    <ForEach As=""planet""><From><SelectPlanets IsOwned=""true""/></From></ForEach>
+    <Schedule><RandomInterval MinimumTicks=""30"" MaximumTicks=""1000""/></Schedule>
+    <Actions>
+      <RevealToFaction FactionInstanceID=""FNALL1"" PlanetBinding=""planet"" Category=""Regiments"" IncludeDescendants=""false""/>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
         public void Validate_SendMessageSubjectImageToggle_AcceptsDocument()
         {
             const string xml =

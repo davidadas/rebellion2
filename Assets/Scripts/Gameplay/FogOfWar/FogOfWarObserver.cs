@@ -98,6 +98,27 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Applies category-based planet intelligence emitted by simulation events.
+        /// </summary>
+        /// <param name="results">The category intelligence results to record.</param>
+        /// <returns>No reactions; snapshots are updated directly.</returns>
+        public List<GameResult> HandleResults(
+            IReadOnlyList<PlanetIntelligenceRevealedResult> results
+        )
+        {
+            foreach (PlanetIntelligenceRevealedResult result in results)
+                _commands.ObservePlanetIntelligence(
+                    result.Recipient,
+                    result.Planet,
+                    result.Category,
+                    result.IncludeDescendants,
+                    result.Tick
+                );
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
         /// Applies completed game results to the knowledge of factions informed by those results.
         /// </summary>
         /// <param name="results">The game results to process.</param>
@@ -107,6 +128,7 @@ namespace Rebellion.Gameplay
                 return;
 
             HandleResults(results.OfType<IntelligenceRevealedResult>().ToList());
+            HandleResults(results.OfType<PlanetIntelligenceRevealedResult>().ToList());
             List<PlanetaryAssaultResult> planetaryAssaults = results
                 .OfType<PlanetaryAssaultResult>()
                 .ToList();

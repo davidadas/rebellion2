@@ -17,7 +17,30 @@ namespace Rebellion.Game.FogOfWar
         Buildings = 1 << 4,
         Officers = 1 << 5,
         Missions = 1 << 6,
-        All = Planet | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
+        Manufacturing = 1 << 7,
+        PlanetControl = 1 << 8,
+        PlanetResources = 1 << 9,
+        Regiments = 1 << 10,
+        SpecialForces = 1 << 11,
+        PlanetaryDefenses = 1 << 12,
+        ProductionFacilities = 1 << 13,
+        Fleets = 1 << 14,
+        All =
+            Planet
+            | CapitalShips
+            | Starfighters
+            | GroundForces
+            | Buildings
+            | Officers
+            | Missions
+            | Manufacturing
+            | PlanetControl
+            | PlanetResources
+            | Regiments
+            | SpecialForces
+            | PlanetaryDefenses
+            | ProductionFacilities
+            | Fleets,
     }
 
     /// <summary>

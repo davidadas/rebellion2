@@ -62,6 +62,9 @@ namespace Rebellion.Game.Scripting
     public sealed class SelectPlanets : OwnedSceneNodeSelector<Planet>
     {
         [PersistableAttribute]
+        public bool? IsOwned { get; set; }
+
+        [PersistableAttribute]
         public PlanetSectorType? SectorType { get; set; }
     }
 

@@ -467,12 +467,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="sector">The planet's containing sector.</param>
         /// <param name="currentTick">The observation tick.</param>
         /// <param name="categories">The categories revealed by this observation.</param>
+        /// <param name="includeDescendants">Whether descendants of matching planet children are included.</param>
         public void RecordIntelligenceSnapshot(
             Faction faction,
             Planet planet,
             PlanetSector sector,
             int currentTick,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeDescendants = true
         )
         {
             if (
@@ -491,7 +493,14 @@ namespace Rebellion.Game.FogOfWar
                 planet,
                 currentTick
             );
-            UpdateSelectedIntelligence(faction, planet, snapshot, currentTick, categories);
+            UpdateSelectedIntelligence(
+                faction,
+                planet,
+                snapshot,
+                currentTick,
+                categories,
+                includeDescendants
+            );
 
             ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
         }
@@ -531,26 +540,57 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="currentTick">The current tick.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeDescendants">Whether descendants of matching planet children are included.</param>
         private void UpdateSelectedIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
             int currentTick,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeDescendants
         )
         {
             snapshot.TickCaptured = currentTick;
+            UpdatePlanetStatusState(snapshot, planet, currentTick);
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
-            if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
-                UpdatePlanetState(snapshot, planet, currentTick);
+            if (
+                categories.HasFlag(PlanetIntelligenceCategory.Planet)
+                || categories.HasFlag(PlanetIntelligenceCategory.PlanetControl)
+            )
+                UpdatePlanetControlState(snapshot, planet, currentTick);
+            if (
+                categories.HasFlag(PlanetIntelligenceCategory.Planet)
+                || categories.HasFlag(PlanetIntelligenceCategory.PlanetResources)
+            )
+                UpdatePlanetResourceState(snapshot, planet, currentTick);
             snapshot.RevealedCategories = accumulatedCategories;
-            UpdateOfficerIntelligence(faction, planet, snapshot, categories);
-            UpdateFleetIntelligence(faction, planet, snapshot, categories, accumulatedCategories);
-            UpdateGroundForceIntelligence(faction, planet, snapshot, categories);
-            UpdateStarfighterIntelligence(faction, planet, snapshot, categories);
+            UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
+            UpdateFleetIntelligence(
+                faction,
+                planet,
+                snapshot,
+                categories,
+                accumulatedCategories,
+                includeDescendants
+            );
+            UpdateGroundForceIntelligence(
+                faction,
+                planet,
+                snapshot,
+                categories,
+                includeDescendants
+            );
+            UpdateStarfighterIntelligence(
+                faction,
+                planet,
+                snapshot,
+                categories,
+                includeDescendants
+            );
             UpdateBuildingIntelligence(faction, planet, snapshot, categories);
             UpdateMissionIntelligence(faction, planet, snapshot, categories);
+            UpdateManufacturingIntelligence(planet, snapshot, categories);
         }
 
         /// <summary>
@@ -560,11 +600,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeDescendants">Whether officers below direct planet children are included.</param>
         private static void UpdateOfficerIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeDescendants
         )
         {
             if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
@@ -573,7 +615,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Officers.Clear();
             snapshot.Officers.AddRange(
                 planet
-                    .GetChildren<Officer>(recursive: true)
+                    .GetChildren<Officer>(recursive: includeDescendants)
                     .Where(officer =>
                         officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured
                     )
@@ -589,28 +631,36 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
         /// <param name="accumulatedCategories">The accumulated categories.</param>
+        /// <param name="includeDescendants">Whether matching fleet contents are included.</param>
         private void UpdateFleetIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
             PlanetIntelligenceCategory categories,
-            PlanetIntelligenceCategory accumulatedCategories
+            PlanetIntelligenceCategory accumulatedCategories,
+            bool includeDescendants
         )
         {
             PlanetIntelligenceCategory fleetCategories =
                 PlanetIntelligenceCategory.CapitalShips
                 | PlanetIntelligenceCategory.Officers
                 | PlanetIntelligenceCategory.GroundForces
-                | PlanetIntelligenceCategory.Starfighters;
+                | PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.Fleets;
             if (
                 !accumulatedCategories.HasFlag(PlanetIntelligenceCategory.CapitalShips)
+                    && !accumulatedCategories.HasFlag(PlanetIntelligenceCategory.Fleets)
                 || (categories & fleetCategories) == PlanetIntelligenceCategory.None
             )
                 return;
 
+            if (!includeDescendants && !categories.HasFlag(PlanetIntelligenceCategory.Fleets))
+                return;
+
             snapshot.Fleets.Clear();
             AddFleetsToSnapshot(faction, planet, snapshot, true);
-            FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
+            if (!accumulatedCategories.HasFlag(PlanetIntelligenceCategory.Fleets))
+                FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
         }
 
         /// <summary>
@@ -620,31 +670,42 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeDescendants">Whether forces below direct planet children are included.</param>
         private void UpdateGroundForceIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeDescendants
         )
         {
-            if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
-                return;
-
-            snapshot.Regiments.Clear();
-            snapshot.SpecialForces.Clear();
-            AddIntelligenceEntityCopies(
-                planet.GetChildren<Regiment>(recursive: true),
-                snapshot.Regiments,
-                faction,
-                snapshot.TickCaptured
-            );
-            AddEntityCopiesToSnapshot(
-                planet.GetChildren<SpecialForces>(recursive: true),
-                snapshot.SpecialForces,
-                faction,
-                true,
-                snapshot.TickCaptured
-            );
+            if (
+                categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                || categories.HasFlag(PlanetIntelligenceCategory.Regiments)
+            )
+            {
+                snapshot.Regiments.Clear();
+                AddIntelligenceEntityCopies(
+                    planet.GetChildren<Regiment>(recursive: includeDescendants),
+                    snapshot.Regiments,
+                    faction,
+                    snapshot.TickCaptured
+                );
+            }
+            if (
+                categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                || categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
+            )
+            {
+                snapshot.SpecialForces.Clear();
+                AddEntityCopiesToSnapshot(
+                    planet.GetChildren<SpecialForces>(recursive: includeDescendants),
+                    snapshot.SpecialForces,
+                    faction,
+                    true,
+                    snapshot.TickCaptured
+                );
+            }
         }
 
         /// <summary>
@@ -654,11 +715,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
+        /// <param name="includeDescendants">Whether starfighters below direct planet children are included.</param>
         private void UpdateStarfighterIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            PlanetIntelligenceCategory categories
+            PlanetIntelligenceCategory categories,
+            bool includeDescendants
         )
         {
             if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
@@ -666,7 +729,7 @@ namespace Rebellion.Game.FogOfWar
 
             snapshot.Starfighters.Clear();
             AddIntelligenceEntityCopies(
-                planet.GetChildren<Starfighter>(recursive: true),
+                planet.GetChildren<Starfighter>(recursive: includeDescendants),
                 snapshot.Starfighters,
                 faction,
                 snapshot.TickCaptured
@@ -687,18 +750,56 @@ namespace Rebellion.Game.FogOfWar
             PlanetIntelligenceCategory categories
         )
         {
-            if (!categories.HasFlag(PlanetIntelligenceCategory.Buildings))
+            bool revealsAll = categories.HasFlag(PlanetIntelligenceCategory.Buildings);
+            bool revealsDefenses = categories.HasFlag(PlanetIntelligenceCategory.PlanetaryDefenses);
+            bool revealsProduction = categories.HasFlag(
+                PlanetIntelligenceCategory.ProductionFacilities
+            );
+            if (!revealsAll && !revealsDefenses && !revealsProduction)
                 return;
 
-            snapshot.Buildings.Clear();
+            if (revealsAll)
+                snapshot.Buildings.Clear();
+            else
+                snapshot.Buildings.RemoveAll(building =>
+                    revealsDefenses && IsPlanetaryDefense(building)
+                    || revealsProduction && IsProductionFacility(building)
+                );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<Building>(),
+                planet
+                    .GetChildren<Building>()
+                    .Where(building =>
+                        revealsAll
+                        || revealsDefenses && IsPlanetaryDefense(building)
+                        || revealsProduction && IsProductionFacility(building)
+                    ),
                 snapshot.Buildings,
                 faction,
                 true,
                 snapshot.TickCaptured
             );
         }
+
+        /// <summary>
+        /// Returns whether a building is a planetary defense installation.
+        /// </summary>
+        /// <param name="building">The building to classify.</param>
+        /// <returns>True for shield and weapon defenses.</returns>
+        private static bool IsPlanetaryDefense(Building building) =>
+            building.BuildingType is BuildingType.Defense or BuildingType.Weapon;
+
+        /// <summary>
+        /// Returns whether a building contributes to manufacturing or resource production.
+        /// </summary>
+        /// <param name="building">The building to classify.</param>
+        /// <returns>True for manufacturing, mining, and refining facilities.</returns>
+        private static bool IsProductionFacility(Building building) =>
+            building.BuildingType
+                is BuildingType.Shipyard
+                    or BuildingType.TrainingFacility
+                    or BuildingType.ConstructionFacility
+                    or BuildingType.Mine
+                    or BuildingType.Refinery;
 
         /// <summary>
         /// Replaces enemy mission intelligence when revealed.
@@ -830,7 +931,8 @@ namespace Rebellion.Game.FogOfWar
                 PlanetIntelligenceCategory.CapitalShips
                 | PlanetIntelligenceCategory.Starfighters
                 | PlanetIntelligenceCategory.GroundForces
-                | PlanetIntelligenceCategory.Officers;
+                | PlanetIntelligenceCategory.Officers
+                | PlanetIntelligenceCategory.Fleets;
             snapshot.RevealedCategories =
                 (previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None)
                 & ~discardedCategories;
@@ -1046,6 +1148,8 @@ namespace Rebellion.Game.FogOfWar
                 previousSnapshot?.RevealedCategories.HasFlag(
                     PlanetIntelligenceCategory.CapitalShips
                 ) != true
+                && previousSnapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Fleets)
+                    != true
             )
                 return;
 
@@ -1354,16 +1458,62 @@ namespace Rebellion.Game.FogOfWar
             int currentTick
         )
         {
+            UpdatePlanetControlState(snapshot, planet, currentTick);
+            UpdatePlanetResourceState(snapshot, planet, currentTick);
+        }
+
+        /// <summary>
+        /// Copies current ownership and popular-support information into a planet snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        private static void UpdatePlanetControlState(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            UpdatePlanetStatusState(snapshot, planet, currentTick);
+            snapshot.IsInUprising = planet.IsInUprising;
+            snapshot.IsHeadquarters = planet.IsHeadquarters;
+            snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
+        }
+
+        /// <summary>
+        /// Copies the basic planet status supplied with every category observation.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        private static void UpdatePlanetStatusState(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
             snapshot.TickCaptured = currentTick;
             snapshot.OwnerInstanceID = planet.OwnerInstanceID;
             snapshot.IsColonized = planet.IsColonized;
-            snapshot.IsInUprising = planet.IsInUprising;
             snapshot.IsDestroyed = planet.IsDestroyed;
-            snapshot.IsHeadquarters = planet.IsHeadquarters;
+        }
+
+        /// <summary>
+        /// Copies current energy and raw-material information into a planet snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        private static void UpdatePlanetResourceState(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            snapshot.TickCaptured = currentTick;
             snapshot.NumRawResourceNodes = planet.NumRawResourceNodes;
             snapshot.EnergyCapacity = planet.EnergyCapacity;
             snapshot.AllocatedEnergy = planet.AllocatedEnergy;
-            snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
         }
 
         /// <summary>
@@ -1537,6 +1687,25 @@ namespace Rebellion.Game.FogOfWar
                         CopyEntityForObservation(item, snapshot.TickCaptured)
                     );
             }
+        }
+
+        /// <summary>
+        /// Replaces manufacturing intelligence when that category is revealed.
+        /// </summary>
+        /// <param name="planet">The planet supplying current manufacturing queues.</param>
+        /// <param name="snapshot">The snapshot receiving manufacturing intelligence.</param>
+        /// <param name="categories">The intelligence categories revealed by the observation.</param>
+        private static void UpdateManufacturingIntelligence(
+            Planet planet,
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (!categories.HasFlag(PlanetIntelligenceCategory.Manufacturing))
+                return;
+
+            snapshot.ManufacturingQueueItems.Clear();
+            AddManufacturingQueueToSnapshot(planet, snapshot);
         }
 
         /// <summary>

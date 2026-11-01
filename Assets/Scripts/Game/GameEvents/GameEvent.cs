@@ -25,6 +25,21 @@ namespace Rebellion.Game.GameEvents
         public int ActivationCount { get; set; }
         public int LastActivationTick { get; set; } = -1;
         public bool IsComplete { get; set; }
+        public Dictionary<string, GameEventState> ScopedStates { get; set; } =
+            new Dictionary<string, GameEventState>();
+    }
+
+    /// <summary>
+    /// Executes one scheduled event independently for every selected scene node.
+    /// </summary>
+    [PersistableObject(Name = "ForEach")]
+    public sealed class GameEventScope
+    {
+        [PersistableAttribute]
+        public string As { get; set; }
+
+        [PersistableMember(Name = "From")]
+        public List<GameSelector> Selectors { get; set; } = new List<GameSelector>();
     }
 
     /// <summary>
@@ -46,6 +61,7 @@ namespace Rebellion.Game.GameEvents
 
         public List<GameBinding> Bindings { get; set; } = new List<GameBinding>();
         public List<GameTrigger> Triggers { get; set; } = new List<GameTrigger>();
+        public GameEventScope ForEach { get; set; }
         public GameEventSchedule Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();

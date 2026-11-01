@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
@@ -229,6 +230,29 @@ namespace Rebellion.Tests.Gameplay.Scripting
                 .Single();
             Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
             CollectionAssert.AreEqual(new[] { officer }, intelligence.Observations);
+        }
+
+        [Test]
+        public void Execute_RevealToFactionPlanetCategory_EmitsPlanetIntelligenceResult()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            RevealToFactionAction action = new RevealToFactionAction
+            {
+                FactionInstanceID = "rebels",
+                PlanetInstanceID = planet.InstanceID,
+                Category = PlanetIntelligenceCategory.PlanetResources,
+                IncludeDescendants = false,
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            PlanetIntelligenceRevealedResult intelligence = results
+                .OfType<PlanetIntelligenceRevealedResult>()
+                .Single();
+            Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
+            Assert.AreSame(planet, intelligence.Planet);
+            Assert.AreEqual(PlanetIntelligenceCategory.PlanetResources, intelligence.Category);
+            Assert.IsFalse(intelligence.IncludeDescendants);
         }
 
         [Test]

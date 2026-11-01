@@ -157,6 +157,11 @@ namespace Rebellion.Gameplay.Scripting
             SelectOwned(definition, game)
                 .Where(planet => !planet.IsDestroyed)
                 .Where(planet =>
+                    !definition.IsOwned.HasValue
+                    || definition.IsOwned.Value
+                        == !string.IsNullOrWhiteSpace(planet.OwnerInstanceID)
+                )
+                .Where(planet =>
                     !definition.SectorType.HasValue
                     || planet.GetParentOfType<PlanetSector>()?.SectorType
                         == definition.SectorType.Value

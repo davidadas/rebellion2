@@ -486,7 +486,10 @@ namespace Rebellion.Gameplay
         {
             if (
                 snapshot == null
-                || !HasIntelligence(snapshot, PlanetIntelligenceCategory.CapitalShips)
+                || (
+                    !HasIntelligence(snapshot, PlanetIntelligenceCategory.CapitalShips)
+                    && !HasIntelligence(snapshot, PlanetIntelligenceCategory.Fleets)
+                )
             )
                 return;
 
