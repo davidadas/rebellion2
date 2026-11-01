@@ -188,7 +188,21 @@ namespace Rebellion.AI.Proposals
                     liveTarget.GetOwnerInstanceID()
                 );
 
-            if (!shouldBombardMilitaryTargets && ShouldAssault(context, liveTarget))
+            bool shouldAssault = ShouldAssault(context, liveTarget);
+            if (shouldAssault && shouldBombardMilitaryTargets)
+            {
+                int occupationCount = context
+                    .GetAttackDemand(liveTarget, Fleet)
+                    .OccupationRegimentCount;
+                shouldAssault =
+                    context.Assessment.GetPlanetaryAssaultSuccessPercent(
+                        Fleet,
+                        liveTarget,
+                        occupationCount
+                    ) >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
+            }
+
+            if (shouldAssault)
             {
                 ExecuteAssault(context, liveTarget);
                 return;

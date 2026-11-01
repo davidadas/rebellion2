@@ -731,15 +731,15 @@ namespace Rebellion.AI
         )
         {
             return Math.Max(
-                    0,
-                    GetConstructionSpace(
-                        planet,
-                        buildingType,
-                        false,
-                        plannedInfrastructureCount: targetCount
-                    )
+                0,
+                GetConstructionSpace(
+                    planet,
+                    buildingType,
+                    false,
+                    plannedInfrastructureCount: targetCount
                 )
-                + GetResourceFacilitiesToReclaim(planet, buildingType, targetCount).Count;
+                    + GetResourceFacilitiesToReclaim(planet, buildingType, targetCount).Count
+            );
         }
 
         /// <summary>

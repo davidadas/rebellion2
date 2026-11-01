@@ -72,12 +72,18 @@ namespace Rebellion.AI.Demands
         /// Returns the ground force needed for the assigned attack objective.
         /// </summary>
         /// <param name="canBombardDefenders">Whether available bombardment can remove the known garrison.</param>
+        /// <param name="regimentCapacity">The troop berths available for the planned attack.</param>
         /// <returns>The required regiment count and attack strength.</returns>
-        internal (int Count, int Strength) GetRegimentRequirements(bool canBombardDefenders)
+        internal (int Count, int Strength) GetRegimentRequirements(
+            bool canBombardDefenders,
+            int regimentCapacity = 0
+        )
         {
             if (!canBombardDefenders)
                 return (RegimentCount, RegimentStrength);
-            return IsSupportOpportunity ? (0, 0) : (OccupationRegimentCount, 0);
+            return IsSupportOpportunity && regimentCapacity <= 0
+                ? (0, 0)
+                : (OccupationRegimentCount, 0);
         }
     }
 }

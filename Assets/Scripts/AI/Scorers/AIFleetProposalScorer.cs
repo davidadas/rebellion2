@@ -263,7 +263,10 @@ namespace Rebellion.AI.Scorers
             bool hasGroundDefenders =
                 context.Assessment.GetDefendingRegimentCount(demand.TargetPlanet) > 0;
             bool canBombard = hasGroundDefenders && bombardment > demand.ShieldStrength;
-            var required = demand.GetRegimentRequirements(canBombard);
+            var required = demand.GetRegimentRequirements(
+                canBombard,
+                context.Assessment.GetReadyFleetRegimentCapacity(fleet)
+            );
             return new[]
             {
                 AIUtility.Fulfillment(space, demand.CombatStrength),
@@ -705,7 +708,14 @@ namespace Rebellion.AI.Scorers
                         config.AttackUtility.HeadquartersBuildupCost
                     );
             }
-            return ApplyIntelAgeRisk(context, fleet, targetPlanet, value);
+            var launchReadiness = context.GetAttackReadiness(fleet, targetPlanet);
+            return ApplyIntelAgeRisk(
+                context,
+                fleet,
+                targetPlanet,
+                value,
+                preparingAttack: !launchReadiness.FleetReady || !launchReadiness.RegimentsReady
+            );
         }
 
         /// <summary>
@@ -715,19 +725,21 @@ namespace Rebellion.AI.Scorers
         /// <param name="fleet">The fleet whose remaining journey is assessed.</param>
         /// <param name="targetPlanet">The prospective attack target.</param>
         /// <param name="score">The target's priority before intelligence risk.</param>
+        /// <param name="preparingAttack">Whether the fleet still needs reinforcements before departure.</param>
         /// <returns>The priority after the configured proportional reduction.</returns>
         private static double ApplyIntelAgeRisk(
             AITurnContext context,
             Fleet fleet,
             Planet targetPlanet,
-            double score
+            double score,
+            bool preparingAttack = false
         )
         {
             return score
                 * (
                     1
                     - AIUtility.Evaluate(
-                        ScoreIntelAgeRisk(context, fleet, targetPlanet),
+                        ScoreIntelAgeRisk(context, fleet, targetPlanet, preparingAttack),
                         context.Game.Config.AI.FleetDeployment.AttackUtility.IntelAgeRisk
                     )
                 );
@@ -739,14 +751,18 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet whose remaining journey is assessed.</param>
         /// <param name="targetPlanet">The prospective attack target.</param>
+        /// <param name="preparingAttack">Whether to value preparation before applying orbital departure risk.</param>
         /// <returns>The normalized intelligence-age risk.</returns>
         private static double ScoreIntelAgeRisk(
             AITurnContext context,
             Fleet fleet,
-            Planet targetPlanet
+            Planet targetPlanet,
+            bool preparingAttack
         )
         {
             int age = context.Assessment.GetPlanetIntelAge(targetPlanet);
+            if (!preparingAttack)
+                age = Math.Max(age, context.Assessment.GetPlanetOrbitalIntelAge(targetPlanet));
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             long staleAge = Math.Max(
                 0L,

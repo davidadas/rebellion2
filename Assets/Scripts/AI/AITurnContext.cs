@@ -307,7 +307,10 @@ namespace Rebellion.AI
                     projected,
                     additionalBombardmentStrength,
                     demand.ShieldStrength
-                )
+                ),
+                projected
+                    ? Assessment.GetFleetRegimentCapacity(fleet)
+                    : Assessment.GetReadyFleetRegimentCapacity(fleet)
             );
         }
 

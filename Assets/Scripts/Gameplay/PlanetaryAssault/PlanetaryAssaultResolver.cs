@@ -164,18 +164,21 @@ namespace Rebellion.Gameplay
         /// <param name="fleets">The fleets supplying the assault force.</param>
         /// <param name="planet">The planet being assaulted.</param>
         /// <param name="config">The planetary-assault rules.</param>
-        /// <returns>The estimated success chance from zero through one hundred.</returns>
+        /// <param name="minimumRemainingRegiments">The ready regiments that must survive capture.</param>
+        /// <returns>The conservative capture chance with the required survivors, from zero through one hundred.</returns>
         public static int EstimateSuccessPercent(
             IReadOnlyList<Fleet> fleets,
             Planet planet,
-            GameConfig.PlanetaryAssaultConfig config
+            GameConfig.PlanetaryAssaultConfig config,
+            int minimumRemainingRegiments = 1
         )
         {
             if (fleets?.Any() != true || planet == null || config == null)
                 return 0;
 
             List<AssaultTroop> attackers = SnapshotAttackers(fleets);
-            if (attackers.Count == 0)
+            minimumRemainingRegiments = Math.Max(1, minimumRemainingRegiments);
+            if (attackers.Count < minimumRemainingRegiments)
                 return 0;
 
             string defenderId = planet.GetOwnerInstanceID();
@@ -208,13 +211,22 @@ namespace Rebellion.Gameplay
             for (int casualties = 0; casualties < casualtyProbabilities.Length; casualties++)
             {
                 int survivorCount = attackers.Count - casualties;
-                if (survivorCount <= 0 || casualtyProbabilities[casualties] <= 0)
+                if (
+                    survivorCount < minimumRemainingRegiments
+                    || casualtyProbabilities[casualties] <= 0
+                )
                     continue;
 
-                double groundSuccessProbability = CalculateGroundSuccessProbability(
-                    attackerWinProbabilities.Take(survivorCount),
-                    defenders.Count
-                );
+                double groundSuccessProbability = minimumRemainingRegiments == 1
+                    ? CalculateGroundSuccessProbability(
+                        attackerWinProbabilities.Take(survivorCount),
+                        defenders.Count
+                    )
+                    : CalculateGroundOccupationProbability(
+                        attackerWinProbabilities.Take(survivorCount).ToArray(),
+                        defenders.Count,
+                        minimumRemainingRegiments
+                    );
                 successProbability += casualtyProbabilities[casualties] * groundSuccessProbability;
             }
 
@@ -616,6 +628,60 @@ namespace Rebellion.Gameplay
             }
 
             return probabilities[defenderCount];
+        }
+
+        /// <summary>
+        /// Estimates clearing the defenders while retaining the required occupation force.
+        /// Unsuccessful contests count as attacker losses, including contests that could be draws.
+        /// </summary>
+        /// <param name="attackerWinProbabilities">The conservative contest chance for each surviving attacker.</param>
+        /// <param name="defenderCount">The number of defending regiments.</param>
+        /// <param name="minimumRemainingRegiments">The regiments needed after ground combat.</param>
+        /// <returns>The conservative probability of capture with sufficient surviving troops.</returns>
+        private static double CalculateGroundOccupationProbability(
+            IReadOnlyList<double> attackerWinProbabilities,
+            int defenderCount,
+            int minimumRemainingRegiments
+        )
+        {
+            int maximumLosses = attackerWinProbabilities.Count - minimumRemainingRegiments;
+            if (maximumLosses < 0)
+                return 0;
+            if (defenderCount == 0)
+                return 1;
+
+            double[,] probabilities = new double[defenderCount + 1, maximumLosses + 1];
+            probabilities[0, 0] = 1;
+            foreach (double contestWinProbability in attackerWinProbabilities)
+            {
+                double[,] next = new double[defenderCount + 1, maximumLosses + 1];
+                for (int defeated = 0; defeated <= defenderCount; defeated++)
+                for (int losses = 0; losses <= maximumLosses; losses++)
+                {
+                    double stateProbability = probabilities[defeated, losses];
+                    if (stateProbability <= 0)
+                        continue;
+                    if (defeated == defenderCount)
+                    {
+                        next[defeated, losses] += stateProbability;
+                        continue;
+                    }
+
+                    double targetChance = (double)(defenderCount - defeated) / defenderCount;
+                    next[defeated, losses] += stateProbability * (1 - targetChance);
+                    next[defeated + 1, losses] +=
+                        stateProbability * targetChance * contestWinProbability;
+                    if (losses < maximumLosses)
+                        next[defeated, losses + 1] +=
+                            stateProbability * targetChance * (1 - contestWinProbability);
+                }
+                probabilities = next;
+            }
+
+            double probability = 0;
+            for (int losses = 0; losses <= maximumLosses; losses++)
+                probability += probabilities[defenderCount, losses];
+            return probability;
         }
 
         /// <summary>

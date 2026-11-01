@@ -1001,7 +1001,8 @@ namespace Rebellion.AI
             return planet != null
                 && (
                     !planet.IsHeadquarters
-                    || (long)GetPlanetIntelAge(planet) + Math.Max(0, arrivalTicks)
+                    || (long)Math.Max(GetPlanetIntelAge(planet), GetPlanetOrbitalIntelAge(planet))
+                        + Math.Max(0, arrivalTicks)
                         <= Math.Max(
                             0,
                             _game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks
@@ -3394,8 +3395,13 @@ namespace Rebellion.AI
         /// </summary>
         /// <param name="fleet">Fleet assigned to the attack.</param>
         /// <param name="targetPlanet">Planet being attacked.</param>
-        /// <returns>The estimated success chance from zero through one hundred.</returns>
-        public int GetPlanetaryAssaultSuccessPercent(Fleet fleet, Planet targetPlanet)
+        /// <param name="minimumRemainingRegiments">The ready regiments that must survive capture.</param>
+        /// <returns>The conservative capture chance with the required survivors, from zero through one hundred.</returns>
+        public int GetPlanetaryAssaultSuccessPercent(
+            Fleet fleet,
+            Planet targetPlanet,
+            int minimumRemainingRegiments = 1
+        )
         {
             if (fleet == null || targetPlanet == null || _game?.Config == null)
                 return 0;
@@ -3403,7 +3409,8 @@ namespace Rebellion.AI
             return PlanetaryAssaultResolver.EstimateSuccessPercent(
                 new List<Fleet> { fleet },
                 targetPlanet,
-                _game.Config.Combat.PlanetaryAssault
+                _game.Config.Combat.PlanetaryAssault,
+                minimumRemainingRegiments
             );
         }
 

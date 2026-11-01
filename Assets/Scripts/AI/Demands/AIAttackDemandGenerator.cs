@@ -116,9 +116,12 @@ namespace Rebellion.AI.Demands
                 config.MinimumAttackStrength,
                 Math.Clamp(minimumPercent, 0, 100)
             );
-            int combat = IntegerMath.ScaleByPercent(
-                Math.Max(minimum, orbital),
-                GetIntelReservePercent(context, demand.TargetPlanet)
+            int combat = Math.Max(
+                minimum,
+                IntegerMath.ScaleByPercent(
+                    orbital,
+                    GetIntelReservePercent(context, demand.TargetPlanet)
+                )
             );
             var shields = context.Assessment.GetPlanetaryShieldsAtArrival(
                 demand.TargetPlanet,
@@ -208,9 +211,9 @@ namespace Rebellion.AI.Demands
             int combatCount = defendingCount == 0 ? 0 : defendingCount + 1;
             int defendingStrength =
                 defendingCount == 0 ? 0 : assessment.GetDefendingRegimentDefenseStrength(planet);
-            int combatStrength = IntegerMath.ScaleByPercent(
-                Math.Max(config.AI.FleetDeployment.MinimumAttackStrength, orbitalStrength),
-                GetIntelReservePercent(context, planet)
+            int combatStrength = Math.Max(
+                config.AI.FleetDeployment.MinimumAttackStrength,
+                IntegerMath.ScaleByPercent(orbitalStrength, GetIntelReservePercent(context, planet))
             );
             return new AIAttackDemand(
                 planet,
@@ -392,7 +395,10 @@ namespace Rebellion.AI.Demands
                 1,
                 context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
             );
-            int age = context.Assessment.GetPlanetIntelAge(planet);
+            int age = Math.Max(
+                context.Assessment.GetPlanetIntelAge(planet),
+                context.Assessment.GetPlanetOrbitalIntelAge(planet)
+            );
             if (age <= maximumAge)
                 return 100;
 
