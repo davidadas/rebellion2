@@ -1203,6 +1203,85 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ClearPlanetOwnership_ColonizedPlanet_ReleasesBuildingsAndRetainsSupport()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 55);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 45);
+            _targetPlanet.EnergyCapacity = 1;
+            int empireSupport = _targetPlanet.GetPopularSupport(_empire.InstanceID);
+            int rebelSupport = _targetPlanet.GetPopularSupport(_rebels.InstanceID);
+            Building mine = new Building
+            {
+                InstanceID = "neutral-mine",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(mine, _targetPlanet);
+
+            _commands.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
+            Assert.IsTrue(_targetPlanet.IsColonized);
+            Assert.AreEqual(empireSupport, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(rebelSupport, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.IsNull(mine.GetOwnerInstanceID());
+            Assert.AreSame(_targetPlanet, mine.GetParent());
+            CollectionAssert.DoesNotContain(_empire.GetOwnedUnitsByType<Planet>(), _targetPlanet);
+            CollectionAssert.DoesNotContain(_empire.GetOwnedUnitsByType<Building>(), mine);
+
+            _commands.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.AreEqual(_rebels.InstanceID, mine.GetOwnerInstanceID());
+            CollectionAssert.Contains(_rebels.GetOwnedUnitsByType<Building>(), mine);
+        }
+
+        [Test]
+        public void ClearPlanetOwnership_ActiveMobileHeadquarters_RetainsHeadquartersOwnership()
+        {
+            _empire.Settings.Headquarters = new HeadquartersSettings
+            {
+                FacilityTypeID = "mobile-headquarters",
+                IsMobile = true,
+            };
+            _empire.HQInstanceID = _targetPlanet.InstanceID;
+            _targetPlanet.IsHeadquarters = true;
+            _targetPlanet.EnergyCapacity = 1;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-headquarters",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, _targetPlanet);
+            _empire.HeadquartersUnitInstanceID = headquarters.InstanceID;
+
+            _commands.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsNull(_targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(_empire.InstanceID, headquarters.OwnerInstanceID);
+            Assert.AreEqual(_targetPlanet.InstanceID, _empire.HQInstanceID);
+            Assert.IsTrue(_targetPlanet.IsHeadquarters);
+            Assert.IsTrue(new HeadquartersQueries(_game).CanMove(headquarters));
+        }
+
+        [Test]
+        public void ClearPlanetOwnership_UncolonizedPlanet_ClearsClaimSupport()
+        {
+            _targetPlanet.IsColonized = false;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetFullPopularSupport(_empire.InstanceID);
+
+            _commands.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
+            Assert.IsEmpty(_targetPlanet.PopularSupport);
+        }
+
+        [Test]
         public void ReconcilePlanet_UncolonizedNeutralPlanetWithRegiment_DoesNotClaim()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild5", "empire");
