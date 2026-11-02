@@ -59,6 +59,28 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(_tatooine, planetSector);
         }
 
+        [TestCase("LUKE_SKYWALKER", true)]
+        [TestCase("DARTH_VADER", true)]
+        [TestCase("EMPEROR_PALPATINE", false)]
+        [TestCase("LEIA_ORGANA", false)]
+        public void ProcessTick_AuthoredOfficerAtDiscoveryRank_UsesTrainerQualification(
+            string instanceID,
+            bool expectedDiscovery
+        )
+        {
+            Officer officer = (Officer)
+                TestContent
+                    .Data.Officers.Single(template => template.InstanceID == instanceID)
+                    .CreateCopy();
+            officer.OwnerInstanceID = _alliance.InstanceID;
+            officer.ForceValue = _game.Config.Jedi.DiscoveringForceUserThreshold;
+            _game.AttachNode(officer, _tatooine);
+
+            new JediTickProcessor(_system).ProcessTick(_game);
+
+            Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
+        }
+
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {

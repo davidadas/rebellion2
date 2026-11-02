@@ -100,18 +100,40 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        [Test]
-        public void TryCreate_ParticipantWithoutKnownForceAbility_ReturnsNull()
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TryCreate_StudentWithNonzeroForceRank_ReturnsMission(
+            bool isForceSensitive,
+            bool isForceEligible
+        )
         {
-            _student.IsForceEligible = false;
+            _student.IsForceSensitive = isForceSensitive;
+            _student.IsForceEligible = isForceEligible;
 
-            Assert.IsNull(CreateMission());
+            Assert.IsNotNull(CreateMission());
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TryCreate_TrainerWithQualifiedForceRank_ReturnsMission(
+            bool isForceSensitive,
+            bool isForceEligible
+        )
+        {
+            _trainer.IsForceSensitive = isForceSensitive;
+            _trainer.IsForceEligible = isForceEligible;
+
+            Assert.IsNotNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_NonJediParticipant_ReturnsNull()
+        public void TryCreate_StudentWithZeroEffectiveForceRank_ReturnsNull()
         {
-            _student.IsForceSensitive = false;
+            _student.ForceTrainingAdjustment = -_student.ForceValue;
 
             Assert.IsNull(CreateMission());
         }

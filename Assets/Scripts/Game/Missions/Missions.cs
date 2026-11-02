@@ -1588,11 +1588,11 @@ namespace Rebellion.Game.Missions
         /// Returns whether an officer can participate in Jedi training.
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
-        /// <returns>True when the officer is a known, active Jedi.</returns>
+        /// <returns>True when the free, living officer has a nonzero effective Force rank.</returns>
         private static bool CanParticipate(Officer officer)
         {
-            return officer?.IsForceSensitive == true
-                && officer.IsForceEligible
+            return officer != null
+                && officer.ForceRank != 0
                 && !officer.IsCaptured
                 && !officer.IsKilled;
         }
