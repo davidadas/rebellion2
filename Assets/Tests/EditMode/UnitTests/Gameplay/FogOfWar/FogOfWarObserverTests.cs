@@ -536,7 +536,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(42, snapshot.TickCaptured);
             Assert.AreEqual(8, snapshot.NumRawResourceNodes);
             Assert.AreEqual(12, snapshot.EnergyCapacity);
-            Assert.AreEqual(5, snapshot.AllocatedEnergy);
+            Assert.Zero(snapshot.AllocatedEnergy);
             Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
             Assert.AreEqual(
                 PlanetIntelligenceCategory.PlanetResources,

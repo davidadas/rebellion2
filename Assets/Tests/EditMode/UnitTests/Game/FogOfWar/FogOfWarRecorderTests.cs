@@ -148,6 +148,137 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordIntelligenceSnapshot_CapitalShipsWithCombatCargo_ExcludesPersonnel()
+        {
+            Regiment stationedRegiment = CreateRegiment("STATIONED_REGIMENT", _empire);
+            Starfighter stationedStarfighter = CreateStarfighter("STATIONED_FIGHTER", _empire);
+            _game.AttachNode(stationedRegiment, _coruscant);
+            _game.AttachNode(stationedStarfighter, _coruscant);
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+            ship.RegimentCapacity = 1;
+            ship.StarfighterCapacity = 1;
+            _game.AttachNode(CreateRegiment("EMBARKED_REGIMENT", _empire), ship);
+            _game.AttachNode(CreateStarfighter("EMBARKED_FIGHTER", _empire), ship);
+            _game.AttachNode(CreateOfficer("VADER", _empire), ship);
+            _game.AttachNode(
+                new SpecialForces
+                {
+                    InstanceID = "IMPERIAL_AGENT",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.Starfighters,
+                includeDescendants: false
+            );
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.Regiments,
+                includeDescendants: false
+            );
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            CapitalShip knownShip = snapshot.Fleets.Single().GetChildren<CapitalShip>().Single();
+            Assert.AreEqual(
+                "EMBARKED_REGIMENT",
+                knownShip.GetChildren<Regiment>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                "EMBARKED_FIGHTER",
+                knownShip.GetChildren<Starfighter>().Single().InstanceID
+            );
+            Assert.IsEmpty(knownShip.GetChildren<Officer>());
+            Assert.IsEmpty(knownShip.GetChildren<SpecialForces>());
+            CollectionAssert.AreEqual(
+                new[] { "STATIONED_REGIMENT" },
+                snapshot.Regiments.Select(regiment => regiment.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "STATIONED_FIGHTER" },
+                snapshot.Starfighters.Select(starfighter => starfighter.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_PlanetControl_DoesNotRevealHeadquarters()
+        {
+            _coruscant.IsHeadquarters = true;
+            _coruscant.PopularSupport[_empire.InstanceID] = 75;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.IsFalse(snapshot.IsHeadquarters);
+            Assert.AreEqual(75, snapshot.PopularSupport[_empire.InstanceID]);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_PlanetResources_DoesNotRevealAllocatedEnergy()
+        {
+            _coruscant.EnergyCapacity = 12;
+            _coruscant.NumRawResourceNodes = 8;
+            _coruscant.AllocatedEnergy = 5;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.PlanetResources
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.AreEqual(12, snapshot.EnergyCapacity);
+            Assert.AreEqual(8, snapshot.NumRawResourceNodes);
+            Assert.Zero(snapshot.AllocatedEnergy);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_Planet_RevealsHeadquartersAndAllocatedEnergy()
+        {
+            _coruscant.IsHeadquarters = true;
+            _coruscant.AllocatedEnergy = 5;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.Planet
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.IsTrue(snapshot.IsHeadquarters);
+            Assert.AreEqual(5, snapshot.AllocatedEnergy);
+        }
+
+        [Test]
         public void RecordIntelligenceSnapshot_StationedRegiments_ExcludesFleetCargo()
         {
             Regiment stationed = CreateRegiment("STATIONED", _empire);

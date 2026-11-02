@@ -564,6 +564,8 @@ namespace Rebellion.Game.FogOfWar
                 || categories.HasFlag(PlanetIntelligenceCategory.PlanetResources)
             )
                 UpdatePlanetResourceState(snapshot, planet, currentTick);
+            if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
+                UpdatePlanetDetailState(snapshot, planet);
             snapshot.RevealedCategories = accumulatedCategories;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
             UpdateFleetIntelligence(
@@ -645,6 +647,8 @@ namespace Rebellion.Game.FogOfWar
                 PlanetIntelligenceCategory.CapitalShips
                 | PlanetIntelligenceCategory.Officers
                 | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Regiments
+                | PlanetIntelligenceCategory.SpecialForces
                 | PlanetIntelligenceCategory.Starfighters
                 | PlanetIntelligenceCategory.Fleets;
             if (
@@ -857,11 +861,16 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
                     ship.RemoveChildren<Officer>(_ => true);
-                if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
-                {
+                if (
+                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    && !categories.HasFlag(PlanetIntelligenceCategory.Regiments)
+                )
                     ship.RemoveChildren<Regiment>(_ => true);
+                if (
+                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    && !categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
+                )
                     ship.RemoveChildren<SpecialForces>(_ => true);
-                }
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
                     ship.RemoveChildren<Starfighter>(_ => true);
             }
@@ -1460,6 +1469,7 @@ namespace Rebellion.Game.FogOfWar
         {
             UpdatePlanetControlState(snapshot, planet, currentTick);
             UpdatePlanetResourceState(snapshot, planet, currentTick);
+            UpdatePlanetDetailState(snapshot, planet);
         }
 
         /// <summary>
@@ -1476,7 +1486,6 @@ namespace Rebellion.Game.FogOfWar
         {
             UpdatePlanetStatusState(snapshot, planet, currentTick);
             snapshot.IsInUprising = planet.IsInUprising;
-            snapshot.IsHeadquarters = planet.IsHeadquarters;
             snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
         }
 
@@ -1513,6 +1522,16 @@ namespace Rebellion.Game.FogOfWar
             snapshot.TickCaptured = currentTick;
             snapshot.NumRawResourceNodes = planet.NumRawResourceNodes;
             snapshot.EnergyCapacity = planet.EnergyCapacity;
+        }
+
+        /// <summary>
+        /// Copies planet details omitted from narrower control and resource intelligence.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        private static void UpdatePlanetDetailState(PlanetSnapshot snapshot, Planet planet)
+        {
+            snapshot.IsHeadquarters = planet.IsHeadquarters;
             snapshot.AllocatedEnergy = planet.AllocatedEnergy;
         }
 
