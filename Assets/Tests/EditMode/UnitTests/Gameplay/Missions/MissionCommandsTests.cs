@@ -287,6 +287,10 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
+            spy.GrowsForceOnMission = true;
+            spy.IsForceEligible = true;
+            spy.ForceValue = 10;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
             planet.AddVisitor("empire");
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
             {
@@ -319,14 +323,10 @@ namespace Rebellion.Tests.Gameplay
                 movement
             );
 
-            MissionCompletedResult first = commands
-                .ProcessMissionTick(game)
-                .OfType<MissionCompletedResult>()
-                .Single();
-            MissionCompletedResult second = commands
-                .ProcessMissionTick(game)
-                .OfType<MissionCompletedResult>()
-                .Single();
+            List<GameResult> firstResults = commands.ProcessMissionTick(game);
+            List<GameResult> secondResults = commands.ProcessMissionTick(game);
+            MissionCompletedResult first = firstResults.OfType<MissionCompletedResult>().Single();
+            MissionCompletedResult second = secondResults.OfType<MissionCompletedResult>().Single();
 
             Assert.AreEqual(MissionOutcome.Success, first.Outcome);
             Assert.AreEqual(MissionOutcome.Success, second.Outcome);
@@ -338,6 +338,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(mission, spy.GetParent());
             Assert.IsNull(spy.Movement);
             Assert.IsFalse(spy.IsCaptured);
+            Assert.AreEqual(10, spy.ForceValue);
+            Assert.IsEmpty(firstResults.OfType<ForceExperienceResult>());
+            Assert.IsEmpty(secondResults.OfType<ForceExperienceResult>());
         }
 
         [Test]
@@ -2150,6 +2153,10 @@ namespace Rebellion.Tests.Gameplay
                 Officer defender,
                 MovementCommands movement
             ) = BuildDetectionScene();
+            spy.GrowsForceOnMission = true;
+            spy.IsForceEligible = true;
+            spy.ForceValue = 10;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
@@ -2172,6 +2179,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("empire-home", spy.GetParent()?.GetInstanceID());
             Assert.IsFalse(results.Any(result => result is OfficerKilledResult));
             Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(spy, growth.Officer);
+            Assert.AreEqual(10, growth.PreviousForceRank);
+            Assert.AreEqual(11, growth.CurrentForceRank);
+            Assert.AreEqual(11, spy.ForceValue);
         }
 
         [Test]

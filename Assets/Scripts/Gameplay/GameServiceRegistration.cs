@@ -115,7 +115,8 @@ namespace Rebellion.Gameplay
                 locator.GetService<MissionQueries>(),
                 locator.GetService<MovementQueries>(),
                 locator.GetService<MissionBetrayalResolver>(),
-                locator.GetService<PersonnelCommands>()
+                locator.GetService<PersonnelCommands>(),
+                locator.GetService<JediCommands>()
             ));
             services.AddSingleton<MissionCommands>(locator => new MissionCommands(
                 locator.GetService<GameRoot>(),

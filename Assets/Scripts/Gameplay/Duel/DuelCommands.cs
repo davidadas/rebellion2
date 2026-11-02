@@ -4,7 +4,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -17,16 +16,23 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
         private readonly ProbabilityTable _captureAvoidance;
+        private readonly JediCommands _jediCommands;
 
         /// <summary>
         /// Creates the authoritative resolver for officer encounter requests.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="random">The deterministic simulation random source.</param>
-        public DuelCommands(GameRoot game, IRandomNumberProvider random)
+        /// <param name="jediCommands">The Force progression operations.</param>
+        public DuelCommands(
+            GameRoot game,
+            IRandomNumberProvider random,
+            JediCommands jediCommands = null
+        )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _random = random ?? throw new ArgumentNullException(nameof(random));
+            _jediCommands = jediCommands ?? new JediCommands(game, random);
             _captureAvoidance = new ProbabilityTable(
                 _game.Config.DuelResolution.CombatCaptureAvoidance
             );
@@ -92,7 +98,14 @@ namespace Rebellion.Gameplay
                 out bool evadedCapture
             );
             if (evadedCapture)
-                reactions.AddRange(ApplyEncounterForceGrowth(encountered, sourceEventInstanceID));
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(
+                    encountered,
+                    sourceEventInstanceID
+                );
+                if (growth != null)
+                    reactions.Add(growth);
+            }
             int encounteredInjury = encountered.InjuryPoints - injuryBefore;
             encounteredCombat = encountered.GetEffectiveRating(SkillRating.Combat);
             opposingCombat = opposing.GetEffectiveRating(SkillRating.Combat);
@@ -203,43 +216,6 @@ namespace Rebellion.Gameplay
                 )
             );
             return true;
-        }
-
-        /// <summary>
-        /// Grants configured Force growth to an eligible encountered officer after capture evasion.
-        /// </summary>
-        /// <param name="officer">The encountered officer that evaded capture.</param>
-        /// <param name="sourceEventInstanceID">The authored event initiating the encounter, when applicable.</param>
-        /// <returns>The Force experience result, or an empty collection when the officer is ineligible.</returns>
-        private List<GameResult> ApplyEncounterForceGrowth(
-            Officer officer,
-            string sourceEventInstanceID
-        )
-        {
-            List<GameResult> results = new List<GameResult>();
-            int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            if (growth <= 0 || officer?.GrowsForceOnMission != true || !officer.IsForceEligible)
-                return results;
-
-            int previousForceRank = officer.ForceRank;
-            officer.ForceValue += growth;
-            results.Add(
-                Stamp(
-                    new ForceExperienceResult
-                    {
-                        Officer = officer,
-                        ExperienceGained = growth,
-                        PreviousForceRank = previousForceRank,
-                        CurrentForceRank = officer.ForceRank,
-                        Tick = _game.CurrentTick,
-                    },
-                    sourceEventInstanceID
-                )
-            );
-            GameLogger.Log(
-                $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
-            );
-            return results;
         }
 
         /// <summary>

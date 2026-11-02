@@ -31,6 +31,7 @@ namespace Rebellion.Gameplay
         private readonly MissionBetrayalResolver _betrayalResolver;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MissionQueries _queries;
+        private readonly JediCommands _jediCommands;
 
         /// <summary>
         /// Gets the random provider shared by mission lifecycle operations.
@@ -48,6 +49,7 @@ namespace Rebellion.Gameplay
         /// <param name="queries">The mission eligibility and probability queries.</param>
         /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
         /// <param name="personnelCommands">The personnel lifecycle commands.</param>
+        /// <param name="jediCommands">The Force progression operations.</param>
         internal MissionResolver(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -56,7 +58,8 @@ namespace Rebellion.Gameplay
             MissionQueries queries,
             MovementQueries movementQueries,
             MissionBetrayalResolver betrayalResolver = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            JediCommands jediCommands = null
         )
         {
             _game = game;
@@ -67,6 +70,7 @@ namespace Rebellion.Gameplay
             _betrayalResolver = betrayalResolver ?? new MissionBetrayalResolver(game, provider);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
+            _jediCommands = jediCommands ?? new JediCommands(game, provider);
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _movementQueries = movementQueries;
         }
@@ -832,7 +836,15 @@ namespace Rebellion.Gameplay
             if (killed)
                 return false;
             if (evaded)
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(
+                    officer,
+                    mission.SourceEventInstanceID
+                );
+                if (growth != null)
+                    results.Add(growth);
                 return true;
+            }
 
             CaptureOfficer(
                 officer,

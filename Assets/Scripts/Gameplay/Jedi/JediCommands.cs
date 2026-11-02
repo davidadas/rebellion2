@@ -25,8 +25,39 @@ namespace Rebellion.Gameplay
         /// <param name="provider">Random number provider for scan rolls.</param>
         public JediCommands(GameRoot game, IRandomNumberProvider provider)
         {
-            _game = game;
-            _provider = provider;
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        }
+
+        /// <summary>
+        /// Grants the configured Force increase after an eligible officer evades capture.
+        /// </summary>
+        /// <param name="officer">The officer that evaded capture.</param>
+        /// <param name="sourceEventInstanceID">The authored event that initiated the encounter, when applicable.</param>
+        /// <returns>The resulting Force experience, or null when the officer cannot gain Force experience.</returns>
+        internal ForceExperienceResult ApplyCaptureEvasionGrowth(
+            Officer officer,
+            string sourceEventInstanceID = null
+        )
+        {
+            int growth = _game.Config.Jedi.ForceGrowthPerMission;
+            if (growth <= 0 || officer?.GrowsForceOnMission != true || !officer.IsForceEligible)
+                return null;
+
+            int previousForceRank = officer.ForceRank;
+            officer.ForceValue += growth;
+            GameLogger.Log(
+                $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
+            );
+            return new ForceExperienceResult
+            {
+                Officer = officer,
+                ExperienceGained = growth,
+                PreviousForceRank = previousForceRank,
+                CurrentForceRank = officer.ForceRank,
+                SourceEventInstanceID = sourceEventInstanceID,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>

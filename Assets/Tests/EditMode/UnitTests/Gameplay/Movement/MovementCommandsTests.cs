@@ -3611,8 +3611,12 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(carrier, fleet);
             Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
             officer.IsMain = true;
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
             officer.MissionReturnParentInstanceID = carrier.InstanceID;
             officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
             game.AttachNode(officer, missionPlanet);
             Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
             Assert.IsTrue(captive.TryCapture("empire"));
@@ -3661,6 +3665,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(carrier, captive.GetParent());
             Assert.AreEqual(fleetHyperdrive == 1000, fleet.Movement != null);
             Assert.IsFalse(officer.IsCaptured);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(officer, growth.Officer);
+            Assert.AreEqual(10, growth.PreviousForceRank);
+            Assert.AreEqual(11, growth.CurrentForceRank);
+            Assert.AreEqual(11, officer.ForceValue);
             Assert.IsTrue(captive.IsCaptured);
             Assert.Zero(captive.InjuryPoints);
             for (int tick = 0; tick < 3; tick++)

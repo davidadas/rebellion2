@@ -28,6 +28,7 @@ namespace Rebellion.Gameplay
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
+        private readonly JediCommands _jediCommands;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -46,6 +47,7 @@ namespace Rebellion.Gameplay
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes around movement mutations.</param>
+        /// <param name="jediCommands">The Force progression operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -54,7 +56,8 @@ namespace Rebellion.Gameplay
             MovementQueries queries,
             IRandomNumberProvider random = null,
             PersonnelCommands personnelCommands = null,
-            BlockadeTransitionResolver blockadeTransitionResolver = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null,
+            JediCommands jediCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -69,6 +72,7 @@ namespace Rebellion.Gameplay
                 personnelCommands ?? new PersonnelCommands(game, new PersonnelQueries(game));
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
+            _jediCommands = jediCommands ?? new JediCommands(game, _movementRandom);
         }
 
         /// <summary>
@@ -1252,7 +1256,12 @@ namespace Rebellion.Gameplay
                 return;
             }
             if (evaded)
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(officer);
+                if (growth != null)
+                    results.Add(growth);
                 return;
+            }
 
             ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
             MovementState interruptedMovement = officer.Movement;
