@@ -185,12 +185,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Removes killed officers from an attached mission and reevaluates the remaining team.
+        /// Removes captured or killed officers from an attached mission and reevaluates the remaining team.
         /// </summary>
-        /// <param name="mission">The mission that contained the officers when they died.</param>
-        /// <param name="officers">The killed officers to remove from the mission.</param>
+        /// <param name="mission">The mission that contained the officers when they became unavailable.</param>
+        /// <param name="officers">The captured or killed officers to remove from the mission.</param>
         /// <param name="results">The batch receiving relocation or interruption results.</param>
-        internal void RemoveKilledParticipants(
+        internal void RemoveUnavailableParticipants(
             Mission mission,
             IReadOnlyCollection<Officer> officers,
             List<GameResult> results
@@ -202,7 +202,11 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(results));
 
             List<IMissionParticipant> attachedOfficers = officers
-                .Where(officer => officer?.IsKilled == true && officer.GetParent() == mission)
+                .Where(officer =>
+                    officer != null
+                    && (officer.IsKilled || officer.IsCaptured)
+                    && officer.GetParent() == mission
+                )
                 .Distinct()
                 .Cast<IMissionParticipant>()
                 .ToList();
@@ -214,23 +218,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Immediately interrupts missions containing newly captured officers.
+        /// Removes newly captured officers and interrupts only missions whose remaining team is invalid.
         /// </summary>
         /// <param name="officers">The newly captured officers.</param>
-        /// <returns>The mission interruption and teardown results.</returns>
-        internal List<GameResult> InterruptMissionsForCapturedOfficers(
+        /// <returns>The participant relocation and mission interruption results.</returns>
+        internal List<GameResult> ReconcileMissionsForCapturedOfficers(
             IReadOnlyList<Officer> officers
         )
         {
             List<GameResult> results = new List<GameResult>();
-            List<Mission> missions = (officers ?? Array.Empty<Officer>())
-                .Select(officer => officer?.GetParent() as Mission)
-                .Where(mission => mission?.GetParent() != null)
-                .Distinct()
+            List<IGrouping<Mission, Officer>> missions = (officers ?? Array.Empty<Officer>())
+                .Where(officer => officer?.IsCaptured == true && officer.GetParent() is Mission)
+                .GroupBy(officer => (Mission)officer.GetParent())
+                .Where(group => group.Key.GetParent() != null)
                 .ToList();
 
-            foreach (Mission mission in missions)
-                InterruptMission(mission, results);
+            foreach (IGrouping<Mission, Officer> mission in missions)
+                RemoveUnavailableParticipants(mission.Key, mission.ToList(), results);
 
             return results;
         }

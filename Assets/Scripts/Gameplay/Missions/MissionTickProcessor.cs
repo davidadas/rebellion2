@@ -111,7 +111,7 @@ namespace Rebellion.Gameplay
             }
             if (killedParticipants != null)
             {
-                _resolver.RemoveKilledParticipants(mission, killedParticipants, results);
+                _resolver.RemoveUnavailableParticipants(mission, killedParticipants, results);
                 if (mission.GetParent() == null)
                     return CompleteStep(mission, results);
             }

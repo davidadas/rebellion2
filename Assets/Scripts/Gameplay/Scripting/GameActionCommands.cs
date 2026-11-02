@@ -157,11 +157,11 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Interrupts missions containing newly captured officers before the next authored action.
+        /// Reconciles captured participants before the next authored action observes their missions.
         /// </summary>
         /// <param name="officers">The newly captured officers.</param>
         /// <param name="context">The activation receiving interruption results.</param>
-        private void InterruptMissionsForCapture(
+        private void ReconcileMissionsForCapture(
             IReadOnlyList<Officer> officers,
             GameActionContext context
         )
@@ -173,14 +173,14 @@ namespace Rebellion.Gameplay.Scripting
             {
                 context.Results.AddRange(
                     _missionResolver
-                        .InterruptMissionsForCapturedOfficers(officers)
+                        .ReconcileMissionsForCapturedOfficers(officers)
                         .Where(result => result != null)
                 );
             }
             catch (Exception exception)
             {
                 throw new GameActionCommandException(
-                    "Failed to interrupt missions for captured officers.",
+                    "Failed to reconcile missions for captured officers.",
                     exception
                 );
             }

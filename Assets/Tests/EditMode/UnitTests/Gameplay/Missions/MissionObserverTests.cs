@@ -273,6 +273,100 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(mission.GetAbortReason(game));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_CapturedOfficerWithRemainingPrimary_ContinuesMission(bool decoy)
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer captured = new Officer
+            {
+                InstanceID = "captured",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(captured, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            if (decoy)
+                mission.AddDecoyParticipant(captured);
+            else
+                mission.AddChild(captured);
+            game.MoveNode(officer, mission);
+            game.MoveNode(captured, mission);
+            mission.Initiate(10);
+            captured.TryCapture("rebels");
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = captured,
+                        IsCaptured = true,
+                        ParentAtCapture = mission,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.AreSame(planet, captured.GetParent());
+            CollectionAssert.AreEqual(
+                new IMissionParticipant[] { officer },
+                mission.GetAllParticipants(true)
+            );
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
+        [Test]
+        public void HandleResults_CapturedOfficerMovedBeforeDelivery_PreservesRemainingPrimary()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer survivor = new Officer { InstanceID = "survivor", OwnerInstanceID = "empire" };
+            game.AttachNode(survivor, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddChild(survivor);
+            game.MoveNode(officer, mission);
+            game.MoveNode(survivor, mission);
+            mission.Initiate(10);
+            officer.TryCapture("rebels");
+            game.MoveNode(officer, planet);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = officer,
+                        IsCaptured = true,
+                        ParentAtCapture = mission,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(mission, survivor.GetParent());
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
         [Test]
         public void HandleResults_OfficerMovedBeforeDelivery_InterruptsRecordedMission()
         {

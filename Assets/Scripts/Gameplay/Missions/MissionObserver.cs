@@ -51,17 +51,31 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Ends missions whose participants were captured by another simulation system.
+        /// Removes captured participants and reevaluates each mission's remaining team.
         /// </summary>
         /// <param name="results">The officer capture-state changes to process.</param>
-        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
+        /// <returns>Participant relocation and mission interruption results.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<OfficerCaptureStateResult> results)
         {
-            IEnumerable<Mission> affectedMissions = results
-                .Where(result => result?.IsCaptured == true && result.TargetOfficer != null)
-                .Select(result => result.ParentAtCapture as Mission);
+            List<GameResult> missionResults = new();
+            IEnumerable<IGrouping<Mission, OfficerCaptureStateResult>> affectedMissions = results
+                .Where(result =>
+                    result?.IsCaptured == true && result.TargetOfficer?.IsCaptured == true
+                )
+                .Where(result => result.ParentAtCapture is Mission)
+                .GroupBy(result => (Mission)result.ParentAtCapture)
+                .Where(group => group.Key.GetParent() != null);
 
-            return InterruptMissions(affectedMissions);
+            foreach (
+                IGrouping<Mission, OfficerCaptureStateResult> affectedMission in affectedMissions
+            )
+                _resolver.RemoveUnavailableParticipants(
+                    affectedMission.Key,
+                    affectedMission.Select(result => result.TargetOfficer).Distinct().ToList(),
+                    missionResults
+                );
+
+            return missionResults;
         }
 
         /// <summary>
@@ -80,31 +94,12 @@ namespace Rebellion.Gameplay
 
             foreach (IGrouping<Mission, OfficerKilledResult> affectedMission in affectedMissions)
             {
-                _resolver.RemoveKilledParticipants(
+                _resolver.RemoveUnavailableParticipants(
                     affectedMission.Key,
                     affectedMission.Select(result => result.TargetOfficer).Distinct().ToList(),
                     missionResults
                 );
             }
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Interrupts each distinct mission that is still attached to the game.
-        /// </summary>
-        /// <param name="missions">The recorded participant missions.</param>
-        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
-        private List<GameResult> InterruptMissions(IEnumerable<Mission> missions)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            List<Mission> affectedMissions = missions
-                .Where(mission => mission?.GetParent() != null)
-                .Distinct()
-                .ToList();
-
-            foreach (Mission mission in affectedMissions)
-                _resolver.InterruptMission(mission, missionResults);
 
             return missionResults;
         }

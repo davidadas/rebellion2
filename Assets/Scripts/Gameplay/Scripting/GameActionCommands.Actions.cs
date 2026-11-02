@@ -336,7 +336,7 @@ namespace Rebellion.Gameplay.Scripting
             }
             context.Record(results);
             if (capturedOfficers.Count > 0)
-                InterruptMissionsForCapture(capturedOfficers, context);
+                ReconcileMissionsForCapture(capturedOfficers, context);
         }
 
         /// <summary>
