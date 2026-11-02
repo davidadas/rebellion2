@@ -538,7 +538,7 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Applies one positive Force increase mode to every explicitly named or selected officer.
+        /// Applies an authored Force increase, preserving signed percentage arithmetic.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The current action execution context.</param>
@@ -638,10 +638,12 @@ namespace Rebellion.Gameplay.Scripting
                             )
                         )
                     );
-                if (increase <= 0)
+                if (hasAmount && increase <= 0)
                     throw new InvalidOperationException(
                         $"IncreaseForceRank calculated no increase for '{officer.InstanceID}'."
                     );
+                if (increase == 0)
+                    continue;
                 officer.ForceValue = checked(stored + increase);
                 context.Record(
                     new ForceExperienceResult

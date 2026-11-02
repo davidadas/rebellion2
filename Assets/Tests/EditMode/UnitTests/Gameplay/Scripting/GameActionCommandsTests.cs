@@ -553,6 +553,33 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.AreEqual(50, luke.ForceValue);
         }
 
+        [TestCase(-32768, 13108)]
+        [TestCase(-50, -80)]
+        [TestCase(-1, -1)]
+        [TestCase(0, 0)]
+        [TestCase(1, 1)]
+        [TestCase(32767, -13109)]
+        public void Execute_IncreaseForceRankPercentageBoundary_PreservesSignedArithmetic(
+            int initialForce,
+            int expectedForce
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.ForceValue = initialForce;
+            game.AttachNode(officer, rebelPlanet);
+            IncreaseForceRankAction action = new IncreaseForceRankAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                PercentOfEffective = 60,
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.AreEqual(expectedForce, officer.ForceValue);
+            Assert.AreEqual(initialForce == expectedForce ? 0 : 1, results.Count);
+        }
+
         [Test]
         public void Execute_ChangeOfficerRatingAmount_AdjustsStoredRating()
         {

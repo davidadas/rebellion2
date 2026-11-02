@@ -566,8 +566,8 @@ Increases Force progression for one or more officers.
   - `Amount`: A positive fixed adjustment.
   - `AmountBinding`: A binding containing the positive fixed adjustment.
   - `RollInteger`: Generates the positive adjustment from its inclusive `Minimum` and `Maximum`.
-  - `PercentOfStored`: A positive change calculated from `ForceValue`.
-  - `PercentOfEffective`: A positive change calculated from the effective `ForceRank`.
+  - `PercentOfStored`: A positive percentage calculated from the signed `ForceValue`.
+  - `PercentOfEffective`: A positive percentage calculated from the signed effective `ForceRank`.
   - `PercentOfPositiveGap`: A positive percentage of the effective-rank gap to `ReferenceOfficerInstanceID`.
 
 **Conditionally required options**
@@ -577,6 +577,10 @@ Increases Force progression for one or more officers.
 **Optional options**
 
 - `MinimumAmount` **[Optional]:** Non-negative lower bound used only with `PercentOfPositiveGap`.
+
+Percentage calculations truncate toward zero. A zero adjustment leaves the rating unchanged;
+a percentage of a negative stored or effective rating produces a negative adjustment. Stored
+Force values retain their signed 16-bit representation when arithmetic crosses its bounds.
 
 ```xml
 <IncreaseForceRank OfficerInstanceID="LUKE_SKYWALKER"
