@@ -577,6 +577,36 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_HiddenOfficersRegisteredOutOfOrder_DiscoversInRosterOrder()
+        {
+            Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);
+            scanner.IsDiscoveringForceUser = true;
+            Officer third = CreateDormantJedi("THIRD");
+            third.RosterOrder = 30;
+            Officer first = CreateDormantJedi("FIRST");
+            first.RosterOrder = 10;
+            Officer second = CreateDormantJedi("SECOND");
+            second.RosterOrder = 20;
+            foreach (Officer candidate in new[] { first, second, third })
+                candidate.JediLevelVariance = 10;
+            _system = new JediCommands(_game, new SequenceRNG(intValues: new[] { 1, 2, 3 }));
+
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            CollectionAssert.AreEqual(
+                new[] { first, second, third },
+                results.Select(result => result.Officer)
+            );
+            Assert.AreEqual(11, first.ForceValue);
+            Assert.AreEqual(12, second.ForceValue);
+            Assert.AreEqual(13, third.ForceValue);
+        }
+
+        [Test]
         public void ProcessTick_NewScanner_WaitsUntilFollowingTick()
         {
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);

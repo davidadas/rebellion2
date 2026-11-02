@@ -115,11 +115,7 @@ namespace Rebellion.Gameplay
         internal void ReconcileDiscoveryState()
         {
             List<GameResult> results = new List<GameResult>();
-            foreach (
-                Officer officer in _game.GetRegisteredSceneNodesByType<Officer>(
-                    includeDisabled: true
-                )
-            )
+            foreach (Officer officer in _game.RegisteredOfficers)
                 UpdateForceDiscoveryState(officer, results);
         }
 
@@ -135,7 +131,7 @@ namespace Rebellion.Gameplay
         {
             Dictionary<ISceneNode, List<Officer>> candidatesByLocation =
                 new Dictionary<ISceneNode, List<Officer>>();
-            foreach (Officer candidate in officers)
+            foreach (Officer candidate in officers.OrderBy(candidate => candidate.RosterOrder))
             {
                 if (
                     !candidate.IsActive()
