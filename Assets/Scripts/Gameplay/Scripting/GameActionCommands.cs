@@ -103,9 +103,22 @@ namespace Rebellion.Gameplay.Scripting
             GameEvaluationContext evaluation
         )
         {
+            return Complete(Prepare(actions, evaluation));
+        }
+
+        /// <summary>
+        /// Applies direct actions and captures command requests before committing event activation.
+        /// </summary>
+        /// <param name="actions">The authored action batch.</param>
+        /// <param name="evaluation">Bindings, trigger data, and source attribution.</param>
+        /// <returns>The prepared execution containing direct results and deferred requests.</returns>
+        internal GameActionContext Prepare(
+            IEnumerable<GameAction> actions,
+            GameEvaluationContext evaluation
+        )
+        {
             GameActionContext context = new GameActionContext(_game, _provider, evaluation);
             GameActionInterpreter.ExecuteActions(actions, context, this);
-            List<GameResult> results = new List<GameResult>(context.Results);
             if (context.DeferredOperations.Count > 0)
             {
                 if (
@@ -115,8 +128,22 @@ namespace Rebellion.Gameplay.Scripting
                     && _messageCommands == null
                 )
                     throw new InvalidOperationException(
-                        $"{evaluation?.SourceKind ?? "Script"} '{evaluation?.SourceID}' produced deferred work without configured commands."
+                        $"{context.Evaluation?.SourceKind ?? "Script"} '{context.Evaluation?.SourceID}' produced deferred work without configured commands."
                     );
+            }
+            return context;
+        }
+
+        /// <summary>
+        /// Runs the prepared command requests after their originating activation has been recorded.
+        /// </summary>
+        /// <param name="context">The prepared direct results and command requests.</param>
+        /// <returns>Direct results followed by the completed command consequences.</returns>
+        internal List<GameResult> Complete(GameActionContext context)
+        {
+            List<GameResult> results = new List<GameResult>(context.Results);
+            if (context.DeferredOperations.Count > 0)
+            {
                 results.AddRange(ExecuteDeferred(context));
             }
             return results;

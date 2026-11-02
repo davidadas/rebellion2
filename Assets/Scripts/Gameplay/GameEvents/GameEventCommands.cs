@@ -390,7 +390,7 @@ namespace Rebellion.Gameplay.GameEvents
                 return false;
             }
 
-            results = _actions.Execute(gameEvent.Actions, context);
+            GameActionContext execution = _actions.Prepare(gameEvent.Actions, context);
 
             state.ActivationCount++;
             state.LastActivationTick = _game.CurrentTick;
@@ -399,6 +399,7 @@ namespace Rebellion.Gameplay.GameEvents
                 && !IsRecurring(configuredSchedule)
             )
                 state.IsComplete = true;
+            results = _actions.Complete(execution);
             bool isComplete = HasReachedMaximumActivations(gameEvent, state);
             if (!isComplete)
             {

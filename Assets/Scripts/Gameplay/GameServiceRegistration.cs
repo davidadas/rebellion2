@@ -87,7 +87,15 @@ namespace Rebellion.Gameplay
             services.AddSingleton<FleetCommands>();
             services.AddSingleton<PersonnelQueries>();
             services.AddSingleton<PersonnelCommands>();
-            services.AddSingleton<DuelCommands>();
+            services.AddSingleton<DuelCommands>(locator => new DuelCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<IRandomNumberProvider>(),
+                encounter =>
+                    locator
+                        .GetService<GameEventCommands>()
+                        .ProcessTriggeredEvents(new[] { encounter }),
+                locator.GetService<JediCommands>()
+            ));
             services.AddSingleton<MovementQueries>();
             services.AddSingleton<BlockadeTransitionResolver>();
             services.AddSingleton<MovementCommands>();

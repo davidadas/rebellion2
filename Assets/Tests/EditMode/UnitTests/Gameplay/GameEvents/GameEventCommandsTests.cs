@@ -310,13 +310,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         {
             (GameRoot game, GameEvent gameEvent, Officer encountered, Officer opposing) =
                 CreateDeferredDuelEvent();
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 game.Random,
                 new GameActionCommands(
                     game,
                     game.Random,
-                    duelCommands: new DuelCommands(game, new CaptureThenThrowRandom()),
+                    duelCommands: new DuelCommands(
+                        game,
+                        new CaptureThenThrowRandom(),
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    ),
                     messageCommands: new MessageCommands(game, new MessageFactory(null))
                 )
             );
@@ -363,13 +368,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                     },
                 },
             };
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 game.Random,
                 new GameActionCommands(
                     game,
                     game.Random,
-                    duelCommands: new DuelCommands(game, new ThrowingRNG())
+                    duelCommands: new DuelCommands(
+                        game,
+                        new ThrowingRNG(),
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    )
                 )
             );
 
@@ -1986,28 +1996,42 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             {
                 Participants = new List<IMissionParticipant> { vader },
             };
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completed-duel",
+                        Triggers = new List<GameTrigger>
+                        {
+                            new DuelCompletedTrigger
+                            {
+                                FirstOfficerInstanceID = "vader",
+                                SecondOfficerInstanceID = "luke",
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "correct-order", Operand = 1 },
+                        },
+                    }
+                );
             TriggerDuelAction action = new TriggerDuelAction
             {
                 FirstOfficerInstanceID = "luke",
                 SecondOfficerInstanceID = "vader",
-                AudioPath = "encounter-voice",
             };
-            DuelResult result = RunAuthoredAction(
-                    game,
-                    action,
-                    triggerResult: completion,
-                    trigger: new MissionCompletedTrigger()
-                )
-                .OfType<DuelResult>()
-                .Single();
+            RunAuthoredAction(
+                game,
+                action,
+                triggerResult: completion,
+                trigger: new MissionCompletedTrigger()
+            );
 
-            Assert.AreSame(vader, result.EncounteredOfficer);
-            Assert.AreSame(luke, result.OpposingOfficer);
-            Assert.AreEqual("encounter-voice", result.AudioPath);
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("correct-order"));
         }
 
         [Test]
-        public void ProcessScheduledEvents_DuelValidOfficers_ProducesDuelOutcome()
+        public void ProcessScheduledEvents_DuelValidOfficers_AppliesAuthoredCompletionEffect()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -2018,15 +2042,76 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             game.AttachNode(luke, empirePlanet);
             luke.IsCaptured = false;
             game.AttachNode(vader, empirePlanet);
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completed-duel",
+                        Triggers = new List<GameTrigger>
+                        {
+                            new DuelCompletedTrigger
+                            {
+                                FirstOfficerInstanceID = luke.InstanceID,
+                                SecondOfficerInstanceID = vader.InstanceID,
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "duel-completed", Operand = 1 },
+                        },
+                    }
+                );
             TriggerDuelAction action = new TriggerDuelAction
             {
                 FirstOfficerInstanceID = luke.InstanceID,
                 SecondOfficerInstanceID = vader.InstanceID,
             };
 
-            List<GameResult> results = RunAuthoredAction(game, action);
+            RunAuthoredAction(game, action);
 
-            Assert.AreEqual(1, results.OfType<DuelResult>().Count());
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("duel-completed"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_DuelCompletion_SeesCommittedInitiatingEvent()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            Officer second = EntityFactory.CreateOfficer("second", "rebels");
+            game.AttachNode(first, planet);
+            second.IsCaptured = true;
+            game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "completion",
+                        Triggers = new List<GameTrigger> { new DuelCompletedTrigger() },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new HasEventActivatedConditional
+                            {
+                                EventInstanceID = "authored-action",
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            RunAuthoredAction(
+                game,
+                new TriggerDuelAction
+                {
+                    FirstOfficerInstanceID = first.InstanceID,
+                    SecondOfficerInstanceID = second.InstanceID,
+                }
+            );
+
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("completed"));
         }
 
         [Test]
@@ -2409,7 +2494,8 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            GameEventCommands executor = new GameEventCommands(
+            GameEventCommands executor = null;
+            executor = new GameEventCommands(
                 game,
                 random,
                 new GameActionCommands(
@@ -2418,7 +2504,11 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                     unitFactory,
                     movement,
                     control,
-                    new DuelCommands(game, random),
+                    new DuelCommands(
+                        game,
+                        random,
+                        encounter => executor.ProcessTriggeredEvents(new[] { encounter })
+                    ),
                     new MessageCommands(game, new MessageFactory(null))
                 )
             );
