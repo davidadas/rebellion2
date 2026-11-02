@@ -132,6 +132,16 @@ namespace Rebellion.Game
         public Dictionary<string, ISceneNode> NodesByInstanceID =
             new Dictionary<string, ISceneNode>();
 
+        [PersistableIgnore]
+        private readonly List<Officer> _registeredOfficers = new List<Officer>();
+
+        /// <summary>
+        /// Gets the registered officer roster, including disabled officers, without traversing the scene.
+        /// Callers must finish enumeration before adding or removing registered officers.
+        /// </summary>
+        [PersistableIgnore]
+        internal IReadOnlyList<Officer> RegisteredOfficers => _registeredOfficers;
+
         // Game objects.
         [PersistableMember(Name = "Factions")]
         private List<Faction> _factions = new List<Faction>();
@@ -749,6 +759,8 @@ namespace Rebellion.Game
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
+                if (node is Officer officer)
+                    _registeredOfficers.Add(officer);
             }
             catch (ArgumentException)
             {
@@ -765,6 +777,8 @@ namespace Rebellion.Game
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
             NodesByInstanceID.Remove(node.InstanceID);
+            if (node is Officer officer)
+                _registeredOfficers.Remove(officer);
         }
 
         /// <summary>
@@ -773,6 +787,7 @@ namespace Rebellion.Game
         public void RebuildSceneState()
         {
             NodesByInstanceID.Clear();
+            _registeredOfficers.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
 

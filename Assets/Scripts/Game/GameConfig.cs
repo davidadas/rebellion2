@@ -1120,6 +1120,12 @@ namespace Rebellion.Game
 
             public int MissionDefenderEncounterMinimum { get; set; }
 
+            /// <summary>
+            /// Gets or sets the ordered major officers considered before random encounter candidates.
+            /// </summary>
+            public List<string> MissionEncounterPriorityOfficerInstanceIDs { get; set; } =
+                new List<string>();
+
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 

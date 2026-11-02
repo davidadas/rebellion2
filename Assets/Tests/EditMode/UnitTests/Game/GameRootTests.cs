@@ -400,6 +400,57 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void AddSceneNodeByInstanceID_Officer_AddsToOfficerRoster()
+        {
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction1.InstanceID);
+
+            _game.AddSceneNodeByInstanceID(officer);
+
+            CollectionAssert.Contains(_game.RegisteredOfficers, officer);
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_DuplicateOfficer_DoesNotDuplicateRoster()
+        {
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction1.InstanceID);
+            _game.AddSceneNodeByInstanceID(officer);
+
+            Assert.Throws<InvalidOperationException>(() => _game.AddSceneNodeByInstanceID(officer));
+
+            Assert.AreEqual(1, _game.RegisteredOfficers.Count(candidate => candidate == officer));
+        }
+
+        [Test]
+        public void RemoveSceneNodeByInstanceID_Officer_RemovesFromOfficerRoster()
+        {
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction1.InstanceID);
+            _game.AddSceneNodeByInstanceID(officer);
+
+            _game.RemoveSceneNodeByInstanceID(officer);
+
+            CollectionAssert.DoesNotContain(_game.RegisteredOfficers, officer);
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedDisabledOfficer_RestoresRosterOnce()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction1.InstanceID);
+            _game.AttachNode(officer, _planet);
+            officer.IsEnabled = false;
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            restored.RebuildSceneState();
+            restored.RebuildSceneState();
+
+            Assert.AreEqual(1, restored.RegisteredOfficers.Count);
+            Assert.AreEqual(officer.InstanceID, restored.RegisteredOfficers[0].InstanceID);
+            Assert.IsFalse(restored.RegisteredOfficers[0].IsEnabled);
+        }
+
+        [Test]
         public void AddSceneNodeByInstanceID_ValidNode_AddsToRegistry()
         {
             // Add node and verify that it is added to the _game.
