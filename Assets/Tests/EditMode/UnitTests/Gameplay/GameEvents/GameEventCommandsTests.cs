@@ -1379,6 +1379,77 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(89, luke.ForceRank);
         }
 
+        [TestCase(1, false)]
+        [TestCase(1, true)]
+        [TestCase(40, false)]
+        [TestCase(40, true)]
+        [TestCase(60, false)]
+        [TestCase(60, true)]
+        [TestCase(100, false)]
+        [TestCase(100, true)]
+        public void ProcessTriggeredEvents_FirstVaderEncounter_ReportsHeritageAtAnyForceRank(
+            int forceRank,
+            bool reverseOrder
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = forceRank;
+            _game.AttachNode(luke, planet);
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.ForceValue = 120;
+            vader.IsCaptured = true;
+            _game.AttachNode(vader, planet);
+            vader.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .AddRange(
+                    TestContent.Data.GameEvents.Where(gameEvent =>
+                        gameEvent.InstanceID
+                            is "LUKE_VADER_ENCOUNTER_EFFECTS"
+                                or "LUKE_DISCOVERS_HERITAGE"
+                    )
+                );
+            FixedRNG random = new FixedRNG(0);
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            DuelResult encounter = new DuelResult
+            {
+                EncounteredOfficer = reverseOrder ? vader : luke,
+                OpposingOfficer = reverseOrder ? luke : vader,
+                ImagePath = "encounter-image",
+                AudioPath = "encounter-audio",
+            };
+
+            MessageDeliveredResult first = commands
+                .ProcessTriggeredEvents(new[] { encounter })
+                .OfType<MessageDeliveredResult>()
+                .Single();
+            MessageDeliveredResult later = commands
+                .ProcessTriggeredEvents(new[] { encounter })
+                .OfType<MessageDeliveredResult>()
+                .Single();
+
+            Assert.AreEqual("LUKE_DISCOVERS_HERITAGE", first.SourceEventInstanceID);
+            Assert.AreEqual("LUKE_VADER_ENCOUNTER_EFFECTS", later.SourceEventInstanceID);
+            Assert.AreEqual(
+                1,
+                _game.EventRuntime.GetState("LUKE_DISCOVERS_HERITAGE").ActivationCount
+            );
+        }
+
         [TestCase(79, false, 1)]
         [TestCase(80, false, 0)]
         [TestCase(79, true, 0)]

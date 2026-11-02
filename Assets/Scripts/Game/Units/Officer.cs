@@ -914,9 +914,13 @@ namespace Rebellion.Game.Units
         internal void InitializeForceValue(IRandomNumberProvider provider)
         {
             if (ForceValue == 0 && IsForceSensitive && IsForceEligible)
-                ForceValue =
-                    JediLevel
-                    + (JediLevelVariance > 0 ? provider.NextInt(0, JediLevelVariance + 1) : 0);
+            {
+                int upperBound = unchecked(
+                    JediLevelVariance < 0 ? 1 - JediLevelVariance : JediLevelVariance + 1
+                );
+                int variance = upperBound > 1 ? provider.NextInt(0, upperBound) : 0;
+                ForceValue = JediLevel + (JediLevelVariance < 0 ? -variance : variance);
+            }
         }
 
         /// <summary>

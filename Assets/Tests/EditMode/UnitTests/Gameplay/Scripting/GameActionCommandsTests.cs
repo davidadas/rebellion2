@@ -694,8 +694,12 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.AreEqual(forceValue, officer.ForceValue);
         }
 
-        [Test]
-        public void Execute_SetForceEligibleWithoutVariance_InitializesValueWithoutRandomRoll()
+        [TestCase(0)]
+        [TestCase(int.MinValue)]
+        [TestCase(int.MaxValue)]
+        public void Execute_SetForceEligibleWithNonpositiveRandomBound_InitializesValueWithoutRandomRoll(
+            int variance
+        )
         {
             GameRoot game = BuildGame(out _, out Planet planet);
             Officer officer = EntityFactory.CreateOfficer("student", "rebels");
@@ -703,7 +707,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             officer.IsForceEligible = false;
             officer.ForceValue = 0;
             officer.JediLevel = 10;
-            officer.JediLevelVariance = 0;
+            officer.JediLevelVariance = variance;
             game.AttachNode(officer, planet);
 
             new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
@@ -712,6 +716,32 @@ namespace Rebellion.Tests.Gameplay.Scripting
             );
 
             Assert.AreEqual(10, officer.ForceValue);
+        }
+
+        [TestCase(-5, 0.0, 10)]
+        [TestCase(-5, 0.99, 5)]
+        [TestCase(5, 0.99, 15)]
+        public void Execute_SetForceEligibleWithSignedVariance_AppliesInclusiveOffset(
+            int variance,
+            double roll,
+            int expectedForce
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = 0;
+            officer.JediLevel = 10;
+            officer.JediLevelVariance = variance;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new FixedRandomProvider(new[] { roll })
+            );
+
+            Assert.AreEqual(expectedForce, officer.ForceValue);
         }
 
         [Test]
