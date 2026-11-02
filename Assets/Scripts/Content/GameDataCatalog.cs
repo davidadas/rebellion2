@@ -211,7 +211,7 @@ public sealed class GameDataCatalog
     }
 
     /// <summary>
-    /// Connects runtime officers to the catalog's trait definitions and template-owned Force rules.
+    /// Connects runtime officers to the catalog's trait definitions and template-owned officer rules.
     /// </summary>
     /// <param name="officers">The runtime officers to bind.</param>
     internal void BindOfficerDefinitions(IEnumerable<Officer> officers)
@@ -248,6 +248,7 @@ public sealed class GameDataCatalog
                 && templatesByTypeID.TryGetValue(officer.TypeID, out Officer template)
             )
             {
+                officer.RosterOrder = template.RosterOrder;
                 officer.JediProbability = template.JediProbability;
                 officer.JediLevel = template.JediLevel;
                 officer.JediLevelVariance = template.JediLevelVariance;

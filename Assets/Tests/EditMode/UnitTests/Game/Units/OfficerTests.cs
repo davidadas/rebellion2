@@ -498,6 +498,7 @@ namespace Rebellion.Tests.Game.Units
                 loyalty: 75
             );
             originalOfficer.IsMain = true;
+            originalOfficer.RosterOrder = 7;
             originalOfficer.CurrentRank = OfficerRank.Admiral;
             originalOfficer.Ratings = new Dictionary<SkillRating, int>
             {
@@ -531,6 +532,7 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);
             Assert.AreEqual("event", deserializedOfficer.TraitGrants[0].SourceID);
             Assert.AreEqual(originalOfficer.IsMain, deserializedOfficer.IsMain, "IsMain mismatch");
+            Assert.AreEqual(originalOfficer.RosterOrder, deserializedOfficer.RosterOrder);
             Assert.AreEqual(
                 originalOfficer.CurrentRank,
                 deserializedOfficer.CurrentRank,

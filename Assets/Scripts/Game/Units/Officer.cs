@@ -279,6 +279,11 @@ namespace Rebellion.Game.Units
         // Officer Info.
         public bool IsMain { get; set; }
 
+        /// <summary>
+        /// Gets or sets the authored roster order used to choose a trainer and break equal training scores.
+        /// </summary>
+        public int RosterOrder { get; set; }
+
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
 
@@ -527,6 +532,7 @@ namespace Rebellion.Game.Units
             copy.TroopResearch = TroopResearch;
             copy.FacilityResearch = FacilityResearch;
             copy.IsMain = IsMain;
+            copy.RosterOrder = RosterOrder;
             copy.IsRecruitable = IsRecruitable;
             copy.RecruitingFactionInstanceIDs = new List<string>(RecruitingFactionInstanceIDs);
             copy.IsCaptured = IsCaptured;

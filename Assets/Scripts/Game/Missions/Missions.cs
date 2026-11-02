@@ -1547,7 +1547,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Validates the selected participants and chooses the highest-ranked qualified trainer.
+        /// Validates the selected participants and chooses the first qualified trainer in roster order.
         /// </summary>
         /// <param name="participants">The officers selected for Jedi training.</param>
         /// <param name="game">The game state containing Jedi qualification thresholds.</param>
@@ -1574,7 +1574,7 @@ namespace Rebellion.Game.Missions
 
             Officer selectedTrainer = officers
                 .Where(officer => CanLeadTraining(officer, game))
-                .OrderByDescending(officer => officer.ForceRank)
+                .OrderBy(officer => officer.RosterOrder)
                 .FirstOrDefault();
             if (selectedTrainer == null)
                 return false;
@@ -1708,6 +1708,7 @@ namespace Rebellion.Game.Missions
                     Officer officer in GetMainParticipants()
                         .OfType<Officer>()
                         .OrderBy(officer => trainer.ForceRank - officer.ForceRank)
+                        .ThenBy(officer => officer.RosterOrder)
                 )
                 {
                     ForceTrainingResult trainingResult = TrainOfficer(

@@ -1021,6 +1021,7 @@ namespace Rebellion.Tests.Gameplay
             officer.JediProbability = -1;
             officer.JediLevel = -1;
             officer.JediLevelVariance = -1;
+            officer.RosterOrder = -1;
             officer.IsKnownJedi = !template.IsKnownJedi;
             officer.ForceValue = 37;
             officer.ForceTrainingAdjustment = 9;
@@ -1038,6 +1039,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(template.JediProbability, officer.JediProbability);
             Assert.AreEqual(template.JediLevel, officer.JediLevel);
             Assert.AreEqual(template.JediLevelVariance, officer.JediLevelVariance);
+            Assert.AreEqual(template.RosterOrder, officer.RosterOrder);
             Assert.AreEqual(template.IsKnownJedi, officer.IsKnownJedi);
             Assert.AreEqual(template.GrowsForceOnMission, officer.GrowsForceOnMission);
             Assert.AreEqual(
