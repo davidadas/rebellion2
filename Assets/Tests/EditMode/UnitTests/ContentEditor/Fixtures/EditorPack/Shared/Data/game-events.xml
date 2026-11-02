@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<GameEvents>
+  <GameEvent Category="Story">
+    <InstanceID>LUKE_VISITS_YODA</InstanceID>
+    <Schedule>
+      <RandomDelay MinimumTicks="200" MaximumTicks="300" />
+    </Schedule>
+    <Conditionals>
+      <IsActive NodeInstanceID="LUKE_SKYWALKER" />
+      <Not>
+        <Any>
+          <IsCaptured OfficerInstanceID="LUKE_SKYWALKER" />
+          <IsKilled OfficerInstanceID="LUKE_SKYWALKER" />
+          <IsInTransit UnitInstanceID="LUKE_SKYWALKER" />
+          <IsOnMission UnitInstanceID="LUKE_SKYWALKER" />
+        </Any>
+      </Not>
+    </Conditionals>
+    <Actions>
+      <SendMessage
+        RecipientFactionInstanceID="FNALL1"
+        SubjectInstanceID="LUKE_SKYWALKER"
+        Type="Mission"
+      >
+        <Subject>Luke Goes to Dagobah</Subject>
+        <Body>Luke has been sent to Dagobah to be trained by Yoda.</Body>
+        <BackgroundImage Path="Pack/Factions/Alliance/Strategy/Messages/Images/luke-goes-to-dagobah" />
+        <BackgroundAudio Path="Pack/Shared/Events/LukeGoesToDagobah/Audio/dialogue" />
+        <AdvisorNotification Preset="SubjectReport" />
+      </SendMessage>
+      <SetNodeState InstanceID="LUKE_SKYWALKER" State="Inactive" />
+      <SetDisplayStatus TargetInstanceID="LUKE_SKYWALKER" Status="On Mission (Dagobah)" />
+    </Actions>
+  </GameEvent>
+  <GameEvent Category="Story">
+    <InstanceID>EMPEROR_RETURNS_TO_CORUSCANT</InstanceID>
+    <Triggers>
+      <UnitArrived UnitInstanceID="EMPEROR_PALPATINE" DestinationInstanceID="CORUSCANT" />
+    </Triggers>
+    <Actions>
+      <SendMessage
+        RecipientFactionInstanceID="FNEMP1"
+        SubjectInstanceID="EMPEROR_PALPATINE"
+        LocationInstanceID="CORUSCANT"
+        Type="Mission"
+      >
+        <Subject>Emperor Arrives at Coruscant</Subject>
+        <Body>I have returned to the Seat of Power at Coruscant.</Body>
+        <BackgroundImage Path="Pack/Factions/Empire/Strategy/Messages/Images/emperor-arrives-at-coruscant" />
+        <OfficerVoice Path="Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01" />
+        <AdvisorNotification Preset="SubjectReport" />
+      </SendMessage>
+    </Actions>
+  </GameEvent>
+</GameEvents>

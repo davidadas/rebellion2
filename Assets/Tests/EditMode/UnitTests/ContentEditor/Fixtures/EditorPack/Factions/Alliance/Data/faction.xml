@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Factions>
+  <Faction>
+    <InstanceID>FNALL1</InstanceID>
+    <DisplayName>Alliance</DisplayName>
+    <HQInstanceID />
+    <GarrisonTroopTypeID>REAL002</GarrisonTroopTypeID>
+    <DisallowedMissionTypeIDs>
+      <String>Assassination</String>
+    </DisallowedMissionTypeIDs>
+    <ShipNamePools>
+      <NamePool>
+        <NamePoolID>A</NamePoolID>
+        <Names>
+          <Name>Swift</Name>
+          <Name>Quick</Name>
+        </Names>
+      </NamePool>
+      <NamePool>
+        <NamePoolID>B</NamePoolID>
+        <FallbackNamePoolID>A</FallbackNamePoolID>
+        <Names>
+          <Name>Deliverance</Name>
+          <Name>Emancipation</Name>
+        </Names>
+      </NamePool>
+      <NamePool>
+        <NamePoolID>C</NamePoolID>
+        <FallbackNamePoolID>B</FallbackNamePoolID>
+        <Names>
+          <Name>Liberty</Name>
+          <Name>Freedom</Name>
+        </Names>
+      </NamePool>
+    </ShipNamePools>
+    <Messages>
+      <Entry>
+        <Key>Advice</Key>
+        <Value>
+          <ArrayOfMessage>
+            <Message>
+              <Type>Advice</Type>
+              <Title>First advice</Title>
+              <Body>First message.</Body>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Second advice</Title>
+              <Body>Second message.</Body>
+            </Message>
+          </ArrayOfMessage>
+        </Value>
+      </Entry>
+    </Messages>
+    <Settings>
+      <RefinementMultiplier>1</RefinementMultiplier>
+      <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
+      <GarrisonEfficiency>1</GarrisonEfficiency>
+      <TroopEffectiveness>1</TroopEffectiveness>
+      <UprisingResistance>1</UprisingResistance>
+      <InvertSupportShift>false</InvertSupportShift>
+      <CivilianBombardmentCoreSupportPenalty>-4</CivilianBombardmentCoreSupportPenalty>
+      <CivilianBombardmentOuterRimSupportPenalty>-2</CivilianBombardmentOuterRimSupportPenalty>
+      <BattleLossLoyaltyDivisor>80</BattleLossLoyaltyDivisor>
+      <SupportResistance>Increase</SupportResistance>
+      <Headquarters>
+        <FacilityTypeID>BDHQ01</FacilityTypeID>
+        <IsMobile>true</IsMobile>
+        <IsBombardable>true</IsBombardable>
+      </Headquarters>
+    </Settings>
+  </Faction>
+</Factions>

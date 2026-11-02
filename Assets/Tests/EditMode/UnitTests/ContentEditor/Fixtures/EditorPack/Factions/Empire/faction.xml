@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Faction>
+  <ID>FNEMP1</ID>
+  <DisplayName>Empire</DisplayName>
+  <FactionDataPath>Factions/Empire/Data/faction.xml</FactionDataPath>
+  <CapitalShipsPath>Factions/Empire/Data/capital-ships.xml</CapitalShipsPath>
+  <StarfightersPath>Factions/Empire/Data/starfighters.xml</StarfightersPath>
+  <RegimentsPath>Factions/Empire/Data/regiments.xml</RegimentsPath>
+  <SpecialForcesPath>Factions/Empire/Data/special-forces.xml</SpecialForcesPath>
+  <OfficersPath>Factions/Empire/Data/officers.xml</OfficersPath>
+  <EncyclopediaEntriesPath>Factions/Empire/Data/encyclopedia-entries.xml</EncyclopediaEntriesPath>
+  <ThemePath>Factions/Empire/Strategy/UI/theme.xml</ThemePath>
+</Faction>

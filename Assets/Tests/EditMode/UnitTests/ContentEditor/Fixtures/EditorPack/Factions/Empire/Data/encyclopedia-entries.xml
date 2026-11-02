@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<EncyclopediaEntries>
+  <EncyclopediaEntry>
+    <TypeID>Diplomacy</TypeID>
+    <DisplayName>Diplomacy</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNEMP1</VisibleFactionInstanceID>
+    <ImagePath>Pack/Factions/Empire/Missions/Diplomacy/encyclopedia</ImagePath>
+    <Description>Diplomacy missions increase loyalty for your side in a planetary system. The success of this mission depends on the diplomacy attribute of the characters and the current loyalty of the population.  Diplomacy missions can only be targeted at friendly or explored neutral systems.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>FLEET</TypeID>
+    <DisplayName>Fleet</DisplayName>
+    <Category>Concept</Category>
+    <VisibleFactionInstanceID>FNEMP1</VisibleFactionInstanceID>
+    <ImagePath>Pack/Factions/Empire/Strategy/UI/Encyclopedia/fleet</ImagePath>
+    <Description>Fleets are basically groups of ships that work or travel together.</Description>
+  </EncyclopediaEntry>
+</EncyclopediaEntries>

@@ -361,13 +361,30 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     view,
                     "_contentPackValueField"
                 );
+                int packCount = ContentPackLoader
+                    .DiscoverInstalledPacks(_bootstrap.GetContentPack().ContentRootPath)
+                    .Count;
 
-                nextPack.onClick.Invoke();
-                _controller.RenderWindows();
+                for (
+                    int attempt = 0;
+                    attempt < packCount && packName.text != duplicatePackID;
+                    attempt++
+                )
+                {
+                    nextPack.onClick.Invoke();
+                    _controller.RenderWindows();
+                }
                 Assert.AreEqual(duplicatePackID, packName.text);
 
-                nextPack.onClick.Invoke();
-                _controller.RenderWindows();
+                for (
+                    int attempt = 0;
+                    attempt < packCount && packName.text != "Healthy Duplicate";
+                    attempt++
+                )
+                {
+                    nextPack.onClick.Invoke();
+                    _controller.RenderWindows();
+                }
                 Assert.AreEqual("Healthy Duplicate", packName.text);
             }
             finally

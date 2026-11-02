@@ -36,13 +36,11 @@ public static class NewGameSettingsPrefabBuilder
         rect.sizeDelta = new Vector2(454f, 341f);
         RectTransform contentRoot = CreateMenuWindowContent(
             rect,
-            "CUSTOM GAME",
+            "CUSTOMIZE",
             out TextMeshProUGUI header,
             out TextMeshProUGUI title
         );
-        header.enableAutoSizing = false;
-        header.fontSize = 22f;
-        SetSourceRect(header.rectTransform, 41, 32, 174, 26);
+        header.alignment = TextAlignmentOptions.Midline;
         title.text = "GAME SETUP";
         RectTransform difficultyPage = CreateLayer("DifficultyPage", contentRoot)
             .GetComponent<RectTransform>();

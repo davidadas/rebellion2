@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<EncyclopediaEntries>
+  <EncyclopediaEntry>
+    <TypeID>PLSEW01</TypeID>
+    <DisplayName>Yaga Minor</DisplayName>
+    <Category>System</Category>
+    <ImagePath>Pack/Shared/Planets/ui-encyclopedia-system-blue-brown-continental</ImagePath>
+    <Stats>
+      <EncyclopediaEntryStat>
+        <Label>Sector</Label>
+        <Value>Sesswenna                 Type: Core System</Value>
+      </EncyclopediaEntryStat>
+    </Stats>
+    <Description>Yaga Minor  is a  planet which is known throughout the galaxy for its major shipbuilding facilities.  Since it is in the Sesswenna sector it is near the center of power for the Empire.</Description>
+  </EncyclopediaEntry>
+</EncyclopediaEntries>

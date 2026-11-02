@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Factions>
+  <Faction>
+    <InstanceID>FNEMP1</InstanceID>
+    <DisplayName>Empire</DisplayName>
+    <HQInstanceID />
+    <GarrisonTroopTypeID>REEM002</GarrisonTroopTypeID>
+    <DisallowedMissionTypeIDs />
+    <ShipNamePools>
+      <NamePool>
+        <NamePoolID>A</NamePoolID>
+        <Names>
+          <Name>Hydra</Name>
+          <Name>Medusa</Name>
+        </Names>
+      </NamePool>
+      <NamePool>
+        <NamePoolID>B</NamePoolID>
+        <FallbackNamePoolID>A</FallbackNamePoolID>
+        <Names>
+          <Name>Master</Name>
+          <Name>Tyrant</Name>
+        </Names>
+      </NamePool>
+      <NamePool>
+        <NamePoolID>C</NamePoolID>
+        <FallbackNamePoolID>B</FallbackNamePoolID>
+        <Names>
+          <Name>Judicator</Name>
+          <Name>Punisher</Name>
+        </Names>
+      </NamePool>
+    </ShipNamePools>
+    <Messages>
+      <Entry>
+        <Key>Advice</Key>
+        <Value>
+          <ArrayOfMessage>
+            <Message>
+              <Type>Advice</Type>
+              <Title>First advice</Title>
+              <Body>First message.</Body>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Second advice</Title>
+              <Body>Second message.</Body>
+            </Message>
+          </ArrayOfMessage>
+        </Value>
+      </Entry>
+    </Messages>
+    <Settings>
+      <RefinementMultiplier>1</RefinementMultiplier>
+      <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
+      <GarrisonEfficiency>2</GarrisonEfficiency>
+      <TroopEffectiveness>2</TroopEffectiveness>
+      <UprisingResistance>2</UprisingResistance>
+      <InvertSupportShift>true</InvertSupportShift>
+      <CivilianBombardmentCoreSupportPenalty>-3</CivilianBombardmentCoreSupportPenalty>
+      <CivilianBombardmentOuterRimSupportPenalty>-1</CivilianBombardmentOuterRimSupportPenalty>
+      <BattleLossLoyaltyDivisor>80</BattleLossLoyaltyDivisor>
+      <SupportResistance>Decrease</SupportResistance>
+      <Headquarters>
+        <IsMobile>false</IsMobile>
+        <IsBombardable>false</IsBombardable>
+      </Headquarters>
+    </Settings>
+  </Faction>
+</Factions>

@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SpecialForces>
+  <SpecialForce>
+    <TypeID>SPEM001</TypeID>
+    <DisplayName>Imperial Probe Droid</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/display</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/small-display</SmallDisplayImagePath>
+    <MessageImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/message</MessageImagePath>
+    <InTransitImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/in-transit-small</InTransitSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Probe droids are designed as reconnaissance and information-gathering units by the Empire.  Each probe droid is contained in a small hyperspace-capable pod allowing them to travel the galaxy without the need for deployment from capital ships.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>30</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>10</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Reconnaissance</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+  <SpecialForce>
+    <TypeID>SPEM002</TypeID>
+    <DisplayName>Imperial Espionage Droid</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM002/display</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM002/small-display</SmallDisplayImagePath>
+    <MessageImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM002/message</MessageImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/SpecialForces/SPEM002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial espionage droids are designed to look like any other protocol droid, except they have special transmitters built into them. These transmitters allow for communication of information back to the Empire.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>60</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>5</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Espionage</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+</SpecialForces>

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using UnityEngine;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -49,10 +48,11 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Timeout(600000)]
         public async Task WriteArchiveAsync_UnsavedEditsAndLocalMedia_IncludesOverridesWithoutCopyingBaseContentAsync()
         {
-            ContentPackEditorProject project = CreatePortableExportProject();
+            ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
+                contentRoot
+            );
             string[] baselineFiles = Directory
                 .GetFiles(project.PackRootPath, "*", SearchOption.AllDirectories)
                 .Select(path => Path.GetRelativePath(project.PackRootPath, path).Replace('\\', '/'))
@@ -98,7 +98,9 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public async Task WriteArchiveAsync_UnsavedStartupFailure_PreservesTheExistingArchiveAndWorkingProjectAsync()
         {
-            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
+                contentRoot
+            );
             ContentPackEditorDocument generation = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Starting setup")
@@ -122,7 +124,9 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public async Task WriteArchiveAsync_CorruptReferencedImage_PreservesTheArchiveAndUnsavedProjectAsync()
         {
-            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
+                contentRoot
+            );
             string badFile = Path.Combine(contentRoot, "corrupt.png");
             File.WriteAllText(badFile, "Not a PNG file.");
             string address = ContentPackEditorStorage.ImportAsset(project, badFile);
@@ -147,7 +151,9 @@ namespace Rebellion.Tests.ContentEditor
         [Test]
         public async Task WriteArchiveAsync_CancelledAfterStarting_PreservesExistingOutputAndUnsavedEditsAsync()
         {
-            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
+                contentRoot
+            );
             ContentPackEditorRecord officer = project
                 .GetCatalogs()
                 .First(catalog => catalog.Name == "Officers")
@@ -206,32 +212,6 @@ namespace Rebellion.Tests.ContentEditor
             );
 
             Assert.IsFalse(File.Exists(output));
-        }
-
-        /// <summary>
-        /// Keeps real startup and media integration while using cutscenes supported by every test platform.
-        /// </summary>
-        /// <returns>The saved baseline before the export-specific unsaved edits.</returns>
-        private ContentPackEditorProject CreatePortableExportProject()
-        {
-            ContentPackEditorProject project = CreateLoadableProject();
-            string video = ContentPackEditorStorage.ImportAsset(
-                project,
-                Path.Combine(
-                    Application.dataPath,
-                    "Tests/EditMode/UnitTests/ContentEditor/MediaFixtures/black-frame.webm"
-                )
-            );
-            foreach (
-                ContentPackEditorField field in project
-                    .GetCatalogs()
-                    .SelectMany(catalog => catalog.Records)
-                    .SelectMany(record => record.GetFields())
-                    .Where(field => field.MediaType == ContentPackEditorMediaType.Video)
-            )
-                project.SetField(field, video);
-            ContentPackEditorStorage.Save(project);
-            return project;
         }
     }
 }

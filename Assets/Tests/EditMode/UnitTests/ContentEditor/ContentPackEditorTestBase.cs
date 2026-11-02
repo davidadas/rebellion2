@@ -65,16 +65,7 @@ namespace Rebellion.Tests.ContentEditor
         /// <returns>The working project.</returns>
         protected ContentPackEditorProject CreateLoadableProject()
         {
-            string liveContentRoot = ContentPackLoader.ResolveContentRootPath();
-            ContentPackDefinition source = ContentPackLoader.DiscoverPacks(liveContentRoot).First();
-            return ContentPackEditorStorage.CreateInFolder(
-                liveContentRoot,
-                source.ID,
-                Path.Combine(Directory.GetParent(contentRoot).FullName, "LiveProject"),
-                "export-test-" + Guid.NewGuid().ToString("N"),
-                "Export test",
-                "1.0.0"
-            );
+            return ContentEditorTestData.CreateLoadableProject(contentRoot);
         }
 
         /// <summary>

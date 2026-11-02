@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SpecialForces>
+  <SpecialForce>
+    <TypeID>SPAL001</TypeID>
+    <DisplayName>Guerrillas</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL001/display</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL001/small-display</SmallDisplayImagePath>
+    <MessageImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL001/message</MessageImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>20</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>50</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>InciteUprising</String>
+      <String>SubdueUprising</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+  <SpecialForce>
+    <TypeID>SPAL002</TypeID>
+    <DisplayName>Infiltrators</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL002/display</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL002/small-display</SmallDisplayImagePath>
+    <MessageImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL002/message</MessageImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/SpecialForces/SPAL002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>60</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Rescue</String>
+      <String>Sabotage</String>
+      <String>Abduction</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+</SpecialForces>
