@@ -1423,6 +1423,74 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(2, _game.EventRuntime.GetState(eventID).ActivationCount);
         }
 
+        [TestCase("LUKE_VADER_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "DARTH_VADER")]
+        [TestCase("LUKE_PALPATINE_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "EMPEROR_PALPATINE")]
+        [TestCase("LEIA_VADER_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "DARTH_VADER")]
+        [TestCase("LEIA_PALPATINE_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "EMPEROR_PALPATINE")]
+        public void ProcessTriggeredEvents_NamedEncounter_DeliversBothOfficersStatesToBothFactions(
+            string eventID,
+            string firstOfficerID,
+            string secondOfficerID
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstOfficerID, "FNALL1");
+            first.DisplayName = "First officer";
+            first.InjuryPoints = 10;
+            _game.AttachNode(first, planet);
+            first.IsCaptured = true;
+            Officer second = EntityFactory.CreateOfficer(secondOfficerID, "FNEMP1");
+            second.DisplayName = "Second officer";
+            second.InjuryPoints = 15;
+            second.IsCaptured = true;
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState(eventID).ActivationCount = 1;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult
+                        {
+                            EncounteredOfficer = second,
+                            OpposingOfficer = first,
+                            ImagePath = "encounter-image",
+                            AudioPath = "encounter-audio",
+                        },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                new[] { "FNALL1", "FNEMP1" },
+                delivered.Select(result => result.Recipient.InstanceID)
+            );
+            foreach (MessageDeliveredResult result in delivered)
+                Assert.AreEqual(
+                    "First officer has fought Second officer.  First officer was captured.  Second officer was injured.  ",
+                    result.Message.Body
+                );
+        }
+
         [TestCase(false, 1)]
         [TestCase(true, 0)]
         public void ProcessTriggeredEvents_LaterVaderEncounter_DoesNotRepeatFirstEncounterInjury(
@@ -1540,7 +1608,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             MessageDeliveredResult later = commands
                 .ProcessTriggeredEvents(new[] { encounter })
                 .OfType<MessageDeliveredResult>()
-                .Single();
+                .Single(result => result.Recipient.InstanceID == "FNALL1");
 
             Assert.AreEqual("LUKE_DISCOVERS_HERITAGE", first.SourceEventInstanceID);
             Assert.AreEqual("LUKE_VADER_ENCOUNTER_EFFECTS", later.SourceEventInstanceID);

@@ -192,16 +192,21 @@ namespace Rebellion.Gameplay.Scripting
                     action.SubjectInstanceID,
                     includeDisabled: true
                 );
-            ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
-                action.RelatedSubjectInstanceID,
-                includeDisabled: true
-            );
-            if (string.IsNullOrWhiteSpace(action.RecipientFactionInstanceID))
+            ISceneNode relatedSubject = !string.IsNullOrWhiteSpace(action.RelatedSubjectBinding)
+                ? context.Evaluation?.GetBindingReference<ISceneNode>(action.RelatedSubjectBinding)
+                : game.GetSceneNodeByInstanceID<ISceneNode>(
+                    action.RelatedSubjectInstanceID,
+                    includeDisabled: true
+                );
+            string recipientID = !string.IsNullOrWhiteSpace(action.RecipientFactionBinding)
+                ? context.Evaluation?.GetBindingReference<string>(action.RecipientFactionBinding)
+                : action.RecipientFactionInstanceID;
+            if (string.IsNullOrWhiteSpace(recipientID))
                 throw new InvalidOperationException(
-                    "SendMessage requires RecipientFactionInstanceID."
+                    "SendMessage requires a recipient faction instance ID or binding."
                 );
 
-            Faction recipient = game.GetFactionByOwnerInstanceID(action.RecipientFactionInstanceID);
+            Faction recipient = game.GetFactionByOwnerInstanceID(recipientID);
             Planet location = !string.IsNullOrWhiteSpace(action.LocationBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(action.LocationBinding)
                 : game.GetSceneNodeByInstanceID<Planet>(
@@ -221,7 +226,21 @@ namespace Rebellion.Gameplay.Scripting
             {
                 MessageType = action.MessageType,
                 Subject = action.Subject,
-                Body = action.Body ?? string.Empty,
+                Body =
+                    (action.Body ?? string.Empty)
+                    + string.Concat(
+                        action
+                            .BodySections.Where(section =>
+                                section.Conditionals.All(condition =>
+                                    GameConditionEvaluator.IsMet(
+                                        condition,
+                                        game,
+                                        context.Evaluation
+                                    )
+                                )
+                            )
+                            .Select(section => section.Text)
+                    ),
                 BackgroundImage =
                     string.IsNullOrWhiteSpace(action.BackgroundImage?.Key)
                     && string.IsNullOrWhiteSpace(imagePath)
