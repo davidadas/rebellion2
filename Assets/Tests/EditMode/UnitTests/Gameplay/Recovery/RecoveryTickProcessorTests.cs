@@ -743,6 +743,7 @@ namespace Rebellion.Tests.Gameplay
         private (GameRoot game, Planet planet) BuildScene()
         {
             GameConfig config = TestConfig.Create();
+            config.Jedi.FastHealThreshold = 80;
             config.Recovery = new GameConfig.RecoveryConfig
             {
                 NormalHealAmount = 1,

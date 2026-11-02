@@ -18,16 +18,28 @@ namespace Rebellion.Gameplay
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly Dictionary<string, bool> _growthEligibilityByTypeID = new();
 
         /// <summary>
         /// Creates a new JediCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for initial Force ratings.</param>
-        public JediCommands(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="officerTemplates">Authored growth policies used by saves without an explicit override.</param>
+        public JediCommands(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IEnumerable<Officer> officerTemplates = null
+        )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            foreach (Officer template in officerTemplates ?? Array.Empty<Officer>())
+                if (
+                    template?.ForceGrowthRequiresEligibility is bool requiresEligibility
+                    && !string.IsNullOrEmpty(template.TypeID)
+                )
+                    _growthEligibilityByTypeID.Add(template.TypeID, requiresEligibility);
         }
 
         /// <summary>
@@ -42,7 +54,11 @@ namespace Rebellion.Gameplay
         )
         {
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            if (growth <= 0 || officer?.GrowsForceOnMission != true || !officer.IsForceEligible)
+            if (
+                growth <= 0
+                || officer?.GrowsForceOnMission != true
+                || (RequiresForceEligibility(officer) && !officer.IsForceEligible)
+            )
                 return null;
 
             int previousForceRank = officer.ForceRank;
@@ -59,6 +75,25 @@ namespace Rebellion.Gameplay
                 SourceEventInstanceID = sourceEventInstanceID,
                 Tick = _game.CurrentTick,
             };
+        }
+
+        /// <summary>
+        /// Resolves the unit's growth policy, inheriting authored defaults for older saves.
+        /// Units without an authored override retain the eligibility requirement.
+        /// </summary>
+        /// <param name="officer">The officer receiving a capture-evasion reward.</param>
+        /// <returns>Whether the reward requires Force eligibility.</returns>
+        private bool RequiresForceEligibility(Officer officer)
+        {
+            if (officer.ForceGrowthRequiresEligibility.HasValue)
+                return officer.ForceGrowthRequiresEligibility.Value;
+
+            return string.IsNullOrEmpty(officer.TypeID)
+                || !_growthEligibilityByTypeID.TryGetValue(
+                    officer.TypeID,
+                    out bool requiresEligibility
+                )
+                || requiresEligibility;
         }
 
         /// <summary>

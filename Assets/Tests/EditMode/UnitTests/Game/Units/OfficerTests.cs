@@ -11,6 +11,23 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(false, 79, false)]
+        [TestCase(false, 80, true)]
+        [TestCase(false, 81, true)]
+        [TestCase(true, 79, false)]
+        [TestCase(true, 80, true)]
+        [TestCase(true, -1, false)]
+        public void HealsFast_ForceRankThreshold_DoesNotRequireSensitivity(
+            bool sensitive,
+            int forceRank,
+            bool expected
+        )
+        {
+            Officer officer = new Officer { IsForceSensitive = sensitive, ForceValue = forceRank };
+
+            Assert.AreEqual(expected, officer.HealsFast(80));
+        }
+
         [TestCase(32767, 32767)]
         [TestCase(32768, -32768)]
         [TestCase(65536, 0)]
@@ -405,6 +422,7 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.IsForceSensitive = true;
             originalOfficer.IsForceEligible = true;
             originalOfficer.ForceValue = 75;
+            originalOfficer.ForceGrowthRequiresEligibility = true;
             originalOfficer.ForceTrainingAdjustment = 10;
             originalOfficer.NextForceDiscoveryTick = 713;
             originalOfficer.NextEscapeAttemptTick = 725;
@@ -421,6 +439,7 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
             Assert.AreEqual(713, deserializedOfficer.NextForceDiscoveryTick);
+            Assert.AreEqual(true, deserializedOfficer.ForceGrowthRequiresEligibility);
             CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
             Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
             Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);

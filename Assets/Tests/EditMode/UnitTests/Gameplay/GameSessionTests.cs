@@ -1424,6 +1424,7 @@ namespace Rebellion.Tests.Gameplay
         public void Tick_InjuredOfficerAtFriendlyPlanet_Heals()
         {
             GameConfig config = TestConfig.Create();
+            config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
             GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "FNALL1" };
@@ -3067,6 +3068,7 @@ namespace Rebellion.Tests.Gameplay
         ) CreateRecoveryGame()
         {
             GameConfig config = new GameConfig();
+            config.Jedi.FastHealThreshold = 80;
             config.Recovery.NormalHealAmount = 1;
             config.Recovery.FastRepairAmount = 1;
             config.Recovery.FastReplacementAmount = 1;

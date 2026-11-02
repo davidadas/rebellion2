@@ -85,10 +85,11 @@ shift by themselves.
 | `IsJediTrainer` | Whether the officer may train another eligible officer. |
 | `ForceDiscoveryConditionals` | Additional scripting conditions required for discovery. `$discoverer` contains the scanning officer. |
 | `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability. |
+| `ForceGrowthRequiresEligibility` | Whether capture-evasion growth requires Force eligibility. An unset saved value inherits the active officer template; without an authored override, eligibility is required. |
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
 
-Capture evasion advances eligible officers by `Jedi.ForceGrowthPerMission`; the serialized field
+Capture evasion advances configured officers by `Jedi.ForceGrowthPerMission`; the serialized field
 names are retained for compatibility. Force progression reports cover experience and training,
 including numeric rank changes within the same displayed rank label. Initializing a zero rank
 does not produce a separate growth report.

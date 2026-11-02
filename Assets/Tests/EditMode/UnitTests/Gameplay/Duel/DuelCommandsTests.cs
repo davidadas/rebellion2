@@ -81,14 +81,22 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("encounter", growth.SourceEventInstanceID);
         }
 
-        [Test]
-        public void Resolve_IneligibleOfficerEvadesCapture_DoesNotApplyForceGrowth()
+        [TestCase(false, false, 11)]
+        [TestCase(false, true, 10)]
+        [TestCase(true, false, 11)]
+        [TestCase(true, true, 11)]
+        public void Resolve_OfficerEvadesCapture_AppliesConfiguredEligibilityRequirement(
+            bool forceEligible,
+            bool requiresEligibility,
+            int expectedForce
+        )
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
             encountered.IsMain = true;
             opposing.IsMain = true;
             encountered.GrowsForceOnMission = true;
-            encountered.IsForceEligible = false;
+            encountered.IsForceEligible = forceEligible;
+            encountered.ForceGrowthRequiresEligibility = requiresEligibility;
             encountered.ForceValue = 10;
             DuelCommands commands = new DuelCommands(
                 game,
@@ -97,8 +105,39 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = commands.Resolve(encountered, opposing);
 
-            Assert.IsEmpty(results.OfType<ForceExperienceResult>());
-            Assert.AreEqual(10, encountered.ForceValue);
+            Assert.AreEqual(
+                expectedForce == 10 ? 0 : 1,
+                results.OfType<ForceExperienceResult>().Count()
+            );
+            Assert.AreEqual(expectedForce, encountered.ForceValue);
+        }
+
+        [TestCase("OFAL003", false, 11)]
+        [TestCase("OFAL003", true, 11)]
+        [TestCase("OFAL002", false, 10)]
+        [TestCase("OFAL002", true, 11)]
+        [TestCase("unconfigured", false, 10)]
+        public void Resolve_SavedOfficerWithoutGrowthPolicy_InheritsAuthoredRequirement(
+            string typeID,
+            bool forceEligible,
+            int expectedForce
+        )
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            encountered.TypeID = typeID;
+            encountered.GrowsForceOnMission = true;
+            encountered.IsForceEligible = forceEligible;
+            encountered.ForceGrowthRequiresEligibility = null;
+            encountered.ForceValue = 10;
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 });
+            JediCommands growth = new JediCommands(game, random, TestContent.Data.Officers);
+            DuelCommands commands = new DuelCommands(game, random, growth);
+
+            commands.Resolve(encountered, opposing);
+
+            Assert.AreEqual(expectedForce, encountered.ForceValue);
         }
 
         [Test]

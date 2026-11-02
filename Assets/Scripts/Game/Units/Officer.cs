@@ -309,6 +309,12 @@ namespace Rebellion.Game.Units
         public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
+        /// Gets or sets whether capture-evasion growth requires Force eligibility.
+        /// An unset value inherits the officer template's policy.
+        /// </summary>
+        public bool? ForceGrowthRequiresEligibility { get; set; }
+
+        /// <summary>
         /// Gets or sets additional discovery requirements evaluated with the scanning officer
         /// available in the <c>$discoverer</c> binding.
         /// </summary>
@@ -536,6 +542,7 @@ namespace Rebellion.Game.Units
             copy.JediLevelVariance = JediLevelVariance;
             copy.IsJediTrainer = IsJediTrainer;
             copy.GrowsForceOnMission = GrowsForceOnMission;
+            copy.ForceGrowthRequiresEligibility = ForceGrowthRequiresEligibility;
             copy.ForceDiscoveryConditionals = new List<GameConditional>(ForceDiscoveryConditionals);
             copy.IsKnownJedi = IsKnownJedi;
             copy.IsForceSensitive = IsForceSensitive;
@@ -881,10 +888,10 @@ namespace Rebellion.Game.Units
         /// Returns whether the officer qualifies for the accelerated Force-user healing rate.
         /// </summary>
         /// <param name="minimumForceRank">The minimum Force rank required for fast healing.</param>
-        /// <returns>True when the officer is Force-sensitive and meets the rank threshold; otherwise, false.</returns>
+        /// <returns>True when the effective Force rank meets the threshold; otherwise, false.</returns>
         public bool HealsFast(int minimumForceRank)
         {
-            return IsForceSensitive && ForceRank >= minimumForceRank;
+            return ForceRank >= minimumForceRank;
         }
 
         /// <summary>
