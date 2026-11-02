@@ -148,6 +148,58 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordIntelligenceSnapshot_AllWithoutDescendants_PreservesFleetHierarchy()
+        {
+            _game.AttachNode(CreateOfficer("STATIONED_OFFICER", _empire), _coruscant);
+            _game.AttachNode(CreateRegiment("STATIONED_REGIMENT", _empire), _coruscant);
+            _game.AttachNode(CreateStarfighter("STATIONED_FIGHTER", _empire), _coruscant);
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+            ship.RegimentCapacity = 1;
+            ship.StarfighterCapacity = 1;
+            _game.AttachNode(CreateOfficer("EMBARKED_OFFICER", _empire), ship);
+            _game.AttachNode(CreateRegiment("EMBARKED_REGIMENT", _empire), ship);
+            _game.AttachNode(CreateStarfighter("EMBARKED_FIGHTER", _empire), ship);
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.All,
+                includeDescendants: false
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            CollectionAssert.AreEqual(
+                new[] { "STATIONED_OFFICER" },
+                snapshot.Officers.Select(officer => officer.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "STATIONED_REGIMENT" },
+                snapshot.Regiments.Select(regiment => regiment.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "STATIONED_FIGHTER" },
+                snapshot.Starfighters.Select(starfighter => starfighter.InstanceID)
+            );
+            CapitalShip knownShip = snapshot.Fleets.Single().GetChildren<CapitalShip>().Single();
+            Assert.AreEqual(
+                "EMBARKED_OFFICER",
+                knownShip.GetChildren<Officer>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                "EMBARKED_REGIMENT",
+                knownShip.GetChildren<Regiment>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                "EMBARKED_FIGHTER",
+                knownShip.GetChildren<Starfighter>().Single().InstanceID
+            );
+        }
+
+        [Test]
         public void RecordIntelligenceSnapshot_CapitalShipsWithCombatCargo_ExcludesPersonnel()
         {
             Regiment stationedRegiment = CreateRegiment("STATIONED_REGIMENT", _empire);
@@ -178,23 +230,8 @@ namespace Rebellion.Tests.Game.FogOfWar
                 _coruscant,
                 _coreSector,
                 42,
-                PlanetIntelligenceCategory.Starfighters,
+                PlanetIntelligenceCategory.PlanetMilitaryProduction,
                 includeDescendants: false
-            );
-            recorder.RecordIntelligenceSnapshot(
-                _alliance,
-                _coruscant,
-                _coreSector,
-                42,
-                PlanetIntelligenceCategory.Regiments,
-                includeDescendants: false
-            );
-            recorder.RecordIntelligenceSnapshot(
-                _alliance,
-                _coruscant,
-                _coreSector,
-                42,
-                PlanetIntelligenceCategory.CapitalShips
             );
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
@@ -217,6 +254,104 @@ namespace Rebellion.Tests.Game.FogOfWar
                 new[] { "STATIONED_FIGHTER" },
                 snapshot.Starfighters.Select(starfighter => starfighter.InstanceID)
             );
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_PartialFleetAfterFullReveal_PreservesUnrefreshedCargo()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+            ship.RegimentCapacity = 2;
+            ship.StarfighterCapacity = 2;
+            _game.AttachNode(CreateOfficer("KNOWN_OFFICER", _empire), ship);
+            _game.AttachNode(CreateRegiment("KNOWN_REGIMENT", _empire), ship);
+            _game.AttachNode(CreateStarfighter("KNOWN_FIGHTER", _empire), ship);
+            _game.AttachNode(
+                new SpecialForces
+                {
+                    InstanceID = "KNOWN_AGENT",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                41,
+                PlanetIntelligenceCategory.All,
+                includeDescendants: false
+            );
+            _game.AttachNode(CreateOfficer("NEW_OFFICER", _empire), ship);
+            _game.AttachNode(CreateRegiment("NEW_REGIMENT", _empire), ship);
+            _game.AttachNode(CreateStarfighter("NEW_FIGHTER", _empire), ship);
+            _game.AttachNode(
+                new SpecialForces
+                {
+                    InstanceID = "NEW_AGENT",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.PlanetMilitaryProduction,
+                includeDescendants: false
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEqual(
+                new[] { "KNOWN_OFFICER" },
+                knownShip.GetChildren<Officer>().Select(officer => officer.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "KNOWN_AGENT" },
+                knownShip.GetChildren<SpecialForces>().Select(unit => unit.InstanceID)
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { "KNOWN_REGIMENT", "NEW_REGIMENT" },
+                knownShip.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { "KNOWN_FIGHTER", "NEW_FIGHTER" },
+                knownShip.GetChildren<Starfighter>().Select(starfighter => starfighter.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RecordPlanetLossSnapshot_NarrowGroundForceIntelligence_ClearsCategories()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                41,
+                PlanetIntelligenceCategory.Regiments | PlanetIntelligenceCategory.SpecialForces
+            );
+
+            recorder.RecordPlanetLossSnapshot(_alliance, _coruscant, _coreSector, 42);
+
+            PlanetIntelligenceCategory categories = _alliance
+                .Fog
+                .Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .RevealedCategories;
+            Assert.IsFalse(categories.HasFlag(PlanetIntelligenceCategory.Regiments));
+            Assert.IsFalse(categories.HasFlag(PlanetIntelligenceCategory.SpecialForces));
         }
 
         [Test]

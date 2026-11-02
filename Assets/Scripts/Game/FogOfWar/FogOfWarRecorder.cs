@@ -568,14 +568,7 @@ namespace Rebellion.Game.FogOfWar
                 UpdatePlanetDetailState(snapshot, planet);
             snapshot.RevealedCategories = accumulatedCategories;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
-            UpdateFleetIntelligence(
-                faction,
-                planet,
-                snapshot,
-                categories,
-                accumulatedCategories,
-                includeDescendants
-            );
+            UpdateFleetIntelligence(faction, planet, snapshot, categories, includeDescendants);
             UpdateGroundForceIntelligence(
                 faction,
                 planet,
@@ -626,45 +619,48 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Rebuilds fleet intelligence and removes cargo categories that remain hidden.
+        /// Updates fleet intelligence while retaining cargo categories not refreshed by the
+        /// current observation.
         /// </summary>
         /// <param name="faction">The faction.</param>
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="categories">The categories.</param>
-        /// <param name="accumulatedCategories">The accumulated categories.</param>
-        /// <param name="includeDescendants">Whether matching fleet contents are included.</param>
+        /// <param name="includeDescendants">Whether selected cargo below known ships is refreshed.</param>
         private void UpdateFleetIntelligence(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
             PlanetIntelligenceCategory categories,
-            PlanetIntelligenceCategory accumulatedCategories,
             bool includeDescendants
         )
         {
-            PlanetIntelligenceCategory fleetCategories =
-                PlanetIntelligenceCategory.CapitalShips
-                | PlanetIntelligenceCategory.Officers
-                | PlanetIntelligenceCategory.GroundForces
-                | PlanetIntelligenceCategory.Regiments
-                | PlanetIntelligenceCategory.SpecialForces
-                | PlanetIntelligenceCategory.Starfighters
-                | PlanetIntelligenceCategory.Fleets;
-            if (
-                !accumulatedCategories.HasFlag(PlanetIntelligenceCategory.CapitalShips)
-                    && !accumulatedCategories.HasFlag(PlanetIntelligenceCategory.Fleets)
-                || (categories & fleetCategories) == PlanetIntelligenceCategory.None
-            )
+            bool revealsFleets = categories.HasFlag(PlanetIntelligenceCategory.Fleets);
+            if (revealsFleets)
+            {
+                snapshot.Fleets.Clear();
+                AddFleetsToSnapshot(faction, planet, snapshot, true);
                 return;
+            }
 
-            if (!includeDescendants && !categories.HasFlag(PlanetIntelligenceCategory.Fleets))
+            if (categories.HasFlag(PlanetIntelligenceCategory.CapitalShips))
+            {
+                List<Fleet> previousFleets = snapshot.Fleets.ToList();
+                snapshot.Fleets.Clear();
+                AddFleetsToSnapshot(faction, planet, snapshot, true);
+                FilterFleetIntelligence(snapshot.Fleets, categories);
+                PreserveUnrevealedFleetCargo(previousFleets, snapshot.Fleets, categories);
                 return;
+            }
 
-            snapshot.Fleets.Clear();
-            AddFleetsToSnapshot(faction, planet, snapshot, true);
-            if (!accumulatedCategories.HasFlag(PlanetIntelligenceCategory.Fleets))
-                FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
+            if (includeDescendants)
+                RefreshKnownFleetCargo(
+                    faction,
+                    planet,
+                    snapshot.Fleets,
+                    categories,
+                    snapshot.TickCaptured
+                );
         }
 
         /// <summary>
@@ -877,6 +873,179 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Carries forward previously observed ship cargo that the current intelligence does not
+        /// refresh.
+        /// </summary>
+        /// <param name="previousFleets">The previously observed fleets.</param>
+        /// <param name="currentFleets">The fleets refreshed by the current intelligence.</param>
+        /// <param name="categories">The categories refreshed by the current intelligence.</param>
+        private static void PreserveUnrevealedFleetCargo(
+            IEnumerable<Fleet> previousFleets,
+            IEnumerable<Fleet> currentFleets,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            Dictionary<string, CapitalShip> previousShips = previousFleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Where(ship => !string.IsNullOrEmpty(ship.InstanceID))
+                .GroupBy(ship => ship.InstanceID)
+                .ToDictionary(group => group.Key, group => group.First());
+            foreach (
+                CapitalShip currentShip in currentFleets.SelectMany(fleet =>
+                    fleet.GetChildren<CapitalShip>()
+                )
+            )
+            {
+                if (
+                    string.IsNullOrEmpty(currentShip.InstanceID)
+                    || !previousShips.TryGetValue(
+                        currentShip.InstanceID,
+                        out CapitalShip previousShip
+                    )
+                )
+                    continue;
+
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
+                    PreserveShipChildren(currentShip, previousShip.GetChildren<Officer>());
+                if (
+                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    && !categories.HasFlag(PlanetIntelligenceCategory.Regiments)
+                )
+                    PreserveShipChildren(currentShip, previousShip.GetChildren<Regiment>());
+                if (
+                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    && !categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
+                )
+                    PreserveShipChildren(currentShip, previousShip.GetChildren<SpecialForces>());
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+                    PreserveShipChildren(currentShip, previousShip.GetChildren<Starfighter>());
+            }
+        }
+
+        /// <summary>
+        /// Copies remembered children into a refreshed ship without reading their live state.
+        /// </summary>
+        /// <typeparam name="T">The remembered child type.</typeparam>
+        /// <param name="destination">The refreshed ship.</param>
+        /// <param name="rememberedChildren">The previously observed children.</param>
+        private static void PreserveShipChildren<T>(
+            CapitalShip destination,
+            IEnumerable<T> rememberedChildren
+        )
+            where T : class, ISceneNode
+        {
+            foreach (T rememberedChild in rememberedChildren)
+            {
+                T copy = CopyEntityForSnapshot(rememberedChild);
+                copy.SetParent(destination);
+                destination.AddChild(copy);
+            }
+        }
+
+        /// <summary>
+        /// Refreshes selected cargo within already-known ships without revealing or updating their
+        /// containing fleet and ship state.
+        /// </summary>
+        /// <param name="faction">The faction receiving the intelligence.</param>
+        /// <param name="planet">The planet supplying current cargo state.</param>
+        /// <param name="knownFleets">The previously observed fleet hierarchy.</param>
+        /// <param name="categories">The cargo categories refreshed by the intelligence.</param>
+        /// <param name="observedAtTick">The tick when the cargo was observed.</param>
+        private static void RefreshKnownFleetCargo(
+            Faction faction,
+            Planet planet,
+            IEnumerable<Fleet> knownFleets,
+            PlanetIntelligenceCategory categories,
+            int observedAtTick
+        )
+        {
+            Dictionary<string, CapitalShip> liveShips = planet
+                .GetChildren<Fleet>()
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Where(ship => !string.IsNullOrEmpty(ship.InstanceID))
+                .GroupBy(ship => ship.InstanceID)
+                .ToDictionary(group => group.Key, group => group.First());
+            foreach (
+                CapitalShip knownShip in knownFleets.SelectMany(fleet =>
+                    fleet.GetChildren<CapitalShip>()
+                )
+            )
+            {
+                if (
+                    string.IsNullOrEmpty(knownShip.InstanceID)
+                    || !liveShips.TryGetValue(knownShip.InstanceID, out CapitalShip liveShip)
+                )
+                    continue;
+
+                if (categories.HasFlag(PlanetIntelligenceCategory.Officers))
+                    ReplaceShipChildren(
+                        knownShip,
+                        liveShip
+                            .GetChildren<Officer>()
+                            .Where(officer =>
+                                officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured
+                            ),
+                        observedAtTick
+                    );
+                if (
+                    categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    || categories.HasFlag(PlanetIntelligenceCategory.Regiments)
+                )
+                    ReplaceShipChildren(
+                        knownShip,
+                        liveShip
+                            .GetChildren<Regiment>()
+                            .Where(regiment => regiment.OwnerInstanceID != faction.InstanceID),
+                        observedAtTick
+                    );
+                if (
+                    categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
+                    || categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
+                )
+                    ReplaceShipChildren(
+                        knownShip,
+                        liveShip
+                            .GetChildren<SpecialForces>()
+                            .Where(unit => unit.OwnerInstanceID != faction.InstanceID),
+                        observedAtTick
+                    );
+                if (categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+                    ReplaceShipChildren(
+                        knownShip,
+                        liveShip
+                            .GetChildren<Starfighter>()
+                            .Where(starfighter =>
+                                starfighter.OwnerInstanceID != faction.InstanceID
+                            ),
+                        observedAtTick
+                    );
+            }
+        }
+
+        /// <summary>
+        /// Replaces one remembered ship-child category with current observed copies.
+        /// </summary>
+        /// <typeparam name="T">The ship-child type.</typeparam>
+        /// <param name="destination">The remembered ship receiving the current children.</param>
+        /// <param name="currentChildren">The current children selected by the observation.</param>
+        /// <param name="observedAtTick">The tick when the children were observed.</param>
+        private static void ReplaceShipChildren<T>(
+            CapitalShip destination,
+            IEnumerable<T> currentChildren,
+            int observedAtTick
+        )
+            where T : class, ISceneNode
+        {
+            destination.RemoveChildren<T>(_ => true);
+            foreach (T currentChild in currentChildren)
+            {
+                T copy = CopyEntityForObservation(currentChild, observedAtTick);
+                copy.SetParent(destination);
+                destination.AddChild(copy);
+            }
+        }
+
+        /// <summary>
         /// Updates a faction's recorded owner for a planet and its already-known buildings without
         /// revealing other current state.
         /// </summary>
@@ -940,6 +1109,8 @@ namespace Rebellion.Game.FogOfWar
                 PlanetIntelligenceCategory.CapitalShips
                 | PlanetIntelligenceCategory.Starfighters
                 | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Regiments
+                | PlanetIntelligenceCategory.SpecialForces
                 | PlanetIntelligenceCategory.Officers
                 | PlanetIntelligenceCategory.Fleets;
             snapshot.RevealedCategories =

@@ -214,6 +214,24 @@ namespace Rebellion.Tests.Game.GameEvents
         }
 
         [Test]
+        public void Validate_NamedCompositeCategoryReveal_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>INTELLIGENCE</InstanceID>
+    <Schedule><At Tick=""1""/></Schedule>
+    <Actions>
+      <RevealToFaction FactionInstanceID=""FNALL1"" PlanetInstanceID=""CORUSCANT"" Category=""PlanetMilitaryProduction"" IncludeDescendants=""false""/>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
         public void Validate_SendMessageSubjectImageToggle_AcceptsDocument()
         {
             const string xml =

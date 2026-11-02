@@ -25,6 +25,8 @@ namespace Rebellion.Game.FogOfWar
         PlanetaryDefenses = 1 << 12,
         ProductionFacilities = 1 << 13,
         Fleets = 1 << 14,
+        PlanetMilitaryProduction =
+            Planet | CapitalShips | Starfighters | Buildings | Manufacturing | Regiments,
         All =
             Planet
             | CapitalShips
