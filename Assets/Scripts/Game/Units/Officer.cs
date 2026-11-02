@@ -310,7 +310,7 @@ namespace Rebellion.Game.Units
 
         /// <summary>
         /// Gets or sets whether capture-evasion growth requires Force eligibility.
-        /// An unset value inherits the officer template's policy.
+        /// An unset value requires eligibility.
         /// </summary>
         public bool? ForceGrowthRequiresEligibility { get; set; }
 
@@ -914,7 +914,9 @@ namespace Rebellion.Game.Units
         internal void InitializeForceValue(IRandomNumberProvider provider)
         {
             if (ForceValue == 0 && IsForceSensitive && IsForceEligible)
-                ForceValue = JediLevel + provider.NextInt(0, JediLevelVariance + 1);
+                ForceValue =
+                    JediLevel
+                    + (JediLevelVariance > 0 ? provider.NextInt(0, JediLevelVariance + 1) : 0);
         }
 
         /// <summary>

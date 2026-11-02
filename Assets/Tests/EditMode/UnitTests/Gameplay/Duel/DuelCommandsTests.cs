@@ -132,7 +132,13 @@ namespace Rebellion.Tests.Gameplay
             encountered.ForceGrowthRequiresEligibility = null;
             encountered.ForceValue = 10;
             SequenceRNG random = new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 });
-            JediCommands growth = new JediCommands(game, random, TestContent.Data.Officers);
+            GameDataCatalog catalog = TestGameData.Create(
+                game.Config,
+                officerTraits: TestContent.Data.OfficerTraits,
+                officers: TestContent.Data.Officers
+            );
+            catalog.BindOfficerDefinitions(new[] { encountered });
+            JediCommands growth = new JediCommands(game, random);
             DuelCommands commands = new DuelCommands(game, random, growth);
 
             commands.Resolve(encountered, opposing);

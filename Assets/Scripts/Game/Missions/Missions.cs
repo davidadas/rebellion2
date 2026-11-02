@@ -1746,7 +1746,7 @@ namespace Rebellion.Game.Missions
                 return null;
 
             int catchUpRange = forceRankGap * game.Config.Jedi.TrainingCatchUpPercent / 100;
-            int bonus = provider.NextInt(0, catchUpRange + 1);
+            int bonus = catchUpRange > 0 ? provider.NextInt(0, catchUpRange + 1) : 0;
             if (bonus <= 0)
                 return null;
 

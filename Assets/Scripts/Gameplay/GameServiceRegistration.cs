@@ -104,11 +104,7 @@ namespace Rebellion.Gameplay
             services.AddSingleton<PlanetaryControlQueries>();
             services.AddSingleton<PlanetaryControlCommands>();
             services.AddSingleton<UprisingResolver>();
-            services.AddSingleton<JediCommands>(locator => new JediCommands(
-                locator.GetService<GameRoot>(),
-                locator.GetService<IRandomNumberProvider>(),
-                gameData.Officers
-            ));
+            services.AddSingleton<JediCommands>();
             services.AddSingleton<MissionQueries>();
             services.AddSingleton<MissionBetrayalResolver>();
             services.AddSingleton<MissionResolver>(locator => new MissionResolver(

@@ -247,6 +247,19 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_ZeroCatchUpRange_DoesNotConsumeBonusRoll()
+        {
+            _game.Config.Jedi.TrainingCatchUpPercent = 0;
+            JediTrainingMission mission = CreateMission();
+            QueueRNG random = new QueueRNG(0, 0, 0.75);
+
+            mission.ResolveObjective(_game, random);
+
+            Assert.AreEqual(0.75, random.NextDouble());
+            Assert.AreEqual(0, _student.ForceTrainingAdjustment);
+        }
+
+        [Test]
         public void ResolveObjective_TrainingProgress_DoesNotImproveDiplomacyRating()
         {
             int trainerDiplomacy = _trainer.GetBaseRating(SkillRating.Diplomacy);

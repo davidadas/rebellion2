@@ -695,6 +695,26 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
+        public void Execute_SetForceEligibleWithoutVariance_InitializesValueWithoutRandomRoll()
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = 0;
+            officer.JediLevel = 10;
+            officer.JediLevelVariance = 0;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new ThrowingRNG()
+            );
+
+            Assert.AreEqual(10, officer.ForceValue);
+        }
+
+        [Test]
         public void Execute_ApplyOfficerInjuryInclusiveRange_AppliesRolledSeverity()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

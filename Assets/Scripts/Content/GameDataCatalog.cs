@@ -164,11 +164,16 @@ public sealed class GameDataCatalog
     }
 
     /// <summary>
-    /// Connects runtime officers to the validated trait definitions in this catalog.
+    /// Connects runtime officers to the catalog's trait definitions and template-owned Force rules.
     /// </summary>
     /// <param name="officers">The runtime officers to bind.</param>
-    internal void BindOfficerTraits(IEnumerable<Officer> officers)
+    internal void BindOfficerDefinitions(IEnumerable<Officer> officers)
     {
+        Dictionary<string, Officer> templatesByTypeID = new(StringComparer.Ordinal);
+        foreach (Officer template in Officers)
+            if (!string.IsNullOrEmpty(template.TypeID))
+                templatesByTypeID.Add(template.TypeID, template);
+
         foreach (Officer officer in officers ?? throw new ArgumentNullException(nameof(officers)))
         {
             HashSet<(string TraitID, string SourceID)> discoveredGrants =
@@ -191,6 +196,20 @@ public sealed class GameDataCatalog
                     );
             }
             officer.BindTraitDefinitions(_officerTraitsByID);
+            if (
+                !string.IsNullOrEmpty(officer.TypeID)
+                && templatesByTypeID.TryGetValue(officer.TypeID, out Officer template)
+            )
+            {
+                officer.JediProbability = template.JediProbability;
+                officer.JediLevel = template.JediLevel;
+                officer.JediLevelVariance = template.JediLevelVariance;
+                officer.IsKnownJedi = template.IsKnownJedi;
+                officer.IsJediTrainer = template.IsJediTrainer;
+                officer.GrowsForceOnMission = template.GrowsForceOnMission;
+                officer.ForceGrowthRequiresEligibility = template.ForceGrowthRequiresEligibility;
+                officer.ForceDiscoveryConditionals = new(template.ForceDiscoveryConditionals);
+            }
         }
     }
 

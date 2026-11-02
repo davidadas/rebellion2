@@ -134,10 +134,10 @@ namespace Rebellion.Gameplay
                     if (_majorIndex.TryGetValue(instanceID, out int index))
                         return RemoveMajor(index);
                 if (_major.Count > 0)
-                    return RemoveMajor(random.NextInt(0, _major.Count));
+                    return RemoveMajor(_major.Count > 1 ? random.NextInt(0, _major.Count) : 0);
                 if (_minor.Count == 0)
                     return null;
-                int selected = random.NextInt(0, _minor.Count);
+                int selected = _minor.Count > 1 ? random.NextInt(0, _minor.Count) : 0;
                 Officer officer = _minor[selected];
                 _minor[selected] = _minor[_minor.Count - 1];
                 _minor.RemoveAt(_minor.Count - 1);

@@ -189,6 +189,23 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(expectedMatch, pairs.Count == 1);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SelectPairs_SingleCandidatesWithNoEncounterChance_DoesNotConsumeRandomState(
+            bool isMain
+        )
+        {
+            Officer participant = CreateOfficer("participant", 40, isMain);
+            Officer defender = CreateOfficer("defender", 60, isMain);
+
+            var pairs = new MissionForceEncounterSelector(_config, new ThrowingRNG()).SelectPairs(
+                new[] { participant },
+                new[] { defender }
+            );
+
+            Assert.IsEmpty(pairs);
+        }
+
         /// <summary>
         /// Creates a scoped officer with a stored Force rank and major/minor classification.
         /// </summary>

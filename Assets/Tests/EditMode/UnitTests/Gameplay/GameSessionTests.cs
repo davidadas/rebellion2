@@ -951,6 +951,82 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
         }
 
+        [TestCase("OFAL003", true)]
+        [TestCase("OFAL002", false)]
+        public void Constructor_SavedOfficerWithStaleForceRules_BindsAuthoredRules(
+            string typeID,
+            bool trainer
+        )
+        {
+            Officer template = TestContent.Data.Officers.Single(officer =>
+                officer.TypeID == typeID
+            );
+            Officer officer = EntityFactory.CreateOfficer("saved", _faction.InstanceID);
+            officer.TypeID = typeID;
+            officer.IsJediTrainer = !trainer;
+            officer.GrowsForceOnMission = !template.GrowsForceOnMission;
+            officer.ForceGrowthRequiresEligibility = !template.ForceGrowthRequiresEligibility;
+            officer.JediProbability = -1;
+            officer.JediLevel = -1;
+            officer.JediLevelVariance = -1;
+            officer.IsKnownJedi = !template.IsKnownJedi;
+            officer.ForceValue = 37;
+            officer.ForceTrainingAdjustment = 9;
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            _game.AttachNode(officer, _planet);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.AreEqual(trainer, officer.IsJediTrainer);
+            Assert.AreEqual(template.JediProbability, officer.JediProbability);
+            Assert.AreEqual(template.JediLevel, officer.JediLevel);
+            Assert.AreEqual(template.JediLevelVariance, officer.JediLevelVariance);
+            Assert.AreEqual(template.IsKnownJedi, officer.IsKnownJedi);
+            Assert.AreEqual(template.GrowsForceOnMission, officer.GrowsForceOnMission);
+            Assert.AreEqual(
+                template.ForceGrowthRequiresEligibility,
+                officer.ForceGrowthRequiresEligibility
+            );
+            CollectionAssert.AreEqual(
+                template.ForceDiscoveryConditionals,
+                officer.ForceDiscoveryConditionals
+            );
+            Assert.AreNotSame(
+                template.ForceDiscoveryConditionals,
+                officer.ForceDiscoveryConditionals
+            );
+            Assert.AreEqual(37, officer.ForceValue);
+            Assert.AreEqual(9, officer.ForceTrainingAdjustment);
+            Assert.IsTrue(officer.IsForceSensitive);
+            Assert.IsFalse(officer.IsForceEligible);
+        }
+
+        [Test]
+        public void Constructor_UnrecruitedOfficer_BindsForceRulesBeforeRecruitment()
+        {
+            Officer template = TestContent.Data.Officers.Single(officer =>
+                officer.TypeID == "OFAL003"
+            );
+            Officer officer = EntityFactory.CreateOfficer("unrecruited", _faction.InstanceID);
+            officer.TypeID = template.TypeID;
+            _game.GetUnrecruitedOfficers().Add(officer);
+            _session.Dispose();
+
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officers: new[] { template })
+            );
+
+            Assert.IsTrue(officer.IsJediTrainer);
+            Assert.IsTrue(officer.GrowsForceOnMission);
+            Assert.IsFalse(officer.ForceGrowthRequiresEligibility.Value);
+        }
+
         [Test]
         public void Constructor_LoadedInvisibleSnapshot_BindsRememberedOfficerTraits()
         {
