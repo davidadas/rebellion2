@@ -464,7 +464,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyForceGrowth_EligibleOfficer_GrowsForce()
+        public void ApplyEncounterForceGrowth_EligibleOfficer_GrowsForce()
         {
             Officer luke = new Officer
             {
@@ -477,9 +477,7 @@ namespace Rebellion.Tests.Gameplay
             int before = luke.ForceValue;
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
 
-            List<GameResult> results = _system.ApplyForceGrowth(
-                new List<IMissionParticipant> { luke }
-            );
+            List<GameResult> results = _system.ApplyEncounterForceGrowth(luke);
             ForceExperienceResult result = results.OfType<ForceExperienceResult>().Single();
 
             Assert.AreEqual(before + growth, luke.ForceValue);
@@ -488,7 +486,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ApplyForceGrowth_NotForceEligible_NoGrowth()
+        public void ApplyEncounterForceGrowth_NotForceEligible_NoGrowth()
         {
             Officer officer = new Officer
             {
@@ -500,7 +498,7 @@ namespace Rebellion.Tests.Gameplay
             };
             int before = officer.ForceValue;
 
-            _system.ApplyForceGrowth(new List<IMissionParticipant> { officer });
+            _system.ApplyEncounterForceGrowth(officer);
 
             Assert.AreEqual(before, officer.ForceValue);
         }

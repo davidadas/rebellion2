@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
 {
     /// <summary>
-    /// Routes mission completions to Force growth in batch order.
+    /// Routes successful linked-officer encounter evasions to Force growth in batch order.
     /// </summary>
     public sealed class JediObserver : IResultObserver, IDisposable
     {
@@ -23,44 +22,40 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Registers the mission-completion callback with the result bus.
+        /// Registers the linked-officer encounter callback with the result bus.
         /// </summary>
-        /// <param name="results">The bus that delivers mission completions.</param>
+        /// <param name="results">The bus that delivers linked-officer encounter results.</param>
         public void Connect(GameResultBus results)
         {
             if (_subscription != null)
                 throw new InvalidOperationException("Jedi observer is already connected.");
             _subscription = (
                 results ?? throw new ArgumentNullException(nameof(results))
-            ).Subscribe<MissionCompletedResult>(HandleResults);
+            ).Subscribe<DuelResult>(HandleResults);
         }
 
         /// <summary>
-        /// Stops receiving mission completions.
+        /// Stops receiving linked-officer encounter results.
         /// </summary>
         public void Dispose() => _subscription?.Dispose();
 
         /// <summary>
-        /// Applies Force growth for successful missions reported in a result batch.
+        /// Applies Force growth when an eligible encountered officer evades capture.
         /// </summary>
-        /// <param name="results">The result batch to inspect.</param>
-        /// <returns>Any Force experience results produced by successful missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<MissionCompletedResult> results)
+        /// <param name="results">The linked-officer encounter results to inspect.</param>
+        /// <returns>Any Force experience results produced by successful evasions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<DuelResult> results)
         {
             List<GameResult> forceResults = new List<GameResult>();
             if (results == null)
                 return forceResults;
 
-            foreach (
-                MissionCompletedResult result in results.Where(result =>
-                    result.Outcome == MissionOutcome.Success
-                    && result.Mission?.GetMainParticipants() != null
-                )
-            )
+            foreach (DuelResult result in results)
             {
-                forceResults.AddRange(
-                    _commands.ApplyForceGrowth(result.Mission.GetMainParticipants())
-                );
+                if (result?.EncounteredOfficerEvadedCapture == true)
+                    forceResults.AddRange(
+                        _commands.ApplyEncounterForceGrowth(result.EncounteredOfficer)
+                    );
             }
 
             return forceResults;

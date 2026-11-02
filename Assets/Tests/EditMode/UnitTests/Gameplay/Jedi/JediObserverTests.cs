@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Gameplay
         private JediObserver _observer;
 
         /// <summary>
-        /// Creates a mission-growth listener with the active game configuration.
+        /// Creates an encounter-growth listener with the active game configuration.
         /// </summary>
         [SetUp]
         public void SetUp()
@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_SuccessfulMission_AppliesForceGrowth()
+        public void HandleResults_EncounteredOfficerEvadesCapture_AppliesForceGrowth()
         {
             Officer luke = new Officer
             {
@@ -36,16 +36,13 @@ namespace Rebellion.Tests.Gameplay
                 IsForceEligible = true,
                 ForceValue = 10,
             };
-            Mission mission = new DiplomacyMission();
-            mission.AddChild(luke);
-
             List<GameResult> results = _observer.HandleResults(
-                new MissionCompletedResult[]
+                new[]
                 {
-                    new MissionCompletedResult
+                    new DuelResult
                     {
-                        Mission = mission,
-                        Outcome = MissionOutcome.Success,
+                        EncounteredOfficer = luke,
+                        EncounteredOfficerEvadedCapture = true,
                     },
                 }
             );
@@ -55,7 +52,56 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_RepeatedMissionSuccess_ReturnsSequentialGrowth()
+        public void HandleResults_CapturedEncounteredOfficer_DoesNotApplyForceGrowth()
+        {
+            Officer officer = new Officer
+            {
+                GrowsForceOnMission = true,
+                IsForceEligible = true,
+                ForceValue = 10,
+            };
+            List<GameResult> results = _observer.HandleResults(
+                new[]
+                {
+                    new DuelResult
+                    {
+                        EncounteredOfficer = officer,
+                        EncounteredOfficerCaptured = true,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreEqual(10, officer.ForceValue);
+        }
+
+        [Test]
+        public void HandleResults_OpposingOfficerEvadesCapture_DoesNotApplyForceGrowth()
+        {
+            Officer opposing = new Officer
+            {
+                GrowsForceOnMission = true,
+                IsForceEligible = true,
+                ForceValue = 10,
+            };
+
+            List<GameResult> results = _observer.HandleResults(
+                new[]
+                {
+                    new DuelResult
+                    {
+                        OpposingOfficer = opposing,
+                        EncounteredOfficerEvadedCapture = true,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreEqual(10, opposing.ForceValue);
+        }
+
+        [Test]
+        public void Connect_SuccessfulMission_DoesNotApplyForceGrowth()
         {
             Officer officer = new Officer
             {
@@ -65,43 +111,15 @@ namespace Rebellion.Tests.Gameplay
             };
             Mission mission = new DiplomacyMission();
             mission.AddChild(officer);
-            int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            _game.CurrentTick = 42;
+            GameResultBus results = new GameResultBus();
+            _observer.Connect(results);
 
-            List<ForceExperienceResult> results = _observer
-                .HandleResults(
-                    new[]
-                    {
-                        new MissionCompletedResult
-                        {
-                            Mission = mission,
-                            Outcome = MissionOutcome.Success,
-                        },
-                        new MissionCompletedResult
-                        {
-                            Mission = mission,
-                            Outcome = MissionOutcome.Failed,
-                        },
-                        new MissionCompletedResult
-                        {
-                            Mission = null,
-                            Outcome = MissionOutcome.Success,
-                        },
-                        new MissionCompletedResult
-                        {
-                            Mission = mission,
-                            Outcome = MissionOutcome.Success,
-                        },
-                    }
-                )
-                .OfType<ForceExperienceResult>()
-                .ToList();
+            List<GameResult> settled = results.Publish(
+                new MissionCompletedResult { Mission = mission, Outcome = MissionOutcome.Success }
+            );
 
-            Assert.AreEqual(2, results.Count);
-            Assert.AreEqual(10, results[0].PreviousForceRank);
-            Assert.AreEqual(10 + growth, results[1].PreviousForceRank);
-            Assert.AreEqual(10 + 2 * growth, officer.ForceValue);
-            Assert.IsTrue(results.All(result => result.Tick == 42));
+            Assert.AreEqual(10, officer.ForceValue);
+            Assert.IsEmpty(settled.OfType<ForceExperienceResult>());
         }
 
         [Test]
@@ -111,11 +129,9 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_NullEntry_ThrowsNullReferenceException()
+        public void HandleResults_NullEntry_ReturnsEmpty()
         {
-            Assert.Throws<System.NullReferenceException>(() =>
-                _observer.HandleResults(new MissionCompletedResult[] { null })
-            );
+            Assert.IsEmpty(_observer.HandleResults(new DuelResult[] { null }));
         }
     }
 }

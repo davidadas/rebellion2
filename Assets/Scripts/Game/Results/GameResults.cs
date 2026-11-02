@@ -601,6 +601,7 @@ namespace Rebellion.Game.Results
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
         public Planet Location { get; set; }
+        public bool EncounteredOfficerEvadedCapture { get; set; }
         public bool EncounteredOfficerCaptured { get; set; }
         public int EncounteredOfficerInjury { get; set; }
         public int OpposingOfficerInjury { get; set; }

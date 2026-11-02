@@ -87,7 +87,8 @@ namespace Rebellion.Gameplay
                 encounteredCombat,
                 opposingCombat,
                 sourceEventInstanceID,
-                reactions
+                reactions,
+                out bool evadedCapture
             );
             int encounteredInjury = encountered.InjuryPoints - injuryBefore;
             encounteredCombat = encountered.GetEffectiveRating(SkillRating.Combat);
@@ -128,6 +129,7 @@ namespace Rebellion.Gameplay
                         EncounteredOfficer = encountered,
                         OpposingOfficer = opposing,
                         Location = location,
+                        EncounteredOfficerEvadedCapture = evadedCapture,
                         EncounteredOfficerCaptured = captured && !encountered.IsKilled,
                         EncounteredOfficerInjury = encounteredInjury,
                         OpposingOfficerInjury = opposingInjury,
@@ -152,6 +154,7 @@ namespace Rebellion.Gameplay
         /// <param name="opposingCombat">The opposing combat.</param>
         /// <param name="sourceEventInstanceID">The authored event initiating the encounter, when applicable.</param>
         /// <param name="reactions">The reactions.</param>
+        /// <param name="evadedCapture">Whether the encountered officer passed the capture-avoidance roll.</param>
         /// <returns>True when the encountered officer is captured; otherwise false.</returns>
         private bool TryCaptureEncounteredOfficer(
             Officer encountered,
@@ -160,11 +163,12 @@ namespace Rebellion.Gameplay
             int encounteredCombat,
             int opposingCombat,
             string sourceEventInstanceID,
-            List<GameResult> reactions
+            List<GameResult> reactions,
+            out bool evadedCapture
         )
         {
             int avoidanceChance = _captureAvoidance.Lookup(encounteredCombat - opposingCombat);
-            bool evaded = RollPercent(avoidanceChance);
+            evadedCapture = RollPercent(avoidanceChance);
             GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
             int injury = TryRollInjury(
                 Math.Max(
@@ -173,7 +177,7 @@ namespace Rebellion.Gameplay
                 )
             );
             ApplyInjury(encountered, injury, opposing, sourceEventInstanceID, reactions);
-            if (evaded || encountered.IsKilled)
+            if (evadedCapture || encountered.IsKilled)
                 return false;
 
             if (!encountered.TryCapture(opposing.OwnerInstanceID))

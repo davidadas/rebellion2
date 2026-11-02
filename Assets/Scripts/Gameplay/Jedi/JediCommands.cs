@@ -30,44 +30,35 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
+        /// Grants configured Force growth to an eligible officer after a successful encounter evasion.
         /// </summary>
-        /// <param name="participants">The mission participants to update.</param>
+        /// <param name="officer">The encountered officer to update.</param>
         /// <returns>Any force experience results generated.</returns>
-        public List<GameResult> ApplyForceGrowth(IReadOnlyList<IMissionParticipant> participants)
+        public List<GameResult> ApplyEncounterForceGrowth(Officer officer)
         {
             List<GameResult> results = new List<GameResult>();
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
             if (growth <= 0)
                 return results;
 
-            // Only main participants gain Force from missions.
-            foreach (IMissionParticipant participant in participants)
+            if (officer?.GrowsForceOnMission == true && officer.IsForceEligible)
             {
-                if (
-                    participant is Officer officer
-                    && officer.GrowsForceOnMission
-                    && officer.IsForceEligible
-                )
-                {
-                    // ForceValue can exceed the normal max from discovery, but ForceRank cannot.
-                    int previousForceRank = officer.ForceRank;
-                    officer.ForceValue += growth;
-                    int currentForceRank = officer.ForceRank;
-                    results.Add(
-                        new ForceExperienceResult
-                        {
-                            Officer = officer,
-                            ExperienceGained = growth,
-                            PreviousForceRank = previousForceRank,
-                            CurrentForceRank = currentForceRank,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
-                    GameLogger.Log(
-                        $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
-                    );
-                }
+                int previousForceRank = officer.ForceRank;
+                officer.ForceValue += growth;
+                int currentForceRank = officer.ForceRank;
+                results.Add(
+                    new ForceExperienceResult
+                    {
+                        Officer = officer,
+                        ExperienceGained = growth,
+                        PreviousForceRank = previousForceRank,
+                        CurrentForceRank = currentForceRank,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+                GameLogger.Log(
+                    $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
+                );
             }
 
             return results;
