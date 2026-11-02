@@ -83,7 +83,7 @@ shift by themselves.
 | `JediLevelVariance` | Random variation applied when Force eligibility is initialized. |
 | `IsKnownJedi` | Whether the officer's Force ability begins publicly known. |
 | `IsJediTrainer` | Whether the officer may train another eligible officer. |
-| `GrowsForceOnMission` | Whether successful mission activity may advance Force ability. |
+| `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability. |
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
 

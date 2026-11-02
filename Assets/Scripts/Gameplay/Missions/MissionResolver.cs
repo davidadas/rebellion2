@@ -833,8 +833,6 @@ namespace Rebellion.Gameplay
                 _provider,
                 results
             );
-            if (killed)
-                return false;
             if (evaded)
             {
                 ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(
@@ -843,6 +841,11 @@ namespace Rebellion.Gameplay
                 );
                 if (growth != null)
                     results.Add(growth);
+            }
+            if (killed)
+                return false;
+            if (evaded)
+            {
                 return true;
             }
 

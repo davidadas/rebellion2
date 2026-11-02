@@ -3580,6 +3580,44 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [Test]
+        public void ProcessTick_ReturningOfficerEvadesButDies_GainsForceExperience()
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            game.Config.Assassination.KillProbability = 100;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            Fleet hostileFleet = detector.GetParentOfType<Fleet>();
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = false;
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            officer.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                Array.Empty<IMovable>(),
+                out _,
+                new List<GameResult>()
+            );
+            game.MoveNode(hostileFleet, returnPlanet);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(officer.IsKilled);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(officer, growth.Officer);
+            Assert.AreEqual(11, officer.ForceValue);
+        }
+
         [TestCase(1)]
         [TestCase(1000)]
         public void ProcessTick_ReturnFleetChangesDestination_ResolvesArrivalEncounterOnce(

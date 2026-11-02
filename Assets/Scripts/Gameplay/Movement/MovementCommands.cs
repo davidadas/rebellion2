@@ -1250,6 +1250,12 @@ namespace Rebellion.Gameplay
             foreach (GameResult injuryResult in injuryResults)
                 results.Add(injuryResult);
 
+            if (evaded)
+            {
+                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(officer);
+                if (growth != null)
+                    results.Add(growth);
+            }
             if (killed)
             {
                 _personnelCommands.KillOfficer(officer);
@@ -1257,9 +1263,6 @@ namespace Rebellion.Gameplay
             }
             if (evaded)
             {
-                ForceExperienceResult growth = _jediCommands.ApplyCaptureEvasionGrowth(officer);
-                if (growth != null)
-                    results.Add(growth);
                 return;
             }
 

@@ -3108,6 +3108,10 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
             spy.IsMain = false;
+            spy.GrowsForceOnMission = true;
+            spy.IsForceEligible = true;
+            spy.ForceValue = 10;
+            game.Config.Jedi.ForceGrowthPerMission = 1;
             game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
             game.Config.DuelResolution.MinimumInjuryChance = 100;
             game.Config.DuelResolution.InjuryBase = 1;
@@ -3134,6 +3138,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.Greater(spy.InjuryPoints, 0);
             Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
             Assert.AreSame(mission, results.OfType<OfficerKilledResult>().Single().ParentAtDeath);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreSame(spy, growth.Officer);
+            Assert.AreEqual(11, spy.ForceValue);
         }
 
         [Test]
