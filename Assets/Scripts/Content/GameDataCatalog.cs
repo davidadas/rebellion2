@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -8,6 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Provides the typed game data composed from the selected content pack and scenario.
@@ -104,6 +106,51 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+    }
+
+    /// <summary>
+    /// Creates detached event definitions for the campaign's enabled categories and dependencies.
+    /// </summary>
+    /// <param name="generationConfig">The campaign's resolved generation settings.</param>
+    /// <returns>The enabled event definitions in authored order.</returns>
+    internal GameEvent[] CreateGameEvents(GameGenerationConfig generationConfig)
+    {
+        if (generationConfig == null)
+            throw new ArgumentNullException(nameof(generationConfig));
+
+        HashSet<string> authoredEventIDs = new(
+            GameEvents.Select(gameEvent => gameEvent.InstanceID),
+            StringComparer.Ordinal
+        );
+        List<GameEvent> retained = GameEvents
+            .Where(gameEvent => generationConfig.IsEventCategoryEnabled(gameEvent.Category))
+            .ToList();
+        HashSet<string> retainedEventIDs = new(
+            retained.Select(gameEvent => gameEvent.InstanceID),
+            StringComparer.Ordinal
+        );
+
+        bool removedDependency;
+        do
+        {
+            GameEvent[] dependents = retained
+                .Where(gameEvent =>
+                    GetEventDependencies(gameEvent)
+                        .Any(dependencyID =>
+                            authoredEventIDs.Contains(dependencyID)
+                            && !retainedEventIDs.Contains(dependencyID)
+                        )
+                )
+                .ToArray();
+            removedDependency = dependents.Length > 0;
+            foreach (GameEvent dependent in dependents)
+            {
+                retained.Remove(dependent);
+                retainedEventIDs.Remove(dependent.InstanceID);
+            }
+        } while (removedDependency);
+
+        return retained.ToArray().GetDeepCopy();
     }
 
     /// <summary>
@@ -261,6 +308,27 @@ public sealed class GameDataCatalog
         HashSet<string> activePath = new HashSet<string>(StringComparer.Ordinal);
         foreach (Building building in buildings)
             ValidateBuildingUpgradePath(building, buildingsByTypeID, visited, activePath);
+    }
+
+    /// <summary>
+    /// Enumerates the event identifiers required by one authored schedule.
+    /// </summary>
+    /// <param name="gameEvent">The event whose schedule is inspected.</param>
+    /// <returns>The schedule's prerequisite event identifiers.</returns>
+    private static IEnumerable<string> GetEventDependencies(GameEvent gameEvent)
+    {
+        if (gameEvent.Schedule?.After != null)
+        {
+            yield return gameEvent.Schedule.After.EventInstanceID;
+            yield break;
+        }
+
+        AfterEvents dependencies = gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny;
+        if (dependencies == null)
+            yield break;
+
+        foreach (EventDependency dependency in dependencies.Events)
+            yield return dependency.EventInstanceID;
     }
 
     /// <summary>

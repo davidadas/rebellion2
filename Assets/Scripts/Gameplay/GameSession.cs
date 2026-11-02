@@ -241,6 +241,11 @@ namespace Rebellion.Gameplay
         /// </summary>
         private void RebuildDerivedState()
         {
+            GameEventCommands.InstallDefinitions(
+                _gameData.CreateGameEvents(
+                    Game.Summary?.CustomSettings?.GenerationConfig ?? _gameData.GenerationConfig
+                )
+            );
             GetService<HeadquartersObserver>().ReconcileState();
             _gameData.BindOfficerDefinitions(GetPersistedOfficers());
             GetService<JediCommands>().ReconcileDiscoveryState();

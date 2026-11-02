@@ -72,6 +72,58 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Constructor_StaleSavedEventDefinition_UsesCurrentCatalogActions()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameEvent previous = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 1 },
+                },
+            };
+            game.GetEventPool().Add(previous);
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 2 },
+                },
+            };
+            using GameSession session = new(
+                game,
+                TestGameData.Create(game.Config, gameEvents: new[] { current })
+            );
+
+            session.Results.Publish(new GameObjectCreatedResult());
+
+            Assert.AreEqual(2, game.EventRuntime.GetVariable("value"));
+        }
+
+        [Test]
+        public void Constructor_RetiredSavedEvent_RemovesDefinitionAndPreservesHistory()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "retired",
+                        Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                    }
+                );
+            game.EventRuntime.GetState("retired").ActivationCount = 3;
+            using GameSession session = new(game, TestGameData.Create(game.Config));
+
+            Assert.IsEmpty(game.GetEventPool());
+            Assert.AreEqual(3, game.EventRuntime.GetState("retired").ActivationCount);
+        }
+
+        [Test]
         public void Constructor_NewForceScanner_ArmsFirstScanForNextTick()
         {
             Officer trainer = new Officer
@@ -1618,7 +1670,10 @@ namespace Rebellion.Tests.Gameplay
                         },
                     }
                 );
-            GameSession manager = new GameSession(game, TestGameData.Create(config));
+            GameSession manager = new GameSession(
+                game,
+                TestGameData.Create(config, gameEvents: game.GetEventPool().ToArray())
+            );
 
             manager.Tick.ProcessTick();
 

@@ -42,6 +42,96 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             );
         }
 
+        [Test]
+        public void InstallDefinitions_UpdatedAction_ExecutesCurrentDefinition()
+        {
+            _game.GetEventPool().Add(new GameEvent { InstanceID = "retired" });
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "current",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "value", Operand = 2 },
+                },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+            _system.ProcessTriggeredEvents(new[] { new GameObjectCreatedResult() });
+
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("value"));
+            CollectionAssert.AreEqual(new[] { current }, _game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_RemovedTriggerLimit_ReopensListenerWithActivationHistory()
+        {
+            GameEventState state = _game.EventRuntime.GetState("listener");
+            state.ActivationCount = 1;
+            state.LastActivationTick = 17;
+            state.IsComplete = true;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsFalse(state.IsComplete);
+            Assert.AreEqual(1, state.ActivationCount);
+            Assert.AreEqual(17, state.LastActivationTick);
+            Assert.Contains(current, _game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_TriggeredLimitReached_KeepsListenerCompleted()
+        {
+            GameEventState state = _game.EventRuntime.GetState("listener");
+            state.ActivationCount = 1;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "listener",
+                MaximumActivations = 1,
+                Triggers = new List<GameTrigger> { new UnitCreatedTrigger() },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsTrue(state.IsComplete);
+            Assert.IsEmpty(_game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_CompletedRecurringSchedule_PreservesTerminalHistory()
+        {
+            _game.EventRuntime.GetState("schedule").IsComplete = true;
+            GameEvent current = new GameEvent
+            {
+                InstanceID = "schedule",
+                Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 1 } },
+            };
+
+            _system.InstallDefinitions(new[] { current });
+
+            Assert.IsTrue(_game.EventRuntime.GetState("schedule").IsComplete);
+            Assert.IsEmpty(_game.GetEventPool());
+        }
+
+        [Test]
+        public void InstallDefinitions_InvalidCurrentDefinition_ThrowsBeforeReplacingPool()
+        {
+            GameEvent previous = new GameEvent { InstanceID = "previous" };
+            _game.GetEventPool().Add(previous);
+            GameEvent invalid = new GameEvent { InstanceID = "invalid", MaximumActivations = 0 };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _system.InstallDefinitions(new[] { invalid })
+            );
+
+            CollectionAssert.AreEqual(new[] { previous }, _game.GetEventPool());
+        }
+
         [TestCase(50, 80)]
         [TestCase(0, 0)]
         [TestCase(1, 1)]

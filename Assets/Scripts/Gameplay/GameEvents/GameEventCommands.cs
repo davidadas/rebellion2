@@ -310,6 +310,45 @@ namespace Rebellion.Gameplay.GameEvents
         }
 
         /// <summary>
+        /// Installs the current event definitions while retaining activation and schedule history.
+        /// Triggered completion follows the current activation limit; completed schedules stay closed.
+        /// </summary>
+        /// <param name="definitions">The detached definitions selected for this campaign.</param>
+        internal void InstallDefinitions(IReadOnlyCollection<GameEvent> definitions)
+        {
+            if (definitions == null)
+                throw new ArgumentNullException(nameof(definitions));
+            GameEvent[] currentDefinitions = definitions.ToArray();
+            ValidateEvents(currentDefinitions);
+
+            List<GameEvent> active = new(currentDefinitions.Length);
+            foreach (GameEvent gameEvent in currentDefinitions)
+            {
+                if (
+                    _game.EventRuntime.States.TryGetValue(
+                        gameEvent.InstanceID,
+                        out GameEventState state
+                    )
+                )
+                {
+                    bool reachedLimit =
+                        gameEvent.MaximumActivations.HasValue
+                        && state.ActivationCount >= gameEvent.MaximumActivations.Value;
+                    if (gameEvent.Triggers.Count > 0)
+                        state.IsComplete = reachedLimit;
+                    else if (reachedLimit)
+                        state.IsComplete = true;
+                    if (state.IsComplete)
+                        continue;
+                }
+                active.Add(gameEvent);
+            }
+
+            _game.GetEventPool().Clear();
+            _game.GetEventPool().AddRange(active);
+        }
+
+        /// <summary>
         /// Builds trigger index.
         /// </summary>
         /// <returns>The constructed trigger index.</returns>

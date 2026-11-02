@@ -31,7 +31,17 @@ namespace Rebellion.Tests.App
         [SetUp]
         public void SetUp()
         {
-            _contentPack = TestContent.Pack;
+            ContentPack source = TestContent.Pack;
+            _contentPack = new ContentPack(
+                source.ContentRootPath,
+                source.PackRootPath,
+                source.FileResolver,
+                source.Definition,
+                source.Scenario,
+                source.Factions,
+                TestGameData.WithGameEvents(source.GameData, Array.Empty<GameEvent>()),
+                new Dictionary<string, ContentPreloadManifest>()
+            );
             _saveDirectoryPath = Path.Combine(
                 Path.GetTempPath(),
                 nameof(GameRuntimeTests),
