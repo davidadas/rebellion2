@@ -1165,6 +1165,77 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreSame(delivery.Message, recipient.Messages[MessageType.Advice].Single());
         }
 
+        [TestCase("FNALL1", "FNEMP1", 0)]
+        [TestCase("FNALL1", "FNEMP1", 1)]
+        [TestCase("FNALL1", "FNEMP1", 2)]
+        [TestCase("FNALL1", "FNEMP1", 3)]
+        [TestCase("FNALL1", "FNEMP1", 4)]
+        [TestCase("FNALL1", "FNEMP1", 5)]
+        [TestCase("FNALL1", "FNEMP1", 6)]
+        [TestCase("FNALL1", "FNEMP1", 7)]
+        [TestCase("FNEMP1", "FNALL1", 0)]
+        [TestCase("FNEMP1", "FNALL1", 1)]
+        [TestCase("FNEMP1", "FNALL1", 2)]
+        [TestCase("FNEMP1", "FNALL1", 3)]
+        [TestCase("FNEMP1", "FNALL1", 4)]
+        [TestCase("FNEMP1", "FNALL1", 5)]
+        [TestCase("FNEMP1", "FNALL1", 6)]
+        [TestCase("FNEMP1", "FNALL1", 7)]
+        public void ProcessScheduledEvents_InformantReport_UpdatesRecipientBeforeNotification(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int outcomeIndex
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, outcomeIndex, 30 });
+            (GameEventCommands commands, GameEvent _, Planet planet, Faction _, Faction recipient) =
+                CreatePlanetInformantsScenario(ownerInstanceID, recipientInstanceID, 0, random);
+            planet.IsColonized = true;
+            GameResultBus bus = new GameResultBus();
+            FogOfWarQueries queries = new FogOfWarQueries(_game);
+            using FogOfWarObserver observer = new FogOfWarObserver(
+                _game,
+                new FogOfWarCommands(_game),
+                queries,
+                new FogOfWarRecorder()
+            );
+            observer.Connect(bus);
+            MessageFactory factory = new MessageFactory(null);
+            MessageObserver messages = new MessageObserver(
+                _game,
+                factory,
+                new MessageCommands(_game, factory)
+            );
+            GameResultPipeline pipeline = new GameResultPipeline(() => bus, () => messages);
+            List<MessageDeliveredResult> notifications = new List<MessageDeliveredResult>();
+            pipeline.MessageDelivered += delivery =>
+            {
+                Planet knownPlanet = queries
+                    .BuildFactionView(recipient)
+                    .GetChildren<Planet>(recursive: true)
+                    .Single(candidate => candidate.InstanceID == planet.InstanceID);
+                Assert.AreEqual(ownerInstanceID, knownPlanet.OwnerInstanceID);
+                Assert.IsTrue(knownPlanet.IsColonized);
+                notifications.Add(delivery);
+            };
+            _game.CurrentTick = 1;
+            pipeline.ProcessResults(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            _game.CurrentTick = 31;
+            pipeline.ProcessResults(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            Assert.AreEqual(1, notifications.Count);
+            Assert.AreSame(recipient, notifications[0].Recipient);
+            Assert.AreEqual(
+                AdvisorNotificationPreset.SubjectReport,
+                notifications[0].AdvisorNotification.Preset
+            );
+            Assert.AreSame(
+                recipient.Messages[MessageType.Advice].Single(),
+                notifications[0].Message
+            );
+        }
+
         [TestCase("FNALL1", "FNEMP1", 0, true)]
         [TestCase("FNALL1", "FNEMP1", 100, false)]
         [TestCase("FNEMP1", "FNALL1", 0, true)]

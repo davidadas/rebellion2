@@ -546,7 +546,7 @@ namespace Rebellion.Game.FogOfWar
                 categories == PlanetIntelligenceCategory.All
                     ? currentTick
                     : snapshot.FullObservationTick;
-            snapshot.TickCaptured = currentTick;
+            UpdatePlanetStatusState(snapshot, planet, currentTick);
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
             if (
@@ -558,10 +558,7 @@ namespace Rebellion.Game.FogOfWar
                 categories.HasFlag(PlanetIntelligenceCategory.Planet)
                 || categories.HasFlag(PlanetIntelligenceCategory.PlanetResources)
             )
-            {
-                UpdatePlanetStatusState(snapshot, planet, currentTick);
                 UpdatePlanetResourceState(snapshot, planet, currentTick);
-            }
             if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
                 UpdatePlanetDetailState(snapshot, planet);
             snapshot.RevealedCategories = accumulatedCategories;
@@ -1118,9 +1115,8 @@ namespace Rebellion.Game.FogOfWar
                     .Where(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
                     .Select(building => CopyEntityForObservation(building, currentTick))
             );
-            CarryForwardRevealedMissions(previousSnapshot, snapshot);
+            CarryForwardMissionIntelligence(previousSnapshot, snapshot);
             PreserveManufacturingQueue(previousSnapshot, snapshot);
-            snapshot.FullObservationTick = previousSnapshot?.FullObservationTick ?? -1;
 
             ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
             sectorSnapshot.Planets[planet.InstanceID] = snapshot;
@@ -1263,7 +1259,7 @@ namespace Rebellion.Game.FogOfWar
                 planetSnapshot.RevealedCategories =
                     previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None;
                 HashSet<string> observedIDs = GetSnapshotEntityIDs(planetSnapshot);
-                CarryForwardRevealedMissions(previousSnapshot, planetSnapshot);
+                CarryForwardMissionIntelligence(previousSnapshot, planetSnapshot);
                 foreach (Mission mission in planetSnapshot.Missions)
                 foreach (
                     ISceneNode participant in mission
@@ -1274,7 +1270,6 @@ namespace Rebellion.Game.FogOfWar
                     mission.RemoveChild(participant);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
-                planetSnapshot.FullObservationTick = previousSnapshot?.FullObservationTick ?? -1;
             }
 
             ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
@@ -1302,19 +1297,16 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Retains previously gathered mission intelligence during an ordinary observation.
+        /// Retains previously gathered full and selective mission intelligence.
         /// </summary>
         /// <param name="previousSnapshot">The prior intelligence snapshot.</param>
         /// <param name="snapshot">The replacement snapshot.</param>
-        private static void CarryForwardRevealedMissions(
+        private static void CarryForwardMissionIntelligence(
             PlanetSnapshot previousSnapshot,
             PlanetSnapshot snapshot
         )
         {
-            if (
-                previousSnapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
-                != true
-            )
+            if (previousSnapshot == null)
                 return;
 
             snapshot.Missions.AddRange(
@@ -1636,6 +1628,7 @@ namespace Rebellion.Game.FogOfWar
             return new PlanetSnapshot
             {
                 TickCaptured = currentTick,
+                FullObservationTick = currentTick,
                 OwnerInstanceID = planet.OwnerInstanceID,
                 IsColonized = planet.IsColonized,
                 IsInUprising = planet.IsInUprising,

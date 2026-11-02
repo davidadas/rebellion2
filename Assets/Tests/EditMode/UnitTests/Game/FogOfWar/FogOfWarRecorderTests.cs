@@ -541,6 +541,90 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordPlanetSnapshot_PartialOfficerMissionIntelligence_PreservesOnlySelectedParticipant()
+        {
+            Officer officer = CreateOfficer("SELECTED_OFFICER", _empire);
+            SpecialForces hiddenDecoy = new SpecialForces
+            {
+                InstanceID = "HIDDEN_DECOY",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Mission mission = CreateMission("PARTIAL_MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(officer, mission);
+            mission.AddDecoyParticipant(hiddenDecoy);
+            _game.AttachNode(hiddenDecoy, mission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.Officers,
+                includeDescendants: true
+            );
+
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            Mission rememberedMission = GetSnapshot(_coreSector, _coruscant).Missions.Single();
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                rememberedMission
+                    .GetMainParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.IsEmpty(rememberedMission.GetDecoyParticipants(includeDisabled: true));
+            Assert.IsEmpty(
+                rememberedMission
+                    .GetAllParticipants(includeDisabled: true)
+                    .Where(participant => participant.InstanceID == hiddenDecoy.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RecordPlanetLossSnapshot_PartialSpecialForcesMissionIntelligence_PreservesOnlySelectedDecoy()
+        {
+            Officer hiddenOfficer = CreateOfficer("HIDDEN_OFFICER", _empire);
+            SpecialForces selectedDecoy = new SpecialForces
+            {
+                InstanceID = "SELECTED_DECOY",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Mission mission = CreateMission("PARTIAL_MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(hiddenOfficer, mission);
+            mission.AddDecoyParticipant(selectedDecoy);
+            _game.AttachNode(selectedDecoy, mission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.SpecialForces,
+                includeDescendants: true
+            );
+
+            recorder.RecordPlanetLossSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            Mission rememberedMission = GetSnapshot(_coreSector, _coruscant).Missions.Single();
+            Assert.IsEmpty(rememberedMission.GetMainParticipants(includeDisabled: true));
+            CollectionAssert.AreEqual(
+                new[] { selectedDecoy.InstanceID },
+                rememberedMission
+                    .GetDecoyParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.IsEmpty(
+                rememberedMission
+                    .GetAllParticipants(includeDisabled: true)
+                    .Where(participant => participant.InstanceID == hiddenOfficer.InstanceID)
+            );
+        }
+
+        [Test]
         public void RecordIntelligenceSnapshot_MissionsOnly_ReparentsKnownParticipant()
         {
             Officer officer = CreateOfficer("PARTICIPANT", _empire);
@@ -662,7 +746,7 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
-        public void RecordIntelligenceSnapshot_NarrowCategory_PreservesPlanetAgeAndStatus()
+        public void RecordIntelligenceSnapshot_NarrowCategory_RefreshesStatusWithoutChangingFullObservationAge()
         {
             Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
             _game.AttachNode(officer, _coruscant);
@@ -682,11 +766,141 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.AreEqual(10, snapshot.FullObservationTick);
-            Assert.IsTrue(snapshot.IsColonized);
-            Assert.IsFalse(snapshot.IsDestroyed);
+            Assert.IsFalse(snapshot.IsColonized);
+            Assert.IsTrue(snapshot.IsDestroyed);
             MovementState movement = snapshot.Officers.Single().Movement;
             Assert.AreEqual(20, movement.ObservedAtTick);
             Assert.IsTrue(movement.IsObservation);
+        }
+
+        [TestCase(
+            PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.Regiments
+                | PlanetIntelligenceCategory.PlanetaryDefenses
+        )]
+        [TestCase(
+            PlanetIntelligenceCategory.Manufacturing
+                | PlanetIntelligenceCategory.ProductionFacilities
+        )]
+        [TestCase(PlanetIntelligenceCategory.Fleets)]
+        [TestCase(PlanetIntelligenceCategory.Officers | PlanetIntelligenceCategory.SpecialForces)]
+        public void RecordIntelligenceSnapshot_AuthoredNarrowCategoryOnUnknownPlanet_RevealsOnlyBasicStatus(
+            PlanetIntelligenceCategory categories
+        )
+        {
+            _coruscant.OwnerInstanceID = _empire.InstanceID;
+            _coruscant.IsColonized = true;
+            _coruscant.IsDestroyed = true;
+            _coruscant.IsInUprising = true;
+            _coruscant.IsHeadquarters = true;
+            _coruscant.EnergyCapacity = 12;
+            _coruscant.AllocatedEnergy = 5;
+            _coruscant.NumRawResourceNodes = 8;
+            _coruscant.PopularSupport[_empire.InstanceID] = 75;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                categories,
+                includeDescendants: false
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(-1, snapshot.FullObservationTick);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.IsTrue(snapshot.IsColonized);
+            Assert.IsTrue(snapshot.IsDestroyed);
+            Assert.IsFalse(snapshot.IsInUprising);
+            Assert.IsFalse(snapshot.IsHeadquarters);
+            Assert.Zero(snapshot.EnergyCapacity);
+            Assert.Zero(snapshot.AllocatedEnergy);
+            Assert.Zero(snapshot.NumRawResourceNodes);
+            Assert.IsEmpty(snapshot.PopularSupport);
+        }
+
+        [TestCase(
+            PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.Regiments
+                | PlanetIntelligenceCategory.PlanetaryDefenses
+        )]
+        [TestCase(
+            PlanetIntelligenceCategory.Manufacturing
+                | PlanetIntelligenceCategory.ProductionFacilities
+        )]
+        [TestCase(PlanetIntelligenceCategory.Fleets)]
+        [TestCase(PlanetIntelligenceCategory.Officers | PlanetIntelligenceCategory.SpecialForces)]
+        public void RecordIntelligenceSnapshot_AuthoredNarrowCategoryOnKnownPlanet_RefreshesOnlyBasicStatus(
+            PlanetIntelligenceCategory categories
+        )
+        {
+            _coruscant.IsInUprising = true;
+            _coruscant.IsHeadquarters = true;
+            _coruscant.EnergyCapacity = 12;
+            _coruscant.AllocatedEnergy = 5;
+            _coruscant.NumRawResourceNodes = 8;
+            _coruscant.PopularSupport[_empire.InstanceID] = 75;
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.OwnerInstanceID = _alliance.InstanceID;
+            _coruscant.IsColonized = false;
+            _coruscant.IsDestroyed = true;
+            _coruscant.IsInUprising = false;
+            _coruscant.IsHeadquarters = false;
+            _coruscant.EnergyCapacity = 20;
+            _coruscant.AllocatedEnergy = 9;
+            _coruscant.NumRawResourceNodes = 15;
+            _coruscant.PopularSupport[_empire.InstanceID] = 25;
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                categories,
+                includeDescendants: false
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(10, snapshot.FullObservationTick);
+            Assert.AreEqual(_alliance.InstanceID, snapshot.OwnerInstanceID);
+            Assert.IsFalse(snapshot.IsColonized);
+            Assert.IsTrue(snapshot.IsDestroyed);
+            Assert.IsTrue(snapshot.IsInUprising);
+            Assert.IsTrue(snapshot.IsHeadquarters);
+            Assert.AreEqual(12, snapshot.EnergyCapacity);
+            Assert.AreEqual(5, snapshot.AllocatedEnergy);
+            Assert.AreEqual(8, snapshot.NumRawResourceNodes);
+            Assert.AreEqual(75, snapshot.PopularSupport[_empire.InstanceID]);
+        }
+
+        [Test]
+        public void RecordPlanetSnapshot_OrdinaryObservation_RefreshesFullObservationTick()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(20, snapshot.FullObservationTick);
+        }
+
+        [Test]
+        public void RecordPlanetLossSnapshot_CurrentObservation_RefreshesFullObservationTick()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            recorder.RecordPlanetLossSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual(20, snapshot.FullObservationTick);
         }
 
         [Test]

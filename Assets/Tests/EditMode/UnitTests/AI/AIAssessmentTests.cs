@@ -65,6 +65,56 @@ namespace Rebellion.Tests.AI
             Assert.AreEqual(int.MaxValue, assessment.GetPlanetIntelAge(enemy));
         }
 
+        [Test]
+        public void GetPlanetIntelAge_OrdinaryObservation_ReturnsElapsedAge()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            new FogOfWarRecorder().RecordPlanetSnapshot(empire, enemy, sector, 100);
+            game.CurrentTick = 101;
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1, assessment.GetPlanetIntelAge(enemy));
+        }
+
+        [Test]
+        public void GetPlanetIntelAge_OrdinaryObservationAfterEspionage_UsesLatestObservation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(empire, enemy, sector, 10);
+            recorder.RecordPlanetSnapshot(empire, enemy, sector, 100);
+            game.CurrentTick = 101;
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1, assessment.GetPlanetIntelAge(enemy));
+        }
+
+        [Test]
+        public void GetPlanetIntelAge_PlanetLossObservation_UsesLossTick()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", empire.InstanceID);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(empire, enemy, sector, 10);
+            enemy.OwnerInstanceID = rebels.InstanceID;
+            recorder.RecordPlanetLossSnapshot(empire, enemy, sector, 100);
+            game.CurrentTick = 101;
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1, assessment.GetPlanetIntelAge(enemy));
+        }
+
         [TestCase("planet", "empire", true)]
         [TestCase("elsewhere", "empire", false)]
         [TestCase("planet", "rebels", false)]

@@ -127,7 +127,7 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Gets or sets the last complete intelligence observation, or -1 when none is known.
+        /// Gets or sets the last planet-wide observation, or -1 when none is known.
         /// Snapshots without this field retain their saved observation time.
         /// </summary>
         [PersistableIgnore]

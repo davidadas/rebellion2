@@ -865,6 +865,198 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BuildFactionView_RecursiveMissionOfficerAfterOrdinarySnapshot_ShowsOnlyOfficer()
+        {
+            Mission empireMission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            _game.AttachNode(officer, empireMission);
+            SpecialForces hiddenSpecialForces = new SpecialForces
+            {
+                InstanceID = "HIDDEN_SPECIAL_FORCES",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(hiddenSpecialForces, empireMission);
+
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.Officers,
+                includeDescendants: true
+            );
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            Planet viewCoruscant = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Mission viewMission = viewCoruscant.GetChildren<Mission>().Single();
+
+            Assert.IsFalse(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+            );
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                viewMission
+                    .GetMainParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.IsEmpty(viewMission.GetChildren<SpecialForces>(includeDisabled: true));
+        }
+
+        [Test]
+        public void BuildFactionView_RecursiveMissionSpecialForcesAfterPlanetLoss_PreservesDecoyRole()
+        {
+            Mission empireMission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            Officer hiddenOfficer = CreateOfficer("HIDDEN_OFFICER", _empire);
+            _game.AttachNode(hiddenOfficer, empireMission);
+            SpecialForces decoy = new SpecialForces
+            {
+                InstanceID = "DECOY",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            empireMission.AddDecoyParticipant(decoy);
+            _game.AttachNode(decoy, empireMission);
+
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.SpecialForces,
+                includeDescendants: true
+            );
+            recorder.RecordPlanetLossSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            Planet viewCoruscant = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Mission viewMission = viewCoruscant.GetChildren<Mission>().Single();
+
+            Assert.IsFalse(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+            );
+            Assert.IsFalse(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .RevealedCategories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
+            );
+            Assert.IsEmpty(viewMission.GetChildren<Officer>(includeDisabled: true));
+            CollectionAssert.AreEqual(
+                new[] { decoy.InstanceID },
+                viewMission
+                    .GetDecoyParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.IsEmpty(viewMission.GetMainParticipants(includeDisabled: true));
+        }
+
+        [Test]
+        public void BuildFactionView_MissionParticipantMovesToPlanet_DoesNotShowEmptyMission()
+        {
+            Mission empireMission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            _game.AttachNode(officer, empireMission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.Officers,
+                includeDescendants: true
+            );
+            _game.MoveNode(officer, _coruscant);
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            Planet viewCoruscant = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                viewCoruscant
+                    .GetChildren<Officer>(includeDisabled: true)
+                    .Select(item => item.InstanceID)
+            );
+            Assert.IsEmpty(viewCoruscant.GetChildren<Mission>(includeDisabled: true));
+        }
+
+        [Test]
+        public void BuildFactionView_ExplicitlySelectedMissionWithoutMissionCategory_ShowsParticipants()
+        {
+            Mission empireMission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            Officer officer = CreateOfficer("OFFICER", _empire);
+            _game.AttachNode(officer, empireMission);
+            SpecialForces decoy = new SpecialForces
+            {
+                InstanceID = "DECOY",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            empireMission.AddDecoyParticipant(decoy);
+            _game.AttachNode(decoy, empireMission);
+
+            new FogOfWarRecorder().RecordSelectedObservations(
+                _game,
+                _alliance,
+                new[] { empireMission },
+                10
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Planet viewCoruscant = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Mission viewMission = viewCoruscant.GetChildren<Mission>().Single();
+
+            Assert.IsFalse(
+                snapshot.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+            );
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                viewMission
+                    .GetMainParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            CollectionAssert.AreEqual(
+                new[] { decoy.InstanceID },
+                viewMission
+                    .GetDecoyParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+        }
+
+        [Test]
         public void BuildFactionView_LivePlanet_EspionageMissionIntelligenceRemainsVisible()
         {
             Officer vader = CreateOfficer("VADER", _empire);

@@ -152,17 +152,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds enemy missions revealed by the latest espionage snapshot.
+        /// Adds stored mission intelligence from the latest snapshot.
         /// </summary>
         /// <param name="viewPlanet">The faction-view planet receiving mission copies.</param>
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions) != true)
+            if (snapshot == null)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
             {
+                if (
+                    !snapshot.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+                    && mission.GetAllParticipants(includeDisabled: true).Count == 0
+                )
+                    continue;
+
                 Mission viewMission = FogOfWarRecorder.CopySnapshotForView(mission);
                 viewMission.SetParent(viewPlanet);
                 viewPlanet.AddChild(viewMission);
