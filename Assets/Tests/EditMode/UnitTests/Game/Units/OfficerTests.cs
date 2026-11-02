@@ -513,7 +513,7 @@ namespace Rebellion.Tests.Game.Units
             bool captured = officer.TryCapture(
                 "captor",
                 TestGame.Create(TestConfig.Create()),
-                new ThrowingRNG(),
+                new SequenceRNG(intValues: new[] { 48 }),
                 canEscape: false
             );
 
@@ -521,6 +521,21 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual("captor", officer.CaptorInstanceID);
             Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void TryCapture_NewNonEscapingCapture_ConsumesInitialIntervalBeforeCancellation()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new();
+            FixedRandomProvider random = new(new[] { 0.25, 0.75 });
+
+            officer.TryCapture("captor", game, random, canEscape: false);
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
+            Assert.AreEqual(0.75, random.NextDouble());
         }
 
         [Test]

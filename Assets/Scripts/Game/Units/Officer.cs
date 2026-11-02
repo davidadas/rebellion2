@@ -911,8 +911,14 @@ namespace Rebellion.Game.Units
                 return false;
             }
 
+            bool captureStateChanged = !IsCaptured;
             IsCaptured = true;
             CaptorInstanceID = captorInstanceId;
+            if (captureStateChanged && !CanEscape)
+            {
+                CanEscape = true;
+                ScheduleEscapeAttempt(game, random, game.CurrentTick);
+            }
             bool escapeStateChanged = CanEscape != canEscape;
             CanEscape = canEscape;
             if (escapeStateChanged)

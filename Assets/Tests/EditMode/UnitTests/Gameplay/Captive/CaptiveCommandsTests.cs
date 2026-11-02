@@ -25,7 +25,11 @@ namespace Rebellion.Tests.Gameplay
             captive.IsCaptured = false;
             captive.CaptorInstanceID = null;
             captive.CanEscape = false;
-            CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
+            CaptiveCommands commands = CreateCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 100 }),
+                movement
+            );
             IReadOnlyList<GameResult> published = null;
             commands.ResultsProduced += results => published = results;
 
