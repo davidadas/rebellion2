@@ -868,7 +868,7 @@ namespace Rebellion.Game.Units
             if (escapeStateChanged)
             {
                 if (canEscape)
-                    ScheduleEscapeAttempt(game, random);
+                    ScheduleEscapeAttempt(game, random, game.CurrentTick);
                 else
                     NextEscapeAttemptTick = 0;
             }
@@ -881,13 +881,18 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="game">The game whose clock and captive rules determine the due tick.</param>
         /// <param name="random">The simulation random stream.</param>
-        internal void ScheduleEscapeAttempt(GameRoot game, IRandomNumberProvider random)
+        /// <param name="previousTick">The capture tick or the preceding attempt's due tick.</param>
+        internal void ScheduleEscapeAttempt(
+            GameRoot game,
+            IRandomNumberProvider random,
+            int previousTick
+        )
         {
             GameConfig.TickRangeConfig interval = game.Config.Captive.EscapeAttemptInterval;
             int minimum = Math.Max(0, interval.Minimum);
             int maximum = Math.Max(minimum, interval.Maximum);
             int delay = maximum > minimum ? random.NextInt(minimum, maximum + 1) : minimum;
-            NextEscapeAttemptTick = checked(game.CurrentTick + delay);
+            NextEscapeAttemptTick = IsCaptured && CanEscape ? checked(previousTick + delay) : 0;
         }
 
         /// <summary>

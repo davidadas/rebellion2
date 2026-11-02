@@ -196,6 +196,49 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_FailedEscape_RollsEscapeBeforeNextInterval()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementCommands movement) = BuildScene();
+            CaptiveCommands commands = CreateCommands(
+                game,
+                new FixedRandomProvider(new[] { 0.99, 0.25 }),
+                movement
+            );
+
+            new CaptiveTickProcessor(commands).ProcessTick(game);
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual(351, captive.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void ProcessTick_OverdueEscape_AdvancesFromPreviousDueTick()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementCommands movement) = BuildScene();
+            game.CurrentTick = 20;
+            captive.NextEscapeAttemptTick = 10;
+            CaptiveCommands commands = CreateCommands(game, new FixedRNG(0.99), movement);
+
+            new CaptiveTickProcessor(commands).ProcessTick(game);
+
+            Assert.AreEqual(110, captive.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void ProcessTick_SuccessfulEscape_ConsumesIntervalRollWithoutRearmingTimer()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementCommands movement) = BuildScene();
+            FixedRandomProvider random = new(new[] { 0.0, 0.25, 0.75 });
+            CaptiveCommands commands = CreateCommands(game, random, movement);
+
+            new CaptiveTickProcessor(commands).ProcessTick(game);
+
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.AreEqual(0, captive.NextEscapeAttemptTick);
+            Assert.AreEqual(0.75, random.NextDouble());
+        }
+
+        [Test]
         public void ProcessTick_EscapeRollFails_StaysCaptured()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =

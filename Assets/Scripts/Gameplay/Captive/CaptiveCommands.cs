@@ -121,30 +121,28 @@ namespace Rebellion.Gameplay
 
             if (officer.NextEscapeAttemptTick <= 0)
             {
-                officer.ScheduleEscapeAttempt(_game, _provider);
+                officer.ScheduleEscapeAttempt(_game, _provider, _game.CurrentTick);
                 return;
             }
 
             if (_game.CurrentTick < officer.NextEscapeAttemptTick)
                 return;
 
-            officer.ScheduleEscapeAttempt(_game, _provider);
-
+            int previousAttemptTick = officer.NextEscapeAttemptTick;
             ContainerNode custodyContext = GetCustodyContext(officer);
             Planet planet = officer.GetParentOfType<Planet>();
             if (
-                custodyContext == null
-                || planet == null
-                || ((IMovable)officer).GetTransitMovement() != null
+                custodyContext != null
+                && planet != null
+                && ((IMovable)officer).GetTransitMovement() == null
+                && RollEscapeAttempt(officer, custodyContext)
             )
-                return;
-
-            if (RollEscapeAttempt(officer, custodyContext))
             {
                 OfficerCaptureStateResult result = TryEscapeCustody(officer, planet);
                 if (result != null)
                     results.Add(result);
             }
+            officer.ScheduleEscapeAttempt(_game, _provider, previousAttemptTick);
         }
 
         /// <summary>
