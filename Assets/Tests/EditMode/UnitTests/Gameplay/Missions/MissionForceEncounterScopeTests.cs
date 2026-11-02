@@ -173,6 +173,21 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(included, selected.Contains(_participant));
         }
 
+        [TestCase(null)]
+        [TestCase("")]
+        public void GetDefenders_UnownedPlanet_ExcludesGroundEncounter(string ownerID)
+        {
+            _planet.OwnerInstanceID = ownerID;
+            MissionForceEncounterScope scope = CreateScope(MissionEncounterPhase.PreObjective);
+
+            List<Officer> selected = scope.GetDefenders(
+                _game.RegisteredOfficers,
+                _game.Config.Jedi
+            );
+
+            Assert.IsEmpty(selected);
+        }
+
         [Test]
         public void GetDefenders_OfficerAssignedToAnotherMission_IncludesPhysicalGroundDefender()
         {

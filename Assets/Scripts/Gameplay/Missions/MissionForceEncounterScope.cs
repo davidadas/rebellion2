@@ -45,7 +45,7 @@ namespace Rebellion.Gameplay
                 || phase == MissionEncounterPhase.PreObjective && planetaryObjective;
             _groundDefenders =
                 ground
-                && planet.OwnerInstanceID != null
+                && !string.IsNullOrEmpty(planet.OwnerInstanceID)
                 && planet.OwnerInstanceID != mission.OwnerInstanceID;
             _fleetDefenders =
                 !ground
