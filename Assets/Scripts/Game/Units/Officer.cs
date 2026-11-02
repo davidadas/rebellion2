@@ -263,8 +263,23 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Loyalty))]
         private int _loyalty;
 
-        private short _forceValue;
-        private short _forceTrainingAdjustment;
+        [PersistableMember(Name = nameof(ForceValue))]
+        private int _forceValue;
+
+        [PersistableMember(Name = nameof(ForceTrainingAdjustment))]
+        private int _forceTrainingAdjustment;
+
+        [PersistableMember(Name = nameof(InjuryPoints))]
+        private int _injuryPoints;
+
+        [PersistableMember(Name = "EnhancedDiplomacy")]
+        private int? _enhancedDiplomacy;
+
+        [PersistableMember(Name = "EnhancedEspionage")]
+        private int? _enhancedEspionage;
+
+        [PersistableMember(Name = "EnhancedCombat")]
+        private int? _enhancedCombat;
 
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
@@ -304,7 +319,18 @@ namespace Rebellion.Game.Units
         public int Loyalty => _loyalty;
 
         // Injury Info.
-        public int InjuryPoints { get; set; }
+        [PersistableIgnore]
+        public int InjuryPoints
+        {
+            get => _injuryPoints;
+            set
+            {
+                if (_injuryPoints == value)
+                    return;
+                _injuryPoints = value;
+                _enhancedCombat = CalculateForceRating(SkillRating.Combat);
+            }
+        }
 
         // Force Info.
         public int JediProbability { get; set; }
@@ -335,19 +361,37 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Gets or sets the stored signed 16-bit Force experience value.
         /// </summary>
+        [PersistableIgnore]
         public int ForceValue
         {
-            get => _forceValue;
-            set => _forceValue = unchecked((short)value);
+            get => unchecked((short)_forceValue);
+            set
+            {
+                int stored = unchecked((short)value);
+                if (ForceValue == stored)
+                    return;
+                InitializeForceRatings();
+                _forceValue = stored;
+                RefreshForceRatings();
+            }
         }
 
         /// <summary>
         /// Gets or sets the stored signed 16-bit Force training adjustment.
         /// </summary>
+        [PersistableIgnore]
         public int ForceTrainingAdjustment
         {
-            get => _forceTrainingAdjustment;
-            set => _forceTrainingAdjustment = unchecked((short)value);
+            get => unchecked((short)_forceTrainingAdjustment);
+            set
+            {
+                int stored = unchecked((short)value);
+                if (ForceTrainingAdjustment == stored)
+                    return;
+                InitializeForceRatings();
+                _forceTrainingAdjustment = stored;
+                RefreshForceRatings();
+            }
         }
 
         [PersistableIgnore]
@@ -542,7 +586,7 @@ namespace Rebellion.Game.Units
             copy.IsKilled = IsKilled;
             copy._canBetray = _canBetray;
             copy._loyalty = _loyalty;
-            copy.InjuryPoints = InjuryPoints;
+            copy._injuryPoints = _injuryPoints;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;
             copy.JediLevelVariance = JediLevelVariance;
@@ -553,8 +597,11 @@ namespace Rebellion.Game.Units
             copy.IsKnownJedi = IsKnownJedi;
             copy.IsForceSensitive = IsForceSensitive;
             copy.IsForceEligible = IsForceEligible;
-            copy.ForceValue = ForceValue;
-            copy.ForceTrainingAdjustment = ForceTrainingAdjustment;
+            copy._forceValue = _forceValue;
+            copy._forceTrainingAdjustment = _forceTrainingAdjustment;
+            copy._enhancedDiplomacy = _enhancedDiplomacy;
+            copy._enhancedEspionage = _enhancedEspionage;
+            copy._enhancedCombat = _enhancedCombat;
             copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
             copy.NextForceDiscoveryTick = NextForceDiscoveryTick;
             copy.AllowedRanks = AllowedRanks?.ToArray();
@@ -724,7 +771,10 @@ namespace Rebellion.Game.Units
                 case SkillRating.None:
                     return 0;
                 default:
+                    if (GetBaseRating(rating) == value)
+                        return value;
                     Ratings[rating] = value;
+                    RefreshForceRating(rating);
                     return value;
             }
         }
@@ -739,9 +789,9 @@ namespace Rebellion.Game.Units
             int baseRating = GetBaseRating(rating);
             int officerRating = rating switch
             {
-                SkillRating.Diplomacy => ApplyForceRatingBonus(baseRating),
-                SkillRating.Espionage => ApplyForceRatingBonus(baseRating),
-                SkillRating.Combat => Math.Max(0, ApplyForceRatingBonus(baseRating) - InjuryPoints),
+                SkillRating.Diplomacy => GetForceRating(ref _enhancedDiplomacy, rating),
+                SkillRating.Espionage => GetForceRating(ref _enhancedEspionage, rating),
+                SkillRating.Combat => GetForceRating(ref _enhancedCombat, rating),
                 _ => baseRating,
             };
 
@@ -1018,6 +1068,74 @@ namespace Rebellion.Game.Units
         private int ApplyForceRatingBonus(int baseRating)
         {
             return baseRating + (baseRating * ForceRank) / _ratingPercentScale;
+        }
+
+        /// <summary>
+        /// Calculates the signed stored rating after Force and injury modifiers.
+        /// </summary>
+        /// <param name="rating">The diplomacy, espionage, or combat rating to calculate.</param>
+        /// <returns>The signed sixteen-bit enhanced rating.</returns>
+        private int CalculateForceRating(SkillRating rating)
+        {
+            int enhanced = ApplyForceRatingBonus(GetBaseRating(rating));
+            if (rating == SkillRating.Combat)
+                enhanced = Math.Max(0, enhanced - InjuryPoints);
+            return unchecked((short)enhanced);
+        }
+
+        /// <summary>
+        /// Restores a missing stored rating from the officer's current state before returning it.
+        /// </summary>
+        /// <param name="stored">The enhanced rating retained across state transitions.</param>
+        /// <param name="rating">The rating whose modifiers apply.</param>
+        /// <returns>The retained enhanced rating.</returns>
+        private int GetForceRating(ref int? stored, SkillRating rating)
+        {
+            stored ??= CalculateForceRating(rating);
+            return stored.Value;
+        }
+
+        /// <summary>
+        /// Initializes missing enhanced ratings before a Force transition changes their inputs.
+        /// </summary>
+        private void InitializeForceRatings()
+        {
+            GetForceRating(ref _enhancedDiplomacy, SkillRating.Diplomacy);
+            GetForceRating(ref _enhancedEspionage, SkillRating.Espionage);
+            GetForceRating(ref _enhancedCombat, SkillRating.Combat);
+        }
+
+        /// <summary>
+        /// Refreshes enhanced ratings when a changed Force rank is nonzero.
+        /// A zero rank retains each rating until its own base or injury state changes.
+        /// </summary>
+        private void RefreshForceRatings()
+        {
+            if (ForceRank == 0)
+                return;
+            RefreshForceRating(SkillRating.Diplomacy);
+            RefreshForceRating(SkillRating.Espionage);
+            RefreshForceRating(SkillRating.Combat);
+        }
+
+        /// <summary>
+        /// Refreshes only the enhanced rating owned by a changed base rating.
+        /// </summary>
+        /// <param name="rating">The rating whose base value changed.</param>
+        private void RefreshForceRating(SkillRating rating)
+        {
+            switch (rating)
+            {
+                case SkillRating.Diplomacy:
+                    _enhancedDiplomacy = CalculateForceRating(rating);
+                    break;
+                case SkillRating.Espionage:
+                    _enhancedEspionage = CalculateForceRating(rating);
+                    break;
+                case SkillRating.Combat:
+                    _enhancedCombat = CalculateForceRating(rating);
+                    break;
+            }
         }
 
         /// <summary>

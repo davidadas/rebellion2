@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
@@ -254,6 +256,153 @@ namespace Rebellion.Tests.Game.Units
             officer.SetBaseRating(SkillRating.Combat, 50);
 
             Assert.AreEqual(0, officer.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void ForceValue_ChangedToZero_PreservesEnhancedRatings()
+        {
+            Officer officer = CreateForceRatingOfficer();
+
+            officer.ForceValue = 0;
+
+            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void ForceTrainingAdjustment_CancelsExperience_PreservesEnhancedRatings()
+        {
+            Officer officer = CreateForceRatingOfficer();
+
+            officer.ForceTrainingAdjustment = -50;
+
+            Assert.AreEqual(0, officer.ForceRank);
+            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [TestCase(SkillRating.Diplomacy, 51)]
+        [TestCase(SkillRating.Espionage, 41)]
+        [TestCase(SkillRating.Combat, 41)]
+        public void SetBaseRating_ChangedAtZeroForce_RefreshesOnlyChangedRating(
+            SkillRating rating,
+            int expected
+        )
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+
+            officer.SetBaseRating(rating, officer.GetBaseRating(rating) + 1);
+
+            Assert.AreEqual(expected, officer.GetEffectiveRating(rating));
+            if (rating != SkillRating.Diplomacy)
+                Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
+            if (rating != SkillRating.Espionage)
+                Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
+            if (rating != SkillRating.Combat)
+                Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void SetBaseRating_UnchangedAtZeroForce_PreservesEnhancedRating()
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+
+            officer.SetBaseRating(SkillRating.Diplomacy, 50);
+
+            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
+        }
+
+        [Test]
+        public void Heal_AtZeroForce_RefreshesCombatWithoutRefreshingOtherRatings()
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+
+            officer.Heal(1);
+
+            Assert.AreEqual(41, officer.GetEffectiveRating(SkillRating.Combat));
+            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
+        }
+
+        [Test]
+        public void InjuryPoints_UnchangedAtZeroForce_PreservesEnhancedCombat()
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+
+            officer.InjuryPoints = 10;
+
+            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [TestCase(SkillRating.Diplomacy)]
+        [TestCase(SkillRating.Espionage)]
+        [TestCase(SkillRating.Combat)]
+        public void GetEffectiveRating_EnhancedValueExceedsSignedStorage_WrapsToSixteenBits(
+            SkillRating rating
+        )
+        {
+            Officer officer = new();
+            officer.SetBaseRating(rating, 100);
+            officer.ForceValue = short.MaxValue;
+
+            Assert.AreEqual(-32669, officer.GetEffectiveRating(rating));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Deserialize_ZeroForceWithRetainedRatings_PreservesValuesInAnyElementOrder(
+            bool reverseElementOrder
+        )
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
+            if (reverseElementOrder)
+                xml.ReplaceNodes(xml.Elements().Reverse().ToArray());
+
+            Officer restored = SerializationHelper.Deserialize<Officer>(xml.ToString());
+
+            Assert.AreEqual(0, restored.ForceRank);
+            Assert.AreEqual(10, restored.InjuryPoints);
+            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void Deserialize_NonzeroForceWithoutStoredRatings_InitializesBeforeForceTransition()
+        {
+            XElement xml = XElement.Parse(
+                SerializationHelper.Serialize(CreateForceRatingOfficer())
+            );
+            xml.Elements().Where(element => element.Name.LocalName.StartsWith("Enhanced")).Remove();
+            Officer restored = SerializationHelper.Deserialize<Officer>(xml.ToString());
+
+            restored.ForceValue = 0;
+
+            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void CreateCopy_ZeroForceWithRetainedRatings_PreservesIndependentValues()
+        {
+            Officer officer = CreateForceRatingOfficer();
+            officer.ForceValue = 0;
+
+            Officer copy = (Officer)officer.CreateCopy();
+            officer.Heal(1);
+
+            Assert.AreEqual(75, copy.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, copy.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, copy.GetEffectiveRating(SkillRating.Combat));
         }
 
         [Test]
@@ -714,6 +863,21 @@ namespace Rebellion.Tests.Game.Units
                 "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
+        }
+
+        /// <summary>
+        /// Creates an officer whose three enhanced ratings differ from their base values.
+        /// </summary>
+        /// <returns>The officer with a nonzero Force rank and an injury.</returns>
+        private static Officer CreateForceRatingOfficer()
+        {
+            Officer officer = new();
+            officer.SetBaseRating(SkillRating.Diplomacy, 50);
+            officer.SetBaseRating(SkillRating.Espionage, 40);
+            officer.SetBaseRating(SkillRating.Combat, 50);
+            officer.ForceValue = 50;
+            officer.InjuryPoints = 10;
+            return officer;
         }
 
         /// <summary>
