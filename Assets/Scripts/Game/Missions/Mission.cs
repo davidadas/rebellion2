@@ -885,6 +885,7 @@ namespace Rebellion.Game.Missions
                 new OfficerInjuredResult
                 {
                     Officer = officer,
+                    ParentAtInjury = officer.GetParent(),
                     Severity = injury,
                     Tick = game.CurrentTick,
                 }

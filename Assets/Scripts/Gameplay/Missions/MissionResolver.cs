@@ -240,6 +240,56 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Withdraws injured officers from their recorded mission while preserving a valid remaining team.
+        /// Officers on friendly ground remain there; others follow the shared mission return policy.
+        /// </summary>
+        /// <param name="mission">The mission that contained the officers when they were injured.</param>
+        /// <param name="officers">The officers whose injury requires withdrawal.</param>
+        /// <param name="results">The batch receiving withdrawal and interruption consequences.</param>
+        internal void WithdrawInjuredParticipants(
+            Mission mission,
+            IReadOnlyCollection<Officer> officers,
+            List<GameResult> results
+        )
+        {
+            if (mission?.GetParent() is not Planet missionPlanet || officers == null)
+                return;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            List<IMissionParticipant> attachedOfficers = officers
+                .Where(officer =>
+                    officer != null && IsFreeParticipant(officer) && officer.GetParent() == mission
+                )
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            List<IMissionParticipant> local = attachedOfficers
+                .Where(officer => CanRemainAtMissionLocation(officer, missionPlanet))
+                .ToList();
+            List<GameResult> withdrawalResults = new();
+            List<IMovable> stranded = _movementManager.CompleteMissionAtLocation(
+                local,
+                missionPlanet,
+                withdrawalResults
+            );
+            stranded.AddRange(
+                _movementManager.ReturnFromMission(
+                    attachedOfficers.Except(local).ToList(),
+                    Array.Empty<IMovable>(),
+                    out _,
+                    withdrawalResults
+                )
+            );
+            ResolveStrandedMissionUnits(stranded, missionPlanet, withdrawalResults);
+            AddMissionResults(mission, withdrawalResults, results);
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results);
+        }
+
+        /// <summary>
         /// Adds the originating mission to interruption results before returning them to the pipeline.
         /// </summary>
         /// <param name="mission">The mission producing the results.</param>

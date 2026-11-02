@@ -64,6 +64,7 @@ namespace Rebellion.Gameplay
                         new OfficerInjuredResult
                         {
                             Officer = officer,
+                            ParentAtInjury = officer.GetParent(),
                             Severity = 0,
                             Tick = game.CurrentTick,
                         }

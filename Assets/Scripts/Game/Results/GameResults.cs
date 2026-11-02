@@ -379,6 +379,7 @@ namespace Rebellion.Game.Results
     {
         public string MissionInstanceID { get; set; }
         public Officer Officer { get; set; }
+        public ISceneNode ParentAtInjury { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }
     }

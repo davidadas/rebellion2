@@ -18,6 +18,173 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public sealed class MissionObserverTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_InjuredOfficerWithRemainingPrimary_WithdrawsOnlyInjuredOfficer(
+            bool decoy
+        )
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                true
+            );
+            Officer injured = new Officer { InstanceID = "injured", OwnerInstanceID = "empire" };
+            game.AttachNode(injured, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            if (decoy)
+                mission.AddDecoyParticipant(injured);
+            else
+                mission.AddChild(injured);
+            game.MoveNode(officer, mission);
+            game.MoveNode(injured, mission);
+            mission.Initiate(10);
+            injured.ApplyInjury(1, 100);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerInjuredResult
+                    {
+                        Officer = injured,
+                        ParentAtInjury = mission,
+                        Severity = 1,
+                    },
+                }
+            );
+
+            Assert.AreSame(planet, injured.GetParent());
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.AreSame(planet, mission.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_LastPrimaryInjured_EndsMissionAndWithdrawsDecoys()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                true
+            );
+            Officer decoy = new Officer { InstanceID = "decoy", OwnerInstanceID = "empire" };
+            game.AttachNode(decoy, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddDecoyParticipant(decoy);
+            game.MoveNode(officer, mission);
+            game.MoveNode(decoy, mission);
+            mission.Initiate(10);
+            officer.ApplyInjury(1, 100);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerInjuredResult
+                    {
+                        Officer = officer,
+                        ParentAtInjury = mission,
+                        Severity = 1,
+                    },
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(planet, decoy.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_InjuredOfficerAtHostilePlanet_ReturnsToRecordedFriendlyPlanet()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                true
+            );
+            Planet home = new Planet
+            {
+                InstanceID = "home",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+            };
+            game.AttachNode(home, planet.GetParentOfType<PlanetSector>());
+            Officer injured = new Officer
+            {
+                InstanceID = "injured",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = home.InstanceID,
+                MissionReturnLocationInstanceID = home.InstanceID,
+            };
+            game.AttachNode(injured, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddDecoyParticipant(injured);
+            game.MoveNode(officer, mission);
+            game.MoveNode(injured, mission);
+            mission.Initiate(10);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            planet.OwnerInstanceID = "rebels";
+            injured.ApplyInjury(1, 100);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerInjuredResult
+                    {
+                        Officer = injured,
+                        ParentAtInjury = mission,
+                        Severity = 1,
+                    },
+                }
+            );
+
+            Assert.AreSame(home, injured.GetParent());
+            Assert.IsNotNull(injured.Movement);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_RecoveryNotice_LeavesMissionParticipantsAssigned()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new OfficerInjuredResult
+                    {
+                        Officer = officer,
+                        ParentAtInjury = mission,
+                        Severity = 0,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
         [Test]
         public void HandleResults_ReleasedParticipant_DoesNotInterruptMission()
         {
