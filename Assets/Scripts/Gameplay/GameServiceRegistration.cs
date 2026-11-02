@@ -25,7 +25,6 @@ namespace Rebellion.Gameplay
             typeof(VictoryObserver),
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
-            typeof(JediObserver),
             typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),

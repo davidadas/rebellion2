@@ -30,41 +30,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Grants configured Force growth to an eligible officer after a successful encounter evasion.
-        /// </summary>
-        /// <param name="officer">The encountered officer to update.</param>
-        /// <returns>Any force experience results generated.</returns>
-        public List<GameResult> ApplyEncounterForceGrowth(Officer officer)
-        {
-            List<GameResult> results = new List<GameResult>();
-            int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            if (growth <= 0)
-                return results;
-
-            if (officer?.GrowsForceOnMission == true && officer.IsForceEligible)
-            {
-                int previousForceRank = officer.ForceRank;
-                officer.ForceValue += growth;
-                int currentForceRank = officer.ForceRank;
-                results.Add(
-                    new ForceExperienceResult
-                    {
-                        Officer = officer,
-                        ExperienceGained = growth,
-                        PreviousForceRank = previousForceRank,
-                        CurrentForceRank = currentForceRank,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-                GameLogger.Log(
-                    $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
-                );
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Sets or clears IsDiscoveringForceUser based on whether a Jedi trainer meets the
         /// ForceRank threshold and is available to scan.
         /// </summary>

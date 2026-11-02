@@ -463,46 +463,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.Zero(result.ExperienceGained);
         }
 
-        [Test]
-        public void ApplyEncounterForceGrowth_EligibleOfficer_GrowsForce()
-        {
-            Officer luke = new Officer
-            {
-                InstanceID = "LUKE",
-                OwnerInstanceID = _alliance.InstanceID,
-                GrowsForceOnMission = true,
-                IsForceEligible = true,
-                ForceValue = 10,
-            };
-            int before = luke.ForceValue;
-            int growth = _game.Config.Jedi.ForceGrowthPerMission;
-
-            List<GameResult> results = _system.ApplyEncounterForceGrowth(luke);
-            ForceExperienceResult result = results.OfType<ForceExperienceResult>().Single();
-
-            Assert.AreEqual(before + growth, luke.ForceValue);
-            Assert.AreEqual(before, result.PreviousForceRank);
-            Assert.AreEqual(before + growth, result.CurrentForceRank);
-        }
-
-        [Test]
-        public void ApplyEncounterForceGrowth_NotForceEligible_NoGrowth()
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = "O1",
-                OwnerInstanceID = _alliance.InstanceID,
-                GrowsForceOnMission = true,
-                IsForceEligible = false,
-                ForceValue = 10,
-            };
-            int before = officer.ForceValue;
-
-            _system.ApplyEncounterForceGrowth(officer);
-
-            Assert.AreEqual(before, officer.ForceValue);
-        }
-
         /// <summary>
         /// Creates jedi trainer.
         /// </summary>

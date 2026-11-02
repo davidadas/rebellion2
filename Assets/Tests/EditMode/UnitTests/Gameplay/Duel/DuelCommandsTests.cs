@@ -44,6 +44,64 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_EligibleOfficerEvadesCapture_AppliesForceGrowthAfterInitialInjury()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            encountered.GrowsForceOnMission = true;
+            encountered.IsForceEligible = true;
+            encountered.ForceValue = 10;
+            game.CurrentTick = 42;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(
+                encountered,
+                opposing,
+                sourceEventInstanceID: "encounter"
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    typeof(OfficerInjuredResult),
+                    typeof(ForceExperienceResult),
+                    typeof(DuelResult),
+                },
+                results.Select(result => result.GetType())
+            );
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreEqual(10, growth.PreviousForceRank);
+            Assert.AreEqual(11, growth.CurrentForceRank);
+            Assert.AreEqual(11, encountered.ForceValue);
+            Assert.AreEqual(42, growth.Tick);
+            Assert.AreEqual("encounter", growth.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void Resolve_IneligibleOfficerEvadesCapture_DoesNotApplyForceGrowth()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            encountered.GrowsForceOnMission = true;
+            encountered.IsForceEligible = false;
+            encountered.ForceValue = 10;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0, 9, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsEmpty(results.OfType<ForceExperienceResult>());
+            Assert.AreEqual(10, encountered.ForceValue);
+        }
+
+        [Test]
         public void Resolve_LethalInitialInjury_DoesNotCaptureDeadOfficer()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
@@ -319,6 +377,7 @@ namespace Rebellion.Tests.Gameplay
                 InjurySecondaryRollMaximum = 29,
                 CombatReward = 1,
             };
+            config.Jedi.ForceGrowthPerMission = 1;
             config.Recovery.MaxInjuryPoints = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
