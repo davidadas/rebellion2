@@ -43,6 +43,34 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual((participant, defender), pairs[1]);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SelectPairs_OrderedRandomPool_PreservesRosterOrderAfterEachRemoval(bool isMain)
+        {
+            Officer first = CreateOfficer("first", 150, isMain);
+            Officer second = CreateOfficer("second", 150, isMain);
+            Officer third = CreateOfficer("third", 150, isMain);
+            first.RosterOrder = 1;
+            second.RosterOrder = 2;
+            third.RosterOrder = 3;
+            Officer firstDefender = CreateOfficer("first-defender", 150, isMain);
+            Officer secondDefender = CreateOfficer("second-defender", 150, isMain);
+            Officer thirdDefender = CreateOfficer("third-defender", 150, isMain);
+            firstDefender.RosterOrder = 1;
+            secondDefender.RosterOrder = 2;
+            thirdDefender.RosterOrder = 3;
+
+            var pairs = new MissionForceEncounterSelector(_config, new FixedRNG(0)).SelectPairs(
+                new[] { third, first, second },
+                new[] { thirdDefender, firstDefender, secondDefender }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { (first, firstDefender), (second, secondDefender), (third, thirdDefender) },
+                pairs
+            );
+        }
+
         [TestCase(0)]
         [TestCase(10)]
         public void SelectPairs_UnmatchedParticipant_RetriesWithNextDefender(int firstChance)

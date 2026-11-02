@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
@@ -47,14 +48,20 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(defenders));
 
             List<(Officer Participant, Officer Defender)> pairs = new();
+            Officer[] orderedParticipants = participants
+                .OrderBy(officer => officer.RosterOrder)
+                .ToArray();
+            Officer[] orderedDefenders = defenders
+                .OrderBy(officer => officer.RosterOrder)
+                .ToArray();
             CandidatePool defenderPool = new(defenders.Count);
             CandidatePool participantPool = new(participants.Count);
             HashSet<Officer> matched = new();
-            defenderPool.Reset(defenders, matched);
+            defenderPool.Reset(orderedDefenders, matched);
             Officer defender;
             while ((defender = defenderPool.Take(_config, _random)) != null)
             {
-                participantPool.Reset(participants, matched);
+                participantPool.Reset(orderedParticipants, matched);
                 Officer participant;
                 while ((participant = participantPool.Take(_config, _random)) != null)
                 {
@@ -139,24 +146,22 @@ namespace Rebellion.Gameplay
                     return null;
                 int selected = _minor.Count > 1 ? random.NextInt(0, _minor.Count) : 0;
                 Officer officer = _minor[selected];
-                _minor[selected] = _minor[_minor.Count - 1];
-                _minor.RemoveAt(_minor.Count - 1);
+                _minor.RemoveAt(selected);
                 return officer;
             }
 
             /// <summary>
-            /// Removes a major officer and updates the index for the swapped entry.
+            /// Removes a major officer while retaining roster order and updating shifted indices.
             /// </summary>
             /// <param name="index">The selected major-officer index.</param>
             /// <returns>The removed officer.</returns>
             private Officer RemoveMajor(int index)
             {
                 Officer officer = _major[index];
-                Officer last = _major[_major.Count - 1];
-                _major[index] = last;
-                _majorIndex[last.InstanceID] = index;
-                _major.RemoveAt(_major.Count - 1);
+                _major.RemoveAt(index);
                 _majorIndex.Remove(officer.InstanceID);
+                for (int shifted = index; shifted < _major.Count; shifted++)
+                    _majorIndex[_major[shifted].InstanceID] = shifted;
                 return officer;
             }
         }
