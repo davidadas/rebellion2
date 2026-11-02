@@ -55,6 +55,9 @@ namespace Rebellion.Game.FogOfWar
         [PersistableMember(Name = nameof(TickCaptured))]
         private int _tickCaptured;
 
+        [PersistableMember(Name = nameof(FullObservationTick))]
+        private int? _fullObservationTick;
+
         [PersistableMember(Name = nameof(OwnerInstanceID))]
         private string _ownerInstanceId;
 
@@ -121,6 +124,17 @@ namespace Rebellion.Game.FogOfWar
         {
             get => _tickCaptured;
             set => _tickCaptured = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the last complete intelligence observation, or -1 when none is known.
+        /// Snapshots without this field retain their saved observation time.
+        /// </summary>
+        [PersistableIgnore]
+        public int FullObservationTick
+        {
+            get => _fullObservationTick ?? _tickCaptured;
+            set => _fullObservationTick = value;
         }
 
         [PersistableIgnore]

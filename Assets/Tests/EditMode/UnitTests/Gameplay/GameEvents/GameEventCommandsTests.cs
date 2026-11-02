@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
@@ -16,6 +17,7 @@ using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Rebellion.Util.Reflection;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -1108,6 +1110,137 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.Zero(state.ActivationCount);
         }
 
+        [TestCaseSource(nameof(PlanetInformantOutcomeCases))]
+        public void ProcessScheduledEvents_PlanetInformantsOutcome_RevealsExpectedIntelligenceAndMessage(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int outcomeIndex,
+            PlanetIntelligenceCategory[] expectedCategories,
+            bool[] expectedDescendantSettings
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, outcomeIndex, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario(ownerInstanceID, recipientInstanceID, 0, random);
+            _game.CurrentTick = 0;
+            Assert.IsEmpty(commands.ProcessScheduledEvents(_game.GetEventPool()));
+
+            _game.CurrentTick = 30;
+            List<GameResult> results = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            List<PlanetIntelligenceRevealedResult> intelligence = results
+                .OfType<PlanetIntelligenceRevealedResult>()
+                .ToList();
+            CollectionAssert.AreEqual(
+                expectedCategories,
+                intelligence.Select(result => result.Category)
+            );
+            CollectionAssert.AreEqual(
+                expectedDescendantSettings,
+                intelligence.Select(result => result.IncludeDescendants)
+            );
+            Assert.IsTrue(intelligence.All(result => result.Recipient == recipient));
+            Assert.IsTrue(intelligence.All(result => result.Planet == planet));
+            Assert.IsTrue(
+                intelligence.All(result => result.SourceEventInstanceID == gameEvent.InstanceID)
+            );
+
+            MessageDeliveredResult delivery = results.OfType<MessageDeliveredResult>().Single();
+            Assert.AreSame(recipient, delivery.Recipient);
+            Assert.AreEqual(gameEvent.InstanceID, delivery.SourceEventInstanceID);
+            Assert.AreEqual(MessageType.Advice, delivery.Message.Type);
+            Assert.AreEqual("Informants Provide Information", delivery.Message.Title);
+            Assert.AreEqual(
+                "Informants have provided us with information about Alderaan.",
+                delivery.Message.Body
+            );
+            Assert.AreEqual("informants", delivery.Message.BackgroundImageKey);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.EventLocationInstanceID);
+            Assert.AreEqual(planet.InstanceID, delivery.Message.NavigationTargetInstanceID);
+            Assert.AreSame(delivery.Message, recipient.Messages[MessageType.Advice].Single());
+        }
+
+        [TestCase("FNALL1", "FNEMP1", 0, true)]
+        [TestCase("FNALL1", "FNEMP1", 100, false)]
+        [TestCase("FNEMP1", "FNALL1", 0, true)]
+        [TestCase("FNEMP1", "FNALL1", 100, false)]
+        public void ProcessScheduledEvents_PlanetInformantsSupportBoundary_LeaksOnlyAtZeroSupport(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int popularSupport,
+            bool expectsLeak
+        )
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, 0, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario(
+                ownerInstanceID,
+                recipientInstanceID,
+                popularSupport,
+                random
+            );
+            _game.CurrentTick = 0;
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            _game.CurrentTick = 30;
+            List<GameResult> results = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(
+                expectsLeak ? 1 : 0,
+                results.OfType<PlanetIntelligenceRevealedResult>().Count()
+            );
+            Assert.AreEqual(expectsLeak ? 1 : 0, results.OfType<MessageDeliveredResult>().Count());
+            Assert.AreEqual(expectsLeak ? 1 : 0, recipient.Messages[MessageType.Advice].Count);
+            GameEventState targetState = _game
+                .EventRuntime.GetState(gameEvent.InstanceID)
+                .ScopedStates[planet.InstanceID];
+            Assert.AreEqual(1, targetState.ActivationCount);
+            Assert.AreEqual(60, targetState.NextEligibleTick);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_PlanetInformantsRecurringSchedule_RearmsTarget()
+        {
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, 0, 30, 0, 0, 30 });
+            (
+                GameEventCommands commands,
+                GameEvent gameEvent,
+                Planet planet,
+                Faction _,
+                Faction recipient
+            ) = CreatePlanetInformantsScenario("FNALL1", "FNEMP1", 0, random);
+            _game.CurrentTick = 0;
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            _game.CurrentTick = 30;
+            List<GameResult> first = commands.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 59;
+            List<GameResult> early = commands.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 60;
+            List<GameResult> second = commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, first.OfType<MessageDeliveredResult>().Count());
+            Assert.IsEmpty(early);
+            Assert.AreEqual(1, second.OfType<MessageDeliveredResult>().Count());
+            Assert.AreEqual(2, recipient.Messages[MessageType.Advice].Count);
+            GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+            GameEventState targetState = eventState.ScopedStates[planet.InstanceID];
+            Assert.AreEqual(2, targetState.ActivationCount);
+            Assert.AreEqual(90, targetState.NextEligibleTick);
+            Assert.AreEqual(2, eventState.ActivationCount);
+            Assert.Contains(gameEvent, _game.GetEventPool().ToList());
+        }
+
         [Test]
         public void ProcessScheduledEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
@@ -2132,6 +2265,128 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
+        }
+
+        /// <summary>
+        /// Enumerates every authored informant outcome for both ownership directions.
+        /// </summary>
+        /// <returns>The behavior cases for the actual planet-informants event.</returns>
+        private static IEnumerable<TestCaseData> PlanetInformantOutcomeCases()
+        {
+            (PlanetIntelligenceCategory[] Categories, bool[] Descendants)[] outcomes =
+            {
+                (new[] { PlanetIntelligenceCategory.PlanetControl }, new[] { true }),
+                (new[] { PlanetIntelligenceCategory.PlanetResources }, new[] { true }),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Starfighters,
+                        PlanetIntelligenceCategory.Regiments,
+                        PlanetIntelligenceCategory.PlanetaryDefenses,
+                    },
+                    new[] { false, false, true }
+                ),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Manufacturing,
+                        PlanetIntelligenceCategory.ProductionFacilities,
+                    },
+                    new[] { true, true }
+                ),
+                (new[] { PlanetIntelligenceCategory.Fleets }, new[] { true }),
+                (new[] { PlanetIntelligenceCategory.PlanetMilitaryProduction }, new[] { false }),
+                (
+                    new[]
+                    {
+                        PlanetIntelligenceCategory.Officers,
+                        PlanetIntelligenceCategory.SpecialForces,
+                    },
+                    new[] { false, false }
+                ),
+                (new[] { PlanetIntelligenceCategory.All }, new[] { false }),
+            };
+            foreach (
+                (string Owner, string Recipient) factions in new[]
+                {
+                    ("FNALL1", "FNEMP1"),
+                    ("FNEMP1", "FNALL1"),
+                }
+            )
+            {
+                for (int index = 0; index < outcomes.Length; index++)
+                {
+                    yield return new TestCaseData(
+                        factions.Owner,
+                        factions.Recipient,
+                        index,
+                        outcomes[index].Categories,
+                        outcomes[index].Descendants
+                    ).SetName(
+                        $"ProcessScheduledEvents_PlanetInformantsOutcome_{factions.Owner}_{index}"
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds a minimal game around a deep copy of the authored planet-informants event.
+        /// </summary>
+        /// <param name="ownerInstanceID">The faction controlling the scoped planet.</param>
+        /// <param name="recipientInstanceID">The opposing faction receiving intelligence.</param>
+        /// <param name="popularSupport">The owning faction's popular support.</param>
+        /// <param name="random">The deterministic random source.</param>
+        /// <returns>The commands, event, planet, owner, and recipient for the scenario.</returns>
+        private (
+            GameEventCommands Commands,
+            GameEvent Event,
+            Planet Planet,
+            Faction Owner,
+            Faction Recipient
+        ) CreatePlanetInformantsScenario(
+            string ownerInstanceID,
+            string recipientInstanceID,
+            int popularSupport,
+            IRandomNumberProvider random
+        )
+        {
+            Faction owner = new Faction
+            {
+                InstanceID = ownerInstanceID,
+                DisplayName = ownerInstanceID,
+            };
+            Faction recipient = new Faction
+            {
+                InstanceID = recipientInstanceID,
+                DisplayName = recipientInstanceID,
+            };
+            _game.GetFactions().Add(owner);
+            _game.GetFactions().Add(recipient);
+            PlanetSector sector = new PlanetSector { InstanceID = "ALDERAAN_SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "ALDERAAN",
+                DisplayName = "Alderaan",
+                OwnerInstanceID = owner.InstanceID,
+            };
+            planet.SetPopularSupport(owner.InstanceID, popularSupport);
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            GameEvent gameEvent = TestContent
+                .Data.GameEvents.Single(candidate => candidate.InstanceID == "PLANET_INFORMANTS")
+                .GetDeepCopy();
+            _game.GetEventPool().Add(gameEvent);
+            _game.Random = random;
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                random,
+                new GameActionCommands(
+                    _game,
+                    random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+            return (commands, gameEvent, planet, owner, recipient);
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
@@ -362,6 +363,90 @@ namespace Rebellion.Gameplay.GameEvents
         }
 
         /// <summary>
+        /// Synchronizes planet-scoped schedule state with completed ownership transitions.
+        /// </summary>
+        /// <param name="results">The ownership transitions to apply in result order.</param>
+        public void SynchronizeScopedTargets(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            foreach (
+                PlanetOwnershipChangedResult result in results
+                    ?? Array.Empty<PlanetOwnershipChangedResult>()
+            )
+            {
+                if (result?.Planet == null || string.IsNullOrWhiteSpace(result.Planet.InstanceID))
+                    continue;
+
+                foreach (GameEvent gameEvent in _game.GetEventPool())
+                {
+                    if (
+                        gameEvent.ForEach?.Selectors.SingleOrDefault() is not SelectPlanets selector
+                    )
+                        continue;
+
+                    bool selectedBefore = SelectsPlanet(
+                        selector,
+                        result.Planet,
+                        result.PreviousOwner?.InstanceID
+                    );
+                    bool selectedAfter = SelectsPlanet(
+                        selector,
+                        result.Planet,
+                        result.NewOwner?.InstanceID
+                    );
+                    if (selectedBefore == selectedAfter)
+                        continue;
+
+                    GameEventState eventState = _game.EventRuntime.GetState(gameEvent.InstanceID);
+                    eventState.ScopedStates ??= new Dictionary<string, GameEventState>();
+                    if (!selectedAfter)
+                    {
+                        eventState.ScopedStates.Remove(result.Planet.InstanceID);
+                        continue;
+                    }
+
+                    GameEventState targetState = new GameEventState();
+                    eventState.ScopedStates[result.Planet.InstanceID] = targetState;
+                    InitializeSchedule(gameEvent, targetState, result.Tick);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns whether a planet selector accepts one planet with the supplied owner.
+        /// </summary>
+        /// <param name="selector">The scoped planet selector.</param>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <param name="ownerInstanceID">The owner at the evaluated transition boundary.</param>
+        /// <returns>True when the planet is part of the scope.</returns>
+        private static bool SelectsPlanet(
+            SelectPlanets selector,
+            Planet planet,
+            string ownerInstanceID
+        )
+        {
+            return planet.GetParent() != null
+                && !planet.IsDestroyed
+                && (selector.IncludeInactive || planet.IsActive())
+                && (
+                    string.IsNullOrWhiteSpace(selector.InstanceID)
+                    || selector.InstanceID == planet.InstanceID
+                )
+                && (
+                    string.IsNullOrWhiteSpace(selector.OwnerFactionInstanceID)
+                    || selector.OwnerFactionInstanceID == ownerInstanceID
+                )
+                && (
+                    !selector.IsOwned.HasValue
+                    || selector.IsOwned.Value == !string.IsNullOrWhiteSpace(ownerInstanceID)
+                )
+                && (
+                    !selector.SectorType.HasValue
+                    || planet.GetParentOfType<PlanetSector>()?.SectorType
+                        == selector.SectorType.Value
+                );
+        }
+
+        /// <summary>
         /// Applies events whose authored trigger type matches a newly produced simulation result.
         /// </summary>
         /// <param name="results">The results.</param>
@@ -466,7 +551,13 @@ namespace Rebellion.Gameplay.GameEvents
                 return false;
             }
 
-            if (!InitializeSchedule(gameEvent, state, initializeRelativeToCurrentTick))
+            if (
+                !InitializeSchedule(
+                    gameEvent,
+                    state,
+                    initializeRelativeToCurrentTick ? _game.CurrentTick : null
+                )
+            )
             {
                 results = new List<GameResult>();
                 return false;
@@ -572,12 +663,12 @@ namespace Rebellion.Gameplay.GameEvents
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
-        /// <param name="relativeToCurrentTick">Whether interval delays begin at the current tick.</param>
+        /// <param name="relativeTick">The tick from which an interval delay begins, when present.</param>
         /// <returns>True when the schedule is initialized or was already initialized; otherwise false.</returns>
         private bool InitializeSchedule(
             GameEvent gameEvent,
             GameEventState state,
-            bool relativeToCurrentTick = false
+            int? relativeTick = null
         )
         {
             if (state.IsInitialized)
@@ -626,8 +717,8 @@ namespace Rebellion.Gameplay.GameEvents
             GetInitialRange(gameEvent, out int minimum, out int maximum);
             int initialDelay = RollRange(minimum, maximum);
             state.NextEligibleTick =
-                relativeToCurrentTick && gameEvent.Schedule?.At == null
-                    ? checked(_game.CurrentTick + initialDelay)
+                relativeTick.HasValue && gameEvent.Schedule?.At == null
+                    ? checked(relativeTick.Value + initialDelay)
                     : initialDelay;
             state.IsInitialized = true;
             return true;

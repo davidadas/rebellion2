@@ -9,6 +9,7 @@ using Rebellion.AI.Scorers;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
@@ -20,6 +21,50 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [Test]
+        public void GetPlanetIntelAge_NarrowReportAfterFullObservation_UsesFullObservationAge()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            game.CurrentTick = 10;
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            game.CurrentTick = 100;
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                empire,
+                enemy,
+                sector,
+                100,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(90, assessment.GetPlanetIntelAge(enemy));
+        }
+
+        [Test]
+        public void GetPlanetIntelAge_NewPartialObservation_ReturnsUnknownAge()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            game.CurrentTick = 100;
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                empire,
+                enemy,
+                sector,
+                100,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(int.MaxValue, assessment.GetPlanetIntelAge(enemy));
+        }
+
         [TestCase("planet", "empire", true)]
         [TestCase("elsewhere", "empire", false)]
         [TestCase("planet", "rebels", false)]

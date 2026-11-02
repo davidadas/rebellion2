@@ -1,8 +1,10 @@
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Tests.Helpers;
 
 namespace Rebellion.Tests.Game.FogOfWar
@@ -80,7 +82,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             PlanetSnapshot updatedSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets[
                 "CORUSCANT"
             ];
-            Assert.AreEqual("TIE_SQUADRON", updatedSnapshot.Starfighters.Single().InstanceID);
+            Assert.IsEmpty(updatedSnapshot.Starfighters);
             Assert.AreEqual(
                 "TIE_SQUADRON",
                 updatedSnapshot
@@ -329,6 +331,402 @@ namespace Rebellion.Tests.Game.FogOfWar
                 new[] { "KNOWN_FIGHTER", "NEW_FIGHTER" },
                 knownShip.GetChildren<Starfighter>().Select(starfighter => starfighter.InstanceID)
             );
+        }
+
+        [TestCase("officer", PlanetIntelligenceCategory.Officers)]
+        [TestCase("regiment", PlanetIntelligenceCategory.Regiments)]
+        [TestCase("special forces", PlanetIntelligenceCategory.SpecialForces)]
+        [TestCase("starfighter", PlanetIntelligenceCategory.Starfighters)]
+        public void RecordIntelligenceSnapshot_UnitMovesBetweenPlanetAndFleet_PreservesCanonicalPlacement(
+            string unitKind,
+            PlanetIntelligenceCategory category
+        )
+        {
+            ISceneNode unit = CreateUnit(unitKind, "MOBILE_UNIT");
+            _game.AttachNode(unit, _coruscant);
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.RegimentCapacity = 1;
+            ship.StarfighterCapacity = 1;
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(unit, ship);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                category,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot embarked = GetSnapshot(_coreSector, _coruscant);
+            ISceneNode[] embarkedCopies = FindSnapshotEntities(embarked, unit.InstanceID);
+            Assert.AreEqual(1, embarkedCopies.Length);
+            Assert.IsInstanceOf<CapitalShip>(embarkedCopies.Single().GetParent());
+
+            _game.MoveNode(unit, _coruscant);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                30,
+                category,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot stationed = GetSnapshot(_coreSector, _coruscant);
+            ISceneNode[] stationedCopies = FindSnapshotEntities(stationed, unit.InstanceID);
+            Assert.AreEqual(1, stationedCopies.Length);
+            Assert.IsNull(stationedCopies.Single().GetParent());
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_RecursiveStarfighters_RecordsCanonicalFleetAncestry()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.StarfighterCapacity = 1;
+            Starfighter fighter = CreateStarfighter("EMBARKED_FIGHTER", _empire);
+            _game.AttachNode(fighter, ship);
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Starfighters,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            ISceneNode[] copies = FindSnapshotEntities(snapshot, fighter.InstanceID);
+            Assert.AreEqual(1, copies.Length);
+            Assert.IsInstanceOf<CapitalShip>(copies.Single().GetParent());
+            Assert.AreEqual("CARRIER", copies.Single().GetParent().InstanceID);
+            Assert.IsEmpty(snapshot.Starfighters);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_RecursiveStarfighters_RemovesAbsentNestedUnit()
+        {
+            MakeTatooineImperial();
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.StarfighterCapacity = 1;
+            Starfighter fighter = CreateStarfighter("DEPARTED_FIGHTER", _empire);
+            _game.AttachNode(fighter, ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fighter, _tatooine);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Starfighters,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.IsEmpty(FindSnapshotEntities(snapshot, fighter.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(fighter.InstanceID));
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_RecursiveStarfighters_PreservesDepartedCarrierCargo()
+        {
+            MakeTatooineImperial();
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "DEPARTED_CARRIER");
+            ship.StarfighterCapacity = 1;
+            Starfighter fighter = CreateStarfighter("REMEMBERED_FIGHTER", _empire);
+            _game.AttachNode(fighter, ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fleet, _tatooine);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Starfighters,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            ISceneNode remembered = FindSnapshotEntities(snapshot, fighter.InstanceID).Single();
+            Assert.IsInstanceOf<CapitalShip>(remembered.GetParent());
+            Assert.AreEqual(ship.InstanceID, remembered.GetParent().InstanceID);
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[fighter.InstanceID]
+            );
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_MissionParticipantReturnsToPlanet_PreservesMissionRemainder()
+        {
+            Officer returning = CreateOfficer("RETURNING", _empire);
+            Officer remaining = CreateOfficer("REMAINING", _empire);
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(returning, mission);
+            _game.AttachNode(remaining, mission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(returning, _coruscant);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Officers,
+                includeDescendants: true
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            CollectionAssert.AreEqual(
+                new[] { returning.InstanceID },
+                snapshot.Officers.Select(officer => officer.InstanceID)
+            );
+            Mission rememberedMission = snapshot.Missions.Single();
+            CollectionAssert.AreEqual(
+                new[] { remaining.InstanceID },
+                rememberedMission
+                    .GetMainParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.AreEqual(1, FindSnapshotEntities(snapshot, returning.InstanceID).Length);
+            Assert.AreEqual(1, FindSnapshotEntities(snapshot, remaining.InstanceID).Length);
+        }
+
+        [Test]
+        public void RecordPlanetSnapshot_MissionParticipantReturnsToPlanet_PreservesMissionRemainder()
+        {
+            Officer returning = CreateOfficer("RETURNING", _empire);
+            Officer remaining = CreateOfficer("REMAINING", _empire);
+            Mission mission = CreateMission("MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(returning, mission);
+            _game.AttachNode(remaining, mission);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(returning, _coruscant);
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 20);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            CollectionAssert.AreEqual(
+                new[] { returning.InstanceID },
+                snapshot.Officers.Select(officer => officer.InstanceID)
+            );
+            Mission rememberedMission = snapshot.Missions.Single();
+            CollectionAssert.AreEqual(
+                new[] { remaining.InstanceID },
+                rememberedMission
+                    .GetMainParticipants(includeDisabled: true)
+                    .Select(participant => participant.InstanceID)
+            );
+            Assert.AreEqual(1, FindSnapshotEntities(snapshot, returning.InstanceID).Length);
+            Assert.AreEqual(1, FindSnapshotEntities(snapshot, remaining.InstanceID).Length);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_MissionsOnly_ReparentsKnownParticipant()
+        {
+            Officer officer = CreateOfficer("PARTICIPANT", _empire);
+            _game.AttachNode(officer, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            Mission mission = CreateMission("NEW_MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.MoveNode(officer, mission);
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Missions
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.IsEmpty(snapshot.Officers);
+            Mission rememberedMission = snapshot.Missions.Single();
+            Assert.AreEqual(mission.InstanceID, rememberedMission.InstanceID);
+            Assert.AreEqual(
+                officer.InstanceID,
+                rememberedMission.GetMainParticipants(includeDisabled: true).Single().InstanceID
+            );
+            Assert.AreEqual(1, FindSnapshotEntities(snapshot, officer.InstanceID).Length);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_CarrierMovesPlanets_PreservesUnrefreshedCargo()
+        {
+            MakeTatooineImperial();
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.StarfighterCapacity = 1;
+            Officer officer = CreateOfficer("EMBARKED_OFFICER", _empire);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "EMBARKED_SPECIAL_FORCES",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter fighter = CreateStarfighter("EMBARKED_FIGHTER", _empire);
+            _game.AttachNode(officer, ship);
+            _game.AttachNode(specialForces, ship);
+            _game.AttachNode(fighter, ship);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fleet, _tatooine);
+            _game.MoveNode(officer, _tatooine);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _tatooine,
+                _outerRim,
+                20,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            PlanetSnapshot destination = GetSnapshot(_outerRim, _tatooine);
+            CapitalShip rememberedShip = destination
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            Assert.AreEqual(
+                officer.InstanceID,
+                rememberedShip.GetChildren<Officer>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                fighter.InstanceID,
+                rememberedShip.GetChildren<Starfighter>().Single().InstanceID
+            );
+            Assert.AreEqual(
+                specialForces.InstanceID,
+                rememberedShip.GetChildren<SpecialForces>().Single().InstanceID
+            );
+            Assert.IsEmpty(destination.Officers);
+            Assert.IsEmpty(
+                FindSnapshotEntities(GetSnapshot(_coreSector, _coruscant), ship.InstanceID)
+            );
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[officer.InstanceID]
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[fighter.InstanceID]
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[specialForces.InstanceID]
+            );
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_RemovedCapitalShip_CleansSnapshotIndexes()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "REMOVED_SHIP");
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.DeleteNode(ship);
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.IsEmpty(FindSnapshotEntities(snapshot, ship.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(ship.InstanceID));
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_NarrowCategory_PreservesPlanetAgeAndStatus()
+        {
+            Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
+            _game.AttachNode(officer, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.IsColonized = false;
+            _coruscant.IsDestroyed = true;
+            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 5 };
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Officers
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.AreEqual(10, snapshot.FullObservationTick);
+            Assert.IsTrue(snapshot.IsColonized);
+            Assert.IsFalse(snapshot.IsDestroyed);
+            MovementState movement = snapshot.Officers.Single().Movement;
+            Assert.AreEqual(20, movement.ObservedAtTick);
+            Assert.IsTrue(movement.IsObservation);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_ManufacturingNotRefreshed_PreservesQueuedIntelligence()
+        {
+            Building first = AddQueuedBuilding(_coruscant, _empire, "FIRST_ORDER", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            first.ManufacturingStatus = ManufacturingStatus.Complete;
+            _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(first);
+            Building second = AddQueuedBuilding(_coruscant, _empire, "SECOND_ORDER", 10);
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                PlanetIntelligenceCategory.Officers
+            );
+            AssertQueuedIntelligence(GetSnapshot(_coreSector, _coruscant), "FIRST_ORDER", 25);
+
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 30);
+            AssertQueuedIntelligence(GetSnapshot(_coreSector, _coruscant), "FIRST_ORDER", 25);
+
+            recorder.RecordPlanetLossSnapshot(_alliance, _coruscant, _coreSector, 40);
+            AssertQueuedIntelligence(GetSnapshot(_coreSector, _coruscant), "FIRST_ORDER", 25);
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                50,
+                PlanetIntelligenceCategory.Manufacturing
+            );
+            PlanetSnapshot refreshed = GetSnapshot(_coreSector, _coruscant);
+            CollectionAssert.AreEqual(
+                new[] { second.InstanceID },
+                refreshed.ManufacturingQueueItems.Select(item => item.InstanceID)
+            );
+            Assert.AreEqual(10, refreshed.ManufacturingQueueItems.Single().ManufacturingProgress);
         }
 
         [Test]
@@ -672,6 +1070,86 @@ namespace Rebellion.Tests.Game.FogOfWar
             Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
             Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
             Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+        }
+
+        /// <summary>
+        /// Creates one mobile unit of the requested kind for placement tests.
+        /// </summary>
+        /// <param name="unitKind">The requested unit kind.</param>
+        /// <param name="instanceId">The unit instance ID.</param>
+        /// <returns>The created unit.</returns>
+        private ISceneNode CreateUnit(string unitKind, string instanceId)
+        {
+            return unitKind switch
+            {
+                "officer" => CreateOfficer(instanceId, _empire),
+                "regiment" => CreateRegiment(instanceId, _empire),
+                "special forces" => new SpecialForces
+                {
+                    InstanceID = instanceId,
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                "starfighter" => CreateStarfighter(instanceId, _empire),
+                _ => throw new AssertionException($"Unknown unit kind: {unitKind}"),
+            };
+        }
+
+        /// <summary>
+        /// Returns the recorded snapshot for a planet.
+        /// </summary>
+        /// <param name="sector">The planet's sector.</param>
+        /// <param name="planet">The recorded planet.</param>
+        /// <returns>The recorded planet snapshot.</returns>
+        private PlanetSnapshot GetSnapshot(PlanetSector sector, Planet planet) =>
+            _alliance.Fog.Snapshots[sector.InstanceID].Planets[planet.InstanceID];
+
+        /// <summary>
+        /// Finds every physical representation of an entity in one planet snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to search.</param>
+        /// <param name="instanceId">The entity instance ID.</param>
+        /// <returns>All matching physical representations.</returns>
+        private static ISceneNode[] FindSnapshotEntities(PlanetSnapshot snapshot, string instanceId)
+        {
+            return snapshot
+                .Officers.Cast<ISceneNode>()
+                .Concat(snapshot.Regiments)
+                .Concat(snapshot.SpecialForces)
+                .Concat(snapshot.Starfighters)
+                .Concat(snapshot.Buildings)
+                .Concat(
+                    snapshot.Fleets.SelectMany(fleet =>
+                        fleet.GetChildren<ISceneNode>(recursive: true).Prepend(fleet)
+                    )
+                )
+                .Concat(
+                    snapshot.Missions.SelectMany(mission =>
+                        mission.GetChildren<ISceneNode>(recursive: true).Prepend(mission)
+                    )
+                )
+                .Where(entity => entity.InstanceID == instanceId)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Asserts that one remembered manufacturing order retains its recorded progress.
+        /// </summary>
+        /// <param name="snapshot">The snapshot containing manufacturing intelligence.</param>
+        /// <param name="instanceId">The expected order instance ID.</param>
+        /// <param name="progress">The expected remembered progress.</param>
+        private static void AssertQueuedIntelligence(
+            PlanetSnapshot snapshot,
+            string instanceId,
+            int progress
+        )
+        {
+            Assert.AreEqual(1, snapshot.ManufacturingQueueItems.Count);
+            Assert.AreEqual(instanceId, snapshot.ManufacturingQueueItems.Single().InstanceID);
+            Assert.AreEqual(
+                progress,
+                snapshot.ManufacturingQueueItems.Single().ManufacturingProgress
+            );
         }
     }
 }

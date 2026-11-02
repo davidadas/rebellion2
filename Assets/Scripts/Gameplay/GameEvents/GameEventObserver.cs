@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay.GameEvents
@@ -47,6 +48,9 @@ namespace Rebellion.Gameplay.GameEvents
         /// <returns>The results produced by activated events.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
+            _commands.SynchronizeScopedTargets(
+                results?.OfType<PlanetOwnershipChangedResult>().ToList()
+            );
             return _commands.ProcessTriggeredEvents(results);
         }
     }

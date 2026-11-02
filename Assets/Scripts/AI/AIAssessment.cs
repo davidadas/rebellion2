@@ -539,7 +539,9 @@ namespace Rebellion.AI
             )
                 return int.MaxValue;
 
-            return Math.Max(0, _game.CurrentTick - snapshot.TickCaptured);
+            return snapshot.FullObservationTick < 0
+                ? int.MaxValue
+                : Math.Max(0, _game.CurrentTick - snapshot.FullObservationTick);
         }
 
         /// <summary>
