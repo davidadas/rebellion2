@@ -44,6 +44,27 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Resolve_Capture_ArmsEscapeTimerBeforeRemainingInjuryRolls()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            game.CurrentTick = 100;
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 108;
+            DuelResolver commands = new DuelResolver(
+                game,
+                new SequenceRNG(intValues: new[] { 99, 99, 60, 99, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsTrue(encountered.IsCaptured);
+            Assert.AreEqual(160, encountered.NextEscapeAttemptTick);
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+        }
+
+        [Test]
         public void Resolve_EligibleOfficerEvadesCapture_AppliesForceGrowthAfterInitialInjury()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();

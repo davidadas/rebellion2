@@ -418,6 +418,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             officer.IsCaptured = true;
             officer.CaptorInstanceID = "empire";
             officer.CanEscape = false;
+            officer.NextEscapeAttemptTick = 100;
             game.AttachNode(officer, planet);
             officer.IsEnabled = false;
             SetCaptureStatusAction action = new SetCaptureStatusAction
@@ -430,7 +431,8 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             Assert.IsFalse(officer.IsCaptured);
             Assert.IsNull(officer.CaptorInstanceID);
-            Assert.IsTrue(officer.CanEscape);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
         }
 
         [Test]

@@ -1084,14 +1084,12 @@ namespace Rebellion.Gameplay
         {
             if (isCaptured)
             {
-                if (!officer.TryCapture(captorInstanceId))
+                if (!officer.TryCapture(captorInstanceId, _game, _provider))
                     return;
             }
             else
             {
-                officer.IsCaptured = false;
-                officer.CaptorInstanceID = null;
-                officer.CanEscape = false;
+                officer.ReleaseFromCaptivity();
             }
 
             results.Add(

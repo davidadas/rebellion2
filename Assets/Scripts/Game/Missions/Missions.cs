@@ -237,7 +237,7 @@ namespace Rebellion.Game.Missions
             )
                 return results;
 
-            if (!target.TryCapture(OwnerInstanceID))
+            if (!target.TryCapture(OwnerInstanceID, game, provider))
                 return results;
 
             results.Add(
@@ -2319,9 +2319,7 @@ namespace Rebellion.Game.Missions
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return new List<GameResult>();
-            target.IsCaptured = false;
-            target.CaptorInstanceID = null;
-            target.CanEscape = false;
+            target.ReleaseFromCaptivity();
 
             return new List<GameResult>
             {

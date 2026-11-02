@@ -311,16 +311,21 @@ namespace Rebellion.Gameplay.Scripting
             {
                 if (action.IsCaptured)
                 {
-                    if (!officer.TryCapture(action.CaptorFactionInstanceID, action.CanEscape))
+                    if (
+                        !officer.TryCapture(
+                            action.CaptorFactionInstanceID,
+                            game,
+                            context.Random,
+                            action.CanEscape
+                        )
+                    )
                         continue;
 
                     capturedOfficers.Add(officer);
                 }
                 else
                 {
-                    officer.IsCaptured = false;
-                    officer.CaptorInstanceID = null;
-                    officer.CanEscape = true;
+                    officer.ReleaseFromCaptivity();
                 }
 
                 results.Add(

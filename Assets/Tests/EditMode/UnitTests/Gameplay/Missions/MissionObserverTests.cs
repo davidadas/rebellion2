@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, mission);
             game.MoveNode(captured, mission);
             mission.Initiate(10);
-            captured.TryCapture("rebels");
+            captured.TryCapture("rebels", game, game.Random);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
@@ -340,7 +340,7 @@ namespace Rebellion.Tests.Gameplay
             game.MoveNode(officer, mission);
             game.MoveNode(survivor, mission);
             mission.Initiate(10);
-            officer.TryCapture("rebels");
+            officer.TryCapture("rebels", game, game.Random);
             game.MoveNode(officer, planet);
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 game,

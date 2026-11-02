@@ -600,7 +600,8 @@ namespace Rebellion.Gameplay
                         change.NewOwner,
                         capturingUnit: null,
                         change.Planet,
-                        change.Tick
+                        _game,
+                        _game.Random
                     );
                     if (capture != null)
                         results.Add(capture);

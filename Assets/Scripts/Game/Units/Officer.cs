@@ -836,9 +836,16 @@ namespace Rebellion.Game.Units
         /// Attempts to place this officer in the custody of another faction.
         /// </summary>
         /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
+        /// <param name="game">The game whose clock and captive rules govern the transition.</param>
+        /// <param name="random">The simulation random stream used to arm the escape timer.</param>
         /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
         /// <returns>True when the officer was captured; otherwise false.</returns>
-        internal bool TryCapture(string captorInstanceId, bool canEscape = true)
+        internal bool TryCapture(
+            string captorInstanceId,
+            GameRoot game,
+            IRandomNumberProvider random,
+            bool canEscape = true
+        )
         {
             if (((IMovable)this).GetTransitMovement() != null)
             {
@@ -850,8 +857,42 @@ namespace Rebellion.Game.Units
 
             IsCaptured = true;
             CaptorInstanceID = captorInstanceId;
+            bool escapeStateChanged = CanEscape != canEscape;
             CanEscape = canEscape;
+            if (escapeStateChanged)
+            {
+                if (canEscape)
+                    ScheduleEscapeAttempt(game, random);
+                else
+                    NextEscapeAttemptTick = 0;
+            }
             return true;
+        }
+
+        /// <summary>
+        /// Arms this officer's next escape attempt before subsequent operations consume randomness.
+        /// Fixed intervals do not advance the simulation random stream.
+        /// </summary>
+        /// <param name="game">The game whose clock and captive rules determine the due tick.</param>
+        /// <param name="random">The simulation random stream.</param>
+        internal void ScheduleEscapeAttempt(GameRoot game, IRandomNumberProvider random)
+        {
+            GameConfig.TickRangeConfig interval = game.Config.Captive.EscapeAttemptInterval;
+            int minimum = Math.Max(0, interval.Minimum);
+            int maximum = Math.Max(minimum, interval.Maximum);
+            int delay = maximum > minimum ? random.NextInt(minimum, maximum + 1) : minimum;
+            NextEscapeAttemptTick = checked(game.CurrentTick + delay);
+        }
+
+        /// <summary>
+        /// Clears custody and disables the escape timer when this officer is released.
+        /// </summary>
+        internal void ReleaseFromCaptivity()
+        {
+            IsCaptured = false;
+            CaptorInstanceID = null;
+            CanEscape = false;
+            NextEscapeAttemptTick = 0;
         }
 
         /// <summary>

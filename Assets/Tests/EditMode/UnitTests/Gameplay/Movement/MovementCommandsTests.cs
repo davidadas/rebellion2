@@ -3657,7 +3657,7 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Jedi.ForceGrowthPerMission = 1;
             game.AttachNode(officer, missionPlanet);
             Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
-            Assert.IsTrue(captive.TryCapture("empire"));
+            Assert.IsTrue(captive.TryCapture("empire", game, game.Random));
             game.AttachNode(captive, missionPlanet);
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },

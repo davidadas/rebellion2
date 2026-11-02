@@ -22,7 +22,6 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementCommands;
         private readonly ProbabilityTable _escapeTable;
-        private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
 
         /// <summary>
         /// Raised when an immediate capture or release produces a result.
@@ -45,7 +44,6 @@ namespace Rebellion.Gameplay
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             _movementCommands =
                 movementCommands ?? throw new ArgumentNullException(nameof(movementCommands));
-            _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
         }
 
@@ -76,7 +74,8 @@ namespace Rebellion.Gameplay
                 liveCaptor,
                 capturingUnit,
                 context,
-                _game.CurrentTick,
+                _game,
+                _provider,
                 canEscape
             );
             if (result == null)
@@ -122,14 +121,14 @@ namespace Rebellion.Gameplay
 
             if (officer.NextEscapeAttemptTick <= 0)
             {
-                ScheduleEscapeAttempt(officer);
+                officer.ScheduleEscapeAttempt(_game, _provider);
                 return;
             }
 
             if (_game.CurrentTick < officer.NextEscapeAttemptTick)
                 return;
 
-            ScheduleEscapeAttempt(officer);
+            officer.ScheduleEscapeAttempt(_game, _provider);
 
             ContainerNode custodyContext = GetCustodyContext(officer);
             Planet planet = officer.GetParentOfType<Planet>();
@@ -146,19 +145,6 @@ namespace Rebellion.Gameplay
                 if (result != null)
                     results.Add(result);
             }
-        }
-
-        /// <summary>
-        /// Schedules an officer's next escape attempt within the configured inclusive range.
-        /// </summary>
-        /// <param name="officer">The captive officer whose next attempt is scheduled.</param>
-        private void ScheduleEscapeAttempt(Officer officer)
-        {
-            int minimum = Math.Max(0, _escapeAttemptInterval?.Minimum ?? 0);
-            int maximum = Math.Max(minimum, _escapeAttemptInterval?.Maximum ?? minimum);
-            officer.NextEscapeAttemptTick = checked(
-                _game.CurrentTick + _provider.NextInt(minimum, maximum + 1)
-            );
         }
 
         /// <summary>

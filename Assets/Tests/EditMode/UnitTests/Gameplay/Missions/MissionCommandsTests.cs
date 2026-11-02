@@ -4469,7 +4469,7 @@ namespace Rebellion.Tests.Gameplay
             game.CurrentTick = 42;
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
-                new ThrowingRNG(),
+                new SequenceRNG(intValues: new[] { 48 }),
                 movement
             );
 
@@ -4484,6 +4484,7 @@ namespace Rebellion.Tests.Gameplay
                 .Single();
             Assert.AreSame(officer, capture.TargetOfficer);
             Assert.AreEqual(42, capture.Tick);
+            Assert.AreEqual(90, officer.NextEscapeAttemptTick);
             Assert.AreEqual(mission.InstanceID, capture.MissionInstanceID);
             Assert.IsEmpty(
                 new MissionTickProcessor(TestSystems.GetMissionResolver(system)).ProcessTick(game)

@@ -1269,7 +1269,7 @@ namespace Rebellion.Gameplay
             ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
             MovementState interruptedMovement = officer.Movement;
             officer.Movement = null;
-            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID()))
+            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID(), _game, _movementRandom))
             {
                 officer.Movement = interruptedMovement;
                 return;

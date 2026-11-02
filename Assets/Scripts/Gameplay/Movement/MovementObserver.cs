@@ -396,7 +396,7 @@ namespace Rebellion.Gameplay
             }
 
             officer.Movement = null;
-            if (officer.TryCapture(captorInstanceId))
+            if (officer.TryCapture(captorInstanceId, _game, _game.Random))
             {
                 results.Add(
                     new OfficerCaptureStateResult

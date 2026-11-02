@@ -924,7 +924,7 @@ namespace Rebellion.Gameplay
             ISceneNode capturingUnit = null
         )
         {
-            if (!officer.TryCapture(captorInstanceId))
+            if (!officer.TryCapture(captorInstanceId, _game, _provider))
                 return;
 
             results.Add(

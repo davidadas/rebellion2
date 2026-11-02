@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -360,12 +361,89 @@ namespace Rebellion.Tests.Game.Units
         {
             Officer officer = new Officer();
 
-            bool captured = officer.TryCapture("captor", canEscape: false);
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new ThrowingRNG(),
+                canEscape: false
+            );
 
             Assert.IsTrue(captured);
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual("captor", officer.CaptorInstanceID);
             Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void TryCapture_EscapableOfficer_ArmsTimerBeforeReturning()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 100;
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 108;
+            Officer officer = new Officer();
+
+            officer.TryCapture("captor", game, new SequenceRNG(intValues: new[] { 108 }));
+
+            Assert.AreEqual(208, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_FixedEscapeInterval_DoesNotAdvanceRandomStream()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 100;
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 48;
+            Officer officer = new Officer();
+
+            officer.TryCapture("captor", game, new ThrowingRNG());
+
+            Assert.AreEqual(148, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_ExistingEscapePermission_PreservesPendingTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new Officer
+            {
+                IsCaptured = true,
+                CanEscape = true,
+                NextEscapeAttemptTick = 180,
+            };
+
+            officer.TryCapture("captor", game, new ThrowingRNG());
+
+            Assert.AreEqual(180, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_DisabledEscapePermission_CancelsPendingTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Officer officer = new Officer { CanEscape = true, NextEscapeAttemptTick = 180 };
+
+            officer.TryCapture("captor", game, new ThrowingRNG(), canEscape: false);
+
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
+        }
+
+        [Test]
+        public void TryCapture_AfterRelease_ArmsNewEscapeTimer()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Captive.EscapeAttemptInterval.Minimum = 48;
+            game.Config.Captive.EscapeAttemptInterval.Maximum = 108;
+            Officer officer = new Officer();
+            SequenceRNG random = new SequenceRNG(intValues: new[] { 48, 108 });
+            officer.TryCapture("captor", game, random);
+            officer.ReleaseFromCaptivity();
+            game.CurrentTick = 100;
+
+            officer.TryCapture("captor", game, random);
+
+            Assert.AreEqual(208, officer.NextEscapeAttemptTick);
         }
 
         [Test]
@@ -376,7 +454,11 @@ namespace Rebellion.Tests.Game.Units
                 DisplayName = "Test Officer",
                 Movement = new MovementState(),
             };
-            bool captured = officer.TryCapture("captor");
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new ThrowingRNG()
+            );
 
             Assert.IsFalse(captured);
             Assert.IsFalse(officer.IsCaptured);
@@ -395,7 +477,11 @@ namespace Rebellion.Tests.Game.Units
             Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = new MovementState() };
             officer.SetParent(ship);
             ship.SetParent(fleet);
-            bool captured = officer.TryCapture("captor");
+            bool captured = officer.TryCapture(
+                "captor",
+                TestGame.Create(TestConfig.Create()),
+                new ThrowingRNG()
+            );
 
             Assert.IsFalse(captured);
             Assert.IsFalse(officer.IsCaptured);

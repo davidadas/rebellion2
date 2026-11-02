@@ -1,8 +1,10 @@
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
 {
@@ -18,7 +20,8 @@ namespace Rebellion.Gameplay
         /// <param name="captor">The faction taking custody.</param>
         /// <param name="capturingUnit">The unit responsible for the capture, when present.</param>
         /// <param name="context">The location where the capture occurred.</param>
-        /// <param name="tick">The tick when the capture occurred.</param>
+        /// <param name="game">The current game and capture clock.</param>
+        /// <param name="random">The simulation random stream used to arm the escape timer.</param>
         /// <param name="canEscape">Whether the officer may attempt to escape.</param>
         /// <returns>The capture-state change, or null when the officer cannot be captured.</returns>
         internal static OfficerCaptureStateResult Capture(
@@ -26,14 +29,15 @@ namespace Rebellion.Gameplay
             Faction captor,
             ISceneNode capturingUnit,
             Planet context,
-            int tick,
+            GameRoot game,
+            IRandomNumberProvider random,
             bool canEscape = true
         )
         {
             if (
                 officer == null
                 || captor == null
-                || !officer.TryCapture(captor.InstanceID, canEscape)
+                || !officer.TryCapture(captor.InstanceID, game, random, canEscape)
             )
                 return null;
 
@@ -45,7 +49,7 @@ namespace Rebellion.Gameplay
                 ParentAtCapture = officer.GetParent(),
                 CapturingUnit = capturingUnit,
                 Context = context,
-                Tick = tick,
+                Tick = game.CurrentTick,
             };
         }
 
@@ -64,10 +68,7 @@ namespace Rebellion.Gameplay
             string captorInstanceId
         )
         {
-            officer.IsCaptured = false;
-            officer.CaptorInstanceID = null;
-            officer.CanEscape = false;
-            officer.NextEscapeAttemptTick = 0;
+            officer.ReleaseFromCaptivity();
 
             return new OfficerCaptureStateResult
             {
