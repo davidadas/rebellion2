@@ -74,7 +74,7 @@ namespace Rebellion.Gameplay
                             definition.ImagePaths,
                             (imageFaction ?? faction)?.InstanceID
                         ),
-                    OverlayImagePath = overlayImagePath,
+                    OverlayImagePath = definition.OverlayImage?.Path ?? overlayImagePath,
                     BackgroundAudioPath = GetAssetPath(
                         definition.BackgroundAudioPath,
                         definition.BackgroundAudioPaths,

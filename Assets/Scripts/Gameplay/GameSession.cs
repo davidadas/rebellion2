@@ -243,6 +243,7 @@ namespace Rebellion.Gameplay
         {
             GetService<HeadquartersObserver>().ReconcileState();
             _gameData.BindOfficerTraits(GetPersistedOfficers());
+            GetService<JediCommands>().ReconcileDiscoveryState();
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()

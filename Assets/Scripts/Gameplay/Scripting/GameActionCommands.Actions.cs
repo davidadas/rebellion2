@@ -699,9 +699,7 @@ namespace Rebellion.Gameplay.Scripting
                 return;
 
             officer.IsForceEligible = true;
-            int startingValue =
-                officer.JediLevel + context.Random.NextInt(0, officer.JediLevelVariance + 1);
-            officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            officer.InitializeForceValue(context.Random);
             return;
         }
 

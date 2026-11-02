@@ -602,8 +602,8 @@ Marks an officer as having latent Force potential.
 
 Makes a Force-sensitive officer eligible to develop Force ability.
 Eligibility requires sensitivity, so use both actions when revealing a previously unknown candidate.
-On the first eligibility change, `ForceValue` is raised to at least `JediLevel` plus a uniformly
-rolled value from zero through `JediLevelVariance`.
+On the first eligibility change, a zero `ForceValue` is initialized to `JediLevel` plus a uniformly
+rolled value from zero through `JediLevelVariance`. Existing nonzero values are preserved.
 
 **Required options**
 

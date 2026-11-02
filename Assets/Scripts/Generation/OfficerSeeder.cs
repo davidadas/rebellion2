@@ -230,8 +230,7 @@ namespace Rebellion.Generation
                 {
                     officer.IsForceSensitive = true;
                     officer.IsForceEligible = true;
-                    officer.ForceValue =
-                        officer.JediLevel + rng.NextInt(0, officer.JediLevelVariance + 1);
+                    officer.InitializeForceValue(rng);
                 }
                 else if (officer.JediProbability > 0)
                 {

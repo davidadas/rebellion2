@@ -71,6 +71,27 @@ namespace Rebellion.Tests.Gameplay
             _session.Dispose();
         }
 
+        [Test]
+        public void Constructor_NewForceScanner_ArmsFirstScanForNextTick()
+        {
+            Officer trainer = new Officer
+            {
+                InstanceID = "trainer",
+                OwnerInstanceID = _faction.InstanceID,
+                IsJediTrainer = true,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                ForceValue = _game.Config.Jedi.DiscoveringForceUserThreshold,
+            };
+            _game.AttachNode(trainer, _planet);
+            _session.Dispose();
+
+            _session = new GameSession(_game, TestGameData.Create(_game.Config));
+
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(_game.CurrentTick + 1, trainer.NextForceDiscoveryTick);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProcessResults_PlanetDestructionDestroysHeadquarters_PublishesLossAndVictory(

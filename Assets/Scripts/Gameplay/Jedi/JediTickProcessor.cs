@@ -30,10 +30,13 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in game.GetSceneNodesByType<Officer>())
+            List<Officer> officers = game.GetRegisteredSceneNodesByType<Officer>(
+                includeDisabled: true
+            );
+            foreach (Officer officer in officers)
                 _commands.UpdateForceDiscoveryState(officer, results);
 
-            _commands.ScanForHiddenForceUsers(results);
+            _commands.ScanForHiddenForceUsers(officers, results);
             return results;
         }
     }

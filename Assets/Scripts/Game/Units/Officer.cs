@@ -308,6 +308,13 @@ namespace Rebellion.Game.Units
         public bool IsJediTrainer { get; set; }
         public bool GrowsForceOnMission { get; set; }
 
+        /// <summary>
+        /// Gets or sets additional discovery requirements evaluated with the scanning officer
+        /// available in the <c>$discoverer</c> binding.
+        /// </summary>
+        public List<GameConditional> ForceDiscoveryConditionals { get; set; } =
+            new List<GameConditional>();
+
         [PersistableIgnore]
         public bool IsKnownJedi { get; set; }
 
@@ -336,6 +343,11 @@ namespace Rebellion.Game.Units
         public int ForceRank => unchecked((short)(ForceValue + ForceTrainingAdjustment));
 
         public bool IsDiscoveringForceUser { get; set; }
+
+        /// <summary>
+        /// Gets or sets the next campaign tick when an enabled discovery scan may run.
+        /// </summary>
+        public int NextForceDiscoveryTick { get; set; }
 
         // Rank Info.
         public OfficerRank[] AllowedRanks { get; set; }
@@ -524,12 +536,14 @@ namespace Rebellion.Game.Units
             copy.JediLevelVariance = JediLevelVariance;
             copy.IsJediTrainer = IsJediTrainer;
             copy.GrowsForceOnMission = GrowsForceOnMission;
+            copy.ForceDiscoveryConditionals = new List<GameConditional>(ForceDiscoveryConditionals);
             copy.IsKnownJedi = IsKnownJedi;
             copy.IsForceSensitive = IsForceSensitive;
             copy.IsForceEligible = IsForceEligible;
             copy.ForceValue = ForceValue;
             copy.ForceTrainingAdjustment = ForceTrainingAdjustment;
             copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
+            copy.NextForceDiscoveryTick = NextForceDiscoveryTick;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
             copy.InitialParentTypeID = InitialParentTypeID;
@@ -884,6 +898,16 @@ namespace Rebellion.Game.Units
                 && !IsCaptured
                 && !IsKilled
                 && !IsOnMission();
+        }
+
+        /// <summary>
+        /// Initializes a revealed Force rating only while its stored experience is zero.
+        /// </summary>
+        /// <param name="provider">The random number provider used for the inclusive template variance.</param>
+        internal void InitializeForceValue(IRandomNumberProvider provider)
+        {
+            if (ForceValue == 0 && IsForceSensitive && IsForceEligible)
+                ForceValue = JediLevel + provider.NextInt(0, JediLevelVariance + 1);
         }
 
         /// <summary>

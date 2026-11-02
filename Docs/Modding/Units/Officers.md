@@ -83,6 +83,7 @@ shift by themselves.
 | `JediLevelVariance` | Random variation applied when Force eligibility is initialized. |
 | `IsKnownJedi` | Whether the officer's Force ability begins publicly known. |
 | `IsJediTrainer` | Whether the officer may train another eligible officer. |
+| `ForceDiscoveryConditionals` | Additional scripting conditions required for discovery. `$discoverer` contains the scanning officer. |
 | `GrowsForceOnMission` | Whether successfully evading capture may advance Force ability. |
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
@@ -91,6 +92,11 @@ Capture evasion advances eligible officers by `Jedi.ForceGrowthPerMission`; the 
 names are retained for compatibility. Force progression reports cover experience and training,
 including numeric rank changes within the same displayed rank label. Initializing a zero rank
 does not produce a separate growth report.
+
+Qualified trainers scan stationary officers sharing their immediate container and faction.
+The first scan runs on the following campaign tick. Discovery initializes a zero stored Force
+value and preserves an existing nonzero value. Additional `ForceDiscoveryConditionals` use the
+existing [condition syntax](../Scripting/Conditionals.md).
 
 ## AI behavior
 

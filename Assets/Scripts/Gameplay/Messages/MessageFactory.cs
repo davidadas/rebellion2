@@ -560,7 +560,7 @@ namespace Rebellion.Gameplay
                             {
                                 "rank",
                                 GetForceRankText(
-                                    GetCurrentForceRank(result),
+                                    result.CurrentForceRank,
                                     result.Officer.IsForceSensitive,
                                     game
                                 )
@@ -603,7 +603,7 @@ namespace Rebellion.Gameplay
 
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(resultType),
+                    GetDefinition(resultType, gameObjectTypeId: result.Officer.TypeID),
                     faction,
                     new Dictionary<string, string>
                     {
@@ -1652,45 +1652,9 @@ namespace Rebellion.Gameplay
             if (result?.Officer == null)
                 return false;
 
-            int previousRank = GetPreviousForceRank(result);
-            int currentRank = GetCurrentForceRank(result);
+            int previousRank = result.PreviousForceRank;
+            int currentRank = result.CurrentForceRank;
             return previousRank != 0 && currentRank != 0 && previousRank != currentRank;
-        }
-
-        /// <summary>
-        /// Gets the previous force rank for a force experience result.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>The previous force rank.</returns>
-        private static int GetPreviousForceRank(ForceProgressionResult result)
-        {
-            if (HasRecordedForceRank(result))
-                return result.PreviousForceRank;
-
-            return Math.Max(0, (result.Officer?.ForceRank ?? 0) - Math.Max(0, result.RankIncrease));
-        }
-
-        /// <summary>
-        /// Gets the current force rank for a force experience result.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>The current force rank.</returns>
-        private static int GetCurrentForceRank(ForceProgressionResult result)
-        {
-            if (HasRecordedForceRank(result))
-                return result.CurrentForceRank;
-
-            return result.Officer?.ForceRank ?? 0;
-        }
-
-        /// <summary>
-        /// Checks whether a force experience result recorded explicit rank values.
-        /// </summary>
-        /// <param name="result">The force experience result.</param>
-        /// <returns>True when explicit rank values are present; otherwise false.</returns>
-        private static bool HasRecordedForceRank(ForceProgressionResult result)
-        {
-            return result.PreviousForceRank != 0 || result.CurrentForceRank != 0;
         }
 
         /// <summary>

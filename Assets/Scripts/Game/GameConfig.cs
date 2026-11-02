@@ -1124,15 +1124,17 @@ namespace Rebellion.Game
                 new Dictionary<int, int>();
 
             /// <summary>
-            /// Resolves the label for a numeric Force rank using the greatest configured threshold
-            /// that does not exceed the supplied rank.
+            /// Resolves the label for the unsigned 16-bit representation of a stored Force rank
+            /// using the greatest configured threshold that does not exceed it.
             /// </summary>
             /// <param name="forceRank">The numeric rank to classify.</param>
             /// <returns>The configured label active at that rank.</returns>
             public ForceRankLabel GetRankLabel(int forceRank)
             {
                 return (ForceRankLabel)
-                    new ProbabilityTable(RankLabelByMinimumForceRank).Lookup(forceRank);
+                    new ProbabilityTable(RankLabelByMinimumForceRank).Lookup(
+                        unchecked((ushort)forceRank)
+                    );
             }
 
             /// <summary>

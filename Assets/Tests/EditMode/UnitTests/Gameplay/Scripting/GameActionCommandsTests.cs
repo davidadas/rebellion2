@@ -643,6 +643,30 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.AreEqual(13, leia.ForceValue);
         }
 
+        [TestCase(5)]
+        [TestCase(25)]
+        [TestCase(-1)]
+        public void Execute_SetForceEligibleExistingExperience_PreservesValueWithoutRandomRoll(
+            int forceValue
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("student", "rebels");
+            officer.IsForceSensitive = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = forceValue;
+            officer.JediLevel = 10;
+            game.AttachNode(officer, planet);
+
+            new SetForceEligibleAction { OfficerInstanceID = officer.InstanceID }.Execute(
+                game,
+                new ThrowingRNG()
+            );
+
+            Assert.IsTrue(officer.IsForceEligible);
+            Assert.AreEqual(forceValue, officer.ForceValue);
+        }
+
         [Test]
         public void Execute_ApplyOfficerInjuryInclusiveRange_AppliesRolledSeverity()
         {

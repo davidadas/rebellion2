@@ -406,6 +406,7 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.IsForceEligible = true;
             originalOfficer.ForceValue = 75;
             originalOfficer.ForceTrainingAdjustment = 10;
+            originalOfficer.NextForceDiscoveryTick = 713;
             originalOfficer.NextEscapeAttemptTick = 725;
             originalOfficer.MissionReturnParentInstanceID = "return-parent";
             originalOfficer.MissionReturnLocationInstanceID = "return-location";
@@ -419,6 +420,7 @@ namespace Rebellion.Tests.Game.Units
 
             StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
+            Assert.AreEqual(713, deserializedOfficer.NextForceDiscoveryTick);
             CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
             Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
             Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);

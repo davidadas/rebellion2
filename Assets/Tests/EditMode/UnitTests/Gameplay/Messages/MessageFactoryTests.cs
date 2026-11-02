@@ -599,6 +599,50 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
+        [TestCase(80)]
+        [TestCase(100)]
+        public void CreateMessages_LeiaDiscovery_UsesSingleAuthoredReport(int discovererRank)
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer discoverer = new Officer
+            {
+                InstanceID = "LUKE_SKYWALKER",
+                OwnerInstanceID = alliance.InstanceID,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                IsJediTrainer = true,
+                ForceValue = discovererRank,
+                MessageImagePath = "luke-card",
+            };
+            Officer leia = new Officer
+            {
+                TypeID = "OFAL002",
+                InstanceID = "LEIA_ORGANA",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(leia, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                TestContent.Data.MessageDefinitions,
+                new ForceDiscoveryResult
+                {
+                    EventType = ForceEventType.ForceUserDiscovered,
+                    Officer = leia,
+                    Discoverer = discoverer,
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("Leia uses Force", message.Title);
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Units/Officers/OFAL002/message",
+                message.OverlayImagePath
+            );
+        }
+
         [TestCase(true, "luke-card")]
         [TestCase(false, null)]
         public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_RespectsSubjectImageSetting(

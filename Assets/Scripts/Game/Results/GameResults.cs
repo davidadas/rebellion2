@@ -421,7 +421,6 @@ namespace Rebellion.Game.Results
         public Officer Officer { get; set; }
         public int PreviousForceRank { get; set; }
         public int CurrentForceRank { get; set; }
-        public abstract int RankIncrease { get; }
     }
 
     /// <summary>
@@ -431,7 +430,6 @@ namespace Rebellion.Game.Results
     {
         public int Progress { get; set; }
         public int Detail { get; set; }
-        public override int RankIncrease => Progress;
     }
 
     /// <summary>
@@ -441,7 +439,6 @@ namespace Rebellion.Game.Results
     {
         public int ExperienceGained { get; set; }
         public int Detail { get; set; }
-        public override int RankIncrease => ExperienceGained;
     }
 
     /// <summary>

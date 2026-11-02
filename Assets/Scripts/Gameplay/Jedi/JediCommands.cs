@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay.Scripting;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
@@ -22,7 +23,7 @@ namespace Rebellion.Gameplay
         /// Creates a new JediCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for scan rolls.</param>
+        /// <param name="provider">Random number provider for initial Force ratings.</param>
         public JediCommands(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -70,10 +71,10 @@ namespace Rebellion.Gameplay
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
             bool shouldDiscover =
-                officer.IsForceSensitive
-                && officer.IsForceEligible
-                && officer.IsJediTrainer
+                officer.IsJediTrainer
                 && officer.ForceRank >= threshold
+                && officer.IsActive()
+                && ((IMovable)officer).GetTransitMovement() == null
                 && !officer.IsCaptured
                 && !officer.IsKilled
                 && !officer.IsOnMission();
@@ -81,6 +82,7 @@ namespace Rebellion.Gameplay
             if (shouldDiscover && !officer.IsDiscoveringForceUser)
             {
                 officer.IsDiscoveringForceUser = true;
+                officer.NextForceDiscoveryTick = _game.CurrentTick + 1;
 
                 results.Add(
                     new ForceDiscoveryResult
@@ -99,47 +101,84 @@ namespace Rebellion.Gameplay
             else if (!shouldDiscover && officer.IsDiscoveringForceUser)
             {
                 officer.IsDiscoveringForceUser = false;
+                officer.NextForceDiscoveryTick = 0;
             }
+        }
+
+        /// <summary>
+        /// Restores discovery eligibility and arms newly available scanners when a session starts.
+        /// </summary>
+        internal void ReconcileDiscoveryState()
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (
+                Officer officer in _game.GetRegisteredSceneNodesByType<Officer>(
+                    includeDisabled: true
+                )
+            )
+                UpdateForceDiscoveryState(officer, results);
         }
 
         /// <summary>
         /// Scans for hidden force users at each active scanner's location.
         /// </summary>
+        /// <param name="officers">The officers evaluated during this tick.</param>
         /// <param name="results">Collection to append any discovered force user results to.</param>
-        internal void ScanForHiddenForceUsers(List<GameResult> results)
+        internal void ScanForHiddenForceUsers(
+            IReadOnlyList<Officer> officers,
+            List<GameResult> results
+        )
         {
-            List<Officer> scanners = GetActiveForceScanners();
-            if (scanners.Count == 0)
-                return;
+            Dictionary<ISceneNode, List<Officer>> candidatesByLocation =
+                new Dictionary<ISceneNode, List<Officer>>();
+            foreach (Officer candidate in officers)
+            {
+                if (
+                    !candidate.IsActive()
+                    || !candidate.IsUndiscoveredForceUser()
+                    || ((IMovable)candidate).GetTransitMovement() != null
+                )
+                    continue;
+                ISceneNode location = candidate.GetParent();
+                if (location == null)
+                    continue;
+                if (!candidatesByLocation.TryGetValue(location, out List<Officer> candidates))
+                {
+                    candidates = new List<Officer>();
+                    candidatesByLocation.Add(location, candidates);
+                }
+                candidates.Add(candidate);
+            }
 
-            foreach (Officer scanner in scanners)
-                ScanScannerLocation(scanner, results);
+            foreach (Officer scanner in officers)
+                if (
+                    scanner.IsDiscoveringForceUser
+                    && _game.CurrentTick >= scanner.NextForceDiscoveryTick
+                )
+                {
+                    ISceneNode location = scanner.GetParent();
+                    if (
+                        location != null
+                        && candidatesByLocation.TryGetValue(location, out List<Officer> candidates)
+                    )
+                        ScanScannerLocation(scanner, candidates, results);
+                    scanner.NextForceDiscoveryTick = _game.CurrentTick + 1;
+                }
         }
 
         /// <summary>
-        /// Gets officers currently scanning for hidden force users.
-        /// </summary>
-        /// <returns>Active force scanners.</returns>
-        private List<Officer> GetActiveForceScanners()
-        {
-            return _game
-                .GetSceneNodesByType<Officer>()
-                .Where(o => o.IsDiscoveringForceUser)
-                .ToList();
-        }
-
-        /// <summary>
-        /// Scans one officer's current planet for hidden force users belonging to that officer's faction.
+        /// Scans officers sharing the scanner's immediate container and faction.
         /// </summary>
         /// <param name="scanner">The scanning officer.</param>
+        /// <param name="candidates">The candidates indexed at the scanner's location this tick.</param>
         /// <param name="results">Collection to append discovery results to.</param>
-        private void ScanScannerLocation(Officer scanner, List<GameResult> results)
+        private void ScanScannerLocation(
+            Officer scanner,
+            IReadOnlyList<Officer> candidates,
+            List<GameResult> results
+        )
         {
-            Planet planet = scanner.GetParentOfType<Planet>();
-            if (planet == null)
-                return;
-
-            foreach (Officer candidate in planet.GetChildren<Officer>(recursive: true))
+            foreach (Officer candidate in candidates)
             {
                 if (CanDiscoverForceUser(scanner, candidate))
                     DiscoverForceUser(scanner, candidate, results);
@@ -147,7 +186,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns true when a scanner discovers a candidate this tick.
+        /// Checks the shared discovery requirements and the candidate's authored conditions.
         /// </summary>
         /// <param name="scanner">The scanning officer.</param>
         /// <param name="candidate">The hidden force user candidate.</param>
@@ -158,19 +197,20 @@ namespace Rebellion.Gameplay
             if (
                 string.IsNullOrEmpty(scannerOwnerInstanceID)
                 || candidate.GetOwnerInstanceID() != scannerOwnerInstanceID
-                || !candidate.IsUndiscoveredForceUser()
+                || candidate == scanner
+                || candidate.IsForceEligible
             )
                 return false;
 
-            int probability =
-                scanner.ForceRank
-                + candidate.ForceRank
-                + _game.Config.Jedi.EncounterProbabilityOffset;
-            if (probability <= 0)
-                return false;
+            if (candidate.ForceDiscoveryConditionals.Count == 0)
+                return true;
 
-            double roll = _provider.NextDouble() * 100.0;
-            return roll < probability;
+            GameEvaluationContext evaluation = new GameEvaluationContext(candidate.InstanceID);
+            evaluation.Bind("$discoverer", new[] { scanner });
+            GameConditionContext context = new GameConditionContext(_game, evaluation);
+            return candidate.ForceDiscoveryConditionals.All(condition =>
+                GameConditionEvaluator.IsMet(condition, context)
+            );
         }
 
         /// <summary>
@@ -183,9 +223,7 @@ namespace Rebellion.Gameplay
         {
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
-            int revealedForceValue =
-                candidate.JediLevel + _provider.NextInt(0, candidate.JediLevelVariance + 1);
-            candidate.ForceValue = Math.Max(candidate.ForceValue, revealedForceValue);
+            candidate.InitializeForceValue(_provider);
             int currentForceRank = candidate.ForceRank;
 
             results.Add(
