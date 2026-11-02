@@ -11,6 +11,50 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(32767, 32767)]
+        [TestCase(32768, -32768)]
+        [TestCase(65536, 0)]
+        [TestCase(-32769, 32767)]
+        public void ForceValue_SignedStorageBoundary_PreservesLowSixteenBits(
+            int value,
+            int expected
+        )
+        {
+            Officer officer = new Officer { ForceValue = value };
+
+            Assert.AreEqual(expected, officer.ForceValue);
+        }
+
+        [TestCase(32768, -32768)]
+        [TestCase(-32769, 32767)]
+        public void ForceTrainingAdjustment_SignedStorageBoundary_PreservesLowSixteenBits(
+            int value,
+            int expected
+        )
+        {
+            Officer officer = new Officer { ForceTrainingAdjustment = value };
+
+            Assert.AreEqual(expected, officer.ForceTrainingAdjustment);
+        }
+
+        [TestCase(32767, 1, -32768)]
+        [TestCase(-32768, -1, 32767)]
+        [TestCase(40, 10, 50)]
+        public void ForceRank_TrainingAdjustedValue_UsesSignedSixteenBitSum(
+            int experience,
+            int training,
+            int expected
+        )
+        {
+            Officer officer = new Officer
+            {
+                ForceValue = experience,
+                ForceTrainingAdjustment = training,
+            };
+
+            Assert.AreEqual(expected, officer.ForceRank);
+        }
+
         [Test]
         public void Deserialize_HoldPositionConfiguration_ReadsSharedConditions()
         {

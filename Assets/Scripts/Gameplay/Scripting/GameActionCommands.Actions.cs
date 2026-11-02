@@ -643,6 +643,16 @@ namespace Rebellion.Gameplay.Scripting
                         $"IncreaseForceRank calculated no increase for '{officer.InstanceID}'."
                     );
                 officer.ForceValue = checked(stored + increase);
+                context.Record(
+                    new ForceExperienceResult
+                    {
+                        Officer = officer,
+                        ExperienceGained = increase,
+                        PreviousForceRank = effective,
+                        CurrentForceRank = officer.ForceRank,
+                        Tick = game.CurrentTick,
+                    }
+                );
             }
             return;
         }

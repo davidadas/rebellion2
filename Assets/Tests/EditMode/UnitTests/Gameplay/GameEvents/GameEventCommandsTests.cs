@@ -1187,6 +1187,131 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        [TestCase(
+            "LEIA_VADER_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_VADER",
+            "DARTH_VADER",
+            false,
+            false,
+            10
+        )]
+        [TestCase(
+            "LEIA_VADER_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_VADER",
+            "DARTH_VADER",
+            true,
+            false,
+            28
+        )]
+        [TestCase(
+            "LEIA_VADER_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_VADER",
+            "DARTH_VADER",
+            false,
+            true,
+            10
+        )]
+        [TestCase(
+            "LEIA_VADER_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_VADER",
+            "DARTH_VADER",
+            true,
+            true,
+            10
+        )]
+        [TestCase(
+            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            false,
+            false,
+            10
+        )]
+        [TestCase(
+            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            true,
+            false,
+            28
+        )]
+        [TestCase(
+            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            false,
+            true,
+            10
+        )]
+        [TestCase(
+            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
+            "EMPEROR_PALPATINE",
+            true,
+            true,
+            10
+        )]
+        public void ProcessTriggeredEvents_AuthoredLeiaEncounter_AppliesGrowthOnlyWhenEligibleAndFree(
+            string effectID,
+            string sourceID,
+            string opponentID,
+            bool eligible,
+            bool captured,
+            int expectedForce
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer leia = EntityFactory.CreateOfficer("LEIA_ORGANA", "FNALL1");
+            leia.ForceValue = 10;
+            leia.IsForceEligible = eligible;
+            Officer opponent = EntityFactory.CreateOfficer(opponentID, "FNEMP1");
+            opponent.ForceValue = 100;
+            _game.AttachNode(leia, planet);
+            leia.IsCaptured = captured;
+            leia.CaptorInstanceID = captured ? "FNEMP1" : null;
+            opponent.IsCaptured = true;
+            _game.AttachNode(opponent, planet);
+            opponent.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(gameEvent =>
+                        gameEvent.InstanceID == effectID
+                    )
+                );
+            GameEventCommands commands = new GameEventCommands(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            commands.ProcessTriggeredEvents(
+                new[]
+                {
+                    new DuelResult
+                    {
+                        EncounteredOfficer = leia,
+                        OpposingOfficer = opponent,
+                        SourceEventInstanceID = sourceID,
+                        ImagePath = "encounter-image",
+                        AudioPath = "encounter-audio",
+                    },
+                }
+            );
+
+            Assert.AreEqual(expectedForce, leia.ForceValue);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(effectID).ActivationCount);
+        }
+
         [Test]
         public void ProcessTriggeredEvents_StableTriggerId_ActivatesWithoutClrTypeName()
         {

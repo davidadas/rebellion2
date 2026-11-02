@@ -547,7 +547,9 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             List<GameResult> results = action.Execute(game);
 
-            Assert.IsEmpty(results);
+            ForceExperienceResult growth = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreEqual(40, growth.PreviousForceRank);
+            Assert.AreEqual(50, growth.CurrentForceRank);
             Assert.AreEqual(50, luke.ForceValue);
         }
 

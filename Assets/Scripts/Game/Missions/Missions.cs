@@ -1750,6 +1750,7 @@ namespace Rebellion.Game.Missions
             if (bonus <= 0)
                 return null;
 
+            int previousForceRank = officer.ForceRank;
             officer.ForceTrainingAdjustment += bonus;
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {officer.ForceRank})"
@@ -1758,6 +1759,8 @@ namespace Rebellion.Game.Missions
             return new ForceTrainingResult
             {
                 Officer = officer,
+                PreviousForceRank = previousForceRank,
+                CurrentForceRank = officer.ForceRank,
                 Progress = bonus,
                 Detail = trainer.ForceRank,
                 Tick = game.CurrentTick,

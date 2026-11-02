@@ -263,6 +263,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Loyalty))]
         private int _loyalty;
 
+        private short _forceValue;
+        private short _forceTrainingAdjustment;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
@@ -310,11 +313,27 @@ namespace Rebellion.Game.Units
 
         public bool IsForceSensitive { get; set; }
         public bool IsForceEligible { get; set; }
-        public int ForceValue { get; set; }
-        public int ForceTrainingAdjustment { get; set; }
+
+        /// <summary>
+        /// Gets or sets the stored signed 16-bit Force experience value.
+        /// </summary>
+        public int ForceValue
+        {
+            get => _forceValue;
+            set => _forceValue = unchecked((short)value);
+        }
+
+        /// <summary>
+        /// Gets or sets the stored signed 16-bit Force training adjustment.
+        /// </summary>
+        public int ForceTrainingAdjustment
+        {
+            get => _forceTrainingAdjustment;
+            set => _forceTrainingAdjustment = unchecked((short)value);
+        }
 
         [PersistableIgnore]
-        public int ForceRank => ForceValue + ForceTrainingAdjustment;
+        public int ForceRank => unchecked((short)(ForceValue + ForceTrainingAdjustment));
 
         public bool IsDiscoveringForceUser { get; set; }
 

@@ -87,6 +87,11 @@ shift by themselves.
 | `CurrentRank` | Initial command rank: `None`, `Commander`, `General`, or `Admiral`. |
 | `AllowedRanks` | Command ranks this officer may hold. Each item is an `OfficerRank` value. |
 
+Capture evasion advances eligible officers by `Jedi.ForceGrowthPerMission`; the serialized field
+names are retained for compatibility. Force progression reports cover experience and training,
+including numeric rank changes within the same displayed rank label. Initializing a zero rank
+does not produce a separate growth report.
+
 ## AI behavior
 
 An officer entry may contain one optional `AIBehavior`. The supported type is `HoldPosition`.
