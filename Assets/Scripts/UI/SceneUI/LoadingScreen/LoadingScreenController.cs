@@ -52,6 +52,27 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
+    /// Presents a startup failure without requiring initialized application content.
+    /// </summary>
+    /// <param name="exception">The failure that prevented startup.</param>
+    internal static void ShowStartupFailure(Exception exception)
+    {
+        if (exception == null)
+            throw new ArgumentNullException(nameof(exception));
+
+        LoadingScreenController controller = GetOrCreateController();
+        controller._bootstrap = null;
+        controller.EnsurePresentation();
+        controller._quitOnContinue = true;
+        controller._loadInProgress = true;
+        controller._view.ShowStartupFailure(
+            "Reopen the launcher to check and repair your installation.\n\n"
+                + exception.GetBaseException().Message
+        );
+        controller._view.SetVisible(true);
+    }
+
+    /// <summary>
     /// Starts a one-shot saved-game transition owned independently from the current scene.
     /// </summary>
     /// <param name="bootstrap">The bootstrap that owns the active content services.</param>
@@ -175,7 +196,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Instantiates and begins warming the hidden loading view.
+    /// Instantiates the shared loading view and warms content when application services are available.
     /// </summary>
     private void EnsurePresentation()
     {
@@ -192,7 +213,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         _view = Instantiate(prefab, transform, false);
         _view.ContinueRequested += HandleContinueRequested;
-        _view.Initialize(_bootstrap.GetContentPack().ContentRootPath);
+        if (_bootstrap != null)
+            _view.Initialize(_bootstrap.GetContentPack().ContentRootPath);
         _view.SetVisible(false);
     }
 

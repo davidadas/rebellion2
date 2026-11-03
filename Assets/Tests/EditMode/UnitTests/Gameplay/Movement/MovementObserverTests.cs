@@ -548,6 +548,131 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_DestroyedCarrierOverBlockadedFriendlyPlanet_RestoresOfficerLocally()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.origin.OwnerInstanceID = "empire";
+            scene.fallback.OwnerInstanceID = "rebels";
+            AddBlockadingFleet(scene.game, scene.origin);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsTrue(scene.origin.IsBlockadedFor("empire"));
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.AreSame(
+                officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID)
+            );
+            Assert.IsNull(officer.Movement);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+        }
+
+        [Test]
+        public void HandleResults_ScrappedCarrierOverBlockadedFriendlyPlanet_RestoresOfficerLocally()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.origin.OwnerInstanceID = "empire";
+            scene.fallback.OwnerInstanceID = "rebels";
+            AddBlockadingFleet(scene.game, scene.origin);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectScrappedResult
+                {
+                    ScrappedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.AreSame(
+                officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID)
+            );
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCaptorsCarrierOverOfficersPlanet_ReleasesOfficer()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.fallback.OwnerInstanceID = "rebels";
+            scene.game.CurrentTick = 25;
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "empire";
+            officer.CanEscape = true;
+            officer.NextEscapeAttemptTick = 40;
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.AreSame(
+                officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID)
+            );
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(0, officer.NextEscapeAttemptTick);
+            OfficerCaptureStateResult release = results
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+            Assert.AreSame(officer, release.TargetOfficer);
+            Assert.IsFalse(release.IsCaptured);
+            Assert.AreEqual("empire", release.CaptorInstanceID);
+            Assert.AreSame(scene.origin, release.Context);
+            Assert.AreEqual(25, release.Tick);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCaptorsCarrierWithSafeDestination_PreservesCustody()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "empire";
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("empire", officer.CaptorInstanceID);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+        }
+
+        [Test]
         public void HandleResults_DestroyedCarrierOverFriendlyPlanet_RestoresOfficerLocally()
         {
             var scene = BuildRemovedCarrierScene();
