@@ -14,10 +14,11 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Applies Force discovery, growth, and force-user scanning operations.
     /// </summary>
-    public class JediCommands
+    public class JediCommands : IDisposable
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly List<GameResult> _pendingDiscoveryResults = new();
 
         /// <summary>
         /// Creates a new JediCommands.
@@ -28,6 +29,7 @@ namespace Rebellion.Gameplay
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            _game.ForceDiscoveryStarted += RecordDiscoveryStarted;
         }
 
         /// <summary>
@@ -66,47 +68,39 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Sets or clears IsDiscoveringForceUser based on whether a Jedi trainer meets the
-        /// ForceRank threshold and is available to scan.
+        /// Disconnects the model's discovery-transition producer from this runtime.
         /// </summary>
-        /// <param name="officer">The officer to evaluate.</param>
-        /// <param name="results">Collection to append any discovery state change results to.</param>
-        internal void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
+        public void Dispose()
         {
-            int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
-            bool shouldDiscover =
-                officer.IsJediTrainer
-                && officer.ForceRank >= threshold
-                && officer.IsActive()
-                && ((IMovable)officer).GetTransitMovement() == null
-                && !officer.IsCaptured
-                && !officer.IsKilled
-                && !officer.IsOnMission();
+            _game.ForceDiscoveryStarted -= RecordDiscoveryStarted;
+        }
 
-            if (shouldDiscover && !officer.IsDiscoveringForceUser)
-            {
-                officer.IsDiscoveringForceUser = true;
-                officer.NextForceDiscoveryTick = _game.CurrentTick + 1;
+        /// <summary>
+        /// Takes the discovery transitions recorded since the preceding Force tick.
+        /// </summary>
+        /// <returns>The completed transitions in mutation order.</returns>
+        internal List<GameResult> TakeDiscoveryResults()
+        {
+            List<GameResult> results = new(_pendingDiscoveryResults);
+            _pendingDiscoveryResults.Clear();
+            return results;
+        }
 
-                results.Add(
-                    new ForceDiscoveryResult
-                    {
-                        EventType = ForceEventType.DiscoveringForceUser,
-                        Officer = officer,
-                        ForceRank = officer.ForceRank,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-
-                GameLogger.Log(
-                    $"{officer.GetDisplayName()} is discovering Force abilities (rank {officer.ForceRank})"
-                );
-            }
-            else if (!shouldDiscover && officer.IsDiscoveringForceUser)
-            {
-                officer.IsDiscoveringForceUser = false;
-                officer.NextForceDiscoveryTick = 0;
-            }
+        /// <summary>
+        /// Records a model transition without postponing its timer or eligibility update.
+        /// </summary>
+        /// <param name="officer">The officer whose scanner was enabled.</param>
+        private void RecordDiscoveryStarted(Officer officer)
+        {
+            _pendingDiscoveryResults.Add(
+                new ForceDiscoveryResult
+                {
+                    EventType = ForceEventType.DiscoveringForceUser,
+                    Officer = officer,
+                    ForceRank = officer.ForceRank,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -114,9 +108,9 @@ namespace Rebellion.Gameplay
         /// </summary>
         internal void ReconcileDiscoveryState()
         {
-            List<GameResult> results = new List<GameResult>();
             foreach (Officer officer in _game.RegisteredOfficers)
-                UpdateForceDiscoveryState(officer, results);
+                officer.ReconcileForceDiscoveryState();
+            _pendingDiscoveryResults.Clear();
         }
 
         /// <summary>

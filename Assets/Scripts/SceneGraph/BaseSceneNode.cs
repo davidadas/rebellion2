@@ -24,7 +24,19 @@ namespace Rebellion.SceneGraph
         /// <summary>
         /// Gets or sets whether this node participates in active gameplay.
         /// </summary>
-        public bool IsEnabled { get; set; } = true;
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                if (_isEnabled == value)
+                    return;
+                _isEnabled = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private bool _isEnabled = true;
 
         // Owner Info.
         private string _ownerInstanceId;
@@ -71,6 +83,15 @@ namespace Rebellion.SceneGraph
         {
             foreach (ISceneNode child in EnumerateChildren())
                 ((BaseSceneNode)child).OnHierarchyChanged();
+        }
+
+        /// <summary>
+        /// Notifies descendants when an ancestor's active or transit state changes.
+        /// </summary>
+        protected virtual void OnAvailabilityChanged()
+        {
+            foreach (ISceneNode child in EnumerateChildren())
+                ((BaseSceneNode)child).OnAvailabilityChanged();
         }
 
         /// <summary>

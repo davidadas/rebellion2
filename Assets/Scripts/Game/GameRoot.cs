@@ -34,6 +34,11 @@ namespace Rebellion.Game
         // Scene graph.
         private GalaxyMap _galaxy;
 
+        /// <summary>
+        /// Reports an officer whose retained discovery state has just become enabled.
+        /// </summary>
+        internal event Action<Officer> ForceDiscoveryStarted;
+
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
         private GameSummary _summary = new GameSummary();
@@ -193,7 +198,7 @@ namespace Rebellion.Game
 
             Config = config;
             foreach (Officer officer in _registeredOfficers)
-                officer.BindForceRules(config.Jedi);
+                officer.BindForceRules(config.Jedi, this);
         }
 
         /// <summary>
@@ -420,6 +425,7 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
+            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -512,6 +518,7 @@ namespace Rebellion.Game
 
             ISceneNode parent = node.GetParent();
 
+            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
             node.SetParent(null);
 
@@ -759,12 +766,14 @@ namespace Rebellion.Game
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
             if (node is Officer officerToBind && Config != null)
-                officerToBind.BindForceRules(Config.Jedi);
+                officerToBind.BindForceRules(Config.Jedi, this);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
                 if (node is Officer officer)
+                {
                     _registeredOfficers.Add(officer);
+                }
             }
             catch (ArgumentException)
             {
@@ -772,6 +781,8 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
+            if (node is Officer registeredOfficer)
+                registeredOfficer.ReconcileForceDiscoveryState();
         }
 
         /// <summary>
@@ -782,7 +793,29 @@ namespace Rebellion.Game
         {
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
+            {
+                officer.UnbindForceRuntime();
                 _registeredOfficers.Remove(officer);
+            }
+        }
+
+        /// <summary>
+        /// Records a completed discovery-state transition for the connected runtime.
+        /// </summary>
+        /// <param name="officer">The officer whose scanner became enabled.</param>
+        internal void RecordForceDiscoveryStarted(Officer officer)
+        {
+            ForceDiscoveryStarted?.Invoke(officer);
+        }
+
+        /// <summary>
+        /// Disconnects a removed officer before containment changes can schedule new work.
+        /// </summary>
+        /// <param name="node">The node leaving the game registry.</param>
+        private static void DisconnectOfficerRuntime(ISceneNode node)
+        {
+            if (node is Officer officer)
+                officer.UnbindForceRuntime();
         }
 
         /// <summary>
@@ -790,6 +823,8 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
+            foreach (Officer officer in _registeredOfficers)
+                officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
             _registeredOfficers.Clear();
             foreach (Faction faction in _factions)

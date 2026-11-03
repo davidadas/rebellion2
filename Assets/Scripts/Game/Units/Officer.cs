@@ -287,6 +287,9 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         private GameConfig.JediConfig _forceRules;
 
+        [PersistableIgnore]
+        private GameRoot _forceGame;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
@@ -308,11 +311,35 @@ namespace Rebellion.Game.Units
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
 
-        public bool IsCaptured { get; set; }
+        public bool IsCaptured
+        {
+            get => _isCaptured;
+            set
+            {
+                if (_isCaptured == value)
+                    return;
+                _isCaptured = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isCaptured;
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }
         public int NextEscapeAttemptTick { get; set; }
-        public bool IsKilled { get; set; }
+        public bool IsKilled
+        {
+            get => _isKilled;
+            set
+            {
+                if (_isKilled == value)
+                    return;
+                _isKilled = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isKilled;
 
         /// <summary>
         /// Gets whether this officer's loyalty can change and permit betrayal.
@@ -342,7 +369,19 @@ namespace Rebellion.Game.Units
         public int JediProbability { get; set; }
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
-        public bool IsJediTrainer { get; set; }
+        public bool IsJediTrainer
+        {
+            get => _isJediTrainer;
+            set
+            {
+                if (_isJediTrainer == value)
+                    return;
+                _isJediTrainer = value;
+                RefreshForceDiscoveryState();
+            }
+        }
+
+        private bool _isJediTrainer;
         public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
@@ -403,7 +442,11 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public int ForceRank => unchecked((short)(ForceValue + ForceTrainingAdjustment));
 
-        public bool IsDiscoveringForceUser { get; set; }
+        [PersistableIgnore]
+        public bool IsDiscoveringForceUser => _isDiscoveringForceUser;
+
+        [PersistableMember(Name = nameof(IsDiscoveringForceUser))]
+        private bool _isDiscoveringForceUser;
 
         /// <summary>
         /// Gets or sets the next campaign tick when an enabled discovery scan may run.
@@ -444,7 +487,19 @@ namespace Rebellion.Game.Units
         public int ShipResearchVariance { get; set; }
 
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
         public bool IsRetired { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
@@ -610,7 +665,7 @@ namespace Rebellion.Game.Units
             copy._enhancedCombat = _enhancedCombat;
             copy._fastHealing = _fastHealing;
             copy._forceRules = _forceRules;
-            copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
+            copy._isDiscoveringForceUser = _isDiscoveringForceUser;
             copy.NextForceDiscoveryTick = NextForceDiscoveryTick;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
@@ -657,9 +712,73 @@ namespace Rebellion.Game.Units
         /// Binding does not replay transitions or overwrite stored eligibility.
         /// </summary>
         /// <param name="rules">The current game's Force rules.</param>
-        internal void BindForceRules(GameConfig.JediConfig rules)
+        /// <param name="game">The authoritative game owning the officer and its discovery clock.</param>
+        internal void BindForceRules(GameConfig.JediConfig rules, GameRoot game)
         {
             _forceRules = rules ?? throw new ArgumentNullException(nameof(rules));
+            _forceGame = game ?? throw new ArgumentNullException(nameof(game));
+        }
+
+        /// <summary>
+        /// Disconnects live discovery scheduling when this officer leaves the game registry.
+        /// Retained ratings remain readable from the bound rules.
+        /// </summary>
+        internal void UnbindForceRuntime()
+        {
+            _forceGame = null;
+        }
+
+        /// <summary>
+        /// Reconciles discovery after registration without replaying a zero-rank transition.
+        /// </summary>
+        internal void ReconcileForceDiscoveryState()
+        {
+            if (ForceRank != 0)
+                RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Refreshes discovery after this officer changes physical containment or assignment.
+        /// </summary>
+        protected override void OnHierarchyChanged()
+        {
+            base.OnHierarchyChanged();
+            RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Refreshes discovery after an active or transit state changes in the containing subtree.
+        /// </summary>
+        protected override void OnAvailabilityChanged()
+        {
+            base.OnAvailabilityChanged();
+            RefreshForceDiscoveryState();
+        }
+
+        /// <summary>
+        /// Updates retained discovery eligibility and arms a newly enabled scanner for the next tick.
+        /// Availability changes evaluate the current rank even when it is zero.
+        /// </summary>
+        private void RefreshForceDiscoveryState()
+        {
+            if (_forceGame == null)
+                return;
+
+            bool shouldDiscover =
+                IsJediTrainer
+                && ForceRank >= _forceRules.DiscoveringForceUserThreshold
+                && !IsCaptured
+                && !IsKilled
+                && !IsOnMission()
+                && ((IMovable)this).GetTransitMovement() == null
+                && IsActive();
+            if (_isDiscoveringForceUser == shouldDiscover)
+                return;
+
+            _isDiscoveringForceUser = shouldDiscover;
+            NextForceDiscoveryTick = shouldDiscover ? unchecked(_forceGame.CurrentTick + 1) : 0;
+            if (shouldDiscover)
+                _forceGame.RecordForceDiscoveryStarted(this);
         }
 
         /// <summary>
@@ -1148,7 +1267,7 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Refreshes derived ratings and healing eligibility after a nonzero rank change.
+        /// Refreshes derived ratings, healing, and discovery after a nonzero rank change.
         /// At zero, base ratings and injury still refresh their corresponding skill values.
         /// </summary>
         private void RefreshForceState()
@@ -1160,6 +1279,7 @@ namespace Rebellion.Game.Units
             RefreshForceRating(SkillRating.Combat);
             if (_forceRules != null)
                 _fastHealing = CalculateFastHealing();
+            RefreshForceDiscoveryState();
         }
 
         /// <summary>

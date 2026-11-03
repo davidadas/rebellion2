@@ -14,6 +14,176 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(79, false)]
+        [TestCase(80, true)]
+        [TestCase(81, true)]
+        public void ForceValue_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
+            int rank,
+            bool expectedDiscovery
+        )
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
+
+            officer.ForceValue = rank;
+
+            Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
+            Assert.AreEqual(
+                expectedDiscovery ? game.CurrentTick + 1 : 0,
+                officer.NextForceDiscoveryTick
+            );
+        }
+
+        [TestCase(80, true)]
+        [TestCase(50, false)]
+        [TestCase(-1, false)]
+        public void ForceValue_ZeroRank_RetainsDiscoveryState(int previousRank, bool expected)
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(previousRank);
+            int previousDueTick = officer.NextForceDiscoveryTick;
+
+            officer.ForceValue = 0;
+
+            Assert.AreEqual(expected, officer.IsDiscoveringForceUser);
+            Assert.AreEqual(previousDueTick, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void ForceTrainingAdjustment_ZeroEffectiveRank_RetainsDiscoveryTimer()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            int previousDueTick = officer.NextForceDiscoveryTick;
+
+            officer.ForceTrainingAdjustment = -80;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(previousDueTick, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsCaptured_ZeroRankScanner_CancelsDiscoveryImmediately()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.ForceValue = 0;
+
+            officer.IsCaptured = true;
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsCaptured_ReleasedScanner_ArmsFromActualReleaseTick()
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.IsCaptured = true;
+            game.CurrentTick = 70;
+
+            officer.IsCaptured = false;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.Movement = new MovementState();
+            game.CurrentTick = 70;
+
+            officer.Movement = null;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsEnabled_ChangedAtZeroRank_ReevaluatesDiscoveryEligibility()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.ForceValue = 0;
+
+            officer.IsEnabled = false;
+            officer.IsEnabled = true;
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void SetParent_AssignedToMission_CancelsDiscoveryImmediately()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            Mission mission = new SabotageMission { InstanceID = "mission" };
+
+            mission.AddChild(officer);
+            officer.SetParent(mission);
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Movement_ContainingTransportCompletes_ArmsPassengerDiscovery(bool fleetTransit)
+        {
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            Fleet fleet = new() { InstanceID = "fleet" };
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+            IMovable transport = fleetTransit ? fleet : ship;
+            transport.Movement = new MovementState();
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            game.CurrentTick = 70;
+
+            transport.Movement = null;
+
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void IsEnabled_ContainingShipBecomesInactive_CancelsPassengerDiscovery()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+
+            ship.IsEnabled = false;
+
+            Assert.IsFalse(officer.IsDiscoveringForceUser);
+            Assert.Zero(officer.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void Serialize_ZeroRankScanner_RetainsDiscoveryStateAfterRegistration()
+        {
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            officer.ForceValue = 0;
+            Officer restored = SerializationHelper.Deserialize<Officer>(
+                SerializationHelper.Serialize(officer)
+            );
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.DiscoveringForceUserThreshold = 80;
+
+            game.AddSceneNodeByInstanceID(restored);
+
+            Assert.IsTrue(restored.IsDiscoveringForceUser);
+            Assert.AreEqual(43, restored.NextForceDiscoveryTick);
+        }
+
         [TestCase(false, 79, false)]
         [TestCase(false, 80, true)]
         [TestCase(false, 81, true)]
@@ -1030,6 +1200,26 @@ namespace Rebellion.Tests.Game.Units
             officer.InstanceID ??= "healing-officer";
             game.AddSceneNodeByInstanceID(officer);
             return officer;
+        }
+
+        /// <summary>
+        /// Registers a trainer with a configured discovery threshold and a known campaign clock.
+        /// </summary>
+        /// <param name="rank">The trainer's initial Force rank.</param>
+        /// <returns>The game and its registered trainer.</returns>
+        private static (GameRoot Game, Officer Officer) RegisterDiscoveryOfficer(int rank)
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.DiscoveringForceUserThreshold = 80;
+            game.CurrentTick = 42;
+            Officer officer = new()
+            {
+                InstanceID = "discovery-officer",
+                IsJediTrainer = true,
+                ForceValue = rank,
+            };
+            game.AddSceneNodeByInstanceID(officer);
+            return (game, officer);
         }
 
         /// <summary>

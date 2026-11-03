@@ -8,7 +8,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -66,6 +69,32 @@ namespace Rebellion.Tests.Game
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public void DeleteNode_AssignedTrainer_DoesNotRestartRemovedScanner()
+        {
+            Officer officer = CreateAssignedTrainer();
+            using JediCommands commands = new(_game, new FixedRNG());
+
+            _game.DeleteNode(officer);
+
+            Assert.IsEmpty(
+                new JediTickProcessor(commands).ProcessTick(_game).OfType<ForceDiscoveryResult>()
+            );
+        }
+
+        [Test]
+        public void DetachNode_AssignedTrainer_DoesNotRestartRemovedScanner()
+        {
+            Officer officer = CreateAssignedTrainer();
+            using JediCommands commands = new(_game, new FixedRNG());
+
+            _game.DetachNode(officer);
+
+            Assert.IsEmpty(
+                new JediTickProcessor(commands).ProcessTick(_game).OfType<ForceDiscoveryResult>()
+            );
         }
 
         [Test]
@@ -1166,6 +1195,30 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
             );
+        }
+
+        /// <summary>
+        /// Attaches a qualified trainer and assigns it to a mission before runtime observation.
+        /// </summary>
+        /// <returns>The assigned trainer whose scanner is disabled by its mission.</returns>
+        private Officer CreateAssignedTrainer()
+        {
+            _game.Config.Jedi.DiscoveringForceUserThreshold = 80;
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            Officer officer = EntityFactory.CreateOfficer("trainer", _faction1.InstanceID);
+            officer.IsJediTrainer = true;
+            officer.ForceValue = 80;
+            _game.AttachNode(officer, _planet);
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = _faction1.InstanceID,
+                LocationInstanceID = _planet.InstanceID,
+            };
+            _game.AttachNode(mission, _planet);
+            _game.MoveNode(officer, mission);
+            return officer;
         }
 
         /// <summary>

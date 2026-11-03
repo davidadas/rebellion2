@@ -149,7 +149,19 @@ namespace Rebellion.Game.Units
         public int LnrPool { get; set; }
 
         // Movement Info.
-        public MovementState Movement { get; set; }
+        public MovementState Movement
+        {
+            get => _movement;
+            set
+            {
+                if (ReferenceEquals(_movement, value))
+                    return;
+                _movement = value;
+                OnAvailabilityChanged();
+            }
+        }
+
+        private MovementState _movement;
 
         // Misc Info.
         [PersistableMember(Name = nameof(TractorBeamPower))]
