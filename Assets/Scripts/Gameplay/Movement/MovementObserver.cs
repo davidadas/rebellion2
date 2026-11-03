@@ -118,7 +118,7 @@ namespace Rebellion.Gameplay
                     continue;
                 }
 
-                if (!ShouldAutorouteFromBlockade(unit, result.Planet))
+                if (!ShouldAutorouteFromBlockade(unit))
                     continue;
 
                 ContainerNode destination = _queries.FindBlockadeAutorouteDestination(
@@ -145,13 +145,12 @@ namespace Rebellion.Gameplay
         /// Returns whether an inbound unit must seek another destination.
         /// </summary>
         /// <param name="unit">The inbound unit.</param>
-        /// <param name="planet">The blockaded destination.</param>
         /// <returns>True when the blockade forces autorouting.</returns>
-        private static bool ShouldAutorouteFromBlockade(IMovable unit, Planet planet)
+        private static bool ShouldAutorouteFromBlockade(IMovable unit)
         {
             return unit switch
             {
-                Starfighter => unit.GetOwnerInstanceID() != planet.GetOwnerInstanceID(),
+                Starfighter => true,
                 Regiment => true,
                 SpecialForces specialForces => !specialForces.IsOnMission(),
                 _ => false,

@@ -1011,16 +1011,30 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Finds the nearest safe planet or stationary carrier that can receive an inbound unit.
+        /// Selects a safe destination for an inbound unit, preferring a fighter's previous location.
         /// </summary>
         /// <param name="unit">The unit requiring a new destination.</param>
         /// <param name="blockadedPlanet">The destination that became blockaded.</param>
-        /// <returns>The nearest valid destination, or null when none exists.</returns>
+        /// <returns>The first valid destination, or null when none exists.</returns>
         internal ContainerNode FindBlockadeAutorouteDestination(
             IMovable unit,
             Planet blockadedPlanet
         )
         {
+            if (unit is Starfighter fighter)
+            {
+                string previousLocationID =
+                    fighter.ManufacturingStatus == ManufacturingStatus.Delivering
+                    && !string.IsNullOrEmpty(fighter.ProducerPlanetID)
+                        ? fighter.ProducerPlanetID
+                        : fighter.LastParentInstanceID;
+                ContainerNode previousLocation = _game.GetSceneNodeByInstanceID<ContainerNode>(
+                    previousLocationID
+                );
+                if (CanUseSafeRelocationDestination(fighter, previousLocation, blockadedPlanet))
+                    return previousLocation;
+            }
+
             return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
         }
 
