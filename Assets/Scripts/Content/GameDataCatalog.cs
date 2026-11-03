@@ -208,6 +208,10 @@ public sealed class GameDataCatalog
         {
             if (building == null)
                 throw new InvalidDataException("Building templates cannot contain null entries.");
+            if (!Enum.IsDefined(typeof(BuildingType), building.BuildingType))
+                throw new InvalidDataException(
+                    $"Building '{building.TypeID}' declares unsupported building type '{building.BuildingType}'."
+                );
 
             ManufacturingType expectedProductionType = Building.GetRequiredProductionType(
                 building.BuildingType

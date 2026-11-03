@@ -50,6 +50,25 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("requires production type", exception.Message);
         }
 
+        [TestCase(-1)]
+        [TestCase(999)]
+        public void ValidateBuildingCapabilities_UndefinedBuildingType_ThrowsInvalidDataException(
+            int buildingType
+        )
+        {
+            Building building = CreateBuilding("building");
+            building.BuildingType = (BuildingType)buildingType;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBuildingCapabilities(new[] { building })
+            );
+
+            Assert.AreEqual(
+                $"Building 'building' declares unsupported building type '{buildingType}'.",
+                exception.Message
+            );
+        }
+
         [Test]
         public void ValidateBuildingCapabilities_WeaponStrength_ThrowsInvalidDataException()
         {
