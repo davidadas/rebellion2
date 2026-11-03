@@ -17,6 +17,8 @@ public static class StandalonePlayerBuild
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
     private const string _buildVersionArgument = "-buildVersion";
+    private const string _nativeAuditArgument = "-nativeAuditBuild";
+
     private const string _enableDiagnosticsArgument = "-enableDiagnostics";
     private const string _enableAnalyticsArgument = "-enableAnalytics";
     private const string _analyticsScriptingDefine = "REBELLION_ANALYTICS_ENABLED";
@@ -193,7 +195,13 @@ public static class StandalonePlayerBuild
             outputPath,
             enableDiagnostics,
             new[] { _bootScenePath, _mainMenuScenePath, _strategyScenePath },
-            enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>()
+            (enableAnalytics ? new[] { _analyticsScriptingDefine } : Array.Empty<string>())
+                .Concat(
+                    Environment.GetCommandLineArgs().Contains(_nativeAuditArgument)
+                        ? new[] { "REBELLION_NATIVE_AUDIT" }
+                        : Array.Empty<string>()
+                )
+                .ToArray()
         );
     }
 

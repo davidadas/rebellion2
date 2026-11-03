@@ -315,6 +315,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         /// <summary>
+        /// Verifies cancellation remains inside the Messages window while composing.
+        /// </summary>
+        [Test]
+        public void TryCancel_Composer_RaisesIndexWithoutClosingWindow()
+        {
+            int indexRequests = 0;
+            int closeRequests = 0;
+            _view.IndexRequested += _ => indexRequests++;
+            _view.CloseRequested += _ => closeRequests++;
+            _view.Render(
+                new MessagesWindowRenderData(
+                    false,
+                    Vector2Int.zero,
+                    _texture,
+                    CreateCommandBar(),
+                    null,
+                    null,
+                    new MessagesChatComposerRenderData("Draft", true, false, null)
+                )
+            );
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsTrue(handled);
+            Assert.AreEqual(1, indexRequests);
+            Assert.AreEqual(0, closeRequests);
+        }
+
+        [Test]
+        public void TryCancel_Index_AllowsOwningWindowToClose()
+        {
+            _view.Render(CreateRenderData(false));
+
+            Assert.IsFalse(_view.TryCancel());
+        }
+
+        /// <summary>
         /// Creates render data.
         /// </summary>
         /// <param name="detailVisible">Whether detail visible.</param>

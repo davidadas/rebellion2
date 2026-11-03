@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -9,9 +10,11 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -613,7 +616,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 CombatReportType.PlanetaryAssault,
                 _actions.LastBattleResult.CombatType
             );
-            Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task TryExecutePlanetaryCombatAsync_OriginatingPresentationReplaced_DoesNotOpenReportAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _fleetCommandController = CreateFleetCommandController(dispatcher);
+            _controller = CreateController();
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { }, _ => { });
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            CaptureFleetContext(view, window);
+            Task<bool> action = _controller.TryExecutePlanetaryCombatAsync(
+                view,
+                StrategyMenuAction.PlanetaryAssault
+            );
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+
+            completion.SetResult(new PlayerRequestOutcome(true, combatReport: new CombatReport()));
+            Assert.IsTrue(await action);
+
+            Assert.IsNull(_actions.LastBattleResult);
         }
 
         [Test]
@@ -1025,11 +1057,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Creates fleet command controller.
         /// </summary>
         /// <returns>The created fleet command controller.</returns>
-        private StrategyFleetCommandController CreateFleetCommandController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private StrategyFleetCommandController CreateFleetCommandController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new StrategyFleetCommandController(
                 _session,
-                () => _game.GetPlayerFaction().InstanceID
+                () => _game.GetPlayerFaction().InstanceID,
+                playerRequests
+                    ?? TestPlayerRequests.Create(
+                        _session,
+                        () => _game.GetPlayerFaction().InstanceID
+                    )
             );
         }
 
@@ -1362,7 +1402,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
-            public int RefreshCount { get; private set; }
             public int TargetedCommandCount { get; private set; }
             public CombatReport LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
@@ -1433,14 +1472,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             public void OpenPlanetSectorBattleResult(CombatReport report)
             {
                 LastBattleResult = report;
-            }
-
-            /// <summary>
-            /// Refreshes planet sector state.
-            /// </summary>
-            public void RefreshPlanetSectorState()
-            {
-                RefreshCount++;
             }
 
             /// <summary>
@@ -1534,14 +1565,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// <param name="target">The target.</param>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryExecuteMove(
+            public Task<bool> TryExecuteMoveAsync(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             )
             {
                 LastItems = items;
-                return true;
+                return Task.FromResult(true);
             }
 
             /// <summary>
@@ -1575,7 +1606,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// </summary>
             /// <param name="source">The source.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
+            public Task<bool> TryCommitFleetWaypointPlanAsync(
+                StrategyWindowTargetingSource source
+            ) => Task.FromResult(false);
 
             /// <summary>
             /// Attempts undo fleet waypoint plan.
@@ -1589,7 +1622,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// </summary>
             /// <param name="items">The items.</param>
             /// <returns>True when the operation succeeds; otherwise false.</returns>
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public Task<bool> ClearFleetWaypointsAsync(IReadOnlyList<ISceneNode> items) =>
+                Task.FromResult(false);
         }
     }
 }

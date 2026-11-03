@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
@@ -24,6 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private TestActions _actions;
+        private UIWindow _closedWindow;
         private ConstructionWindowController _controller;
         private int _dirtyCount;
         private GameSession _session;
@@ -41,6 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void SetUp()
         {
             _dirtyCount = 0;
+            _closedWindow = null;
             GameRoot game = CreateGame();
             _session = TestContent.CreateGameSession(game);
             _uiContext = TestContent.CreateUIContext(
@@ -74,6 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.Throws<ArgumentNullException>(() =>
                 new ConstructionWindowController(
                     null,
+                    TestPlayerRequests.RejectAll(),
                     () => _uiContext,
                     _windowLayer,
                     _windowManager,
@@ -141,7 +147,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void OpenFromAdvisor_ActiveManufacturingOrder_DisplaysProductQuantity()
         {
             IReadOnlyList<IManufacturable> templates = new ConstructionOrderController(
-                _session
+                _session,
+                TestPlayerRequests.RejectAll()
             ).GetBuildSelection(FacilityWindowTab.Shipyards, _playerFactionId);
             IManufacturable template = templates.OfType<CapitalShip>().First();
             Rebellion.Game.Units.Fleet fleet = EntityFactory.CreateFleet(
@@ -280,6 +287,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.AreEqual("12", input.text);
             Assert.AreEqual(2, _dirtyCount);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task RequestStart_OriginatingPresentationReplaced_DoesNotCloseItAsync(
+            bool replaceGame
+        )
+        {
+            SetBuildTemplates();
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(_actions);
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            view.RequestStart();
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame());
+            else
+                _windowManager.DestroyWindow(window);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.IsNull(_closedWindow);
+        }
+
+        [Test]
+        public async Task RequestStart_DestroyedViewReceivesRejection_DoesNotInvalidatePresentationAsync()
+        {
+            SetBuildTemplates();
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            _controller = CreateController(
+                new RecordingPlayerRequestDispatcher(_ => completion.Task)
+            );
+            _controller.Initialize(_actions);
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            view.RequestStart();
+            _windowManager.DestroyWindow(window);
+            int dirtyBeforeCompletion = _dirtyCount;
+
+            completion.SetResult(new PlayerRequestOutcome(false));
+            await Task.Yield();
+
+            Assert.AreEqual(dirtyBeforeCompletion, _dirtyCount);
         }
 
         [Test]
@@ -493,16 +545,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
-        private ConstructionWindowController CreateController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private ConstructionWindowController CreateController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new ConstructionWindowController(
                 _session,
+                playerRequests ?? TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
-                _ => { },
+                window => _closedWindow = window,
                 () => _dirtyCount++,
                 instanceId => _session.Game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
@@ -590,11 +646,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             /// </summary>
             /// <param name="target">The target.</param>
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
-
-            /// <summary>
-            /// Refreshes after construction.
-            /// </summary>
-            public void RefreshAfterConstruction() { }
         }
     }
 }

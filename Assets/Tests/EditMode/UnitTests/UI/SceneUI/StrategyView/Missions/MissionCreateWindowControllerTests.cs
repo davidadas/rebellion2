@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.UI;
@@ -94,6 +97,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() =>
                 new MissionCreateWindowController(
                     null,
+                    TestPlayerRequests.RejectAll(),
                     () => _uiContext,
                     _ => { },
                     _windowLayer,
@@ -353,14 +357,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => _controller.RenderWindow(view, window));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ConfirmButton_OriginatingPresentationReplaced_DoesNotCloseItAsync(
+            bool replaceGame
+        )
+        {
+            TaskCompletionSource<PlayerRequestOutcome> completion = new();
+            RecordingPlayerRequestDispatcher dispatcher = new(_ => completion.Task);
+            _controller = CreateController(dispatcher);
+            _controller.Initialize(_actions);
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            FindButton(view, "OkButtonImage").onClick.Invoke();
+            Assert.AreEqual(1, dispatcher.Requests.Count);
+            if (replaceGame)
+                _uiContext.ReplaceGame(CreateGame(out _, out _));
+            else
+                _windowManager.DestroyWindow(window);
+
+            completion.SetResult(new PlayerRequestOutcome(true));
+            await Task.Yield();
+
+            Assert.IsNull(_closedWindow);
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
-        private MissionCreateWindowController CreateController()
+        /// <param name="playerRequests">Overrides request completion for deferred-operation tests.</param>
+        private MissionCreateWindowController CreateController(
+            IPlayerRequestDispatcher playerRequests = null
+        )
         {
             return new MissionCreateWindowController(
                 _session,
+                playerRequests ?? TestPlayerRequests.Create(_session, () => _playerFactionId),
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -455,11 +487,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private sealed class TestActions : IMissionCreateWindowActions
         {
             public int InfoCount { get; private set; }
-
-            /// <summary>
-            /// Refreshes after mission creation.
-            /// </summary>
-            public void RefreshAfterMissionCreation() { }
 
             /// <summary>
             /// Opens mission create info.

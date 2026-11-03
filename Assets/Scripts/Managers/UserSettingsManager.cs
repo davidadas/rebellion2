@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Rebellion.Util.IO;
 using UnityEngine;
 
 /// <summary>
@@ -155,7 +156,9 @@ public sealed class UserSettingsManager
             if (!File.Exists(path))
                 return false;
 
-            UserSettings settings = JsonUtility.FromJson<UserSettings>(File.ReadAllText(path));
+            UserSettings settings = JsonUtility.FromJson<UserSettings>(
+                AtomicTextFile.ReadAllText(path)
+            );
             if (settings?.Content == null)
                 return false;
 
@@ -227,7 +230,7 @@ public sealed class UserSettingsManager
 
         try
         {
-            UserSettings settings = DeserializeSettings(File.ReadAllText(path));
+            UserSettings settings = DeserializeSettings(AtomicTextFile.ReadAllText(path));
             if (settings == null)
                 return CreateDefaults();
 
@@ -278,13 +281,7 @@ public sealed class UserSettingsManager
         settings.Normalize();
 
         string path = GetSettingsFilePath();
-        Directory.CreateDirectory(Path.GetDirectoryName(path));
-        string temporaryPath = path + ".tmp";
-        File.WriteAllText(temporaryPath, JsonUtility.ToJson(settings, true));
-        if (File.Exists(path))
-            File.Replace(temporaryPath, path, null);
-        else
-            File.Move(temporaryPath, path);
+        AtomicTextFile.WriteAllText(path, JsonUtility.ToJson(settings, true));
     }
 
     /// <summary>

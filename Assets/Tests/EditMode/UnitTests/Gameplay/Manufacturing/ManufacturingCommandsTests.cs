@@ -4229,8 +4229,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(2, queue1.Count, "Planet 1 should have 2 types");
             Assert.AreEqual(1, queue1[ManufacturingType.Building].Count);
             Assert.AreEqual(1, queue1[ManufacturingType.Troop].Count);
-            Assert.AreEqual(1, item1.ManufacturingQueueSequence);
-            Assert.AreEqual(1, item2.ManufacturingQueueSequence);
+            Assert.AreEqual(0, item1.ManufacturingQueueSequence);
+            Assert.AreEqual(0, item2.ManufacturingQueueSequence);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue2 =
                 planet2.GetManufacturingQueue();

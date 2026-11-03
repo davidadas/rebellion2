@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -869,6 +870,262 @@ namespace Rebellion.Tests.Gameplay
                     )
                     .InstanceID
             );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ObservePlanets_MovedFleetAcrossObservationOrder_PreservesCurrentLocation(
+            bool destinationFirst
+        )
+        {
+            Fleet fleet = CreateFleet("MOVING_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "MOVING_SHIP");
+            Officer passenger = CreateOfficer("PASSENGER", _empire);
+            _game.AttachNode(passenger, ship);
+            _commands.ObservePlanet(_alliance, _coruscant, 10);
+            _game.MoveNode(fleet, _tatooine);
+
+            _commands.ObservePlanets(
+                _alliance,
+                destinationFirst
+                    ? new[] { _tatooine, _coruscant }
+                    : new[] { _coruscant, _tatooine },
+                20
+            );
+
+            foreach (string id in new[] { fleet.InstanceID, ship.InstanceID, passenger.InstanceID })
+                Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[id]);
+            Assert.IsEmpty(
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Fleets
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_ForwardEntryAbsentFromSnapshot_RemovesOnlyObservedPlanetEntry()
+        {
+            _alliance.Fog.EntityLastSeenAt["ORPHAN"] = _coruscant.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[string.Empty] = _coruscant.InstanceID;
+            _alliance.Fog.EntityLastSeenAt["UNOBSERVED"] = _hoth.InstanceID;
+            _alliance.Fog.EntityLastSeenAt["UNLOCATED"] = null;
+
+            _commands.ObservePlanets(_alliance, new[] { _coruscant }, 20);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "UNOBSERVED", "UNLOCATED" },
+                _alliance.Fog.EntityLastSeenAt.Keys
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_RevisitedPlanet_RemovesEntityInsertedByFirstObservation()
+        {
+            Officer officer = CreateOfficer("NEW_OBSERVATION", _empire);
+            _game.AttachNode(officer, _coruscant);
+
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(_coruscant, () => _game.DetachNode(officer), _coruscant),
+                20
+            );
+
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(officer.InstanceID));
+            Assert.IsEmpty(
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Officers
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_EnumeratorThrowsAfterFirstPlanet_PreservesCompletedObservation()
+        {
+            Officer officer = CreateOfficer("RECORDED_FIRST", _empire);
+            _game.AttachNode(officer, _coruscant);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _commands.ObservePlanets(_alliance, EnumerateThenThrow(_coruscant), 20)
+            );
+
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[officer.InstanceID]
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_LaterPlanetHasCyclicHierarchy_PreservesCompletedObservation()
+        {
+            Officer officer = CreateOfficer("RECORDED_FIRST", _empire);
+            _game.AttachNode(officer, _coruscant);
+            _hoth.ParentNode = _hoth;
+            try
+            {
+                Assert.Throws<InvalidOperationException>(() =>
+                    _commands.ObservePlanets(_alliance, new[] { _coruscant, _hoth }, 20)
+                );
+
+                Assert.AreEqual(
+                    _coruscant.InstanceID,
+                    _alliance.Fog.EntityLastSeenAt[officer.InstanceID]
+                );
+            }
+            finally
+            {
+                _hoth.ParentNode = _outerRim;
+            }
+        }
+
+        [Test]
+        public void ObservePlanets_EnumerationChangesCurrentTick_RecordsEachItemAtItsOwnTick()
+        {
+            _game.CurrentTick = 10;
+
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(_coruscant, () => _game.CurrentTick = 20, _tatooine)
+            );
+
+            Assert.AreEqual(
+                10,
+                _alliance
+                    .Fog
+                    .Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .TickCaptured
+            );
+            Assert.AreEqual(
+                20,
+                _alliance
+                    .Fog
+                    .Snapshots[_outerRim.InstanceID]
+                    .Planets[_tatooine.InstanceID]
+                    .TickCaptured
+            );
+        }
+
+        [Test]
+        public void ObservePlanets_ForwardDictionaryReplacedDuringBatch_UsesCurrentIndex()
+        {
+            _commands.ObservePlanets(
+                _alliance,
+                EnumerateAfter(
+                    _coruscant,
+                    () =>
+                        _alliance.Fog.EntityLastSeenAt = new Dictionary<string, string>
+                        {
+                            ["REPLACED_ORPHAN"] = _tatooine.InstanceID,
+                        },
+                    _tatooine
+                ),
+                20
+            );
+
+            Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
+        }
+
+        [Test]
+        public void ObservePlanets_PriorMissionInvalidated_CleansOrphanedDescendantIndex()
+        {
+            MakeTatooineImperial();
+            Officer moving = CreateOfficer("MOVING_PARTICIPANT", _empire);
+            Officer remaining = CreateOfficer("REMAINING_PARTICIPANT", _empire);
+            Mission mission = CreateMission("REMEMBERED_MISSION", _empire, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            _game.AttachNode(moving, mission);
+            mission.AddDecoyParticipant(remaining);
+            _game.AttachNode(remaining, mission);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.MoveNode(moving, _tatooine);
+
+            _commands.ObservePlanets(_alliance, new[] { _tatooine, _coruscant }, 20);
+
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[moving.InstanceID]
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(remaining.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(mission.InstanceID));
+        }
+
+        [Test]
+        public void ObservePlanets_AfterEspionage_PreservesObservedManufacturingState()
+        {
+            Building building = AddQueuedBuilding(_coruscant, _empire, "QUEUED_BUILDING", 25);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            building.ManufacturingProgress = 75;
+
+            _commands.ObservePlanets(_alliance, new[] { _coruscant, _tatooine }, 20);
+
+            Building recorded = _alliance
+                .Fog.Snapshots[_coreSector.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Buildings.Single(item => item.InstanceID == building.InstanceID);
+            Assert.AreEqual(25, recorded.ManufacturingProgress);
+        }
+
+        [Test]
+        public void ObservePlanets_MixedRepeatedObservations_MatchesIndividualSerializedFog()
+        {
+            MakeTatooineImperial();
+            _game.AttachNode(CreateOfficer("FIRST", _empire), _coruscant);
+            _game.AttachNode(CreateOfficer("SECOND", _empire), _tatooine);
+            Func<FogState> initialState = () =>
+                new FogState
+                {
+                    EntityLastSeenAt = new Dictionary<string, string>
+                    {
+                        ["OLD_FIRST"] = _coruscant.InstanceID,
+                        ["OLD_SECOND"] = _tatooine.InstanceID,
+                        ["UNOBSERVED"] = _hoth.InstanceID,
+                        ["UNLOCATED"] = null,
+                    },
+                };
+            Planet[] observations = { _coruscant, _tatooine, _coruscant };
+            _alliance.Fog = initialState();
+            foreach (Planet planet in observations)
+                _commands.ObservePlanet(_alliance, planet, 20);
+            string individual = SerializationHelper.Serialize(_alliance.Fog);
+            _alliance.Fog = initialState();
+
+            _commands.ObservePlanets(_alliance, observations, 20);
+
+            Assert.AreEqual(individual, SerializationHelper.Serialize(_alliance.Fog));
+        }
+
+        /// <summary>
+        /// Yields a second observation only after applying the arranged change after the first.
+        /// </summary>
+        /// <param name="first">The observation that must complete first.</param>
+        /// <param name="afterFirst">The change made before requesting the next observation.</param>
+        /// <param name="second">The next observation.</param>
+        /// <returns>The ordered lazy observation sequence.</returns>
+        private static IEnumerable<Planet> EnumerateAfter(
+            Planet first,
+            Action afterFirst,
+            Planet second
+        )
+        {
+            yield return first;
+            afterFirst();
+            yield return second;
+        }
+
+        /// <summary>
+        /// Fails the next enumeration step after yielding the arranged first observation.
+        /// </summary>
+        /// <param name="first">The observation that must complete before the failure.</param>
+        /// <returns>The lazy observation sequence.</returns>
+        private static IEnumerable<Planet> EnumerateThenThrow(Planet first)
+        {
+            yield return first;
+            throw new InvalidOperationException("The later observation failed.");
         }
 
         /// <summary>

@@ -10,6 +10,8 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class GameResultPipeline
     {
+        private int _processingDepth;
+        internal bool IsProcessing => _processingDepth > 0;
         private readonly Func<GameResultBus> _getResults;
         private readonly Func<MessageObserver> _getMessageObserver;
 
@@ -48,6 +50,28 @@ namespace Rebellion.Gameplay
             bool processMessages = true
         )
         {
+            _processingDepth++;
+            try
+            {
+                return ProcessResultsCore(results, processMessages);
+            }
+            finally
+            {
+                _processingDepth--;
+            }
+        }
+
+        /// <summary>
+        /// Resolves and presents results inside the active publication boundary.
+        /// </summary>
+        /// <param name="results">The completed facts.</param>
+        /// <param name="processMessages">Whether to release message reactions.</param>
+        /// <returns>The settled results.</returns>
+        private List<GameResult> ProcessResultsCore(
+            IEnumerable<GameResult> results,
+            bool processMessages
+        )
+        {
             List<GameResult> resolvedResults = _getResults().Publish(results);
             if (resolvedResults.Count > 0)
                 ResultsResolved?.Invoke(resolvedResults);
@@ -60,6 +84,11 @@ namespace Rebellion.Gameplay
             List<VictoryResult> victoryResults = resolvedResults.OfType<VictoryResult>().ToList();
             if (victoryResults.Count > 0)
                 VictoriesResolved?.Invoke(victoryResults);
+
+            foreach (
+                MessageDeliveredResult delivery in resolvedResults.OfType<MessageDeliveredResult>()
+            )
+                MessageDelivered?.Invoke(delivery);
 
             if (processMessages)
                 ProcessMessageReactions(resolvedResults);
@@ -79,6 +108,23 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="resolvedResults">The already-processed results to extend in place.</param>
         public void ProcessMessageReactions(List<GameResult> resolvedResults)
+        {
+            _processingDepth++;
+            try
+            {
+                ProcessMessageReactionsCore(resolvedResults);
+            }
+            finally
+            {
+                _processingDepth--;
+            }
+        }
+
+        /// <summary>
+        /// Delivers callbacks inside the active publication boundary.
+        /// </summary>
+        /// <param name="resolvedResults">The completed facts to deliver.</param>
+        private void ProcessMessageReactionsCore(List<GameResult> resolvedResults)
         {
             List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
             while (pendingMessageResults.Count > 0)
@@ -102,6 +148,23 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="results">The results emitted by the command.</param>
         public void ProcessImmediate(IReadOnlyList<GameResult> results)
+        {
+            _processingDepth++;
+            try
+            {
+                ProcessImmediateCore(results);
+            }
+            finally
+            {
+                _processingDepth--;
+            }
+        }
+
+        /// <summary>
+        /// Delivers callbacks inside the active publication boundary.
+        /// </summary>
+        /// <param name="results">The completed facts to deliver.</param>
+        private void ProcessImmediateCore(IReadOnlyList<GameResult> results)
         {
             List<GameResult> resolvedResults = ProcessResults(results);
             foreach (BombardmentResult result in resolvedResults.OfType<BombardmentResult>())

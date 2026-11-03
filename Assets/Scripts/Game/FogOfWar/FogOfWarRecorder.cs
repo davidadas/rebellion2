@@ -36,6 +36,38 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records an ordered group of planet observations with one transient entity-location index.
+        /// </summary>
+        /// <param name="observations">The lazily resolved faction, planet, sector, and tick for each observation.</param>
+        internal void RecordPlanetSnapshots(
+            IEnumerable<(
+                Faction Faction,
+                Planet Planet,
+                PlanetSector Sector,
+                int Tick
+            )> observations
+        )
+        {
+            if (observations == null)
+                return;
+
+            Dictionary<Faction, ObservationBatch> batches = new();
+            foreach (
+                (Faction faction, Planet planet, PlanetSector sector, int tick) in observations
+            )
+            {
+                if (faction == null)
+                    continue;
+                if (!batches.TryGetValue(faction, out ObservationBatch batch))
+                {
+                    batch = new ObservationBatch();
+                    batches.Add(faction, batch);
+                }
+                RecordPlanetSnapshot(faction, planet, sector, tick, false, batch);
+            }
+        }
+
+        /// <summary>
         /// Records the complete planet intelligence revealed by successful espionage.
         /// </summary>
         /// <param name="faction">The faction receiving the intelligence.</param>
@@ -920,12 +952,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
+        /// <param name="batch">The optional index shared only by this synchronous observation group.</param>
         private void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
             PlanetSector sector,
             int currentTick,
-            bool includeEspionageIntelligence
+            bool includeEspionageIntelligence,
+            ObservationBatch batch = null
         )
         {
             if (faction == null || planet == null || sector == null)
@@ -987,7 +1021,7 @@ namespace Rebellion.Game.FogOfWar
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
             }
 
-            ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
+            ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot, batch);
             sectorSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
@@ -1066,25 +1100,48 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction whose fog state is being updated.</param>
         /// <param name="planetId">The observed planet instance ID.</param>
         /// <param name="snapshot">The replacement snapshot for the observed planet.</param>
+        /// <param name="batch">The optional candidate index owned by the current observation group.</param>
         private void ReconcileEntityLocations(
             Faction faction,
             string planetId,
-            PlanetSnapshot snapshot
+            PlanetSnapshot snapshot,
+            ObservationBatch batch = null
         )
         {
             HashSet<string> snapshotEntityIds = GetSnapshotEntityIDs(snapshot);
-            List<string> absentEntityIds = faction
-                .Fog.EntityLastSeenAt.Where(entry =>
-                    entry.Value == planetId && !snapshotEntityIds.Contains(entry.Key)
-                )
-                .Select(entry => entry.Key)
-                .ToList();
+            List<string> absentEntityIds =
+                batch == null || faction.Fog.EntityLastSeenAt == null
+                    ? FindAbsentEntityIDs(faction.Fog.EntityLastSeenAt, planetId, snapshotEntityIds)
+                    : batch.FindAbsentEntityIDs(
+                        faction.Fog.EntityLastSeenAt,
+                        planetId,
+                        snapshotEntityIds
+                    );
 
             foreach (string entityId in absentEntityIds)
                 faction.Fog.EntityLastSeenAt.Remove(entityId);
 
             foreach (string entityId in snapshotEntityIds)
                 InvalidateEntityFromOtherSnapshots(faction, entityId, planetId);
+        }
+
+        /// <summary>
+        /// Selects absent entries from the current forward index in its existing enumeration order.
+        /// </summary>
+        /// <param name="locations">The authoritative entity-to-planet index.</param>
+        /// <param name="planetId">The planet whose absent entries are requested.</param>
+        /// <param name="snapshotEntityIds">The entities represented by its replacement snapshot.</param>
+        /// <returns>The current entries that are no longer represented at that planet.</returns>
+        private static List<string> FindAbsentEntityIDs(
+            Dictionary<string, string> locations,
+            string planetId,
+            HashSet<string> snapshotEntityIds
+        )
+        {
+            return locations
+                .Where(entry => entry.Value == planetId && !snapshotEntityIds.Contains(entry.Key))
+                .Select(entry => entry.Key)
+                .ToList();
         }
 
         /// <summary>
@@ -2140,6 +2197,94 @@ namespace Rebellion.Game.FogOfWar
                 specialForces.InstanceID == entityId
             );
             ship.RemoveChildren<Starfighter>(starfighter => starfighter.InstanceID == entityId);
+        }
+
+        /// <summary>
+        /// Indexes candidate locations only for one synchronous sequence of full planet observations.
+        /// </summary>
+        private sealed class ObservationBatch
+        {
+            private readonly HashSet<string> _visitedPlanets = new HashSet<string>(
+                System.StringComparer.Ordinal
+            );
+            private Dictionary<string, List<string>> _candidatesByPlanet;
+            private Dictionary<string, string> _indexedLocations;
+
+            /// <summary>
+            /// Starts an empty observation index that is populated at its first reconciliation.
+            /// </summary>
+            public ObservationBatch() { }
+
+            /// <summary>
+            /// Selects first-visit candidates against their current locations, rescanning revisited planets.
+            /// Earlier observations can only remove entries or assign them to their own planet, so
+            /// first-visit buckets remain complete. Revisits use the current forward index to include
+            /// new entries and preserve its enumeration order after removals and insertions.
+            /// </summary>
+            /// <param name="locations">The authoritative entity-to-planet index.</param>
+            /// <param name="planetId">The planet whose replacement snapshot is being reconciled.</param>
+            /// <param name="snapshotEntityIds">The entities represented by the replacement snapshot.</param>
+            /// <returns>The absent entries that still belong to the observed planet.</returns>
+            public List<string> FindAbsentEntityIDs(
+                Dictionary<string, string> locations,
+                string planetId,
+                HashSet<string> snapshotEntityIds
+            )
+            {
+                if (!ReferenceEquals(_indexedLocations, locations))
+                {
+                    BuildCandidates(locations);
+                    _indexedLocations = locations;
+                    _visitedPlanets.Clear();
+                }
+                if (!_visitedPlanets.Add(planetId))
+                    return FogOfWarRecorder.FindAbsentEntityIDs(
+                        locations,
+                        planetId,
+                        snapshotEntityIds
+                    );
+
+                List<string> absent = new List<string>();
+                if (!_candidatesByPlanet.TryGetValue(planetId, out List<string> candidates))
+                    return absent;
+                foreach (string entityId in candidates)
+                {
+                    if (
+                        locations.TryGetValue(entityId, out string currentPlanetId)
+                        && currentPlanetId == planetId
+                        && !snapshotEntityIds.Contains(entityId)
+                    )
+                        absent.Add(entityId);
+                }
+                return absent;
+            }
+
+            /// <summary>
+            /// Groups current index entries without changing their order or persisted membership.
+            /// </summary>
+            /// <param name="locations">The forward index at the first reconciliation boundary.</param>
+            private void BuildCandidates(Dictionary<string, string> locations)
+            {
+                _candidatesByPlanet = new Dictionary<string, List<string>>(
+                    System.StringComparer.Ordinal
+                );
+                foreach (KeyValuePair<string, string> location in locations)
+                {
+                    if (location.Value == null)
+                        continue;
+                    if (
+                        !_candidatesByPlanet.TryGetValue(
+                            location.Value,
+                            out List<string> candidates
+                        )
+                    )
+                    {
+                        candidates = new List<string>();
+                        _candidatesByPlanet.Add(location.Value, candidates);
+                    }
+                    candidates.Add(location.Key);
+                }
+            }
         }
 
         /// <summary>

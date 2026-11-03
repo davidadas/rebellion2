@@ -818,6 +818,106 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void Connect_SavedEarlierControlLoss_DoesNotRepeatSectorSupportShift()
+        {
+            _game.CurrentTick = 10;
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            PlanetSector secondSector = new PlanetSector
+            {
+                InstanceID = "second-sector",
+                SectorType = PlanetSectorType.OuterRim,
+            };
+            _game.AttachNode(secondSector, _game.Galaxy);
+            Planet second = new Planet
+            {
+                InstanceID = "second-loss",
+                OwnerInstanceID = _empire.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { _rebels.InstanceID, 59 },
+                    { _empire.InstanceID, 41 },
+                },
+            };
+            Planet neighbor = new Planet
+            {
+                InstanceID = "second-neighbor",
+                OwnerInstanceID = _empire.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { _rebels.InstanceID, 20 },
+                    { _empire.InstanceID, 80 },
+                },
+            };
+            _game.AttachNode(second, secondSector);
+            _game.AttachNode(neighbor, secondSector);
+            GameResultBus firstBus = new GameResultBus();
+            _observer.Connect(firstBus);
+            firstBus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = _targetPlanet,
+                    Faction = _rebels,
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+            Assert.That(_targetPlanet.OwnerInstanceID, Is.EqualTo(_rebels.InstanceID));
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+            restored.SetConfig(_game.Config);
+            restored.RebuildSceneState();
+            PlanetaryControlQueries queries = new PlanetaryControlQueries(restored);
+            PlanetaryControlCommands commands = new PlanetaryControlCommands(
+                restored,
+                queries,
+                new FogOfWarQueries(restored)
+            );
+            MovementCommands movement = new MovementCommands(
+                restored,
+                new FogOfWarCommands(restored),
+                new FleetCommands(restored),
+                new FogOfWarQueries(restored),
+                new MovementQueries(restored)
+            );
+            PlanetaryControlObserver observer = new PlanetaryControlObserver(
+                restored,
+                commands,
+                movement,
+                queries
+            );
+            GameResultBus secondBus = new GameResultBus();
+            observer.Connect(secondBus);
+
+            secondBus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = restored.GetSceneNodeByInstanceID<Planet>(second.InstanceID),
+                    Faction = restored.GetFactionByOwnerInstanceID(_rebels.InstanceID),
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+
+            Assert.That(
+                restored
+                    .GetSceneNodeByInstanceID<Planet>(neighbor.InstanceID)
+                    .GetPopularSupport(_rebels.InstanceID),
+                Is.EqualTo(20)
+            );
+            observer.Dispose();
+            _observer.Dispose();
+        }
+
+        [Test]
         public void Connect_GarrisonRemoved_ShiftsSectorByTen()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;

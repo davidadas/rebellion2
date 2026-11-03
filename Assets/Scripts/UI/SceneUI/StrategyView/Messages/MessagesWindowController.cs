@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.PlayerRequests;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -14,6 +16,11 @@ using UnityEngine.EventSystems;
 /// </summary>
 public interface IMessagesWindowActions
 {
+    /// <summary>
+    /// Gets whether the current player can submit a message to the other player.
+    /// </summary>
+    bool CanSendPeerChat { get; }
+
     /// <summary>
     /// Opens a combat report in the battle-result view.
     /// </summary>
@@ -38,8 +45,15 @@ public interface IMessagesWindowActions
     /// Aborts the active mission represented by a continuing mission report.
     /// </summary>
     /// <param name="missionInstanceId">The active mission identifier.</param>
-    /// <returns>True when the mission was aborted.</returns>
-    bool TryAbortMission(string missionInstanceId);
+    /// <returns>A task containing true when the mission was aborted.</returns>
+    Task<bool> TryAbortMissionAsync(string missionInstanceId);
+
+    /// <summary>
+    /// Submits entered chat text through the active session without changing its whitespace.
+    /// </summary>
+    /// <param name="rawText">The unmodified multiline message.</param>
+    /// <returns>True when the session accepted the submission.</returns>
+    Task<bool> SendPeerChatAsync(string rawText);
 }
 
 /// <summary>
@@ -56,10 +70,14 @@ public sealed class MessagesWindowController
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
     private readonly Func<string, AudioPlaybackHandle> playSfxInstance;
+    private readonly HashSet<string> pendingMissionAborts = new HashSet<string>(
+        StringComparer.Ordinal
+    );
     private readonly Dictionary<MessagesWindowView, MessagesWindowSession> sessions =
         new Dictionary<MessagesWindowView, MessagesWindowSession>();
     private readonly StrategyWindowLayerView windowLayer;
     private readonly UIWindowManager windowManager;
+    private readonly MessagesPlayerActions messageActions;
     private IMessagesWindowActions actions;
 
     /// <summary>
@@ -70,6 +88,7 @@ public sealed class MessagesWindowController
     /// <summary>
     /// Creates the Messages feature controller with current presentation-resource access.
     /// </summary>
+    /// <param name="playerRequests">The active player action execution boundary.</param>
     /// <param name="playSfx">Plays a strategy sound effect path.</param>
     /// <param name="playSfxInstance">Plays an independently controllable sound effect path.</param>
     /// <param name="getUIContext">Resolves the current theme and texture context.</param>
@@ -80,6 +99,7 @@ public sealed class MessagesWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the active list-selection modifiers.</param>
     public MessagesWindowController(
+        IPlayerRequestDispatcher playerRequests,
         Action<string> playSfx,
         Func<string, AudioPlaybackHandle> playSfxInstance,
         Func<UIContext> getUIContext,
@@ -104,6 +124,10 @@ public sealed class MessagesWindowController
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers =
             getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
+        messageActions = new MessagesPlayerActions(
+            playerRequests,
+            () => getUIContext()?.Game?.GetPlayerFaction()
+        );
         this.windowManager.WindowClosed += HandleWindowClosed;
     }
 
@@ -137,6 +161,8 @@ public sealed class MessagesWindowController
         RefreshSession(session);
         sessions.Add(view, session);
         view.ChatRequested += HandleChatRequested;
+        view.PeerChatDraftChanged += HandlePeerChatDraftChanged;
+        view.PeerChatSendRequested += HandlePeerChatSendRequested;
         view.CloseRequested += HandleCloseRequested;
         view.ContextRequested += HandleContextRequested;
         view.ControlPressed += HandleControlPressed;
@@ -161,19 +187,33 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The Messages view whose session should change.</param>
     /// <param name="tab">The semantic Messages tab.</param>
-    public void OpenTab(MessagesWindowView view, MessagesTab tab)
+    public async void OpenTab(MessagesWindowView view, MessagesTab tab)
+    {
+        await OpenTabAsync(view, tab);
+    }
+
+    /// <summary>
+    /// Completes pending message gestures before changing the local category.
+    /// </summary>
+    /// <param name="view">The Messages view whose session should change.</param>
+    /// <param name="tab">The semantic Messages tab.</param>
+    /// <returns>A task that completes after the category transition.</returns>
+    private async Task OpenTabAsync(MessagesWindowView view, MessagesTab tab)
     {
         MessagesWindowSession session = GetSession(view);
+        int generation = session.ComposerGeneration;
         if (session.DetailVisible)
-            ConsumeMissionContinuationChoice(session.GetSelectedMessage());
+            await messageActions.ConsumeContinuationAsync(session.GetSelectedMessage());
         StopMessageDetailAudio();
         MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)tab);
         if (session.HasPresentedTab && session.ActiveTab != requestedTab)
         {
-            if (AcknowledgeMessages(session.Messages))
+            if (await messageActions.AcknowledgeAsync(session.Messages))
                 markDirty();
         }
 
+        if (!IsCurrentSession(view, session) || generation != session.ComposerGeneration)
+            return;
         session.SelectTab(requestedTab);
         RefreshSession(session);
         session.MarkTabPresented();
@@ -183,14 +223,14 @@ public sealed class MessagesWindowController
     /// Toggles the exclusive Messages window on a requested tab.
     /// </summary>
     /// <param name="initialTab">The semantic Messages tab to display.</param>
-    public void Open(MessagesTab initialTab)
+    public async void Open(MessagesTab initialTab)
     {
         UIWindow window = ToggleWindow(initialTab, out MessagesWindowView view);
         if (window == null)
             return;
 
         BindWindow(view);
-        OpenTab(view, initialTab);
+        await OpenTabAsync(view, initialTab);
         markDirty();
     }
 
@@ -199,7 +239,7 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="message">The delivered message to display.</param>
     /// <param name="tab">The message category containing the message.</param>
-    public void OpenDetail(Message message, MessagesTab tab)
+    public async void OpenDetail(Message message, MessagesTab tab)
     {
         if (message == null)
             return;
@@ -214,7 +254,7 @@ public sealed class MessagesWindowController
             )
                 return;
 
-            OpenTab(view, tab);
+            await OpenTabAsync(view, tab);
         }
         else
         {
@@ -223,7 +263,7 @@ public sealed class MessagesWindowController
                 return;
 
             BindWindow(view);
-            OpenTab(view, tab);
+            await OpenTabAsync(view, tab);
         }
 
         if (!TryGetSession(view, out MessagesWindowSession session))
@@ -235,7 +275,13 @@ public sealed class MessagesWindowController
             return;
 
         session.SelectOnly(currentMessage);
-        MarkMessageRead(currentMessage);
+        await messageActions.MarkReadAsync(currentMessage);
+        if (
+            !IsCurrentSession(view, session)
+            || session.ComposerVisible
+            || session.SelectedMessageId != currentMessage?.InstanceID
+        )
+            return;
         if (TryOpenCombatReport(session, currentMessage))
             return;
 
@@ -314,7 +360,11 @@ public sealed class MessagesWindowController
                 HasNavigationTarget(selectedMessage),
                 window.X,
                 window.Y,
-                missionContinuationChoiceVisible
+                missionContinuationChoiceVisible,
+                actions?.CanSendPeerChat == true,
+                session.ComposerVisible ? session.ComposerDraft : null,
+                session.SendingPeerChat,
+                session.ComposerStatus
             )
         );
     }
@@ -367,70 +417,11 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Removes messages selected by stable identifier from their faction buckets.
-    /// </summary>
-    /// <param name="faction">The faction that owns the messages.</param>
-    /// <param name="selectedMessageIds">The selected source message identifiers.</param>
-    /// <returns>True when at least one message was removed.</returns>
-    internal static bool RemoveSelectedMessages(
-        Faction faction,
-        IReadOnlyCollection<string> selectedMessageIds
-    )
-    {
-        if (faction == null || selectedMessageIds == null || selectedMessageIds.Count == 0)
-            return false;
-
-        HashSet<string> selectedIds = new HashSet<string>(
-            selectedMessageIds.Where(id => !string.IsNullOrEmpty(id)),
-            StringComparer.Ordinal
-        );
-        int removedCount = 0;
-
-        foreach (List<Message> bucket in faction.Messages.Values)
-            removedCount += bucket.RemoveAll(message => selectedIds.Contains(message.InstanceID));
-
-        return removedCount > 0;
-    }
-
-    /// <summary>
-    /// Marks a message as read when one is present.
-    /// </summary>
-    /// <param name="message">The message whose read state should change.</param>
-    internal static void MarkMessageRead(Message message)
-    {
-        if (message != null)
-            message.Read = true;
-    }
-
-    /// <summary>
-    /// Acknowledges notifications for the supplied messages without changing their read state.
-    /// </summary>
-    /// <param name="messages">The messages whose notifications were presented.</param>
-    /// <returns>True when at least one notification changed.</returns>
-    internal static bool AcknowledgeMessages(IEnumerable<Message> messages)
-    {
-        if (messages == null)
-            return false;
-
-        bool changed = false;
-
-        foreach (Message message in messages)
-        {
-            if (message?.NotificationAcknowledged == false)
-            {
-                message.NotificationAcknowledged = true;
-                changed = true;
-            }
-        }
-
-        return changed;
-    }
-
-    /// <summary>
     /// Acknowledges notifications presented by one Messages window before it closes.
     /// </summary>
     /// <param name="window">The Messages window being closed.</param>
-    private void AcknowledgeWindow(UIWindow window)
+    /// <returns>A task that completes after presented notifications are acknowledged.</returns>
+    private async Task AcknowledgeWindowAsync(UIWindow window)
     {
         if (window == null)
             return;
@@ -438,7 +429,10 @@ public sealed class MessagesWindowController
         MessagesWindowSession session = sessions.Values.FirstOrDefault(candidate =>
             candidate.Window == window
         );
-        if (session?.HasPresentedTab == true && AcknowledgeMessages(session.Messages))
+        if (
+            session?.HasPresentedTab == true
+            && await messageActions.AcknowledgeAsync(session.Messages)
+        )
             markDirty();
     }
 
@@ -520,20 +514,6 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Consumes the one-shot continuing-mission choice carried by a report.
-    /// </summary>
-    /// <param name="message">The report whose pending choice should be discarded.</param>
-    /// <returns>True when a pending choice was consumed.</returns>
-    internal static bool ConsumeMissionContinuationChoice(Message message)
-    {
-        if (message?.MissionContinuationPending != true)
-            return false;
-
-        message.MissionContinuationPending = false;
-        return true;
-    }
-
-    /// <summary>
     /// Returns messages for a semantic tab without changing their stored ordering.
     /// </summary>
     /// <param name="faction">The faction that owns the messages.</param>
@@ -577,23 +557,6 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Toggles notifications for a semantic Messages tab.
-    /// </summary>
-    /// <param name="faction">The faction that owns the notification settings.</param>
-    /// <param name="tab">The semantic Messages tab.</param>
-    internal static void ToggleMessageNotification(Faction faction, MessagesTab tab)
-    {
-        if (faction == null)
-            return;
-
-        MessageType? messageType = MessagesTabCatalog.GetMessageType(tab);
-        if (messageType.HasValue)
-            faction.ToggleAdvisorMessageNotification(messageType.Value);
-        else
-            faction.ToggleAllAdvisorMessageNotifications();
-    }
-
-    /// <summary>
     /// Appends a non-empty audio path.
     /// </summary>
     /// <param name="paths">The ordered audio path collection.</param>
@@ -618,33 +581,102 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Routes the chat command to the semantic chat tab in the requesting session.
+    /// Opens an empty player-message draft in the requesting window.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleChatRequested(MessagesWindowView view)
+    private async void HandleChatRequested(MessagesWindowView view)
     {
-        if (!TryGetSession(view, out _))
+        if (
+            !TryGetSession(view, out MessagesWindowSession session)
+            || actions?.CanSendPeerChat != true
+        )
             return;
 
         FocusWindow(view);
-        OpenTab(view, MessagesTab.Chat);
+        int generation = session.ComposerGeneration;
+        if (session.DetailVisible)
+            await messageActions.ConsumeContinuationAsync(session.GetSelectedMessage());
+        if (!IsCurrentSession(view, session) || generation != session.ComposerGeneration)
+            return;
+        StopMessageDetailAudio();
+        session.OpenComposer();
         RequestRender();
+    }
+
+    /// <summary>
+    /// Records player input without changing whitespace or resetting view focus.
+    /// </summary>
+    /// <param name="view">The editor's owning Messages view.</param>
+    /// <param name="rawText">The unmodified multiline draft.</param>
+    private void HandlePeerChatDraftChanged(MessagesWindowView view, string rawText)
+    {
+        if (TryGetSession(view, out MessagesWindowSession session))
+            session.SetComposerDraft(rawText);
+    }
+
+    /// <summary>
+    /// Submits a draft through the active session and applies only its matching completion.
+    /// </summary>
+    /// <param name="view">The submitting Messages view.</param>
+    private async void HandlePeerChatSendRequested(MessagesWindowView view)
+    {
+        await SubmitPeerChatAsync(view);
+    }
+
+    /// <summary>
+    /// Submits the current draft without allowing overlapping or stale presentation changes.
+    /// </summary>
+    /// <param name="view">The submitting Messages view.</param>
+    /// <returns>A task that completes after the active session accepts or rejects the draft.</returns>
+    public async Task SubmitPeerChatAsync(MessagesWindowView view)
+    {
+        if (
+            !TryGetSession(view, out MessagesWindowSession session)
+            || actions?.CanSendPeerChat != true
+            || !session.BeginPeerChatSubmission()
+        )
+            return;
+
+        int generation = session.ComposerGeneration;
+        string rawText = session.ComposerDraft;
+        RequestRender();
+        bool accepted;
+        try
+        {
+            accepted = await actions.SendPeerChatAsync(rawText);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            accepted = false;
+        }
+
+        if (
+            view == null
+            || !TryGetSession(view, out MessagesWindowSession current)
+            || !ReferenceEquals(current, session)
+        )
+            return;
+        if (session.CompletePeerChatSubmission(generation, accepted))
+            RequestRender();
     }
 
     /// <summary>
     /// Focuses and closes the window associated with a view request.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleCloseRequested(MessagesWindowView view)
+    private async void HandleCloseRequested(MessagesWindowView view)
     {
         FocusWindow(view);
         if (TryGetSession(view, out MessagesWindowSession session))
         {
+            int generation = session.ComposerGeneration;
             if (session.DetailVisible)
-                ConsumeMissionContinuationChoice(session.GetSelectedMessage());
+                await messageActions.ConsumeContinuationAsync(session.GetSelectedMessage());
             StopMessageDetailAudio();
-            AcknowledgeWindow(session.Window);
-            closeWindow(session.Window);
+            await AcknowledgeWindowAsync(session.Window);
+            if (IsCurrentSession(view, session) && generation == session.ComposerGeneration)
+                closeWindow(session.Window);
         }
     }
 
@@ -671,7 +703,7 @@ public sealed class MessagesWindowController
     /// Opens the selected message in the detail panel and plays its assigned audio.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleDisplayRequested(MessagesWindowView view)
+    private async void HandleDisplayRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
@@ -685,7 +717,13 @@ public sealed class MessagesWindowController
             session.SelectOnly(messages[messages.Count - 1]);
 
         Message message = session.GetSelectedMessage();
-        MarkMessageRead(message);
+        await messageActions.MarkReadAsync(message);
+        if (
+            !IsCurrentSession(view, session)
+            || session.ComposerVisible
+            || session.SelectedMessageId != message?.InstanceID
+        )
+            return;
         if (TryOpenCombatReport(session, message))
             return;
 
@@ -698,14 +736,17 @@ public sealed class MessagesWindowController
     /// Returns the requesting session to the message index.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleIndexRequested(MessagesWindowView view)
+    private async void HandleIndexRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
 
         FocusWindow(view);
+        int generation = session.ComposerGeneration;
         if (session.DetailVisible)
-            ConsumeMissionContinuationChoice(session.GetSelectedMessage());
+            await messageActions.ConsumeContinuationAsync(session.GetSelectedMessage());
+        if (!IsCurrentSession(view, session) || generation != session.ComposerGeneration)
+            return;
         StopMessageDetailAudio();
         session.HideDetail();
         RequestRender();
@@ -733,20 +774,21 @@ public sealed class MessagesWindowController
     /// Removes selected messages and resets incompatible session state after success.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleMessageRemovalRequested(MessagesWindowView view)
+    private async void HandleMessageRemovalRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
 
         FocusWindow(view);
-        Faction playerFaction = GetPlayerFaction();
-        if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIDs()))
+        if (await messageActions.RemoveAsync(session.GetSelectedMessageIDs()))
         {
+            if (!IsCurrentSession(view, session))
+                return;
             StopMessageDetailAudio();
             session.SelectAdjacentMessage();
             session.HideDetail();
             RefreshSession(session);
-            MarkMessageRead(session.GetSelectedMessage());
+            await messageActions.MarkReadAsync(session.GetSelectedMessage());
         }
 
         RequestRender();
@@ -757,7 +799,7 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     /// <param name="messageId">The activated source message identifier.</param>
-    private void HandleMessageRowActivated(MessagesWindowView view, string messageId)
+    private async void HandleMessageRowActivated(MessagesWindowView view, string messageId)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
@@ -768,7 +810,13 @@ public sealed class MessagesWindowController
             return;
 
         session.SelectOnly(message);
-        MarkMessageRead(message);
+        await messageActions.MarkReadAsync(message);
+        if (
+            !IsCurrentSession(view, session)
+            || session.ComposerVisible
+            || session.SelectedMessageId != message?.InstanceID
+        )
+            return;
         if (TryOpenCombatReport(session, message))
             return;
 
@@ -782,7 +830,7 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     /// <param name="messageId">The selected source message identifier.</param>
-    private void HandleMessageRowSelected(MessagesWindowView view, string messageId)
+    private async void HandleMessageRowSelected(MessagesWindowView view, string messageId)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
@@ -793,7 +841,7 @@ public sealed class MessagesWindowController
             return;
 
         session.Select(message, getSelectionModifiers());
-        MarkMessageRead(message);
+        await messageActions.MarkReadAsync(message);
         RequestRender();
     }
 
@@ -850,13 +898,13 @@ public sealed class MessagesWindowController
     /// Keeps the report's mission active and returns to the message index.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleMissionContinueRequested(MessagesWindowView view)
+    private async void HandleMissionContinueRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
 
         FocusWindow(view);
-        CompleteMissionContinuationChoice(session, session.GetSelectedMessage());
+        await CompleteMissionContinuationChoiceAsync(session, session.GetSelectedMessage());
         RequestRender();
     }
 
@@ -864,7 +912,7 @@ public sealed class MessagesWindowController
     /// Aborts the report's continuing mission and returns to the message index.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleMissionAbortRequested(MessagesWindowView view)
+    private async void HandleMissionAbortRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
@@ -872,11 +920,36 @@ public sealed class MessagesWindowController
         FocusWindow(view);
         Message message = session.GetSelectedMessage();
         string missionInstanceId = message?.MissionInstanceID;
-        if (!string.IsNullOrEmpty(missionInstanceId))
-            actions.TryAbortMission(missionInstanceId);
+        if (string.IsNullOrEmpty(missionInstanceId) || !pendingMissionAborts.Add(missionInstanceId))
+            return;
 
-        CompleteMissionContinuationChoice(session, message);
-        RequestRender();
+        bool accepted;
+        try
+        {
+            accepted = await actions.TryAbortMissionAsync(missionInstanceId);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            accepted = false;
+        }
+        finally
+        {
+            pendingMissionAborts.Remove(missionInstanceId);
+        }
+
+        if (
+            accepted
+            && view != null
+            && TryGetSession(view, out MessagesWindowSession current)
+            && ReferenceEquals(current, session)
+            && current.DetailVisible
+            && current.SelectedMessageId == message?.InstanceID
+        )
+        {
+            await CompleteMissionContinuationChoiceAsync(current, current.GetSelectedMessage());
+            RequestRender();
+        }
     }
 
     /// <summary>
@@ -884,9 +957,18 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="session">The Messages session displaying the report.</param>
     /// <param name="message">The report whose continuation choice was resolved.</param>
-    private void CompleteMissionContinuationChoice(MessagesWindowSession session, Message message)
+    /// <returns>A task that completes after the choice is reflected in the window.</returns>
+    private async Task CompleteMissionContinuationChoiceAsync(
+        MessagesWindowSession session,
+        Message message
+    )
     {
-        ConsumeMissionContinuationChoice(message);
+        if (
+            !await messageActions.ConsumeContinuationAsync(message)
+            || session.Window == null
+            || session.SelectedMessageId != message?.InstanceID
+        )
+            return;
         StopMessageDetailAudio();
         session.HideDetail();
     }
@@ -895,13 +977,13 @@ public sealed class MessagesWindowController
     /// Toggles notification policy for the active Messages tab.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
-    private void HandleNotificationToggleRequested(MessagesWindowView view)
+    private async void HandleNotificationToggleRequested(MessagesWindowView view)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
 
         FocusWindow(view);
-        ToggleMessageNotification(GetPlayerFaction(), session.ActiveTab);
+        await messageActions.ToggleNotificationAsync(session.ActiveTab);
         RequestRender();
     }
 
@@ -910,13 +992,13 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     /// <param name="tab">The requested semantic Messages tab.</param>
-    private void HandleTabRequested(MessagesWindowView view, MessagesTab tab)
+    private async void HandleTabRequested(MessagesWindowView view, MessagesTab tab)
     {
         if (!TryGetSession(view, out _))
             return;
 
         FocusWindow(view);
-        OpenTab(view, tab);
+        await OpenTabAsync(view, tab);
         RequestRender();
     }
 
@@ -924,7 +1006,7 @@ public sealed class MessagesWindowController
     /// Unsubscribes a destroyed Messages view and releases its controller-owned session.
     /// </summary>
     /// <param name="view">The destroyed Messages view.</param>
-    private void HandleViewDestroyed(MessagesWindowView view)
+    private async void HandleViewDestroyed(MessagesWindowView view)
     {
         if (
             ReferenceEquals(view, null)
@@ -935,9 +1017,10 @@ public sealed class MessagesWindowController
         sessions.Remove(view);
 
         StopMessageDetailAudio();
-        if (session.DetailVisible && ConsumeMissionContinuationChoice(session.GetSelectedMessage()))
-            markDirty();
+        Message continuation = session.DetailVisible ? session.GetSelectedMessage() : null;
         view.ChatRequested -= HandleChatRequested;
+        view.PeerChatDraftChanged -= HandlePeerChatDraftChanged;
+        view.PeerChatSendRequested -= HandlePeerChatSendRequested;
         view.CloseRequested -= HandleCloseRequested;
         view.ContextRequested -= HandleContextRequested;
         view.ControlPressed -= HandleControlPressed;
@@ -955,23 +1038,25 @@ public sealed class MessagesWindowController
         view.MissionContinueRequested -= HandleMissionContinueRequested;
         view.NotificationToggleRequested -= HandleNotificationToggleRequested;
         view.TabRequested -= HandleTabRequested;
+        if (continuation != null && await messageActions.ConsumeContinuationAsync(continuation))
+            markDirty();
     }
 
     /// <summary>
     /// Acknowledges notifications after a Messages window leaves the window registry.
     /// </summary>
     /// <param name="window">The window that closed.</param>
-    private void HandleWindowClosed(UIWindow window)
+    private async void HandleWindowClosed(UIWindow window)
     {
         MessagesWindowSession session = sessions.Values.FirstOrDefault(candidate =>
             candidate.Window == window
         );
         if (
             session?.DetailVisible == true
-            && ConsumeMissionContinuationChoice(session.GetSelectedMessage())
+            && await messageActions.ConsumeContinuationAsync(session.GetSelectedMessage())
         )
             markDirty();
-        AcknowledgeWindow(window);
+        await AcknowledgeWindowAsync(window);
     }
 
     /// <summary>
@@ -979,7 +1064,7 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     /// <param name="direction">The signed source-index offset.</param>
-    private void MoveSelection(MessagesWindowView view, int direction)
+    private async void MoveSelection(MessagesWindowView view, int direction)
     {
         if (!TryGetSession(view, out MessagesWindowSession session))
             return;
@@ -988,9 +1073,15 @@ public sealed class MessagesWindowController
         Message previousMessage = session.GetSelectedMessage();
         bool moved = session.MoveSelection(direction);
         if (moved && session.DetailVisible)
-            ConsumeMissionContinuationChoice(previousMessage);
+            await messageActions.ConsumeContinuationAsync(previousMessage);
         Message message = session.GetSelectedMessage();
-        MarkMessageRead(message);
+        await messageActions.MarkReadAsync(message);
+        if (
+            !IsCurrentSession(view, session)
+            || session.ComposerVisible
+            || session.SelectedMessageId != message?.InstanceID
+        )
+            return;
         if (session.DetailVisible && moved)
         {
             if (TryOpenCombatReport(session, message))
@@ -1009,6 +1100,19 @@ public sealed class MessagesWindowController
             playback.Stop();
 
         detailAudioPlaybacks.Clear();
+    }
+
+    /// <summary>
+    /// Checks that an asynchronous completion still belongs to a live registered window.
+    /// </summary>
+    /// <param name="view">The requesting view.</param>
+    /// <param name="session">The session captured before submission.</param>
+    /// <returns>True when the same view and session remain registered.</returns>
+    private bool IsCurrentSession(MessagesWindowView view, MessagesWindowSession session)
+    {
+        return view != null
+            && TryGetSession(view, out MessagesWindowSession current)
+            && ReferenceEquals(current, session);
     }
 
     /// <summary>

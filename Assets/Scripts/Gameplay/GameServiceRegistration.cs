@@ -30,6 +30,7 @@ namespace Rebellion.Gameplay
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
             typeof(AdvisorAutomationObserver),
+            typeof(PlanetNotificationObserver),
         };
 
         /// <summary>

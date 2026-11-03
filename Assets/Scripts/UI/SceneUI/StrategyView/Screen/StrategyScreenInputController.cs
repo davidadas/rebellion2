@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -134,6 +135,9 @@ public sealed class StrategyScreenInputController : ICancelable
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (targetingController.IsSubmitting)
+            return;
+
         if (TryCompleteItemDrag(eventData))
             return;
 
@@ -228,9 +232,9 @@ public sealed class StrategyScreenInputController : ICancelable
     /// Submits the active multi-selection targeting session and suppresses its trailing click.
     /// </summary>
     /// <returns>True when targeting was submitted.</returns>
-    public bool SubmitTargeting()
+    public async Task<bool> SubmitTargetingAsync()
     {
-        if (!targetingController.TrySubmit())
+        if (!await targetingController.TrySubmitAsync())
             return false;
 
         suppressNextClick = true;

@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Gameplay;
+using Rebellion.Persistence;
 using Rebellion.Util.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -296,7 +297,7 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void LoadSave_ActiveContent_BeginsPresentedSceneTransition()
+        public async Task LoadSaveAsync_ActiveContent_BeginsPresentedSceneTransitionAsync()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack contentPack = _bootstrap.GetContentPack();
@@ -315,7 +316,7 @@ namespace Rebellion.Tests.App
                     "Bootstrap Hot Load"
                 );
 
-                bool loaded = _bootstrap.LoadSave(fileName);
+                bool loaded = await _bootstrap.LoadSaveAsync(fileName);
 
                 Assert.IsTrue(loaded);
                 Assert.AreEqual(1, transitionCount);
@@ -331,6 +332,33 @@ namespace Rebellion.Tests.App
                 File.Delete(saveGameManager.GetSaveFilePath(fileName));
                 File.Delete(saveGameManager.GetSaveMetadataFilePath(fileName));
             }
+        }
+
+        [Test]
+        public async Task LoadSaveAsync_CoordinatedOwner_WaitsWithoutStartingContentTransitionAsync()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameRoot activeGame = CreateCompatibleGame(_bootstrap.GetContentPack(), 7);
+            runtime.StartGame(activeGame);
+            TestPersistenceCoordinator coordinator = new TestPersistenceCoordinator();
+            runtime.BindPersistenceCoordinator(coordinator);
+            int transitionCount = 0;
+            _bootstrap.LoadStarting += () => transitionCount++;
+
+            Task<bool> loading = _bootstrap.LoadSaveAsync("host-only-checkpoint");
+
+            Assert.IsFalse(loading.IsCompleted);
+            Assert.AreEqual("host-only-checkpoint", coordinator.LoadedFileName);
+            Assert.IsFalse(_bootstrap.LoadSave("host-only-checkpoint"));
+            Assert.AreSame(activeGame, runtime.GetActiveGame());
+            Assert.AreEqual(0, transitionCount);
+            Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+            coordinator.Completion.SetResult(true);
+
+            Assert.IsTrue(await loading);
+            Assert.AreSame(activeGame, runtime.GetActiveGame());
+            Assert.AreEqual(0, transitionCount);
         }
 
         [Test]
@@ -448,6 +476,39 @@ namespace Rebellion.Tests.App
             string contentRoot = Path.Combine(_modDirectory, "Content");
             Directory.CreateDirectory(contentRoot);
             return contentRoot;
+        }
+
+        private sealed class TestPersistenceCoordinator : IGamePersistenceCoordinator
+        {
+            public bool CanRequestSave => true;
+            internal readonly TaskCompletionSource<bool> Completion = new();
+            internal string LoadedFileName;
+
+            /// <summary>
+            /// Rejects saves, which this bootstrap transition fixture does not perform.
+            /// </summary>
+            /// <param name="fileName">The save identifier.</param>
+            /// <param name="displayName">The save display name.</param>
+            /// <returns>A completed rejection.</returns>
+            public Task<bool> SaveGameAsync(string fileName, string displayName) =>
+                Task.FromResult(false);
+
+            /// <summary>
+            /// Captures a load while the fixture controls shared completion.
+            /// </summary>
+            /// <param name="fileName">The save identifier.</param>
+            /// <returns>The pending shared completion.</returns>
+            public Task<bool> LoadGameAsync(string fileName)
+            {
+                LoadedFileName = fileName;
+                return Completion.Task;
+            }
+
+            /// <summary>
+            /// Ignores scheduling because this fixture does not advance simulation ticks.
+            /// </summary>
+            /// <param name="settings">The automatic-save preferences.</param>
+            public void ProcessAutosaveTick(UserGameplaySettings settings) { }
         }
 
         /// <summary>

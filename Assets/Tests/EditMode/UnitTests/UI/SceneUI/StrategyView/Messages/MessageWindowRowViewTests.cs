@@ -53,6 +53,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Render_ChatHeader_DisplaysMarkupLiterallyAndRestoresAuthoredFormatting()
+        {
+            TextMeshProUGUI header = FindChild<TextMeshProUGUI>(_row, "HeaderTextField");
+            bool authoredRichText = header.richText;
+            const string literal = "<b>literal</b>";
+
+            _row.Render(
+                new MessageWindowRowRenderData("chat", literal, GameMessageType.Chat, false, true),
+                0
+            );
+
+            Assert.IsFalse(header.richText);
+            Assert.AreEqual(literal, header.text);
+            _row.Render(CreateRow(false, Color.white), 0);
+            Assert.AreEqual(authoredRichText, header.richText);
+        }
+
+        [Test]
         public void Render_SelectedRow_AppliesIdentitySelectionIconHeaderAndIndex()
         {
             TextMeshProUGUI header = FindChild<TextMeshProUGUI>(_row, "HeaderTextField");

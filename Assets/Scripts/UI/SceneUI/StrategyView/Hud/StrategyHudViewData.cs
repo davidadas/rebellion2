@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
 using UnityEngine;
@@ -20,6 +21,8 @@ public sealed class StrategyHudRenderData
     public string MaintenanceText { get; }
 
     public TickSpeed Speed { get; }
+    public IReadOnlyList<StrategyHudPlayerSpeedSelection> PlayerSpeeds { get; }
+    public string ConnectionNotice { get; }
 
     public StrategyHudResourceBreakdown ResourceBreakdown { get; }
 
@@ -32,19 +35,27 @@ public sealed class StrategyHudRenderData
     /// <param name="speed">The current strategy speed.</param>
     /// <param name="unacknowledgedMessageTypes">The message categories with pending notifications.</param>
     /// <param name="resourceBreakdown">The current resource-facility totals.</param>
+    /// <param name="playerSpeeds">Each human participant's acknowledged speed selection.</param>
+    /// <param name="connectionNotice">The current interrupted connection status, or empty.</param>
     public StrategyHudRenderData(
         string tickText,
         string rawMaterialsText,
         string refinedMaterialsText,
         TickSpeed speed,
         IEnumerable<MessageType> unacknowledgedMessageTypes,
-        StrategyHudResourceBreakdown resourceBreakdown = null
+        StrategyHudResourceBreakdown resourceBreakdown = null,
+        IEnumerable<StrategyHudPlayerSpeedSelection> playerSpeeds = null,
+        string connectionNotice = null
     )
     {
         TickText = tickText ?? string.Empty;
         RawMaterialsText = rawMaterialsText ?? string.Empty;
         RefinedMaterialsText = refinedMaterialsText ?? string.Empty;
         Speed = speed;
+        ConnectionNotice = connectionNotice ?? string.Empty;
+        PlayerSpeeds = Array.AsReadOnly(
+            playerSpeeds?.ToArray() ?? Array.Empty<StrategyHudPlayerSpeedSelection>()
+        );
         ResourceBreakdown = resourceBreakdown ?? StrategyHudResourceBreakdown.Empty;
         MaintenanceText =
             resourceBreakdown == null
@@ -64,6 +75,45 @@ public sealed class StrategyHudRenderData
     public bool HasUnacknowledgedMessageType(MessageType messageType)
     {
         return unacknowledgedMessageTypes.Contains(messageType);
+    }
+}
+
+/// <summary>
+/// Carries one participant's visible selection separately from the effective simulation speed.
+/// </summary>
+public sealed class StrategyHudPlayerSpeedSelection
+{
+    public string FactionID { get; }
+    public long Revision { get; }
+    public bool IsLocal { get; }
+    public string Name { get; }
+    public TickSpeed Speed { get; }
+    public Color32? FactionColor { get; }
+
+    /// <summary>
+    /// Captures the acknowledged selection displayed to both participants.
+    /// </summary>
+    /// <param name="name">The participant's display name.</param>
+    /// <param name="speed">The participant's selected speed.</param>
+    /// <param name="factionID">The authenticated faction owning the selection.</param>
+    /// <param name="revision">The ordered selection revision.</param>
+    /// <param name="isLocal">Whether this is the local participant.</param>
+    /// <param name="factionColor">The configured faction color used to mark this selection.</param>
+    public StrategyHudPlayerSpeedSelection(
+        string name,
+        TickSpeed speed,
+        string factionID = null,
+        long revision = 0,
+        bool isLocal = false,
+        Color32? factionColor = null
+    )
+    {
+        Name = name;
+        Speed = speed;
+        FactionID = factionID;
+        Revision = revision;
+        IsLocal = isLocal;
+        FactionColor = factionColor;
     }
 }
 
@@ -450,6 +500,9 @@ public sealed class StrategyHudViewData
     public RectInt? SpeedIndicatorBounds { get; }
 
     public RectInt? SpeedContextBounds { get; }
+    public string SpeedAgreementText { get; }
+    public bool CanRespondToSpeedRequest { get; }
+    public RectInt? SessionNoticeBounds { get; }
 
     public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
 
@@ -470,6 +523,9 @@ public sealed class StrategyHudViewData
     /// <param name="speedContextBounds">The speed context-menu hit area.</param>
     /// <param name="buttons">The HUD buttons in authored slot order.</param>
     /// <param name="messageNotifications">The notification slots in authored order.</param>
+    /// <param name="speedAgreementText">The compact speed request or interrupted connection message.</param>
+    /// <param name="canRespondToSpeedRequest">Whether the message offers speed response controls.</param>
+    /// <param name="sessionNoticeBounds">The notice bounds inside the current faction's galaxy play area.</param>
     public StrategyHudViewData(
         Texture2D backgroundTexture,
         StrategyHudCounterViewData tickCounter,
@@ -481,7 +537,10 @@ public sealed class StrategyHudViewData
         RectInt? speedIndicatorBounds,
         RectInt? speedContextBounds,
         IReadOnlyList<StrategyHudButtonViewData> buttons,
-        IReadOnlyList<StrategyHudMessageNotificationViewData> messageNotifications
+        IReadOnlyList<StrategyHudMessageNotificationViewData> messageNotifications,
+        string speedAgreementText = null,
+        bool canRespondToSpeedRequest = false,
+        RectInt? sessionNoticeBounds = null
     )
     {
         BackgroundTexture = backgroundTexture;
@@ -493,6 +552,9 @@ public sealed class StrategyHudViewData
         SpeedIndicatorTexture = speedIndicatorTexture;
         SpeedIndicatorBounds = speedIndicatorBounds;
         SpeedContextBounds = speedContextBounds;
+        SpeedAgreementText = speedAgreementText ?? string.Empty;
+        CanRespondToSpeedRequest = canRespondToSpeedRequest;
+        SessionNoticeBounds = sessionNoticeBounds;
         this.buttons = Copy(buttons);
         this.messageNotifications = Copy(messageNotifications);
     }

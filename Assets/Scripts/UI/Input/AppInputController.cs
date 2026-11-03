@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Input;
 using UnityEngine;
@@ -14,12 +15,18 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private InputManager _inputManager;
     private CancelStack _cancelStack;
     private GameRuntime _runtime;
-    private Func<string, bool> _loadSave;
+    private Func<string, Task<bool>> _loadSave;
+    private int _shortcutSuppressionCount;
 
     /// <summary>
     /// Occurs when global input requests the scene's Options menu.
     /// </summary>
     public event Action OptionsMenuRequested;
+
+    /// <summary>
+    /// Gets whether a modal input owner currently suppresses menu and gameplay shortcuts.
+    /// </summary>
+    public bool ShortcutsSuppressed => _shortcutSuppressionCount > 0;
 
     /// <summary>
     /// Gets the current input context.
@@ -70,7 +77,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         InputManager inputManager,
         CancelStack cancelStack,
         GameRuntime runtime,
-        Func<string, bool> loadSave = null
+        Func<string, Task<bool>> loadSave = null
     )
     {
         if (_inputManager != null)
@@ -111,6 +118,17 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     {
         if (_contextStack.Count > 1)
             _contextStack.Pop();
+    }
+
+    /// <summary>
+    /// Suppresses global menu and gameplay shortcuts until this independent input owner releases its lease.
+    /// UI submission and cancellation routing remain available to the modal presentation.
+    /// </summary>
+    /// <returns>An idempotent lease that does not modify the scene's input context.</returns>
+    public IDisposable SuppressShortcuts()
+    {
+        _shortcutSuppressionCount++;
+        return new ShortcutSuppression(this);
     }
 
     /// <summary>
@@ -163,6 +181,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     {
         if (
             !context.performed
+            || _shortcutSuppressionCount > 0
             || CurrentContext == InputContext.Cutscene
             || LoadingScreenController.IsLoadInProgress
         )
@@ -175,7 +194,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// Handles the quick save action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
-    public void OnQuickSave(InputAction.CallbackContext context)
+    public async void OnQuickSave(InputAction.CallbackContext context)
     {
         if (!context.performed)
             return;
@@ -183,14 +202,22 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        _runtime?.QuickSave();
+        try
+        {
+            if (_runtime != null)
+                await _runtime.QuickSaveAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing a coordinated session cancels requests whose completion is no longer known.
+        }
     }
 
     /// <summary>
     /// Handles the quick load action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
-    public void OnQuickLoad(InputAction.CallbackContext context)
+    public async void OnQuickLoad(InputAction.CallbackContext context)
     {
         if (!context.performed)
             return;
@@ -198,7 +225,15 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        _loadSave?.Invoke(SaveGameManager.QuickSaveFileName);
+        try
+        {
+            if (_loadSave != null)
+                await _loadSave(SaveGameManager.QuickSaveFileName);
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing a coordinated session cancels requests whose completion is no longer known.
+        }
     }
 
     /// <summary>
@@ -214,7 +249,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
             return;
 
         GameManager gameManager = _runtime?.GetActiveGameManager();
-        gameManager?.SetGameSpeed(GetSlowerGameSpeed(gameManager.GetGameSpeed()));
+        gameManager?.StepGameSpeed(false);
     }
 
     /// <summary>
@@ -230,7 +265,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
             return;
 
         GameManager gameManager = _runtime?.GetActiveGameManager();
-        gameManager?.SetGameSpeed(GetFasterGameSpeed(gameManager.GetGameSpeed()));
+        gameManager?.StepGameSpeed(true);
     }
 
     /// <summary>
@@ -240,13 +275,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>The next slower speed, bounded at paused.</returns>
     internal static TickSpeed GetSlowerGameSpeed(TickSpeed speed)
     {
-        return speed switch
-        {
-            TickSpeed.Fast => TickSpeed.Medium,
-            TickSpeed.Medium => TickSpeed.Slow,
-            TickSpeed.Slow => TickSpeed.VerySlow,
-            _ => TickSpeed.Paused,
-        };
+        return GameManager.GetAdjacentGameSpeed(speed, false);
     }
 
     /// <summary>
@@ -256,13 +285,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>The next faster speed, bounded at fast.</returns>
     internal static TickSpeed GetFasterGameSpeed(TickSpeed speed)
     {
-        return speed switch
-        {
-            TickSpeed.Paused => TickSpeed.VerySlow,
-            TickSpeed.VerySlow => TickSpeed.Slow,
-            TickSpeed.Slow => TickSpeed.Medium,
-            _ => TickSpeed.Fast,
-        };
+        return GameManager.GetAdjacentGameSpeed(speed, true);
     }
 
     /// <summary>
@@ -271,7 +294,8 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>True when gameplay shortcuts can run; otherwise false.</returns>
     private bool CanUseGameplayShortcuts()
     {
-        return !UIInputFocus.IsTextEntryActive()
+        return _shortcutSuppressionCount == 0
+            && !UIInputFocus.IsTextEntryActive()
             && !LoadingScreenController.IsLoadInProgress
             && (
                 CurrentContext == InputContext.Strategy
@@ -287,5 +311,33 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     {
         if (_contextStack.Count == 0)
             _contextStack.Push(InputContext.None);
+    }
+
+    /// <summary>
+    /// Releases only the shortcut suppression owned by one modal lifetime.
+    /// </summary>
+    private sealed class ShortcutSuppression : IDisposable
+    {
+        private AppInputController _owner;
+
+        /// <summary>
+        /// Retains the input controller whose suppression has already been acquired.
+        /// </summary>
+        /// <param name="owner">The input controller owning the suppression count.</param>
+        public ShortcutSuppression(AppInputController owner)
+        {
+            _owner = owner;
+        }
+
+        /// <summary>
+        /// Releases this lease once, preserving any other owner's suppression and scene context.
+        /// </summary>
+        public void Dispose()
+        {
+            AppInputController owner = _owner;
+            _owner = null;
+            if (owner != null)
+                owner._shortcutSuppressionCount--;
+        }
     }
 }

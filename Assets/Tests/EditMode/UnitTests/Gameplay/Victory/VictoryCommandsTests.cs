@@ -15,6 +15,20 @@ namespace Rebellion.Tests.Gameplay
     public class VictoryCommandsTests
     {
         [Test]
+        public void TryDeclareVictory_AlreadyDeclaredOutcome_DoesNotDeclareItAgain()
+        {
+            (_, _, Faction winner, _, VictoryCommands commands) = BuildScene();
+            Assert.IsNotNull(commands.TryDeclareVictory(winner));
+            int published = 0;
+            commands.ResultsProduced += _ => published++;
+
+            VictoryResult repeated = commands.TryDeclareVictory(winner);
+
+            Assert.That(repeated, Is.Null);
+            Assert.That(published, Is.Zero);
+        }
+
+        [Test]
         public void TryDeclareVictory_RegisteredFactions_PublishesOutcome()
         {
             (GameRoot game, Faction loser, Faction winner, _, VictoryCommands commands) =

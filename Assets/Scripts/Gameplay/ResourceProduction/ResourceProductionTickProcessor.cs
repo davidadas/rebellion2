@@ -16,20 +16,14 @@ namespace Rebellion.Gameplay
     {
         private const int _percentScale = 100;
 
-        private readonly SmugglingTickProcessor _smuggling;
         private readonly SmugglingCommands _smugglingCommands;
 
         /// <summary>
         /// Creates resource-production tick processing.
         /// </summary>
-        /// <param name="smuggling">The smuggling state advanced before resource delivery.</param>
         /// <param name="smugglingCommands">The smuggling rules applied to completed output.</param>
-        public ResourceProductionTickProcessor(
-            SmugglingTickProcessor smuggling,
-            SmugglingCommands smugglingCommands
-        )
+        public ResourceProductionTickProcessor(SmugglingCommands smugglingCommands)
         {
-            _smuggling = smuggling ?? throw new ArgumentNullException(nameof(smuggling));
             _smugglingCommands =
                 smugglingCommands ?? throw new ArgumentNullException(nameof(smugglingCommands));
         }
@@ -41,7 +35,8 @@ namespace Rebellion.Gameplay
         /// <returns>State-change results produced while processing the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            List<GameResult> results = new List<GameResult>(_smuggling.ProcessTick(game));
+            _smugglingCommands.BeginProduction();
+            List<GameResult> results = new List<GameResult>();
 
             foreach (Faction faction in game.GetFactions())
                 ProcessFaction(game, faction);

@@ -1,14 +1,71 @@
 using System;
 using System.IO;
+using System.Text;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UserSettingsModel = global::UserSettings;
 
 namespace Rebellion.Tests.Managers
 {
     [TestFixture]
     public sealed class UserSettingsManagerTests
     {
+        [Test]
+        public void Save_LegacyTemporaryFileIsExclusivelyOwned_PublishesSettingsWithoutTouchingOtherWriter()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-settings-" + Guid.NewGuid().ToString("N")
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            string legacyTemporaryPath = path + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(directory);
+                byte[] sentinel = Encoding.UTF8.GetBytes("another writer's pending settings");
+                using FileStream otherWriter = new FileStream(
+                    legacyTemporaryPath,
+                    FileMode.CreateNew,
+                    FileAccess.ReadWrite,
+                    FileShare.None
+                );
+                otherWriter.Write(sentinel, 0, sentinel.Length);
+                otherWriter.Flush(true);
+                UserSettingsManager manager = new UserSettingsManager(
+                    null,
+                    CreateDisplayManager(),
+                    null,
+                    path
+                );
+                manager.Load();
+                manager.Settings.Gameplay.ShowMissionOdds = false;
+
+                manager.Save();
+
+                UserSettingsModel restored = JsonUtility.FromJson<UserSettingsModel>(
+                    File.ReadAllText(path)
+                );
+                Assert.That(restored.Gameplay.ShowMissionOdds, Is.False);
+                otherWriter.Position = 0;
+                byte[] unchanged = new byte[sentinel.Length];
+                Assert.That(
+                    otherWriter.Read(unchanged, 0, unchanged.Length),
+                    Is.EqualTo(sentinel.Length)
+                );
+                CollectionAssert.AreEqual(sentinel, unchanged);
+                CollectionAssert.AreEqual(
+                    new[] { legacyTemporaryPath },
+                    Directory.GetFiles(directory, "*.tmp")
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
         [Test]
         public void Load_LegacyInterfaceLaunchSpeed_MigratesToGameplaySettings()
         {

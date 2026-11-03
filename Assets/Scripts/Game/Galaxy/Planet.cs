@@ -47,6 +47,11 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
+        /// <summary>
+        /// Reports completed support changes to the session's notification observer.
+        /// </summary>
+        internal event Action<Planet> PopularSupportChanged;
+
         private const int _maximumPopularSupport = 100;
         private const int _maximumProductionModifier = 100;
 
@@ -664,6 +669,8 @@ namespace Rebellion.Game.Galaxy
                 ShiftFactionSupport(factionInstanceId, overage);
                 PopularSupport[factionInstanceId] = boundedSupport;
             }
+            if (supportDifference != 0 || totalSupport + supportDifference > _maximumPopularSupport)
+                PopularSupportChanged?.Invoke(this);
         }
 
         /// <summary>

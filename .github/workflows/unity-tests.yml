@@ -155,6 +155,22 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
+      - name: Install multiplayer build configuration
+        env:
+          EOS_BUILD_CONFIG: ${{ secrets.EOS_BUILD_CONFIG }}
+        run: |
+          if [ -z "$EOS_BUILD_CONFIG" ]; then
+            echo "EOS_BUILD_CONFIG must contain the multiplayer deployment configuration."
+            exit 1
+          fi
+          mkdir -p Assets/StreamingAssets/EOS
+          for name in eos_product_config.json eos_windows_config.json eos_linux_config.json eos_macos_config.json player_auth_config.json; do
+            if ! printf '%s' "$EOS_BUILD_CONFIG" | jq -e --arg name "$name" '.[$name] | select(type == "object")' > "Assets/StreamingAssets/EOS/$name" 2>/dev/null; then
+              echo "EOS_BUILD_CONFIG is missing a valid $name object."
+              exit 1
+            fi
+          done
+
       - name: Build project
         id: unity-build
         uses: game-ci/unity-builder@v4
@@ -241,7 +257,7 @@ jobs:
           # precompiled in the editor image's project-template library cache. Resolving them keeps the
           # lint semantic model complete so IDE0005 does not falsely flag genuinely-used usings.
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Resources/PackageManager/ProjectTemplates/libcache/." /tmp/unity-libcache/ 2>/dev/null || true
-          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll; do
+          for dll in Newtonsoft.Json.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll; do
             src="$(find /tmp/unity-libcache -name "$dll" 2>/dev/null | head -n 1)"
             if [ -n "$src" ]; then
               cp "$src" .unity-lint-assemblies/
@@ -249,7 +265,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
+          for assembly in Newtonsoft.Json.dll UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1

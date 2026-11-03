@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.SceneGraph;
 
@@ -442,6 +444,165 @@ namespace Rebellion.Tests.SceneGraph
 
             Assert.AreEqual(originalRootId, _childNode1.LastParentInstanceID);
             Assert.IsNull(_childNode1.ParentInstanceID);
+        }
+
+        [Test]
+        public void IsActive_DisabledCycleThenEnabledRoot_DoesNotRetainVisitedNodes()
+        {
+            _childNode1.ParentNode = _childNode1;
+            _childNode1.IsEnabled = false;
+            Assert.That(_childNode1.IsActive(), Is.False);
+            _childNode1.ParentNode = null;
+            _childNode1.IsEnabled = true;
+
+            Assert.That(_childNode1.IsActive(), Is.True);
+        }
+
+        [Test]
+        public void IsActive_ReentrantParentRead_PreservesOuterCycleDetection()
+        {
+            int parentReads = 0;
+            CallbackSceneNode parent = new CallbackSceneNode();
+            parent.ParentNode = _childNode1;
+            _childNode1.ParentNode = parent;
+            parent.ReadParent = () =>
+            {
+                parentReads++;
+                if (parentReads == 1)
+                    Assert.That(_rootNode.IsActive(), Is.True);
+            };
+
+            Assert.Throws<InvalidOperationException>(() => _childNode1.IsActive());
+
+            Assert.That(parentReads, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetParentOfType_ReentrantParentRead_PreservesOuterCycleDetection()
+        {
+            int parentReads = 0;
+            CallbackSceneNode parent = new CallbackSceneNode();
+            parent.ParentNode = _childNode1;
+            _childNode1.ParentNode = parent;
+            _childNode2.ParentNode = _nodeA;
+            parent.ReadParent = () =>
+            {
+                parentReads++;
+                if (parentReads == 1)
+                    Assert.That(_childNode2.GetParentOfType<MockSceneNodeA>(), Is.SameAs(_nodeA));
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _childNode1.GetParentOfType<MockSceneNodeA>()
+            );
+
+            Assert.That(parentReads, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetParentOfType_RepeatedSuccessfulQuery_DoesNotRetainVisitedNodes()
+        {
+            _childNode1.ParentNode = _nodeA;
+            Assert.That(_childNode1.GetParentOfType<MockSceneNodeA>(), Is.SameAs(_nodeA));
+
+            Assert.That(_childNode1.GetParentOfType<MockSceneNodeA>(), Is.SameAs(_nodeA));
+        }
+
+        [Test]
+        public void GetChildren_NonmatchingChildHasCyclicParent_PreservesActivityValidation()
+        {
+            _rootNode.AddChild(_nodeA);
+            _rootNode.AddChild(_nodeB);
+            _nodeB.ParentNode = _nodeB;
+
+            Assert.Throws<InvalidOperationException>(() => _rootNode.GetChildren<MockSceneNodeA>());
+        }
+
+        [Test]
+        public void GetChildren_TypedSnapshot_RemainsIndependentOfLaterQueries()
+        {
+            _rootNode.AddChild(_nodeA);
+            IReadOnlyList<MockSceneNodeA> snapshot = _rootNode.GetChildren<MockSceneNodeA>();
+            _rootNode.AddChild(new MockSceneNodeA());
+            _rootNode.GetChildren<MockSceneNodeA>();
+
+            CollectionAssert.AreEqual(new[] { _nodeA }, snapshot);
+        }
+
+        [Test]
+        public void GetChildren_IncludingDisabledNullChild_TypedSnapshotOmitsNull()
+        {
+            _rootNode.AddChild(null);
+            _rootNode.AddChild(_nodeA);
+
+            CollectionAssert.AreEqual(
+                new[] { _nodeA },
+                _rootNode.GetChildren<MockSceneNodeA>(includeDisabled: true)
+            );
+        }
+
+        [Test]
+        public void GetChildren_AfterFailedRecursiveTraversal_ClearsVisitedPath()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.AddChild(_rootNode);
+            Assert.Throws<InvalidOperationException>(() => _rootNode.GetChildren(recursive: true));
+            _childNode1.RemoveChild(_rootNode);
+
+            CollectionAssert.AreEqual(
+                new[] { _childNode1 },
+                _rootNode.GetChildren(recursive: true)
+            );
+        }
+
+        [Test]
+        public void GetChildren_SharedDescendantAcrossBranches_PreservesPreorderDuplicates()
+        {
+            _rootNode.AddChild(_childNode1);
+            _rootNode.AddChild(_childNode2);
+            _childNode1.AddChild(_nodeA);
+            _childNode2.AddChild(_nodeA);
+
+            CollectionAssert.AreEqual(
+                new MockSceneNode[] { _childNode1, _nodeA, _childNode2, _nodeA },
+                _rootNode.GetChildren(recursive: true)
+            );
+        }
+
+        [Test]
+        public async Task IsActive_ConcurrentParentReads_KeepTraversalPathsIndependentAsync()
+        {
+            using Barrier simultaneousReads = new Barrier(2);
+            CallbackSceneNode parent = new CallbackSceneNode();
+            parent.ReadParent = () =>
+            {
+                if (!simultaneousReads.SignalAndWait(TimeSpan.FromSeconds(10)))
+                    throw new TimeoutException("The second traversal did not reach its parent.");
+            };
+            _childNode1.ParentNode = parent;
+            _childNode2.ParentNode = parent;
+
+            bool[] active = await Task.WhenAll(
+                Task.Run(_childNode1.IsActive),
+                Task.Run(_childNode2.IsActive)
+            );
+
+            CollectionAssert.AreEqual(new[] { true, true }, active);
+        }
+
+        private sealed class CallbackSceneNode : MockSceneNode, ISceneNode
+        {
+            public Action ReadParent { get; set; }
+
+            /// <summary>
+            /// Runs a caller-controlled nested query before returning the arranged parent.
+            /// </summary>
+            /// <returns>The arranged parent reference.</returns>
+            ISceneNode ISceneNode.GetParent()
+            {
+                ReadParent?.Invoke();
+                return ParentNode;
+            }
         }
 
         // Mock implementation of BaseSceneNode for testing purposes

@@ -10,6 +10,9 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
+        [ThreadStatic]
+        private static Stack<HashSet<ISceneNode>> _availableTraversalPaths;
+
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -98,17 +101,24 @@ namespace Rebellion.SceneGraph
         public bool IsActive()
         {
             ISceneNode node = this;
-            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
-            while (node != null)
+            HashSet<ISceneNode> visitedNodes = RentTraversalPath();
+            try
             {
-                if (!visitedNodes.Add(node))
-                    throw new InvalidOperationException("Cycle detected in scene graph.");
-                if (!node.IsEnabled)
-                    return false;
-                node = node.GetParent();
-            }
+                while (node != null)
+                {
+                    if (!visitedNodes.Add(node))
+                        throw new InvalidOperationException("Cycle detected in scene graph.");
+                    if (!node.IsEnabled)
+                        return false;
+                    node = node.GetParent();
+                }
 
-            return true;
+                return true;
+            }
+            finally
+            {
+                ReturnTraversalPath(visitedNodes);
+            }
         }
 
         /// <summary>
@@ -130,26 +140,33 @@ namespace Rebellion.SceneGraph
         {
             // Check the parent scene nodes.
             ISceneNode parent = ParentNode;
-            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode> { this };
-
-            while (parent != null)
+            HashSet<ISceneNode> visitedNodes = RentTraversalPath();
+            try
             {
-                if (!visitedNodes.Add(parent))
+                visitedNodes.Add(this);
+                while (parent != null)
                 {
-                    // Node has already been visited, indicating a cycle in the scene graph.
-                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                    if (!visitedNodes.Add(parent))
+                    {
+                        // Node has already been visited, indicating a cycle in the scene graph.
+                        throw new InvalidOperationException("Cycle detected in scene graph.");
+                    }
+
+                    if (parent is T matchingParent)
+                    {
+                        return matchingParent;
+                    }
+
+                    parent = parent.GetParent();
                 }
 
-                if (parent is T matchingParent)
-                {
-                    return matchingParent;
-                }
-
-                parent = parent.GetParent();
+                // No parent of the specified type was found.
+                return null;
             }
-
-            // No parent of the specified type was found.
-            return null;
+            finally
+            {
+                ReturnTraversalPath(visitedNodes);
+            }
         }
 
         /// <summary>
@@ -208,7 +225,7 @@ namespace Rebellion.SceneGraph
                 return directChildren;
 
             List<ISceneNode> descendants = new List<ISceneNode>();
-            HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
+            HashSet<ISceneNode> currentPath = RentTraversalPath();
 
             void Collect(ISceneNode node)
             {
@@ -227,8 +244,16 @@ namespace Rebellion.SceneGraph
                 }
             }
 
-            Collect(this);
-            return descendants.AsReadOnly();
+            try
+            {
+                currentPath.Add(this);
+                Collect(this);
+                return descendants.AsReadOnly();
+            }
+            finally
+            {
+                ReturnTraversalPath(currentPath);
+            }
         }
 
         /// <summary>
@@ -241,7 +266,41 @@ namespace Rebellion.SceneGraph
         public IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode
         {
-            return GetChildren(recursive, includeDisabled).OfType<T>().ToList().AsReadOnly();
+            if (recursive)
+                return GetChildren(recursive: true, includeDisabled)
+                    .OfType<T>()
+                    .ToList()
+                    .AsReadOnly();
+
+            List<T> children = new List<T>();
+            foreach (ISceneNode child in EnumerateChildren())
+            {
+                if ((includeDisabled || child.IsActive()) && child is T matchingChild)
+                    children.Add(matchingChild);
+            }
+            return children.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Borrows one empty path for a synchronous traversal, keeping nested calls independent.
+        /// Each thread retains only the paths required by its concurrent traversal depth.
+        /// </summary>
+        /// <returns>An exclusively owned empty set using the existing node equality rules.</returns>
+        private static HashSet<ISceneNode> RentTraversalPath()
+        {
+            return _availableTraversalPaths?.Count > 0
+                ? _availableTraversalPaths.Pop()
+                : new HashSet<ISceneNode>();
+        }
+
+        /// <summary>
+        /// Releases node references after every traversal exit before making its storage reusable.
+        /// </summary>
+        /// <param name="path">The path exclusively owned by the completing traversal.</param>
+        private static void ReturnTraversalPath(HashSet<ISceneNode> path)
+        {
+            path.Clear();
+            (_availableTraversalPaths ??= new Stack<HashSet<ISceneNode>>()).Push(path);
         }
 
         /// <summary>

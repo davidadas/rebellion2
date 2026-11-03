@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -6,12 +7,15 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using UnityEngine;
 
 /// <summary>
-/// Describes one immutable command presented by a strategy context menu.
+/// Describes a strategy command with optional owner-managed selection presentation.
 /// </summary>
 public sealed class StrategyMenuCommand : IContextMenuParentCommand
 {
+    private readonly IReadOnlyList<Color32> selectionColors;
+
     public StrategyMenuAction Action { get; }
 
     public string Text { get; }
@@ -19,6 +23,10 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
     public bool Enabled { get; }
 
     public int IconKey { get; }
+
+    public bool Selected { get; }
+    public IReadOnlyList<Color32> SelectionColors => SelectionState?.Colors ?? selectionColors;
+    public ContextMenuSelectionState SelectionState { get; }
 
     public IReadOnlyList<StrategyMenuCommand> SubmenuCommands { get; }
 
@@ -38,18 +46,29 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
     /// <param name="enabled">Whether the command can be selected.</param>
     /// <param name="iconKey">The optional semantic icon identifier.</param>
     /// <param name="submenuCommands">The ordered child commands.</param>
+    /// <param name="selected">Whether the owning player has selected this command.</param>
+    /// <param name="selectionColors">The faction colors of participants selecting this command.</param>
+    /// <param name="selectionState">The optional owner of selection updates for an open menu.</param>
     public StrategyMenuCommand(
         StrategyMenuAction action,
         string text,
         bool enabled,
         int iconKey = 0,
-        IReadOnlyList<StrategyMenuCommand> submenuCommands = null
+        IReadOnlyList<StrategyMenuCommand> submenuCommands = null,
+        bool selected = false,
+        IReadOnlyList<Color32> selectionColors = null,
+        ContextMenuSelectionState selectionState = null
     )
     {
         Action = action;
         Text = text;
         Enabled = enabled;
         IconKey = iconKey;
+        Selected = selected;
+        this.selectionColors = Array.AsReadOnly(
+            selectionColors?.ToArray() ?? Array.Empty<Color32>()
+        );
+        SelectionState = selectionState;
         SubmenuCommands = submenuCommands?.ToList() ?? new List<StrategyMenuCommand>();
         IsSubmenu = submenuCommands != null;
     }

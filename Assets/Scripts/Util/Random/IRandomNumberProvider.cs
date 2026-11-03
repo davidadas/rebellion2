@@ -23,7 +23,7 @@ namespace Rebellion.Util.Random
 
     /// <summary>
     /// Production implementation using System.Random with seeded initialization.
-    /// Tracks the number of calls so a save can record where the stream is and a
+    /// Tracks underlying draws so a save can record where the stream is and a
     /// load can fast-forward back to the same position.
     /// </summary>
     public class SystemRandomProvider : IRandomNumberProvider
@@ -31,7 +31,12 @@ namespace Rebellion.Util.Random
         private readonly System.Random _rng;
 
         /// <summary>
-        /// The number of times this provider has been called. Persist this with the
+        /// Gets the seed actually used to initialize this stream, independently of mutable game settings.
+        /// </summary>
+        public int Seed { get; }
+
+        /// <summary>
+        /// The number of underlying seeded draws consumed. Persist this with the
         /// seed to resume an RNG stream at the same position after a save/load.
         /// </summary>
         public long CallCount { get; private set; }
@@ -44,6 +49,7 @@ namespace Rebellion.Util.Random
         /// <param name="advanceTo">Number of underlying draws to discard before use, restoring a previous call position.</param>
         public SystemRandomProvider(int seed, long advanceTo = 0)
         {
+            Seed = seed;
             _rng = new System.Random(seed);
             for (long i = 0; i < advanceTo; i++)
                 _rng.Next();
@@ -68,8 +74,9 @@ namespace Rebellion.Util.Random
         /// <returns>A random integer within the requested range.</returns>
         public int NextInt(int min, int max)
         {
-            CallCount++;
-            return _rng.Next(min, max);
+            int value = _rng.Next(min, max);
+            CallCount += (long)max - min > int.MaxValue ? 2 : 1;
+            return value;
         }
     }
 }

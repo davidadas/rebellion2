@@ -108,6 +108,91 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ShowAcknowledgment_Message_DisplaysNoticeWithOnlyAuthoredConfirmControl()
+        {
+            Button confirm = GetField<Button>("confirmButton");
+            RawImage background = _view
+                .transform.Find("DialogSurface/BackgroundImage")
+                .GetComponent<RawImage>();
+            _view.Show("Confirm");
+            Texture confirmationBackground = background.texture;
+
+            _view.ShowAcknowledgment("The session has ended.");
+
+            Assert.AreEqual(
+                "The session has ended.",
+                GetField<TextMeshProUGUI>("messageTextField").text
+            );
+            Assert.IsTrue(_view.gameObject.activeSelf);
+            Assert.IsTrue(confirm.gameObject.activeSelf);
+            Assert.IsFalse(GetField<Button>("cancelButton").gameObject.activeSelf);
+            Assert.AreNotSame(confirmationBackground, background.texture);
+            Assert.AreEqual(
+                new Vector2(290f, -284f),
+                ((RectTransform)confirm.transform).anchoredPosition
+            );
+            Assert.AreSame(
+                GetField<Texture2D>("confirmButtonUpTexture"),
+                GetField<RawImage>("confirmButtonImage").texture
+            );
+        }
+
+        [Test]
+        public void ShowAcknowledgment_NullMessage_DisplaysEmptyText()
+        {
+            _view.ShowAcknowledgment(null);
+
+            Assert.AreEqual(string.Empty, GetField<TextMeshProUGUI>("messageTextField").text);
+        }
+
+        [Test]
+        public void ShowAcknowledgment_HiddenNotice_SelectsConfirmButton()
+        {
+            _view.ShowAcknowledgment("The session has ended.");
+
+            Assert.AreSame(
+                GetField<Button>("confirmButton").gameObject,
+                _eventSystem.currentSelectedGameObject
+            );
+        }
+
+        [Test]
+        public void ShowAcknowledgment_VisibleNoticeUpdate_PreservesCurrentSelection()
+        {
+            _view.ShowAcknowledgment("The session has ended.");
+            _eventSystem.SetSelectedGameObject(_rootObject);
+
+            _view.ShowAcknowledgment("Returning to the main menu.");
+
+            Assert.AreSame(_rootObject, _eventSystem.currentSelectedGameObject);
+        }
+
+        [Test]
+        public void Show_AfterAcknowledgment_RestoresCancelResponse()
+        {
+            int canceledCount = 0;
+            _view.Canceled += () => canceledCount++;
+            _view.Show("Confirm");
+            RawImage background = _view
+                .transform.Find("DialogSurface/BackgroundImage")
+                .GetComponent<RawImage>();
+            Texture confirmationBackground = background.texture;
+            RectTransform confirm = (RectTransform)GetField<Button>("confirmButton").transform;
+            Vector2 confirmationPosition = confirm.anchoredPosition;
+            _view.ShowAcknowledgment("The session has ended.");
+
+            _view.Show("Are you sure?");
+            Button cancel = GetField<Button>("cancelButton");
+            Assert.IsTrue(cancel.gameObject.activeSelf);
+            Assert.AreSame(confirmationBackground, background.texture);
+            Assert.AreEqual(confirmationPosition, confirm.anchoredPosition);
+            cancel.onClick.Invoke();
+
+            Assert.AreEqual(1, canceledCount);
+            Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [Test]
         public void Hide_VisibleDialog_HidesWithoutResponse()
         {
             int responseCount = 0;
@@ -135,6 +220,25 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ConfirmButton_AcknowledgmentMode_RaisesConfirmedWhileNoticeRemainsVisible()
+        {
+            bool visibleWhenConfirmed = false;
+            int confirmedCount = 0;
+            _view.Confirmed += () =>
+            {
+                confirmedCount++;
+                visibleWhenConfirmed = _view.gameObject.activeSelf;
+            };
+            _view.ShowAcknowledgment("The session has ended.");
+
+            GetField<Button>("confirmButton").onClick.Invoke();
+
+            Assert.AreEqual(1, confirmedCount);
+            Assert.IsTrue(visibleWhenConfirmed);
+            Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
+        [Test]
         public void CancelButton_Click_HidesAndRaisesCanceled()
         {
             int canceledCount = 0;
@@ -145,6 +249,58 @@ namespace Rebellion.Tests.UI.Components
 
             Assert.AreEqual(1, canceledCount);
             Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void CancelButton_AcknowledgmentMode_PreservesNoticeWithoutResponse()
+        {
+            int responseCount = 0;
+            _view.Confirmed += () => responseCount++;
+            _view.Canceled += () => responseCount++;
+            _view.ShowAcknowledgment("The session has ended.");
+
+            GetField<Button>("cancelButton").onClick.Invoke();
+
+            Assert.AreEqual(0, responseCount);
+            Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void TryCancel_AcknowledgmentMode_ConsumesRequestWithoutHidingOrResponse()
+        {
+            int responseCount = 0;
+            _view.Confirmed += () => responseCount++;
+            _view.Canceled += () => responseCount++;
+            _view.ShowAcknowledgment("The session has ended.");
+
+            bool handled = ((ICancelable)_view).TryCancel();
+
+            Assert.IsTrue(handled);
+            Assert.IsTrue(_view.gameObject.activeSelf);
+            Assert.AreEqual(0, responseCount);
+        }
+
+        [Test]
+        public void TryCancel_ConfirmationMode_HidesAndRaisesCanceled()
+        {
+            int canceledCount = 0;
+            _view.Canceled += () => canceledCount++;
+            _view.Show("Are you sure?");
+
+            bool handled = _view.TryCancel();
+
+            Assert.IsTrue(handled);
+            Assert.IsFalse(_view.gameObject.activeSelf);
+            Assert.AreEqual(1, canceledCount);
+        }
+
+        [Test]
+        public void TryCancel_HiddenNotice_DoesNotConsumeRequest()
+        {
+            _view.ShowAcknowledgment("The session has ended.");
+            _view.Hide();
+
+            Assert.IsFalse(_view.TryCancel());
         }
 
         [Test]

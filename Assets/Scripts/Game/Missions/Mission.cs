@@ -265,12 +265,12 @@ namespace Rebellion.Game.Missions
         [PersistableMember(Name = "DecoyParticipants")]
         private protected List<IMissionParticipant> _decoyParticipants;
 
-        [PersistableIgnore]
+        [PersistableMember(Name = "InitialMainParticipantIDs")]
         private HashSet<string> _mainParticipantInstanceIds = new HashSet<string>(
             StringComparer.Ordinal
         );
 
-        [PersistableIgnore]
+        [PersistableMember(Name = "HasInitialMainParticipantIDs")]
         private bool _hasCapturedMainParticipantIds;
 
         // Mission configuration.

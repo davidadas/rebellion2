@@ -14,6 +14,59 @@ namespace Rebellion.Tests.Gameplay
     public class MessageCommandsTests
     {
         [Test]
+        public void Deliver_DeterministicRuntimeIdentities_AssignsBeforePresentationReadsMessage()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.UseDeterministicRuntimeIdentifiers = true;
+            Faction faction = new Faction { InstanceID = "owner" };
+            Message message = new StatusMessage(MessageType.Advice, "Advice", "Body");
+            MessageCommands commands = new MessageCommands(game, new MessageFactory(null));
+
+            commands.Deliver(
+                new[]
+                {
+                    new MessageDelivery { Recipient = faction, Message = message },
+                }
+            );
+
+            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+            Assert.IsTrue(Guid.TryParseExact(message.InstanceID, "N", out _));
+            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void Deliver_ReportWithExistingIdentity_DoesNotReplaceIdentity()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.UseDeterministicRuntimeIdentifiers = true;
+            Faction faction = new Faction { InstanceID = "owner" };
+            CombatReport report = new CombatReport { InstanceID = "saved-report" };
+            MessageFactory factory = new MessageFactory(null);
+            MessageCommands commands = new MessageCommands(game, factory);
+
+            commands.Deliver(CreateDeliveries(factory, (faction, "Battle", "Result", report)));
+
+            Assert.AreEqual("saved-report", report.InstanceID);
+            Assert.Zero(game.RuntimeIdentifierIndex);
+        }
+
+        [Test]
+        public void Deliver_NewReport_AssignsReportIdentity()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.UseDeterministicRuntimeIdentifiers = true;
+            Faction faction = new Faction { InstanceID = "owner" };
+            CombatReport report = new CombatReport();
+            MessageFactory factory = new MessageFactory(null);
+            MessageCommands commands = new MessageCommands(game, factory);
+
+            commands.Deliver(CreateDeliveries(factory, (faction, "Battle", "Result", report)));
+
+            Assert.AreEqual(1, game.RuntimeIdentifierIndex);
+            Assert.IsTrue(Guid.TryParseExact(report.InstanceID, "N", out _));
+        }
+
+        [Test]
         public void Deliver_NullBatch_ThrowsArgumentNullException()
         {
             MessageCommands commands = new(

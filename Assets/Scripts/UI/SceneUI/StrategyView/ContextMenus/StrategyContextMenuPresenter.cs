@@ -216,7 +216,10 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
                     command.UsesIconColumn,
                     command.IsSubmenu
                         || StrategyContextMenuIconKeys.TryGetSpeed(command.IconKey, out _),
-                    BuildCommandItems(command.SubmenuCommands)
+                    BuildCommandItems(command.SubmenuCommands),
+                    command.Selected,
+                    command.SelectionColors,
+                    command.SelectionState
                 )
             );
         }
