@@ -5,9 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Epic.OnlineServices;
-using Epic.OnlineServices.P2P;
-using PlayEveryWare.EpicOnlineServices;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
@@ -19,6 +16,13 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using AddNotifyPeerConnectionEstablishedOptions = Epic.OnlineServices.P2P.AddNotifyPeerConnectionEstablishedOptions;
+using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
+using GetPacketQueueInfoOptions = Epic.OnlineServices.P2P.GetPacketQueueInfoOptions;
+using OnPeerConnectionEstablishedInfo = Epic.OnlineServices.P2P.OnPeerConnectionEstablishedInfo;
+using P2PInterface = Epic.OnlineServices.P2P.P2PInterface;
+using PacketQueueInfo = Epic.OnlineServices.P2P.PacketQueueInfo;
+using ProductUserId = Epic.OnlineServices.ProductUserId;
 
 namespace Rebellion.Tests.NativeAudit
 {
