@@ -26,9 +26,146 @@ namespace Rebellion.Tests.Game.Units
             bool expected
         )
         {
-            Officer officer = new Officer { IsForceSensitive = sensitive, ForceValue = forceRank };
+            Officer officer = RegisterHealingOfficer(
+                new Officer { IsForceSensitive = sensitive, ForceValue = forceRank }
+            );
 
-            Assert.AreEqual(expected, officer.HealsFast(80));
+            Assert.AreEqual(expected, officer.HealsFast());
+        }
+
+        [TestCase(80, true)]
+        [TestCase(79, false)]
+        [TestCase(-1, false)]
+        public void HealsFast_RankFallsToZero_PreservesPreviousEligibility(int rank, bool expected)
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = rank });
+
+            officer.ForceValue = 0;
+
+            Assert.AreEqual(expected, officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_TrainingAdjustmentFallsToZero_PreservesPreviousEligibility()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceTrainingAdjustment = 80 });
+
+            officer.ForceTrainingAdjustment = 0;
+
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_NewZeroRankWithZeroThreshold_RemainsDisabled()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer(), threshold: 0);
+
+            Assert.IsFalse(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_NonzeroRankFallsBelowThreshold_ClearsEligibility()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
+
+            officer.ForceValue = 79;
+
+            Assert.IsFalse(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_BaseRatingAndInjuryChangeAtZero_PreserveEligibility()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
+            officer.ForceValue = 0;
+
+            officer.SetBaseRating(SkillRating.Diplomacy, 50);
+            officer.ApplyInjury(10, 100);
+            officer.Heal(5);
+
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Deserialize_ZeroRankWithRetainedHealing_PreservesEligibilityInAnyElementOrder(
+            bool reverseElementOrder
+        )
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
+            officer.ForceValue = 0;
+            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
+            if (reverseElementOrder)
+                xml.ReplaceNodes(xml.Elements().Reverse().ToArray());
+
+            Officer restored = RegisterHealingOfficer(
+                SerializationHelper.Deserialize<Officer>(xml.ToString())
+            );
+
+            Assert.Zero(restored.ForceRank);
+            Assert.IsTrue(restored.HealsFast());
+        }
+
+        [Test]
+        public void Deserialize_NonzeroRankWithoutHealingState_InitializesBeforeRankTransition()
+        {
+            XElement xml = XElement.Parse(
+                SerializationHelper.Serialize(new Officer { ForceValue = 80 })
+            );
+            xml.Elements("FastHealing").Remove();
+            Officer restored = RegisterHealingOfficer(
+                SerializationHelper.Deserialize<Officer>(xml.ToString())
+            );
+
+            restored.ForceValue = 0;
+
+            Assert.IsTrue(restored.HealsFast());
+        }
+
+        [Test]
+        public void CreateCopy_ZeroRankWithRetainedHealing_PreservesIndependentState()
+        {
+            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
+            officer.ForceValue = 0;
+
+            Officer copy = (Officer)officer.CreateCopy();
+            Assert.IsTrue(copy.HealsFast());
+            copy.ForceValue = 1;
+
+            Assert.IsFalse(copy.HealsFast());
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_ConfigurationInjectedAfterRegistration_UsesInjectedRules()
+        {
+            GameRoot game = new();
+            Officer officer = new() { InstanceID = "officer", ForceValue = 80 };
+            game.AddSceneNodeByInstanceID(officer);
+            GameConfig config = TestConfig.Create();
+            config.Jedi.FastHealThreshold = 80;
+
+            game.SetConfig(config);
+
+            Assert.IsTrue(officer.HealsFast());
+        }
+
+        [Test]
+        public void HealsFast_ConfigurationRebound_RetainsStateUntilRankChanges()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.FastHealThreshold = 80;
+            Officer officer = new() { InstanceID = "officer", ForceValue = 79 };
+            game.AddSceneNodeByInstanceID(officer);
+            Assert.IsFalse(officer.HealsFast());
+            GameConfig changed = TestConfig.Create();
+            changed.Jedi.FastHealThreshold = 60;
+
+            game.SetConfig(changed);
+
+            Assert.IsFalse(officer.HealsFast());
+            officer.ForceValue = 80;
+            Assert.IsTrue(officer.HealsFast());
         }
 
         [TestCase(32767, 32767)]
@@ -878,6 +1015,21 @@ namespace Rebellion.Tests.Game.Units
                 "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
+        }
+
+        /// <summary>
+        /// Registers an officer with the configured game rules used by healing eligibility.
+        /// </summary>
+        /// <param name="officer">The officer whose saved state is retained.</param>
+        /// <param name="threshold">The configured minimum rank for fast healing.</param>
+        /// <returns>The registered officer.</returns>
+        private static Officer RegisterHealingOfficer(Officer officer, int threshold = 80)
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.Jedi.FastHealThreshold = threshold;
+            officer.InstanceID ??= "healing-officer";
+            game.AddSceneNodeByInstanceID(officer);
+            return officer;
         }
 
         /// <summary>

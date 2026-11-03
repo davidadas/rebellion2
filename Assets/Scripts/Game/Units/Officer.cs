@@ -281,6 +281,12 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = "EnhancedCombat")]
         private int? _enhancedCombat;
 
+        [PersistableMember(Name = "FastHealing")]
+        private bool? _fastHealing;
+
+        [PersistableIgnore]
+        private GameConfig.JediConfig _forceRules;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
@@ -370,9 +376,9 @@ namespace Rebellion.Game.Units
                 int stored = unchecked((short)value);
                 if (ForceValue == stored)
                     return;
-                InitializeForceRatings();
+                InitializeForceState();
                 _forceValue = stored;
-                RefreshForceRatings();
+                RefreshForceState();
             }
         }
 
@@ -388,9 +394,9 @@ namespace Rebellion.Game.Units
                 int stored = unchecked((short)value);
                 if (ForceTrainingAdjustment == stored)
                     return;
-                InitializeForceRatings();
+                InitializeForceState();
                 _forceTrainingAdjustment = stored;
-                RefreshForceRatings();
+                RefreshForceState();
             }
         }
 
@@ -602,6 +608,8 @@ namespace Rebellion.Game.Units
             copy._enhancedDiplomacy = _enhancedDiplomacy;
             copy._enhancedEspionage = _enhancedEspionage;
             copy._enhancedCombat = _enhancedCombat;
+            copy._fastHealing = _fastHealing;
+            copy._forceRules = _forceRules;
             copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
             copy.NextForceDiscoveryTick = NextForceDiscoveryTick;
             copy.AllowedRanks = AllowedRanks?.ToArray();
@@ -642,6 +650,16 @@ namespace Rebellion.Game.Units
         {
             _traitDefinitions =
                 traitDefinitions ?? throw new ArgumentNullException(nameof(traitDefinitions));
+        }
+
+        /// <summary>
+        /// Connects retained Force state to the rules injected into the owning game.
+        /// Binding does not replay transitions or overwrite stored eligibility.
+        /// </summary>
+        /// <param name="rules">The current game's Force rules.</param>
+        internal void BindForceRules(GameConfig.JediConfig rules)
+        {
+            _forceRules = rules ?? throw new ArgumentNullException(nameof(rules));
         }
 
         /// <summary>
@@ -995,13 +1013,27 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns whether the officer qualifies for the accelerated Force-user healing rate.
+        /// Returns the retained eligibility for the accelerated Force-user healing rate.
         /// </summary>
-        /// <param name="minimumForceRank">The minimum Force rank required for fast healing.</param>
-        /// <returns>True when the effective Force rank meets the threshold; otherwise, false.</returns>
-        public bool HealsFast(int minimumForceRank)
+        /// <returns>The stored eligibility, initialized from a nonzero rank when absent.</returns>
+        public bool HealsFast()
         {
-            return ForceRank >= minimumForceRank;
+            _fastHealing ??= CalculateFastHealing();
+            return _fastHealing.Value;
+        }
+
+        /// <summary>
+        /// Calculates healing eligibility using the bound rules without treating zero as a rank.
+        /// </summary>
+        /// <returns>True when a nonzero effective rank meets the configured threshold.</returns>
+        private bool CalculateFastHealing()
+        {
+            GameConfig.JediConfig rules =
+                _forceRules
+                ?? throw new InvalidOperationException(
+                    "Force rules are not configured for this officer."
+                );
+            return ForceRank != 0 && ForceRank >= rules.FastHealThreshold;
         }
 
         /// <summary>
@@ -1104,26 +1136,30 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Initializes missing enhanced ratings before a Force transition changes their inputs.
+        /// Initializes missing derived Force state before a transition replaces its inputs.
         /// </summary>
-        private void InitializeForceRatings()
+        private void InitializeForceState()
         {
             GetForceRating(ref _enhancedDiplomacy, SkillRating.Diplomacy);
             GetForceRating(ref _enhancedEspionage, SkillRating.Espionage);
             GetForceRating(ref _enhancedCombat, SkillRating.Combat);
+            if (_forceRules != null)
+                _fastHealing ??= CalculateFastHealing();
         }
 
         /// <summary>
-        /// Refreshes enhanced ratings when a changed Force rank is nonzero.
-        /// A zero rank retains each rating until its own base or injury state changes.
+        /// Refreshes derived ratings and healing eligibility after a nonzero rank change.
+        /// At zero, base ratings and injury still refresh their corresponding skill values.
         /// </summary>
-        private void RefreshForceRatings()
+        private void RefreshForceState()
         {
             if (ForceRank == 0)
                 return;
             RefreshForceRating(SkillRating.Diplomacy);
             RefreshForceRating(SkillRating.Espionage);
             RefreshForceRating(SkillRating.Combat);
+            if (_forceRules != null)
+                _fastHealing = CalculateFastHealing();
         }
 
         /// <summary>

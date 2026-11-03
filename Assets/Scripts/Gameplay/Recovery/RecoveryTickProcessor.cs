@@ -53,9 +53,7 @@ namespace Rebellion.Gameplay
                 if (!officer.CanHeal())
                     continue;
 
-                int amount = officer.HealsFast(game.Config.Jedi.FastHealThreshold)
-                    ? config.FastHealAmount
-                    : config.NormalHealAmount;
+                int amount = officer.HealsFast() ? config.FastHealAmount : config.NormalHealAmount;
                 officer.Heal(amount);
 
                 if (officer.InjuryPoints == 0)

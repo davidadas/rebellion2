@@ -7,12 +7,32 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
     public class RecoveryTickProcessorTests
     {
+        [TestCase(79, 9)]
+        [TestCase(80, 8)]
+        public void ProcessTick_AuthoredHealingThreshold_UsesConfiguredForceBoundary(
+            int rank,
+            int expectedInjury
+        )
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.SetConfig(TestContent.Data.GameConfig.GetDeepCopy());
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            officer.ForceValue = rank;
+            officer.InjuryPoints = 10;
+            game.AttachNode(officer, planet);
+
+            new RecoveryTickProcessor().ProcessTick(game);
+
+            Assert.AreEqual(expectedInjury, officer.InjuryPoints);
+        }
+
         [Test]
         public void ProcessTick_InjuredOfficerAtFriendlyPlanet_ReducesInjury()
         {

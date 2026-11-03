@@ -192,6 +192,8 @@ namespace Rebellion.Game
                 throw new ArgumentNullException(nameof(config));
 
             Config = config;
+            foreach (Officer officer in _registeredOfficers)
+                officer.BindForceRules(config.Jedi);
         }
 
         /// <summary>
@@ -756,6 +758,8 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to register.</param>
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
+            if (node is Officer officerToBind && Config != null)
+                officerToBind.BindForceRules(Config.Jedi);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
