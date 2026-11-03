@@ -1,13 +1,11 @@
-using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Sends a battle fleet to clear hostile orbital forces for a planet capture or interdicted engagement.
+    /// Sends an available battle fleet to defeat nearby known hostile orbital forces.
     /// </summary>
     public sealed class AIOrbitalEngagementProposal : AIProposal
     {
@@ -79,18 +77,6 @@ namespace Rebellion.AI.Proposals
             }
 
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
-            if (
-                !context.Assessment.IsAttackPreparationTarget(knownTarget)
-                && !SpaceCombatQueries.GetActiveCapitalShips(Fleet).Any(ship => ship.HasGravityWell)
-            )
-            {
-                if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)
-                    Fleet.Order = null;
-                else
-                    ReturnToFriendlyTerritory(context);
-                return;
-            }
-
             if (
                 context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
                 && !CanWinProjectedOrbitalCombat(context, knownTarget)
@@ -181,7 +167,7 @@ namespace Rebellion.AI.Proposals
             Planet origin = context.Game.GetSceneNodeByInstanceID<Planet>(
                 Fleet.Order.OriginPlanetId
             );
-            if (origin?.GetOwnerInstanceID() == context.Faction.InstanceID)
+            if (AIFleetMovement.CanReturnTo(context, Fleet, origin))
             {
                 AIFleetMovement.TryMove(context, Fleet, origin);
                 return;
@@ -214,19 +200,22 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (order != null)
-            {
-                return order.OrderType == FleetOrderType.Engage
-                    && order.TargetPlanetId == TargetPlanet.InstanceID;
-            }
-
-            return context.Assessment.IsEnemyPlanet(knownTarget)
+            if (order?.OrderType == FleetOrderType.Engage)
+                return order.TargetPlanetId == TargetPlanet.InstanceID;
+            if (
+                order != null
                 && (
-                    context.Assessment.IsAttackPreparationTarget(knownTarget)
-                    || SpaceCombatQueries
-                        .GetActiveCapitalShips(Fleet)
-                        .Any(ship => ship.HasGravityWell)
+                    order.OrderType != FleetOrderType.Attack
+                    || order.Status is not (FleetOrderStatus.Building or FleetOrderStatus.Staging)
                 )
+            )
+                return false;
+
+            return Fleet.Movement == null
+                && !Fleet.IsInCombat
+                && context.StrategicPlan.CanFleetDepart(Fleet)
+                && context.GetAttackArrivalTicks(Fleet, knownTarget)
+                    <= context.Game.Config.AI.FleetDeployment.LocalAttackMaximumTravelTicks
                 && context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
                 && CanWinOrbitalCombat(context, knownTarget);
         }
@@ -261,13 +250,16 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether the fleet satisfies every live attack capability.
+        /// Returns whether the fleet can capture the planet or launch a useful military bombardment.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="targetPlanet">The known target.</param>
         /// <returns>True when the fleet is ready to attack the planet.</returns>
         private bool IsReadyToAttack(AITurnContext context, Planet targetPlanet)
         {
+            if (context.CanLaunchBombardment(Fleet, targetPlanet))
+                return true;
+
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
             if (demand == null)
                 return false;

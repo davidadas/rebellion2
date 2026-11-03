@@ -95,6 +95,9 @@ namespace Rebellion.AI
             (string Fleet, string Planet),
             AIAttackDemand
         > _fleetAttackDemands = new();
+        private readonly Dictionary<string, int> _readyAttackActionTicks = new(
+            StringComparer.Ordinal
+        );
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
         private readonly List<GameResult> _results = new List<GameResult>();
@@ -356,6 +359,61 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether known counterfire leaves enough bombardment to damage military targets.
+        /// </summary>
+        /// <param name="fleet">The fleet supplying ready bombardment.</param>
+        /// <param name="planet">The faction-visible target.</param>
+        /// <returns>True when a conservative surviving volley exceeds current and expected shields.</returns>
+        internal bool CanUseMilitaryBombardment(Fleet fleet, Planet planet)
+        {
+            if (fleet == null || planet == null || !Assessment.HasBombardmentTargets(planet))
+                return false;
+
+            int shields = Math.Max(
+                GetAttackDemand(planet, fleet)?.ShieldStrength ?? 0,
+                Assessment.GetBombardmentShieldStrength(planet)
+            );
+            return Assessment.GetBombardmentStrengthAfterDefenseFire(fleet, planet) > shields;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can launch a useful military bombardment without waiting for its army.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <returns>True when the naval departure requirements and surviving bombardment are sufficient.</returns>
+        internal bool CanLaunchBombardment(Fleet fleet, Planet planet)
+        {
+            return Assessment.GetPlanetOrbitalIntelAge(planet) != int.MaxValue
+                && HasAttackNavalReadiness(fleet, planet, GetAttackDemand(planet, fleet))
+                && CanUseMilitaryBombardment(fleet, planet);
+        }
+
+        /// <summary>
+        /// Checks the naval requirements shared by capture and bombardment departures.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="demand">The assessed combat and bombardment requirements.</param>
+        /// <returns>True when ready ships satisfy the existing departure requirements.</returns>
+        private bool HasAttackNavalReadiness(Fleet fleet, Planet planet, AIAttackDemand demand)
+        {
+            if (
+                fleet == null
+                || demand == null
+                || !HasCurrentHeadquartersAttackIntel(fleet, planet)
+                || !StrategicPlan.CanFleetDepart(fleet)
+                || !fleet.HasOperationalCapitalShips()
+            )
+                return false;
+
+            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
+            return combat > 0
+                && combat >= demand.CombatStrength
+                && Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength;
+        }
+
+        /// <summary>
         /// Estimates the remaining journey to one fleet's prospective attack target.
         /// </summary>
         /// <param name="fleet">The fleet being assessed.</param>
@@ -401,24 +459,14 @@ namespace Rebellion.AI
         )
         {
             AIAttackDemand demand = GetAttackDemand(planet, fleet);
-            if (
-                fleet == null
-                || demand == null
-                || !HasCurrentHeadquartersAttackIntel(fleet, planet)
-                || !StrategicPlan.CanFleetDepart(fleet)
-                || !fleet.HasOperationalCapitalShips()
-            )
+            if (!HasAttackNavalReadiness(fleet, planet, demand))
                 return default;
 
-            int combat = Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
             var required = GetAttackRegimentRequirements(planet, fleet);
             if (
-                combat <= 0
-                || combat < demand.CombatStrength
-                || (long)Assessment.GetReadyFleetRegimentCapacity(fleet)
+                (long)Assessment.GetReadyFleetRegimentCapacity(fleet)
                     + Math.Max(0, additionalRegimentCapacity)
-                    < required.Count
-                || Assessment.GetFleetBombardmentStrength(fleet) < demand.BombardmentStrength
+                < required.Count
             )
                 return default;
 
@@ -489,6 +537,22 @@ namespace Rebellion.AI
         internal void SetFleetAttackDemand(Fleet fleet, AIAttackDemand demand)
         {
             _fleetAttackDemands[(fleet.InstanceID, demand.TargetPlanet.InstanceID)] = demand;
+        }
+
+        /// <summary>
+        /// Reuses the nearest ready attack duration within this unchanged faction turn.
+        /// </summary>
+        /// <param name="fleet">The fleet whose attack alternatives are evaluated.</param>
+        /// <param name="calculate">Calculates the nearest eligible action duration on a cache miss.</param>
+        /// <returns>The shortest action duration, or the maximum integer when none is ready.</returns>
+        internal int GetReadyAttackActionTicks(Fleet fleet, Func<int> calculate)
+        {
+            if (!_readyAttackActionTicks.TryGetValue(fleet.InstanceID, out int ticks))
+            {
+                ticks = calculate();
+                _readyAttackActionTicks.Add(fleet.InstanceID, ticks);
+            }
+            return ticks;
         }
 
         /// <summary>

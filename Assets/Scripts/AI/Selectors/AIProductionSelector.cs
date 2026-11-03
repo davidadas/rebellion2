@@ -44,6 +44,9 @@ namespace Rebellion.AI.Selectors
         private readonly Dictionary<string, int> _continuedBuildingCounts = new(
             StringComparer.Ordinal
         );
+        private readonly HashSet<Building> _selectedResourceRetirements = new();
+        private int _selectedResourceMaintenanceCost;
+        private long _selectedMaterialCost;
         private int _selectedMaintenanceCost;
         private int _selectedPlanetaryStarfighterCount;
 
@@ -497,6 +500,30 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
+        /// Reserves production claims and the exact joint resource-retirement budget.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The accepted manufacturing action.</param>
+        internal void Reserve(AITurnContext context, AIManufactureProposal proposal)
+        {
+            List<Building> resources = GetResourceRetirementUnion(proposal);
+            int resourceCost = context.StrategicPlan.GetResourceReclamationMaintenanceCost(
+                resources
+            );
+            long maintenance =
+                (long)_selectedMaintenanceCost
+                + GetProductMaintenanceCost(proposal)
+                + resourceCost
+                - _selectedResourceMaintenanceCost;
+            long materials = GetNewMaterialCommitment(proposal);
+            Reserve(proposal);
+            _selectedMaintenanceCost = (int)Math.Clamp(maintenance, int.MinValue, int.MaxValue);
+            _selectedResourceRetirements.UnionWith(resources);
+            _selectedResourceMaintenanceCost = resourceCost;
+            _selectedMaterialCost += materials;
+        }
+
+        /// <summary>
         /// Returns whether an exact manufacturing action fits its maintenance reserve.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -506,6 +533,7 @@ namespace Rebellion.AI.Selectors
         {
             return _selectionState.CanReserve(GetReservations(proposal, shareConstruction: true))
                 && (proposal.IsContinuation || !WouldExceedMaintenanceHeadroom(context, proposal))
+                && CanFundResourceRetirements(context, proposal)
                 && CanReserveIdleShipyardCapacity(context, proposal)
                 && CanReserveFacilityRole(context, proposal);
         }
@@ -1050,16 +1078,83 @@ namespace Rebellion.AI.Selectors
             if (proposal.Demand?.RestoresMaintenanceCapacity == true)
                 return false;
 
-            int maintenanceCost = proposal.GetMaintenanceCost();
-            if (maintenanceCost <= 0)
+            List<Building> resources = GetResourceRetirementUnion(proposal);
+            long maintenanceCost =
+                GetProductMaintenanceCost(proposal)
+                + context.StrategicPlan.GetResourceReclamationMaintenanceCost(resources)
+                - _selectedResourceMaintenanceCost;
+            if (proposal.GetMaintenanceCost() <= 0 && maintenanceCost <= 0)
                 return false;
 
-            int projectedHeadroom =
-                context.Assessment.ProjectedMaintenanceHeadroom
+            long projectedHeadroom =
+                (long)context.Assessment.ProjectedMaintenanceHeadroom
                 - _selectedMaintenanceCost
-                - maintenanceCost
-                + proposal.ReplacedMaintenanceCost;
+                - maintenanceCost;
             return projectedHeadroom < proposal.GetMinimumMaintenanceHeadroom(context);
+        }
+
+        /// <summary>
+        /// Checks products and resource retirements as one accepted transaction.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The next manufacturing action.</param>
+        /// <returns>True when no retirement is involved or the joint economy stays funded.</returns>
+        private bool CanFundResourceRetirements(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            List<Building> resources = GetResourceRetirementUnion(proposal);
+            return resources.Count == 0
+                || context.StrategicPlan.CanFundResourceReclamation(
+                    resources,
+                    (long)_selectedMaintenanceCost
+                        - _selectedResourceMaintenanceCost
+                        + GetProductMaintenanceCost(proposal),
+                    _selectedMaterialCost + GetNewMaterialCommitment(proposal)
+                );
+        }
+
+        /// <summary>
+        /// Combines accepted retirements with those actually executed by a new order.
+        /// </summary>
+        /// <param name="proposal">The next manufacturing action.</param>
+        /// <returns>The distinct resource facilities removed by the combined transaction.</returns>
+        private List<Building> GetResourceRetirementUnion(AIManufactureProposal proposal)
+        {
+            return proposal.ContinuesExistingOrder
+                ? _selectedResourceRetirements.ToList()
+                : _selectedResourceRetirements
+                    .Concat(proposal.ResourcesToReclaim)
+                    .Distinct()
+                    .ToList();
+        }
+
+        /// <summary>
+        /// Returns the product's net upkeep without independently priced resource losses.
+        /// </summary>
+        /// <param name="proposal">The manufacturing action being funded.</param>
+        /// <returns>New product upkeep after completed-facility and pending-order credits.</returns>
+        private static long GetProductMaintenanceCost(AIManufactureProposal proposal)
+        {
+            return proposal.ContinuesExistingOrder
+                ? 0
+                : (long)proposal.GetMaintenanceCost()
+                    - proposal.ResourceMaintenanceCost
+                    - proposal.ReplacedMaintenanceCost;
+        }
+
+        /// <summary>
+        /// Counts full material costs newly committed by a manufacturing action.
+        /// </summary>
+        /// <param name="proposal">The manufacturing action being funded.</param>
+        /// <returns>The new material commitment, or zero for an existing order.</returns>
+        private static long GetNewMaterialCommitment(AIManufactureProposal proposal)
+        {
+            return proposal.ContinuesExistingOrder
+                ? 0
+                : (long)(proposal.Product?.GetReference()?.ConstructionCost ?? 0)
+                    * proposal.GetManufacturingCount();
         }
 
         /// <summary>
@@ -1118,6 +1213,13 @@ namespace Rebellion.AI.Selectors
 
             if (proposal is not AIManufactureProposal manufacture)
                 return reservations;
+
+            foreach (Building resource in manufacture.ResourcesToReclaim)
+                Add(
+                    reservations,
+                    AISelectionReservationKind.ProductionBuildingReplacement,
+                    resource.InstanceID
+                );
 
             if (manufacture.Demand != null && !manufacture.DistributesDemand)
                 Add(

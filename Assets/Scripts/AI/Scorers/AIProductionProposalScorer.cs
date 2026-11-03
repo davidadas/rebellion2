@@ -95,7 +95,9 @@ namespace Rebellion.AI.Scorers
         )
         {
             double demandPressure = GetDemandPressure(context, proposal?.Demand);
-            int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
+            int maintenanceCost =
+                (proposal?.GetUnitMaintenanceCost() ?? 0)
+                + (proposal?.ResourceMaintenanceCost ?? 0);
             if (context?.Game == null || context.Faction == null || proposal == null)
                 return AIUtility.Fulfillment(
                     demandPressure,
@@ -110,7 +112,7 @@ namespace Rebellion.AI.Scorers
                 config.DemandUtility
             );
             score.Add(GetIndustrialDefenseInput(context, proposal), utility.IndustrialDefense);
-            double colonyFoundationInput = GetColonyFoundationInput(proposal);
+            double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
             {
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
@@ -560,7 +562,7 @@ namespace Rebellion.AI.Scorers
                 return 0;
 
             bool protectsShipyard =
-                demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                demand.EstablishesInitialStarfighterDefense
                 && proposal.ProducerPlanet == destination
                 && context.Assessment.GetPlanetProductionFacilityCount(
                     destination,
@@ -675,7 +677,7 @@ namespace Rebellion.AI.Scorers
                         context.Assessment.GetPlanetValue(targetPlanet) / highestValue,
                         context.Game.Config.AI.Infrastructure.DemandUtility.FleetTargetValue
                     );
-                pressure += GetFleetReadinessPressure(context, demand.Kind, fleet, targetPlanet);
+                pressure += GetFleetReadinessPressure(context, demand, fleet, targetPlanet);
                 pressure += GetFinalReadinessPressure(
                     context,
                     fleet,
@@ -707,13 +709,13 @@ namespace Rebellion.AI.Scorers
         /// Calculates reinforcement urgency from complementary fleet readiness.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">The reinforced capability.</param>
+        /// <param name="demand">The reinforcement requirement and requested ship role.</param>
         /// <param name="fleet">The fleet being reinforced.</param>
         /// <param name="targetPlanet">The fleet's attack target.</param>
         /// <returns>The readiness urgency.</returns>
         private static double GetFleetReadinessPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIProductionDemand demand,
             Fleet fleet,
             Planet targetPlanet
         )
@@ -742,14 +744,18 @@ namespace Rebellion.AI.Scorers
                 context.Assessment.GetFleetRegimentCapacity(fleet),
                 requiredRegiments
             );
-            return kind switch
+            double capitalReadiness =
+                demand.CapitalShipRole == AICapitalShipProductionRole.TroopTransport
+                    ? combatReadiness
+                    : capacityReadiness;
+            return demand.Kind switch
             {
                 AIProductionDemandKind.FleetRegiment => AIUtility.EvaluatePressure(
                     (combatReadiness + capacityReadiness) / 2,
                     readiness
                 ),
                 AIProductionDemandKind.FleetCapitalShip => AIUtility.EvaluatePressure(
-                    (regimentReadiness + capacityReadiness) / 2,
+                    (regimentReadiness + capitalReadiness) / 2,
                     readiness
                 ),
                 AIProductionDemandKind.FleetStarfighter => AIUtility.EvaluatePressure(
@@ -878,24 +884,26 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the normalized value of using a proposal to found Outer Rim construction.
+        /// Returns the need for establishing construction capacity in the destination's sector.
         /// </summary>
-        /// <param name="proposal">The production proposal to inspect.</param>
-        /// <returns>One before the first construction yard reaches an Outer Rim planet; otherwise zero.</returns>
-        private static double GetColonyFoundationInput(AIManufactureProposal proposal)
+        /// <param name="context">The faction's current owned infrastructure.</param>
+        /// <param name="proposal">The construction-facility order being evaluated.</param>
+        /// <returns>The same sector foundation input used to value the underlying demand.</returns>
+        private static double GetColonyFoundationInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
         {
             Planet destination = proposal?.Demand?.DestinationPlanet;
-            if (
-                destination?.GetParentOfType<PlanetSector>()?.SectorType
-                != PlanetSectorType.OuterRim
-            )
-            {
+            if (destination == null)
                 return 0;
-            }
-
-            return destination.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility) == 0
-                ? 1
-                : 0;
+            string systemId = context.Assessment.GetPlanetSystemId(destination);
+            return GetColonyFoundationInput(
+                context.Assessment.OwnedPlanets.Where(planet =>
+                    context.Assessment.GetPlanetSystemId(planet) == systemId
+                ),
+                proposal.Demand.BuildingType
+            );
         }
 
         /// <summary>

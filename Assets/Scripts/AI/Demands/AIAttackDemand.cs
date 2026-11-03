@@ -16,6 +16,12 @@ namespace Rebellion.AI.Demands
         public int RegimentStrength { get; }
         public int RegimentCount { get; }
         public int OccupationRegimentCount { get; }
+
+        /// <summary>
+        /// Gets the occupation reserve after a civilian support penalty when relying on bombardment.
+        /// </summary>
+        public int BombardmentOccupationRegimentCount { get; }
+
         public int BombardmentStrength { get; }
         public int ShieldStrength { get; }
         public bool IsAssaultBlockedByShields { get; }
@@ -37,6 +43,7 @@ namespace Rebellion.AI.Demands
         /// <param name="isAssaultBlockedByShields">Whether shields currently block a ground assault.</param>
         /// <param name="shieldStrength">The shield strength expected when the fleet attacks.</param>
         /// <param name="isSupportOpportunity">Whether a nearby bombardment can exploit recently observed favorable support.</param>
+        /// <param name="bombardmentOccupationRegimentCount">The occupation reserve when bombardment clears defenders, or null to use the ordinary occupation count.</param>
         public AIAttackDemand(
             Planet targetPlanet,
             int combatStrength,
@@ -50,7 +57,8 @@ namespace Rebellion.AI.Demands
             int bombardmentStrength,
             bool isAssaultBlockedByShields,
             int shieldStrength = 0,
-            bool isSupportOpportunity = false
+            bool isSupportOpportunity = false,
+            int? bombardmentOccupationRegimentCount = null
         )
         {
             TargetPlanet = targetPlanet;
@@ -62,6 +70,8 @@ namespace Rebellion.AI.Demands
             RegimentStrength = regimentStrength;
             RegimentCount = regimentCount;
             OccupationRegimentCount = occupationRegimentCount;
+            BombardmentOccupationRegimentCount =
+                bombardmentOccupationRegimentCount ?? occupationRegimentCount;
             BombardmentStrength = bombardmentStrength;
             IsAssaultBlockedByShields = isAssaultBlockedByShields;
             ShieldStrength = shieldStrength;
@@ -83,7 +93,7 @@ namespace Rebellion.AI.Demands
                 return (RegimentCount, RegimentStrength);
             return IsSupportOpportunity && regimentCapacity <= 0
                 ? (0, 0)
-                : (OccupationRegimentCount, 0);
+                : (BombardmentOccupationRegimentCount, 0);
         }
     }
 }

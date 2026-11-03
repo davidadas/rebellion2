@@ -172,11 +172,17 @@ namespace Rebellion.AI.Selectors
                         )
                     )
                     ?? 0;
+                var required = context.GetAttackRegimentRequirements(
+                    proposal.TargetPlanet,
+                    proposal.TargetFleet,
+                    projected: true,
+                    additionalBombardmentStrength: selectedBombardment
+                );
                 if (
                     context.Assessment.GetReadyCapitalShipRegimentCount(ship) > 0
                         && context.Assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet)
                             + committedRegiments
-                            < attack.RegimentCount
+                            < required.Count
                     || context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
                         proposal.TargetFleet,
                         ship
@@ -184,7 +190,7 @@ namespace Rebellion.AI.Selectors
                         && context.Assessment.GetProjectedFleetRegimentAttackStrength(
                             proposal.TargetFleet
                         ) + committedStrength
-                            < attack.RegimentStrength
+                            < required.Strength
                 )
                     return true;
             }

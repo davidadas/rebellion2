@@ -179,8 +179,11 @@ namespace Rebellion.AI.Proposals
                 ) == true;
             bool canDamageMilitaryTargets =
                 canBombard
-                && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(liveTarget);
+                && BombardmentQueries.GetBombardmentStrengthAfterDefenseFire(
+                    attackingFleets,
+                    liveTarget,
+                    context.Game.Config.Combat.Bombardment
+                ) > BombardmentQueries.GetBombardmentShieldStrength(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
                 && BombardmentQueries.HasActiveMilitaryTargets(
@@ -337,7 +340,8 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             var readiness = context.GetAttackReadiness(Fleet, TargetPlanet);
-            return readiness.FleetReady && readiness.RegimentsReady;
+            return (readiness.FleetReady && readiness.RegimentsReady)
+                || context.CanLaunchBombardment(Fleet, TargetPlanet);
         }
 
         /// <summary>

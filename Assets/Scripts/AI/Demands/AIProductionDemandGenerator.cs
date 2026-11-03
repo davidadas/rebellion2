@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -923,6 +924,12 @@ namespace Rebellion.AI.Demands
             int committedCount = context.Assessment.OwnedFleets.Count(fleet =>
                 fleet.RoleType == FleetRoleType.Colonization
             );
+            committedCount += context
+                .SelectedProposals.OfType<AIFleetRoleProposal>()
+                .Where(proposal =>
+                    proposal.Role == FleetRoleType.Colonization && proposal.CanExecute(context)
+                )
+                .Sum(proposal => Math.Max(1, proposal.Ships.Count));
             int deficit = targetCount - committedCount;
             if (!HasColonizationOpportunity(context) || deficit <= 0)
                 return;
@@ -1030,7 +1037,8 @@ namespace Rebellion.AI.Demands
 
             IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
             AddAttackShipDemands(context, demands, attackFleets);
-            AddAttackRegimentDemands(context, demands, attackFleets);
+            Dictionary<Planet, int> availablePlanetRegiments = new();
+            AddAttackRegimentDemands(context, demands, attackFleets, availablePlanetRegiments);
             context.SetFleetProductionPriorities(
                 attackFleets.Where(fleet => demands.Any(demand => demand.DestinationFleet == fleet))
             );
@@ -1038,7 +1046,12 @@ namespace Rebellion.AI.Demands
             foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
                 AddFleetDemands(context, demands, colonizationFleet);
 
-            AddFleetDemands(context, demands, GetFleetAssemblyFleets(context).FirstOrDefault());
+            AddFleetDemands(
+                context,
+                demands,
+                GetFleetAssemblyFleets(context).FirstOrDefault(),
+                availablePlanetRegiments
+            );
         }
 
         /// <summary>
@@ -1047,10 +1060,12 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleet">The fleet to reinforce.</param>
+        /// <param name="availablePlanetRegiments">Shared planetary supply for assembling battle fleets.</param>
         private void AddFleetDemands(
             AITurnContext context,
             List<AIProductionDemand> demands,
-            Fleet fleet
+            Fleet fleet,
+            IDictionary<Planet, int> availablePlanetRegiments = null
         )
         {
             if (fleet == null)
@@ -1058,7 +1073,7 @@ namespace Rebellion.AI.Demands
 
             AddFleetCapitalShipDemand(context, demands, fleet);
             AddFleetStarfighterDemand(context, demands, fleet);
-            AddFleetRegimentDemand(context, demands, fleet);
+            AddFleetRegimentDemand(context, demands, fleet, availablePlanetRegiments);
         }
 
         /// <summary>
@@ -1086,13 +1101,14 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
+        /// <param name="availablePlanetRegiments">Shared planetary supply for assembling battle fleets.</param>
         private void AddAttackRegimentDemands(
             AITurnContext context,
             List<AIProductionDemand> demands,
-            IReadOnlyList<Fleet> fleets
+            IReadOnlyList<Fleet> fleets,
+            IDictionary<Planet, int> availablePlanetRegiments
         )
         {
-            Dictionary<Planet, int> availablePlanetRegiments = new();
             foreach (Fleet fleet in fleets)
             {
                 AddFleetRegimentDemand(context, demands, fleet, availablePlanetRegiments);
@@ -1539,13 +1555,14 @@ namespace Rebellion.AI.Demands
             IDictionary<Planet, int> availablePlanetRegiments = null
         )
         {
-            int targetCount = Math.Min(
-                fleet.GetRegimentCapacity(),
-                GetDesiredRegimentCount(context, fleet)
-            );
-            int deficit = targetCount - fleet.GetCurrentRegimentCount();
             Planet assemblyPlanet =
                 availablePlanetRegiments == null ? null : GetRegimentAssemblyPlanet(context, fleet);
+            int desiredCount = GetDesiredRegimentCount(context, fleet);
+            int targetCount =
+                assemblyPlanet != null && context.Assessment.GetAttackTargetPlanet(fleet) != null
+                    ? desiredCount
+                    : Math.Min(fleet.GetRegimentCapacity(), desiredCount);
+            int deficit = targetCount - fleet.GetCurrentRegimentCount();
             if (assemblyPlanet != null && deficit > 0)
             {
                 if (!availablePlanetRegiments.TryGetValue(assemblyPlanet, out int availableCount))
@@ -1580,13 +1597,13 @@ namespace Rebellion.AI.Demands
                     baseDemandPercent: fleet.RoleType == FleetRoleType.Colonization
                         ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
                         : context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent,
-                    deliveryDestination: fleet.FindShipForRegiment() == null ? assemblyPlanet : null
+                    deliveryDestination: assemblyPlanet
                 )
             );
         }
 
         /// <summary>
-        /// Returns the owned assembly planet whose spare troops can supply an attack fleet.
+        /// Returns the owned assembly planet whose spare troops can supply a preparing battle fleet.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="fleet">The fleet being supplied.</param>
@@ -1596,7 +1613,7 @@ namespace Rebellion.AI.Demands
             if (
                 fleet?.RoleType != FleetRoleType.Battle
                 || !CanReinforceFleet(context, fleet)
-                || context.Assessment.GetAttackTargetPlanet(fleet) == null
+                || fleet.Order != null && context.Assessment.GetAttackTargetPlanet(fleet) == null
             )
                 return null;
 

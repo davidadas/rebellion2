@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.AI.Proposals;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
 namespace Rebellion.AI.Phases
@@ -43,7 +45,7 @@ namespace Rebellion.AI.Phases
             using IDisposable resultObservation = _results?.ObserveAll(_ =>
                 context.InvalidateManufacturingBudget()
             );
-            foreach (AIProposal proposal in context.SelectedProposals)
+            foreach (AIProposal proposal in GetExecutionOrder(context))
             {
                 if (proposal?.CanExecute(context) == true)
                 {
@@ -51,6 +53,52 @@ namespace Rebellion.AI.Phases
                     if (proposal is not AIManufactureProposal)
                         context.InvalidateManufacturingBudget();
                 }
+                yield return proposal;
+            }
+        }
+
+        /// <summary>
+        /// Places selected local boarding immediately before the same fleet's selected attack departure.
+        /// </summary>
+        /// <param name="context">The turn containing the selected actions.</param>
+        /// <returns>Each selected proposal once, with all other proposals retaining their relative order.</returns>
+        private static IEnumerable<AIProposal> GetExecutionOrder(AITurnContext context)
+        {
+            IReadOnlyList<AIProposal> selected = context.SelectedProposals;
+            bool[] promoted = new bool[selected.Count];
+            for (int index = 0; index < selected.Count; index++)
+            {
+                if (promoted[index])
+                    continue;
+
+                AIProposal proposal = selected[index];
+                if (
+                    proposal is AIFleetAttackProposal attack
+                    && attack.Status != FleetOrderStatus.Returning
+                    && attack.TargetPlanet != null
+                    && attack.Fleet?.Movement == null
+                    && attack.Fleet?.IsInCombat == false
+                    && attack.Fleet.GetParentOfType<Planet>() is Planet origin
+                    && origin.InstanceID != attack.TargetPlanet.InstanceID
+                    && attack.CanExecute(context)
+                )
+                {
+                    for (int later = index + 1; later < selected.Count; later++)
+                    {
+                        if (
+                            promoted[later]
+                            || selected[later] is not AITransferUnitProposal transfer
+                            || transfer.TargetFleet != attack.Fleet
+                            || transfer.TargetPlanet?.InstanceID != attack.TargetPlanet.InstanceID
+                            || !transfer.CanBoardImmediately(context)
+                        )
+                            continue;
+
+                        promoted[later] = true;
+                        yield return transfer;
+                    }
+                }
+
                 yield return proposal;
             }
         }

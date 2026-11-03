@@ -79,6 +79,32 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
+        /// Checks whether a selected planet regiment can board its stationary fleet immediately.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when normal movement validation permits boarding at the same planet with no transit.</returns>
+        internal bool CanBoardImmediately(AITurnContext context)
+        {
+            if (
+                Unit is not Regiment regiment
+                || SourceContainer is not Planet sourcePlanet
+                || Destination != TargetFleet
+                || sourcePlanet.InstanceID != TargetFleet?.GetParentOfType<Planet>()?.InstanceID
+                || !CanExecute(context)
+                || context.MovementQueries == null
+            )
+                return false;
+
+            return context.MovementQueries.TryGetSelectionTransitTicks(
+                    new[] { regiment },
+                    Destination,
+                    context.Faction.InstanceID,
+                    out int transitTicks
+                )
+                && transitTicks == 0;
+        }
+
+        /// <summary>
         /// Requests the unit transfer.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>

@@ -306,6 +306,10 @@ namespace Rebellion.AI.Planners
                     .ToList();
                 List<IMissionParticipant> candidates = present
                     .Concat(arrivals)
+                    .Where(participant =>
+                        participant is not SpecialForces unit
+                        || !context.IsManufacturingInterceptionAgent(unit)
+                    )
                     .OrderByDescending(participant =>
                         AIMissionProposalScorer.GetParticipantPriority(
                             context,
@@ -898,6 +902,10 @@ namespace Rebellion.AI.Planners
                     participant.CanPerformMission(MissionTypeIDs.Sabotage)
                     && participant.GetParentOfType<Planet>() != null
                     && (participant is SpecialForces || _sabotageParticipants.Contains(participant))
+                    && (
+                        participant is not SpecialForces unit
+                        || !context.IsManufacturingInterceptionAgent(unit)
+                    )
                 )
                 .ToList();
             foreach (Planet planet in GetSabotageCandidatePlanets(context))

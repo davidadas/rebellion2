@@ -169,10 +169,7 @@ namespace Rebellion.AI.Scorers
             }
             bool hasGroundDefenders =
                 context.Assessment.GetDefendingRegimentCount(proposal.TargetPlanet) > 0;
-            double groundRequirement =
-                hasGroundDefenders && beforeBombardment <= demand.ShieldStrength
-                    ? demand.RegimentStrength
-                    : 0;
+            double groundRequirement = hasGroundDefenders ? demand.RegimentStrength : 0;
             double improvement =
                 AIUtility.Fulfillment(
                     Math.Max(0, afterSpace - beforeSpace),
@@ -215,7 +212,9 @@ namespace Rebellion.AI.Scorers
                 context.Assessment.GetFleetPlanet(fleet)?.InstanceID
                     == proposal.TargetPlanet.InstanceID
                 && proposal.TargetPlanet.GetOwnerInstanceID() != context.Faction.InstanceID;
-            improvement = Math.Min(1, improvement) * (atHostileTarget ? 1 : afterReadiness);
+            improvement =
+                Math.Min(1, improvement)
+                * (atHostileTarget && proposal.Rank != OfficerRank.General ? 1 : afterReadiness);
             if (improvement <= 0 && readinessGain <= 0)
                 return 0;
             AIUtilityScore score = new();
@@ -412,7 +411,14 @@ namespace Rebellion.AI.Scorers
                 return 0;
 
             Planet target = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
-            return ScoreAttack(context, fleet, target, true);
+            return CanScoreAttack(context, fleet, target)
+                ? GetAttackSelectionValue(
+                    context,
+                    fleet,
+                    target,
+                    GetAttackUtility(context, fleet, target, true)
+                )
+                : 0;
         }
 
         /// <summary>
@@ -606,8 +612,115 @@ namespace Rebellion.AI.Scorers
             if (!CanScoreAttack(context, fleet, targetPlanet))
                 return 0;
 
-            AIUtilityScore score = GetAttackUtility(context, fleet, targetPlanet, existingOrder);
-            return GetAttackSelectionValue(context, fleet, targetPlanet, score);
+            AIUtilityScore score = GetAttackUtility(
+                context,
+                fleet,
+                targetPlanet,
+                existingOrder,
+                includeBombardmentAction: true
+            );
+            double value = GetAttackSelectionValue(
+                context,
+                fleet,
+                targetPlanet,
+                score,
+                includeBombardmentAction: true
+            );
+            return ApplyTravelOpportunityCost(context, fleet, targetPlanet, value);
+        }
+
+        /// <summary>
+        /// Discounts a longer attack journey when this fleet can take a shorter ready action.
+        /// </summary>
+        /// <param name="context">The unchanged faction turn.</param>
+        /// <param name="fleet">The fleet being assigned.</param>
+        /// <param name="targetPlanet">The attack objective being scored.</param>
+        /// <param name="value">The objective value after intelligence and headquarters risk.</param>
+        /// <returns>The bounded attack-action value after the configured opportunity cost.</returns>
+        private double ApplyTravelOpportunityCost(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet,
+            double value
+        )
+        {
+            GameConfig.AIConsiderationConfig consideration = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .AttackUtility
+                .TravelOpportunityCost;
+            if (
+                consideration == null
+                || consideration.Weight <= 0
+                || value <= 0
+                || fleet.Movement != null
+                || fleet.IsInCombat
+            )
+                return value;
+
+            int nearest = context.GetReadyAttackActionTicks(
+                fleet,
+                () => FindReadyAttackActionTicks(context, fleet)
+            );
+            if (nearest == int.MaxValue)
+                return value;
+
+            double duration = Math.Max(0L, context.GetAttackArrivalTicks(fleet, targetPlanet)) + 1d;
+            double ratio = Math.Min(1, nearest / duration);
+            double cost = Math.Clamp(AIUtility.Evaluate(1 - ratio, consideration), 0, 1);
+            return value * (1 - cost);
+        }
+
+        /// <summary>
+        /// Measures the nearest selectable ready attack without using partially generated proposals.
+        /// </summary>
+        /// <param name="context">The unchanged faction turn.</param>
+        /// <param name="fleet">The fleet whose legal alternatives are inspected.</param>
+        /// <returns>The minimum arrival duration plus one action tick, or the maximum integer.</returns>
+        private int FindReadyAttackActionTicks(AITurnContext context, Fleet fleet)
+        {
+            int nearest = int.MaxValue;
+            foreach (Planet target in context.Assessment.EnemyPlanets)
+            {
+                if (
+                    context.Assessment.HasAttackFleetForTarget(target, fleet)
+                    || !CanScoreAttack(context, fleet, target)
+                )
+                    continue;
+                int arrival = context.GetAttackArrivalTicks(fleet, target);
+                if (arrival < 0 || arrival >= nearest - 1)
+                    continue;
+
+                AIFleetAttackProposal proposal = new(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    target
+                );
+                if (!proposal.CanSelect(context) || !proposal.CanLaunch(context))
+                    continue;
+
+                AIUtilityScore utility = GetAttackUtility(
+                    context,
+                    fleet,
+                    target,
+                    HasExistingOrder(proposal),
+                    includeBombardmentAction: true
+                );
+                if (
+                    GetAttackSelectionValue(
+                        context,
+                        fleet,
+                        target,
+                        utility,
+                        includeBombardmentAction: true
+                    ) > 0
+                )
+                    nearest = arrival + 1;
+            }
+            return nearest;
         }
 
         /// <summary>
@@ -617,12 +730,14 @@ namespace Rebellion.AI.Scorers
         /// <param name="fleet">The fleet assigned to the objective.</param>
         /// <param name="targetPlanet">The attack objective.</param>
         /// <param name="existingOrder">Whether this fleet is already committed.</param>
+        /// <param name="includeBombardmentAction">Whether a useful bombardment can satisfy action readiness and its risk weighting.</param>
         /// <returns>The shared utility of advancing or reinforcing the attack.</returns>
         private AIUtilityScore GetAttackUtility(
             AITurnContext context,
             Fleet fleet,
             Planet targetPlanet,
-            bool existingOrder
+            bool existingOrder,
+            bool includeBombardmentAction = false
         )
         {
             AIAssessment assessment = context.Assessment;
@@ -634,6 +749,9 @@ namespace Rebellion.AI.Scorers
                 targetPlanet,
                 config
             );
+            bool bombardmentReady =
+                includeBombardmentAction && context.CanLaunchBombardment(fleet, targetPlanet);
+            double actionReadiness = bombardmentReady ? 1 : readiness.Score;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(ScoreStrategicTargetValue(assessment, targetPlanet), utility.StrategicValue);
             score.Add(
@@ -648,7 +766,7 @@ namespace Rebellion.AI.Scorers
                 utility.SystemPresence
             );
             score.Add(readiness.Score, utility.Readiness);
-            score.Add(readiness.IsReady ? 1 : 0, utility.Ready);
+            score.Add(readiness.IsReady || bombardmentReady ? 1 : 0, utility.Ready);
             score.Add(
                 ScoreCaptureViability(context, fleet, targetPlanet),
                 utility.CaptureViability
@@ -658,7 +776,7 @@ namespace Rebellion.AI.Scorers
                 utility.TravelTime
             );
             score.AddCost(
-                ScoreExpectedLossRisk(context, fleet, targetPlanet) * readiness.Score,
+                ScoreExpectedLossRisk(context, fleet, targetPlanet) * actionReadiness,
                 utility.ExpectedLossRisk
             );
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
@@ -685,17 +803,23 @@ namespace Rebellion.AI.Scorers
         /// <param name="fleet">The fleet assigned to the attack.</param>
         /// <param name="targetPlanet">The attack objective.</param>
         /// <param name="score">The accumulated action utility.</param>
+        /// <param name="includeBombardmentAction">Whether a useful bombardment satisfies the readiness used for intelligence and headquarters risk.</param>
         /// <returns>The selection score after intelligence and headquarters buildup risk.</returns>
         private double GetAttackSelectionValue(
             AITurnContext context,
             Fleet fleet,
             Planet targetPlanet,
-            AIUtilityScore score
+            AIUtilityScore score,
+            bool includeBombardmentAction = false
         )
         {
             double value = GetSelectionValue(score);
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             var readiness = EvaluateAttackReadiness(context, fleet, targetPlanet, config);
+            double actionReadiness =
+                includeBombardmentAction && context.CanLaunchBombardment(fleet, targetPlanet)
+                    ? 1
+                    : readiness.Score;
             if (
                 targetPlanet.IsHeadquarters
                 && targetPlanet.InstanceID != context.Faction.HQInstanceID
@@ -704,11 +828,11 @@ namespace Rebellion.AI.Scorers
                 value *=
                     1
                     - AIUtility.Evaluate(
-                        1 - readiness.Score,
+                        1 - actionReadiness,
                         config.AttackUtility.HeadquartersBuildupCost
                     );
             }
-            return ApplyIntelAgeRisk(context, fleet, targetPlanet, value, readiness.Score);
+            return ApplyIntelAgeRisk(context, fleet, targetPlanet, value, actionReadiness);
         }
 
         /// <summary>

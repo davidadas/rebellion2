@@ -276,6 +276,7 @@ namespace Rebellion.Gameplay
         /// <param name="count">The number of copies to queue.</param>
         /// <param name="ownerInstanceId">The faction requesting the order.</param>
         /// <param name="replacedOrder">An unfinished order assumed to be removed before construction.</param>
+        /// <param name="removedItems">Additional units assumed to be removed before construction.</param>
         /// <returns>True when the order is structurally valid without considering maintenance.</returns>
         public static bool CanAcceptManufacturingOrder(
             Planet producer,
@@ -283,23 +284,23 @@ namespace Rebellion.Gameplay
             ISceneNode destination,
             int count,
             string ownerInstanceId,
-            IManufacturable replacedOrder = null
+            IManufacturable replacedOrder = null,
+            IReadOnlyCollection<IManufacturable> removedItems = null
         )
         {
+            IReadOnlyCollection<IManufacturable> released = removedItems;
+            if (replacedOrder != null)
+                released =
+                    removedItems == null
+                        ? new[] { replacedOrder }
+                        : removedItems.Append(replacedOrder).Distinct().ToArray();
             return HasValidManufacturingOrderContext(
                     producer,
                     template,
                     destination,
                     count,
                     ownerInstanceId
-                )
-                && HasDestinationCapacity(
-                    producer,
-                    destination,
-                    template,
-                    count,
-                    replacedOrder == null ? null : new[] { replacedOrder }
-                );
+                ) && HasDestinationCapacity(producer, destination, template, count, released);
         }
 
         /// <summary>

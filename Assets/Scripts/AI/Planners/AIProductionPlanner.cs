@@ -253,7 +253,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Chooses the sector layout with the strongest construction and total coverage, then retained facilities.
+        /// Preserves construction coverage, then ranks the facility portfolio, total coverage, and retained facilities.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="orders">Category orderings evaluated without committing allocations.</param>
@@ -278,8 +278,10 @@ namespace Rebellion.AI.Planners
         {
             Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
             double bestConstructionCoverage = -1;
+            double bestPortfolioCoverage = -1;
             double bestCoverage = -1;
             int bestRetained = -1;
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             foreach (IReadOnlyList<AIProductionDemand> order in orders)
             {
                 var layout = BuildInfrastructureLayout(
@@ -299,8 +301,11 @@ namespace Rebellion.AI.Planners
                                 entry.Key.Index
                             ]
                     );
-                double coverage = capacityDemands.Sum(demand =>
-                    layout
+                double coverage = 0;
+                double portfolioCoverage = 0;
+                foreach (AIProductionDemand demand in capacityDemands)
+                {
+                    double categoryCoverage = layout
                         .Where(entry => entry.Key.Type == demand.BuildingType)
                         .Sum(entry =>
                             entry.Value.Target
@@ -308,8 +313,18 @@ namespace Rebellion.AI.Planners
                                 context.StrategicPlan.GetInfrastructureHubTargets(entry.Key.Type)[
                                     entry.Key.Index
                                 ]
-                        )
-                );
+                        );
+                    int portfolioPercent = demand.BuildingType switch
+                    {
+                        BuildingType.ConstructionFacility =>
+                            config.ConstructionFacilityPortfolioPercent,
+                        BuildingType.Shipyard => config.ShipyardPortfolioPercent,
+                        BuildingType.TrainingFacility => config.TrainingFacilityPortfolioPercent,
+                        _ => 0,
+                    };
+                    coverage += categoryCoverage;
+                    portfolioCoverage += categoryCoverage * Math.Max(0, portfolioPercent);
+                }
                 int retained = layout.Sum(entry =>
                     Math.Min(
                         entry.Value.Target,
@@ -320,13 +335,18 @@ namespace Rebellion.AI.Planners
                     constructionCoverage > bestConstructionCoverage
                     || constructionCoverage == bestConstructionCoverage
                         && (
-                            coverage > bestCoverage
-                            || coverage == bestCoverage && retained > bestRetained
+                            portfolioCoverage > bestPortfolioCoverage
+                            || portfolioCoverage == bestPortfolioCoverage
+                                && (
+                                    coverage > bestCoverage
+                                    || coverage == bestCoverage && retained > bestRetained
+                                )
                         )
                 )
                 {
                     best = layout;
                     bestConstructionCoverage = constructionCoverage;
+                    bestPortfolioCoverage = portfolioCoverage;
                     bestCoverage = coverage;
                     bestRetained = retained;
                 }
@@ -402,6 +422,7 @@ namespace Rebellion.AI.Planners
                 IReadOnlyList<int> targets = context.StrategicPlan.GetInfrastructureHubTargets(
                     type
                 );
+                int minimumNewTarget = targets.Where(target => target > 0).DefaultIfEmpty(0).Min();
                 for (int index = 0; index < Math.Min(planets.Count, targets.Count); index++)
                 {
                     int preferred = targets[index];
@@ -412,13 +433,25 @@ namespace Rebellion.AI.Planners
                         .RankHubDestinations(
                             planets
                                 .Where(planet =>
-                                    !layout.Any(entry =>
-                                        entry.Key.Type == type && entry.Value.Planet == planet
+                                {
+                                    if (
+                                        layout.Any(entry =>
+                                            entry.Key.Type == type && entry.Value.Planet == planet
+                                        )
                                     )
-                                    && planet.GetTotalBuildingTypeCount(type)
-                                        + availableSpace(planet)
-                                        > 0
-                                )
+                                        return false;
+                                    int current = planet.GetTotalBuildingTypeCount(type);
+                                    int attainable = Math.Min(
+                                        preferred,
+                                        current + availableSpace(planet)
+                                    );
+                                    return attainable > 0
+                                        && (
+                                            type != BuildingType.Shipyard
+                                            || current > 0
+                                            || attainable >= minimumNewTarget
+                                        );
+                                })
                                 .ToList(),
                             reference,
                             production,
@@ -608,7 +641,9 @@ namespace Rebellion.AI.Planners
                         demand,
                         GetBuildingDestinations(context, BuildingType.Refinery)
                             .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
-                            .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                            .OrderBy(planet =>
+                                planet.GetTotalBuildingTypeCount(BuildingType.Refinery)
+                            )
                             .ThenByDescending(planet => planet.GetAvailableEnergy())
                             .ThenBy(planet => planet.InstanceID)
                     )
@@ -634,8 +669,10 @@ namespace Rebellion.AI.Planners
             if (product is not IMovable movable)
                 return destinations;
 
-            Planet[] producers = context.Assessment.OwnedPlanets
-                .Where(planet => CanProduce(context, planet, ManufacturingType.Building))
+            Planet[] producers = context
+                .Assessment.OwnedPlanets.Where(planet =>
+                    CanProduce(context, planet, ManufacturingType.Building)
+                )
                 .ToArray();
             return destinations.OrderBy(destination =>
                 producers
@@ -780,7 +817,8 @@ namespace Rebellion.AI.Planners
                         context.StrategicPlan.TryAllocateInfrastructureHub(
                             destination,
                             capacityDemand.BuildingType,
-                            targetCount
+                            targetCount,
+                            reclaimResources: true
                         )
                         && AddSectorFacilityDemand(
                             context,
@@ -1283,6 +1321,14 @@ namespace Rebellion.AI.Planners
             bool distributesDemand
         )
         {
+            var resources = context.StrategicPlan.GetResourceFacilitiesToReclaim(
+                demand.DestinationPlanet,
+                demand.BuildingType,
+                demand.TargetCount
+            );
+            int resourceCost = context.StrategicPlan.GetResourceReclamationMaintenanceCost(
+                resources
+            );
             List<AIManufactureProposal> candidates = producerPlanets
                 .Select(producerPlanet =>
                 {
@@ -1303,7 +1349,9 @@ namespace Rebellion.AI.Planners
                             replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
                                 producerPlanet,
                                 candidateDemand.ManufacturingType
-                            )
+                            ),
+                            resourcesToReclaim: resources,
+                            resourceMaintenanceCost: resourceCost
                         );
                 })
                 .Where(candidate => candidate != null)
@@ -2006,7 +2054,11 @@ namespace Rebellion.AI.Planners
                     StringComparer.Ordinal
                 )
                 .ToList();
-            if (demand.CapitalShipRole != AICapitalShipProductionRole.TroopTransport)
+            if (
+                demand.CapitalShipRole != AICapitalShipProductionRole.TroopTransport
+                || demand.Kind != AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+                    && demand.DestinationFleet?.RoleType != FleetRoleType.Colonization
+            )
                 return technologies;
 
             List<Technology> transports = technologies
@@ -2447,13 +2499,7 @@ namespace Rebellion.AI.Planners
             );
             producers = eligibleProducers
                 .OrderBy(planet =>
-                    GetProducerFulfillmentTicks(
-                        context,
-                        demand,
-                        product,
-                        planet,
-                        destinationPlanet
-                    )
+                    GetProducerFulfillmentTicks(context, demand, product, planet, destinationPlanet)
                 )
                 .ThenByDescending(planet =>
                     context.Assessment.GetPlanetProductionRate(planet, demand.ManufacturingType)

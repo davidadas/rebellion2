@@ -109,6 +109,14 @@ namespace Rebellion.AI.Demands
         public int EscortDeficit { get; }
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
+
+        /// <summary>
+        /// Gets whether a planetary fighter requirement has no owned squadrons already assigned.
+        /// </summary>
+        public bool EstablishesInitialStarfighterDefense =>
+            Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+            && TargetCount > 0
+            && DeficitCount >= TargetCount;
         public bool IsEmergencyDefense { get; }
 
         /// <summary>

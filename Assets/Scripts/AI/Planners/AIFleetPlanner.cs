@@ -249,14 +249,10 @@ namespace Rebellion.AI.Planners
                     && CanAssignPlanetDefense(context, fleet)
                     && context.StrategicPlan.CanDefend(fleet, targetPlanet)
                 )
-                .Select(fleet =>
-                    (
-                        Fleet: fleet,
-                        Score: _scorer.Score(
-                            context,
-                            new AIFleetDefenseProposal(fleet, targetPlanet)
-                        )
-                    )
+                .Select(fleet => new AIFleetDefenseProposal(fleet, targetPlanet))
+                .Where(proposal => proposal.CanSelect(context))
+                .Select(proposal =>
+                    (Fleet: proposal.Fleet, Score: _scorer.Score(context, proposal))
                 )
                 .Where(candidate =>
                     candidate.Score > context.Game.Config.AI.Selection.MinimumSelectableScore
@@ -435,7 +431,7 @@ namespace Rebellion.AI.Planners
                         new[] { fleet },
                         context.Assessment.EnemyPlanets.Where(target =>
                             target.InstanceID != currentPlanet.InstanceID
-                            && !HasAttackFleetForTarget(context, target, fleet)
+                            && !context.Assessment.HasAttackFleetForTarget(target, fleet)
                             && context.GetAttackArrivalTicks(fleet, target)
                                 <= Math.Max(
                                     0,
@@ -539,8 +535,10 @@ namespace Rebellion.AI.Planners
                     && CanStartAttackOrder(context, fleet)
                 )
                 {
-                    Planet[] followOnTargets = context.Assessment.EnemyPlanets
-                        .Where(target => !HasAttackFleetForTarget(context, target, fleet))
+                    Planet[] followOnTargets = context
+                        .Assessment.EnemyPlanets.Where(target =>
+                            !context.Assessment.HasAttackFleetForTarget(target, fleet)
+                        )
                         .ToArray();
                     followOn = SelectAttack(
                         context,
@@ -817,7 +815,7 @@ namespace Rebellion.AI.Planners
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
                     && context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
-                    && !HasAttackFleetForTarget(context, targetPlanet, fleet)
+                    && !context.Assessment.HasAttackFleetForTarget(targetPlanet, fleet)
                 )
             )
             {
@@ -973,7 +971,22 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            proposals.Add(new AIFleetDefenseProposal(fleet, targetPlanet));
+            AIFleetDefenseProposal proposal = new AIFleetDefenseProposal(fleet, targetPlanet);
+            if (
+                fleet.RoleType == FleetRoleType.Battle
+                && fleet.HasOperationalCapitalShips()
+                && (
+                    order.Status != FleetOrderStatus.Staging
+                    || context.StrategicPlan.CanFleetDepart(fleet)
+                )
+                && !proposal.CanDefendAtArrival(context)
+            )
+            {
+                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
+            proposals.Add(proposal);
         }
 
         /// <summary>
@@ -988,8 +1001,10 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            Planet[] targets = context.Assessment.EnemyPlanets
-                .Where(target => !activeAttackTargetIds.Contains(target.InstanceID))
+            Planet[] targets = context
+                .Assessment.EnemyPlanets.Where(target =>
+                    !activeAttackTargetIds.Contains(target.InstanceID)
+                )
                 .ToArray();
             foreach (
                 Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
@@ -1463,49 +1478,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether an attack fleet already targets a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The planet to inspect.</param>
-        /// <param name="ignoredFleet">Fleet excluded from the check.</param>
-        /// <returns>True if another attack fleet targets the planet.</returns>
-        private bool HasAttackFleetForTarget(
-            AITurnContext context,
-            Planet targetPlanet,
-            Fleet ignoredFleet
-        )
-        {
-            return context.Assessment.AttackOrderedFleets.Any(fleet =>
-                fleet != ignoredFleet && IsAttackFleetAssignedToTarget(context, fleet, targetPlanet)
-            );
-        }
-
-        /// <summary>
-        /// Returns whether a fleet has an active attack order for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet to compare.</param>
-        /// <returns>True if the fleet is assigned to the target.</returns>
-        private bool IsAttackFleetAssignedToTarget(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            if (
-                fleet?.Order?.OrderType != FleetOrderType.Attack
-                || targetPlanet == null
-                || fleet.Order.TargetPlanetId != targetPlanet.InstanceID
-            )
-                return false;
-
-            string targetOwnerId = targetPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(targetOwnerId)
-                && targetOwnerId != context.Faction.InstanceID;
-        }
-
-        /// <summary>
         /// Returns the strategic target for a fleet being reinforced.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1652,7 +1624,7 @@ namespace Rebellion.AI.Planners
                     context,
                     new[] { sourceFleet },
                     context.Assessment.EnemyPlanets.Where(target =>
-                        !HasAttackFleetForTarget(context, target, sourceFleet)
+                        !context.Assessment.HasAttackFleetForTarget(target, sourceFleet)
                     ),
                     requireReady: true
                 ) != null
@@ -1740,7 +1712,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet can make immediate progress.</returns>
         private static bool CanAdvance(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            if (context.CanBombardAttackTarget(fleet, targetPlanet))
+            if (context.CanUseMilitaryBombardment(fleet, targetPlanet))
                 return true;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)

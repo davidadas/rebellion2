@@ -204,7 +204,7 @@ namespace Rebellion.AI.Phases
                     )
                         continue;
 
-                    productionSelector.Reserve(acceptedManufactureProposal);
+                    productionSelector.Reserve(context, acceptedManufactureProposal);
                     productionSelector.ScoreResolved(context, proposal, selectedProposal);
                 }
                 else if (

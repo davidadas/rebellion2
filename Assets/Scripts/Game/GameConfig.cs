@@ -359,13 +359,13 @@ namespace Rebellion.Game
 
             public int MinimumAttackStrength { get; set; }
 
-            public int LocalAttackMinimumStrengthPercent { get; set; } = 100;
+            public int LocalAttackMinimumStrengthPercent { get; set; }
 
             public int LocalAttackMaximumIntelAgeTicks { get; set; }
 
             public int LocalAttackMaximumTravelTicks { get; set; }
 
-            public int SupportOpportunityMinimumAttackStrengthPercent { get; set; } = 100;
+            public int SupportOpportunityMinimumAttackStrengthPercent { get; set; }
 
             public int SupportOpportunityMaximumIntelAgeTicks { get; set; }
 
@@ -448,6 +448,12 @@ namespace Rebellion.Game
         public class AIAttackUtilityConfig
         {
             public AIConsiderationConfig TravelTime { get; set; } = new AIConsiderationConfig();
+
+            /// <summary>
+            /// Gets or sets the cost of a longer journey when the fleet has a ready shorter attack.
+            /// </summary>
+            public AIConsiderationConfig TravelOpportunityCost { get; set; } =
+                new AIConsiderationConfig();
 
             public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
 

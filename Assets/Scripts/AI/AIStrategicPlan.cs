@@ -565,13 +565,13 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Finds the smallest complete resource retirement that makes a requested hub fit.
+        /// Finds resource retirements that fit the full industrial layout while funding one facility order.
         /// </summary>
         /// <param name="planet">The prospective industrial destination.</param>
         /// <param name="buildingType">The requested production category.</param>
         /// <param name="targetCount">The full hub target.</param>
         /// <param name="refresh">Whether live state must be reevaluated before execution.</param>
-        /// <returns>The exact facilities to reclaim, or none if the whole expansion cannot fit safely.</returns>
+        /// <returns>The exact facilities to reclaim, or none if the layout and next facility cannot fit safely.</returns>
         internal IReadOnlyList<Building> GetResourceFacilitiesToReclaim(
             Planet planet,
             BuildingType buildingType,
@@ -612,7 +612,7 @@ namespace Rebellion.AI
             }
             if (
                 _assessment.ProjectedMaintenanceHeadroom
-                < _game.Config.AI.Selection.MaintenanceHeadroomTarget
+                < _game.Config.AI.Selection.MaintenanceHeadroomReserve
             )
             {
                 _resourceReclamationCache[key] = Array.Empty<Building>();
@@ -643,14 +643,10 @@ namespace Rebellion.AI
                 return Array.Empty<Building>();
             }
             List<Building> selected = new();
-            List<Building> otherRetirements = _resourceReclamationByPlanetId
-                .Where(entry => entry.Key != planet.InstanceID)
-                .SelectMany(entry => entry.Value)
-                .ToList();
             var faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
-            int missingFacilities = Math.Max(
-                0,
-                targetCount - planet.GetTotalBuildingTypeCount(buildingType)
+            int upcomingFacilities = Math.Min(
+                1,
+                Math.Max(0, targetCount - planet.GetTotalBuildingTypeCount(buildingType))
             );
             List<Building> templates = faction
                 .GetUnlockedTechnologies(ManufacturingType.Building)
@@ -663,49 +659,14 @@ namespace Rebellion.AI
                 _resourceReclamationCache[key] = Array.Empty<Building>();
                 return Array.Empty<Building>();
             }
-            int hubMaintenance =
-                missingFacilities * templates.Max(building => building.MaintenanceCost);
-            int hubMaterials =
-                missingFacilities * templates.Max(building => building.ConstructionCost);
+            int facilityMaintenance =
+                upcomingFacilities * templates.Max(building => building.MaintenanceCost);
+            int facilityMaterials =
+                upcomingFacilities * templates.Max(building => building.ConstructionCost);
             foreach (Building candidate in candidates)
             {
-                var excluded = otherRetirements.Concat(selected).Append(candidate).ToList();
-                string economyKey = string.Join(
-                    "|",
-                    excluded
-                        .Select(building => building.InstanceID)
-                        .Distinct()
-                        .OrderBy(id => id, StringComparer.Ordinal)
-                );
-                if (!_resourceEconomyCache.TryGetValue(economyKey, out var after))
-                {
-                    _resourceEconomyProjection ??= new ResourceProductionQueries(
-                        _game
-                    ).CaptureOperatingEconomy(faction);
-                    after = _resourceEconomyProjection.GetOperatingEconomy(excluded);
-                    _resourceEconomyCache[economyKey] = after;
-                }
-                int horizon = Math.Max(
-                    0,
-                    _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
-                );
-                double production = Math.Min(after.RawOutputPerTick, after.RefinedOutputPerTick);
-                double materials =
-                    faction.RefinedMaterialStockpile
-                    + production * horizon
-                    - _assessment.NearTermRefinedMaterialCommitment
-                    - hubMaterials;
-                double materialReserve =
-                    _assessment.RefinedMaterialSupply
-                    * _game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
-                    / 100d;
-                if (
-                    after.MaintenanceHeadroom - hubMaintenance
-                        < _game.Config.AI.Selection.MaintenanceHeadroomTarget
-                    || after.RawOutputPerTick <= 0
-                    || after.RefinedOutputPerTick <= 0
-                    || materials < materialReserve
-                )
+                var excluded = selected.Append(candidate).ToList();
+                if (!CanFundResourceReclamation(excluded, facilityMaintenance, facilityMaterials))
                     continue;
                 selected.Add(candidate);
                 if (selected.Count == needed)
@@ -715,6 +676,99 @@ namespace Rebellion.AI
                 selected.Count == needed ? selected : Array.Empty<Building>();
             _resourceReclamationCache[key] = result;
             return result;
+        }
+
+        /// <summary>
+        /// Checks the operating economy after an exact resource-retirement transaction.
+        /// </summary>
+        /// <param name="resources">The resource facilities removed by the accepted actions.</param>
+        /// <param name="additionalMaintenance">Net upkeep added by the manufactured products.</param>
+        /// <param name="additionalMaterials">Full material costs added by the manufactured products.</param>
+        /// <returns>True when the transaction retains its upkeep reserve and material output.</returns>
+        internal bool CanFundResourceReclamation(
+            IReadOnlyList<Building> resources,
+            long additionalMaintenance,
+            long additionalMaterials
+        )
+        {
+            if (resources == null || resources.Count == 0)
+                return true;
+            string owner = resources[0].GetOwnerInstanceID();
+            if (resources.Any(resource => resource.GetOwnerInstanceID() != owner))
+                return false;
+            var faction = _game.GetFactionByOwnerInstanceID(owner);
+            if (faction == null)
+                return false;
+            var after = GetOperatingEconomyAfterReclamation(owner, resources);
+            int horizon = Math.Max(
+                0,
+                _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            double production = Math.Min(after.RawOutputPerTick, after.RefinedOutputPerTick);
+            double materials =
+                faction.RefinedMaterialStockpile
+                + production * horizon
+                - _assessment.NearTermRefinedMaterialCommitment
+                - additionalMaterials;
+            double materialReserve =
+                _assessment.RefinedMaterialSupply
+                * _game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
+                / 100d;
+            return (long)after.MaintenanceHeadroom - additionalMaintenance
+                    >= _game.Config.AI.Selection.MaintenanceHeadroomReserve
+                && after.RawOutputPerTick > 0
+                && after.RefinedOutputPerTick > 0
+                && materials >= materialReserve;
+        }
+
+        /// <summary>
+        /// Measures maintenance capacity lost by a proposed resource retirement.
+        /// </summary>
+        /// <param name="resources">The resource facilities removed by one construction action.</param>
+        /// <returns>The nonnegative maintenance-headroom cost.</returns>
+        internal int GetResourceReclamationMaintenanceCost(IReadOnlyList<Building> resources)
+        {
+            if (resources == null || resources.Count == 0)
+                return 0;
+            string owner = resources[0].GetOwnerInstanceID();
+            return Math.Max(
+                0,
+                GetOperatingEconomyAfterReclamation(
+                    owner,
+                    Array.Empty<Building>()
+                ).MaintenanceHeadroom
+                    - GetOperatingEconomyAfterReclamation(owner, resources).MaintenanceHeadroom
+            );
+        }
+
+        /// <summary>
+        /// Reuses one operating-economy snapshot for exact retirement alternatives this turn.
+        /// </summary>
+        /// <param name="owner">The faction whose resource facilities are being considered.</param>
+        /// <param name="excluded">The facilities excluded from the measured economy.</param>
+        /// <returns>The remaining maintenance headroom and material output.</returns>
+        private (
+            int MaintenanceHeadroom,
+            double RawOutputPerTick,
+            double RefinedOutputPerTick
+        ) GetOperatingEconomyAfterReclamation(string owner, IReadOnlyList<Building> excluded)
+        {
+            string key = string.Join(
+                "|",
+                excluded
+                    .Select(building => building.InstanceID)
+                    .Distinct()
+                    .OrderBy(id => id, StringComparer.Ordinal)
+            );
+            if (!_resourceEconomyCache.TryGetValue(key, out var economy))
+            {
+                _resourceEconomyProjection ??= new ResourceProductionQueries(
+                    _game
+                ).CaptureOperatingEconomy(_game.GetFactionByOwnerInstanceID(owner));
+                economy = _resourceEconomyProjection.GetOperatingEconomy(excluded);
+                _resourceEconomyCache[key] = economy;
+            }
+            return economy;
         }
 
         /// <summary>
@@ -1179,9 +1233,16 @@ namespace Rebellion.AI
             IReadOnlyDictionary<BuildingType, int> selectedBuildings = null
         )
         {
+            int reclaimed =
+                IsInfrastructureType(buildingType)
+                && GetAllocatedInfrastructureTarget(planet, buildingType) > 0
+                && _resourceReclamationByPlanetId.TryGetValue(planet.InstanceID, out var resources)
+                    ? planet.GetChildren<Building>().Count(resources.Contains)
+                    : 0;
             return Math.Max(
                 0,
                 GetConstructionSpace(planet, buildingType, isEmergencyDefense, selectedBuildings)
+                    + reclaimed
             );
         }
 

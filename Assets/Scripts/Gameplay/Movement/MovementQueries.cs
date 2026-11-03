@@ -1698,7 +1698,12 @@ namespace Rebellion.Gameplay
         {
             PlanetSector originSector = origin?.GetParentOfType<PlanetSector>();
             PlanetSector destinationSector = destination?.GetParentOfType<PlanetSector>();
-            return originSector != null && ReferenceEquals(originSector, destinationSector);
+            return originSector != null
+                && (
+                    ReferenceEquals(originSector, destinationSector)
+                    || !string.IsNullOrEmpty(originSector.InstanceID)
+                        && originSector.InstanceID == destinationSector?.InstanceID
+                );
         }
 
         /// <summary>

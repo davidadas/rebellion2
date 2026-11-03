@@ -151,6 +151,11 @@ namespace Rebellion.AI
             string,
             bool
         >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string FleetId, string PlanetId),
+            int
+        > _bombardmentStrengthAfterDefenseFire =
+            new Dictionary<(string FleetId, string PlanetId), int>();
         private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
             string,
             int
@@ -336,7 +341,8 @@ namespace Rebellion.AI
         public int UnfinishedPlanetStarfighterCount { get; }
 
         /// <summary>
-        /// Measures known orbital defenders expected to finish travelling by arrival.
+        /// Measures the strongest hostile owner's combined orbital defenders expected at arrival.
+        /// Each fleet is counted once using its latest indexed observation.
         /// </summary>
         /// <param name="planet">The faction-visible destination.</param>
         /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
@@ -359,90 +365,125 @@ namespace Rebellion.AI
             var key = (planet.InstanceID, horizon);
             if (_arrivalOrbitalCapabilities.TryGetValue(key, out var cached))
                 return cached;
+            List<Fleet> hostileFleets = GetHostileFleets(planet)
+                .GroupBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.Last())
+                .Where(fleet =>
+                    !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                    && fleet.GetOwnerInstanceID() != _faction.InstanceID
+                    && (fleet.Movement == null || fleet.Movement.TicksRemaining() <= horizon)
+                )
+                .ToList();
+            List<Starfighter> planetaryFighters = planet
+                .GetAllStarfighters()
+                .Where(fighter =>
+                    !string.IsNullOrEmpty(fighter.GetOwnerInstanceID())
+                    && fighter.GetOwnerInstanceID() != _faction.InstanceID
+                    && fighter.ManufacturingStatus != ManufacturingStatus.Building
+                    && fighter.CurrentSquadronSize > 0
+                    && (fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon)
+                )
+                .ToList();
             int combat = 0,
                 capitalFirepower = 0,
                 fighterFirepower = 0,
                 fighters = 0;
             foreach (
-                Fleet fleet in GetHostileFleets(planet)
-                    .Where(fleet =>
-                        fleet.Movement == null || fleet.Movement.TicksRemaining() <= horizon
-                    )
+                string ownerId in hostileFleets
+                    .Select(fleet => fleet.GetOwnerInstanceID())
+                    .Concat(planetaryFighters.Select(fighter => fighter.GetOwnerInstanceID()))
+                    .Distinct(StringComparer.Ordinal)
             )
             {
-                List<CapitalShip> ships = fleet
-                    .GetChildren<CapitalShip>()
-                    .Where(ship =>
-                        ship.ManufacturingStatus != ManufacturingStatus.Building
-                        && (ship.Movement == null || ship.Movement.TicksRemaining() <= horizon)
-                        && (ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0)
+                long ownerCombat = 0,
+                    ownerCapitalFirepower = 0,
+                    ownerFighterFirepower = 0,
+                    ownerFighters = 0;
+                foreach (
+                    Fleet fleet in hostileFleets.Where(fleet =>
+                        fleet.GetOwnerInstanceID() == ownerId
                     )
-                    .ToList();
-                List<Starfighter> carried = ships
-                    .SelectMany(ship => ship.GetChildren<Starfighter>())
-                    .Where(fighter =>
-                        fighter.ManufacturingStatus != ManufacturingStatus.Building
-                        && fighter.CurrentSquadronSize > 0
-                        && (
-                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
+                )
+                {
+                    List<CapitalShip> ships = fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(ship =>
+                            ship.ManufacturingStatus != ManufacturingStatus.Building
+                            && (ship.Movement == null || ship.Movement.TicksRemaining() <= horizon)
+                            && (ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0)
                         )
-                    )
-                    .ToList();
-                combat = Math.Max(
-                    combat,
-                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShipsAtArrival(
-                        fleet,
-                        _game.Config.Combat.SpaceCombat,
-                        horizon
-                    )
-                );
-                capitalFirepower = Math.Max(
-                    capitalFirepower,
-                    ships.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
-                    )
-                        + carried.Sum(fighter =>
-                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
-                                fighter,
-                                horizon
+                        .ToList();
+                    List<Starfighter> carried = ships
+                        .SelectMany(ship => ship.GetChildren<Starfighter>())
+                        .Where(fighter =>
+                            fighter.ManufacturingStatus != ManufacturingStatus.Building
+                            && fighter.CurrentSquadronSize > 0
+                            && (
+                                fighter.Movement == null
+                                || fighter.Movement.TicksRemaining() <= horizon
                             )
                         )
+                        .ToList();
+                    ownerCombat +=
+                        SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShipsAtArrival(
+                            fleet,
+                            _game.Config.Combat.SpaceCombat,
+                            horizon
+                        );
+                    ownerCapitalFirepower +=
+                        ships.Sum(ship =>
+                            (long)
+                                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                                    ship
+                                )
+                        )
+                        + carried.Sum(fighter =>
+                            (long)
+                                SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
+                                    fighter,
+                                    horizon
+                                )
+                        );
+                    ownerFighterFirepower +=
+                        ships.Sum(ship =>
+                            (long)
+                                SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                                    ship
+                                )
+                        )
+                        + carried.Sum(fighter =>
+                            (long)
+                                SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                                    fighter,
+                                    horizon
+                                )
+                        );
+                    ownerFighters += carried.Count;
+                }
+                foreach (
+                    Starfighter fighter in planetaryFighters.Where(fighter =>
+                        fighter.GetOwnerInstanceID() == ownerId
+                    )
+                )
+                {
+                    ownerCombat += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
+                    ownerFighterFirepower +=
+                        SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                            fighter,
+                            horizon
+                        );
+                    ownerFighters++;
+                }
+                combat = Math.Max(combat, (int)Math.Min(int.MaxValue, ownerCombat));
+                capitalFirepower = Math.Max(
+                    capitalFirepower,
+                    (int)Math.Min(int.MaxValue, ownerCapitalFirepower)
                 );
                 fighterFirepower = Math.Max(
                     fighterFirepower,
-                    ships.Sum(
-                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
-                    )
-                        + carried.Sum(fighter =>
-                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
-                                fighter,
-                                horizon
-                            )
-                        )
+                    (int)Math.Min(int.MaxValue, ownerFighterFirepower)
                 );
-                fighters = Math.Max(fighters, carried.Count);
-            }
-            foreach (
-                Starfighter fighter in planet
-                    .GetAllStarfighters()
-                    .Where(fighter =>
-                        !string.IsNullOrEmpty(fighter.GetOwnerInstanceID())
-                        && fighter.GetOwnerInstanceID() != _faction.InstanceID
-                        && fighter.ManufacturingStatus != ManufacturingStatus.Building
-                        && fighter.CurrentSquadronSize > 0
-                        && (
-                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
-                        )
-                    )
-            )
-            {
-                combat += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
-                fighterFirepower +=
-                    SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
-                        fighter,
-                        horizon
-                    );
-                fighters++;
+                fighters = Math.Max(fighters, (int)Math.Min(int.MaxValue, ownerFighters));
             }
             var result = (combat, capitalFirepower, fighterFirepower, fighters);
             _arrivalOrbitalCapabilities.Add(key, result);
@@ -3438,6 +3479,27 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether another fleet already has an attack order for the enemy planet.
+        /// </summary>
+        /// <param name="targetPlanet">The prospective enemy target.</param>
+        /// <param name="ignoredFleet">The fleet whose current order is ignored.</param>
+        /// <returns>True when another fleet has an active attack assignment for the target.</returns>
+        internal bool HasAttackFleetForTarget(Planet targetPlanet, Fleet ignoredFleet)
+        {
+            if (targetPlanet == null)
+                return false;
+
+            string ownerId = targetPlanet.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerId)
+                && ownerId != _faction.InstanceID
+                && AttackOrderedFleets.Any(fleet =>
+                    fleet != ignoredFleet
+                    && fleet.Order?.OrderType == FleetOrderType.Attack
+                    && fleet.Order.TargetPlanetId == targetPlanet.InstanceID
+                );
+        }
+
+        /// <summary>
         /// Returns whether a fleet has an attack order.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
@@ -3524,6 +3586,29 @@ namespace Rebellion.AI
                     BombardmentQueries.HasActiveMilitaryTargets(
                         targetPlanet,
                         targetPlanet.GetOwnerInstanceID()
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns a turn-cached conservative volley against known planetary weapons.
+        /// </summary>
+        /// <param name="fleet">The ready attacking fleet.</param>
+        /// <param name="targetPlanet">The faction-visible target supplying defense facts.</param>
+        /// <returns>The bombardment remaining after concentrated known counterfire.</returns>
+        internal int GetBombardmentStrengthAfterDefenseFire(Fleet fleet, Planet targetPlanet)
+        {
+            if (fleet == null || targetPlanet == null)
+                return 0;
+
+            return GetOrAdd(
+                _bombardmentStrengthAfterDefenseFire,
+                (fleet.InstanceID, targetPlanet.InstanceID),
+                () =>
+                    BombardmentQueries.GetBombardmentStrengthAfterDefenseFire(
+                        new[] { fleet },
+                        targetPlanet,
+                        _game.Config.Combat.Bombardment
                     )
             );
         }
@@ -3881,14 +3966,15 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether the fleet can remove known ground defenders by bombardment.
+        /// Measures whether one planned bombardment volley covers the known defending regiments with strike attempts.
         /// </summary>
+        /// <remarks>Target selection and resistance determine the actual regiment losses.</remarks>
         /// <param name="fleet">The fleet being assessed.</param>
         /// <param name="targetPlanet">The known target planet.</param>
         /// <param name="projected">Whether to include units already committed to the fleet.</param>
         /// <param name="additionalBombardmentStrength">The contribution from proposed additional ships.</param>
         /// <param name="shieldStrength">Optional shield strength expected when the fleet attacks.</param>
-        /// <returns>True when defenders are present and bombardment exceeds their shields.</returns>
+        /// <returns>True when effective strike attempts cover the known defending regiment count.</returns>
         public bool CanBombardDefenders(
             Fleet fleet,
             Planet targetPlanet,
@@ -3897,17 +3983,18 @@ namespace Rebellion.AI
             int? shieldStrength = null
         )
         {
-            if (
-                fleet == null
-                || targetPlanet == null
-                || GetDefendingRegimentCount(targetPlanet) == 0
-            )
+            if (fleet == null || targetPlanet == null)
+                return false;
+            int defendingRegimentCount = GetDefendingRegimentCount(targetPlanet);
+            if (defendingRegimentCount <= 0)
                 return false;
             int current = projected
                 ? GetProjectedFleetBombardmentStrength(fleet)
                 : GetFleetBombardmentStrength(fleet);
             long total = (long)current + Math.Max(0, additionalBombardmentStrength);
-            return total > (shieldStrength ?? GetBombardmentShieldStrength(targetPlanet));
+            long strikeAttempts =
+                total - (shieldStrength ?? GetBombardmentShieldStrength(targetPlanet));
+            return strikeAttempts >= defendingRegimentCount;
         }
 
         /// <summary>
