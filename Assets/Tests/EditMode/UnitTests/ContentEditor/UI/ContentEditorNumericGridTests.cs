@@ -22,14 +22,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Path.GetTempPath(),
                 "editor-grid-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorStorage.CreateInFolder(
-                ContentPackLoader.ResolveContentRootPath(),
-                "classic-galactic-civil-war",
-                folder,
-                "grid-tests",
-                "Grid tests",
-                "1.0.0"
-            );
+            project = ContentEditorTestData.CreateProject(folder);
             ContentEditorNavigation navigation = new();
             navigation.Render(project.GetCatalogs());
             navigation.SetExpanded(true);

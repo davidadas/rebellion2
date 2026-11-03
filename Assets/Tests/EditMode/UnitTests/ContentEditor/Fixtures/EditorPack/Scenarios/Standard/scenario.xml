@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Scenario>
+  <ID>standard</ID>
+  <DisplayName>Standard Campaign</DisplayName>
+  <GenerationConfigPath>Scenarios/Standard/generation.xml</GenerationConfigPath>
+  <DefaultPlayerFactionID>FNALL1</DefaultPlayerFactionID>
+  <PlayableFactionIDs>
+    <FactionID>FNEMP1</FactionID>
+    <FactionID>FNALL1</FactionID>
+  </PlayableFactionIDs>
+</Scenario>

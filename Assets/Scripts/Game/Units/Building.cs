@@ -202,6 +202,22 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Gets the manufacturing output required by a building category.
+        /// </summary>
+        /// <param name="buildingType">The building category.</param>
+        /// <returns>The matching manufacturing output, or none for non-manufacturing buildings.</returns>
+        public static ManufacturingType GetRequiredProductionType(BuildingType buildingType)
+        {
+            return buildingType switch
+            {
+                BuildingType.ConstructionFacility => ManufacturingType.Building,
+                BuildingType.Shipyard => ManufacturingType.Ship,
+                BuildingType.TrainingFacility => ManufacturingType.Troop,
+                _ => ManufacturingType.None,
+            };
+        }
+
+        /// <summary>
         /// Returns the type of production this building is capable of.
         /// </summary>
         /// <returns>The production type of the building.</returns>

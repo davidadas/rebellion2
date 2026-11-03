@@ -36,6 +36,22 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     }
 
     /// <summary>
+    /// Restores global input handling when the initialized controller becomes active again.
+    /// </summary>
+    private void OnEnable()
+    {
+        AttachInputActions();
+    }
+
+    /// <summary>
+    /// Detaches global input before Unity suspends the controller or reloads scripts.
+    /// </summary>
+    private void OnDisable()
+    {
+        DetachInputActions();
+    }
+
+    /// <summary>
     /// Detaches global input handlers.
     /// </summary>
     private void OnDestroy()

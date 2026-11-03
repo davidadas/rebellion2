@@ -847,6 +847,56 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void ModsPage_InvalidMod_RendersDisabledErrorRow()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow(
+                            "broken",
+                            string.Empty,
+                            "Broken Mod",
+                            false,
+                            false,
+                            "Missing BasePackVersion."
+                        ),
+                    }
+                )
+            );
+
+            Assert.AreEqual(
+                "0 MODS LOADED - 1 ERROR",
+                GetField<TextMeshProUGUI>("_modsStatusTextField").text
+            );
+            OptionsToggleRowView row = GetField<List<OptionsToggleRowView>>("_modRows").Single();
+            Assert.AreEqual(
+                "Broken Mod",
+                GetPrivateField<TextMeshProUGUI>(row, "_labelTextField").text
+            );
+            Assert.AreEqual("ERROR", GetPrivateField<TextMeshProUGUI>(row, "_stateTextField").text);
+            Assert.IsFalse(GetPrivateField<Button>(row, "_button").interactable);
+        }
+
+        [Test]
+        public void Footer_StatusMessage_RendersActionResult()
+        {
+            _view.Render(
+                CreateRenderDataForTab(OptionsMenuTab.Gameplay, statusMessage: "Settings applied.")
+            );
+
+            Assert.AreEqual(
+                "Settings applied.",
+                GetField<TextMeshProUGUI>("_settingsStatusTextField").text
+            );
+            Assert.AreEqual(
+                HorizontalAlignmentOptions.Center,
+                GetField<TextMeshProUGUI>("_settingsStatusTextField").horizontalAlignment
+            );
+        }
+
+        [Test]
         public void HandleApplyClicked_ListenerDestroysView_DoesNotAccessDestroyedControls()
         {
             Button applyButton = GetField<Button>("_applyButton");
@@ -895,6 +945,32 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(TextOverflowModes.Ellipsis, value.overflowMode);
             Assert.AreEqual(TextWrappingModes.NoWrap, value.textWrappingMode);
             Assert.IsFalse(value.raycastTarget);
+        }
+
+        [Test]
+        public void Render_ContentPackNames_KeepFixedVerticalAlignment()
+        {
+            TextMeshProUGUI value = GetField<TextMeshProUGUI>("_contentPackValueField");
+
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "Classic Galactic Civil War"
+                )
+            );
+            value.ForceMeshUpdate();
+            float classicBaseline = value.textInfo.characterInfo[0].baseLine;
+
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "25th Anniversary (by Metasharp)"
+                )
+            );
+            value.ForceMeshUpdate();
+
+            Assert.AreEqual(TextAlignmentOptions.Capline, value.alignment);
+            Assert.AreEqual(classicBaseline, value.textInfo.characterInfo[0].baseLine, 0.001f);
         }
 
         [Test]
@@ -1319,6 +1395,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <param name="showModsTab">Whether the Mods tab is visible.</param>
         /// <param name="idleBarLocation">The selected idle-bar corner.</param>
         /// <param name="gameLaunchSpeed">The selected galaxy-view launch speed.</param>
+        /// <param name="statusMessage">The settings action result.</param>
+        /// <param name="statusIsError">Whether the result represents an error.</param>
         /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
@@ -1328,7 +1406,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             string contentPackLabel = "",
             bool showModsTab = true,
             IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
-            GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged
+            GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged,
+            string statusMessage = "",
+            bool statusIsError = false
         )
         {
             return new OptionsMenuRenderData(
@@ -1350,7 +1430,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 gameLaunchSpeed: gameLaunchSpeed,
                 mods: mods,
                 contentPackLabel: contentPackLabel,
-                showModsTab: showModsTab
+                showModsTab: showModsTab,
+                statusMessage: statusMessage,
+                statusIsError: statusIsError
             );
         }
     }
