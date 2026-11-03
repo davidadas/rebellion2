@@ -1474,6 +1474,71 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 );
         }
 
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 0, false)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 1, false)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", 1, true)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", 1, false)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", 1, true)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", 1, false)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", 1, false)]
+        public void ProcessTriggeredEvents_NamedEncounter_IdentifiesEachRecipientsOwnOfficer(
+            string eventID,
+            string firstOfficerID,
+            string secondOfficerID,
+            int previousEncounters,
+            bool completedTraining
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstOfficerID, "FNALL1");
+            first.TypeID = "first-type";
+            _game.AttachNode(first, planet);
+            Officer second = EntityFactory.CreateOfficer(secondOfficerID, "FNEMP1");
+            second.TypeID = "second-type";
+            second.IsCaptured = true;
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState(eventID).ActivationCount = previousEncounters;
+            _game.EventRuntime.GetState("LUKE_LEAVES_DAGOBAH").ActivationCount = completedTraining
+                ? 1
+                : 0;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult { EncounteredOfficer = first, OpposingOfficer = second },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            Assert.AreEqual(2, delivered.Length);
+            foreach (MessageDeliveredResult result in delivered)
+            {
+                Officer reporter = result.Recipient.InstanceID == "FNALL1" ? first : second;
+                Assert.AreEqual(reporter.InstanceID, result.Message.NavigationTargetInstanceID);
+                Assert.AreEqual(reporter.TypeID, result.AdvisorSubjectTypeID);
+            }
+        }
+
         [TestCase(false, 1)]
         [TestCase(true, 0)]
         public void ProcessTriggeredEvents_LaterVaderEncounter_DoesNotRepeatFirstEncounterInjury(
