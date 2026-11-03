@@ -3,6 +3,8 @@
     "rootNamespace": "Rebellion.Tests.NativeAudit",
     "references": [
         "GameAssembly",
+        "com.Epic.OnlineServices",
+        "com.playeveryware.eos.core",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
         "UnityEngine.UI"

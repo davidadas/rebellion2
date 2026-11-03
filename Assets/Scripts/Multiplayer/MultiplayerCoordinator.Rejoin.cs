@@ -432,7 +432,7 @@ namespace Rebellion.Multiplayer
                 _hostPlayerName = _recoveryRecord.hostName;
                 _lobby?.UpdateDisplayNames(_recoveryRecord.hostName, _recoveryRecord.guestName);
                 BeginInitialization(Guid.NewGuid().ToString("N"));
-                MultiplayerSnapshot snapshot = PrepareInitialSnapshot(
+                MultiplayerSnapshot snapshot = PrepareInitialState(
                     out MultiplayerSnapshotMessage metadata
                 );
                 _recoveryRecord = CreateRecoveryRecord(snapshot.Hash);

@@ -5,6 +5,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Epic.OnlineServices;
+using Epic.OnlineServices.P2P;
+using PlayEveryWare.EpicOnlineServices;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
@@ -32,6 +35,9 @@ namespace Rebellion.Tests.NativeAudit
         private Task<bool> _operation;
         private string _operationName;
         private Keyboard _keyboard;
+        private P2PInterface _network;
+        private ulong _connectionNotification;
+        private string _networkType;
 
         /// <summary>
         /// Starts the driver only when an audit player receives an absolute control directory.
@@ -410,6 +416,8 @@ namespace Rebellion.Tests.NativeAudit
             response.multiplayer = multiplayer?.IsMultiplayerGame == true;
             response.canRequestSharedSave = multiplayer?.CanRequestSave == true;
             response.canSendPeerChat = multiplayer?.CanSendPeerChat == true;
+            if (multiplayer?.PlayerSession != null)
+                CaptureNetworkState(response);
             response.operation = _operationName;
             response.operationPending = _operation?.IsCompleted == false;
             response.operationSucceeded =
@@ -503,10 +511,61 @@ namespace Rebellion.Tests.NativeAudit
         }
 
         /// <summary>
-        /// Releases only the virtual keyboard owned by this audit instance.
+        /// Captures provider queue sizes only for an explicit audit observation.
+        /// </summary>
+        /// <param name="response">The observation that receives provider state without packet contents.</param>
+        private void CaptureNetworkState(Response response)
+        {
+            EOSManager.EOSSingleton sdk = EOSManager.Instance;
+            var platform = sdk.GetEOSPlatformInterface();
+            if (platform == null)
+                return;
+            if (_network == null)
+            {
+                ProductUserId user = platform.GetConnectInterface().GetLoggedInUserByIndex(0);
+                if (user == null)
+                    return;
+                _network = platform.GetP2PInterface();
+                AddNotifyPeerConnectionEstablishedOptions notification = new()
+                {
+                    LocalUserId = user,
+                };
+                _connectionNotification = _network.AddNotifyPeerConnectionEstablished(
+                    ref notification,
+                    null,
+                    (ref OnPeerConnectionEstablishedInfo info) =>
+                        _networkType = info.NetworkType.ToString()
+                );
+                sdk.AddApplicationCloseListener(ReleaseNetworkObserver);
+            }
+            GetPacketQueueInfoOptions options = new();
+            response.networkQueueResult = _network
+                .GetPacketQueueInfo(ref options, out PacketQueueInfo queue)
+                .ToString();
+            response.networkType = _networkType;
+            response.incomingNetworkBytes = queue.IncomingPacketQueueCurrentSizeBytes;
+            response.outgoingNetworkBytes = queue.OutgoingPacketQueueCurrentSizeBytes;
+            response.incomingNetworkLimit = queue.IncomingPacketQueueMaxSizeBytes;
+            response.outgoingNetworkLimit = queue.OutgoingPacketQueueMaxSizeBytes;
+        }
+
+        /// <summary>
+        /// Removes the audit's observer before the shared provider shuts down.
+        /// </summary>
+        private void ReleaseNetworkObserver()
+        {
+            if (_connectionNotification != 0)
+                _network?.RemoveNotifyPeerConnectionEstablished(_connectionNotification);
+            _connectionNotification = 0;
+            _network = null;
+        }
+
+        /// <summary>
+        /// Releases the virtual keyboard and connection observer owned by this audit instance.
         /// </summary>
         private void OnDestroy()
         {
+            ReleaseNetworkObserver();
             if (_keyboard?.added == true)
                 InputSystem.RemoveDevice(_keyboard);
         }
@@ -568,6 +627,12 @@ namespace Rebellion.Tests.NativeAudit
             public bool operationPending;
             public bool operationSucceeded;
             public string operationError;
+            public string networkType;
+            public string networkQueueResult;
+            public ulong incomingNetworkBytes;
+            public ulong outgoingNetworkBytes;
+            public ulong incomingNetworkLimit;
+            public ulong outgoingNetworkLimit;
             public bool hostReady;
             public bool guestReady;
             public DiscoveredGame[] games;

@@ -122,6 +122,111 @@ namespace Rebellion.Tests.Multiplayer
             Assert.That(admission.AcceptsReceipt(receipt, "payload", "loaded-world"), Is.False);
         }
 
+        [Test]
+        public void AcceptsPreparedSnapshot_VerifiedWorldInCurrentInitialization_AcceptsStateCheck()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization, "verified-world");
+            MultiplayerSnapshotMessage snapshot = new()
+            {
+                initializationID = initialization,
+                hash = "verified-world",
+            };
+
+            Assert.That(admission.AcceptsPreparedSnapshot(snapshot), Is.True);
+        }
+
+        [TestCase("unprepared")]
+        [TestCase("world")]
+        [TestCase("initialization")]
+        [TestCase("missing")]
+        public void AcceptsPreparedSnapshot_UnverifiedWorld_RejectsStateCheck(string difference)
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization, difference == "unprepared" ? null : "verified-world");
+            MultiplayerSnapshotMessage snapshot = new()
+            {
+                initializationID =
+                    difference == "initialization" ? Guid.NewGuid().ToString("N") : initialization,
+                hash = difference == "world" ? "different-world" : "verified-world",
+            };
+
+            Assert.That(
+                admission.AcceptsPreparedSnapshot(difference == "missing" ? null : snapshot),
+                Is.False
+            );
+        }
+
+        [Test]
+        public void Begin_NewInitialization_DiscardsPreviousPreflight()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            admission.Begin(Guid.NewGuid().ToString("N"), "verified-world");
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization);
+
+            Assert.That(
+                admission.AcceptsPreparedSnapshot(
+                    new MultiplayerSnapshotMessage
+                    {
+                        initializationID = initialization,
+                        hash = "verified-world",
+                    }
+                ),
+                Is.False
+            );
+        }
+
+        [Test]
+        public void Begin_RepeatedPreparedInitialization_RetainsVerifiedWorld()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization, "verified-world");
+
+            Assert.That(admission.Begin(initialization, "verified-world"), Is.False);
+            Assert.That(admission.PreparedSnapshotHash, Is.EqualTo("verified-world"));
+        }
+
+        [Test]
+        public void Begin_ChangingWorldWithinInitialization_RejectsReplacement()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization, "verified-world");
+
+            Assert.Throws<InvalidOperationException>(() =>
+                admission.Begin(initialization, "different-world")
+            );
+            Assert.That(admission.PreparedSnapshotHash, Is.EqualTo("verified-world"));
+        }
+
+        [Test]
+        public void Clear_PreparedInitialization_DiscardsVerifiedWorld()
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            admission.Begin(Guid.NewGuid().ToString("N"), "verified-world");
+            admission.Clear();
+
+            Assert.That(admission.PreparedSnapshotHash, Is.Null);
+        }
+
+        [TestCase("")]
+        [TestCase(" ")]
+        public void Begin_EmptyPreparedHash_PreservesCurrentInitialization(string hash)
+        {
+            MultiplayerSnapshotAdmission admission = new();
+            string initialization = Guid.NewGuid().ToString("N");
+            admission.Begin(initialization);
+
+            Assert.Throws<ArgumentException>(() =>
+                admission.Begin(Guid.NewGuid().ToString("N"), hash)
+            );
+            Assert.That(admission.InitializationID, Is.EqualTo(initialization));
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("invalid")]

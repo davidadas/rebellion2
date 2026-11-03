@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
@@ -180,7 +181,7 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Sends the full model once both initial presentation lifecycles are ready.
+        /// Verifies the prepared world or supplies a new world once both presentation lifecycles are ready.
         /// </summary>
         private void TrySendInitialSnapshot()
         {
@@ -198,14 +199,14 @@ namespace Rebellion.Multiplayer
                 return;
             try
             {
-                MultiplayerSnapshot snapshot = PrepareInitialSnapshot(
+                MultiplayerSnapshot snapshot = PrepareInitialState(
                     out MultiplayerSnapshotMessage metadata
                 );
                 QueueSend(
                     new MultiplayerPacket(
                         MultiplayerMessageType.SnapshotCommit,
                         JsonUtility.ToJson(metadata),
-                        snapshot.Payload
+                        snapshot?.Payload
                     )
                 );
                 SetStatus("Synchronizing the game");
@@ -217,29 +218,31 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Captures the settled host world and prepares the initial loaded-state receipt barrier.
+        /// Prepares the loaded-state receipt barrier, capturing bytes only when no shared preflight supplied the world.
         /// </summary>
         /// <param name="metadata">Receives the initialization, payload hash, and loaded-state fingerprint.</param>
-        /// <returns>The one world payload supplied to the other participant.</returns>
-        private MultiplayerSnapshot PrepareInitialSnapshot(out MultiplayerSnapshotMessage metadata)
+        /// <returns>The new world payload, or null when both participants already verified it.</returns>
+        private MultiplayerSnapshot PrepareInitialState(out MultiplayerSnapshotMessage metadata)
         {
-            MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(
-                _runtime.GetActiveGameSession()
-            );
-            GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
-            ConfigureGame(game);
-            ReplaceGame(game);
+            MultiplayerSnapshot snapshot = null;
+            if (_snapshotAdmission.PreparedSnapshotHash == null)
+            {
+                snapshot = MultiplayerSnapshotCodec.Capture(_runtime.GetActiveGameSession());
+                GameRoot game = MultiplayerSnapshotCodec.Restore(snapshot.Payload, snapshot.Hash);
+                ConfigureGame(game);
+                ReplaceGame(game);
+            }
             _runtime.BlockGameOperations();
             _initialSimulationFingerprint = MultiplayerStateFingerprint.ComputeSimulation(
                 _runtime.GetActiveGameSession()
             );
             metadata = new MultiplayerSnapshotMessage
             {
-                hash = snapshot.Hash,
+                hash = _snapshotAdmission.PreparedSnapshotHash ?? snapshot.Hash,
                 simulationFingerprint = _initialSimulationFingerprint,
                 initializationID = _initializationID,
             };
-            _initialSnapshotHash = snapshot.Hash;
+            _initialSnapshotHash = metadata.hash;
             _awaitingSnapshotReceipt = true;
             return snapshot;
         }
@@ -255,9 +258,19 @@ namespace Rebellion.Multiplayer
             );
             if (!MultiplayerSessionIdentity.Matches(_initializationID, metadata?.initializationID))
                 return;
-            GameRoot state = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
-            ConfigureGame(state);
-            ReplaceGame(state);
+            if (packet.Payload.Length == 0)
+            {
+                if (!_snapshotAdmission.AcceptsPreparedSnapshot(metadata))
+                    throw new InvalidDataException(
+                        "The initial world was not verified for this shared load."
+                    );
+            }
+            else
+            {
+                GameRoot state = MultiplayerSnapshotCodec.Restore(packet.Payload, metadata.hash);
+                ConfigureGame(state);
+                ReplaceGame(state);
+            }
             AcceptInitialSnapshot(metadata);
         }
 

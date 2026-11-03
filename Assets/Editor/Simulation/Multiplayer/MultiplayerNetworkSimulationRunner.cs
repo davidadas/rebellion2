@@ -280,6 +280,18 @@ public static class MultiplayerNetworkSimulationRunner
             factions,
             report
         );
+        Task<PlayerRequestOutcome> hostSpeed = peers.Host.ExecuteAsync(
+            new SetSpeedRequest { Speed = TickSpeed.Fast }
+        );
+        Task<PlayerRequestOutcome> guestSpeed = peers.Guest.ExecuteAsync(
+            new SetSpeedRequest { Speed = TickSpeed.Fast }
+        );
+        await peers.WaitUntilAsync(
+            () => hostSpeed.IsCompleted && guestSpeed.IsCompleted && peers.Host.CanBeginHostTick,
+            "both initial speed selections and their receipts"
+        );
+        if (!(await hostSpeed).Accepted || !(await guestSpeed).Accepted)
+            throw new InvalidOperationException("The verification speed selections were rejected.");
         OutcomeTracker outcomes = new OutcomeTracker(hostGame);
         hostSession.Pipeline.ResultsResolved += outcomes.Record;
         try

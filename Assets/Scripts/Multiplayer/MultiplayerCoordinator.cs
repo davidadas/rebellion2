@@ -795,9 +795,13 @@ namespace Rebellion.Multiplayer
         /// Adopts a new initialization and discards its predecessor's pending world.
         /// </summary>
         /// <param name="initializationID">The identity agreed for the initialized game.</param>
-        private void BeginInitialization(string initializationID)
+        /// <param name="preparedSnapshotHash">The world verified before a shared load, or null for ordinary initialization.</param>
+        private void BeginInitialization(
+            string initializationID,
+            string preparedSnapshotHash = null
+        )
         {
-            if (_snapshotAdmission.Begin(initializationID))
+            if (_snapshotAdmission.Begin(initializationID, preparedSnapshotHash))
                 _pendingInitialSnapshot = null;
         }
 

@@ -545,7 +545,7 @@ namespace Rebellion.Multiplayer
                 );
             MultiplayerLaunchConfiguration previous = _launchConfiguration;
             _hostSummary = _persistenceLoadedGame.Summary;
-            BeginInitialization(checkpoint.Command.token);
+            BeginInitialization(checkpoint.Command.token, checkpoint.Command.snapshotHash);
             _lobbyContent = _persistenceContent;
             _launchConfiguration = new MultiplayerLaunchConfiguration(
                 _hostSummary,
