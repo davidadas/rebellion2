@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -28,6 +29,56 @@ namespace Rebellion.Tests.Gameplay.Scripting
         public void SetUp()
         {
             _game = TestGame.Create(TestConfig.Create());
+        }
+
+        [TestCase(null, true)]
+        [TestCase("target", true)]
+        [TestCase("other", false)]
+        public void IsMet_AssignedMissionTarget_MatchesOnlyRequiredTarget(
+            string target,
+            bool expected
+        )
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            AbductionMission mission = new()
+            {
+                InstanceID = "mission",
+                TargetOfficerInstanceID = "target",
+            };
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+
+            Assert.AreEqual(
+                expected,
+                GameConditionEvaluator.IsMet(
+                    new IsOnMissionConditional
+                    {
+                        UnitInstanceID = officer.InstanceID,
+                        TargetInstanceID = target,
+                    },
+                    game
+                )
+            );
+        }
+
+        [Test]
+        public void IsMet_UnassignedOfficerAtMissionTarget_DoesNotMatchAssignment()
+        {
+            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planet);
+
+            Assert.IsFalse(
+                GameConditionEvaluator.IsMet(
+                    new IsOnMissionConditional
+                    {
+                        UnitInstanceID = officer.InstanceID,
+                        TargetInstanceID = planet.InstanceID,
+                    },
+                    game
+                )
+            );
         }
 
         [TestCase("All", false)]

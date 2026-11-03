@@ -63,6 +63,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(13, first.ForceValue);
             Assert.AreEqual(1, game.EventRuntime.GetState("completion").ActivationCount);
             Assert.IsEmpty(results.OfType<DuelResult>());
+            Assert.IsNotEmpty(results);
+            Assert.That(results.All(result => result.ReportContext is DuelResult));
+            Assert.AreEqual(1, results.Select(result => result.ReportContext).Distinct().Count());
             Assert.IsEmpty(events.ProcessTriggeredEvents(results));
             Assert.AreEqual(1, game.EventRuntime.GetState("completion").ActivationCount);
         }

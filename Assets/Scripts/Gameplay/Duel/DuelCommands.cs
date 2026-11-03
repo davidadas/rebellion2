@@ -66,6 +66,8 @@ namespace Rebellion.Gameplay
 
             results.Remove(encounter);
             results.AddRange(_completeEncounter(encounter));
+            foreach (GameResult result in results)
+                result.ReportContext ??= encounter;
             return results;
         }
     }

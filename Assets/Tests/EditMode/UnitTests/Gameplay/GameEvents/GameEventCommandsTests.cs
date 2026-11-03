@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -1344,32 +1345,14 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        [TestCase("LUKE_VADER_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "DARTH_VADER", false, 63)]
-        [TestCase("LUKE_VADER_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "DARTH_VADER", true, 63)]
-        [TestCase(
-            "LUKE_PALPATINE_ENCOUNTER_EFFECTS",
-            "LUKE_SKYWALKER",
-            "EMPEROR_PALPATINE",
-            false,
-            56
-        )]
-        [TestCase(
-            "LUKE_PALPATINE_ENCOUNTER_EFFECTS",
-            "LUKE_SKYWALKER",
-            "EMPEROR_PALPATINE",
-            true,
-            56
-        )]
-        [TestCase("LEIA_VADER_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "DARTH_VADER", false, 56)]
-        [TestCase("LEIA_VADER_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "DARTH_VADER", true, 56)]
-        [TestCase(
-            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
-            "LEIA_ORGANA",
-            "EMPEROR_PALPATINE",
-            false,
-            56
-        )]
-        [TestCase("LEIA_PALPATINE_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "EMPEROR_PALPATINE", true, 56)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", false, 63)]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER", true, 63)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", false, 56)]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", true, 56)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", false, 56)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", true, 56)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", false, 56)]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", true, 56)]
         public void ProcessTriggeredEvents_RepeatedNamedConfrontations_AwardGrowthInEitherOrder(
             string eventID,
             string growingOfficerID,
@@ -1423,10 +1406,10 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(2, _game.EventRuntime.GetState(eventID).ActivationCount);
         }
 
-        [TestCase("LUKE_VADER_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "DARTH_VADER")]
-        [TestCase("LUKE_PALPATINE_ENCOUNTER_EFFECTS", "LUKE_SKYWALKER", "EMPEROR_PALPATINE")]
-        [TestCase("LEIA_VADER_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "DARTH_VADER")]
-        [TestCase("LEIA_PALPATINE_ENCOUNTER_EFFECTS", "LEIA_ORGANA", "EMPEROR_PALPATINE")]
+        [TestCase("LUKE_ENCOUNTERS_VADER", "LUKE_SKYWALKER", "DARTH_VADER")]
+        [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE")]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER")]
+        [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE")]
         public void ProcessTriggeredEvents_NamedEncounter_DeliversBothOfficersStatesToBothFactions(
             string eventID,
             string firstOfficerID,
@@ -1517,7 +1500,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 .GetEventPool()
                 .Add(
                     TestContent.Data.GameEvents.Single(gameEvent =>
-                        gameEvent.InstanceID == "LUKE_VADER_ENCOUNTER_EFFECTS"
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
                     )
                 );
             FixedRNG random = new FixedRNG(0.0);
@@ -1578,9 +1561,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 .GetEventPool()
                 .AddRange(
                     TestContent.Data.GameEvents.Where(gameEvent =>
-                        gameEvent.InstanceID
-                            is "LUKE_VADER_ENCOUNTER_EFFECTS"
-                                or "LUKE_DISCOVERS_HERITAGE"
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
                     )
                 );
             FixedRNG random = new FixedRNG(0);
@@ -1604,18 +1585,160 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             MessageDeliveredResult first = commands
                 .ProcessTriggeredEvents(new[] { encounter })
                 .OfType<MessageDeliveredResult>()
-                .Single();
+                .Single(result => result.Recipient.InstanceID == "FNALL1");
             MessageDeliveredResult later = commands
                 .ProcessTriggeredEvents(new[] { encounter })
                 .OfType<MessageDeliveredResult>()
                 .Single(result => result.Recipient.InstanceID == "FNALL1");
 
-            Assert.AreEqual("LUKE_DISCOVERS_HERITAGE", first.SourceEventInstanceID);
-            Assert.AreEqual("LUKE_VADER_ENCOUNTER_EFFECTS", later.SourceEventInstanceID);
+            Assert.AreEqual("Luke Discovers His Heritage", first.Message.Title);
+            Assert.AreEqual("LUKE_SKYWALKER Confronts DARTH_VADER", later.Message.Title);
+            Assert.AreEqual("LUKE_ENCOUNTERS_VADER", first.SourceEventInstanceID);
+            Assert.AreEqual("LUKE_ENCOUNTERS_VADER", later.SourceEventInstanceID);
             Assert.AreEqual(
-                1,
-                _game.EventRuntime.GetState("LUKE_DISCOVERS_HERITAGE").ActivationCount
+                2,
+                _game.EventRuntime.GetState("LUKE_ENCOUNTERS_VADER").ActivationCount
             );
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ProcessTriggeredEvents_CapturedHeritage_ReportsEmperorOnlyForSharedTargetedMission(
+            bool assigned,
+            bool targetsEmperor
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            vader.IsCaptured = true;
+            _game.AttachNode(luke, planet);
+            _game.AttachNode(vader, planet);
+            luke.IsCaptured = true;
+            vader.IsCaptured = false;
+            if (assigned)
+            {
+                AbductionMission mission = new()
+                {
+                    InstanceID = "escort",
+                    OwnerInstanceID = "FNEMP1",
+                    TargetOfficerInstanceID = targetsEmperor ? "EMPEROR_PALPATINE" : "other",
+                };
+                _game.AttachNode(mission, planet);
+                _game.MoveNode(luke, mission);
+                _game.MoveNode(vader, mission);
+            }
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(item =>
+                        item.InstanceID == "LUKE_ENCOUNTERS_VADER"
+                    )
+                );
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                new[] { "FNALL1", "FNEMP1" },
+                delivered.Select(result => result.Recipient.InstanceID)
+            );
+            foreach (MessageDeliveredResult result in delivered)
+                Assert.AreEqual(
+                    assigned && targetsEmperor,
+                    result.Message.Body.Contains("taken to the Emperor")
+                );
+        }
+
+        [TestCase("minor", "other", false, 2)]
+        [TestCase("minor", "other", true, 2)]
+        [TestCase("LUKE_SKYWALKER", "DARTH_VADER", false, 0)]
+        [TestCase("LUKE_SKYWALKER", "DARTH_VADER", true, 0)]
+        [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", false, 0)]
+        [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", true, 0)]
+        public void ProcessTriggeredEvents_GenericEncounter_ReportsOnlyUnnamedPairsToBothOwners(
+            string firstID,
+            string secondID,
+            bool reverse,
+            int expectedCount
+        )
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = "FNALL1" };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer first = EntityFactory.CreateOfficer(firstID, "FNALL1");
+            Officer second = EntityFactory.CreateOfficer(secondID, "FNEMP1");
+            second.IsCaptured = true;
+            _game.AttachNode(first, planet);
+            _game.AttachNode(second, planet);
+            second.IsCaptured = false;
+            _game
+                .GetEventPool()
+                .Add(
+                    TestContent.Data.GameEvents.Single(item =>
+                        item.InstanceID == "FORCE_ENCOUNTER_REPORT"
+                    )
+                );
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            MessageDeliveredResult[] delivered = commands
+                .ProcessTriggeredEvents(
+                    new[]
+                    {
+                        new DuelResult
+                        {
+                            EncounteredOfficer = reverse ? second : first,
+                            OpposingOfficer = reverse ? first : second,
+                        },
+                    }
+                )
+                .OfType<MessageDeliveredResult>()
+                .ToArray();
+
+            Assert.AreEqual(expectedCount, delivered.Length);
+            foreach (MessageDeliveredResult result in delivered)
+            {
+                string ownID = result.Recipient.InstanceID == "FNALL1" ? firstID : secondID;
+                string otherID = result.Recipient.InstanceID == "FNALL1" ? secondID : firstID;
+                Assert.AreEqual($"{ownID} Detects Enemy", result.Message.Title);
+                Assert.AreEqual(
+                    $"{ownID} has detected {otherID} because of a disturbance in the Force.",
+                    result.Message.Body
+                );
+            }
         }
 
         [TestCase(79, false, 1)]
@@ -1646,7 +1769,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 .GetEventPool()
                 .Add(
                     TestContent.Data.GameEvents.Single(gameEvent =>
-                        gameEvent.InstanceID == "LUKE_VADER_ENCOUNTER_EFFECTS"
+                        gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
                     )
                 );
             FixedRNG random = new FixedRNG(0.0);
@@ -1678,39 +1801,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [TestCase(
-            "LEIA_VADER_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_VADER",
             "LEIA_ENCOUNTERS_VADER",
             "DARTH_VADER",
             false,
             false,
             10
         )]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", true, false, 28)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", false, true, 10)]
+        [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ENCOUNTERS_VADER", "DARTH_VADER", true, true, 10)]
         [TestCase(
-            "LEIA_VADER_ENCOUNTER_EFFECTS",
-            "LEIA_ENCOUNTERS_VADER",
-            "DARTH_VADER",
-            true,
-            false,
-            28
-        )]
-        [TestCase(
-            "LEIA_VADER_ENCOUNTER_EFFECTS",
-            "LEIA_ENCOUNTERS_VADER",
-            "DARTH_VADER",
-            false,
-            true,
-            10
-        )]
-        [TestCase(
-            "LEIA_VADER_ENCOUNTER_EFFECTS",
-            "LEIA_ENCOUNTERS_VADER",
-            "DARTH_VADER",
-            true,
-            true,
-            10
-        )]
-        [TestCase(
-            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
             "LEIA_ENCOUNTERS_PALPATINE",
             "EMPEROR_PALPATINE",
             false,
@@ -1718,7 +1820,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             10
         )]
         [TestCase(
-            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
             "LEIA_ENCOUNTERS_PALPATINE",
             "EMPEROR_PALPATINE",
             true,
@@ -1726,7 +1828,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             28
         )]
         [TestCase(
-            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
             "LEIA_ENCOUNTERS_PALPATINE",
             "EMPEROR_PALPATINE",
             false,
@@ -1734,7 +1836,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             10
         )]
         [TestCase(
-            "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            "LEIA_ENCOUNTERS_PALPATINE",
             "LEIA_ENCOUNTERS_PALPATINE",
             "EMPEROR_PALPATINE",
             true,

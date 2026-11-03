@@ -503,8 +503,9 @@ namespace Rebellion.Tests.Gameplay
                 officer.InstanceID == leia.InstanceID
             );
             leia.ForceDiscoveryConditionals = template.ForceDiscoveryConditionals;
-            _game.EventRuntime.GetState("LUKE_VADER_ENCOUNTER_EFFECTS").ActivationCount =
-                hasEncountered ? 1 : 0;
+            _game.EventRuntime.GetState("LUKE_ENCOUNTERS_VADER").ActivationCount = hasEncountered
+                ? 1
+                : 0;
 
             new JediTickProcessor(_system).ProcessTick(_game);
             _game.CurrentTick++;

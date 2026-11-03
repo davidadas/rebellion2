@@ -346,6 +346,12 @@ namespace Rebellion.Game.Scripting
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
+
+        /// <summary>
+        /// Gets or sets the required mission target, when the assignment must target one entity.
+        /// </summary>
+        [PersistableAttribute]
+        public string TargetInstanceID { get; set; }
     }
 
     /// <summary>
