@@ -6,12 +6,14 @@ using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Newtonsoft.Json.Serialization;
 using Rebellion.Game;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+#if !ENABLE_IL2CPP
+using System.Linq.Expressions;
+#endif
 
 namespace Rebellion.Multiplayer
 {
@@ -24,7 +26,6 @@ namespace Rebellion.Multiplayer
         private static readonly ConcurrentDictionary<Type, TypePlan> _plans = new();
         private static readonly ConcurrentDictionary<Type, TypePlan> _simulationPlans = new();
         private static readonly Func<Type, TypePlan> _createPlan = CreatePlan;
-        private static readonly AccessorFactory _accessors = new();
 
         /// <summary>
         /// Computes a local change-detection fingerprint using the serializer's exact member selection.
@@ -177,7 +178,7 @@ namespace Rebellion.Multiplayer
                     MemberInfo member = plan.Members[index];
                     object child = plan.RawIdentity[index]
                         ? ((BaseGameEntity)value).PeekInstanceID()
-                        : plan.Getters[index].GetValue(value);
+                        : plan.Getters[index](value);
                     if (child == null)
                     {
                         if (member == plan.InlineCollection)
@@ -422,7 +423,7 @@ namespace Rebellion.Multiplayer
             public bool Scalar { get; }
             public TypeCode Code { get; }
             public MemberInfo[] Members { get; }
-            public IValueProvider[] Getters { get; }
+            public Func<object, object>[] Getters { get; }
             public bool[] RawIdentity { get; }
             public TypePlan[] ScalarMembers { get; }
             public MemberInfo InlineCollection { get; }
@@ -447,7 +448,7 @@ namespace Rebellion.Multiplayer
                 Scalar = scalar;
                 Code = code;
                 Members = members;
-                Getters = members.Select(_accessors.CreateAccessor).ToArray();
+                Getters = members.Select(CreateAccessor).ToArray();
                 RawIdentity = members
                     .Select(member =>
                         member.DeclaringType == typeof(BaseGameEntity)
@@ -467,17 +468,24 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Reuses the JSON runtime's compiled member accessors and its supported AOT fallback.
+        /// Compiles each admitted member reader once on JIT targets and retains reflected reads on AOT targets.
         /// </summary>
-        private sealed class AccessorFactory : DefaultContractResolver
+        /// <param name="member">The exact field or property selected by the XML member contract.</param>
+        /// <returns>The reusable reader without per-value reflection on JIT targets.</returns>
+        private static Func<object, object> CreateAccessor(MemberInfo member)
         {
-            /// <summary>
-            /// Builds one cached value reader for an already admitted model member.
-            /// </summary>
-            /// <param name="member">The exact member selected by the model contract.</param>
-            /// <returns>The reusable member reader.</returns>
-            public IValueProvider CreateAccessor(MemberInfo member) =>
-                CreateMemberValueProvider(member);
+#if ENABLE_IL2CPP
+            return value => ReflectionHelper.GetMemberValue(member, value);
+#else
+            ParameterExpression value = Expression.Parameter(typeof(object), "value");
+            MemberExpression read = Expression.MakeMemberAccess(
+                Expression.Convert(value, member.DeclaringType),
+                member
+            );
+            return Expression
+                .Lambda<Func<object, object>>(Expression.Convert(read, typeof(object)), value)
+                .Compile();
+#endif
         }
 
         /// <summary>

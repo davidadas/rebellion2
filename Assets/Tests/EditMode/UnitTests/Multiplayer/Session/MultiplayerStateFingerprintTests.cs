@@ -5,6 +5,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -199,6 +200,44 @@ namespace Rebellion.Tests.Multiplayer
             MultiplayerStateFingerprint.Compute(prototype);
 
             Assert.IsNull(prototype.PeekInstanceID());
+        }
+
+        [Test]
+        public void Compute_CachedPrivateFieldReader_DetectsMutation()
+        {
+            AccessorState state = new();
+            string before = MultiplayerStateFingerprint.Compute(state);
+
+            state.SetCount(2);
+
+            Assert.AreNotEqual(before, MultiplayerStateFingerprint.Compute(state));
+        }
+
+        [TestCase(null, 2)]
+        [TestCase(2, null)]
+        public void Compute_CachedNullablePropertyReader_DetectsMutation(int? before, int? after)
+        {
+            AccessorState state = new() { Pending = before };
+            string fingerprint = MultiplayerStateFingerprint.Compute(state);
+
+            state.Pending = after;
+
+            Assert.AreNotEqual(fingerprint, MultiplayerStateFingerprint.Compute(state));
+        }
+
+        [PersistableObject]
+        private sealed class AccessorState
+        {
+            [PersistableMember]
+            private int _count = 1;
+
+            public int? Pending { get; set; }
+
+            /// <summary>
+            /// Changes the persisted private field through the helper's public behavior.
+            /// </summary>
+            /// <param name="count">The replacement count.</param>
+            public void SetCount(int count) => _count = count;
         }
     }
 }
