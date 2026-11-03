@@ -190,6 +190,61 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(1, _game.EventRuntime.GetState("LUKE_LEAVES_DAGOBAH").ActivationCount);
         }
 
+        [TestCase(99, false)]
+        [TestCase(100, true)]
+        public void ProcessScheduledEvents_FinalBattle_DisablesEscapeForDefeatedOfficers(
+            int forceRank,
+            bool lukeWins
+        )
+        {
+            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
+            _game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
+            PlanetSector sector = new() { InstanceID = "sector" };
+            Planet planet = new()
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(planet, sector);
+            Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
+            luke.ForceValue = forceRank;
+            luke.TryCapture("FNEMP1", _game, _game.Random);
+            Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
+            Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
+            _game.AttachNode(luke, planet);
+            _game.AttachNode(vader, planet);
+            _game.AttachNode(emperor, planet);
+            string eventID = lukeWins ? "LUKE_WINS_FINAL_BATTLE" : "LUKE_LOSES_FINAL_BATTLE";
+            _game
+                .GetEventPool()
+                .Add(TestContent.Data.GameEvents.Single(item => item.InstanceID == eventID));
+            _game.EventRuntime.GetState("VADER_REACHES_LUKE").ActivationCount = 1;
+            GameEventCommands commands = new(
+                _game,
+                _game.Random,
+                new GameActionCommands(
+                    _game,
+                    _game.Random,
+                    messageCommands: new MessageCommands(_game, new MessageFactory(null))
+                )
+            );
+
+            commands.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetState(eventID).ActivationCount);
+            Officer[] defeated = lukeWins ? new[] { vader, emperor } : new[] { luke };
+            foreach (Officer officer in defeated)
+            {
+                Assert.IsTrue(officer.IsCaptured, officer.InstanceID);
+                Assert.IsFalse(officer.CanEscape, officer.InstanceID);
+                Assert.AreEqual(0, officer.NextEscapeAttemptTick, officer.InstanceID);
+            }
+            Assert.AreEqual(!lukeWins, luke.IsCaptured);
+        }
+
         [Test]
         public void ProcessScheduledEvents_AbsoluteSchedule_StoresAbsoluteTick()
         {
