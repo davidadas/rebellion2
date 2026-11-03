@@ -1191,6 +1191,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_SelectedReplacementWithFullDestination_ReplacesUnfinishedDefense()
         {
             var (game, faction, producer, destination, shield) = CreateDefenseConstructionScene();
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             destination.EnergyCapacity = 2;
             Building requiredShield = AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -1243,6 +1244,7 @@ namespace Rebellion.Tests.AI.Proposals
         )
         {
             var (game, faction, producer, destination, original) = CreateDefenseConstructionScene();
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             destination.EnergyCapacity = 2;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             if (initiallyEmpty)

@@ -218,10 +218,10 @@ namespace Rebellion.Tests.AI
         }
 
         /// <summary>
-        /// Does not encourage expansion into sectors without an existing presence.
+        /// Values an empty sector when a known neutral planet can fit missing industry.
         /// </summary>
         [Test]
-        public void GetInfrastructureAcquisitionValue_SectorWithoutOwnedPlanets_DoesNotCreateExpansionBonus()
+        public void GetInfrastructureAcquisitionValue_SectorWithoutOwnedPlanets_ValuesFeasibleExpansion()
         {
             AITurnContext initial = CreateIndustrialAcquisitionContext(0, 4, out Planet candidate);
             PlanetSector other = AITestSceneBuilder.AddSector(initial.Game, "other-sector");
@@ -235,7 +235,7 @@ namespace Rebellion.Tests.AI
             AITestSceneBuilder.RevealPlanet(initial.Game, initial.Faction, candidate);
             AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
 
-            Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
+            Assert.Greater(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate), 0);
         }
 
         /// <summary>
@@ -433,6 +433,7 @@ namespace Rebellion.Tests.AI
         public void TryAllocateInfrastructureHub_ExactIndustrialAndShieldSpace_PreservesFinishedLayout()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -458,6 +459,7 @@ namespace Rebellion.Tests.AI
         public void TryAllocateInfrastructureHub_NoSpaceForShield_RejectsLayout()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -483,6 +485,7 @@ namespace Rebellion.Tests.AI
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -512,6 +515,7 @@ namespace Rebellion.Tests.AI
         public void TryAllocateInfrastructureHub_AnotherCategoryAlreadyPlanned_PreventsOverbooking()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -537,6 +541,7 @@ namespace Rebellion.Tests.AI
         public void GetAvailableConstructionSpace_IndustryQueued_ReleasesOnlyItsSatisfiedReservation()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -569,6 +574,7 @@ namespace Rebellion.Tests.AI
         public void GetAvailableConstructionSpace_SelectedIndustry_DoesNotReserveItTwice()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(

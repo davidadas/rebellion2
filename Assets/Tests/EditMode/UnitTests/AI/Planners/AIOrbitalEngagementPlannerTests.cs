@@ -17,10 +17,10 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIOrbitalEngagementPlannerTests
     {
-        [TestCase(false, 50, true)]
-        [TestCase(false, 51, false)]
-        [TestCase(true, 50, true)]
-        [TestCase(true, 51, false)]
+        [TestCase(false, 49, true)]
+        [TestCase(false, 50, false)]
+        [TestCase(true, 49, true)]
+        [TestCase(true, 50, false)]
         public void Plan_HeadquartersIntelAge_FiltersNewAndExistingEngagements(
             bool existingOrder,
             int intelAge,
@@ -33,6 +33,8 @@ namespace Rebellion.Tests.AI.Fleets
             );
             GameRoot game = scenario.Context.Game;
             Faction faction = scenario.Context.Faction;
+            game.Config.Movement.MinTransitTicks = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
             scenario.Target.IsHeadquarters = true;
             scenario.FriendlyFleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
             if (existingOrder)

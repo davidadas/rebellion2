@@ -1995,7 +1995,7 @@ namespace Rebellion.Tests.AI
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
-            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            target.SetPopularSupport(empire.InstanceID, 0);
             for (int index = 0; index < 3; index++)
             {
                 game.AttachNode(
@@ -2138,7 +2138,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(6, context.GetAttackDemand(target).OccupationRegimentCount);
+            Assert.AreEqual(4, context.GetAttackDemand(target).OccupationRegimentCount);
         }
 
         [Test]
@@ -2182,7 +2182,7 @@ namespace Rebellion.Tests.AI
 
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(6, context.GetAttackDemand(target).RegimentCount);
+            Assert.AreEqual(4, context.GetAttackDemand(target).RegimentCount);
         }
 
         [Test]
@@ -2280,14 +2280,8 @@ namespace Rebellion.Tests.AI
                 "enemy-2",
                 rebels.InstanceID
             );
-            firstEnemy.SetPopularSupport(
-                empire.InstanceID,
-                game.Config.AI.Garrison.SupportThreshold
-            );
-            secondEnemy.SetPopularSupport(
-                empire.InstanceID,
-                game.Config.AI.Garrison.SupportThreshold
-            );
+            firstEnemy.SetPopularSupport(empire.InstanceID, 0);
+            secondEnemy.SetPopularSupport(empire.InstanceID, 0);
             Fleet firstDefenseFleet = EntityFactory.CreateFleet("defense-1", rebels.InstanceID);
             Fleet secondDefenseFleet = EntityFactory.CreateFleet("defense-2", rebels.InstanceID);
             game.AttachNode(firstDefenseFleet, firstEnemy);

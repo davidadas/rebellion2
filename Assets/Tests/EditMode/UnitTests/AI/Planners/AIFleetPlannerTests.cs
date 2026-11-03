@@ -21,10 +21,10 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
-        [TestCase(false, 50, true)]
-        [TestCase(false, 51, false)]
-        [TestCase(true, 50, true)]
-        [TestCase(true, 51, false)]
+        [TestCase(false, 49, true)]
+        [TestCase(false, 50, false)]
+        [TestCase(true, 49, true)]
+        [TestCase(true, 50, false)]
         public void Plan_HeadquartersIntelAge_FiltersNewAndExistingAttacks(
             bool existingOrder,
             int intelAge,
@@ -32,6 +32,8 @@ namespace Rebellion.Tests.AI.Fleets
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.Movement.MinTransitTicks = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
@@ -64,9 +66,9 @@ namespace Rebellion.Tests.AI.Fleets
         [TestCase(false, 0, false)]
         [TestCase(false, 1, false)]
         [TestCase(false, 5, true)]
-        [TestCase(true, 3, false)]
+        [TestCase(true, 3, true)]
         [TestCase(true, 5, true)]
-        public void Plan_BombardmentDonorOvercomesShields_OffersItsTransfer(
+        public void Plan_BombardmentDonorImprovesReadiness_OffersItsTransfer(
             bool assaultBlocked,
             int donorBombardment,
             bool expectedTransfer
@@ -90,6 +92,22 @@ namespace Rebellion.Tests.AI.Fleets
                     .OfType<AITransferUnitProposal>()
                     .Any(proposal => proposal.Unit == donor && proposal.TargetFleet == receiver)
             );
+            if (assaultBlocked && donorBombardment == 3)
+            {
+                Assert.Less(
+                    context.Assessment.GetFleetBombardmentStrength(receiver) + donorBombardment,
+                    context.GetAttackDemand(target).BombardmentStrength
+                );
+                Assert.Greater(
+                    new AIFleetProposalScorer().ScoreTransferReadinessGain(
+                        context,
+                        receiver,
+                        target,
+                        donor
+                    ),
+                    0
+                );
+            }
         }
 
         [Test]
@@ -278,6 +296,9 @@ namespace Rebellion.Tests.AI.Fleets
                 out Regiment _
             );
             context.Game.Config.AI.FleetDeployment.MinimumAttackStrength = int.MaxValue;
+            context.Game.Config.AI.FleetDeployment.LocalAttackMinimumStrengthPercent = 100;
+            context.Game.Config.AI.FleetDeployment.SupportOpportunityMinimumAttackStrengthPercent =
+                100;
             context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
 
             ExecuteFleetPlan(context);
@@ -665,7 +686,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Plan_WithMultipleIdleBattleFleets_AddsBestAttackProposal()
+        public void Plan_WithMultipleIdleBattleFleets_OffersAlternativesForOneAcceptedAttack()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -706,9 +727,22 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetAttackProposal>()
                 .ToList();
 
-            Assert.AreEqual(1, proposals.Count);
-            Assert.AreSame(expected.Fleet, proposals[0].Fleet);
-            Assert.AreSame(expected.TargetPlanet, proposals[0].TargetPlanet);
+            Assert.AreEqual(2, proposals.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { weaker, stronger },
+                proposals.Select(proposal => proposal.Fleet)
+            );
+            Assert.IsTrue(
+                proposals.All(proposal => proposal.TargetPlanet.InstanceID == enemy.InstanceID)
+            );
+            context.AddProposals(proposals);
+            new AIScoringPhase().Execute(context);
+            AIFleetAttackProposal selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIFleetAttackProposal>()
+                .Single();
+            Assert.AreEqual(scorer.Score(context, expected), selected.Score);
+            Assert.AreSame(expected.TargetPlanet, selected.TargetPlanet);
         }
 
         [Test]

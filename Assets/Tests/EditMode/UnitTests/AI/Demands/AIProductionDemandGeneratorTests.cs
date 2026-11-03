@@ -1230,7 +1230,7 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
-        public void BuildDemands_LegacyPolicyWithInboundThreat_RaisesThreatenedPlanetDefensePressure()
+        public void BuildDemands_WithInboundThreat_RaisesThreatenedPlanetDefensePressure()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
@@ -1252,6 +1252,13 @@ namespace Rebellion.Tests.AI.Demands
                 game,
                 valuablePlanet,
                 "valuable-construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                valuablePlanet,
+                "second-valuable-construction-yard",
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
             );
@@ -1376,7 +1383,7 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
-        public void BuildDemands_WithUnthreatenedInfrastructure_UsesConfiguredStarfighterRequirement()
+        public void BuildDemands_WithUnthreatenedInfrastructure_AppliesConfiguredStarfighterBaseline()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
@@ -1417,7 +1424,8 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationPlanet == planet
                 );
 
-            Assert.AreEqual(5, demand.QuantityNeeded);
+            Assert.AreEqual(3, demand.TargetCount);
+            Assert.AreEqual(1, demand.QuantityNeeded);
             Assert.IsTrue(demand.UsesDefensiveReserve);
         }
 
@@ -2397,6 +2405,8 @@ namespace Rebellion.Tests.AI.Demands
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.LocalAttackMinimumStrengthPercent = 100;
+            game.Config.AI.FleetDeployment.SupportOpportunityMinimumAttackStrengthPercent = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -2724,6 +2734,8 @@ namespace Rebellion.Tests.AI.Demands
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.LocalAttackMinimumStrengthPercent = 100;
+            game.Config.AI.FleetDeployment.SupportOpportunityMinimumAttackStrengthPercent = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);

@@ -716,9 +716,10 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_ScoredFleetsWithSevenAndOneYard_AssignsLargeHullToHigherScoringFleet()
+        public void Plan_UnrankedFleetsWithSevenAndOneYard_AssignsLargeHullToHigherScoringFleet()
         {
             AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
+            context.SetFleetProductionPriorities(System.Array.Empty<Fleet>());
 
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
                 .Plan(context)
@@ -815,7 +816,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Single();
 
             Assert.AreSame(large, proposal.ProducerPlanet);
-            Assert.AreEqual("a-large-hull", proposal.Product.GetReference().GetTypeID());
+            string expectedType =
+                kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+                    ? "z-small-hull"
+                    : "a-large-hull";
+            Assert.AreEqual(expectedType, proposal.Product.GetReference().GetTypeID());
             AIManufactureProposal alternative = proposal.ProducerAlternatives.Single(item =>
                 item.ProducerPlanet == small
             );
@@ -1038,6 +1043,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet producer = AITestSceneBuilder.AddPlanet(
@@ -1126,6 +1132,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet producer = AITestSceneBuilder.AddPlanet(
@@ -2996,7 +3003,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_PlanetaryStarfighterWithAvailableProducers_PrefersNearbyProducer()
+        public void Plan_PlanetaryStarfighterWithAvailableProducers_PrefersEarlierDelivery()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector destinationSector = AITestSceneBuilder.AddSector(
@@ -3086,7 +3093,8 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single();
 
-            Assert.AreSame(smallProducer, proposal.ProducerPlanet);
+            Assert.AreSame(largeProducer, proposal.ProducerPlanet);
+            Assert.AreEqual(1, proposal.ManufacturingCount);
             Assert.IsEmpty(proposal.ProducerAlternatives);
         }
 

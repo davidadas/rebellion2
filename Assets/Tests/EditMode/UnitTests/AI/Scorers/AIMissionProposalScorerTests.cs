@@ -700,8 +700,16 @@ namespace Rebellion.Tests.AI.Scorers
         {
             (AITurnContext context, Officer diplomat, Planet homeTarget, Planet otherTarget) =
                 CreateHeadquartersDiplomacyContext(useEmpire, ownedTargets, hasHeadquarters);
-            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight =
-                weight;
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy =
+                new GameConfig.AIDiplomacyUtilityConfig
+                {
+                    SupportDeficit = new GameConfig.AIConsiderationConfig
+                    {
+                        Weight = 1,
+                        SaturationValue = 100,
+                    },
+                    HeadquartersSector = new GameConfig.AIConsiderationConfig { Weight = weight },
+                };
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
             double homeScore = scorer.Score(
@@ -2020,6 +2028,13 @@ namespace Rebellion.Tests.AI.Scorers
                 );
                 candidate.SetPopularSupport(faction.InstanceID, support);
                 candidate.SetPopularSupport(opponent.InstanceID, 100 - support);
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    candidate,
+                    "economy-" + index,
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
                 if (revealed)
                 {
                     candidate.AddVisitor(faction.InstanceID);
@@ -2095,6 +2110,13 @@ namespace Rebellion.Tests.AI.Scorers
                     );
                     target.SetPopularSupport(faction.InstanceID, 40);
                     target.SetPopularSupport(enemy.InstanceID, 60);
+                    AITestSceneBuilder.AddProductionFacility(
+                        game,
+                        target,
+                        $"economy-{sectorIndex}-{targetIndex}",
+                        BuildingType.Mine,
+                        ManufacturingType.None
+                    );
                     target.AddVisitor(faction.InstanceID);
                     AITestSceneBuilder.RevealPlanet(game, faction, target);
                 }
@@ -2244,6 +2266,14 @@ namespace Rebellion.Tests.AI.Scorers
                 target.SetPopularSupport(faction.InstanceID, 50);
                 target.SetPopularSupport(opposingFaction.InstanceID, 50);
                 target.AddVisitor(faction.InstanceID);
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    target,
+                    "economy-" + target.InstanceID,
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
+                AITestSceneBuilder.RevealPlanet(game, faction, target);
             }
             Officer diplomat = EntityFactory.CreateOfficer("diplomat", faction.InstanceID);
             diplomat.Ratings[OfficerRating.Diplomacy] = 100;

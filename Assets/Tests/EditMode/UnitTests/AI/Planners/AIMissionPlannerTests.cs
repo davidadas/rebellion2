@@ -662,7 +662,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithDuplicateSabotageTargetTypes_OffersOneRepresentative()
+        public void Plan_WithDuplicateSabotageTargetTypes_OffersEachDistinctTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -708,8 +708,10 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
-            Assert.AreEqual(1, proposals.Length);
-            Assert.AreEqual(first.InstanceID, proposals[0].SelectedTarget.InstanceID);
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID },
+                proposals.Select(proposal => proposal.SelectedTarget.InstanceID)
+            );
         }
 
         [Test]
@@ -907,7 +909,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithAttackPreparationTargets_OffersOnlyHighestPriorityTargets()
+        public void Plan_WithAttackPreparationTargets_OffersEachEligibleTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
@@ -968,12 +970,20 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
-            Assert.AreEqual(1, proposals.Length);
-            Assert.AreEqual(defense.InstanceID, proposals[0].SelectedTarget.InstanceID);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    defense.InstanceID,
+                    regiment.InstanceID,
+                    starfighter.InstanceID,
+                    shipyard.InstanceID,
+                },
+                proposals.Select(proposal => proposal.SelectedTarget.InstanceID)
+            );
         }
 
         [Test]
-        public void Plan_WithAttackTargetAndMixedSabotageTargets_OffersOnlyShieldGenerators()
+        public void Plan_WithAttackTargetAndMixedSabotageTargets_PrioritizesShieldGenerator()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
@@ -1019,8 +1029,18 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
-            Assert.AreEqual(1, proposals.Length);
-            Assert.AreEqual(shield.InstanceID, proposals[0].SelectedTarget.InstanceID);
+            CollectionAssert.AreEquivalent(
+                new[] { shield.InstanceID, battery.InstanceID, regiment.InstanceID },
+                proposals.Select(proposal => proposal.SelectedTarget.InstanceID)
+            );
+            double shieldScore = proposals
+                .Single(proposal => proposal.SelectedTarget.InstanceID == shield.InstanceID)
+                .Score;
+            Assert.IsTrue(
+                proposals
+                    .Where(proposal => proposal.SelectedTarget.InstanceID != shield.InstanceID)
+                    .All(proposal => shieldScore > proposal.Score)
+            );
         }
 
         [Test]
@@ -1462,7 +1482,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithDecoyIntents_RetainsOneUnitAsPrimaryAgent()
+        public void Plan_WithDecoyIntents_OffersCandidatesWhilePreservingIntents()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1506,11 +1526,11 @@ namespace Rebellion.Tests.AI.Planners
                 context.GetSpecialForcesIntent(specialForcesDecoy)
             );
             Assert.IsTrue(proposals.Any(proposal => proposal.Participant == leadSpy));
-            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
+            Assert.IsTrue(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
         [Test]
-        public void Plan_WithMobileHeadquartersEspionageAgent_RetainsHeadquartersAgentAsPrimary()
+        public void Plan_WithMobileHeadquartersEspionageAgent_OffersCandidatesWhilePreservingIntents()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1569,7 +1589,7 @@ namespace Rebellion.Tests.AI.Planners
                     && proposal.TargetPlanet == headquarters
                 )
             );
-            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == remoteAgent));
+            Assert.IsTrue(proposals.Any(proposal => proposal.Participant == remoteAgent));
         }
 
         [Test]

@@ -54,7 +54,24 @@ namespace Rebellion.Tests.AI.Fleets
                             : 0
                     )
                 ) / (assaultBlocked ? 5 : 4);
-            double expected = (1 - before) / (2 - before);
+            double weakestBefore = new[]
+            {
+                1d,
+                (double)context.Assessment.GetFleetLoadedRegimentCount(receiver)
+                    / demand.RegimentCount,
+                (double)context.Assessment.GetFleetRegimentCapacity(receiver)
+                    / demand.RegimentCount,
+                (double)context.Assessment.GetProjectedFleetRegimentAttackStrength(receiver)
+                    / demand.RegimentStrength,
+                assaultBlocked
+                    ? (double)context.Assessment.GetProjectedFleetBombardmentStrength(receiver)
+                        / demand.BombardmentStrength
+                    : 1d,
+            }.Min();
+            double floorWeight = context.Game.Config.AI.FleetDeployment.AttackReadinessFloorWeight;
+            double currentReadiness = (before + weakestBefore * floorWeight) / (1 + floorWeight);
+            double expectedUtility = currentReadiness + (1 - before);
+            double expected = expectedUtility / (1 + expectedUtility);
 
             double score = new AIFleetProposalScorer().Score(
                 context,
@@ -98,7 +115,10 @@ namespace Rebellion.Tests.AI.Fleets
                 )
             );
 
-            Assert.AreEqual(0.2, score, 0.000001);
+            double currentReadiness =
+                0.75 / (1 + context.Game.Config.AI.FleetDeployment.AttackReadinessFloorWeight);
+            double expectedUtility = currentReadiness + 0.25;
+            Assert.AreEqual(expectedUtility / (1 + expectedUtility), score, 0.000001);
         }
 
         [TestCase(false, false)]
@@ -569,14 +589,10 @@ namespace Rebellion.Tests.AI.Fleets
         public void Score_AttackProposalForHeadquarters_ReturnsHigherScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.SystemPresence.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Headquarters.Weight = 1;
+            game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                Headquarters = new GameConfig.AIConsiderationConfig { Weight = 1 },
+            };
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -601,6 +617,8 @@ namespace Rebellion.Tests.AI.Fleets
             fleet.RoleType = FleetRoleType.Battle;
             fleet.AddChild(AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID));
             game.AttachNode(fleet, owned);
+            AITestSceneBuilder.RevealPlanet(game, empire, normalTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, headquartersTarget);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIFleetProposalScorer scorer = new AIFleetProposalScorer();
 
@@ -744,9 +762,9 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [TestCase(false, 0)]
-        [TestCase(false, 200)]
+        [TestCase(false, 199)]
         [TestCase(true, 0)]
-        [TestCase(true, 200)]
+        [TestCase(true, 199)]
         public void Score_OffensiveTargetWithinIntelGracePeriod_PreservesPriority(
             bool engagement,
             int intelAge
@@ -762,10 +780,10 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreEqual(scorer.Score(context, proposal), score);
         }
 
-        [TestCase(false, 300, 0.525)]
+        [TestCase(false, 300, 0.52025)]
         [TestCase(false, 400, 0.05)]
         [TestCase(false, 683, 0.05)]
-        [TestCase(true, 300, 0.525)]
+        [TestCase(true, 300, 0.52025)]
         [TestCase(true, 400, 0.05)]
         [TestCase(true, 683, 0.05)]
         public void Score_OffensiveTargetBeyondIntelGracePeriod_ReducesPriority(
@@ -1701,6 +1719,8 @@ namespace Rebellion.Tests.AI.Fleets
         ) CreateIntelAgeContext(int intelAge)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Movement.MinTransitTicks = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
             var config = game.Config.AI.FleetDeployment;
             config.AttackIntelAgeGraceTicks = 200;
             config.AttackUtility = new GameConfig.AIAttackUtilityConfig

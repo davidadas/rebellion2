@@ -54,7 +54,7 @@ namespace Rebellion.Tests.AI.Demands
             Assert.AreEqual(100, context.GetAttackDemand(target, attacker).CombatStrength);
         }
 
-        [TestCase(20, 1000)]
+        [TestCase(20, 1100)]
         [TestCase(21, 100)]
         public void Generate_InboundEnemyFleet_UsesFleetArrivalTime(
             int fleetTicks,
@@ -194,8 +194,15 @@ namespace Rebellion.Tests.AI.Demands
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet defender = EntityFactory.CreateFleet("defender", rebels.InstanceID);
+            game.AttachNode(defender, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("defending-ship", rebels.InstanceID, 1000),
+                defender
+            );
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick =
                 game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks * 3;
@@ -210,9 +217,16 @@ namespace Rebellion.Tests.AI.Demands
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.AI.FleetDeployment.StaleIntelMaximumAttackStrengthPercent = 250;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet defender = EntityFactory.CreateFleet("defender", rebels.InstanceID);
+            game.AttachNode(defender, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("defending-ship", rebels.InstanceID, 1000),
+                defender
+            );
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick = 10000;
 

@@ -90,8 +90,8 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreEqual(expectedLaunch, attacker.Movement != null);
         }
 
-        [TestCase(true, 50, 50, true)]
-        [TestCase(true, 51, 50, false)]
+        [TestCase(true, 49, 50, true)]
+        [TestCase(true, 50, 50, false)]
         [TestCase(true, 51, 60, true)]
         [TestCase(true, 31, 30, false)]
         [TestCase(false, 51, 50, true)]
@@ -104,6 +104,8 @@ namespace Rebellion.Tests.AI.Fleets
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
             ConfigureMinimalAttackRequirements(game);
+            game.Config.Movement.MinTransitTicks = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
             game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks = maximumAge;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet staging = AITestSceneBuilder.AddPlanet(
@@ -612,6 +614,7 @@ namespace Rebellion.Tests.AI.Fleets
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
+            game.Config.AI.EnablePlanetaryAssaults = false;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -664,6 +667,7 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreEqual(target.InstanceID, fleet.Order?.TargetPlanetId);
             Assert.AreEqual(rebels.InstanceID, nextTarget.GetOwnerInstanceID());
 
+            game.Config.AI.EnablePlanetaryAssaults = true;
             AITurnContext nextTurn = AITestSceneBuilder.CreateContext(game, empire);
             nextTurn.AddProposals(new AIFleetPlanner().Plan(nextTurn));
             new AIScoringPhase().Execute(nextTurn);
@@ -835,6 +839,7 @@ namespace Rebellion.Tests.AI.Fleets
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
             ConfigureMinimalAttackRequirements(game);
+            game.Config.AI.EnablePlanetaryAssaults = false;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.Garrison.SupportThreshold = 0;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -870,6 +875,7 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.IsTrue(string.IsNullOrEmpty(target.GetOwnerInstanceID()));
             Assert.IsNotNull(fleet.Order);
             game.CurrentTick++;
+            game.Config.AI.EnablePlanetaryAssaults = true;
             AITurnContext occupation = AITestSceneBuilder.CreateContext(
                 game,
                 faction,

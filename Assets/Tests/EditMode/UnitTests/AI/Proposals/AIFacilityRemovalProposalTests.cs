@@ -67,7 +67,10 @@ namespace Rebellion.Tests.AI.Proposals
                     InstanceID = "queued-cost",
                     OwnerInstanceID = context.Faction.InstanceID,
                     ManufacturingStatus = ManufacturingStatus.Building,
-                    MaintenanceCost = 1000,
+                    MaintenanceCost =
+                        context.AvailableProjectedMaintenanceHeadroom
+                        - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                        + 1,
                 },
                 hub
             );
@@ -95,7 +98,10 @@ namespace Rebellion.Tests.AI.Proposals
                     InstanceID = "queued-cost",
                     OwnerInstanceID = context.Faction.InstanceID,
                     ManufacturingStatus = ManufacturingStatus.Building,
-                    MaintenanceCost = 1000,
+                    MaintenanceCost =
+                        context.AvailableProjectedMaintenanceHeadroom
+                        - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                        + 1,
                 },
                 hub
             );

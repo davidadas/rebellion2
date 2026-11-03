@@ -17,7 +17,7 @@ namespace Rebellion.Tests.AI.Selectors
     public class AIProductionSelectorTests
     {
         [Test]
-        public void OrderInfrastructureProduction_ConstructionHubCovered_PrioritizesItsShipyard()
+        public void OrderInfrastructureProduction_EqualScoresAndConstructionHubCovered_PrioritizesItsShipyard()
         {
             AITurnContext context = CreateContext(
                 5,
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.AI.Selectors
                 out Planet shipyards,
                 out Planet expansion
             );
-            AIManufactureProposal shipyard = CreateProposal(shipyards, BuildingType.Shipyard, 0.5);
+            AIManufactureProposal shipyard = CreateProposal(shipyards, BuildingType.Shipyard, 0.9);
             AIManufactureProposal anotherHub = CreateProposal(
                 expansion,
                 BuildingType.ConstructionFacility,
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.AI.Selectors
         }
 
         [Test]
-        public void OrderInfrastructureProduction_LastConstructionYardSelected_SwitchesToShipyards()
+        public void OrderInfrastructureProduction_EqualScoresAndLastConstructionYardSelected_SwitchesToShipyards()
         {
             AITurnContext context = CreateContext(
                 4,
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.AI.Selectors
                 out Planet shipyards,
                 out Planet expansion
             );
-            AIManufactureProposal shipyard = CreateProposal(shipyards, BuildingType.Shipyard, 0.5);
+            AIManufactureProposal shipyard = CreateProposal(shipyards, BuildingType.Shipyard, 0.9);
             AIManufactureProposal anotherHub = CreateProposal(
                 expansion,
                 BuildingType.ConstructionFacility,
