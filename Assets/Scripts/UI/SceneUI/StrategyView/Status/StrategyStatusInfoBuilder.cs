@@ -277,14 +277,12 @@ internal sealed class StrategyStatusInfoBuilder
                 new StrategyStatusRow("Standard Processing Rate:", building.ProcessRate.ToString())
             );
             info.Rows.Add(
-                new StrategyStatusRow("Bombardment Value:", building.Bombardment.ToString())
+                new StrategyStatusRow("Bombardment Resistance:", building.Bombardment.ToString())
             );
         }
         else
         {
-            info.Rows.Add(
-                new StrategyStatusRow("Weapons Rating:", building.WeaponStrength.ToString())
-            );
+            info.Rows.Add(new StrategyStatusRow("Weapon Power:", building.WeaponPower.ToString()));
             info.Rows.Add(
                 new StrategyStatusRow("Shield Strength:", building.ShieldStrength.ToString())
             );

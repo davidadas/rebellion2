@@ -84,6 +84,14 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Create_Building_OmitsUnsupportedWeaponStrength()
+        {
+            XElement definition = ContentEditorUnitFactory.Create("Building");
+
+            Assert.IsNull(definition.Element(nameof(Building.WeaponStrength)));
+        }
+
+        [Test]
         public void Create_UnsupportedCategory_RejectsCreation()
         {
             Assert.Throws<ArgumentException>(() => ContentEditorUnitFactory.Create("GameConfig"));
