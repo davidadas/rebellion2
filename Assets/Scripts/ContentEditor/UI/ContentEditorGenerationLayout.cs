@@ -93,6 +93,30 @@ internal static class ContentEditorGenerationLayout
         };
 
     /// <summary>
+    /// Explains one grouped starting value whose component fields are shown as columns.
+    /// </summary>
+    /// <param name="name">The serialized object member.</param>
+    /// <returns>The verified generation behavior, or an empty string for an unknown extension.</returns>
+    internal static string GroupDescription(string name) =>
+        name switch
+        {
+            "NumStartingOfficers" =>
+                "The number of officers selected for this faction in each galaxy size.",
+            "CoreEnergy" => "The energy-capacity roll used for planets in core sectors.",
+            "RimEnergy" => "The energy-capacity roll used for planets in Outer Rim sectors.",
+            "CoreRawMaterials" => "The raw-material node roll used for planets in core sectors.",
+            "RimRawMaterials" =>
+                "The raw-material node roll used for planets in Outer Rim sectors.",
+            "Strong" =>
+                "The owning faction's popular-support roll on core planets in its strong bucket.",
+            "Weak" =>
+                "The owning faction's popular-support roll on core planets in its weak bucket.",
+            "Neutral" =>
+                "The first faction's popular-support roll on neutral core planets; the remainder is divided among the other factions.",
+            _ => string.Empty,
+        };
+
+    /// <summary>
     /// Finds immediate object collections, traversing ordinary nested settings but not list entries.
     /// </summary>
     /// <param name="project">The owning project.</param>
