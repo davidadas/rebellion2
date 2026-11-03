@@ -10,6 +10,7 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
 {
     private static readonly Color _onTextColor = Color.white;
     private static readonly Color _offTextColor = new Color(0.55f, 0.63f, 0.73f);
+    private static readonly Color _errorTextColor = new Color(0.95f, 0.30f, 0.26f);
 
     [SerializeField]
     private int _optionIndex;
@@ -108,6 +109,7 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     {
         VerifyReferences();
         BindControls();
+        _button.interactable = true;
         _toggleImage.sprite = enabled ? _onSprite : _offSprite;
         _labelTextField.color = enabled ? _onTextColor : _offTextColor;
         _stateTextField.text = enabled ? "ON" : "OFF";
@@ -123,6 +125,22 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     {
         UILayout.SetTextContent(_labelTextField, label ?? string.Empty);
         Render(enabled);
+    }
+
+    /// <summary>
+    /// Renders a disabled row for an option that could not be loaded.
+    /// </summary>
+    /// <param name="label">The player-facing option label.</param>
+    public void RenderError(string label)
+    {
+        VerifyReferences();
+        BindControls();
+        UILayout.SetTextContent(_labelTextField, label ?? string.Empty);
+        _toggleImage.sprite = _offSprite;
+        _labelTextField.color = _errorTextColor;
+        _stateTextField.text = "ERROR";
+        _stateTextField.color = _errorTextColor;
+        _button.interactable = false;
     }
 
     /// <summary>

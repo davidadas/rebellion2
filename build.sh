@@ -250,7 +250,7 @@ do_lint() {
 }
 
 do_test() {
-    run_unity_editmode_tests
+    run_unity_editmode_tests -releaseCodeOptimization
     echo "Test results written to $TEST_RESULTS"
 }
 
@@ -259,6 +259,7 @@ do_coverage() {
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
     run_unity_editmode_tests \
+        -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
         -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"

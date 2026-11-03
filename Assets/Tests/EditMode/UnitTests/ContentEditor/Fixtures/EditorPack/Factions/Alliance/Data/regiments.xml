@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Regiments>
+  <Regiment>
+    <TypeID>REAL001</TypeID>
+    <DisplayName>Alliance Fleet Regiment</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/Regiments/REAL001/display</DisplayImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Regiments/REAL001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>15</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>8</ConstructionCost>
+    <MaintenanceCost>6</MaintenanceCost>
+    <AttackRating>6</AttackRating>
+    <DefenseRating>3</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>15</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL002</TypeID>
+    <DisplayName>Alliance Army Regiment</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Units/Regiments/REAL002/display</DisplayImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Alliance/Units/Regiments/REAL002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>15</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <AttackRating>3</AttackRating>
+    <DefenseRating>5</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>15</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+</Regiments>

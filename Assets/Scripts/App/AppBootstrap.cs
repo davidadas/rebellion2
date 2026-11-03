@@ -44,6 +44,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private CutsceneManager _cutsceneManager;
     private DisplayManager _displayManager;
     private GraphicsManager _graphicsManager;
+    private Exception _initializationFailure;
     private Task _mainMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
@@ -104,7 +105,8 @@ public sealed class AppBootstrap : MonoBehaviour
 
         Destroy(obj);
         throw new System.InvalidOperationException(
-            "AppBootstrap initialization failed. See the preceding exception for the root cause."
+            "AppBootstrap initialization failed.",
+            bootstrap._initializationFailure
         );
     }
 
@@ -129,8 +131,9 @@ public sealed class AppBootstrap : MonoBehaviour
         {
             InitializeRuntimeCore();
         }
-        catch
+        catch (Exception exception)
         {
+            _initializationFailure = exception;
             ReleaseRuntimeServices();
             Instance = null;
             throw;

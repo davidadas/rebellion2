@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Starfighters>
+  <Starfighter>
+    <TypeID>SFEM01</TypeID>
+    <UprisingDefense>0</UprisingDefense>
+    <DisplayName>TIE Fighter Squadron</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM01/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>No</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>TIE fighters make up the bulk of all the Imperial starfighter corps.  The small craft has no life support mechanism, shield generators, or hyperdrive making them cheap to produce in large numbers.  Armaments are restricted to two laser cannons mounted below the pilot's control pod.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>12</DetectionRating>
+    <Bombardment>0</Bombardment>
+    <ShieldStrength>0</ShieldStrength>
+    <Hyperdrive>0</Hyperdrive>
+    <SublightSpeed>9</SublightSpeed>
+    <Agility>5</Agility>
+    <LaserCannon>5</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>0</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>0</IonRange>
+    <TorpedoRange>0</TorpedoRange>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Starfighter>
+  <Starfighter>
+    <TypeID>SFEM02</TypeID>
+    <UprisingDefense>0</UprisingDefense>
+    <DisplayName>TIE Bomber Squadron</DisplayName>
+    <DisplayImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/display</DisplayImagePath>
+    <BattleResultImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/damaged-small</DamagedSmallImagePath>
+    <EncyclopediaImagePath>Pack/Factions/Empire/Units/Starfighters/SFEM02/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>No</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Detection rating</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>A special purpose TIE model, the TIE bomber has two pods contained between bent wing solar panels.  One pod contains the pilot and gunner, and is used to control the craft.  The secondary pod contains the starfighter's weapon suite, including laser cannons, and heavy assault bombs.  The bomber, like other TIE models, has no hyperdrive, life support or shielding.</EncyclopediaDescription>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+    </ManufacturingFactionInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>12</DetectionRating>
+    <Bombardment>2</Bombardment>
+    <ShieldStrength>0</ShieldStrength>
+    <Hyperdrive>0</Hyperdrive>
+    <SublightSpeed>7</SublightSpeed>
+    <Agility>4</Agility>
+    <LaserCannon>5</LaserCannon>
+    <IonCannon>3</IonCannon>
+    <Torpedoes>8</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>12</IonRange>
+    <TorpedoRange>7</TorpedoRange>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>8</ResearchDifficulty>
+  </Starfighter>
+</Starfighters>

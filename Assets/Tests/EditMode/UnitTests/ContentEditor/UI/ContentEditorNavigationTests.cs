@@ -34,6 +34,35 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_RulesAndMissionPages_KeepAllNonAiRulesAccessible()
+        {
+            ContentPackEditorProject project = ContentEditorTestData.CreateProject(directory);
+            ContentEditorNavigation navigation = new ContentEditorNavigation();
+            navigation.Render(project.GetCatalogs());
+            navigation.SetExpanded(true);
+            ContentPackEditorField[] original = project
+                .GetCatalogs()
+                .Where(catalog => catalog.Name == "Rules")
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.GetFields())
+                .Where(field => field.Group != "AI")
+                .ToArray();
+            ContentPackEditorField[] projected = navigation
+                .GetRows(string.Empty)
+                .Where(node => node.Fields != null)
+                .SelectMany(node => node.Fields)
+                .Where(field => field.Record.Kind == "GameConfig")
+                .ToArray();
+            CollectionAssert.AreEqual(
+                original.Select(FieldIdentity).OrderBy(value => value, StringComparer.Ordinal),
+                projected
+                    .Select(FieldIdentity)
+                    .Distinct()
+                    .OrderBy(value => value, StringComparer.Ordinal)
+            );
+        }
+
+        [Test]
         public void Reveal_Record_ExpandsOnlyItsUnitsCategoryAndFactionAncestors()
         {
             ContentPackEditorCatalog officers = Catalog(
@@ -681,6 +710,14 @@ namespace Rebellion.Tests.ContentEditor.UI
                 navigation.GetRows(string.Empty).Any(row => row.Caption == "Unassigned")
             );
         }
+
+        /// <summary>
+        /// Identifies an authored field independently of its navigation page.
+        /// </summary>
+        /// <param name="field">The projected member.</param>
+        /// <returns>Its group, entry path and member identity.</returns>
+        private static string FieldIdentity(ContentPackEditorField field) =>
+            field.Group + "|" + string.Join("/", field.SectionPath) + "|" + field.Name;
 
         /// <summary>
         /// Creates a named-record catalog at a chosen scoped address.
