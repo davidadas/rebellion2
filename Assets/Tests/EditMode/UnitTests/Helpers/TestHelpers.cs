@@ -17,6 +17,8 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.GameEvents;
+using Rebellion.Gameplay.Scripting;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -728,6 +730,12 @@ public static class TestSystems
             game,
             new PersonnelQueries(game)
         );
+        GameEventCommands events = null;
+        DuelCommands duels = new(
+            game,
+            provider,
+            encounter => events.ProcessTriggeredEvents(new[] { encounter })
+        );
         MissionResolver resolver = new MissionResolver(
             game,
             provider,
@@ -735,8 +743,34 @@ public static class TestSystems
             uprising,
             queries,
             new MovementQueries(game),
+            duels,
             new MissionBetrayalResolver(game, provider),
             personnelCommands
+        );
+        events = new GameEventCommands(
+            game,
+            provider,
+            new GameActionCommands(
+                game,
+                provider,
+                new UnitFactory(
+                    TestContent.Data.Buildings,
+                    TestContent.Data.CapitalShips,
+                    TestContent.Data.Starfighters,
+                    TestContent.Data.Regiments,
+                    TestContent.Data.SpecialForces
+                ),
+                movement,
+                new PlanetaryControlCommands(
+                    game,
+                    new PlanetaryControlQueries(game),
+                    new FogOfWarQueries(game)
+                ),
+                duels,
+                new MessageCommands(game, new MessageFactory(TestContent.Data.MessageDefinitions)),
+                resolver,
+                new BlockadeTransitionResolver(game)
+            )
         );
         MissionCommands commands = new MissionCommands(game, queries, resolver, personnelCommands);
         _missionResolvers.Add(commands, resolver);

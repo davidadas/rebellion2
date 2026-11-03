@@ -348,10 +348,10 @@ namespace Rebellion.Game.Scripting
         public string UnitInstanceID { get; set; }
 
         /// <summary>
-        /// Gets or sets the required mission target, when the assignment must target one entity.
+        /// Gets or sets the unit whose immediate physical parent must match the mission destination.
         /// </summary>
         [PersistableAttribute]
-        public string TargetInstanceID { get; set; }
+        public string DestinationParentOfUnitInstanceID { get; set; }
     }
 
     /// <summary>

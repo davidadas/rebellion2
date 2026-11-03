@@ -1046,23 +1046,27 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sets the mission ID on result types that use it for report or outcome attribution.
+        /// Supplies missing mission attribution while preserving another producer's mission ID.
         /// </summary>
         /// <param name="result">The result to attribute to this mission.</param>
         internal void SetResultMissionID(GameResult result)
         {
             switch (result)
             {
-                case MissionCompletedResult completed:
+                case MissionCompletedResult completed
+                    when string.IsNullOrEmpty(completed.MissionInstanceID):
                     completed.MissionInstanceID = InstanceID;
                     break;
-                case PlanetsRevealedResult revealed:
+                case PlanetsRevealedResult revealed
+                    when string.IsNullOrEmpty(revealed.MissionInstanceID):
                     revealed.MissionInstanceID = InstanceID;
                     break;
-                case OfficerInjuredResult injured:
+                case OfficerInjuredResult injured
+                    when string.IsNullOrEmpty(injured.MissionInstanceID):
                     injured.MissionInstanceID = InstanceID;
                     break;
-                case OfficerCaptureStateResult capture:
+                case OfficerCaptureStateResult capture
+                    when string.IsNullOrEmpty(capture.MissionInstanceID):
                     capture.MissionInstanceID = InstanceID;
                     break;
             }

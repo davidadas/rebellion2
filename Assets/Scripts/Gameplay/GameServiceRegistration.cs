@@ -122,6 +122,7 @@ namespace Rebellion.Gameplay
                 locator.GetService<UprisingResolver>(),
                 locator.GetService<MissionQueries>(),
                 locator.GetService<MovementQueries>(),
+                locator.GetService<DuelCommands>(),
                 locator.GetService<MissionBetrayalResolver>(),
                 locator.GetService<PersonnelCommands>(),
                 locator.GetService<JediCommands>()

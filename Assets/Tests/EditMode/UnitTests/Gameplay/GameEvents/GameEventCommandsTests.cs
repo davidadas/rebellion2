@@ -1601,12 +1601,14 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             );
         }
 
-        [TestCase(false, false)]
-        [TestCase(true, false)]
-        [TestCase(true, true)]
-        public void ProcessTriggeredEvents_CapturedHeritage_ReportsEmperorOnlyForSharedTargetedMission(
+        [TestCase(false, false, false)]
+        [TestCase(true, false, false)]
+        [TestCase(true, true, false)]
+        [TestCase(true, true, true)]
+        public void ProcessTriggeredEvents_CapturedHeritage_RequiresSharedMissionToEmperorsPhysicalLocation(
             bool assigned,
-            bool targetsEmperor
+            bool sameDestination,
+            bool shipboard
         )
         {
             _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
@@ -1622,14 +1624,37 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             _game.AttachNode(vader, planet);
             luke.IsCaptured = true;
             vader.IsCaptured = false;
+            Planet emperorPlanet = planet;
+            if (!sameDestination)
+            {
+                emperorPlanet = new Planet
+                {
+                    InstanceID = "emperor-planet",
+                    OwnerInstanceID = "FNEMP1",
+                };
+                _game.AttachNode(emperorPlanet, sector);
+            }
+            ISceneNode emperorParent = emperorPlanet;
+            if (shipboard)
+            {
+                Fleet fleet = EntityFactory.CreateFleet("emperor-fleet", "FNEMP1");
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "emperor-ship",
+                    OwnerInstanceID = "FNEMP1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                _game.AttachNode(fleet, emperorPlanet);
+                _game.AttachNode(ship, fleet);
+                emperorParent = ship;
+            }
+            Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
+            emperor.IsCaptured = emperorParent.OwnerInstanceID != emperor.OwnerInstanceID;
+            _game.AttachNode(emperor, emperorParent);
+            emperor.IsCaptured = false;
             if (assigned)
             {
-                AbductionMission mission = new()
-                {
-                    InstanceID = "escort",
-                    OwnerInstanceID = "FNEMP1",
-                    TargetOfficerInstanceID = targetsEmperor ? "EMPEROR_PALPATINE" : "other",
-                };
+                StubMission mission = new("FNEMP1", planet.InstanceID) { InstanceID = "escort" };
                 _game.AttachNode(mission, planet);
                 _game.MoveNode(luke, mission);
                 _game.MoveNode(vader, mission);
@@ -1667,7 +1692,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             );
             foreach (MessageDeliveredResult result in delivered)
                 Assert.AreEqual(
-                    assigned && targetsEmperor,
+                    assigned && sameDestination && !shipboard,
                     result.Message.Body.Contains("taken to the Emperor")
                 );
         }

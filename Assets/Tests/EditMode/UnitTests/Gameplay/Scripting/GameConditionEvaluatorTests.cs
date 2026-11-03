@@ -32,22 +32,51 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [TestCase(null, true)]
-        [TestCase("target", true)]
+        [TestCase("ground", true)]
+        [TestCase("ship", false)]
         [TestCase("other", false)]
-        public void IsMet_AssignedMissionTarget_MatchesOnlyRequiredTarget(
-            string target,
+        [TestCase("mission", true)]
+        [TestCase("missing", false)]
+        public void IsMet_AssignedMissionDestination_MatchesReferencedUnitsPhysicalParent(
+            string location,
             bool expected
         )
         {
-            GameRoot game = BuildConditionGame(out Planet planet, out _);
+            GameRoot game = BuildConditionGame(out Planet planet, out Planet otherPlanet);
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
-            AbductionMission mission = new()
-            {
-                InstanceID = "mission",
-                TargetOfficerInstanceID = "target",
-            };
+            StubMission mission = new("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
             game.AttachNode(officer, mission);
+            if (location != null && location != "missing")
+            {
+                Officer destinationUnit = EntityFactory.CreateOfficer("destination", "empire");
+                ISceneNode parent = planet;
+                if (location == "ship")
+                {
+                    Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+                    CapitalShip ship = new CapitalShip
+                    {
+                        InstanceID = "ship",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    };
+                    game.AttachNode(fleet, planet);
+                    game.AttachNode(ship, fleet);
+                    parent = ship;
+                }
+                else if (location == "mission")
+                {
+                    StubMission assignment = new("empire", planet.InstanceID);
+                    game.AttachNode(assignment, planet);
+                    parent = assignment;
+                }
+                else if (location == "other")
+                {
+                    destinationUnit.OwnerInstanceID = otherPlanet.OwnerInstanceID;
+                    parent = otherPlanet;
+                }
+                game.AttachNode(destinationUnit, parent);
+            }
 
             Assert.AreEqual(
                 expected,
@@ -55,7 +84,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
                     new IsOnMissionConditional
                     {
                         UnitInstanceID = officer.InstanceID,
-                        TargetInstanceID = target,
+                        DestinationParentOfUnitInstanceID = location == null ? null : "destination",
                     },
                     game
                 )
@@ -63,7 +92,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        public void IsMet_UnassignedOfficerAtMissionTarget_DoesNotMatchAssignment()
+        public void IsMet_UnassignedOfficerAtDestination_DoesNotMatchAssignment()
         {
             GameRoot game = BuildConditionGame(out Planet planet, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
@@ -71,11 +100,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             Assert.IsFalse(
                 GameConditionEvaluator.IsMet(
-                    new IsOnMissionConditional
-                    {
-                        UnitInstanceID = officer.InstanceID,
-                        TargetInstanceID = planet.InstanceID,
-                    },
+                    new IsOnMissionConditional { UnitInstanceID = officer.InstanceID },
                     game
                 )
             );

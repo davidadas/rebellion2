@@ -622,11 +622,11 @@ namespace Rebellion.Gameplay.Scripting
         }
 
         /// <summary>
-        /// Checks whether the referenced unit is assigned to a mission with the optional target.
+        /// Checks an assignment and its optional destination relative to another unit.
         /// </summary>
         /// <param name="definition">The authored condition being evaluated.</param>
         /// <param name="context">The context used to resolve the unit.</param>
-        /// <returns>True when the unit's assignment satisfies the authored target filter.</returns>
+        /// <returns>True when the assignment satisfies the authored destination filter.</returns>
         private static bool IsMet(IsOnMissionConditional definition, GameConditionContext context)
         {
             ISceneNode sceneNode = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
@@ -635,9 +635,16 @@ namespace Rebellion.Gameplay.Scripting
             );
             if (sceneNode?.GetParent() is not Mission mission)
                 return false;
-            return string.IsNullOrWhiteSpace(definition.TargetInstanceID)
-                || mission is IEntityTargetingMission targeted
-                    && targeted.TargetEntityInstanceID == definition.TargetInstanceID;
+            if (string.IsNullOrWhiteSpace(definition.DestinationParentOfUnitInstanceID))
+                return true;
+            ISceneNode destinationUnit = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
+                definition.DestinationParentOfUnitInstanceID,
+                includeDisabled: true
+            );
+            ISceneNode parent = destinationUnit?.GetParent();
+            if (parent is Mission assignment)
+                parent = assignment.GetParent();
+            return parent != null && mission.LocationInstanceID == parent.InstanceID;
         }
 
         /// <summary>

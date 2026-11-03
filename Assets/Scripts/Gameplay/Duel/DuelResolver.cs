@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
@@ -206,6 +207,7 @@ namespace Rebellion.Gameplay
                         TargetOfficer = encountered,
                         IsCaptured = true,
                         ParentAtCapture = encountered.GetParent(),
+                        MissionInstanceID = (encountered.GetParent() as Mission)?.InstanceID,
                         CapturingUnit = opposing,
                         CapturedOfficer = encountered,
                         LinkedOfficer = opposing,
@@ -284,6 +286,7 @@ namespace Rebellion.Gameplay
                     {
                         Officer = injured,
                         ParentAtInjury = injured.GetParent(),
+                        MissionInstanceID = (injured.GetParent() as Mission)?.InstanceID,
                         Severity = injury,
                         Tick = _game.CurrentTick,
                     },
