@@ -786,14 +786,16 @@ namespace Rebellion.Game.Units
         /// <returns>The rating value after officer-specific modifiers.</returns>
         public int GetEffectiveRating(SkillRating rating)
         {
-            int baseRating = GetBaseRating(rating);
-            int officerRating = rating switch
+            switch (rating)
             {
-                SkillRating.Diplomacy => GetForceRating(ref _enhancedDiplomacy, rating),
-                SkillRating.Espionage => GetForceRating(ref _enhancedEspionage, rating),
-                SkillRating.Combat => GetForceRating(ref _enhancedCombat, rating),
-                _ => baseRating,
-            };
+                case SkillRating.Diplomacy:
+                    return GetForceRating(ref _enhancedDiplomacy, rating);
+                case SkillRating.Espionage:
+                    return GetForceRating(ref _enhancedEspionage, rating);
+                case SkillRating.Combat:
+                    return GetForceRating(ref _enhancedCombat, rating);
+            }
+            int officerRating = GetBaseRating(rating);
 
             if (rating == SkillRating.Leadership)
             {
