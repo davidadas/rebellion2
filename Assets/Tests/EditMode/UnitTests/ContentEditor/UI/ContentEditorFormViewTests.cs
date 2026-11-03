@@ -918,6 +918,26 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_StartingSetupRange_ShowsDescriptionIconBesideGroupedCaption()
+        {
+            ContentPackEditorRecord setup = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "GameGenerationConfig");
+
+            SelectRecord(setup);
+            RenderSection("Resources");
+            Canvas.ForceUpdateCanvases();
+
+            TMP_Text caption = view.GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.text == "Core energy");
+            HelpTooltipView info = caption.GetComponentInChildren<HelpTooltipView>();
+            Assert.IsNotNull(info);
+            Assert.IsTrue(info.gameObject.activeSelf);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
         public void Render_InvalidAuthoredBoolean_AllowsRepairThroughTheTextInput()
         {
             ContentPackEditorCatalog catalog = project

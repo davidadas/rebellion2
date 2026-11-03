@@ -1408,7 +1408,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             x + 4,
             y + headerHeight + 4,
             captionWidth - 12,
-            false
+            false,
+            ContentEditorGenerationLayout.GroupDescription(
+                terms.FirstOrDefault()?.XmlElement.Parent?.Name.LocalName ?? string.Empty
+            )
         );
         for (int i = 0; i < terms.Length; i++)
         {

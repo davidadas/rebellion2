@@ -1,7 +1,11 @@
 using System.IO;
+using System.Linq;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -9,6 +13,49 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class GenerationConfigSchemaTests
     {
+        [TestCase("string")]
+        [TestCase("String")]
+        public void Validate_StartingFacilityElementName_PreservesOrderedQuantitiesWhenLoaded(
+            string itemName
+        )
+        {
+            XDocument document = XDocument.Parse(CreateGenerationXml(string.Empty));
+            string[] expected = { "FACILITY_TWO", "FACILITY_ONE", "FACILITY_TWO" };
+            document
+                .Descendants("FacilityTypeIDs")
+                .Single()
+                .ReplaceNodes(expected.Select(value => new XElement(itemName, value)));
+            string xml = document.ToString();
+
+            ValidateGenerationConfigXml(xml);
+            using StringReader reader = new(xml);
+            GameGenerationConfig config = (GameGenerationConfig)
+                new GameSerializer(typeof(GameGenerationConfig)).Deserialize(reader);
+
+            CollectionAssert.AreEqual(
+                expected,
+                config.FacilityGeneration.HQLoadouts[0].FacilityTypeIDs
+            );
+        }
+
+        [TestCase("String", " ")]
+        [TestCase("STRING", "FACILITY_TYPE")]
+        public void Validate_InvalidStartingFacilityElement_RejectsDocument(
+            string itemName,
+            string value
+        )
+        {
+            XDocument document = XDocument.Parse(CreateGenerationXml(string.Empty));
+            document
+                .Descendants("FacilityTypeIDs")
+                .Single()
+                .ReplaceNodes(new XElement(itemName, value));
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                ValidateGenerationConfigXml(document.ToString())
+            );
+        }
+
         [Test]
         public void Validate_ValidStartingOfficer_AcceptsDocument()
         {

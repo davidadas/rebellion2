@@ -10,6 +10,41 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
         [Test]
+        public void Save_HeadquartersFacilityList_PreservesOrderedQuantitiesWhenLoaded()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorDocument generation = project.Documents.Single(document =>
+                document.Address.EndsWith("/generation.xml", StringComparison.Ordinal)
+            );
+            XDocument xml = XDocument.Parse(generation.Text);
+            xml.Descendants("FacilityTypeIDs").First().RemoveNodes();
+            project.SetDocumentText(generation, xml.ToString());
+            ContentPackEditorField facilities = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "GameGenerationConfig")
+                .SelectMany(record => record.GetFields())
+                .First(field => field.MemberName == "FacilityTypeIDs");
+            string[] buildingIDs = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Building")
+                .Select(record => record.ID)
+                .Take(2)
+                .ToArray();
+            string[] expected = { buildingIDs[1], buildingIDs[0], buildingIDs[1] };
+
+            project.SetFieldValues(facilities, expected);
+            ContentPackEditorStorage.Save(project);
+            ContentPack loaded = ContentPackLoader.OpenFolder(contentRoot, project.PackRootPath);
+
+            CollectionAssert.AreEqual(
+                expected,
+                loaded.GameData.GenerationConfig.FacilityGeneration.HQLoadouts[0].FacilityTypeIDs
+            );
+        }
+
+        [Test]
         public void ImportAsset_RelativeAdvisorAudio_KeepsTheDeclaredRootAndClipName()
         {
             WriteFixtureFile(
