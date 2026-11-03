@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Units;
 
@@ -8,6 +10,59 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class GameDataCatalogTests
     {
+        [TestCase(BuildingType.None, ManufacturingType.None)]
+        [TestCase(BuildingType.Mine, ManufacturingType.None)]
+        [TestCase(BuildingType.Refinery, ManufacturingType.None)]
+        [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
+        [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
+        [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building)]
+        [TestCase(BuildingType.Defense, ManufacturingType.None)]
+        [TestCase(BuildingType.Weapon, ManufacturingType.None)]
+        [TestCase(BuildingType.Headquarters, ManufacturingType.None)]
+        public void ValidateBuildingCapabilities_ValidProductionCombination_DoesNotThrow(
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            Building building = CreateBuilding("building");
+            building.BuildingType = buildingType;
+            building.ProductionType = productionType;
+
+            Assert.DoesNotThrow(() =>
+                GameDataCatalog.ValidateBuildingCapabilities(new[] { building })
+            );
+        }
+
+        [TestCaseSource(nameof(InvalidBuildingProductionTypes))]
+        public void ValidateBuildingCapabilities_InvalidProductionCombination_ThrowsInvalidDataException(
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            Building building = CreateBuilding("building");
+            building.BuildingType = buildingType;
+            building.ProductionType = productionType;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBuildingCapabilities(new[] { building })
+            );
+
+            StringAssert.Contains("requires production type", exception.Message);
+        }
+
+        [Test]
+        public void ValidateBuildingCapabilities_WeaponStrength_ThrowsInvalidDataException()
+        {
+            Building building = CreateBuilding("building");
+            building.WeaponStrength = 1;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBuildingCapabilities(new[] { building })
+            );
+
+            StringAssert.Contains("unsupported weapon strength", exception.Message);
+        }
+
         [Test]
         public void ValidateBuildingUpgrades_ValidUpgradePath_DoesNotThrow()
         {
@@ -148,6 +203,42 @@ namespace Rebellion.Tests.Content
             Building building = new Building { TypeID = typeID };
             building.Upgrades.AddRange(upgrades);
             return building;
+        }
+
+        /// <summary>
+        /// Enumerates every building and production-type pairing outside the supported matrix.
+        /// </summary>
+        /// <returns>The invalid building capability combinations.</returns>
+        private static IEnumerable<TestCaseData> InvalidBuildingProductionTypes()
+        {
+            IReadOnlyDictionary<BuildingType, ManufacturingType> validProductionTypes =
+                new Dictionary<BuildingType, ManufacturingType>
+                {
+                    [BuildingType.None] = ManufacturingType.None,
+                    [BuildingType.Mine] = ManufacturingType.None,
+                    [BuildingType.Refinery] = ManufacturingType.None,
+                    [BuildingType.Shipyard] = ManufacturingType.Ship,
+                    [BuildingType.TrainingFacility] = ManufacturingType.Troop,
+                    [BuildingType.ConstructionFacility] = ManufacturingType.Building,
+                    [BuildingType.Defense] = ManufacturingType.None,
+                    [BuildingType.Weapon] = ManufacturingType.None,
+                    [BuildingType.Headquarters] = ManufacturingType.None,
+                };
+
+            return Enum.GetValues(typeof(BuildingType))
+                .Cast<BuildingType>()
+                .SelectMany(buildingType =>
+                    Enum.GetValues(typeof(ManufacturingType))
+                        .Cast<ManufacturingType>()
+                        .Where(productionType =>
+                            productionType != validProductionTypes[buildingType]
+                        )
+                        .Select(productionType =>
+                            new TestCaseData(buildingType, productionType).SetName(
+                                $"ValidateBuildingCapabilities_{buildingType}_{productionType}_ThrowsInvalidDataException"
+                            )
+                        )
+                );
         }
 
         /// <summary>
