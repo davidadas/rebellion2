@@ -143,7 +143,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <param name="context">The input callback context.</param>
     public void OnCancelOrSettings(InputAction.CallbackContext context)
     {
-        if (!context.performed)
+        if (!context.performed || AreApplicationShortcutsSuppressed())
             return;
 
         if (CurrentContext == InputContext.Cutscene || LoadingScreenController.IsLoadInProgress)
@@ -163,6 +163,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     {
         if (
             !context.performed
+            || AreApplicationShortcutsSuppressed()
             || CurrentContext == InputContext.Cutscene
             || LoadingScreenController.IsLoadInProgress
         )
@@ -271,13 +272,23 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>True when gameplay shortcuts can run; otherwise false.</returns>
     private bool CanUseGameplayShortcuts()
     {
-        return !UIInputFocus.IsTextEntryActive()
+        return !AreApplicationShortcutsSuppressed()
             && !LoadingScreenController.IsLoadInProgress
             && (
                 CurrentContext == InputContext.Strategy
                 || CurrentContext == InputContext.Tactical
                 || CurrentContext == InputContext.None
             );
+    }
+
+    /// <summary>
+    /// Returns whether another UI interaction currently owns application shortcut input.
+    /// </summary>
+    /// <returns>True when application shortcut callbacks should ignore input.</returns>
+    private bool AreApplicationShortcutsSuppressed()
+    {
+        return _inputManager?.AreApplicationShortcutsSuppressed == true
+            || UIInputFocus.IsTextEntryActive();
     }
 
     /// <summary>

@@ -332,7 +332,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void BeginRebind_Escape_CancelsCaptureWithoutPerformingGlobalShortcut()
+        public void BeginRebind_Escape_CancelsCaptureWithoutDisablingApplicationActions()
         {
             InputTestFixture inputFixture = new();
             inputFixture.Setup();
@@ -340,8 +340,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             InputManager inputManager = inputRoot.AddComponent<InputManager>();
             Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
             InputAction cancel = inputManager.Asset.FindAction("Global/CancelOrSettings", true);
-            int cancelCount = 0;
-            cancel.performed += _ => cancelCount++;
             cancel.actionMap.Enable();
 
             try
@@ -354,24 +352,47 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .index;
                 session.BeginRebind(row, false);
 
+                Assert.IsTrue(cancel.enabled);
+                Assert.IsTrue(inputManager.AreApplicationShortcutsSuppressed);
+
                 InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
                 InputSystem.Update();
 
                 Assert.AreEqual(-1, session.ListeningRow);
-                Assert.AreEqual(0, cancelCount);
-
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-                InputSystem.Update();
-                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
-                InputSystem.Update();
-
-                Assert.AreEqual(1, cancelCount);
+                Assert.IsTrue(cancel.enabled);
+                Assert.IsFalse(inputManager.AreApplicationShortcutsSuppressed);
             }
             finally
             {
                 cancel.actionMap.Disable();
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
+            }
+        }
+
+        [Test]
+        public void SetTextEntryActive_Inactive_ReleasesSuppressionWithoutDisablingActions()
+        {
+            InputAction cancel = _inputManager.Asset.FindAction("Global/CancelOrSettings", true);
+            cancel.actionMap.Enable();
+
+            try
+            {
+                using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+
+                session.SetTextEntryActive(true);
+
+                Assert.IsTrue(cancel.enabled);
+                Assert.IsTrue(_inputManager.AreApplicationShortcutsSuppressed);
+
+                session.SetTextEntryActive(false);
+
+                Assert.IsTrue(cancel.enabled);
+                Assert.IsFalse(_inputManager.AreApplicationShortcutsSuppressed);
+            }
+            finally
+            {
+                cancel.actionMap.Disable();
             }
         }
 
