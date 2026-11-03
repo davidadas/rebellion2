@@ -332,15 +332,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void BeginRebind_Escape_CancelsCaptureWithoutDisablingApplicationActions()
+        public void BeginRebind_Escape_CancelsCaptureBeforeSubsequentApplicationCancellation()
         {
             InputTestFixture inputFixture = new();
             inputFixture.Setup();
             GameObject inputRoot = new("IsolatedInputManager");
             InputManager inputManager = inputRoot.AddComponent<InputManager>();
+            AppInputController controller = inputRoot.AddComponent<AppInputController>();
             Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
             InputAction cancel = inputManager.Asset.FindAction("Global/CancelOrSettings", true);
-            cancel.actionMap.Enable();
+            CountingCancelable cancelable = new();
+            CancelStack cancelStack = new();
+            cancelStack.Register(cancelable);
+            controller.Initialize(inputManager, cancelStack, null);
 
             try
             {
@@ -359,12 +363,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 InputSystem.Update();
 
                 Assert.AreEqual(-1, session.ListeningRow);
+                Assert.AreEqual(0, cancelable.CancelCount);
                 Assert.IsTrue(cancel.enabled);
                 Assert.IsFalse(inputManager.AreApplicationShortcutsSuppressed);
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                InputSystem.Update();
+
+                Assert.AreEqual(1, cancelable.CancelCount);
+                Assert.IsTrue(cancel.enabled);
             }
             finally
             {
-                cancel.actionMap.Disable();
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
             }
@@ -486,6 +498,21 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 strategy.Disable();
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
+            }
+        }
+
+        private sealed class CountingCancelable : ICancelable
+        {
+            public int CancelCount { get; private set; }
+
+            /// <summary>
+            /// Records one application cancellation.
+            /// </summary>
+            /// <returns>True because the test cancellation is handled.</returns>
+            public bool TryCancel()
+            {
+                CancelCount++;
+                return true;
             }
         }
 
