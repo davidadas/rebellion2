@@ -46,3 +46,37 @@ public sealed class ContentModDefinition
     /// </summary>
     public string BasePackVersion => _basePackVersion;
 }
+
+/// <summary>
+/// Describes a content mod that could not be discovered safely.
+/// </summary>
+public sealed class ContentModIssue
+{
+    /// <summary>
+    /// Gets the best available stable identifier, falling back to the mod folder name.
+    /// </summary>
+    public string ID { get; }
+
+    /// <summary>
+    /// Gets the best available player-facing name, falling back to the mod folder name.
+    /// </summary>
+    public string DisplayName { get; }
+
+    /// <summary>
+    /// Gets the reason the mod could not be loaded.
+    /// </summary>
+    public string Message { get; }
+
+    /// <summary>
+    /// Creates a failed content-mod discovery result.
+    /// </summary>
+    /// <param name="id">The best available mod identifier.</param>
+    /// <param name="displayName">The best available player-facing name.</param>
+    /// <param name="message">The discovery failure.</param>
+    public ContentModIssue(string id, string displayName, string message)
+    {
+        ID = id ?? string.Empty;
+        DisplayName = displayName ?? string.Empty;
+        Message = message ?? string.Empty;
+    }
+}

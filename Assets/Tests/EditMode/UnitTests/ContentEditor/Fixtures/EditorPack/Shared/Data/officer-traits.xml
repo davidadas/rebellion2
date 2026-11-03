@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<OfficerTraits>
+  <Trait ID="smuggler">
+    <PersonnelTravelTimePercent>50</PersonnelTravelTimePercent>
+    <SharesPersonnelTravelTimeModifier>true</SharesPersonnelTravelTimeModifier>
+  </Trait>
+  <Trait ID="leadership-bonus">
+    <LeadershipBonusPercent>50</LeadershipBonusPercent>
+  </Trait>
+</OfficerTraits>

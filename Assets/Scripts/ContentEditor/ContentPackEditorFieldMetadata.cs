@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Missions;
 
 /// <summary>
@@ -8,6 +9,153 @@ using Rebellion.Game.Missions;
 /// </summary>
 internal static class ContentPackEditorFieldMetadata
 {
+    private static readonly IReadOnlyDictionary<
+        (Type Owner, string Member),
+        string
+    > _generationDescriptions = new Dictionary<(Type, string), string>
+    {
+        [(typeof(StartingOfficerRule), nameof(StartingOfficerRule.OfficerInstanceID))] =
+            "The officer guaranteed to join the starting roster when this rule applies.",
+        [(typeof(StartingOfficerRule), nameof(StartingOfficerRule.GalaxySizes))] =
+            "Galaxy sizes where this officer is guaranteed. Leave all unchecked to use every size.",
+        [(typeof(StartingOfficerRule), nameof(StartingOfficerRule.DestinationTypeID))] =
+            "A planet type or faction headquarters where the officer starts. Leave both destinations unset to use a friendly starting location.",
+        [(typeof(StartingOfficerRule), nameof(StartingOfficerRule.DestinationInstanceID))] =
+            "A specific planet instance where the officer starts. Selecting this replaces the other destination.",
+        [(typeof(FactionSetup), nameof(FactionSetup.FactionID))] =
+            "The faction receiving these research, officer, and starting-planet settings.",
+        [(typeof(FactionSetup), nameof(FactionSetup.StartingResearchLevel))] =
+            "The highest starting research order unlocked for buildings, ships, and troops.",
+        [(typeof(PlanetSizeProfile), nameof(PlanetSizeProfile.Small))] =
+            "The number of officers selected for this faction in a small galaxy.",
+        [(typeof(PlanetSizeProfile), nameof(PlanetSizeProfile.Medium))] =
+            "The number of officers selected for this faction in a medium galaxy.",
+        [(typeof(PlanetSizeProfile), nameof(PlanetSizeProfile.Large))] =
+            "The number of officers selected for this faction in a large galaxy.",
+        [(typeof(StartingPlanet), nameof(StartingPlanet.PlanetTypeID))] =
+            "The specific planet assigned to this faction. This is ignored when a random Outer Rim planet is selected.",
+        [(typeof(StartingPlanet), nameof(StartingPlanet.IsHeadquarters))] =
+            "Marks this starting planet as the faction's headquarters.",
+        [(typeof(StartingPlanet), nameof(StartingPlanet.Loyalty))] =
+            "The percentage of starting popular support assigned to the owning faction on this planet.",
+        [(typeof(StartingPlanet), nameof(StartingPlanet.PickFromRim))] =
+            "Selects a random unused Outer Rim planet instead of the configured planet.",
+        [(typeof(StartingPlanet), nameof(StartingPlanet.VisibleToFactionIDs))] =
+            "Additional factions that know this planet at game start.",
+        [(typeof(FactionBucketConfig), nameof(FactionBucketConfig.FactionID))] =
+            "The faction assigned these shares of strong and weak core planets.",
+        [(typeof(FactionBucketConfig), nameof(FactionBucketConfig.StrongPct))] =
+            "The percentage of all core planets assigned to this faction's strong bucket. Fixed core starting planets count toward this share.",
+        [(typeof(FactionBucketConfig), nameof(FactionBucketConfig.WeakPct))] =
+            "The percentage of all core planets assigned to this faction's weak bucket.",
+        [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.Difficulty))] =
+            "The difficulty where this ownership override applies.",
+        [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.ControllerType))] =
+            "Whether this override applies when the faction is controlled by a player or the AI.",
+        [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.StrongPct))] =
+            "The strong core-planet percentage used instead of the faction's default for this difficulty and controller.",
+        [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.WeakPct))] =
+            "The weak core-planet percentage used instead of the faction's default for this difficulty and controller.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.Availability))] =
+            "The resource-availability setting that selects this profile for a new game.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.EnergyMin))] =
+            "The minimum energy capacity after a planet's energy roll.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.EnergyMax))] =
+            "The maximum energy capacity after a planet's energy roll.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.RawMaterialsMin))] =
+            "The minimum raw-material node count after a planet's resource roll.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.RawMaterialsMax))] =
+            "The maximum raw-material node count after a planet's resource roll. The result cannot exceed the planet's energy capacity.",
+        [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.RimColonizationPct))] =
+            "The percentage chance that an uncolonized Outer Rim planet starts colonized.",
+        [(typeof(PlanetSupportSection), nameof(PlanetSupportSection.RimSupportRandom))] =
+            "Stored in starting setup data but not currently applied during planet generation.",
+        [
+            (
+                typeof(FacilityGenerationSection),
+                nameof(FacilityGenerationSection.CoreMineMultiplier)
+            )
+        ] =
+            "Percentage points of mine placement chance per unfilled raw-material node on core planets.",
+        [(typeof(FacilityGenerationSection), nameof(FacilityGenerationSection.RimMineMultiplier))] =
+            "Percentage points of mine placement chance per unfilled raw-material node on Outer Rim planets.",
+        [(typeof(FacilityGenerationSection), nameof(FacilityGenerationSection.MineTypeID))] =
+            "The building created when a starting mine placement succeeds.",
+        [
+            (
+                typeof(FacilityGenerationSection),
+                nameof(FacilityGenerationSection.FacilityTableRollMin)
+            )
+        ] = "The inclusive minimum roll used by the core and Outer Rim building tables.",
+        [
+            (
+                typeof(FacilityGenerationSection),
+                nameof(FacilityGenerationSection.FacilityTableRollMaxExclusive)
+            )
+        ] = "The exclusive maximum roll used by the core and Outer Rim building tables.",
+        [(typeof(WeightedFacilityEntry), nameof(WeightedFacilityEntry.CumulativeWeight))] =
+            "The first roll value that selects this entry. It remains selected until the next entry's value.",
+        [(typeof(WeightedFacilityEntry), nameof(WeightedFacilityEntry.TypeID))] =
+            "The building selected for this roll range. Leave empty to create no building.",
+        [(typeof(HQFacilityLoadout), nameof(HQFacilityLoadout.PlanetTypeID))] =
+            "The planet receiving these fixed buildings. Faction headquarters resolves to the selected faction's headquarters.",
+        [(typeof(HQFacilityLoadout), nameof(HQFacilityLoadout.FactionID))] =
+            "The faction used to resolve a faction-headquarters destination.",
+        [(typeof(HQFacilityLoadout), nameof(HQFacilityLoadout.FacilityTypeIDs))] =
+            "The buildings and quantities placed on this planet at game start.",
+        [
+            (
+                typeof(UnitDeploymentSection),
+                nameof(UnitDeploymentSection.UprisingPreventionThreshold)
+            )
+        ] =
+            "Owned colonized planets below this support percentage receive automatic garrison troops.",
+        [
+            (
+                typeof(UnitDeploymentSection),
+                nameof(UnitDeploymentSection.SupportDeficitPerGarrisonTroop)
+            )
+        ] =
+            "Each automatic garrison troop covers this many percentage points below the uprising threshold.",
+        [(typeof(FixedGarrison), nameof(FixedGarrison.PlanetTypeID))] =
+            "The planet receiving these starting units. Faction headquarters resolves to this entry's faction headquarters.",
+        [(typeof(FixedGarrison), nameof(FixedGarrison.FactionID))] =
+            "The faction that owns the placed units and resolves a faction-headquarters destination.",
+        [(typeof(FixedFleet), nameof(FixedFleet.PlanetTypeID))] =
+            "The fleet's fixed destination. This is replaced when possible starting planets are configured.",
+        [(typeof(FixedFleet), nameof(FixedFleet.TargetPlanets))] =
+            "Possible fleet destinations. One is selected at random, replacing the fixed destination and spawn chance.",
+        [(typeof(FixedFleet), nameof(FixedFleet.FactionID))] =
+            "The faction that owns the fleet and resolves faction-headquarters destinations.",
+        [(typeof(FixedFleet), nameof(FixedFleet.SpawnChancePct))] =
+            "The percentage chance to create this fleet at its fixed destination. Possible starting planets bypass this roll.",
+        [(typeof(FixedFleetShip), nameof(FixedFleetShip.TypeID))] =
+            "The capital-ship design created for this starting fleet.",
+        [(typeof(FixedFleetShip), nameof(FixedFleetShip.Count))] =
+            "The number of this capital ship created for the fleet.",
+        [(typeof(UnitEntry), nameof(UnitEntry.TypeID))] = "The unit design created by this entry.",
+        [(typeof(UnitEntry), nameof(UnitEntry.Count))] =
+            "The number of this unit created whenever the entry is deployed.",
+        [(typeof(FactionBudget), nameof(FactionBudget.FactionID))] =
+            "The faction receiving units from this maintenance-based starting budget.",
+        [(typeof(StartingUnitBudgetBonus), nameof(StartingUnitBudgetBonus.Difficulty))] =
+            "The difficulty where this additional starting-unit budget applies.",
+        [(typeof(StartingUnitBudgetBonus), nameof(StartingUnitBudgetBonus.AIOnly))] =
+            "Limits this additional budget to factions not controlled by the player.",
+        [(typeof(StartingUnitBudgetBonus), nameof(StartingUnitBudgetBonus.Category))] =
+            "The unit category eligible for this additional budget.",
+        [(typeof(BudgetLevel), nameof(BudgetLevel.GalaxySize))] =
+            "The galaxy size where this budget percentage applies.",
+        [(typeof(BudgetLevel), nameof(BudgetLevel.Percentage))] =
+            "The percentage of maintenance capacity remaining after fixed units that can fund this allocation.",
+        [(typeof(WeightedUnitEntry), nameof(WeightedUnitEntry.Weight))] =
+            "The relative chance of selecting this unit group for each budget roll.",
+        [(typeof(BalanceSection), nameof(BalanceSection.SupportBoostPerUnit))] =
+            "Stored in starting setup data but not currently applied during game generation.",
+        [(typeof(BalanceSection), nameof(BalanceSection.MaxMilitaryPresenceBoost))] =
+            "Stored in starting setup data but not currently applied during game generation.",
+    };
+
     private static readonly IReadOnlyDictionary<string, string> _descriptions = new Dictionary<
         string,
         string
@@ -112,6 +260,24 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The help text, or an empty string for undocumented extensions.</returns>
     internal static string GetDescription(ContentPackEditorField field)
     {
+        if (field.Record.Kind == "GameGenerationConfig")
+        {
+            Type owner =
+                field.Container == field.Record.Element
+                    ? ContentPackEditorFieldSchema.GetRecordType(field.Record.Element)
+                    : ContentPackEditorFieldSchema.GetValueType(
+                        field.Record.Element,
+                        field.Container
+                    );
+            if (
+                owner != null
+                && _generationDescriptions.TryGetValue(
+                    (owner, field.MemberName),
+                    out string generationText
+                )
+            )
+                return generationText;
+        }
         if (
             field.Record.Kind == "GameGenerationConfig"
             && field.MemberName is "Random" or "Random1" or "Random2"

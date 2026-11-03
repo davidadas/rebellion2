@@ -16,27 +16,16 @@ namespace Rebellion.Tests.ContentEditor
         private ContentPackEditorProject project;
 
         /// <summary>
-        /// Creates an independent authored project over installed base content.
+        /// Creates an independent loadable campaign for authoring launch checks.
         /// </summary>
         [SetUp]
         public void SetUp()
         {
-            string root = ContentPackLoader.ResolveContentRootPath();
-            ContentPackDefinition baseline = ContentPackLoader
-                .DiscoverPacks(root)
-                .First(pack => string.IsNullOrEmpty(pack.BasePackID));
             folder = Path.Combine(
                 Path.GetTempPath(),
                 "editor-play-project-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentPackEditorStorage.CreateInFolder(
-                root,
-                baseline.ID,
-                folder,
-                "play-test",
-                "Play test",
-                "1.0.0"
-            );
+            project = ContentEditorTestData.CreateLoadableProject(Path.Combine(folder, "Content"));
         }
 
         /// <summary>
@@ -101,7 +90,7 @@ namespace Rebellion.Tests.ContentEditor
             session.Dispose();
             session.Dispose();
             Assert.IsFalse(Directory.Exists(snapshot));
-            Assert.IsTrue(File.Exists(Path.Combine(folder, "pack.xml")));
+            Assert.IsTrue(File.Exists(Path.Combine(project.PackRootPath, "pack.xml")));
         }
 
         [Test]
@@ -120,7 +109,10 @@ namespace Rebellion.Tests.ContentEditor
                 )
             );
             Assert.IsFalse(project.IsDirty);
-            Assert.AreEqual(1, Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Length);
+            Assert.AreEqual(
+                1,
+                Directory.GetFiles(project.PackRootPath, "*", SearchOption.AllDirectories).Length
+            );
         }
 
         [Test]

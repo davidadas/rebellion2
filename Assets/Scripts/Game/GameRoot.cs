@@ -418,17 +418,21 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Transfers a registered node between faction ownership indexes without changing its
-        /// parent, descendants, retained state, or remembered parent.
+        /// Transfers or releases a registered node between faction ownership indexes without
+        /// changing its parent, descendants, retained state, or remembered parent.
         /// </summary>
         /// <param name="node">The node whose owner changes.</param>
-        /// <param name="ownerInstanceId">The receiving faction's stable instance ID.</param>
+        /// <param name="ownerInstanceId">
+        /// The receiving faction's stable instance ID, or null to release faction ownership.
+        /// </param>
         public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
 
-            GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (ownerInstanceId != null)
+                GetFactionByOwnerInstanceID(ownerInstanceId);
+
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);

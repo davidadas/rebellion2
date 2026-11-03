@@ -373,11 +373,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Captures a stranded officer when no friendly destination exists.
+        /// Settles a stranded officer locally when no relocation destination exists.
         /// </summary>
         /// <param name="occupant">The stranded occupant.</param>
         /// <param name="origin">The removal planet.</param>
-        /// <param name="results">The collection receiving capture facts.</param>
+        /// <param name="results">The collection receiving custody changes.</param>
         private void ResolveStrandedOccupant(
             IMovable occupant,
             Planet origin,
@@ -387,16 +387,21 @@ namespace Rebellion.Gameplay
             if (occupant is not Officer officer)
                 return;
 
+            officer.Movement = null;
             string captorInstanceId = origin.GetOwnerInstanceID();
             if (captorInstanceId == officer.GetOwnerInstanceID())
             {
-                throw new InvalidOperationException(
-                    $"Officer '{officer.InstanceID}' has no valid destination or captor after carrier removal."
-                );
+                if (officer.IsCaptured)
+                    results.Add(
+                        CaptiveStateTransition.Release(
+                            officer,
+                            origin,
+                            _game.CurrentTick,
+                            officer.CaptorInstanceID
+                        )
+                    );
             }
-
-            officer.Movement = null;
-            if (officer.TryCapture(captorInstanceId))
+            else if (officer.TryCapture(captorInstanceId))
             {
                 results.Add(
                     new OfficerCaptureStateResult

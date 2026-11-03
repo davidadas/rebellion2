@@ -65,8 +65,9 @@ jobs:
 
   build:
     name: Build (${{ matrix.targetPlatform }})
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [lint, resolve-media]
+    needs: resolve-media
     environment: production
     permissions:
       contents: read
@@ -74,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform: ${{ fromJSON(github.event_name == 'pull_request' && '["StandaloneLinux64"]' || '["StandaloneWindows64", "StandaloneLinux64", "StandaloneOSX"]') }}
+        targetPlatform: [StandaloneWindows64, StandaloneLinux64, StandaloneOSX]
 
     steps:
       - name: Checkout repository
@@ -89,7 +90,7 @@ jobs:
           lfs: false
           path: .ci/rebellion2-media
 
-      - name: Pull media LFS from R2
+      - name: Pull media LFS and Unity image
         working-directory: .ci/rebellion2-media
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -97,12 +98,31 @@ jobs:
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
+          case "${{ matrix.targetPlatform }}" in
+            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
+            StandaloneWindows64) MODULE="windows-mono" ;;
+            StandaloneOSX)       MODULE="mac-mono" ;;
+          esac
+          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
+          (
+            for attempt in 1 2 3; do
+              docker pull "$IMAGE" && exit 0
+              echo "Attempt $attempt failed, retrying in 30s..."
+              sleep 30
+            done
+            exit 1
+          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+          pull_pid=$!
+          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
+            if git lfs pull \
+              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
+              --exclude="Content/**/*.mp4"; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -113,10 +133,18 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
+          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
           fi
+
+          if ! wait "$pull_pid"; then
+            cat "$RUNNER_TEMP/unity-image-pull.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/unity-image-pull.log"
+          trap - EXIT
 
       - name: Install media
         run: |
@@ -126,31 +154,6 @@ jobs:
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
-
-      - name: Restore Unity build Library
-        id: build-library
-        uses: actions/cache/restore@v4
-        with:
-          path: Library
-          key: Library-build-${{ matrix.targetPlatform }}-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-build-${{ matrix.targetPlatform }}-
-            Library-
-
-      - name: Pre-pull Unity Docker image
-        run: |
-          case "${{ matrix.targetPlatform }}" in
-            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
-            StandaloneWindows64) MODULE="windows-mono" ;;
-            StandaloneOSX)       MODULE="mac-mono" ;;
-          esac
-          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
-          for attempt in 1 2 3; do
-            docker pull "$IMAGE" && exit 0
-            echo "Attempt $attempt failed, retrying in 30s..."
-            sleep 30
-          done
-          exit 1
 
       - name: Build project
         id: unity-build
@@ -167,13 +170,6 @@ jobs:
           buildName: rebellion2
           buildsPath: build
 
-      - name: Save compiled Unity build Library
-        if: ${{ !cancelled() && steps.unity-build.outcome == 'success' && steps.build-library.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: Library
-          key: ${{ steps.build-library.outputs.cache-primary-key }}
-
       - name: Package verified desktop bundle
         shell: bash
         run: |
@@ -185,15 +181,6 @@ jobs:
             --platform "${{ matrix.targetPlatform }}" \
             --build-dir "build/${{ matrix.targetPlatform }}" \
             --output "dist/rebellion2-${{ matrix.targetPlatform }}.$extension"
-
-      - name: Upload desktop bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: rebellion2-${{ matrix.targetPlatform }}
-          path: dist/rebellion2-${{ matrix.targetPlatform }}.*
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
 
       - name: Reset package files
         run: |
@@ -209,14 +196,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-lint-${{ github.sha }}
-          restore-keys: |
-            Library-lint-
-            Library-
 
       - name: Install tools
         run: |
@@ -286,7 +265,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: [lint, resolve-media]
+    needs: resolve-media
     environment: production
     permissions:
       checks: write
@@ -306,20 +285,75 @@ jobs:
           lfs: false
           path: .ci/rebellion2-media
 
-      - name: Pull media LFS from R2
+      - name: Select public Unity package cache paths
+        id: unity-package-paths
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          packages = json.loads(Path("Packages/packages-lock.json").read_text())["dependencies"]
+          paths = [
+              "Library/PackageCache/" + name + "@*"
+              for name, package in packages.items()
+              if re.fullmatch(r"com\.unity\.[a-z0-9_.-]+", name)
+              and package.get("source") == "registry"
+              and package.get("url") == "https://packages.unity.com"
+          ]
+          if not paths:
+              raise SystemExit("No public Unity registry packages were selected.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("paths<<PUBLIC_UNITY_PACKAGES\n" + "\n".join(sorted(paths)) + "\nPUBLIC_UNITY_PACKAGES\n")
+          EOF
+
+      - name: Cache public Unity packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.unity-package-paths.outputs.paths }}
+          key: unity-packages-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json') }}
+
+      - name: Restore Unity tooling image
+        id: unity-image-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/unity-tooling-image.tar.zst
+          key: unity-tooling-${{ runner.os }}-${{ runner.arch }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_IMAGE_VERSION }}-${{ hashFiles('.github/docker/unity-tests.Dockerfile') }}
+
+      - name: Pull media LFS and Unity image
         working-directory: .ci/rebellion2-media
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
+        shell: bash
         run: |
+          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          (
+            if [ "${{ steps.unity-image-cache.outputs.cache-hit }}" = "true" ]; then
+              zstd --decompress --stdout "$RUNNER_TEMP/unity-tooling-image.tar.zst" | docker load
+              exit 0
+            fi
+            for attempt in 1 2 3; do
+              docker pull "$BASE_IMAGE" && exit 0
+              echo "Attempt $attempt failed, retrying in 30s..."
+              sleep 30
+            done
+            exit 1
+          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
+          pull_pid=$!
+          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
+
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
+            if git lfs pull \
+              --include="Content/**,Models/MainMenu/**,UnityAssets/**" \
+              --exclude="Content/**/*.mp4"; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -330,10 +364,18 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
+          find Content -type f -name '*.mp4' -exec sh -c ': > "$1"' _ {} \;
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
           fi
+
+          if ! wait "$pull_pid"; then
+            cat "$RUNNER_TEMP/unity-image-pull.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/unity-image-pull.log"
+          trap - EXIT
 
       - name: Install media
         run: |
@@ -344,30 +386,25 @@ jobs:
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
-      - name: Restore Unity test Library
-        id: test-library
-        uses: actions/cache/restore@v4
-        with:
-          path: Library
-          key: Library-test-${{ github.sha }}-${{ needs.resolve-media.outputs.sha }}
-          restore-keys: |
-            Library-test-
-            Library-
-
       - name: Prepare Vulkan-enabled Unity test image
+        if: steps.unity-image-cache.outputs.cache-hit != 'true'
+        shell: bash
         run: |
           BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
-          docker pull "$BASE_IMAGE"
           docker build \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --tag rebellion2-unity-test:vulkan \
-            - <<'EOF'
-          ARG BASE_IMAGE
-          FROM ${BASE_IMAGE}
-          RUN apt-get update \
-              && apt-get install --yes --no-install-recommends libvulkan1 mesa-vulkan-drivers \
-              && rm -rf /var/lib/apt/lists/*
-          EOF
+            --file .github/docker/unity-tests.Dockerfile \
+            .github/docker
+          docker save rebellion2-unity-test:vulkan \
+            | zstd --threads=0 -3 -o "$RUNNER_TEMP/unity-tooling-image.tar.zst"
+
+      - name: Cache Unity tooling image
+        if: steps.unity-image-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/unity-tooling-image.tar.zst
+          key: ${{ steps.unity-image-cache.outputs.cache-primary-key }}
 
       - name: Run Unity Tests
         id: unity-tests
@@ -380,23 +417,42 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
-          customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
+          customParameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
+          coverageEnabled: true
+          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly"
+          checkName: Test results
           cliVersion: v0.1.65
 
-      - name: Save imported Unity test Library
-        if: >-
-          ${{ !cancelled()
-              && steps.test-library.outputs.cache-hit != 'true'
-              && hashFiles('artifacts/editmode-results.xml') != ''
-              && hashFiles('Library/ScriptAssemblies/UnitTests.dll') != '' }}
-        uses: actions/cache/save@v4
-        with:
-          path: Library
-          key: ${{ steps.test-library.outputs.cache-primary-key }}
+      - name: Summarize test execution time
+        if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}
+        env:
+          TEST_RUN_NAME: Test
+        run: |
+          python3 - <<'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+          from datetime import datetime
+          from pathlib import Path
+
+          root = ET.parse("artifacts/editmode-results.xml").getroot()
+          cases = [case for case in root.iter("test-case")
+                   if "start-time" in case.attrib and "end-time" in case.attrib]
+          first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
+          last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
+          seconds = (last - first).total_seconds()
+          summary = (
+              f"### {os.environ['TEST_RUN_NAME']} execution\n\n"
+              f"{root.attrib['passed']}/{root.attrib['total']} passed; "
+              f"{root.attrib['failed']} failed; {root.attrib['skipped']} skipped.\n\n"
+              f"First test start to final test end: **{seconds:.1f}s**. "
+              "This includes transitions between tests and excludes initial Unity setup.\n"
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write(summary)
+          EOF
 
       - name: Upload Unity test results
         if: ${{ !cancelled() && hashFiles('artifacts/editmode-results.xml') != '' }}

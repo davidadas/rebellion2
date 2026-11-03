@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<MessageDefinitions>
+  <MessageDefinition>
+    <DisplayName>Traitor Discovered</DisplayName>
+    <ResultType>TraitorDiscovered</ResultType>
+    <MessageType>Mission</MessageType>
+    <Subject>{discoverer} Discovers Traitor</Subject>
+    <Body>Through the use of the Force, I have discovered that {traitor} has betrayed us to the {enemy}.</Body>
+    <ShowSubjectImage>true</ShowSubjectImage>
+    <BackgroundImage Key="mission_report" />
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Fleet Arrived</DisplayName>
+    <ResultType>FleetArrived</ResultType>
+    <MessageType>Fleet</MessageType>
+    <Subject>Fleet Arrives at {system}</Subject>
+    <Body>{fleet} has arrived at {system}.</Body>
+    <BackgroundAudioPath>Application/Strategy/Messages/Audio/message-fleet-arrives</BackgroundAudioPath>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Pack/Factions/Alliance/Strategy/Messages/Images/fleet-arrived</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Pack/Factions/Empire/Strategy/Messages/Images/fleet-arrived</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+</MessageDefinitions>

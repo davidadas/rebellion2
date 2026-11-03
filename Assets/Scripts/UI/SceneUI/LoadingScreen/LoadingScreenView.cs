@@ -390,6 +390,16 @@ public sealed class LoadingScreenView : MonoBehaviour
     }
 
     /// <summary>
+    /// Presents a startup failure with an explicit exit action.
+    /// </summary>
+    /// <param name="details">The startup error and recovery instructions.</param>
+    internal void ShowStartupFailure(string details)
+    {
+        ShowTerminalFailure(details);
+        statusText.text = "GAME STARTUP FAILED";
+    }
+
+    /// <summary>
     /// Replaces the loading animation with a stable player-controlled handoff.
     /// </summary>
     public void ShowReady()

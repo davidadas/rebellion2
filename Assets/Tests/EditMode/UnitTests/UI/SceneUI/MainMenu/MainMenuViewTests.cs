@@ -120,9 +120,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsFalse(backdrop.raycastTarget);
             Assert.AreEqual(Color.clear, backdrop.color);
             RectTransform page = (RectTransform)overlay.Find("ConsentPage");
-            Assert.AreEqual(new Vector2(0f, 1f), page.anchorMin);
-            Assert.AreEqual(new Vector2(0f, 1f), page.anchorMax);
-            Assert.AreEqual(new Vector2(277f, -163f), page.anchoredPosition);
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), page.anchorMin);
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), page.anchorMax);
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), page.pivot);
+            Assert.AreEqual(Vector2.zero, page.anchoredPosition);
             Assert.AreEqual(new Vector2(300f, 154f), page.sizeDelta);
             Assert.AreEqual(
                 new Vector2(298f, 152f),

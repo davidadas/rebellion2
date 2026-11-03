@@ -549,7 +549,7 @@ public static class MainMenuPrefabBuilder
         dimmerImage.raycastTarget = true;
 
         GameObject page = NewChild("ConsentPage", overlay.transform, typeof(RectTransform));
-        UILayout.SetSourceRect((RectTransform)page.transform, 277, 163, 300, 154);
+        SetCenteredRect((RectTransform)page.transform, Vector2.zero, new Vector2(300f, 154f));
 
         Sprite roundedRectangle = AssetDatabase.GetBuiltinExtraResource<Sprite>(
             "UI/Skin/Background.psd"

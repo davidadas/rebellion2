@@ -11,6 +11,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -51,10 +52,68 @@ public static class ContentPackLoader
     /// <returns>The discovered pack definitions in stable directory order.</returns>
     public static IReadOnlyList<ContentPackDefinition> DiscoverPacks(string contentRootPath)
     {
-        return ReadPackDefinitions(contentRootPath)
-            .Select(item => item.Definition)
-            .Where(pack => !string.IsNullOrWhiteSpace(pack.ID))
+        return DiscoverInstalledPacks(contentRootPath)
+            .Where(pack => pack.Definition != null)
+            .Select(pack => pack.Definition)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Discovers every installed content-pack directory and preserves per-pack read failures.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <returns>The installed packs in stable directory order.</returns>
+    internal static IReadOnlyList<InstalledContentPack> DiscoverInstalledPacks(
+        string contentRootPath
+    )
+    {
+        string packsRoot = Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName);
+        string modsRoot = ContentFileResolver.ResolveModsRootPath(contentRootPath);
+        IEnumerable<string> installedPackRoots = Directory.Exists(packsRoot)
+            ? Directory
+                .EnumerateDirectories(packsRoot)
+                .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            : Enumerable.Empty<string>();
+        IEnumerable<string> authoredPackRoots = Directory.Exists(modsRoot)
+            ? Directory
+                .EnumerateDirectories(modsRoot)
+                .Where(path => File.Exists(Path.Combine(path, _packFileName)))
+                .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            : Enumerable.Empty<string>();
+
+        return installedPackRoots.Concat(authoredPackRoots).Select(DiscoverInstalledPack).ToArray();
+    }
+
+    /// <summary>
+    /// Tries to discover compatible mods for a selected pack without propagating content errors.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <param name="packID">The selected content-pack identifier.</param>
+    /// <param name="disabledModIDs">The mod identifiers disabled by the player.</param>
+    /// <param name="resolver">The discovered resolver when successful.</param>
+    /// <param name="errorMessage">The content error when discovery fails.</param>
+    /// <returns>True when the selected pack and its mods were discovered.</returns>
+    internal static bool TryDiscoverModResolver(
+        string contentRootPath,
+        string packID,
+        IEnumerable<string> disabledModIDs,
+        out ContentFileResolver resolver,
+        out string errorMessage
+    )
+    {
+        try
+        {
+            resolver = DiscoverModResolver(contentRootPath, packID, disabledModIDs);
+            errorMessage = string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (IsContentDiscoveryException(exception))
+        {
+            resolver = null;
+            errorMessage = GetContentErrorMessage(exception);
+            GameLogger.Warning($"Content pack '{packID}' could not be inspected: {errorMessage}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -948,6 +1007,92 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Reads one installed pack while retaining failures for the content-management UI.
+    /// </summary>
+    /// <param name="packRoot">The installed pack directory.</param>
+    /// <returns>The installed pack description.</returns>
+    private static InstalledContentPack DiscoverInstalledPack(string packRoot)
+    {
+        string directoryName = Path.GetFileName(packRoot);
+        string definitionPath = Path.Combine(packRoot, _packFileName);
+        try
+        {
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(definitionPath);
+            if (string.IsNullOrWhiteSpace(definition.ID))
+            {
+                const string message = "Content pack definition is missing required field 'ID'.";
+                GameLogger.Warning(
+                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                );
+                return new InstalledContentPack(directoryName, directoryName, null, message);
+            }
+
+            if (string.IsNullOrWhiteSpace(definition.Version))
+            {
+                const string message =
+                    "Content pack definition is missing required field 'Version'.";
+                GameLogger.Warning(
+                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                );
+                return new InstalledContentPack(
+                    definition.ID,
+                    string.IsNullOrWhiteSpace(definition.DisplayName)
+                        ? definition.ID
+                        : definition.DisplayName,
+                    null,
+                    message
+                );
+            }
+
+            return new InstalledContentPack(
+                definition.ID,
+                string.IsNullOrWhiteSpace(definition.DisplayName)
+                    ? definition.ID
+                    : definition.DisplayName,
+                definition,
+                string.Empty
+            );
+        }
+        catch (Exception exception) when (IsContentDiscoveryException(exception))
+        {
+            string message = GetContentErrorMessage(exception);
+            GameLogger.Warning(
+                $"Skipping invalid content pack definition '{definitionPath}': {message}"
+            );
+            return new InstalledContentPack(directoryName, directoryName, null, message);
+        }
+    }
+
+    /// <summary>
+    /// Returns whether an exception represents an installed-content discovery failure.
+    /// </summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <returns>True when the failure belongs to content discovery.</returns>
+    private static bool IsContentDiscoveryException(Exception exception)
+    {
+        return exception
+            is InvalidDataException
+                or IOException
+                or UnauthorizedAccessException
+                or InvalidOperationException
+                or XmlException;
+    }
+
+    /// <summary>
+    /// Extracts the useful content failure from serializer exception wrappers.
+    /// </summary>
+    /// <param name="exception">The content discovery exception.</param>
+    /// <returns>The player-facing failure detail.</returns>
+    private static string GetContentErrorMessage(Exception exception)
+    {
+        Exception detail = exception;
+        while (detail.InnerException != null)
+            detail = detail.InnerException;
+        return detail.Message;
+    }
+
+    /// <summary>
     /// Resolves the selected pack and its inherited packs in fallback order.
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
@@ -1028,7 +1173,6 @@ public static class ContentPackLoader
         string contentRootPath
     )
     {
-        string modsRoot = ContentFileResolver.ResolveModsRootPath(contentRootPath);
         foreach (string path in EnumeratePackDefinitions(contentRootPath))
         {
             ContentPackDefinition definition;
@@ -1036,20 +1180,11 @@ public static class ContentPackLoader
             {
                 definition = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(path);
             }
-            catch (Exception exception)
-                when (string.Equals(
-                        Path.GetDirectoryName(Path.GetDirectoryName(path)),
-                        modsRoot,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                    && exception
-                        is InvalidOperationException
-                            or XmlException
-                            or IOException
-                            or UnauthorizedAccessException
-                )
+            catch (Exception exception) when (IsContentDiscoveryException(exception))
             {
-                Debug.LogWarning($"Content pack could not be loaded: {path}. {exception.Message}");
+                GameLogger.Warning(
+                    $"Content pack could not be loaded: {path}. {GetContentErrorMessage(exception)}"
+                );
                 continue;
             }
             yield return (path, definition);

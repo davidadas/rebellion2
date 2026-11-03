@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Buildings>
+  <Building>
+    <TypeID>BDHQ01</TypeID>
+    <ManufacturingFactionInstanceIDs />
+    <BuildingType>Headquarters</BuildingType>
+    <DisplayName>Alliance Headquarters</DisplayName>
+    <DisplayImagePath>Pack/Factions/Alliance/Strategy/UI/Shared/galaxy-hq-icon</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Factions/Alliance/Strategy/UI/Shared/galaxy-hq-icon</SmallDisplayImagePath>
+    <InTransitSmallImagePath>Pack/Factions/Alliance/Strategy/UI/Shared/galaxy-hq-icon</InTransitSmallImagePath>
+    <ProductionType>None</ProductionType>
+    <ConstructionCost>0</ConstructionCost>
+    <MaintenanceCost>0</MaintenanceCost>
+    <Bombardment>0</Bombardment>
+    <ProcessRate>0</ProcessRate>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Building>
+  <Building>
+    <TypeID>BDFA01</TypeID>
+    <ManufacturingFactionInstanceIDs>
+      <String>FNEMP1</String>
+      <String>FNALL1</String>
+    </ManufacturingFactionInstanceIDs>
+    <BuildingType>ConstructionFacility</BuildingType>
+    <DisplayName>Construction Facility</DisplayName>
+    <DisplayImagePath>Pack/Shared/Units/Facilities/BDFA01/display</DisplayImagePath>
+    <SmallDisplayImagePath>Pack/Shared/Units/Facilities/BDFA01/small-display</SmallDisplayImagePath>
+    <MessageImagePath>Pack/Shared/Units/Facilities/BDFA01/message</MessageImagePath>
+    <InTransitSmallImagePath>Pack/Shared/Units/Facilities/BDFA01/in-transit-small</InTransitSmallImagePath>
+    <EncyclopediaImagePath>Pack/Shared/Units/Facilities/BDFA01/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Construction yards convert refined materials into facilities.  Construction yards are used to build all types of facilities on any system controlled by your side.  Construction yards are deployed on systems.  In order to deploy a construction yard on a system, there must be at least one free energy point there.</EncyclopediaDescription>
+    <ProductionType>Building</ProductionType>
+    <ConstructionCost>10</ConstructionCost>
+    <MaintenanceCost>10</MaintenanceCost>
+    <Bombardment>3</Bombardment>
+    <ProcessRate>4</ProcessRate>
+    <Upgrades></Upgrades>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Building>
+  <Building>
+    <TypeID>MINE</TypeID>
+    <DisplayName>Mine</DisplayName>
+    <BuildingType>Mine</BuildingType>
+  </Building>
+</Buildings>

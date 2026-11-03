@@ -4493,11 +4493,63 @@ namespace Rebellion.Tests.Gameplay
             for (int i = 0; i < transit; i++)
                 allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>(mine.InstanceID),
-                "Building should be destroyed when destination changes sides during transit."
-            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
             Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_BuildingDestroyed()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+            Planet destinationPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destinationPlanet, sector);
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(mine, destinationPlanet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(mine, destinationPlanet, originPlanet);
+            game.ChangeOwnership(destinationPlanet, null);
+
+            List<GameResult> results = new List<GameResult>();
+            for (int i = 0; i < mine.Movement.TransitTicks; i++)
+                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.IsTrue(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
