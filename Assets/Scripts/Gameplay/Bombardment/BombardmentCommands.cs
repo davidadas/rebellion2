@@ -253,20 +253,18 @@ namespace Rebellion.Gameplay
             if (targets.Count == 0)
                 return;
 
-            int leadership = BombardmentQueries.GetBombardmentLeadership(
-                planet.GetAllOfficers(),
-                OfficerRank.General,
-                planet.GetOwnerInstanceID()
+            int multiplier = BombardmentQueries.GetDefenseFireMultiplier(
+                planet,
+                _game.Config.Combat.Bombardment
             );
-            int multiplier =
-                leadership / _game.Config.Combat.Bombardment.DefenderLeadershipDivisor + 1;
             Dictionary<CapitalShip, int> remainingShields = targets.ToDictionary(
                 ship => ship,
-                GetEffectiveShieldStrength
+                BombardmentQueries.GetEffectiveShieldStrength
             );
             Dictionary<CapitalShip, int> hullDamage = targets.ToDictionary(ship => ship, _ => 0);
 
-            IEnumerable<Building> facilities = GetActiveDefenseFacilities(planet)
+            IEnumerable<Building> facilities = BombardmentQueries
+                .GetActiveDefenseWeapons(planet)
                 .OrderBy(facility =>
                     facility.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage ? 0 : 1
                 );
@@ -761,35 +759,6 @@ namespace Rebellion.Gameplay
         private bool RollBombardmentPercent(int chance)
         {
             return _provider.NextInt(0, 100) < chance;
-        }
-
-        /// <summary>
-        /// Returns active planetary defense weapons.
-        /// </summary>
-        /// <param name="planet">Planet containing the facilities.</param>
-        /// <returns>The matching active facilities.</returns>
-        private static IEnumerable<Building> GetActiveDefenseFacilities(Planet planet)
-        {
-            return planet
-                .GetAllBuildings()
-                .Where(building =>
-                    BombardmentQueries.IsActiveBombardmentUnit(building)
-                    && building.BuildingType == BuildingType.Weapon
-                );
-        }
-
-        /// <summary>
-        /// Returns a capital ship's shield strength at its current hull condition.
-        /// </summary>
-        /// <param name="ship">Capital ship to evaluate.</param>
-        /// <returns>The effective shield strength.</returns>
-        private static int GetEffectiveShieldStrength(CapitalShip ship)
-        {
-            return BombardmentQueries.ScaleByCondition(
-                ship.MaxShieldStrength,
-                ship.CurrentHullStrength,
-                ship.MaxHullStrength
-            );
         }
 
         private class BombardmentTarget

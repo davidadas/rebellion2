@@ -51,9 +51,17 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = game.Config.AI.TickInterval;
             List<GameResult> results = new List<GameResult>();
 
+            List<string> started = new();
+            List<string> completed = new();
+            system.FactionTurnStepStarted += (_, step) => started.Add(step);
+            system.FactionTurnStepCompleted += (_, step) => completed.Add(step);
+
             int completedSteps = system.ProcessTickIncrementally(results).Count();
 
-            Assert.AreEqual(18, completedSteps);
+            Assert.Greater(completedSteps, started.Count);
+            Assert.AreEqual("Assessment", started[0]);
+            Assert.AreEqual("AIExecutionPhase", started.Last());
+            CollectionAssert.AreEqual(started, completed);
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
@@ -135,7 +143,9 @@ namespace Rebellion.Tests.Systems
 
             session.GetService<AIDirector>().ProcessFaction(owner, game.Galaxy);
 
-            Assert.AreEqual(!hold, officer.IsOnMission());
+            Assert.IsTrue(officer.IsOnMission());
+            if (hold)
+                Assert.AreEqual(origin.InstanceID, officer.GetParentOfType<Planet>().InstanceID);
         }
 
         /// <summary>

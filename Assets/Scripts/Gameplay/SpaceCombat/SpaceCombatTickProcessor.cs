@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -28,6 +29,10 @@ namespace Rebellion.Gameplay
         /// <returns>The combat results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(SpaceCombatTickProcessor)
+            );
             List<GameResult> results = new List<GameResult>();
             if (_commands.HasPendingDecision)
                 return results;

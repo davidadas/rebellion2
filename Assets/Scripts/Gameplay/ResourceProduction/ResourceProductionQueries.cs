@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
@@ -34,30 +35,66 @@ namespace Rebellion.Gameplay
         /// <returns>The current resource economy summary.</returns>
         public ResourceEconomySummary GetSummary(Faction faction)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetSummary),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            return GetSummary(faction, Array.Empty<Building>());
+        }
+
+        /// <summary>
+        /// Projects steady resource output after excluding facilities without changing game state.
+        /// </summary>
+        /// <param name="faction">The faction whose economy is inspected.</param>
+        /// <param name="excludedFacilities">Facilities omitted from production and maintenance totals.</param>
+        /// <returns>The economy with the selected facilities excluded.</returns>
+        public ResourceEconomySummary GetSummary(
+            Faction faction,
+            IReadOnlyCollection<Building> excludedFacilities
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetSummary),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             if (faction == null)
                 return ResourceEconomySummary.Empty;
 
-            List<Building> activeMines = GetActiveFacilities(faction, BuildingType.Mine);
-            List<Building> activeRefineries = GetActiveFacilities(faction, BuildingType.Refinery);
+            HashSet<string> excluded = (excludedFacilities ?? Array.Empty<Building>())
+                .Where(building =>
+                    building != null && building.GetOwnerInstanceID() == faction.InstanceID
+                )
+                .Select(building => building.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+            List<Building> activeMines = GetActiveFacilities(faction, BuildingType.Mine, excluded);
+            List<Building> activeRefineries = GetActiveFacilities(
+                faction,
+                BuildingType.Refinery,
+                excluded
+            );
             List<Building> deliveredMines = GetProjectedFacilities(
                 faction,
                 BuildingType.Mine,
-                includeBuilding: false
+                includeBuilding: false,
+                excluded
             );
             List<Building> deliveredRefineries = GetProjectedFacilities(
                 faction,
                 BuildingType.Refinery,
-                includeBuilding: false
+                includeBuilding: false,
+                excluded
             );
             List<Building> projectedMines = GetProjectedFacilities(
                 faction,
                 BuildingType.Mine,
-                includeBuilding: true
+                includeBuilding: true,
+                excluded
             );
             List<Building> projectedRefineries = GetProjectedFacilities(
                 faction,
                 BuildingType.Refinery,
-                includeBuilding: true
+                includeBuilding: true,
+                excluded
             );
             HashSet<string> activeMineIDs = activeMines
                 .Select(facility => facility.InstanceID)
@@ -68,15 +105,24 @@ namespace Rebellion.Gameplay
             ResourceFacilityCounts mines = CountFacilities(
                 faction,
                 BuildingType.Mine,
-                activeMineIDs
+                activeMineIDs,
+                excluded
             );
             ResourceFacilityCounts refineries = CountFacilities(
                 faction,
                 BuildingType.Refinery,
-                activeRefineryIDs
+                activeRefineryIDs,
+                excluded
             );
-            MaintenanceCostBreakdown maintenance = CalculateMaintenanceCosts(faction);
-            int maintenanceCapacity = CalculateMaintenanceCapacity(_game, faction);
+            MaintenanceCostBreakdown maintenance = CalculateMaintenanceCosts(faction, excluded);
+            var operating = CalculateOperatingEconomy(
+                faction,
+                excluded,
+                activeMines,
+                activeRefineries,
+                maintenance.Committed,
+                CalculateMaintenanceCapacity(_game, faction, excluded)
+            );
             int deliveredMaintenanceCapacity = CalculateProjectedMaintenanceCapacity(
                 faction,
                 deliveredMines.Count,
@@ -91,7 +137,7 @@ namespace Rebellion.Gameplay
             return new ResourceEconomySummary(
                 mines,
                 refineries,
-                CalculateOutputPerTick(faction, activeMines, BuildingType.Mine),
+                operating.RawOutputPerTick,
                 CalculateProjectedOutputPerTick(
                     faction,
                     deliveredMines,
@@ -104,7 +150,7 @@ namespace Rebellion.Gameplay
                     BuildingType.Mine,
                     maintenance.Committed
                 ),
-                CalculateOutputPerTick(faction, activeRefineries, BuildingType.Refinery),
+                operating.RefinedOutputPerTick,
                 CalculateProjectedOutputPerTick(
                     faction,
                     deliveredRefineries,
@@ -117,7 +163,7 @@ namespace Rebellion.Gameplay
                     BuildingType.Refinery,
                     maintenance.Committed
                 ),
-                maintenanceCapacity - maintenance.Committed,
+                operating.MaintenanceHeadroom,
                 deliveredMaintenanceCapacity - maintenance.Committed,
                 projectedMaintenanceCapacity - maintenance.Committed,
                 maintenance
@@ -125,12 +171,151 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Projects current operating rates and committed upkeep without calculating future delivery stages.
+        /// </summary>
+        /// <param name="faction">The faction whose economy is inspected.</param>
+        /// <param name="excludedFacilities">Facilities omitted without changing game state.</param>
+        /// <returns>Effective maintenance headroom and active resource output.</returns>
+        public (
+            int MaintenanceHeadroom,
+            double RawOutputPerTick,
+            double RefinedOutputPerTick
+        ) GetOperatingEconomy(Faction faction, IReadOnlyCollection<Building> excludedFacilities)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOperatingEconomy),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            if (faction == null)
+                return (0, 0, 0);
+            HashSet<string> excluded = (excludedFacilities ?? Array.Empty<Building>())
+                .Where(building =>
+                    building != null && building.GetOwnerInstanceID() == faction.InstanceID
+                )
+                .Select(building => building.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+            return CalculateOperatingEconomy(
+                faction,
+                excluded,
+                GetActiveFacilities(faction, BuildingType.Mine, excluded),
+                GetActiveFacilities(faction, BuildingType.Refinery, excluded),
+                CalculateMaintenanceCosts(faction, excluded).Committed,
+                CalculateMaintenanceCapacity(_game, faction, excluded)
+            );
+        }
+
+        /// <summary>
+        /// Captures reusable resource inputs for evaluating exclusions while game state is unchanged.
+        /// </summary>
+        /// <param name="faction">The faction whose current economy is evaluated.</param>
+        /// <returns>A projection scope that must be captured again after game-state changes.</returns>
+        public OperatingEconomyProjection CaptureOperatingEconomy(Faction faction)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CaptureOperatingEconomy),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            return new OperatingEconomyProjection(
+                this,
+                faction ?? throw new ArgumentNullException(nameof(faction))
+            );
+        }
+
+        /// <summary>
+        /// Captures completed stationary facilities on each currently operating owned planet.
+        /// </summary>
+        /// <param name="faction">The faction whose facilities are captured.</param>
+        /// <returns>Planet and facility inputs in stable planet and child order.</returns>
+        private static IReadOnlyList<(Planet Planet, Building[] Buildings)> CaptureResourcePlanets(
+            Faction faction
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CaptureResourcePlanets),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            return faction
+                .GetOwnedUnitsByType<Planet>()
+                .Where(planet => !planet.IsResourceProductionSuspended())
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .Select(planet =>
+                    (
+                        planet,
+                        planet
+                            .GetChildren<Building>()
+                            .Where(building =>
+                                building.ManufacturingStatus == ManufacturingStatus.Complete
+                                && building.Movement == null
+                            )
+                            .ToArray()
+                    )
+                )
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Shares operating calculations between full summaries and retirement projections.
+        /// </summary>
+        /// <param name="faction">The operating faction.</param>
+        /// <param name="excluded">Omitted facility identifiers.</param>
+        /// <param name="mines">Remaining active mines.</param>
+        /// <param name="refineries">Remaining active refineries.</param>
+        /// <param name="maintenanceDemand">Remaining committed maintenance costs.</param>
+        /// <param name="maintenanceCapacity">The usable capacity after the exclusions.</param>
+        /// <returns>Effective headroom and current or post-retirement steady resource rates.</returns>
+        private (
+            int MaintenanceHeadroom,
+            double RawOutputPerTick,
+            double RefinedOutputPerTick
+        ) CalculateOperatingEconomy(
+            Faction faction,
+            ISet<string> excluded,
+            List<Building> mines,
+            List<Building> refineries,
+            int maintenanceDemand,
+            int maintenanceCapacity
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateOperatingEconomy),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            return (
+                maintenanceCapacity - maintenanceDemand,
+                excluded.Count == 0
+                    ? CalculateOutputPerTick(faction, mines, BuildingType.Mine)
+                    : CalculateProjectedOutputPerTick(
+                        faction,
+                        mines,
+                        BuildingType.Mine,
+                        maintenanceDemand
+                    ),
+                excluded.Count == 0
+                    ? CalculateOutputPerTick(faction, refineries, BuildingType.Refinery)
+                    : CalculateProjectedOutputPerTick(
+                        faction,
+                        refineries,
+                        BuildingType.Refinery,
+                        maintenanceDemand
+                    )
+            );
+        }
+
+        /// <summary>
         /// Totals committed maintenance by deployed asset type and unfinished order.
         /// </summary>
         /// <param name="faction">The faction whose maintenance is classified.</param>
+        /// <param name="excluded">Facility identifiers omitted from the projection.</param>
         /// <returns>The classified maintenance costs.</returns>
-        private static MaintenanceCostBreakdown CalculateMaintenanceCosts(Faction faction)
+        private static MaintenanceCostBreakdown CalculateMaintenanceCosts(
+            Faction faction,
+            ISet<string> excluded
+        )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceCosts),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             int capitalShips = 0;
             int starfighters = 0;
             int regiments = 0;
@@ -143,6 +328,8 @@ namespace Rebellion.Gameplay
 
             foreach (IManufacturable item in faction.GetAllOwnedManufacturables())
             {
+                if (excluded.Contains(item.InstanceID))
+                    continue;
                 int cost = item.GetMaintenanceCost();
                 if (item.GetManufacturingStatus() == ManufacturingStatus.Building)
                 {
@@ -197,10 +384,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="faction">The owning faction.</param>
         /// <param name="buildingType">The requested resource-facility type.</param>
+        /// <param name="excluded">Optional facility identifiers omitted from the projection.</param>
         /// <returns>The active facilities in stable planet and building order.</returns>
         internal static List<Building> GetActiveFacilities(
             Faction faction,
-            BuildingType buildingType
+            BuildingType buildingType,
+            ISet<string> excluded = null
         )
         {
             List<Building> facilities = new List<Building>();
@@ -213,21 +402,44 @@ namespace Rebellion.Gameplay
                 if (planet.IsResourceProductionSuspended())
                     continue;
 
-                IEnumerable<Building> planetFacilities = planet
-                    .GetChildren<Building>()
-                    .Where(building =>
-                        building.BuildingType == buildingType
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    );
-                if (buildingType == BuildingType.Mine)
-                    planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
-
-                facilities.AddRange(planetFacilities);
+                facilities.AddRange(
+                    GetActiveFacilities(
+                        planet,
+                        planet.GetChildren<Building>(),
+                        buildingType,
+                        excluded
+                    )
+                );
             }
 
             return facilities;
+        }
+
+        /// <summary>
+        /// Selects active facilities from one planet without discarding replacement mines before exclusions.
+        /// </summary>
+        /// <param name="planet">The planet supplying the mining limit.</param>
+        /// <param name="buildings">The planet's live or captured buildings in child order.</param>
+        /// <param name="buildingType">The requested processing category.</param>
+        /// <param name="excluded">Optional omitted identifiers.</param>
+        /// <returns>The eligible facilities in their processing order.</returns>
+        private static IEnumerable<Building> GetActiveFacilities(
+            Planet planet,
+            IEnumerable<Building> buildings,
+            BuildingType buildingType,
+            ISet<string> excluded
+        )
+        {
+            IEnumerable<Building> facilities = buildings.Where(building =>
+                building.BuildingType == buildingType
+                && excluded?.Contains(building.InstanceID) != true
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+                && building.Movement == null
+                && building.ProcessRate > 0
+            );
+            return buildingType == BuildingType.Mine
+                ? facilities.Take(planet.NumRawResourceNodes)
+                : facilities;
         }
 
         /// <summary>
@@ -236,11 +448,13 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The owning faction.</param>
         /// <param name="buildingType">The requested resource-facility type.</param>
         /// <param name="includeBuilding">Whether facilities still being manufactured are included.</param>
+        /// <param name="excluded">Facility identifiers omitted from the projection.</param>
         /// <returns>The projected facilities in stable planet and building order.</returns>
         private static List<Building> GetProjectedFacilities(
             Faction faction,
             BuildingType buildingType,
-            bool includeBuilding
+            bool includeBuilding,
+            ISet<string> excluded
         )
         {
             List<Building> facilities = new List<Building>();
@@ -257,6 +471,7 @@ namespace Rebellion.Gameplay
                     .GetChildren<Building>()
                     .Where(building =>
                         building.BuildingType == buildingType
+                        && !excluded.Contains(building.InstanceID)
                         && building.ProcessRate > 0
                         && (
                             includeBuilding
@@ -294,6 +509,10 @@ namespace Rebellion.Gameplay
             Building facility
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateSteadyCycleDuration),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             return CalculateSteadyCycleDuration(
                 game,
                 faction,
@@ -317,6 +536,10 @@ namespace Rebellion.Gameplay
             int maintenanceAllocation
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateSteadyCycleDuration),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             GameConfig.ProductionConfig config = game.Config.Production;
             int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             int scaledCapacity = Math.Max(
@@ -340,11 +563,13 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The owning faction.</param>
         /// <param name="buildingType">The resource-facility type.</param>
         /// <param name="activeFacilityIDs">The facilities currently producing resources.</param>
+        /// <param name="excluded">Facility identifiers omitted from the projection.</param>
         /// <returns>The classified facility totals.</returns>
         private static ResourceFacilityCounts CountFacilities(
             Faction faction,
             BuildingType buildingType,
-            HashSet<string> activeFacilityIDs
+            HashSet<string> activeFacilityIDs,
+            ISet<string> excluded
         )
         {
             int active = 0;
@@ -354,7 +579,10 @@ namespace Rebellion.Gameplay
             foreach (
                 Building facility in faction
                     .GetOwnedUnitsByType<Building>()
-                    .Where(candidate => candidate.BuildingType == buildingType)
+                    .Where(candidate =>
+                        candidate.BuildingType == buildingType
+                        && !excluded.Contains(candidate.InstanceID)
+                    )
             )
             {
                 if (facility.ManufacturingStatus == ManufacturingStatus.Building)
@@ -386,6 +614,10 @@ namespace Rebellion.Gameplay
             BuildingType buildingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateOutputPerTick),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             DifficultyModifiers modifier = _game.GetDifficultyModifier(faction);
             int outputPercent =
                 buildingType == BuildingType.Mine
@@ -419,6 +651,10 @@ namespace Rebellion.Gameplay
             int maintenanceDemand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateProjectedOutputPerTick),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             if (facilities.Count == 0)
                 return 0;
 
@@ -463,6 +699,10 @@ namespace Rebellion.Gameplay
             Faction faction
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceAllocations),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             List<int> allocations = facilities
                 .Select(facility =>
@@ -510,6 +750,10 @@ namespace Rebellion.Gameplay
             int totalCapacity
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(IncreaseMaintenanceAllocations),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             int currentAllocation = IntegerMath.SaturateToInt(
                 allocations.Sum(allocation => (long)allocation)
             );
@@ -554,6 +798,10 @@ namespace Rebellion.Gameplay
             int totalCapacity
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(DecreaseMaintenanceAllocations),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             bool changed;
             do
             {
@@ -604,6 +852,25 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Calculates live maintenance headroom using effective capacity and all committed costs.
+        /// </summary>
+        /// <param name="game">The game defining the active difficulty and faction controller.</param>
+        /// <param name="faction">The faction whose remaining capacity is calculated.</param>
+        /// <returns>The effective headroom, or zero when the game or faction is absent.</returns>
+        internal static int CalculateMaintenanceHeadroom(GameRoot game, Faction faction)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceHeadroom),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            if (game == null || faction == null)
+                return 0;
+
+            return CalculateMaintenanceCapacity(game, faction)
+                - faction.GetTotalProjectedMaintenanceCost();
+        }
+
+        /// <summary>
         /// Calculates effective maintenance capacity after applying the faction's difficulty bonus.
         /// </summary>
         /// <param name="game">The game defining the active difficulty and faction controller.</param>
@@ -611,6 +878,10 @@ namespace Rebellion.Gameplay
         /// <returns>The effective maintenance capacity.</returns>
         internal static int CalculateMaintenanceCapacity(GameRoot game, Faction faction)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceCapacity),
+                subjectType: typeof(ResourceProductionQueries)
+            );
             if (game == null || faction == null)
                 return 0;
 
@@ -618,6 +889,71 @@ namespace Rebellion.Gameplay
                 faction.GetTotalAvailableMaterialsRaw(),
                 CalculateMaintenanceCapacityPerFacility(game, faction)
             );
+        }
+
+        /// <summary>
+        /// Recalculates usable resource pairs while omitting selected facilities.
+        /// </summary>
+        /// <param name="game">The game supplying difficulty modifiers.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="excluded">Facility identifiers omitted from the projection.</param>
+        /// <returns>The effective capacity after the omissions.</returns>
+        private static int CalculateMaintenanceCapacity(
+            GameRoot game,
+            Faction faction,
+            ISet<string> excluded
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceCapacity),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            if (excluded.Count == 0)
+                return CalculateMaintenanceCapacity(game, faction);
+            return CalculateMaintenanceCapacity(
+                CaptureResourcePlanets(faction),
+                excluded,
+                faction.GetTotalAvailableResourceNodes(),
+                CalculateMaintenanceCapacityPerFacility(game, faction)
+            );
+        }
+
+        /// <summary>
+        /// Measures capacity from operating planets after omitting selected facilities.
+        /// </summary>
+        /// <param name="planets">The completed stationary facilities by planet.</param>
+        /// <param name="excluded">Omitted facility identifiers.</param>
+        /// <param name="availableNodes">The faction's available raw resource nodes.</param>
+        /// <param name="facilityCapacity">Effective capacity supplied by each resource pair.</param>
+        /// <returns>The same capacity used by live retirement projections.</returns>
+        private static int CalculateMaintenanceCapacity(
+            IReadOnlyList<(Planet Planet, Building[] Buildings)> planets,
+            ISet<string> excluded,
+            int availableNodes,
+            int facilityCapacity
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateMaintenanceCapacity),
+                subjectType: typeof(ResourceProductionQueries)
+            );
+            int mines = 0;
+            int refineries = 0;
+            foreach (var entry in planets)
+            {
+                int planetMines = 0;
+                foreach (Building building in entry.Buildings)
+                {
+                    if (excluded.Contains(building.InstanceID))
+                        continue;
+                    if (building.BuildingType == BuildingType.Mine)
+                        planetMines++;
+                    else if (building.BuildingType == BuildingType.Refinery)
+                        refineries++;
+                }
+                mines += Math.Min(entry.Planet.GetRawResourceNodes(), planetMines);
+            }
+            return Math.Min(availableNodes, Math.Min(mines, refineries)) * facilityCapacity;
         }
 
         /// <summary>
@@ -648,6 +984,183 @@ namespace Rebellion.Gameplay
         private static int DivideRoundingUp(int dividend, int divisor)
         {
             return IntegerMath.DivideRoundedUp(dividend, divisor);
+        }
+
+        /// <summary>
+        /// Reuses current resource inputs across exclusion alternatives without mutating the game.
+        /// Capture a new scope after any game-state change.
+        /// </summary>
+        public sealed class OperatingEconomyProjection
+        {
+            private readonly ResourceProductionQueries _queries;
+            private readonly Faction _faction;
+            private readonly IReadOnlyList<(Planet Planet, Building[] Buildings)> _planets;
+            private readonly Dictionary<string, int> _buildingMaintenance = new(
+                StringComparer.Ordinal
+            );
+            private readonly int _committedMaintenance;
+            private readonly int _maintenanceCapacity;
+            private readonly int _availableNodes;
+            private readonly int _facilityCapacity;
+
+            /// <summary>
+            /// Captures inputs for one unchanged resource-evaluation scope.
+            /// </summary>
+            /// <param name="queries">The resource calculations shared with the live query path.</param>
+            /// <param name="faction">The faction whose economy is captured.</param>
+            internal OperatingEconomyProjection(ResourceProductionQueries queries, Faction faction)
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    "Constructor",
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                _queries = queries;
+                _faction = faction;
+                _planets = CaptureResourcePlanets(faction);
+                _committedMaintenance = CalculateMaintenanceCosts(
+                    faction,
+                    new HashSet<string>()
+                ).Committed;
+                _maintenanceCapacity = CalculateMaintenanceCapacity(queries._game, faction);
+                _availableNodes = faction.GetTotalAvailableResourceNodes();
+                _facilityCapacity = CalculateMaintenanceCapacityPerFacility(queries._game, faction);
+                foreach (
+                    Building building in faction.GetAllOwnedManufacturables().OfType<Building>()
+                )
+                {
+                    _buildingMaintenance.TryGetValue(building.InstanceID, out int cost);
+                    _buildingMaintenance[building.InstanceID] =
+                        cost + ((IManufacturable)building).GetMaintenanceCost();
+                }
+            }
+
+            /// <summary>
+            /// Evaluates omitted facilities using the captured inputs and shared resource calculations.
+            /// </summary>
+            /// <param name="excludedFacilities">Owned facilities omitted from this alternative.</param>
+            /// <returns>Maintenance headroom and active processing rates after the exclusions.</returns>
+            public (
+                int MaintenanceHeadroom,
+                double RawOutputPerTick,
+                double RefinedOutputPerTick
+            ) GetOperatingEconomy(IReadOnlyCollection<Building> excludedFacilities)
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(GetOperatingEconomy),
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                HashSet<string> excluded = GetExcludedFacilityIds(excludedFacilities);
+                int maintenance = GetRemainingMaintenance(excluded);
+                List<Building> mines = new();
+                List<Building> refineries = new();
+                foreach (var entry in _planets)
+                {
+                    if (!entry.Planet.IsColonized)
+                        continue;
+                    mines.AddRange(
+                        ResourceProductionQueries.GetActiveFacilities(
+                            entry.Planet,
+                            entry.Buildings,
+                            BuildingType.Mine,
+                            excluded
+                        )
+                    );
+                    refineries.AddRange(
+                        ResourceProductionQueries.GetActiveFacilities(
+                            entry.Planet,
+                            entry.Buildings,
+                            BuildingType.Refinery,
+                            excluded
+                        )
+                    );
+                }
+                int capacity = GetMaintenanceCapacity(excluded);
+                return _queries.CalculateOperatingEconomy(
+                    _faction,
+                    excluded,
+                    mines,
+                    refineries,
+                    maintenance,
+                    capacity
+                );
+            }
+
+            /// <summary>
+            /// Evaluates maintenance headroom without calculating the facilities' material output.
+            /// </summary>
+            /// <param name="excludedFacilities">Owned facilities omitted from this alternative.</param>
+            /// <returns>The exact maintenance capacity remaining after committed upkeep.</returns>
+            public int GetMaintenanceHeadroom(IReadOnlyCollection<Building> excludedFacilities)
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(GetMaintenanceHeadroom),
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                HashSet<string> excluded = GetExcludedFacilityIds(excludedFacilities);
+                int maintenance = GetRemainingMaintenance(excluded);
+                int capacity = GetMaintenanceCapacity(excluded);
+                return capacity - maintenance;
+            }
+
+            /// <summary>
+            /// Collects distinct identifiers of owned facilities omitted from one alternative.
+            /// </summary>
+            /// <param name="excludedFacilities">Facilities supplied by the caller, including optional null entries.</param>
+            /// <returns>The owned facility identifiers using ordinal comparison.</returns>
+            private HashSet<string> GetExcludedFacilityIds(
+                IReadOnlyCollection<Building> excludedFacilities
+            )
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(GetExcludedFacilityIds),
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                return (excludedFacilities ?? Array.Empty<Building>())
+                    .Where(building =>
+                        building != null && building.GetOwnerInstanceID() == _faction.InstanceID
+                    )
+                    .Select(building => building.InstanceID)
+                    .ToHashSet(StringComparer.Ordinal);
+            }
+
+            /// <summary>
+            /// Subtracts each excluded identifier's captured upkeep from committed maintenance.
+            /// </summary>
+            /// <param name="excluded">Distinct owned facility identifiers omitted from the alternative.</param>
+            /// <returns>The remaining committed maintenance cost.</returns>
+            private int GetRemainingMaintenance(HashSet<string> excluded)
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(GetRemainingMaintenance),
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                int maintenance = _committedMaintenance;
+                foreach (string id in excluded)
+                    if (_buildingMaintenance.TryGetValue(id, out int cost))
+                        maintenance -= cost;
+                return maintenance;
+            }
+
+            /// <summary>
+            /// Returns the captured capacity or recalculates resource pairs after exclusions.
+            /// </summary>
+            /// <param name="excluded">Distinct owned facility identifiers omitted from the alternative.</param>
+            /// <returns>The maintenance capacity available to the alternative.</returns>
+            private int GetMaintenanceCapacity(HashSet<string> excluded)
+            {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(GetMaintenanceCapacity),
+                    subjectType: typeof(ResourceProductionQueries.OperatingEconomyProjection)
+                );
+                return excluded.Count == 0
+                    ? _maintenanceCapacity
+                    : CalculateMaintenanceCapacity(
+                        _planets,
+                        excluded,
+                        _availableNodes,
+                        _facilityCapacity
+                    );
+            }
         }
     }
 

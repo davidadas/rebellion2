@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -32,6 +33,11 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">The current AI turn context.</param>
         public AIInfrastructurePlacementScorer(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AIInfrastructurePlacementScorer),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
             _context = context ?? throw new ArgumentNullException(nameof(context));
             foreach (Planet planet in context.Assessment.FactionViewPlanets)
                 Increment(_knownPlanetCountsBySystem, context.Assessment.GetPlanetSystemId(planet));
@@ -59,6 +65,11 @@ namespace Rebellion.AI.Scorers
             Func<Planet, int> availableEnergy
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(SelectDestination),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
             return RankDestinations(candidates, demandPlanet, manufacturingType, availableEnergy)
                 .FirstOrDefault();
         }
@@ -102,6 +113,11 @@ namespace Rebellion.AI.Scorers
             Func<Planet, int> availableEnergy
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(RankDestinations),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
             return ScoreDestinations(
                     candidates,
                     demandPlanet,
@@ -187,6 +203,168 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Ranks hub capacity and same-type commitments ahead of facility specialization.
+        /// </summary>
+        /// <param name="candidates">Eligible destination planets.</param>
+        /// <param name="demandPlanet">The planet whose demand prompted expansion.</param>
+        /// <param name="manufacturingType">The manufacturing category being expanded.</param>
+        /// <param name="buildingType">The production-facility type being expanded.</param>
+        /// <param name="targetCount">The completed hub size the destination must support.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>Destinations ordered from the strongest hub assignment to the weakest.</returns>
+        public IReadOnlyList<Planet> RankHubDestinations(
+            IReadOnlyList<Planet> candidates,
+            Planet demandPlanet,
+            ManufacturingType manufacturingType,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(RankHubDestinations),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
+            return ScoreDestinations(
+                    candidates,
+                    demandPlanet,
+                    manufacturingType,
+                    buildingType,
+                    availableEnergy
+                )
+                .OrderByDescending(candidate =>
+                    CanReachHubTarget(candidate.Planet, buildingType, targetCount, availableEnergy)
+                )
+                .ThenByDescending(candidate =>
+                    GetAchievableFacilityCount(
+                        candidate.Planet,
+                        buildingType,
+                        targetCount,
+                        availableEnergy
+                    )
+                )
+                .ThenByDescending(candidate =>
+                    _context.Assessment.GetPlanetBuildingCount(candidate.Planet, buildingType)
+                )
+                .ThenBy(candidate => GetFacilityAssignmentTier(candidate.Planet, buildingType))
+                .ThenBy(candidate =>
+                    GetOtherProductionFacilityCount(candidate.Planet, buildingType)
+                )
+                .ThenByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Planet)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns whether a planet can reach a facility target using its assigned and free energy.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category.</param>
+        /// <param name="targetCount">The desired hub size.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>True when the full hub target fits.</returns>
+        private bool CanReachHubTarget(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReachHubTarget),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
+            return GetAchievableFacilityCount(planet, buildingType, targetCount, availableEnergy)
+                >= targetCount;
+        }
+
+        /// <summary>
+        /// Returns the facility count a destination could reach with its current free energy.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category.</param>
+        /// <param name="targetCount">The desired hub size.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>The target-capped achievable facility count.</returns>
+        private int GetAchievableFacilityCount(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetAchievableFacilityCount),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
+            int existingCount = _context.Assessment.GetPlanetBuildingCount(planet, buildingType);
+            int freeEnergy = Math.Max(0, availableEnergy?.Invoke(planet) ?? 0);
+            return Math.Min(Math.Max(0, targetCount), existingCount + freeEnergy);
+        }
+
+        /// <summary>
+        /// Returns the deterministic specialization tier for a facility destination.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category being placed.</param>
+        /// <returns>Zero for a dedicated destination, one for a mixed same-type hub, and two for a conflicting hub.</returns>
+        private int GetFacilityAssignmentTier(Planet planet, BuildingType buildingType)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityAssignmentTier),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
+            int targetFacilityCount = Math.Max(
+                _context.Assessment.GetPlanetBuildingCount(planet, buildingType),
+                _context.StrategicPlan.GetAllocatedInfrastructureTarget(planet, buildingType)
+            );
+            int otherFacilityCount = GetOtherProductionFacilityCount(planet, buildingType);
+            if (otherFacilityCount == 0)
+                return 0;
+            if (targetFacilityCount > 0)
+                return 1;
+
+            return 2;
+        }
+
+        /// <summary>
+        /// Returns production facilities on a planet that belong to other manufacturing categories.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category being placed.</param>
+        /// <returns>The number of construction, ship, and training facilities from other categories.</returns>
+        private int GetOtherProductionFacilityCount(Planet planet, BuildingType buildingType)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOtherProductionFacilityCount),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
+            if (planet == null)
+                return 0;
+
+            BuildingType[] productionFacilityTypes =
+            {
+                BuildingType.ConstructionFacility,
+                BuildingType.Shipyard,
+                BuildingType.TrainingFacility,
+            };
+            return productionFacilityTypes
+                .Where(type => type != buildingType)
+                .Sum(type =>
+                    Math.Max(
+                        _context.Assessment.GetPlanetBuildingCount(planet, type),
+                        _context.StrategicPlan.GetAllocatedInfrastructureTarget(planet, type)
+                    )
+                );
+        }
+
+        /// <summary>
         /// Returns the weighted strategic value of one facility destination.
         /// </summary>
         /// <param name="planet">The candidate planet.</param>
@@ -213,6 +391,11 @@ namespace Rebellion.AI.Scorers
             double greatestDistance
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Score),
+                _context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIInfrastructurePlacementScorer)
+            );
             GameConfig.AIInfrastructureConfig config = _context.Game.Config.AI.Infrastructure;
             GameConfig.AIInfrastructurePlacementUtilityConfig utility = config.PlacementUtility;
             string systemId = _context.Assessment.GetPlanetSystemId(planet);

@@ -16,8 +16,6 @@ namespace Rebellion.Gameplay
     /// </summary>
     internal sealed class ManufacturingTickProcessor : ITickProcessor
     {
-        private const int _productionRateScale = 100;
-
         private readonly ManufacturingCommands _commands;
         private readonly MovementCommands _movementSystem;
         private GameRoot _game;
@@ -44,6 +42,10 @@ namespace Rebellion.Gameplay
         /// <returns>The manufacturing results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(ManufacturingTickProcessor)
+            );
             List<GameResult> results = new List<GameResult>();
             foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
                 results.AddRange(step);
@@ -65,7 +67,12 @@ namespace Rebellion.Gameplay
 
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
-                foreach (IReadOnlyList<GameResult> step in ProcessPlanetIncrementally(planet))
+                foreach (
+                    IReadOnlyList<GameResult> step in PerformanceLogger.MeasureSteps(
+                        ProcessPlanetIncrementally(planet),
+                        "Planet manufacturing active work"
+                    )
+                )
                     yield return step;
             }
         }
@@ -303,20 +310,7 @@ namespace Rebellion.Gameplay
         /// <returns>The progress available after uprising and blockade effects.</returns>
         private double GetProductionCycleIncrement(Planet planet)
         {
-            if (planet.IsInUprising)
-                return 0;
-
-            GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeProductionModifier(
-                config.CapitalShipProductionPenaltyPercent,
-                config.FighterProductionPenaltyPercent
-            );
-            int difficultyPercent = _game
-                .GetDifficultyModifier(planet.GetOwnerInstanceID())
-                .ManufacturingSpeedPercent;
-            return (double)modifier
-                * difficultyPercent
-                / (_productionRateScale * _productionRateScale);
+            return ManufacturingQueries.GetProductionCycleIncrement(_game, planet);
         }
 
         /// <summary>

@@ -7,6 +7,7 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -128,9 +129,33 @@ public sealed class ContentPackEditorProject
     {
         RequireOwnedRecord(field.Record);
         ValidateFieldValues(field, new[] { value });
+        if (field.Record.Kind == "Building" && field.MemberName == nameof(Building.BuildingType))
+        {
+            SetBuildingType(field, value);
+            return;
+        }
         using (BeginEdit(field.Name))
         {
             field.SetValue(value);
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Updates a building category and its derived manufacturing output as one edit.
+    /// </summary>
+    /// <param name="field">The building-category field.</param>
+    /// <param name="value">The validated building-category value.</param>
+    private void SetBuildingType(ContentPackEditorField field, string value)
+    {
+        BuildingType buildingType = (BuildingType)Enum.Parse(typeof(BuildingType), value);
+        ContentPackEditorField productionType = field.Record.GetField(
+            nameof(Building.ProductionType)
+        );
+        using (BeginEdit(field.Name))
+        {
+            field.SetValue(value);
+            productionType.SetValue(Building.GetRequiredProductionType(buildingType).ToString());
             LinkRulesOverride(field.Document);
         }
     }

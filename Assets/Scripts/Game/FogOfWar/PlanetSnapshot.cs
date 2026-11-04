@@ -58,6 +58,9 @@ namespace Rebellion.Game.FogOfWar
         [PersistableMember(Name = nameof(FullObservationTick))]
         private int? _fullObservationTick;
 
+        [PersistableMember(Name = nameof(OrbitalTickCaptured))]
+        private int _orbitalTickCaptured = -1;
+
         [PersistableMember(Name = nameof(OwnerInstanceID))]
         private string _ownerInstanceId;
 
@@ -135,6 +138,16 @@ namespace Rebellion.Game.FogOfWar
         {
             get => _fullObservationTick ?? _tickCaptured;
             set => _fullObservationTick = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the last complete orbital observation tick, or minus one when unknown.
+        /// </summary>
+        [PersistableIgnore]
+        public int OrbitalTickCaptured
+        {
+            get => _orbitalTickCaptured;
+            set => _orbitalTickCaptured = value;
         }
 
         [PersistableIgnore]

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Proposals
 {
@@ -86,7 +88,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="currentPlanet">The planet currently containing the fleet.</param>
         /// <returns>
-        /// True when the stationary fleet cannot act at hostile territory.
+        /// True when the stationary fleet cannot act in hostile territory or faces a stronger approach at an owned planet.
         /// </returns>
         internal static bool IsRequired(AITurnContext context, Fleet fleet, Planet currentPlanet)
         {
@@ -105,7 +107,7 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             if (planetOwnerId == context.Faction.InstanceID)
-                return false;
+                return ShouldEvacuateOwnedPlanet(context, fleet, currentPlanet);
 
             return !CanAct(
                 context,
@@ -116,6 +118,51 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
+        /// Returns whether a battle fleet should leave an owned planet before stronger hostile forces can trap it.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="fleet">The stationary fleet being considered for evacuation.</param>
+        /// <param name="planet">The owned planet receiving hostile fleets.</param>
+        /// <returns>True when an incoming force can prevent withdrawal and exceeds the combined ready local fleets and planetary starfighters.</returns>
+        private static bool ShouldEvacuateOwnedPlanet(
+            AITurnContext context,
+            Fleet fleet,
+            Planet planet
+        )
+        {
+            if (
+                fleet.RoleType != FleetRoleType.Battle
+                || fleet.Order?.OrderType == FleetOrderType.Defend
+                || context.Assessment.IsPriorityDefensePlanet(planet)
+                || !context.StrategicPlan.CanFleetDepart(fleet)
+            )
+                return false;
+
+            long incomingStrength = context.Assessment.GetKnownIncomingTrappingFleetStrength(
+                planet
+            );
+            if (incomingStrength <= 0)
+                return false;
+
+            long defendingStrength = context
+                .Assessment.GetFriendlyFleets(planet)
+                .Where(friendly => friendly.Movement == null)
+                .Sum(friendly =>
+                    (long)context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(friendly)
+                );
+            defendingStrength += context
+                .Assessment.GetPlanetStarfighters(planet)
+                .Where(fighter =>
+                    fighter.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && fighter.Movement == null
+                    && fighter.CurrentSquadronSize > 0
+                )
+                .Sum(fighter => (long)fighter.CalculateCombatValue(fighter.CurrentSquadronSize));
+            return incomingStrength > defendingStrength;
+        }
+
+        /// <summary>
         /// Returns whether the proposal still matches live fleet and planet state.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -123,6 +170,7 @@ namespace Rebellion.AI.Proposals
         private bool IsStillValid(AITurnContext context)
         {
             return IsRequired(context, Fleet, CurrentPlanet)
+                && AIFleetMovement.CanReturnTo(context, Fleet, DestinationPlanet)
                 && AIFleetMovement.CanMove(context, Fleet, DestinationPlanet);
         }
 
@@ -143,32 +191,22 @@ namespace Rebellion.AI.Proposals
         {
             if (hasHostileFleet)
             {
-                int required = context.GetAttackDemand(hostilePlanet)?.OrbitalStrength ?? 0;
+                int required = context.GetAttackDemand(hostilePlanet, fleet)?.OrbitalStrength ?? 0;
                 return required > 0
                     && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                         >= required;
             }
 
-            if (
-                context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(hostilePlanet)
-                && context.Assessment.HasBombardmentTargets(hostilePlanet)
-            )
+            if (context.CanUseMilitaryBombardment(fleet, hostilePlanet))
                 return true;
 
-            AIAttackDemand demand = context.GetAttackDemand(hostilePlanet);
+            AIAttackDemand demand = context.GetAttackDemand(hostilePlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
-            bool canBombardDefenders =
-                context.Assessment.GetDefendingRegimentCount(hostilePlanet) > 0
-                && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(hostilePlanet);
-            int requiredRegiments = canBombardDefenders
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-            int requiredStrength = canBombardDefenders ? 0 : demand.RegimentStrength;
-            return context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments
-                && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= requiredStrength
+            var groundRequirements = context.GetAttackRegimentRequirements(hostilePlanet, fleet);
+            return context.Assessment.GetReadyFleetRegimentCount(fleet) >= groundRequirements.Count
+                && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= groundRequirements.Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, hostilePlanet)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
         }
@@ -195,6 +233,8 @@ namespace Rebellion.AI.Proposals
         {
             if (
                 context?.Faction == null
+                || context.Assessment == null
+                || context.MovementQueries == null
                 || fleet == null
                 || fleet.Movement != null
                 || currentPlanet == null
@@ -205,14 +245,7 @@ namespace Rebellion.AI.Proposals
             double nearestDistance = double.MaxValue;
             foreach (Planet candidate in context.Assessment.OwnedPlanets)
             {
-                if (
-                    candidate == null
-                    || candidate.InstanceID == currentPlanet.InstanceID
-                    || !candidate.IsColonized
-                    || candidate.IsDestroyed
-                    || candidate.IsBlockadedFor(context.Faction.InstanceID)
-                    || !candidate.CanAcceptChild(fleet)
-                )
+                if (candidate == null || candidate.InstanceID == currentPlanet.InstanceID)
                     continue;
 
                 double distance = currentPlanet.GetRawDistanceTo(candidate);
@@ -230,11 +263,64 @@ namespace Rebellion.AI.Proposals
                 )
                     continue;
 
+                if (!CanReturnTo(context, fleet, candidate))
+                    continue;
+
                 nearest = candidate;
                 nearestDistance = distance;
             }
 
             return CanMove(context, fleet, nearest) ? nearest : null;
+        }
+
+        /// <summary>
+        /// Checks whether an owned destination accepts a return and its known arrival threat is covered.
+        /// </summary>
+        /// <param name="context">The faction turn supplying movement and observed orbital forces.</param>
+        /// <param name="fleet">The stationary fleet returning with its currently ready ships.</param>
+        /// <param name="destination">The owned destination being considered.</param>
+        /// <returns>True when normal movement is valid and the ready force meets the arrival requirement.</returns>
+        internal static bool CanReturnTo(AITurnContext context, Fleet fleet, Planet destination)
+        {
+            if (
+                context?.Faction == null
+                || context.Assessment == null
+                || context.MovementQueries == null
+                || context.Game?.Config?.AI?.FleetDeployment == null
+                || fleet == null
+                || fleet.Movement != null
+                || destination == null
+                || destination.GetOwnerInstanceID() != context.Faction.InstanceID
+                || !destination.IsColonized
+                || destination.IsDestroyed
+                || destination.IsBlockadedFor(context.Faction.InstanceID)
+                || !destination.CanAcceptChild(fleet)
+            )
+                return false;
+
+            IReadOnlyList<ISceneNode> selection = new ISceneNode[] { fleet };
+            if (
+                !context.MovementQueries.TryGetSelectionTransitTicks(
+                    selection,
+                    destination,
+                    context.Faction.InstanceID,
+                    out int arrivalTicks
+                )
+            )
+                return false;
+
+            int hostileStrength = context
+                .Assessment.GetHostileOrbitalCapabilitiesAtArrival(destination, arrivalTicks)
+                .Combat;
+            if (hostileStrength <= 0)
+                return true;
+
+            int requiredStrength = IntegerMath.ScaleByPercent(
+                hostileStrength,
+                context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            return context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
+                >= requiredStrength;
         }
 
         /// <summary>

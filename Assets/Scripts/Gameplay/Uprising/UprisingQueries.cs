@@ -18,14 +18,16 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet to calculate garrison requirements for.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <param name="config">Garrison configuration parameters.</param>
+        /// <param name="popularSupport">The assumed support percentage, or null to use current support.</param>
         /// <returns>The number of garrison troops required, or 0 if support is sufficient.</returns>
         public static int CalculateGarrisonRequirement(
             Planet planet,
             Faction faction,
-            GameConfig.GarrisonConfig config
+            GameConfig.GarrisonConfig config,
+            int? popularSupport = null
         )
         {
-            return planet.GetGarrisonRequirement(faction, config);
+            return planet.GetGarrisonRequirement(faction, config, popularSupport);
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -48,18 +49,34 @@ namespace Rebellion.Gameplay
             bool processMessages = true
         )
         {
+            using var measurement = PerformanceLogger.Measure("Result pipeline");
             List<GameResult> resolvedResults = _getResults().Publish(results);
             if (resolvedResults.Count > 0)
-                ResultsResolved?.Invoke(resolvedResults);
+                InvokeMeasured<IReadOnlyList<GameResult>>(
+                    ResultsResolved,
+                    resolvedResults,
+                    "Resolved result callback",
+                    resolvedResults.Count
+                );
             List<PlanetaryAssaultResult> assaultResults = resolvedResults
                 .OfType<PlanetaryAssaultResult>()
                 .ToList();
             if (assaultResults.Count > 0)
-                PlanetaryAssaultsResolved?.Invoke(assaultResults);
+                InvokeMeasured<IReadOnlyList<PlanetaryAssaultResult>>(
+                    PlanetaryAssaultsResolved,
+                    assaultResults,
+                    "Assault result callback",
+                    assaultResults.Count
+                );
 
             List<VictoryResult> victoryResults = resolvedResults.OfType<VictoryResult>().ToList();
             if (victoryResults.Count > 0)
-                VictoriesResolved?.Invoke(victoryResults);
+                InvokeMeasured<IReadOnlyList<VictoryResult>>(
+                    VictoriesResolved,
+                    victoryResults,
+                    "Victory batch callback",
+                    victoryResults.Count
+                );
 
             if (processMessages)
                 ProcessMessageReactions(resolvedResults);
@@ -67,10 +84,10 @@ namespace Rebellion.Gameplay
             foreach (
                 HeadquartersLostResult headquarters in resolvedResults.OfType<HeadquartersLostResult>()
             )
-                HeadquartersLost?.Invoke(headquarters);
+                InvokeMeasured(HeadquartersLost, headquarters, "Headquarters loss callback", 1);
 
             foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
-                VictoryDeclared?.Invoke(victory);
+                InvokeMeasured(VictoryDeclared, victory, "Victory callback", 1);
             return resolvedResults;
         }
 
@@ -80,6 +97,7 @@ namespace Rebellion.Gameplay
         /// <param name="resolvedResults">The already-processed results to extend in place.</param>
         public void ProcessMessageReactions(List<GameResult> resolvedResults)
         {
+            using var measurement = PerformanceLogger.Measure("Message reaction waves");
             HashSet<MessageDeliveredResult> notifiedDeliveries = new();
             List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
             while (pendingMessageResults.Count > 0)
@@ -112,7 +130,41 @@ namespace Rebellion.Gameplay
             )
             {
                 if (notifiedDeliveries.Add(delivery))
-                    MessageDelivered?.Invoke(delivery);
+                    InvokeMeasured(MessageDelivered, delivery, "Message delivery callback", 1);
+            }
+        }
+
+        /// <summary>
+        /// Invokes the current callback snapshot in registration order with optional per-callback timing.
+        /// </summary>
+        /// <typeparam name="T">The callback argument type.</typeparam>
+        /// <param name="callbacks">The current multicast callback snapshot.</param>
+        /// <param name="value">The existing callback argument.</param>
+        /// <param name="operation">The operation recorded for each callback.</param>
+        /// <param name="items">The already known number of delivered results.</param>
+        private static void InvokeMeasured<T>(
+            Action<T> callbacks,
+            T value,
+            string operation,
+            long items
+        )
+        {
+            if (!PerformanceLogger.IsEnabled)
+            {
+                callbacks?.Invoke(value);
+                return;
+            }
+
+            if (callbacks == null)
+                return;
+            foreach (Action<T> callback in callbacks.GetInvocationList())
+            {
+                using var measurement = PerformanceLogger.Measure(
+                    operation,
+                    items: items,
+                    subjectType: callback.Method.DeclaringType
+                );
+                callback(value);
             }
         }
 
@@ -122,9 +174,10 @@ namespace Rebellion.Gameplay
         /// <param name="results">The results emitted by the command.</param>
         public void ProcessImmediate(IReadOnlyList<GameResult> results)
         {
+            using var measurement = PerformanceLogger.Measure("Immediate result pipeline");
             List<GameResult> resolvedResults = ProcessResults(results);
             foreach (BombardmentResult result in resolvedResults.OfType<BombardmentResult>())
-                BombardmentCompleted?.Invoke(result);
+                InvokeMeasured(BombardmentCompleted, result, "Bombardment callback", 1);
         }
     }
 }

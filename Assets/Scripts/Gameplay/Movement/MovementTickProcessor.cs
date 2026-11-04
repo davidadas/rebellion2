@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -29,6 +30,10 @@ namespace Rebellion.Gameplay
         /// <returns>The movement results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(MovementTickProcessor)
+            );
             List<GameResult> results = _commands.TakePendingResults();
             List<IMovable> movables = new List<IMovable>();
             game.GetGalaxyMap()
