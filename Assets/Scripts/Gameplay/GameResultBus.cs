@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -24,7 +25,7 @@ namespace Rebellion.Gameplay
         public IDisposable Subscribe<T>(Action<IReadOnlyList<T>> subscriber)
             where T : GameResult
         {
-            return Register(subscriber, _subscribers);
+            return Register(subscriber, _subscribers, "Result reaction callback");
         }
 
         /// <summary>
@@ -39,10 +40,22 @@ namespace Rebellion.Gameplay
             if (subscriber == null)
                 throw new ArgumentNullException(nameof(subscriber));
 
-            return Subscribe<T>(results =>
-            {
-                Publish(subscriber(results));
-            });
+            return Register<T>(
+                results =>
+                {
+                    Publish(
+                        InvokeMeasured(
+                            subscriber,
+                            results,
+                            "Result reaction callback",
+                            results.Count
+                        )
+                    );
+                },
+                _subscribers,
+                "Result reaction forwarding",
+                subscriber.Method.DeclaringType
+            );
         }
 
         /// <summary>
@@ -54,7 +67,7 @@ namespace Rebellion.Gameplay
         public IDisposable Observe<T>(Action<IReadOnlyList<T>> observer)
             where T : GameResult
         {
-            return Register(observer, _observers);
+            return Register(observer, _observers, "Result observer callback");
         }
 
         /// <summary>
@@ -67,7 +80,12 @@ namespace Rebellion.Gameplay
             if (observer == null)
                 throw new ArgumentNullException(nameof(observer));
 
-            Subscription subscription = new Subscription(observer, _observers);
+            Subscription subscription = new Subscription(
+                observer,
+                _observers,
+                "Result observer callback",
+                null
+            );
             _observers.Add(subscription);
             return subscription;
         }
@@ -91,6 +109,7 @@ namespace Rebellion.Gameplay
         /// <returns>The settled results, or an empty list when queued by an active delivery.</returns>
         public List<GameResult> Publish(IEnumerable<GameResult> results)
         {
+            using var measurement = PerformanceLogger.Measure("Result bus publication");
             List<GameResult> incomingResults =
                 results?.Where(result => result != null).ToList() ?? new List<GameResult>();
             _pendingResults.AddRange(incomingResults);
@@ -133,10 +152,14 @@ namespace Rebellion.Gameplay
         /// <typeparam name="T">The result type accepted by the callback.</typeparam>
         /// <param name="callback">The callback invoked for nonempty matching batches.</param>
         /// <param name="subscriptions">The ordered reaction or observer subscriptions.</param>
+        /// <param name="operation">The operation identifying the callback phase.</param>
+        /// <param name="subjectType">The original callback's declaring type, when wrapped.</param>
         /// <returns>The disposable registration.</returns>
         private static IDisposable Register<T>(
             Action<IReadOnlyList<T>> callback,
-            List<Subscription> subscriptions
+            List<Subscription> subscriptions,
+            string operation,
+            Type subjectType = null
         )
             where T : GameResult
         {
@@ -148,12 +171,88 @@ namespace Rebellion.Gameplay
                 {
                     List<T> matchingResults = results.OfType<T>().ToList();
                     if (matchingResults.Count > 0)
-                        callback(matchingResults);
+                    {
+                        InvokeMeasured<IReadOnlyList<T>>(
+                            callback,
+                            matchingResults,
+                            operation,
+                            matchingResults.Count,
+                            subjectType
+                        );
+                    }
                 },
-                subscriptions
+                subscriptions,
+                "Result subscription dispatch",
+                subjectType ?? callback.Method.DeclaringType
             );
             subscriptions.Add(subscription);
             return subscription;
+        }
+
+        /// <summary>
+        /// Invokes an action snapshot in order with optional timing for each handler.
+        /// </summary>
+        /// <typeparam name="T">The callback argument type.</typeparam>
+        /// <param name="callbacks">The nonnull multicast callback snapshot.</param>
+        /// <param name="value">The existing callback argument.</param>
+        /// <param name="operation">The operation identifying these callbacks.</param>
+        /// <param name="items">The already known number of delivered results.</param>
+        /// <param name="subjectType">The original declaring type for an internal forwarding wrapper.</param>
+        private static void InvokeMeasured<T>(
+            Action<T> callbacks,
+            T value,
+            string operation,
+            long items,
+            Type subjectType = null
+        )
+        {
+            if (!PerformanceLogger.IsEnabled)
+            {
+                callbacks(value);
+                return;
+            }
+
+            foreach (Action<T> callback in callbacks.GetInvocationList())
+            {
+                using var measurement = PerformanceLogger.Measure(
+                    operation,
+                    items: items,
+                    subjectType: subjectType ?? callback.Method.DeclaringType
+                );
+                callback(value);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a reaction snapshot in order and returns only its last handler's result.
+        /// </summary>
+        /// <typeparam name="T">The callback argument type.</typeparam>
+        /// <param name="callbacks">The nonnull multicast reaction snapshot.</param>
+        /// <param name="value">The existing callback argument.</param>
+        /// <param name="operation">The operation identifying these callbacks.</param>
+        /// <param name="items">The already known number of delivered results.</param>
+        /// <returns>The last handler's returned results, without inspecting any earlier return.</returns>
+        private static List<GameResult> InvokeMeasured<T>(
+            Func<T, List<GameResult>> callbacks,
+            T value,
+            string operation,
+            long items
+        )
+        {
+            if (!PerformanceLogger.IsEnabled)
+                return callbacks(value);
+
+            List<GameResult> results = null;
+            foreach (Func<T, List<GameResult>> callback in callbacks.GetInvocationList())
+            {
+                using var measurement = PerformanceLogger.Measure(
+                    operation,
+                    items: items,
+                    subjectType: callback.Method.DeclaringType
+                );
+                results = callback(value);
+            }
+            return results;
         }
 
         /// <summary>
@@ -163,6 +262,8 @@ namespace Rebellion.Gameplay
         {
             private readonly Action<IReadOnlyList<GameResult>> _callback;
             private readonly List<Subscription> _subscriptions;
+            private readonly string _operation;
+            private readonly Type _subjectType;
             private bool _isDisposed;
 
             /// <summary>
@@ -170,13 +271,19 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="callback">The type-filtered delivery callback.</param>
             /// <param name="subscriptions">The collection owning this registration.</param>
+            /// <param name="operation">The operation identifying this delivery.</param>
+            /// <param name="subjectType">The declaring type for a forwarding wrapper, or null to use each handler's type.</param>
             internal Subscription(
                 Action<IReadOnlyList<GameResult>> callback,
-                List<Subscription> subscriptions
+                List<Subscription> subscriptions,
+                string operation,
+                Type subjectType
             )
             {
                 _callback = callback;
                 _subscriptions = subscriptions;
+                _operation = operation;
+                _subjectType = subjectType;
             }
 
             /// <summary>
@@ -186,7 +293,9 @@ namespace Rebellion.Gameplay
             internal void Deliver(IReadOnlyList<GameResult> results)
             {
                 if (!_isDisposed)
-                    _callback(results);
+                {
+                    InvokeMeasured(_callback, results, _operation, results.Count, _subjectType);
+                }
             }
 
             /// <summary>

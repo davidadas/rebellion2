@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -14,6 +15,7 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class ManufacturingQueries
     {
+        private const int _percentageScale = 100;
         private readonly GameRoot _game;
 
         /// <summary>
@@ -274,22 +276,36 @@ namespace Rebellion.Gameplay
         /// <param name="destination">The node that receives completed items.</param>
         /// <param name="count">The number of copies to queue.</param>
         /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="replacedOrder">An unfinished order assumed to be removed before construction.</param>
+        /// <param name="removedItems">Additional units assumed to be removed before construction.</param>
         /// <returns>True when the order is structurally valid without considering maintenance.</returns>
         public static bool CanAcceptManufacturingOrder(
             Planet producer,
             IManufacturable template,
             ISceneNode destination,
             int count,
-            string ownerInstanceId
+            string ownerInstanceId,
+            IManufacturable replacedOrder = null,
+            IReadOnlyCollection<IManufacturable> removedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanAcceptManufacturingOrder),
+                subjectType: typeof(ManufacturingQueries)
+            );
+            IReadOnlyCollection<IManufacturable> released = removedItems;
+            if (replacedOrder != null)
+                released =
+                    removedItems == null
+                        ? new[] { replacedOrder }
+                        : removedItems.Append(replacedOrder).Distinct().ToArray();
             return HasValidManufacturingOrderContext(
                     producer,
                     template,
                     destination,
                     count,
                     ownerInstanceId
-                ) && HasDestinationCapacity(producer, destination, template, count);
+                ) && HasDestinationCapacity(producer, destination, template, count, released);
         }
 
         /// <summary>
@@ -309,6 +325,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasDestinationCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             string ownerInstanceId = producer.GetOwnerInstanceID();
             if (destination is Planet planet)
             {
@@ -397,6 +417,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasFleetCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             if (
                 !string.Equals(
                     fleet.GetOwnerInstanceID(),
@@ -463,6 +487,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasCapitalShipCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             if (
                 !string.Equals(
                     capitalShip.GetOwnerInstanceID(),
@@ -617,6 +645,29 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Computes the current production-cycle rate, holding existing conditions constant.
+        /// </summary>
+        /// <param name="game">The game supplying production modifiers.</param>
+        /// <param name="producer">The production planet.</param>
+        /// <returns>The production-cycle increment per tick.</returns>
+        public static double GetProductionCycleIncrement(GameRoot game, Planet producer)
+        {
+            if (producer.IsInUprising)
+                return 0;
+
+            int blockadePercent = producer.GetBlockadeProductionModifier(
+                game.Config.Blockade.CapitalShipProductionPenaltyPercent,
+                game.Config.Blockade.FighterProductionPenaltyPercent
+            );
+            int difficultyPercent = game.GetDifficultyModifier(
+                producer.GetOwnerInstanceID()
+            ).ManufacturingSpeedPercent;
+            return (double)blockadePercent
+                * difficultyPercent
+                / (_percentageScale * _percentageScale);
+        }
+
+        /// <summary>
         /// Estimates when the current queue for one manufacturing category will finish.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -695,12 +746,14 @@ namespace Rebellion.Gameplay
         /// <param name="type">The manufacturing category to inspect.</param>
         /// <param name="requiredProgress">The remaining production progress.</param>
         /// <returns>The estimated production ticks, or null when no progress can be made.</returns>
-        private static int? EstimateManufacturingTicks(
+        public static int? EstimateManufacturingTicks(
             Planet producer,
             ManufacturingType type,
             long requiredProgress
         )
         {
+            if (producer == null || type == ManufacturingType.None)
+                return null;
             if (requiredProgress <= 0)
                 return 0;
 

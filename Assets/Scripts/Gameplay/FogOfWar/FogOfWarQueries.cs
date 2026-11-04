@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -35,21 +36,37 @@ namespace Rebellion.Gameplay
         /// <returns>True if the faction owns the planet or has an arrived fleet with ships present.</returns>
         public bool IsPlanetVisible(Planet planet, Faction faction)
         {
+            return IsPlanetVisible(planet, faction, out _);
+        }
+
+        /// <summary>
+        /// Determines visibility while retaining the first active child snapshot for the current
+        /// synchronous planet projection.
+        /// </summary>
+        /// <param name="planet">The planet to check visibility for.</param>
+        /// <param name="faction">The faction whose visibility to evaluate.</param>
+        /// <param name="activeChildren">
+        /// The active authoritative children when visibility requires a fleet query; otherwise null.
+        /// </param>
+        /// <returns>True if the faction owns the planet or has an arrived fleet with ships present.</returns>
+        private static bool IsPlanetVisible(
+            Planet planet,
+            Faction faction,
+            out IReadOnlyList<ISceneNode> activeChildren
+        )
+        {
+            activeChildren = null;
             if (planet.OwnerInstanceID == faction.InstanceID)
                 return true;
 
-            if (
-                planet
-                    .GetChildren<Fleet>()
-                    .Any(f =>
-                        f.OwnerInstanceID == faction.InstanceID
-                        && f.Movement == null
-                        && f.HasOperationalCapitalShips()
-                    )
-            )
-                return true;
-
-            return false;
+            activeChildren = planet.GetChildren();
+            return activeChildren
+                .OfType<Fleet>()
+                .Any(f =>
+                    f.OwnerInstanceID == faction.InstanceID
+                    && f.Movement == null
+                    && f.HasOperationalCapitalShips()
+                );
         }
 
         /// <summary>
@@ -61,6 +78,10 @@ namespace Rebellion.Gameplay
         /// <returns>A galaxy map filtered by the faction's fog of war state.</returns>
         public GalaxyMap BuildFactionView(Faction faction)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildFactionView),
+                subjectType: typeof(FogOfWarQueries)
+            );
             GalaxyMap factionView = new GalaxyMap();
 
             foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
@@ -86,11 +107,22 @@ namespace Rebellion.Gameplay
                         out planetSnapshot
                     );
 
+                    bool planetIsVisible = IsPlanetVisible(
+                        masterPlanet,
+                        faction,
+                        out IReadOnlyList<ISceneNode> activeMasterChildren
+                    );
                     Planet viewPlanet;
-                    if (IsPlanetVisible(masterPlanet, faction))
+                    if (planetIsVisible)
                     {
                         viewPlanet = BlankPlanetView(masterPlanet);
-                        ApplyRealTimeView(viewPlanet, masterPlanet, faction, planetSnapshot);
+                        ApplyRealTimeView(
+                            viewPlanet,
+                            masterPlanet,
+                            faction,
+                            planetSnapshot,
+                            ref activeMasterChildren
+                        );
                     }
                     else if (planetSnapshot != null)
                     {
@@ -106,13 +138,13 @@ namespace Rebellion.Gameplay
                         ? new List<string> { faction.InstanceID }
                         : new List<string>();
 
-                    MergeFactionControlledUnits(viewPlanet, masterPlanet, faction);
+                    MergeFactionControlledUnits(viewPlanet, activeMasterChildren, faction);
 
                     AddObservedMissions(viewPlanet, planetSnapshot);
 
                     foreach (
-                        Mission mission in masterPlanet
-                            .GetChildren<Mission>()
+                        Mission mission in activeMasterChildren
+                            .OfType<Mission>()
                             .Where(mission => mission.GetOwnerInstanceID() == faction.InstanceID)
                     )
                     {
@@ -158,6 +190,10 @@ namespace Rebellion.Gameplay
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddObservedMissions),
+                subjectType: typeof(FogOfWarQueries)
+            );
             if (snapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions) != true)
                 return;
 
@@ -175,6 +211,10 @@ namespace Rebellion.Gameplay
         /// <param name="viewPlanet">The faction-view planet receiving detached children.</param>
         private static void AttachDetachedChildrenToView(Planet viewPlanet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AttachDetachedChildrenToView),
+                subjectType: typeof(FogOfWarQueries)
+            );
             foreach (ISceneNode child in viewPlanet.GetChildren())
             {
                 if (child.GetParent() == null)
@@ -199,17 +239,22 @@ namespace Rebellion.Gameplay
         /// detached copies.
         /// </summary>
         /// <param name="viewPlanet">The planet view being populated.</param>
-        /// <param name="masterPlanet">The authoritative planet data source.</param>
+        /// <param name="masterChildren">The active authoritative children for this planet projection.</param>
         /// <param name="faction">The faction whose view is being built.</param>
         private static void MergeFactionControlledUnits(
             Planet viewPlanet,
-            Planet masterPlanet,
+            IReadOnlyList<ISceneNode> masterChildren,
             Faction faction
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(MergeFactionControlledUnits),
+                subjectType: typeof(FogOfWarQueries)
+            );
             string factionId = faction.InstanceID;
-            IEnumerable<Officer> controlledOfficers = masterPlanet
-                .GetChildren<Officer>()
+            IReadOnlyList<ISceneNode> viewChildren = viewPlanet.GetChildren(includeDisabled: true);
+            IEnumerable<Officer> controlledOfficers = masterChildren
+                .OfType<Officer>()
                 .Where(officer =>
                     officer.OwnerInstanceID == factionId && !officer.IsCaptured
                     || officer.IsCaptured && officer.CaptorInstanceID == factionId
@@ -220,40 +265,46 @@ namespace Rebellion.Gameplay
                         : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
                 );
 
+            HashSet<string> instanceIds = new();
             viewPlanet.SetChildren(
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Fleet>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Fleet>()
+                    viewChildren.OfType<Fleet>(),
+                    masterChildren
+                        .OfType<Fleet>()
                         .Where(fleet =>
                             fleet.OwnerInstanceID == factionId
                             && fleet.GetChildren<CapitalShip>().Count > 0
-                        )
+                        ),
+                    instanceIds
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Officer>(includeDisabled: true),
-                    controlledOfficers
+                    viewChildren.OfType<Officer>(),
+                    controlledOfficers,
+                    instanceIds
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Regiment>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Regiment>()
-                        .Where(unit => unit.OwnerInstanceID == factionId)
+                    viewChildren.OfType<Regiment>(),
+                    masterChildren
+                        .OfType<Regiment>()
+                        .Where(unit => unit.OwnerInstanceID == factionId),
+                    instanceIds
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<SpecialForces>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<SpecialForces>()
-                        .Where(unit => unit.OwnerInstanceID == factionId)
+                    viewChildren.OfType<SpecialForces>(),
+                    masterChildren
+                        .OfType<SpecialForces>()
+                        .Where(unit => unit.OwnerInstanceID == factionId),
+                    instanceIds
                 ),
                 MergeMissingByInstanceID(
-                    viewPlanet.GetChildren<Starfighter>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Starfighter>()
-                        .Where(unit => unit.OwnerInstanceID == factionId)
+                    viewChildren.OfType<Starfighter>(),
+                    masterChildren
+                        .OfType<Starfighter>()
+                        .Where(unit => unit.OwnerInstanceID == factionId),
+                    instanceIds
                 ),
-                viewPlanet.GetChildren<Mission>(includeDisabled: true),
-                viewPlanet.GetChildren<Building>(includeDisabled: true)
+                viewChildren.OfType<Mission>(),
+                viewChildren.OfType<Building>()
             );
         }
 
@@ -262,16 +313,20 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="existing">The existing.</param>
         /// <param name="additions">The additions.</param>
+        /// <param name="instanceIds">Membership workspace cleared for this entity category.</param>
         /// <typeparam name="T">The scene-node type being merged.</typeparam>
         /// <returns>The existing nodes followed by additions with previously unseen instance IDs.</returns>
         private static IEnumerable<T> MergeMissingByInstanceID<T>(
             IEnumerable<T> existing,
-            IEnumerable<T> additions
+            IEnumerable<T> additions,
+            HashSet<string> instanceIds
         )
             where T : ISceneNode
         {
             List<T> merged = existing.ToList();
-            HashSet<string> instanceIds = merged.Select(node => node.InstanceID).ToHashSet();
+            instanceIds.Clear();
+            foreach (T node in merged)
+                instanceIds.Add(node.InstanceID);
             merged.AddRange(additions.Where(node => instanceIds.Add(node.InstanceID)));
             return merged;
         }
@@ -318,6 +373,10 @@ namespace Rebellion.Gameplay
         /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BlankPlanetView),
+                subjectType: typeof(FogOfWarQueries)
+            );
             Planet viewPlanet = (Planet)masterPlanet.CreateCopy();
             viewPlanet.SetChildren(
                 Enumerable.Empty<Fleet>(),
@@ -343,19 +402,29 @@ namespace Rebellion.Gameplay
         /// <param name="masterPlanet">The authoritative planet data source.</param>
         /// <param name="faction">The faction whose view is being built.</param>
         /// <param name="planetSnapshot">The prior snapshot for the planet, if any.</param>
+        /// <param name="activeMasterChildren">
+        /// The active authoritative children already read for visibility, or null when the owner
+        /// fast path did not need them.
+        /// </param>
         private void ApplyRealTimeView(
             Planet viewPlanet,
             Planet masterPlanet,
             Faction faction,
-            PlanetSnapshot planetSnapshot
+            PlanetSnapshot planetSnapshot,
+            ref IReadOnlyList<ISceneNode> activeMasterChildren
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ApplyRealTimeView),
+                subjectType: typeof(FogOfWarQueries)
+            );
+            activeMasterChildren ??= masterPlanet.GetChildren();
             viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
 
-            IEnumerable<Officer> officers = masterPlanet
-                .GetChildren<Officer>()
+            IEnumerable<Officer> officers = activeMasterChildren
+                .OfType<Officer>()
                 .Where(officer =>
                     FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
                 )
@@ -364,8 +433,8 @@ namespace Rebellion.Gameplay
                         ? officer
                         : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
                 );
-            IEnumerable<Fleet> fleets = masterPlanet
-                .GetChildren<Fleet>()
+            IEnumerable<Fleet> fleets = activeMasterChildren
+                .OfType<Fleet>()
                 .Where(fleet =>
                     fleet.GetChildren<CapitalShip>().Count > 0
                     && FogOfWarRecorder.IsObservableAtPlanet(fleet, faction.InstanceID)
@@ -376,22 +445,22 @@ namespace Rebellion.Gameplay
                         : FogOfWarRecorder.CopyObservedFleetForSnapshot(fleet, faction.InstanceID)
                 )
                 .Where(fleet => fleet != null);
-            IEnumerable<Regiment> regiments = masterPlanet
-                .GetChildren<Regiment>()
+            IEnumerable<Regiment> regiments = activeMasterChildren
+                .OfType<Regiment>()
                 .Where(regiment => IsVisibleWithoutManufacturingIntelligence(regiment, faction))
                 .Select(regiment => ViewUnit(regiment, faction));
-            IEnumerable<SpecialForces> specialForces = masterPlanet
-                .GetChildren<SpecialForces>()
+            IEnumerable<SpecialForces> specialForces = activeMasterChildren
+                .OfType<SpecialForces>()
                 .Where(unit => IsVisibleWithoutManufacturingIntelligence(unit, faction))
                 .Select(unit => ViewUnit(unit, faction));
-            IEnumerable<Starfighter> starfighters = masterPlanet
-                .GetChildren<Starfighter>()
+            IEnumerable<Starfighter> starfighters = activeMasterChildren
+                .OfType<Starfighter>()
                 .Where(starfighter =>
                     IsVisibleWithoutManufacturingIntelligence(starfighter, faction)
                 )
                 .Select(starfighter => ViewUnit(starfighter, faction));
-            IEnumerable<Building> buildings = masterPlanet
-                .GetChildren<Building>()
+            IEnumerable<Building> buildings = activeMasterChildren
+                .OfType<Building>()
                 .Where(building => IsVisibleWithoutManufacturingIntelligence(building, faction))
                 .Select(building => ViewUnit(building, faction));
 
@@ -428,6 +497,10 @@ namespace Rebellion.Gameplay
             PlanetSnapshot planetSnapshot
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ApplySnapshotView),
+                subjectType: typeof(FogOfWarQueries)
+            );
             viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
             viewPlanet.IsColonized = planetSnapshot.IsColonized;
             viewPlanet.IsInUprising =

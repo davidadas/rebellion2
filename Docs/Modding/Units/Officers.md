@@ -101,10 +101,11 @@ Its `Conditionals` use the existing [condition syntax](../Scripting/Conditionals
 </AIBehavior>
 ```
 
-When every condition matches, the AI excludes the officer from new mission assignments, including
-decoy roles and mission-related relocation. An empty condition list holds the officer unconditionally.
-Conditions are evaluated once when assessing the faction's next AI turn. If they stop matching, the
-next assessment makes the officer available for normal assignment again.
+When every condition matches, the AI keeps the officer's new mission assignments on their current
+planet. Local missions, including recruitment, remain available. Remote missions, remote decoy roles,
+mission staging on another planet, and assignments to attack fleets are excluded. An empty condition
+list applies this restriction unconditionally. Conditions are evaluated once when assessing the
+faction's next AI turn. If they stop matching, the next assessment permits normal assignment again.
 
 The behavior uses the active content catalog, including after loading an existing campaign. Neither
 the configuration nor the evaluated hold decision is written into saved officers. Omitted behavior

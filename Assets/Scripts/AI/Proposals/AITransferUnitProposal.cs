@@ -79,6 +79,32 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
+        /// Checks whether a selected planet regiment can board its stationary fleet immediately.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when normal movement validation permits boarding at the same planet with no transit.</returns>
+        internal bool CanBoardImmediately(AITurnContext context)
+        {
+            if (
+                Unit is not Regiment regiment
+                || SourceContainer is not Planet sourcePlanet
+                || Destination != TargetFleet
+                || sourcePlanet.InstanceID != TargetFleet?.GetParentOfType<Planet>()?.InstanceID
+                || !CanExecute(context)
+                || context.MovementQueries == null
+            )
+                return false;
+
+            return context.MovementQueries.TryGetSelectionTransitTicks(
+                    new[] { regiment },
+                    Destination,
+                    context.Faction.InstanceID,
+                    out int transitTicks
+                )
+                && transitTicks == 0;
+        }
+
+        /// <summary>
         /// Requests the unit transfer.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -129,8 +155,19 @@ namespace Rebellion.AI.Proposals
             if (Unit.Movement != null || Unit.ManufacturingStatus != ManufacturingStatus.Complete)
                 return false;
 
-            if (SourceContainer is Fleet sourceFleet && !CanMoveFromSourceFleet(sourceFleet))
-                return false;
+            if (SourceContainer is Fleet sourceFleet)
+            {
+                if (
+                    Unit is CapitalShip capitalShip
+                        ? !context.StrategicPlan.CanReleaseCapitalShip(
+                            sourceFleet,
+                            capitalShip,
+                            destinationFleet: TargetFleet
+                        )
+                        : !CanMoveFromSourceFleet(sourceFleet)
+                )
+                    return false;
+            }
 
             if (!CanMoveToTargetFleet(context))
                 return false;
@@ -170,7 +207,11 @@ namespace Rebellion.AI.Proposals
 
             if (order.OrderType == FleetOrderType.Defend)
                 return context.Assessment.IsOwnedPlanet(TargetPlanet)
-                    && context.StrategicPlan.GetDefenseStrength(TargetPlanet) > 0;
+                    && context.StrategicPlan.GetDefenseStrength(TargetPlanet) > 0
+                    && (
+                        Unit is not CapitalShip capitalShip
+                        || !capitalShip.HasRole(CapitalShipRole.Transport)
+                    );
 
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

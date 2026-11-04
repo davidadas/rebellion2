@@ -34,6 +34,10 @@ namespace Rebellion.Gameplay
         /// <returns>No queued results; declarations publish through the victory command.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(VictoryTickProcessor)
+            );
             if (_commands.IsDeclared)
                 return Array.Empty<GameResult>();
 

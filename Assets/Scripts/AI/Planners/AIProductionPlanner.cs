@@ -9,6 +9,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Planners
@@ -63,14 +65,6 @@ namespace Rebellion.AI.Planners
                 List<Planet>
             >();
         private readonly Dictionary<
-            (string PlanetId, ManufacturingType ManufacturingType),
-            (double TargetWork, long QueuedWork)
-        > _queueWork =
-            new Dictionary<
-                (string PlanetId, ManufacturingType ManufacturingType),
-                (double TargetWork, long QueuedWork)
-            >();
-        private readonly Dictionary<
             (string FleetId, Type UnitType, string TypeId),
             int
         > _fleetUnitCounts = new Dictionary<(string FleetId, Type UnitType, string TypeId), int>();
@@ -82,13 +76,10 @@ namespace Rebellion.AI.Planners
             string,
             bool
         >(StringComparer.Ordinal);
+        private readonly Dictionary<(string PlanetId, string TypeId), bool> _hullBuildEligibility =
+            new();
         private readonly Dictionary<
-            (
-                string ProducerPlanetId,
-                string DestinationFleetId,
-                string ProductTypeId,
-                int Quantity
-            ),
+            (string ProducerPlanetId, string DestinationId, string ProductTypeId, int Quantity),
             int
         > _reinforcementArrivalTicks = new();
 
@@ -99,55 +90,737 @@ namespace Rebellion.AI.Planners
         /// <returns>Production proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             ResetPlanningCache();
-            List<AIProductionDemand> demands = ExpandFacilityDemands(
+            List<AIProductionDemand> demands = ExpandProductionDemands(
                 context,
                 context.ProductionDemands
             );
             context.SetProductionDemands(demands);
-            return GenerateProposals(context, demands);
+            List<AIProposal> proposals = GenerateProposals(context, demands);
+            return proposals;
         }
 
         /// <summary>
-        /// Expands score-free facility-capacity deficits into destination-specific alternatives.
+        /// Expands capacity deficits into destination-specific production demands.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The score-free demands generated for the turn.</param>
-        /// <returns>The production demands with facility alternatives expanded in original order.</returns>
-        private List<AIProductionDemand> ExpandFacilityDemands(
+        /// <returns>The production demands with industrial layouts and economic destinations assigned.</returns>
+        private List<AIProductionDemand> ExpandProductionDemands(
             AITurnContext context,
             IEnumerable<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ExpandProductionDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             List<AIProductionDemand> expanded = new List<AIProductionDemand>();
+            List<AIProductionDemand> source = demands.ToList();
             AIInfrastructurePlacementScorer placementScorer = new AIInfrastructurePlacementScorer(
                 context
             );
-            foreach (AIProductionDemand demand in demands)
+            var hubLayout = AllocateInfrastructureHubs(context, source, placementScorer);
+            foreach (AIProductionDemand demand in source)
             {
                 if (IsFacilityExpansionDemand(demand) && demand.Destination == null)
-                    AddFacilityAlternatives(context, expanded, demand, placementScorer);
+                    AddFacilityExpansionDemands(context, expanded, demand, hubLayout);
                 else
                     expanded.Add(demand);
             }
 
+            return ExpandEconomyDemands(context, expanded);
+        }
+
+        /// <summary>
+        /// Compares category ordering alternatives before reserving a sector's industrial sites.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demands">The unexpanded production requirements.</param>
+        /// <param name="placementScorer">The existing facility destination scorer.</param>
+        /// <returns>The chosen destinations and targets, keyed by sector, category, and hub index.</returns>
+        private Dictionary<
+            (string SectorId, BuildingType Type, int Index),
+            (Planet Planet, int Target)
+        > AllocateInfrastructureHubs(
+            AITurnContext context,
+            IReadOnlyList<AIProductionDemand> demands,
+            AIInfrastructurePlacementScorer placementScorer
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AllocateInfrastructureHubs),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            var result =
+                new Dictionary<
+                    (string SectorId, BuildingType Type, int Index),
+                    (Planet Planet, int Target)
+                >();
+            List<AIProductionDemand> capacityDemands = demands
+                .Where(demand => IsFacilityExpansionDemand(demand) && demand.Destination == null)
+                .ToList();
+            var orders = GetInfrastructureDemandOrders(capacityDemands).ToList();
+            var eligible = capacityDemands.ToDictionary(
+                demand => demand.BuildingType,
+                demand =>
+                    context.StrategicPlan.GetInfrastructurePlanets(demand.BuildingType).ToList()
+            );
+            var references = new Dictionary<BuildingType, ILookup<string, Planet>>();
+            var capacities = new Dictionary<(Planet Planet, BuildingType Type, int Target), int>();
+            foreach (
+                string sectorId in eligible
+                    .Values.SelectMany(planets => planets)
+                    .Select(context.Assessment.GetPlanetSystemId)
+                    .Distinct()
+                    .OrderBy(id => id, StringComparer.Ordinal)
+            )
+            {
+                var sectorPlanets = eligible.ToDictionary(
+                    entry => entry.Key,
+                    entry =>
+                        entry
+                            .Value.Where(planet =>
+                                context.Assessment.GetPlanetSystemId(planet) == sectorId
+                            )
+                            .ToList()
+                );
+                Dictionary<BuildingType, Planet> referencePlanets = new();
+                foreach (AIProductionDemand demand in capacityDemands)
+                {
+                    BuildingType type = demand.BuildingType;
+                    if (
+                        context.StrategicPlan.GetInfrastructureDeficit(sectorPlanets[type], type)
+                        == 0
+                    )
+                        continue;
+                    if (!references.TryGetValue(type, out ILookup<string, Planet> bySector))
+                    {
+                        bySector = RankInfrastructureReferencePlanets(context, demands, demand);
+                        references.Add(type, bySector);
+                    }
+                    referencePlanets[type] =
+                        bySector[sectorId].FirstOrDefault() ?? sectorPlanets[type].FirstOrDefault();
+                }
+                var best = SelectInfrastructureLayout(
+                    context,
+                    orders,
+                    capacityDemands,
+                    sectorPlanets,
+                    referencePlanets,
+                    placementScorer,
+                    capacities
+                );
+                if (best == null)
+                    continue;
+                foreach (var entry in best)
+                    result.Add((sectorId, entry.Key.Type, entry.Key.Index), entry.Value);
+            }
+            foreach (var entry in result.ToList())
+                if (
+                    !context.StrategicPlan.TryAllocateInfrastructureHub(
+                        entry.Value.Planet,
+                        entry.Key.Type,
+                        entry.Value.Target,
+                        reclaimResources: true
+                    )
+                )
+                    result.Remove(entry.Key);
+            return result;
+        }
+
+        /// <summary>
+        /// Indexes the highest-priority production destination in each sector for one facility category.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demands">The requirements before hub allocation changes their destinations.</param>
+        /// <param name="facilityDemand">The category whose output needs a nearby industrial hub.</param>
+        /// <returns>Destinations grouped by sector, retaining their demand priority order.</returns>
+        private ILookup<string, Planet> RankInfrastructureReferencePlanets(
+            AITurnContext context,
+            IReadOnlyList<AIProductionDemand> demands,
+            AIProductionDemand facilityDemand
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(RankInfrastructureReferencePlanets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            ManufacturingType production = facilityDemand.BuildingType switch
+            {
+                BuildingType.Shipyard => ManufacturingType.Ship,
+                BuildingType.TrainingFacility => ManufacturingType.Troop,
+                _ => ManufacturingType.Building,
+            };
+            return demands
+                .Where(item =>
+                    item.ManufacturingType == production && item.Kind != facilityDemand.Kind
+                )
+                .OrderByDescending(item =>
+                    AIProductionProposalScorer.GetDemandPressure(context, item)
+                )
+                .ThenBy(item => item.Id, StringComparer.Ordinal)
+                .Select(item => GetDestinationPlanet(context, item))
+                .Where(planet => planet != null)
+                .ToLookup(context.Assessment.GetPlanetSystemId, StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Reuses identical sector layouts while ranking construction, portfolio, total coverage, and retained facilities.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="orders">Category orderings evaluated without committing allocations.</param>
+        /// <param name="capacityDemands">The facility categories in their generated order.</param>
+        /// <param name="sectorPlanets">Eligible destinations indexed by facility category.</param>
+        /// <param name="referencePlanets">The fixed demand destination for each unfinished category.</param>
+        /// <param name="placementScorer">The facility destination scorer.</param>
+        /// <param name="capacities">Capacity queries shared while strategic allocations remain unchanged.</param>
+        /// <returns>The preferred trial layout before any allocation is committed.</returns>
+        private static Dictionary<
+            (BuildingType Type, int Index),
+            (Planet Planet, int Target)
+        > SelectInfrastructureLayout(
+            AITurnContext context,
+            IReadOnlyList<IReadOnlyList<AIProductionDemand>> orders,
+            IReadOnlyList<AIProductionDemand> capacityDemands,
+            IReadOnlyDictionary<BuildingType, List<Planet>> sectorPlanets,
+            IReadOnlyDictionary<BuildingType, Planet> referencePlanets,
+            AIInfrastructurePlacementScorer placementScorer,
+            IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(SelectInfrastructureLayout),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
+            Dictionary<
+                string,
+                Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)>
+            > layoutsByOrder = new(StringComparer.Ordinal);
+            double bestConstructionCoverage = -1;
+            double bestPortfolioCoverage = -1;
+            double bestCoverage = -1;
+            int bestRetained = -1;
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            foreach (IReadOnlyList<AIProductionDemand> order in orders)
+            {
+                string orderKey = string.Join(
+                    ",",
+                    order
+                        .Where(demand => referencePlanets.ContainsKey(demand.BuildingType))
+                        .Select(demand => demand.BuildingType)
+                );
+                if (!layoutsByOrder.TryGetValue(orderKey, out var layout))
+                {
+                    layout = BuildInfrastructureLayout(
+                        context,
+                        order,
+                        sectorPlanets,
+                        referencePlanets,
+                        placementScorer,
+                        capacities
+                    );
+                    layoutsByOrder.Add(orderKey, layout);
+                }
+                double constructionCoverage = layout
+                    .Where(entry => entry.Key.Type == BuildingType.ConstructionFacility)
+                    .Sum(entry =>
+                        entry.Value.Target
+                        / (double)
+                            context.StrategicPlan.GetInfrastructureHubTargets(entry.Key.Type)[
+                                entry.Key.Index
+                            ]
+                    );
+                double coverage = 0;
+                double portfolioCoverage = 0;
+                foreach (AIProductionDemand demand in capacityDemands)
+                {
+                    double categoryCoverage = layout
+                        .Where(entry => entry.Key.Type == demand.BuildingType)
+                        .Sum(entry =>
+                            entry.Value.Target
+                            / (double)
+                                context.StrategicPlan.GetInfrastructureHubTargets(entry.Key.Type)[
+                                    entry.Key.Index
+                                ]
+                        );
+                    int portfolioPercent = demand.BuildingType switch
+                    {
+                        BuildingType.ConstructionFacility =>
+                            config.ConstructionFacilityPortfolioPercent,
+                        BuildingType.Shipyard => config.ShipyardPortfolioPercent,
+                        BuildingType.TrainingFacility => config.TrainingFacilityPortfolioPercent,
+                        _ => 0,
+                    };
+                    coverage += categoryCoverage;
+                    portfolioCoverage += categoryCoverage * Math.Max(0, portfolioPercent);
+                }
+                int retained = layout.Sum(entry =>
+                    Math.Min(
+                        entry.Value.Target,
+                        context.Assessment.GetPlanetBuildingCount(
+                            entry.Value.Planet,
+                            entry.Key.Type
+                        )
+                    )
+                );
+                if (
+                    constructionCoverage > bestConstructionCoverage
+                    || constructionCoverage == bestConstructionCoverage
+                        && (
+                            portfolioCoverage > bestPortfolioCoverage
+                            || portfolioCoverage == bestPortfolioCoverage
+                                && (
+                                    coverage > bestCoverage
+                                    || coverage == bestCoverage && retained > bestRetained
+                                )
+                        )
+                )
+                {
+                    best = layout;
+                    bestConstructionCoverage = constructionCoverage;
+                    bestPortfolioCoverage = portfolioCoverage;
+                    bestCoverage = coverage;
+                    bestRetained = retained;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Assigns hub sites for one category ordering while preserving capacity for the other categories.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="order">The category ordering being evaluated.</param>
+        /// <param name="sectorPlanets">The fixed eligible destinations by category.</param>
+        /// <param name="referencePlanets">The fixed demand destinations by category.</param>
+        /// <param name="placementScorer">The facility destination scorer.</param>
+        /// <param name="capacities">Capacity queries shared while strategic allocations remain unchanged.</param>
+        /// <returns>A trial layout without mutating the strategic allocations.</returns>
+        private static Dictionary<
+            (BuildingType Type, int Index),
+            (Planet Planet, int Target)
+        > BuildInfrastructureLayout(
+            AITurnContext context,
+            IReadOnlyList<AIProductionDemand> order,
+            IReadOnlyDictionary<BuildingType, List<Planet>> sectorPlanets,
+            IReadOnlyDictionary<BuildingType, Planet> referencePlanets,
+            AIInfrastructurePlacementScorer placementScorer,
+            IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildInfrastructureLayout),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            var layout =
+                new Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)>();
+            foreach (AIProductionDemand demand in order)
+            {
+                BuildingType type = demand.BuildingType;
+                if (!referencePlanets.TryGetValue(type, out Planet reference))
+                    continue;
+                List<Planet> planets = sectorPlanets[type];
+                ManufacturingType production = type switch
+                {
+                    BuildingType.Shipyard => ManufacturingType.Ship,
+                    BuildingType.TrainingFacility => ManufacturingType.Troop,
+                    _ => ManufacturingType.Building,
+                };
+                int hubTarget = 0;
+                Dictionary<Planet, int> adjustedSpaces = new();
+                Func<Planet, int> availableSpace = planet =>
+                {
+                    if (adjustedSpaces.TryGetValue(planet, out int available))
+                        return available;
+                    var key = (planet, type, hubTarget);
+                    if (!capacities.TryGetValue(key, out int capacity))
+                    {
+                        capacity = context.StrategicPlan.GetReclaimableInfrastructureSpace(
+                            planet,
+                            type,
+                            hubTarget
+                        );
+                        capacities.Add(key, capacity);
+                    }
+                    available = Math.Max(
+                        0,
+                        capacity
+                            - layout
+                                .Where(entry =>
+                                    entry.Value.Planet == planet && entry.Key.Type != type
+                                )
+                                .Sum(entry =>
+                                    Math.Max(
+                                        0,
+                                        entry.Value.Target
+                                            - context.Assessment.GetPlanetBuildingCount(
+                                                planet,
+                                                entry.Key.Type
+                                            )
+                                    )
+                                )
+                    );
+                    adjustedSpaces.Add(planet, available);
+                    return available;
+                };
+                IReadOnlyList<int> targets = context.StrategicPlan.GetInfrastructureHubTargets(
+                    type
+                );
+                int minimumNewTarget = targets.Where(target => target > 0).DefaultIfEmpty(0).Min();
+                for (int index = 0; index < Math.Min(planets.Count, targets.Count); index++)
+                {
+                    adjustedSpaces.Clear();
+                    int preferred = targets[index];
+                    hubTarget = preferred;
+                    if (preferred <= 0)
+                        continue;
+                    Planet destination = placementScorer
+                        .RankHubDestinations(
+                            planets
+                                .Where(planet =>
+                                {
+                                    if (
+                                        layout.Any(entry =>
+                                            entry.Key.Type == type && entry.Value.Planet == planet
+                                        )
+                                    )
+                                        return false;
+                                    int current = context.Assessment.GetPlanetBuildingCount(
+                                        planet,
+                                        type
+                                    );
+                                    int attainable = Math.Min(
+                                        preferred,
+                                        current + availableSpace(planet)
+                                    );
+                                    return attainable > 0
+                                        && (
+                                            type != BuildingType.Shipyard
+                                            || current > 0
+                                            || attainable >= minimumNewTarget
+                                        );
+                                })
+                                .ToList(),
+                            reference,
+                            production,
+                            type,
+                            preferred,
+                            availableSpace
+                        )
+                        .FirstOrDefault();
+                    if (destination == null)
+                        continue;
+                    int target = Math.Min(
+                        preferred,
+                        context.Assessment.GetPlanetBuildingCount(destination, type)
+                            + availableSpace(destination)
+                    );
+                    layout.Add((type, index), (destination, target));
+                }
+            }
+            return layout;
+        }
+
+        /// <summary>
+        /// Enumerates category precedence alternatives without changing manufacturing demand order.
+        /// </summary>
+        /// <param name="demands">The distinct production-capacity categories.</param>
+        /// <returns>Each deterministic category ordering.</returns>
+        private static IEnumerable<IReadOnlyList<AIProductionDemand>> GetInfrastructureDemandOrders(
+            IReadOnlyList<AIProductionDemand> demands
+        )
+        {
+            if (demands.Count == 0)
+            {
+                yield return Array.Empty<AIProductionDemand>();
+                yield break;
+            }
+            foreach (AIProductionDemand first in demands)
+            foreach (
+                var remainder in GetInfrastructureDemandOrders(
+                    demands.Where(demand => demand != first).ToList()
+                )
+            )
+                yield return new[] { first }.Concat(remainder).ToList();
+        }
+
+        /// <summary>
+        /// Assigns economy capacity deficits to destinations outside the completed industrial layout.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demands">The requirements after industrial allocation.</param>
+        /// <returns>The requirements with economic destinations assigned.</returns>
+        private List<AIProductionDemand> ExpandEconomyDemands(
+            AITurnContext context,
+            IEnumerable<AIProductionDemand> demands
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ExpandEconomyDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            List<AIProductionDemand> expanded = new();
+            HashSet<string> mineTargetIds = new(StringComparer.Ordinal);
+            foreach (AIProductionDemand demand in demands)
+            {
+                if (
+                    demand.Destination != null
+                    || demand.Kind
+                        is not (AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery)
+                )
+                {
+                    expanded.Add(demand);
+                    if (
+                        demand.Kind == AIProductionDemandKind.Mine
+                        && demand.DestinationPlanet != null
+                    )
+                        mineTargetIds.Add(demand.DestinationPlanet.InstanceID);
+                    continue;
+                }
+
+                IEnumerable<Planet> targets =
+                    demand.Kind == AIProductionDemandKind.Mine
+                        ? FindMineTargets(context, demand)
+                        : FindRefineryTargets(context, demand, mineTargetIds);
+                foreach (Planet target in targets)
+                {
+                    expanded.Add(
+                        CreateBuildingDemand(
+                            context,
+                            demand.Kind,
+                            demand.BuildingType,
+                            target,
+                            demand.TargetCount,
+                            demand.BaseDemandPercent
+                        )
+                    );
+                    if (demand.Kind == AIProductionDemandKind.Mine)
+                        mineTargetIds.Add(target.InstanceID);
+                }
+            }
             return expanded;
         }
 
         /// <summary>
-        /// Adds the ranked destination alternatives for one faction-wide facility deficit.
+        /// Creates one economy building requirement.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="kind">The economy requirement kind.</param>
+        /// <param name="buildingType">The required building type.</param>
+        /// <param name="target">The destination planet.</param>
+        /// <param name="targetCount">The projected faction-wide target count.</param>
+        /// <param name="baseDemandPercent">The base economy pressure.</param>
+        /// <returns>The production requirement.</returns>
+        private static AIProductionDemand CreateBuildingDemand(
+            AITurnContext context,
+            AIProductionDemandKind kind,
+            BuildingType buildingType,
+            Planet target,
+            int targetCount,
+            int baseDemandPercent
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CreateBuildingDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            return new AIProductionDemand(
+                AIProductionDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
+                kind,
+                ManufacturingType.Building,
+                buildingType,
+                target,
+                1,
+                targetCount: targetCount,
+                baseDemandPercent: baseDemandPercent
+            );
+        }
+
+        /// <summary>
+        /// Returns candidate planets for new mines.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demand">The mine capacity requirement.</param>
+        /// <returns>Ranked mine destinations.</returns>
+        private IEnumerable<Planet> FindMineTargets(
+            AITurnContext context,
+            AIProductionDemand demand
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindMineTargets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            return demand.QuantityNeeded <= 0
+                ? Enumerable.Empty<Planet>()
+                : RankEconomyDestinations(
+                        context,
+                        demand,
+                        GetBuildingDestinations(context, BuildingType.Mine)
+                            .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
+                            .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
+                            .ThenByDescending(planet => planet.GetAvailableEnergy())
+                            .ThenBy(planet => planet.InstanceID)
+                    )
+                    .Take(demand.QuantityNeeded);
+        }
+
+        /// <summary>
+        /// Returns candidate planets for new refineries.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demand">The refinery capacity requirement.</param>
+        /// <param name="excludedPlanetIds">Planets already selected for mines.</param>
+        /// <returns>Ranked refinery destinations.</returns>
+        private IEnumerable<Planet> FindRefineryTargets(
+            AITurnContext context,
+            AIProductionDemand demand,
+            HashSet<string> excludedPlanetIds
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindRefineryTargets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            int count = demand.QuantityNeeded;
+            if (count <= 0)
+                return Enumerable.Empty<Planet>();
+
+            List<Planet> targets = RankEconomyDestinations(
+                    context,
+                    demand,
+                    GetBuildingDestinations(context, BuildingType.Refinery)
+                        .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
+                        .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                        .ThenByDescending(planet => planet.GetAvailableEnergy())
+                        .ThenBy(planet => planet.InstanceID)
+                )
+                .Take(count)
+                .ToList();
+            if (targets.Count >= count)
+                return targets;
+
+            targets.AddRange(
+                RankEconomyDestinations(
+                        context,
+                        demand,
+                        GetBuildingDestinations(context, BuildingType.Refinery)
+                            .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
+                            .OrderBy(planet =>
+                                planet.GetTotalBuildingTypeCount(BuildingType.Refinery)
+                            )
+                            .ThenByDescending(planet => planet.GetAvailableEnergy())
+                            .ThenBy(planet => planet.InstanceID)
+                    )
+                    .Take(count - targets.Count)
+            );
+            return targets;
+        }
+
+        /// <summary>
+        /// Orders economic sites by the earliest delivery from currently usable construction lanes.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demand">The economic capacity requirement.</param>
+        /// <param name="destinations">Eligible sites in tie-breaking preference order.</param>
+        /// <returns>The eligible sites ordered by estimated production and transit time.</returns>
+        private IEnumerable<Planet> RankEconomyDestinations(
+            AITurnContext context,
+            AIProductionDemand demand,
+            IEnumerable<Planet> destinations
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(RankEconomyDestinations),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            IManufacturable product = GetUnlockedTechnology(context, demand)?.GetReference();
+            if (product is not IMovable movable)
+                return destinations;
+
+            Planet[] producers = context
+                .Assessment.OwnedPlanets.Where(planet =>
+                    CanProduce(context, planet, ManufacturingType.Building)
+                )
+                .ToArray();
+            return destinations.OrderBy(destination =>
+                producers
+                    .Select(producer =>
+                        GetReinforcementArrivalTicks(
+                            context,
+                            producer,
+                            destination,
+                            product,
+                            movable,
+                            1
+                        )
+                    )
+                    .DefaultIfEmpty(int.MaxValue)
+                    .Min()
+            );
+        }
+
+        /// <summary>
+        /// Returns owned planets that can receive an economy building.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="buildingType">The economic building to place.</param>
+        /// <returns>Eligible building destinations.</returns>
+        private static IEnumerable<Planet> GetBuildingDestinations(
+            AITurnContext context,
+            BuildingType buildingType
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBuildingDestinations),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            return context.Assessment.OwnedPlanets.Where(planet =>
+                planet?.IsDestroyed == false
+                && context.StrategicPlan.GetAvailableConstructionSpace(planet, buildingType) > 0
+            );
+        }
+
+        /// <summary>
+        /// Adds sector-hub expansion demands for one faction-wide facility deficit.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="expanded">The expanded demand list accumulated so far.</param>
         /// <param name="capacityDemand">The score-free facility-capacity deficit.</param>
-        /// <param name="placementScorer">The turn-scoped destination scorer.</param>
-        private void AddFacilityAlternatives(
+        /// <param name="hubLayout">The jointly allocated industrial destinations.</param>
+        private void AddFacilityExpansionDemands(
             AITurnContext context,
             List<AIProductionDemand> expanded,
             AIProductionDemand capacityDemand,
-            AIInfrastructurePlacementScorer placementScorer
+            IReadOnlyDictionary<
+                (string SectorId, BuildingType Type, int Index),
+                (Planet Planet, int Target)
+            > hubLayout
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFacilityExpansionDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             ManufacturingType supportedType = capacityDemand.Kind switch
             {
                 AIProductionDemandKind.Shipyard => ManufacturingType.Ship,
@@ -162,23 +835,14 @@ namespace Rebellion.AI.Planners
                 )
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .ToList();
-            int hubTarget =
-                capacityDemand.BuildingType == BuildingType.Shipyard
-                    ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
-                    : context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
             List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                    || (
-                        capacityDemand.BuildingType == BuildingType.ConstructionFacility
-                        && planet?.IsDestroyed == false
-                        && planet.GetParentOfType<PlanetSector>()?.SectorType
-                            == PlanetSectorType.OuterRim
-                    )
-                )
+                .StrategicPlan.GetInfrastructurePlanets(capacityDemand.BuildingType)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .OrderByDescending(sector =>
-                    GetSectorFacilityDeficit(sector, capacityDemand.BuildingType, hubTarget)
+                    context.StrategicPlan.GetInfrastructureDeficit(
+                        sector,
+                        capacityDemand.BuildingType
+                    )
                 )
                 .ThenByDescending(sector =>
                     GetColonyFoundationInput(sector, capacityDemand.BuildingType)
@@ -191,10 +855,12 @@ namespace Rebellion.AI.Planners
                 if (remainingFacilityCount == 0)
                     break;
 
-                List<Planet> sectorPlanets = sector
-                    .Where(planet => GetAvailableFacilityExpansionEnergy(planet) > 0)
-                    .ToList();
-                if (sectorPlanets.Count == 0)
+                List<Planet> sectorPlanets = sector.ToList();
+                int remainingSectorFacilityCount = context.StrategicPlan.GetInfrastructureDeficit(
+                    sectorPlanets,
+                    capacityDemand.BuildingType
+                );
+                if (remainingSectorFacilityCount == 0)
                     continue;
 
                 AIProductionDemand sectorDemand =
@@ -203,75 +869,92 @@ namespace Rebellion.AI.Planners
                         == sector.Key
                     ) ?? productionDemands.FirstOrDefault();
                 Planet demandPlanet = GetDestinationPlanet(context, sectorDemand) ?? sector.First();
-                IReadOnlyList<(Planet Planet, double Score)> rankedDestinations =
-                    placementScorer.ScoreDestinations(
-                        sectorPlanets,
-                        demandPlanet,
-                        supportedType,
-                        capacityDemand.BuildingType,
-                        GetAvailableFacilityExpansionEnergy
-                    );
-                if (rankedDestinations.Count == 0)
-                    continue;
-
-                int sectorFacilityCount = sector.Sum(planet =>
-                    planet.GetTotalBuildingTypeCount(capacityDemand.BuildingType)
+                IReadOnlyList<int> hubTargets = context.StrategicPlan.GetInfrastructureHubTargets(
+                    capacityDemand.BuildingType
                 );
-                int targetCount = sectorFacilityCount > 0 ? hubTarget : 1;
-                int sectorDeficit = GetSectorFacilityDeficit(
-                    sector,
-                    capacityDemand.BuildingType,
-                    hubTarget
-                );
-                if (GetColonyFoundationInput(sector, capacityDemand.BuildingType) > 0)
-                    sectorDeficit = Math.Max(1, sectorDeficit);
-                int requestedQuantity = Math.Min(remainingFacilityCount, sectorDeficit);
-                if (requestedQuantity <= 0)
-                    continue;
-
-                string demandId = AIProductionDemand.CreateId(
-                    context.Faction.InstanceID,
-                    capacityDemand.Kind,
-                    sector.Key,
-                    "capacity"
-                );
-                int alternativeCount = Math.Max(
-                    1,
-                    context.Game.Config.AI.Infrastructure.FacilityPlanetsPerSector
-                );
-                bool addedAlternative = false;
-                foreach ((Planet destination, _) in rankedDestinations.Take(alternativeCount))
+                int hubCount = Math.Min(sectorPlanets.Count, hubTargets.Count);
+                for (int hubIndex = 0; hubIndex < hubCount; hubIndex++)
                 {
-                    addedAlternative |= AddSectorFacilityDemand(
-                        expanded,
-                        sectorDemand,
-                        capacityDemand,
-                        destination,
-                        targetCount,
-                        requestedQuantity,
-                        demandId,
-                        demandPlanet
+                    if (
+                        !hubLayout.TryGetValue(
+                            (sector.Key, capacityDemand.BuildingType, hubIndex),
+                            out var hub
+                        )
+                    )
+                        continue;
+                    Planet destination = hub.Planet;
+                    int targetCount = hub.Target;
+                    int requestedQuantity = Math.Min(
+                        Math.Min(remainingFacilityCount, remainingSectorFacilityCount),
+                        Math.Min(
+                            Math.Max(
+                                0,
+                                targetCount
+                                    - destination.GetTotalBuildingTypeCount(
+                                        capacityDemand.BuildingType
+                                    )
+                            ),
+                            context.StrategicPlan.GetAvailableConstructionSpace(
+                                destination,
+                                capacityDemand.BuildingType
+                            )
+                        )
                     );
-                }
+                    if (requestedQuantity <= 0)
+                        continue;
 
-                if (addedAlternative)
-                    remainingFacilityCount -= requestedQuantity;
+                    string demandId = AIProductionDemand.CreateId(
+                        context.Faction.InstanceID,
+                        capacityDemand.Kind,
+                        sector.Key,
+                        $"hub-{hubIndex + 1}"
+                    );
+                    bool added =
+                        context.StrategicPlan.TryAllocateInfrastructureHub(
+                            destination,
+                            capacityDemand.BuildingType,
+                            targetCount,
+                            reclaimResources: true
+                        )
+                        && AddSectorFacilityDemand(
+                            context,
+                            expanded,
+                            sectorDemand,
+                            capacityDemand,
+                            destination,
+                            targetCount,
+                            requestedQuantity,
+                            demandId,
+                            demandPlanet,
+                            hubIndex
+                        );
+                    if (added)
+                    {
+                        remainingFacilityCount -= requestedQuantity;
+                        remainingSectorFacilityCount -= requestedQuantity;
+                    }
+                    if (remainingFacilityCount == 0 || remainingSectorFacilityCount == 0)
+                        break;
+                }
             }
         }
 
         /// <summary>
-        /// Adds one destination-specific facility alternative.
+        /// Adds one destination-specific facility hub demand.
         /// </summary>
+        /// <param name="context">The turn containing the completed layout allocation.</param>
         /// <param name="demands">The expanded demand list.</param>
         /// <param name="primaryDemand">The production need served by the facility.</param>
         /// <param name="capacityDemand">The faction-wide facility-capacity deficit.</param>
         /// <param name="target">The candidate destination.</param>
         /// <param name="targetCount">The desired facility count at the destination.</param>
         /// <param name="maximumQuantity">The remaining facility deficit.</param>
-        /// <param name="demandId">The shared alternative identifier.</param>
+        /// <param name="demandId">The facility hub demand identifier.</param>
         /// <param name="referencePlanet">The planet anchoring placement utility.</param>
-        /// <returns>True when an alternative was added.</returns>
+        /// <param name="hubIndex">The zero-based position of this hub within its sector.</param>
+        /// <returns>True when a hub demand was added.</returns>
         private static bool AddSectorFacilityDemand(
+            AITurnContext context,
             ICollection<AIProductionDemand> demands,
             AIProductionDemand primaryDemand,
             AIProductionDemand capacityDemand,
@@ -279,10 +962,20 @@ namespace Rebellion.AI.Planners
             int targetCount,
             int maximumQuantity,
             string demandId,
-            Planet referencePlanet
+            Planet referencePlanet,
+            int hubIndex
         )
         {
-            if (target == null || target.GetAvailableEnergy() <= 0 || targetCount <= 0)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddSectorFacilityDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            int availableSpace = context.StrategicPlan.GetAvailableConstructionSpace(
+                target,
+                capacityDemand.BuildingType
+            );
+            if (target == null || availableSpace <= 0 || targetCount <= 0)
                 return false;
 
             int currentCount = target.GetTotalBuildingTypeCount(capacityDemand.BuildingType);
@@ -290,7 +983,7 @@ namespace Rebellion.AI.Planners
                 return false;
 
             int quantity = Math.Min(
-                Math.Min(targetCount - currentCount, target.GetAvailableEnergy()),
+                Math.Min(targetCount - currentCount, availableSpace),
                 maximumQuantity
             );
             if (quantity <= 0)
@@ -308,33 +1001,11 @@ namespace Rebellion.AI.Planners
                     primaryDemand?.CapitalShipRole ?? AICapitalShipProductionRole.None,
                     targetCount: targetCount,
                     baseDemandPercent: capacityDemand.BaseDemandPercent,
-                    referencePlanet: referencePlanet
+                    referencePlanet: referencePlanet,
+                    infrastructureHubIndex: hubIndex
                 )
             );
             return true;
-        }
-
-        /// <summary>
-        /// Returns the outstanding facility quantity for one sector hub.
-        /// </summary>
-        /// <param name="sector">The planets in one sector.</param>
-        /// <param name="buildingType">The facility category.</param>
-        /// <param name="hubTarget">The desired concentrated facility count.</param>
-        /// <returns>The outstanding facility quantity.</returns>
-        private static int GetSectorFacilityDeficit(
-            IEnumerable<Planet> sector,
-            BuildingType buildingType,
-            int hubTarget
-        )
-        {
-            List<Planet> planets = sector.ToList();
-            if (planets.Count == 0)
-                return 0;
-
-            int strongestCluster = planets.Max(planet =>
-                planet.GetTotalBuildingTypeCount(buildingType)
-            );
-            return strongestCluster == 0 ? 1 : Math.Max(0, hubTarget - strongestCluster);
         }
 
         /// <summary>
@@ -366,14 +1037,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the energy available for facility expansion at a planet.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The currently available energy.</returns>
-        private static int GetAvailableFacilityExpansionEnergy(Planet planet) =>
-            planet?.GetAvailableEnergy() ?? 0;
-
-        /// <summary>
         /// Clears values indexed from the current game state before planning a new turn.
         /// </summary>
         private void ResetPlanningCache()
@@ -381,10 +1044,10 @@ namespace Rebellion.AI.Planners
             _unlockedTechnologies.Clear();
             _selectedTechnologies.Clear();
             _producerPlanets.Clear();
-            _queueWork.Clear();
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
+            _hullBuildEligibility.Clear();
             _reinforcementArrivalTicks.Clear();
         }
 
@@ -399,6 +1062,11 @@ namespace Rebellion.AI.Planners
             List<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GenerateProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Faction == null || demands == null || demands.Count == 0)
                 return proposals;
@@ -423,6 +1091,50 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddManufactureProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            if (
+                demand.Kind
+                is AIProductionDemandKind.FleetCapitalShip
+                    or AIProductionDemandKind.FleetSeedCapitalShip
+                    or AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+            )
+            {
+                AddFleetCapitalShipProposal(context, demand, proposals);
+                return;
+            }
+
+            if (demand.ExistingOrder != null)
+            {
+                if (demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+                {
+                    Planet producer = context.Game.GetSceneNodeByInstanceID<Planet>(
+                        demand.ExistingOrder.ProducerPlanetID
+                    );
+                    Technology continuationProduct = GetUnlockedTechnologies(
+                            context,
+                            demand.ManufacturingType
+                        )
+                        .FirstOrDefault(technology =>
+                            technology.GetReference().GetTypeID()
+                            == demand.ExistingOrder.GetTypeID()
+                        );
+                    if (producer != null && continuationProduct != null)
+                        proposals.Add(
+                            new AIManufactureProposal(
+                                demand,
+                                producer,
+                                continuationProduct,
+                                distributesDemand: false
+                            )
+                        );
+                }
+                return;
+            }
+
             Technology product = GetUnlockedTechnology(context, demand);
             if (product == null)
                 return;
@@ -452,19 +1164,6 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (producerPlanets.Count == 0)
                 return;
-            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
-            {
-                AddProducerSpecificProposal(
-                    context,
-                    demand,
-                    product,
-                    remainingQuantity,
-                    producerPlanets,
-                    proposals,
-                    distributesDemand: true
-                );
-                return;
-            }
             if (!distributesDemand)
             {
                 if (IsFacilityExpansionDemand(demand))
@@ -475,7 +1174,8 @@ namespace Rebellion.AI.Planners
                         remainingQuantity,
                         producerPlanets,
                         proposals,
-                        distributesDemand: false
+                        distributesDemand: demand.Kind
+                            == AIProductionDemandKind.ConstructionFacility
                     );
                 else
                     AddEquivalentProducerProposal(
@@ -505,7 +1205,11 @@ namespace Rebellion.AI.Planners
                     proposalDemand,
                     producerPlanet,
                     product,
-                    distributesDemand
+                    distributesDemand,
+                    replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                        producerPlanet,
+                        proposalDemand.ManufacturingType
+                    )
                 );
 
                 proposals.Add(proposal);
@@ -516,6 +1220,161 @@ namespace Rebellion.AI.Planners
                         return;
                 }
             }
+        }
+
+        /// <summary>
+        /// Adds one capital-ship decision with useful hull alternatives suited to each idle producer.
+        /// </summary>
+        /// <param name="context">The faction turn containing fleet needs and current yards.</param>
+        /// <param name="demand">The fleet capability shortage.</param>
+        /// <param name="proposals">The proposal collection to extend.</param>
+        private void AddFleetCapitalShipProposal(
+            AITurnContext context,
+            AIProductionDemand demand,
+            List<AIProposal> proposals
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetCapitalShipProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            Technology preferred = GetUnlockedCapitalShipTechnology(context, demand);
+            if (preferred == null || demand.QuantityNeeded <= 0)
+                return;
+
+            List<AIManufactureProposal> candidates = new();
+            foreach (
+                Planet producer in FindProducerPlanets(context, demand, preferred.GetReference(), 1)
+            )
+            {
+                if (
+                    producer
+                        .GetManufacturingQueue()
+                        .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
+                    && queue.Any(item => item?.IsManufacturingComplete() == false)
+                )
+                    continue;
+
+                Technology product = CanBuildCapitalShip(
+                    context,
+                    producer,
+                    preferred.GetReference()
+                )
+                    ? preferred
+                    : GetUnlockedCapitalShipTechnology(context, demand, producer);
+                if (product == null)
+                    continue;
+                candidates.Add(
+                    new AIManufactureProposal(
+                        demand.WithQuantity(1),
+                        producer,
+                        product,
+                        distributesDemand: demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    )
+                );
+            }
+            if (candidates.Count == 0)
+                return;
+
+            Planet destination = GetDestinationPlanet(context, demand);
+            List<AIManufactureProposal> ranked = candidates
+                .OrderBy(candidate => candidate.Product != preferred)
+                .ThenBy(candidate =>
+                    GetProducerFulfillmentTicks(
+                        context,
+                        demand,
+                        candidate.Product.GetReference(),
+                        candidate.ProducerPlanet,
+                        destination
+                    )
+                )
+                .ThenBy(candidate => candidate.ProducerPlanet.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            IReadOnlyList<AIManufactureProposal> choices = Array.Empty<AIManufactureProposal>();
+            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
+                choices = GetUnlockedCapitalShipTechnologies(context, demand)
+                    .Where(technology =>
+                        demand.CapitalShipRole == AICapitalShipProductionRole.None
+                        || CanFillCapitalShipRole(
+                            (CapitalShip)technology.GetReference(),
+                            demand.CapitalShipRole
+                        )
+                    )
+                    .Select(technology => CreateCapitalShipChoice(context, demand, technology))
+                    .Where(choice => choice != null)
+                    .ToArray();
+            proposals.Add(new AIManufactureProposal(ranked, capitalShipChoices: choices));
+        }
+
+        /// <summary>
+        /// Prepares one hull's eligible idle producers in construction-and-delivery order.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demand">The receiving fleet's requirements.</param>
+        /// <param name="technology">The hull definition offered for selection.</param>
+        /// <returns>One hull choice with producer alternatives, or null when no yard can build it.</returns>
+        private AIManufactureProposal CreateCapitalShipChoice(
+            AITurnContext context,
+            AIProductionDemand demand,
+            Technology technology
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CreateCapitalShipChoice),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            IManufacturable hull = technology.GetReference();
+            AIManufactureProposal[] candidates = FindProducerPlanets(context, demand, hull, 1)
+                .Where(producer =>
+                    CanBuildCapitalShip(context, producer, hull)
+                    && (
+                        !producer
+                            .GetManufacturingQueue()
+                            .TryGetValue(ManufacturingType.Ship, out var queue)
+                        || queue.All(item => item?.IsManufacturingComplete() != false)
+                    )
+                )
+                .Select(producer => new AIManufactureProposal(
+                    demand.WithQuantity(1),
+                    producer,
+                    technology,
+                    true
+                ))
+                .ToArray();
+            return candidates.Length == 0 ? null : new AIManufactureProposal(candidates);
+        }
+
+        /// <summary>
+        /// Checks a hull's construction duration against the assigned producer's configured limit.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="producer">The planet supplying its current manufacturing facilities.</param>
+        /// <param name="product">The candidate capital ship.</param>
+        /// <returns>True when this producer can finish one hull within the configured build duration.</returns>
+        private bool CanBuildCapitalShip(
+            AITurnContext context,
+            Planet producer,
+            IManufacturable product
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanBuildCapitalShip),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            int limit = context.Game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks;
+            if (limit <= 0)
+                return true;
+            var key = (producer.InstanceID, product.GetTypeID());
+            if (!_hullBuildEligibility.TryGetValue(key, out bool eligible))
+            {
+                int? ticks = ManufacturingQueries.EstimateManufacturingTicks(producer, product, 1);
+                eligible = ticks.HasValue && ticks.Value <= limit;
+                _hullBuildEligibility[key] = eligible;
+            }
+            return eligible;
         }
 
         /// <summary>
@@ -536,6 +1395,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddEquivalentProducerProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (producerPlanets.Count == 0)
                 return;
 
@@ -551,10 +1415,19 @@ namespace Rebellion.AI.Planners
 
             proposals.Add(
                 new AIManufactureProposal(
-                    proposalDemand,
-                    producerPlanets,
-                    product,
-                    distributesDemand: false
+                    producerPlanets
+                        .Select(candidateProducer => new AIManufactureProposal(
+                            proposalDemand,
+                            candidateProducer,
+                            product,
+                            false,
+                            replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                                candidateProducer,
+                                proposalDemand.ManufacturingType
+                            )
+                        ))
+                        .ToArray(),
+                    carriesReducedCountAcrossAlternatives: true
                 )
             );
         }
@@ -579,6 +1452,19 @@ namespace Rebellion.AI.Planners
             bool distributesDemand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddProducerSpecificProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            var resources = context.StrategicPlan.GetResourceFacilitiesToReclaim(
+                demand.DestinationPlanet,
+                demand.BuildingType,
+                demand.TargetCount
+            );
+            int resourceCost = context.StrategicPlan.GetResourceReclamationMaintenanceCost(
+                resources
+            );
             List<AIManufactureProposal> candidates = producerPlanets
                 .Select(producerPlanet =>
                 {
@@ -595,7 +1481,13 @@ namespace Rebellion.AI.Planners
                             candidateDemand,
                             producerPlanet,
                             product,
-                            distributesDemand
+                            distributesDemand,
+                            replacedOrder: context.Assessment.GetReplaceableManufacturingOrder(
+                                producerPlanet,
+                                candidateDemand.ManufacturingType
+                            ),
+                            resourcesToReclaim: resources,
+                            resourceMaintenanceCost: resourceCost
                         );
                 })
                 .Where(candidate => candidate != null)
@@ -614,6 +1506,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedTechnology(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (demand == null)
                 return null;
 
@@ -662,7 +1559,8 @@ namespace Rebellion.AI.Planners
                 or AIProductionDemandKind.PlanetaryStarfighterReserve
                 or AIProductionDemandKind.FleetRegiment
                 or AIProductionDemandKind.GarrisonRegimentReserve
-                or AIProductionDemandKind.SpecialForces => GetUnlockedUnitTechnology(
+                or AIProductionDemandKind.SpecialForces
+                or AIProductionDemandKind.IdleSpecialForces => GetUnlockedUnitTechnology(
                     context,
                     demand
                 ),
@@ -683,6 +1581,11 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedBuildingTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (context?.Faction == null || demand?.BuildingType == BuildingType.None)
                 return null;
 
@@ -746,30 +1649,15 @@ namespace Rebellion.AI.Planners
         /// <returns>The available maintenance budget.</returns>
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
         {
-            if (IsFacilityExpansionDemand(demand))
-                return GetFacilityMaintenanceBudget(context);
-
-            if (demand.UsesDefensiveReserve)
-                return GetDefensiveMaintenanceBudget(context);
-
-            return Math.Max(
-                0,
-                context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBuildingMaintenanceBudget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
             );
-        }
-
-        /// <summary>
-        /// Returns the maintenance budget allocated to production-facility expansion.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The remaining facility maintenance budget.</returns>
-        private int GetFacilityMaintenanceBudget(AITurnContext context)
-        {
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                    - context.GetMinimumManufacturingHeadroom(demand)
             );
         }
 
@@ -790,6 +1678,11 @@ namespace Rebellion.AI.Planners
             int remainingQuantity
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProposalDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return demand;
 
@@ -802,12 +1695,12 @@ namespace Rebellion.AI.Planners
                     remainingQuantity
                 );
                 return distributedQuantity > 0
-                    ? CreateProposalDemand(demand, distributedQuantity)
+                    ? CreateProposalDemand(demand, Math.Min(1, distributedQuantity))
                     : null;
             }
 
             if (!IsFacilityExpansionDemand(demand) && !demand.UsesDefensiveReserve)
-                return demand;
+                return CreateProposalDemand(demand, Math.Min(1, demand.QuantityNeeded));
 
             int quantity;
             if (IsFacilityExpansionDemand(demand))
@@ -825,7 +1718,7 @@ namespace Rebellion.AI.Planners
             if (quantity <= 0)
                 return null;
 
-            return CreateProposalDemand(demand, quantity);
+            return CreateProposalDemand(demand, Math.Min(1, quantity));
         }
 
         /// <summary>
@@ -855,6 +1748,11 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetRequestedManufacturingCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve)
             {
                 return Math.Min(1, Math.Max(0, demand.QuantityNeeded));
@@ -890,56 +1788,46 @@ namespace Rebellion.AI.Planners
             int remainingQuantity
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDistributedBatchSize),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             int queueCapacity = GetQueueBatchCapacity(context, producerPlanet, product);
             return Math.Max(0, Math.Min(remainingQuantity, queueCapacity));
         }
 
         /// <summary>
-        /// Returns queue batch capacity.
+        /// Returns whether the producer has room for one new or replacement item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="producerPlanet">The producing planet.</param>
         /// <param name="product">The manufacturable product.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>One for an idle or replaceable queue, otherwise zero.</returns>
         private int GetQueueBatchCapacity(
             AITurnContext context,
             Planet producerPlanet,
             IManufacturable product
         )
         {
-            ManufacturingType manufacturingType = product.GetManufacturingType();
-            (string PlanetId, ManufacturingType ManufacturingType) key = (
-                producerPlanet.InstanceID,
-                manufacturingType
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetQueueBatchCapacity),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
             );
-            if (!_queueWork.TryGetValue(key, out (double TargetWork, long QueuedWork) work))
-            {
-                work.TargetWork =
-                    context.Assessment.GetPlanetProductionRate(producerPlanet, manufacturingType)
-                    * context.Game.Config.AI.TickInterval
-                    * context.Game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals;
-                work.QueuedWork = producerPlanet
+            if (
+                !producerPlanet
                     .GetManufacturingQueue()
-                    .TryGetValue(manufacturingType, out List<IManufacturable> queue)
-                    ? queue.Sum(item =>
-                        (long)Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
-                    )
-                    : 0;
-                _queueWork.Add(key, work);
-            }
+                    .TryGetValue(product.GetManufacturingType(), out List<IManufacturable> queue)
+                || queue.Count == 0
+            )
+                return 1;
 
-            double targetWork = work.TargetWork;
-            long queuedWork = work.QueuedWork;
-            long additionalWork = (long)Math.Ceiling(targetWork) - queuedWork;
-            if (additionalWork <= 0)
-                return 0;
-
-            int constructionCost = product.GetConstructionCost();
-            if (constructionCost <= 0)
-                return int.MaxValue;
-
-            long capacity = IntegerMath.DivideRoundedUp(additionalWork, constructionCost);
-            return capacity > int.MaxValue ? int.MaxValue : (int)capacity;
+            IManufacturable replacement = context.Assessment.GetReplaceableManufacturingOrder(
+                producerPlanet,
+                product.GetManufacturingType()
+            );
+            return queue.Count == 1 && ReferenceEquals(queue[0], replacement) ? 1 : 0;
         }
 
         /// <summary>
@@ -955,6 +1843,11 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFleetUnitDiversityLimit),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (demand.DestinationFleet == null)
                 return int.MaxValue;
 
@@ -1036,6 +1929,11 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDefensiveBatchSize),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             int maintenanceLimit =
                 product.GetMaintenanceCost() > 0
@@ -1043,12 +1941,19 @@ namespace Rebellion.AI.Planners
                     : int.MaxValue;
             int destinationLimit =
                 product is Building
-                    ? demand.DestinationPlanet?.GetAvailableEnergy() ?? 0
+                    ? context.StrategicPlan.GetAvailableConstructionSpace(
+                        demand.DestinationPlanet,
+                        demand.BuildingType,
+                        demand.IsEmergencyDefense
+                    )
                     : int.MaxValue;
 
             return Math.Max(
                 0,
-                Math.Min(demand.QuantityNeeded, Math.Min(maintenanceLimit, destinationLimit))
+                Math.Min(
+                    demand.IsProductionFiller ? 1 : demand.QuantityNeeded,
+                    Math.Min(maintenanceLimit, destinationLimit)
+                )
             );
         }
 
@@ -1059,6 +1964,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetDefensiveMaintenanceBudget(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDefensiveMaintenanceBudget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
@@ -1073,6 +1983,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetDefensiveMaintenanceFloor(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDefensiveMaintenanceFloor),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             return Math.Max(
                 context.Game.Config.AI.Selection.MaintenanceHeadroomReserve,
                 IntegerMath.ScaleByPercentRoundedUp(
@@ -1097,7 +2012,12 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
-            int maintenanceBudget = GetFacilityMaintenanceBudget(context);
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityBatchSize),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
             int maintenanceLimit =
                 building.MaintenanceCost > 0
                     ? maintenanceBudget / building.MaintenanceCost
@@ -1115,7 +2035,10 @@ namespace Rebellion.AI.Planners
                     );
             int laneLimit = Math.Max(0, facilityCount - laneReserve);
             int queueLimit = GetQueueBatchCapacity(context, producerPlanet, building);
-            int energyLimit = demand.DestinationPlanet.GetAvailableEnergy();
+            int energyLimit = context.StrategicPlan.GetAvailableConstructionSpace(
+                demand.DestinationPlanet,
+                demand.BuildingType
+            );
 
             return Math.Max(
                 0,
@@ -1198,6 +2121,11 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedUnitTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (context?.Faction == null || demand == null)
                 return null;
 
@@ -1222,10 +2150,8 @@ namespace Rebellion.AI.Planners
                 ),
                 AIProductionDemandKind.GarrisonRegimentReserve =>
                     GetUnlockedGarrisonRegimentTechnology(context),
-                AIProductionDemandKind.SpecialForces => GetUnlockedSpecialForcesTechnology(
-                    context,
-                    demand.ProductTypeId
-                ),
+                AIProductionDemandKind.SpecialForces or AIProductionDemandKind.IdleSpecialForces =>
+                    GetUnlockedSpecialForcesTechnology(context, demand.ProductTypeId),
                 _ => null,
             };
         }
@@ -1241,6 +2167,11 @@ namespace Rebellion.AI.Planners
             string productTypeId
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedSpecialForcesTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (string.IsNullOrEmpty(productTypeId))
                 return null;
 
@@ -1260,30 +2191,31 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
+        /// <param name="producer">The optional producer whose construction-duration limit filters eligible hulls.</param>
         /// <returns>The selected technology, or null when no eligible ship is affordable.</returns>
         private Technology GetUnlockedCapitalShipTechnology(
             AITurnContext context,
-            AIProductionDemand demand
+            AIProductionDemand demand,
+            Planet producer = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedCapitalShipTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (context?.Faction == null || demand == null)
                 return null;
 
-            List<Technology> unlockedTechnologies = GetUnlockedTechnologies(
-                    context,
-                    ManufacturingType.Ship
-                )
-                .Where(technology =>
-                    technology.GetReference() is CapitalShip capitalShip
-                    && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID)
-                    && (!capitalShip.CanDestroyPlanets || demand.PlanetDestroyerDeficit > 0)
-                )
-                .OrderBy(
-                    technology => technology.GetReference().GetTypeID(),
-                    StringComparer.Ordinal
-                )
-                .ToList();
-            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
+            List<Technology> unlockedTechnologies = GetUnlockedCapitalShipTechnologies(
+                context,
+                demand,
+                producer
+            );
+            if (
+                demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                && demand.CapitalShipRole == AICapitalShipProductionRole.None
+            )
                 return GetBestFleetCapitalShipTechnology(context, demand, unlockedTechnologies);
 
             List<Technology> eligibleTechnologies = unlockedTechnologies
@@ -1305,6 +2237,65 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
+        /// Lists unlocked hulls permitted by the faction and producer limits.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demand">The fleet requirements.</param>
+        /// <param name="producer">An optional producer whose existing build-duration limit applies.</param>
+        /// <returns>Eligible hull definitions in stable type order.</returns>
+        private List<Technology> GetUnlockedCapitalShipTechnologies(
+            AITurnContext context,
+            AIProductionDemand demand,
+            Planet producer = null
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedCapitalShipTechnologies),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            List<Technology> technologies = GetUnlockedTechnologies(context, ManufacturingType.Ship)
+                .Where(technology =>
+                    technology.GetReference() is CapitalShip capitalShip
+                    && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID)
+                    && (
+                        demand.DestinationFleet?.Order?.OrderType != FleetOrderType.Defend
+                        || !capitalShip.HasRole(CapitalShipRole.Transport)
+                    )
+                    && (!capitalShip.CanDestroyPlanets || demand.PlanetDestroyerDeficit > 0)
+                    && (producer == null || CanBuildCapitalShip(context, producer, capitalShip))
+                )
+                .OrderBy(
+                    technology => technology.GetReference().GetTypeID(),
+                    StringComparer.Ordinal
+                )
+                .ToList();
+            if (
+                demand.CapitalShipRole != AICapitalShipProductionRole.TroopTransport
+                || demand.Kind != AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+                    && demand.DestinationFleet?.RoleType != FleetRoleType.Colonization
+            )
+                return technologies;
+
+            List<Technology> transports = technologies
+                .Where(technology =>
+                    CanFillCapitalShipRole(
+                        (CapitalShip)technology.GetReference(),
+                        AICapitalShipProductionRole.TroopTransport
+                    )
+                )
+                .ToList();
+            if (transports.Count == 0)
+                return transports;
+            int minimumCost = transports.Min(technology =>
+                technology.GetReference().GetConstructionCost()
+            );
+            return transports
+                .Where(technology => technology.GetReference().GetConstructionCost() == minimumCost)
+                .ToList();
+        }
+
+        /// <summary>
         /// Selects a capital ship for the fleet's first unmet capability.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1317,52 +2308,50 @@ namespace Rebellion.AI.Planners
             IReadOnlyList<Technology> technologies
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBestFleetCapitalShipTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             List<Technology> eligible = new List<Technology>(technologies.Count);
-            foreach (Func<CapitalShip, bool> requirement in GetCapitalShipRequirements(demand))
+            int preferredInterdictionCount = context
+                .Game
+                .Config
+                .AI
+                .Selection
+                .PreferredInterdictionCountPerFleet;
+            bool preferOtherHulls =
+                preferredInterdictionCount > 0
+                && context.Assessment.GetProjectedFleetInterdictionCount(demand.DestinationFleet)
+                    >= preferredInterdictionCount;
+            foreach (var requirement in demand.GetCapitalShipRequirements(context.Assessment))
             {
+                if (requirement.Deficit <= 0)
+                    continue;
                 eligible.Clear();
                 foreach (Technology technology in technologies)
                 {
-                    if (requirement((CapitalShip)technology.GetReference()))
+                    if (requirement.Contribution((CapitalShip)technology.GetReference()) > 0)
                         eligible.Add(technology);
                 }
 
-                if (eligible.Count > 0)
-                    return eligible[context.Random.NextInt(0, eligible.Count)];
+                if (eligible.Count == 0)
+                    continue;
+
+                if (
+                    preferOtherHulls
+                    && eligible.Any(technology =>
+                        !((CapitalShip)technology.GetReference()).HasGravityWell
+                    )
+                )
+                    eligible.RemoveAll(technology =>
+                        ((CapitalShip)technology.GetReference()).HasGravityWell
+                    );
+
+                return eligible[context.Random.NextInt(0, eligible.Count)];
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Returns hull predicates for unmet fleet capabilities in selection order.
-        /// </summary>
-        /// <param name="demand">The fleet production demand.</param>
-        /// <returns>The ordered hull predicates.</returns>
-        private static IEnumerable<Func<CapitalShip, bool>> GetCapitalShipRequirements(
-            AIProductionDemand demand
-        )
-        {
-            if (demand.RegimentCapacityDeficit > 0)
-                yield return ship => ship.RegimentCapacity > 0;
-            if (demand.BombardmentDeficit > 0)
-                yield return ship => ship.Bombardment > 0;
-            if (demand.CapitalFirepowerDeficit > 0)
-                yield return ship =>
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(ship)
-                    > 0;
-            if (demand.StarfighterFirepowerDeficit > 0)
-                yield return ship =>
-                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(ship)
-                    > 0;
-            if (demand.EscortDeficit > 0)
-                yield return SpaceCombatStrengthCalculator.IsArmedEscort;
-            if (demand.StarfighterCapacityDeficit > 0)
-                yield return ship => ship.StarfighterCapacity > 0;
-            if (demand.PlanetDestroyerDeficit > 0)
-                yield return ship => ship.CanDestroyPlanets;
-            if (demand.InterdictionDeficit > 0)
-                yield return ship => ship.HasGravityWell;
         }
 
         /// <summary>
@@ -1385,7 +2374,7 @@ namespace Rebellion.AI.Planners
                     && GetMaximumPrimaryWeaponStrength(capitalShip) > 0,
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity > 0
                     && !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponStrength(capitalShip) == 0,
+                    && capitalShip.HasRole(CapitalShipRole.Transport),
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,
@@ -1445,6 +2434,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedStarfighterTechnology(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedStarfighterTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             return GetUnlockedFleetTechnology<Starfighter>(
                 context,
@@ -1462,6 +2456,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedPlanetaryStarfighterTechnology(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedPlanetaryStarfighterTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             return GetUnlockedTechnologies(context, ManufacturingType.Ship)
                 .Where(technology =>
@@ -1519,6 +2518,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedRegimentTechnology(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedRegimentTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             return GetUnlockedFleetTechnology<Regiment>(
                 context,
@@ -1572,6 +2576,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedGarrisonRegimentTechnology(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedGarrisonRegimentTechnology),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             return GetUnlockedTechnologies(context, ManufacturingType.Troop)
@@ -1682,6 +2691,11 @@ namespace Rebellion.AI.Planners
             int quantity
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindProducerPlanets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (context?.Assessment == null || demand?.Destination == null)
                 return Enumerable.Empty<Planet>();
 
@@ -1710,71 +2724,39 @@ namespace Rebellion.AI.Planners
 
             IEnumerable<Planet> eligibleProducers = context.Assessment.OwnedPlanets.Where(planet =>
                 demand.UsesIdleShipyardCapacity
+                || demand.Kind == AIProductionDemandKind.IdleSpecialForces
                     ? planet == destinationPlanet
                         && HasProductionFacility(context, planet, demand.ManufacturingType)
                 : mode == ProducerMode.FacilityExpansion
                     ? CanQueueFacilityExpansion(context, planet)
                 : mode == ProducerMode.Distributed
                     ? HasProductionFacility(context, planet, demand.ManufacturingType)
-                : CanProduce(planet, demand.ManufacturingType)
+                : CanProduce(context, planet, demand.ManufacturingType)
             );
             eligibleProducers = eligibleProducers.Where(producer =>
                 CanUseProducerForDemand(context, producer, demand)
+                && (
+                    !demand.IsProductionFiller
+                    || ManufacturingQueries.GetManufacturingOrder(
+                        producer,
+                        demand.ManufacturingType
+                    ) == null
+                )
             );
-            if (mode == ProducerMode.FacilityExpansion && destinationPlanet != null)
-            {
-                string destinationSystemId = context.Assessment.GetPlanetSystemId(
-                    destinationPlanet
-                );
-                List<Planet> localProducers = eligibleProducers
-                    .Where(planet =>
-                        context.Assessment.GetPlanetSystemId(planet) == destinationSystemId
-                    )
-                    .ToList();
-                if (localProducers.Count > 0)
-                    eligibleProducers = localProducers;
-            }
-            producers =
-                mode == ProducerMode.FacilityExpansion
-                    ? eligibleProducers
-                        .OrderBy(planet =>
-                            context.Assessment.GetProductionBacklogTicks(
-                                planet,
-                                ManufacturingType.Building
-                            )
-                        )
-                        .ThenByDescending(planet =>
-                            context.Assessment.GetPlanetProductionRate(
-                                planet,
-                                ManufacturingType.Building
-                            )
-                        )
-                        .ThenBy(planet =>
-                            destinationPlanet == null
-                                ? 0
-                                : destinationPlanet.GetRawDistanceTo(planet)
-                        )
-                        .ThenBy(planet => planet.InstanceID)
-                        .ToList()
-                    : eligibleProducers
-                        .OrderBy(planet =>
-                            GetProducerFulfillmentTicks(
-                                context,
-                                demand,
-                                product,
-                                quantity,
-                                planet,
-                                destinationPlanet
-                            )
-                        )
-                        .ThenByDescending(planet =>
-                            context.Assessment.GetPlanetProductionRate(
-                                planet,
-                                demand.ManufacturingType
-                            )
-                        )
-                        .ThenBy(planet => planet.InstanceID)
-                        .ToList();
+            producers = eligibleProducers
+                .OrderBy(planet =>
+                    GetProducerFulfillmentTicks(context, demand, product, planet, destinationPlanet)
+                )
+                .ThenByDescending(planet =>
+                    context.Assessment.GetPlanetProductionRate(planet, demand.ManufacturingType)
+                )
+                .ThenBy(planet =>
+                    mode == ProducerMode.FacilityExpansion && destinationPlanet != null
+                        ? destinationPlanet.GetRawDistanceTo(planet)
+                        : 0
+                )
+                .ThenBy(planet => planet.InstanceID)
+                .ToList();
             _producerPlanets.Add(key, producers);
             return producers;
         }
@@ -1785,28 +2767,31 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The demand being fulfilled.</param>
         /// <param name="product">The product to manufacture.</param>
-        /// <param name="quantity">The quantity required by the demand.</param>
         /// <param name="producer">The candidate producer.</param>
         /// <param name="destinationPlanet">The destination planet, when available.</param>
-        /// <returns>Estimated arrival ticks for fleet reinforcements, otherwise raw distance.</returns>
+        /// <returns>Estimated arrival ticks for one movable product, otherwise raw distance.</returns>
         private double GetProducerFulfillmentTicks(
             AITurnContext context,
             AIProductionDemand demand,
             IManufacturable product,
-            int quantity,
             Planet producer,
             Planet destinationPlanet
         )
         {
-            if (demand.DestinationFleet != null && product is IMovable movable)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProducerFulfillmentTicks),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            if (product is IMovable movable)
             {
                 return GetReinforcementArrivalTicks(
                     context,
                     producer,
-                    demand.DestinationFleet,
+                    demand.DeliveryDestination,
                     product,
                     movable,
-                    quantity
+                    1
                 );
             }
 
@@ -1814,11 +2799,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Estimates when a manufactured reinforcement will reach its destination fleet.
+        /// Estimates when a manufactured reinforcement will reach its delivery container.
         /// </summary>
         /// <param name="context">The active AI turn.</param>
         /// <param name="producer">The planet manufacturing the reinforcement.</param>
-        /// <param name="destinationFleet">The fleet receiving the reinforcement.</param>
+        /// <param name="destination">The container receiving the reinforcement.</param>
         /// <param name="product">The manufactured product.</param>
         /// <param name="movable">The product movement characteristics.</param>
         /// <param name="quantity">The appended product quantity.</param>
@@ -1826,26 +2811,26 @@ namespace Rebellion.AI.Planners
         private int GetReinforcementArrivalTicks(
             AITurnContext context,
             Planet producer,
-            Fleet destinationFleet,
+            ContainerNode destination,
             IManufacturable product,
             IMovable movable,
             int quantity
         )
         {
-            if (producer == null || destinationFleet == null || product == null || movable == null)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetReinforcementArrivalTicks),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            if (producer == null || destination == null || product == null || movable == null)
                 return int.MaxValue;
 
             (
                 string ProducerPlanetId,
-                string DestinationFleetId,
+                string DestinationId,
                 string ProductTypeId,
                 int Quantity
-            ) key = (
-                producer.InstanceID,
-                destinationFleet.InstanceID,
-                product.GetTypeID(),
-                quantity
-            );
+            ) key = (producer.InstanceID, destination.InstanceID, product.GetTypeID(), quantity);
             if (_reinforcementArrivalTicks.TryGetValue(key, out int cachedTicks))
                 return cachedTicks;
 
@@ -1859,8 +2844,9 @@ namespace Rebellion.AI.Planners
                 !context.MovementQueries.TryEstimateManufacturedTransitTicks(
                     movable,
                     producer,
-                    destinationFleet,
-                    out int transitTicks
+                    destination,
+                    out int transitTicks,
+                    context.Faction.InstanceID
                 )
             )
             {
@@ -1877,16 +2863,11 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Stores and returns one reinforcement-arrival estimate.
         /// </summary>
-        /// <param name="key">The producer, fleet, product, and quantity identity.</param>
+        /// <param name="key">The producer, destination, product, and quantity identity.</param>
         /// <param name="ticks">The estimated arrival duration.</param>
         /// <returns>The supplied duration.</returns>
         private int CacheReinforcementArrival(
-            (
-                string ProducerPlanetId,
-                string DestinationFleetId,
-                string ProductTypeId,
-                int Quantity
-            ) key,
+            (string ProducerPlanetId, string DestinationId, string ProductTypeId, int Quantity) key,
             int ticks
         )
         {
@@ -1907,8 +2888,23 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanUseProducerForDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (demand?.ManufacturingType != ManufacturingType.Ship)
                 return true;
+
+            if (
+                demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                && producer != demand.DestinationPlanet
+                && context.Assessment.GetPlanetProductionFacilityCount(
+                    demand.DestinationPlanet,
+                    ManufacturingType.Ship
+                ) > 0
+            )
+                return false;
 
             int shipyardCount = context.Assessment.GetPlanetProductionFacilityCount(
                 producer,
@@ -1917,8 +2913,8 @@ namespace Rebellion.AI.Planners
             return demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
                 ? demand.UsesIdleShipyardCapacity
                     ? shipyardCount > 1
-                    : shipyardCount == 1
-                : shipyardCount > 0;
+                    : true
+                : true;
         }
 
         /// <summary>
@@ -1929,6 +2925,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the planet is operational and has construction capacity.</returns>
         private bool CanQueueFacilityExpansion(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanQueueFacilityExpansion),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             return planet?.IsColonized == true
                 && !planet.IsDestroyed
                 && context.Assessment.GetPlanetProductionFacilityCount(
@@ -1945,7 +2946,12 @@ namespace Rebellion.AI.Planners
         /// <returns>The destination planet, or null.</returns>
         private Planet GetDestinationPlanet(AITurnContext context, AIProductionDemand demand)
         {
-            if (demand?.Destination is Planet planet)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDestinationPlanet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
+            if (demand?.DeliveryDestination is Planet planet)
                 return planet;
 
             if (demand?.Destination is Fleet fleet)
@@ -1957,17 +2963,33 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns whether a planet can produce a manufacturing type.
         /// </summary>
+        /// <param name="context">The current faction turn.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="manufacturingType">Manufacturing type to produce.</param>
         /// <returns>True if the planet can produce the type.</returns>
-        private bool CanProduce(Planet planet, ManufacturingType manufacturingType)
+        private bool CanProduce(
+            AITurnContext context,
+            Planet planet,
+            ManufacturingType manufacturingType
+        )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanProduce),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (planet == null)
                 return false;
 
             return planet.IsColonized
                 && !planet.IsDestroyed
-                && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0;
+                && (
+                    planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
+                    || context.Assessment.GetReplaceableManufacturingOrder(
+                        planet,
+                        manufacturingType
+                    ) != null
+                );
         }
 
         /// <summary>
@@ -1983,6 +3005,11 @@ namespace Rebellion.AI.Planners
             ManufacturingType manufacturingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasProductionFacility),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             return planet?.IsColonized == true
                 && !planet.IsDestroyed
                 && context.Assessment.GetPlanetProductionFacilityCount(planet, manufacturingType)
@@ -2081,6 +3108,11 @@ namespace Rebellion.AI.Planners
             ManufacturingType manufacturingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnlockedTechnologies),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionPlanner)
+            );
             if (
                 _unlockedTechnologies.TryGetValue(
                     manufacturingType,

@@ -6,6 +6,8 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -21,7 +23,10 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the proposal is a production proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIManufactureProposal or AIFacilityRemovalProposal;
+            return proposal
+                is AIManufactureProposal
+                    or AIFacilityRemovalProposal
+                    or AIMaintenanceRecoveryProposal;
         }
 
         /// <summary>
@@ -32,15 +37,61 @@ namespace Rebellion.AI.Scorers
         /// <returns>The production proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Score),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             return proposal switch
             {
                 AIFacilityRemovalProposal => 0,
+                AIMaintenanceRecoveryProposal => Math.Max(
+                    0,
+                    -context.Faction.ProjectedMaintenanceHeadroom
+                ),
                 AIManufactureProposal manufactureProposal => ScoreManufactureProposal(
                     context,
                     manufactureProposal
                 ),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Returns the additional weighted requirement shortfall per maintenance point saved.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="candidate">The retirement alternative.</param>
+        /// <param name="remaining">Capability remaining after retirements already selected.</param>
+        /// <returns>The marginal damage ratio, or infinity when a safety floor would be broken.</returns>
+        internal static double GetRetirementDamage(
+            AITurnContext context,
+            AIMaintenanceRecoveryProposal.Candidate candidate,
+            IReadOnlyDictionary<AIMaintenanceRecoveryProposal.Requirement, double> remaining
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetRetirementDamage),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            double damage =
+                Math.Max(0, candidate.Unit.GetConstructionCost())
+                * context.Game.Config.AI.Selection.MaintenanceRecovery.ReplacementCostWeight;
+            foreach (var contribution in candidate.Contributions)
+            {
+                var need = contribution.Key;
+                double before = remaining[need];
+                double after = before - contribution.Value;
+                if (after < need.ProtectedMinimum)
+                    return double.PositiveInfinity;
+                if (need.Required > 0)
+                    damage +=
+                        need.Weight
+                        * (Math.Max(0, need.Required - after) - Math.Max(0, need.Required - before))
+                        / need.Required;
+            }
+            return damage / candidate.Unit.GetMaintenanceCost();
         }
 
         /// <summary>
@@ -54,8 +105,15 @@ namespace Rebellion.AI.Scorers
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ScoreManufactureProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             double demandPressure = GetDemandPressure(context, proposal?.Demand);
-            int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
+            int maintenanceCost =
+                (proposal?.GetUnitMaintenanceCost() ?? 0)
+                + (proposal?.ResourceMaintenanceCost ?? 0);
             if (context?.Game == null || context.Faction == null || proposal == null)
                 return AIUtility.Fulfillment(
                     demandPressure,
@@ -69,16 +127,56 @@ namespace Rebellion.AI.Scorers
                 AIUtility.Fulfillment(demandPressure, config.DemandUtility),
                 config.DemandUtility
             );
+            score.Add(GetIndustrialDefenseInput(context, proposal), utility.IndustrialDefense);
             double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
+            {
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
+                score.Add(
+                    GetLocalConstructionGrowth(context, proposal),
+                    utility.LocalConstructionGrowth
+                );
+            }
+            score.Add(
+                GetHeadquartersReinforcementInput(context, proposal),
+                utility.HeadquartersReinforcement
+            );
             score.AddCost(
                 AIUtility.Fulfillment(GetTravelCost(context, proposal), utility.TravelCost),
                 utility.TravelCost
             );
 
+            bool scoresFacilityAvailability =
+                proposal.IsProductionFacilityExpansion && utility.FacilityAvailability.Weight > 0;
+            if (scoresFacilityAvailability)
+                score.AddCost(
+                    GetFacilityAvailabilityInput(context, proposal),
+                    utility.FacilityAvailability
+                );
+
+            if (proposal.CurrentOrder != null)
+            {
+                if (proposal.ContinuesExistingOrder && !scoresFacilityAvailability)
+                    score.Add(
+                        AIUtility.Fulfillment(
+                            GetCompletedProductionTicks(proposal),
+                            utility.CompletionTime
+                        ),
+                        utility.CompletionTime
+                    );
+                score.AddCost(
+                    AIUtility.Fulfillment(
+                        GetInterruptionCost(context, proposal),
+                        utility.InterruptionCost
+                    ),
+                    utility.InterruptionCost
+                );
+            }
+
             int projectedHeadroom =
-                context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
+                context.Assessment.ProjectedMaintenanceHeadroom
+                - maintenanceCost
+                + proposal.ReplacedMaintenanceCost;
             if (
                 maintenanceCost > 0
                 && proposal.Demand.RestoresMaintenanceCapacity == false
@@ -108,6 +206,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The demand urgency used by production utility.</returns>
         internal static double GetDemandPressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDemandPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             if (demand == null)
                 return 0;
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
@@ -139,6 +242,7 @@ namespace Rebellion.AI.Scorers
                 or AIProductionDemandKind.FleetRegiment => GetFleetPressure(context, demand),
                 AIProductionDemandKind.SpecialForces => GetSpecialForcesPressure(context, demand),
                 AIProductionDemandKind.BuildingUpgrade => GetUpgradePressure(context, demand),
+                AIProductionDemandKind.IdleSpecialForces => demand.BaseDemandPercent,
                 AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility => GetFacilityPressure(context, demand),
@@ -158,6 +262,11 @@ namespace Rebellion.AI.Scorers
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetSpecialForcesPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             double pressure =
                 demand.BaseDemandPercent
                 + AIUtility.EvaluateDiscretePressure(
@@ -175,6 +284,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The facility expansion urgency.</returns>
         private static double GetFacilityPressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             Planet destination = demand.DestinationPlanet;
             if (destination == null || demand.TargetCount <= 0)
                 return 0;
@@ -182,15 +296,7 @@ namespace Rebellion.AI.Scorers
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             string systemId = context.Assessment.GetPlanetSystemId(destination);
             List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                    || (
-                        demand.BuildingType == BuildingType.ConstructionFacility
-                        && planet?.IsDestroyed == false
-                        && planet.GetParentOfType<PlanetSector>()?.SectorType
-                            == PlanetSectorType.OuterRim
-                    )
-                )
+                .StrategicPlan.GetInfrastructurePlanets(demand.BuildingType)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
                 .ToList();
@@ -221,10 +327,9 @@ namespace Rebellion.AI.Scorers
             double colonyFoundation = GetColonyFoundationInput(sector, demand.BuildingType);
             if (colonyFoundation <= 0)
                 pressure += GetPortfolioPressure(context, demand.Kind);
-            int hubTarget =
-                demand.BuildingType == BuildingType.Shipyard
-                    ? config.ShipyardSectorHubTargetCount
-                    : config.FacilitySectorHubTargetCount;
+            IReadOnlyList<int> hubTargets = context.StrategicPlan.GetInfrastructureHubTargets(
+                demand.BuildingType
+            );
             int sectorFacilityCount = sector.Sum(planet =>
                 planet.GetTotalBuildingTypeCount(demand.BuildingType)
             );
@@ -233,7 +338,7 @@ namespace Rebellion.AI.Scorers
                 config.DemandUtility.SectorCoverage
             );
             pressure += AIUtility.EvaluatePressure(
-                sectorFacilityCount > 0 ? 1 : 0,
+                demand.InfrastructureHubIndex == 0 ? 1 : 0,
                 config.DemandUtility.PrimaryHub
             );
             pressure += AIUtility.EvaluatePressure(
@@ -243,7 +348,7 @@ namespace Rebellion.AI.Scorers
             pressure += GetFacilityCategoryBalancePressure(
                 sectors,
                 demand.BuildingType,
-                hubTarget,
+                hubTargets,
                 config.DemandUtility.FacilityBalance
             );
             pressure += demand.BaseDemandPercent * placementUtility;
@@ -262,6 +367,11 @@ namespace Rebellion.AI.Scorers
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityPlacementUtility),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             Planet destination = demand?.DestinationPlanet;
             if (destination == null)
                 return 0;
@@ -308,22 +418,19 @@ namespace Rebellion.AI.Scorers
             AIProductionDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityCandidates),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             Planet destination = demand?.DestinationPlanet;
             if (destination == null)
                 return new List<Planet>();
             string systemId = context.Assessment.GetPlanetSystemId(destination);
             return context
-                .Assessment.OwnedPlanets.Where(planet =>
+                .StrategicPlan.GetInfrastructurePlanets(demand.BuildingType)
+                .Where(planet =>
                     context.Assessment.GetPlanetSystemId(planet) == systemId
-                    && (
-                        planet?.IsColonized == true && !planet.IsDestroyed
-                        || (
-                            demand.BuildingType == BuildingType.ConstructionFacility
-                            && planet?.IsDestroyed == false
-                            && planet.GetParentOfType<PlanetSector>()?.SectorType
-                                == PlanetSectorType.OuterRim
-                        )
-                    )
                     && planet.GetAvailableEnergy() > 0
                 )
                 .ToList();
@@ -360,26 +467,36 @@ namespace Rebellion.AI.Scorers
         /// </summary>
         /// <param name="sectors">Owned planets grouped by system.</param>
         /// <param name="buildingType">The facility category.</param>
-        /// <param name="hubTarget">The desired facility count per established hub.</param>
+        /// <param name="hubTargets">The ordered desired facility counts for sector hubs.</param>
         /// <param name="consideration">The configured category-balance consideration.</param>
         /// <returns>The centered category-balance pressure.</returns>
         private static double GetFacilityCategoryBalancePressure(
             IReadOnlyCollection<IGrouping<string, Planet>> sectors,
             BuildingType buildingType,
-            int hubTarget,
+            IReadOnlyList<int> hubTargets,
             GameConfig.AIConsiderationConfig consideration
         )
         {
-            if (sectors.Count == 0 || hubTarget <= 0)
+            if (sectors.Count == 0 || hubTargets == null || hubTargets.Count == 0)
                 return 0;
-            int progress = sectors.Sum(sector =>
-                Math.Min(
-                    hubTarget,
-                    sector.Max(planet => planet.GetTotalBuildingTypeCount(buildingType))
-                )
-            );
-            double target = sectors.Count * (double)hubTarget;
-            return AIUtility.EvaluateCenteredPressure(1 - progress / target, consideration);
+            int progress = 0;
+            int target = 0;
+            foreach (IGrouping<string, Planet> sector in sectors)
+            {
+                List<int> facilityCounts = sector
+                    .Select(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    .OrderByDescending(count => count)
+                    .ToList();
+                int hubCount = Math.Min(facilityCounts.Count, hubTargets.Count);
+                for (int index = 0; index < hubCount; index++)
+                {
+                    progress += Math.Min(hubTargets[index], facilityCounts[index]);
+                    target += hubTargets[index];
+                }
+            }
+            if (target <= 0)
+                return 0;
+            return AIUtility.EvaluateCenteredPressure(1 - progress / (double)target, consideration);
         }
 
         /// <summary>
@@ -390,6 +507,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The bounded upgrade urgency.</returns>
         private static double GetUpgradePressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUpgradePressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AIProductionDemandUtilityConfig utility = context
                 .Game
                 .Config
@@ -419,6 +541,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The defensive urgency.</returns>
         private static double GetDefensePressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDefensePressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AIProductionDemandUtilityConfig utility = context
                 .Game
                 .Config
@@ -447,7 +574,10 @@ namespace Rebellion.AI.Scorers
                 utility.DefenseThreat
             );
             if (demand.Kind == AIProductionDemandKind.PlanetaryDefense)
-                pressure += GetPortfolioPressure(context, AIProductionDemandKind.PlanetaryDefense);
+                pressure += Math.Max(
+                    0,
+                    GetPortfolioPressure(context, AIProductionDemandKind.PlanetaryDefense)
+                );
 
             double boundedPressure = Math.Max(0, Math.Min(100, pressure));
             if (!demand.EstablishesInitialShield)
@@ -467,6 +597,44 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Measures unmet protection supplied locally by fighters or to an active construction hub by shields.
+        /// </summary>
+        /// <param name="context">The faction turn supplying operational facility counts.</param>
+        /// <param name="proposal">The proposed defensive production.</param>
+        /// <returns>The fraction of the protective requirement still unmet, or zero for other work.</returns>
+        private static double GetIndustrialDefenseInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetIndustrialDefenseInput),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            AIProductionDemand demand = proposal.Demand;
+            Planet destination = demand.DestinationPlanet;
+            if (destination == null || demand.TargetCount <= 0)
+                return 0;
+
+            bool protectsShipyard =
+                demand.EstablishesInitialStarfighterDefense
+                && proposal.ProducerPlanet == destination
+                && context.Assessment.GetPlanetProductionFacilityCount(
+                    destination,
+                    ManufacturingType.Ship
+                ) > 0;
+            bool protectsConstruction =
+                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                && proposal.Product.GetReference() is Building building
+                && building.IsPlanetaryShieldGenerator()
+                && demand.ProtectsConstructionHub;
+            return protectsShipyard || protectsConstruction
+                ? AIUtility.Fulfillment(demand.QuantityNeeded, demand.TargetCount)
+                : 0;
+        }
+
+        /// <summary>
         /// Calculates urgency for restoring economy capacity.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -474,6 +642,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The economy urgency.</returns>
         private static double GetEconomyPressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetEconomyPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             double pressure = Math.Min(
                 100,
                 demand.BaseDemandPercent
@@ -492,19 +665,24 @@ namespace Rebellion.AI.Scorers
         /// <returns>The maintenance urgency.</returns>
         private static double GetMaintenancePressure(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMaintenancePressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AIProductionDemandUtilityConfig utility = context
                 .Game
                 .Config
                 .AI
                 .Infrastructure
                 .DemandUtility;
-            int headroom = context.Assessment.ProjectedEconomyMaintenanceHeadroom;
+            int headroom = context.StrategicPlan.EconomyPlanningMaintenanceHeadroom;
             int floor = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             int target = Math.Max(
                 floor,
                 context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
             );
-            if (headroom < floor)
+            if (context.Assessment.ProjectedEconomyMaintenanceHeadroom < 0 || headroom < floor)
                 return AIUtility.EvaluatePressure(1, utility.MaintenanceShortfall);
             return headroom >= target
                 ? 0
@@ -521,13 +699,18 @@ namespace Rebellion.AI.Scorers
         /// <returns>The refined-material urgency.</returns>
         private static double GetRefinedMaterialPressure(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetRefinedMaterialPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             int reservePercent = Math.Max(0, config.RefinedMaterialReservePercent);
             int warningPercent = Math.Max(
                 reservePercent,
                 config.RefinedMaterialEconomyWarningPercent
             );
-            int projectedPercent = context.Assessment.ProjectedRefinedMaterialPercent;
+            int projectedPercent = context.StrategicPlan.EconomyPlanningRefinedMaterialPercent;
             if (projectedPercent >= warningPercent)
                 return 0;
             double urgency = Math.Min(
@@ -549,6 +732,11 @@ namespace Rebellion.AI.Scorers
         /// <returns>The reinforcement urgency.</returns>
         private static double GetFleetPressure(AITurnContext context, AIProductionDemand demand)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFleetPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             Fleet fleet = demand.DestinationFleet;
             double pressure = AIFleetProductionAllocationScorer.ScoreDeficit(
                 context,
@@ -565,7 +753,7 @@ namespace Rebellion.AI.Scorers
                         context.Assessment.GetPlanetValue(targetPlanet) / highestValue,
                         context.Game.Config.AI.Infrastructure.DemandUtility.FleetTargetValue
                     );
-                pressure += GetFleetReadinessPressure(context, demand.Kind, fleet, targetPlanet);
+                pressure += GetFleetReadinessPressure(context, demand, fleet, targetPlanet);
                 pressure += GetFinalReadinessPressure(
                     context,
                     fleet,
@@ -597,17 +785,22 @@ namespace Rebellion.AI.Scorers
         /// Calculates reinforcement urgency from complementary fleet readiness.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">The reinforced capability.</param>
+        /// <param name="demand">The reinforcement requirement and requested ship role.</param>
         /// <param name="fleet">The fleet being reinforced.</param>
         /// <param name="targetPlanet">The fleet's attack target.</param>
         /// <returns>The readiness urgency.</returns>
         private static double GetFleetReadinessPressure(
             AITurnContext context,
-            AIProductionDemandKind kind,
+            AIProductionDemand demand,
             Fleet fleet,
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFleetReadinessPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AIConsiderationConfig readiness = context
                 .Game
                 .Config
@@ -615,9 +808,11 @@ namespace Rebellion.AI.Scorers
                 .Infrastructure
                 .DemandUtility
                 .FleetReadiness;
-            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
-            int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
+                .Count;
             double combatReadiness = GetFulfillmentRatio(
                 context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
                 requiredCombat
@@ -630,14 +825,18 @@ namespace Rebellion.AI.Scorers
                 context.Assessment.GetFleetRegimentCapacity(fleet),
                 requiredRegiments
             );
-            return kind switch
+            double capitalReadiness =
+                demand.CapitalShipRole == AICapitalShipProductionRole.TroopTransport
+                    ? combatReadiness
+                    : capacityReadiness;
+            return demand.Kind switch
             {
                 AIProductionDemandKind.FleetRegiment => AIUtility.EvaluatePressure(
                     (combatReadiness + capacityReadiness) / 2,
                     readiness
                 ),
                 AIProductionDemandKind.FleetCapitalShip => AIUtility.EvaluatePressure(
-                    (regimentReadiness + capacityReadiness) / 2,
+                    (regimentReadiness + capitalReadiness) / 2,
                     readiness
                 ),
                 AIProductionDemandKind.FleetStarfighter => AIUtility.EvaluatePressure(
@@ -663,18 +862,25 @@ namespace Rebellion.AI.Scorers
             int deficit
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFinalReadinessPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             if (deficit > config.FleetFinalReadinessGateUnitCount)
                 return 0;
             bool combatReady =
                 context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
-                >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0);
-            int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
+                >= (context.GetAttackDemand(targetPlanet, fleet)?.CombatStrength ?? 0);
+            int requiredRegiments = context
+                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
+                .Count;
             bool capacityReady =
                 context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredRegiments;
             bool bombardmentReady =
                 context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                >= (context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0);
+                >= (context.GetAttackDemand(targetPlanet, fleet)?.BombardmentStrength ?? 0);
             if (!combatReady || !capacityReady || !bombardmentReady)
                 return 0;
             return AIUtility.EvaluateDiscretePressure(
@@ -696,30 +902,6 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the regiment count required after projected bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The reinforced fleet.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>The projected regiment requirement.</returns>
-        private static int GetProjectedRegimentCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-            bool canBombardDefenders =
-                fleet != null
-                && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
-                && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
-            return canBombardDefenders ? demand.OccupationRegimentCount : demand.RegimentCount;
-        }
-
-        /// <summary>
         /// Calculates signed pressure from the current strategic-facility portfolio.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -730,6 +912,11 @@ namespace Rebellion.AI.Scorers
             AIProductionDemandKind kind
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPortfolioPressure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             int constructionFacilities = 0;
             int shipyards = 0;
             int trainingFacilities = 0;
@@ -788,47 +975,256 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns the normalized value of using a proposal to found Outer Rim construction.
+        /// Returns the need for establishing construction capacity in the destination's sector.
         /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The production proposal to inspect.</param>
-        /// <returns>One before the first construction yard reaches an Outer Rim planet; otherwise zero.</returns>
+        /// <param name="context">The faction's current owned infrastructure.</param>
+        /// <param name="proposal">The construction-facility order being evaluated.</param>
+        /// <returns>The same sector foundation input used to value the underlying demand.</returns>
         private static double GetColonyFoundationInput(
             AITurnContext context,
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetColonyFoundationInput),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
             Planet destination = proposal?.Demand?.DestinationPlanet;
-            if (
-                destination?.GetParentOfType<PlanetSector>()?.SectorType
-                != PlanetSectorType.OuterRim
-            )
-            {
+            if (destination == null)
                 return 0;
-            }
+            string systemId = context.Assessment.GetPlanetSystemId(destination);
+            return GetColonyFoundationInput(
+                context.Assessment.OwnedPlanets.Where(planet =>
+                    context.Assessment.GetPlanetSystemId(planet) == systemId
+                ),
+                proposal.Demand.BuildingType
+            );
+        }
 
-            return
-                context.Assessment.GetPlanetProductionFacilityCount(
-                    destination,
-                    ManufacturingType.Building
-                ) == 0
-                ? 1
+        /// <summary>
+        /// Returns the uncovered fraction of the headquarters fleet-defense requirement.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The reinforcement manufacturing proposal.</param>
+        /// <returns>The remaining defense deficit normalized from zero through one.</returns>
+        private static double GetHeadquartersReinforcementInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetHeadquartersReinforcementInput),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            if (
+                proposal.Demand.Kind
+                    is not AIProductionDemandKind.FleetCapitalShip
+                        and not AIProductionDemandKind.FleetStarfighter
+                || proposal.Demand.DestinationFleet is not Fleet fleet
+                || fleet.Order?.OrderType != FleetOrderType.Defend
+            )
+                return 0;
+
+            Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
+            if (!context.Assessment.IsFactionHeadquarters(target))
+                return 0;
+
+            int requiredStrength = context.StrategicPlan.GetDefenseStrength(target);
+            int missingStrength = Math.Max(
+                0,
+                requiredStrength - context.Assessment.GetProjectedFleetCombatValue(fleet)
+            );
+            return AIUtility.Fulfillment(missingStrength, Math.Max(1, requiredStrength));
+        }
+
+        /// <summary>
+        /// Normalizes the time until a proposed facility can supply its destination.
+        /// </summary>
+        /// <param name="context">The turn supplying delivery estimates and utility tuning.</param>
+        /// <param name="proposal">The facility order and its exact producer.</param>
+        /// <returns>The configured availability cost input, or zero when disabled.</returns>
+        internal static double GetFacilityAvailabilityInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityAvailabilityInput),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            var consideration = context
+                .Game
+                .Config
+                .AI
+                .Selection
+                .ProductionUtility
+                .FacilityAvailability;
+            return consideration.Weight > 0
+                ? AIUtility.Fulfillment(
+                    GetFacilityAvailabilityTicks(context, proposal),
+                    consideration
+                )
                 : 0;
         }
 
         /// <summary>
-        /// Returns the travel penalty for fleet reinforcement production.
+        /// Estimates when one proposed facility will finish production and reach its destination.
+        /// </summary>
+        /// <param name="context">The turn supplying manufactured movement estimates.</param>
+        /// <param name="proposal">The facility order and its exact producer.</param>
+        /// <returns>Production plus delivery ticks, or the maximum duration when unavailable.</returns>
+        private static double GetFacilityAvailabilityTicks(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFacilityAvailabilityTicks),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            IManufacturable facility = proposal.Product.GetReference();
+            int? productionTicks = proposal.ContinuesExistingOrder
+                ? ManufacturingQueries.EstimateCompletionTicks(
+                    proposal.ProducerPlanet,
+                    proposal.CurrentOrder
+                )
+                : ManufacturingQueries.EstimateManufacturingTicks(
+                    proposal.ProducerPlanet,
+                    facility,
+                    1
+                );
+            if (!productionTicks.HasValue)
+                return double.MaxValue;
+            if (proposal.Destination == proposal.ProducerPlanet)
+                return productionTicks.Value;
+            if (
+                facility is not IMovable movable
+                || context.MovementQueries == null
+                || !context.MovementQueries.TryEstimateManufacturedTransitTicks(
+                    movable,
+                    proposal.ProducerPlanet,
+                    proposal.Destination,
+                    out int deliveryTicks,
+                    context.Faction.InstanceID
+                )
+            )
+                return double.MaxValue;
+            return (double)productionTicks.Value + deliveryTicks;
+        }
+
+        /// <summary>
+        /// Measures factory time already completed on the current order.
+        /// </summary>
+        /// <param name="proposal">The action continuing or competing with the current order.</param>
+        /// <returns>The completed production ticks, or zero when no reliable estimate exists.</returns>
+        private static double GetCompletedProductionTicks(AIManufactureProposal proposal)
+        {
+            IManufacturable current = proposal.CurrentOrder;
+            if (current == null)
+                return 0;
+            int? total = ManufacturingQueries.EstimateManufacturingTicks(
+                proposal.ProducerPlanet,
+                current,
+                1
+            );
+            int? remaining = ManufacturingQueries.EstimateCompletionTicks(
+                proposal.ProducerPlanet,
+                current
+            );
+            return total.HasValue && remaining.HasValue
+                ? Math.Max(0, total.Value - remaining.Value)
+                : 0;
+        }
+
+        /// <summary>
+        /// Values discarded factory time according to the current need for the unfinished item.
+        /// </summary>
+        /// <param name="context">The current turn and its assessed production needs.</param>
+        /// <param name="proposal">The action competing with an existing manufacturing order.</param>
+        /// <returns>The demand-weighted factory time lost by switching, or zero for continuation.</returns>
+        private static double GetInterruptionCost(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetInterruptionCost),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            IManufacturable current = proposal.CurrentOrder;
+            if (proposal.ContinuesExistingOrder || current == null)
+                return 0;
+            AIProductionDemand existingDemand = context.GetCurrentProductionDemand(current);
+            double relevance = AIUtility.Fulfillment(
+                GetDemandPressure(context, existingDemand),
+                context.Game.Config.AI.Selection.DemandUtility
+            );
+            if (relevance <= 0)
+                return 0;
+            return relevance * GetCompletedProductionTicks(proposal);
+        }
+
+        /// <summary>
+        /// Measures the immediate throughput gain of expanding an assigned construction hub locally.
+        /// </summary>
+        /// <param name="context">The faction's current hub allocations.</param>
+        /// <param name="proposal">The exact producer and construction-facility order.</param>
+        /// <returns>The fractional increase in local throughput, capped at a doubling.</returns>
+        internal static double GetLocalConstructionGrowth(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetLocalConstructionGrowth),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            Planet producer = proposal.ProducerPlanet;
+            if (
+                proposal.Demand.Kind != AIProductionDemandKind.ConstructionFacility
+                || proposal.Destination != producer
+                || proposal.Product.GetReference() is not Building building
+                || building.GetProcessRate() <= 0
+                || context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    producer,
+                    BuildingType.ConstructionFacility
+                ) <= producer.GetProductionFacilityCount(ManufacturingType.Building)
+            )
+                return 0;
+            double addedRate = 1d / building.GetProcessRate();
+            double currentRate = producer.GetProductionRate(ManufacturingType.Building);
+            return currentRate > 0 ? Math.Clamp(addedRate / currentRate, 0, 1) : 0;
+        }
+
+        /// <summary>
+        /// Returns the travel penalty for fleet reinforcement and facility expansion production.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
         /// <returns>The travel penalty.</returns>
         private double GetTravelCost(AITurnContext context, AIManufactureProposal proposal)
         {
-            if (proposal?.Demand?.Destination is not Fleet destinationFleet)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetTravelCost),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionProposalScorer)
+            );
+            if (proposal?.Demand == null)
                 return 0;
 
             Planet producerPlanet = proposal.ProducerPlanet;
-            Planet destinationPlanet = context.Assessment.GetFleetPlanet(destinationFleet);
+            Planet destinationPlanet = proposal.Demand.Destination switch
+            {
+                Fleet destinationFleet => context.Assessment.GetFleetPlanet(destinationFleet),
+                Planet destination when proposal.IsProductionFacilityExpansion => destination,
+                _ => null,
+            };
             if (producerPlanet == null || destinationPlanet == null)
                 return 0;
 

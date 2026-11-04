@@ -18,6 +18,54 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed class AIMissionCandidatePoolTests
     {
+        /// <summary>
+        /// Verifies only strictly inferior upper bounds are eliminated before evaluation.
+        /// </summary>
+        /// <param name="distance">Distance to the next mission target.</param>
+        /// <param name="expectedEligible">Whether its optimistic score can enter the retained alternatives.</param>
+        [TestCase(0, true)]
+        [TestCase(100, false)]
+        public void CanRetain_FilledAlternatives_RejectsOnlyStrictlyInferiorUpperBounds(
+            int distance,
+            bool expectedEligible
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", empire.InstanceID);
+            target.PositionX = origin.PositionX + distance;
+            target.PositionY = origin.PositionY;
+            origin.BeginUprising();
+            target.BeginUprising();
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[SkillRating.Leadership] = 100;
+            game.AttachNode(officer, origin);
+            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 1;
+            game.Config.AI.MissionPlanning.Utility.Priority.SubdueUprising.Weight = 1;
+            game.Config.AI.MissionPlanning.Utility.Objective.TravelCost.Weight = 1;
+            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            var pool = new AIMissionCandidatePool();
+            var proposals = new List<AIProposal>();
+            pool.TryAdd(
+                context,
+                proposals,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.SubdueUprising, origin)
+            );
+            Assert.AreEqual(1, proposals.Count);
+
+            bool eligible = pool.CanRetain(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.SubdueUprising, target)
+            );
+
+            Assert.AreEqual(expectedEligible, eligible);
+        }
+
         [Test]
         public void TryAdd_ExecutableProposalWithZeroScore_DoesNotRetainProposal()
         {

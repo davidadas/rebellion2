@@ -178,7 +178,10 @@ do_lint() {
         architecture_output="$(dirname "$ARCHITECTURE_TEST_PROJECT")/bin/Debug/net8.0"
         case "$(uname -s)" in
             Darwin)
-                unity_engine_assemblies="$(dirname "$UNITY")/../Managed/UnityEngine"
+                unity_engine_assemblies="$(dirname "$UNITY")/../Resources/Scripting/Managed/UnityEngine"
+                if [ ! -d "$unity_engine_assemblies" ]; then
+                    unity_engine_assemblies="$(dirname "$UNITY")/../Managed/UnityEngine"
+                fi
                 ;;
             *)
                 unity_engine_assemblies="$(dirname "$UNITY")/Data/Managed/UnityEngine"
@@ -188,9 +191,11 @@ do_lint() {
             --configuration Debug \
             --verbosity quiet \
             -p:BuildProjectReferences=false
-        if [ -d "$unity_engine_assemblies" ]; then
-            cp "$unity_engine_assemblies"/*.dll "$architecture_output"/
+        if [ ! -d "$unity_engine_assemblies" ]; then
+            echo "FAIL: Unity engine assemblies were not found at $unity_engine_assemblies."
+            exit 1
         fi
+        cp "$unity_engine_assemblies"/*.dll "$architecture_output"/
         dotnet test "$ARCHITECTURE_TEST_PROJECT" \
             --configuration Debug \
             --verbosity quiet \

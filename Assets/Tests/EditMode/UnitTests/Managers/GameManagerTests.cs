@@ -12,6 +12,78 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class GameManagerTests
     {
+        /// <summary>
+        /// Verifies multiple small work units share a frame without reordering them.
+        /// </summary>
+        [Test]
+        public void AdvanceTick_AvailableBudget_CompletesOrderedWork()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = 10000;
+            var tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            var manager = new GameManager(() => game, tick);
+            List<int> completed = new();
+            using var work = EnumerateWork(completed, 3).GetEnumerator();
+
+            bool remains = manager.AdvanceTick(work);
+
+            Assert.IsFalse(remains);
+            CollectionAssert.AreEqual(new[] { 0, 1, 2 }, completed);
+        }
+
+        /// <summary>
+        /// Verifies disabled batching retains one work unit per call.
+        /// </summary>
+        [Test]
+        public void AdvanceTick_ZeroBudget_AdvancesOneWorkUnit()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
+            var tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            var manager = new GameManager(() => game, tick);
+            List<int> completed = new();
+            using var work = EnumerateWork(completed, 3).GetEnumerator();
+
+            Assert.IsTrue(manager.AdvanceTick(work));
+            CollectionAssert.AreEqual(new[] { 0 }, completed);
+            Assert.IsTrue(manager.AdvanceTick(work));
+            CollectionAssert.AreEqual(new[] { 0, 1 }, completed);
+        }
+
+        /// <summary>
+        /// Verifies a tiny budget still makes progress and resumes the same ordered work.
+        /// </summary>
+        [Test]
+        public void AdvanceTick_ExhaustedBudget_ResumesWithoutRepeatingWork()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = double.Epsilon;
+            var tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            long timestamp = 0;
+            var manager = new GameManager(
+                () => game,
+                tick,
+                () => timestamp += System.Diagnostics.Stopwatch.Frequency
+            );
+            List<int> completed = new();
+            using var work = EnumerateWork(completed, 2).GetEnumerator();
+
+            Assert.IsTrue(manager.AdvanceTick(work));
+            Assert.IsTrue(manager.AdvanceTick(work));
+            Assert.IsFalse(manager.AdvanceTick(work));
+
+            CollectionAssert.AreEqual(new[] { 0, 1 }, completed);
+        }
+
         [TestCase(TickSpeed.Fast, 2.5f)]
         [TestCase(TickSpeed.Medium, 12.5f)]
         [TestCase(TickSpeed.Slow, 90.5f)]
@@ -180,6 +252,21 @@ namespace Rebellion.Tests.Managers
 
             Assert.IsFalse(readyBeforeDisposal);
             Assert.IsTrue(readyAfterDisposal);
+        }
+
+        /// <summary>
+        /// Records each completed work unit before its cooperative checkpoint.
+        /// </summary>
+        /// <param name="completed">The destination recording execution order.</param>
+        /// <param name="count">Number of work units.</param>
+        /// <returns>The ordered resumable work.</returns>
+        private static IEnumerable<object> EnumerateWork(List<int> completed, int count)
+        {
+            for (int index = 0; index < count; index++)
+            {
+                completed.Add(index);
+                yield return null;
+            }
         }
     }
 }

@@ -51,13 +51,28 @@ namespace Rebellion.AI.Scorers
         /// <param name="consideration">The configured curve and relative weight.</param>
         public void AddCost(double input, GameConfig.AIConsiderationConfig consideration)
         {
-            if (consideration == null || consideration.Weight <= 0)
+            AddCost(input, consideration, 1);
+        }
+
+        /// <summary>
+        /// Adds the equivalent cost of a quantity of normalized cost units.
+        /// </summary>
+        /// <param name="input">The normalized cost input for one unit.</param>
+        /// <param name="consideration">The configured curve and relative weight.</param>
+        /// <param name="quantity">The number of equivalent cost units represented by the input.</param>
+        public void AddCost(
+            double input,
+            GameConfig.AIConsiderationConfig consideration,
+            double quantity
+        )
+        {
+            if (consideration == null || consideration.Weight <= 0 || quantity <= 0)
                 return;
 
-            _weightedUtility +=
-                (1 - AIUtility.EvaluateCurve(input, consideration.Curve)) * consideration.Weight;
-            _totalWeight += consideration.Weight;
-            _costWeight += consideration.Weight;
+            double weight = consideration.Weight * quantity;
+            _weightedUtility += (1 - AIUtility.EvaluateCurve(input, consideration.Curve)) * weight;
+            _totalWeight += weight;
+            _costWeight += weight;
         }
 
         /// <summary>

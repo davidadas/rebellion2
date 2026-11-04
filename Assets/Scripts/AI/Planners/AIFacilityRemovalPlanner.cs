@@ -4,11 +4,12 @@ using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds proposals for genuinely surplus shipyards during maintenance distress.
+    /// Builds proposals for surplus shipyard retirement.
     /// </summary>
     public sealed class AIFacilityRemovalPlanner : IAIProposalPlanner
     {
@@ -19,6 +20,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Facility-retirement proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFacilityRemovalPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (
                 context?.Assessment == null
@@ -27,7 +33,10 @@ namespace Rebellion.AI.Planners
             )
                 return proposals;
 
-            if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
+            if (
+                context.Game.Config.AI.Selection.MaintenanceRecovery.Enabled
+                || context.Assessment.ProjectedMaintenanceHeadroom >= 0
+            )
                 return proposals;
 
             int minimumShipyardCount = context.StrategicPlan.GetInfrastructureTarget(

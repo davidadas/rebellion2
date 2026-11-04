@@ -59,6 +59,9 @@ namespace Rebellion.Game.Units
     [PersistableObject]
     public sealed class OfficerVoiceSet
     {
+        private static readonly OfficerVoiceLineType[] _voiceLineTypes = (OfficerVoiceLineType[])
+            Enum.GetValues(typeof(OfficerVoiceLineType));
+
         [PersistableMember(Name = "Order")]
         [PersistableCollectionItem(Name = "Path")]
         public List<string> OrderPaths { get; set; } = new List<string>();
@@ -125,7 +128,7 @@ namespace Rebellion.Game.Units
         public OfficerVoiceSet CreateCopy()
         {
             OfficerVoiceSet copy = new OfficerVoiceSet();
-            foreach (OfficerVoiceLineType type in Enum.GetValues(typeof(OfficerVoiceLineType)))
+            foreach (OfficerVoiceLineType type in _voiceLineTypes)
             {
                 List<string> paths = GetMutablePaths(type);
                 List<string> destination = copy.GetMutablePaths(type);
@@ -144,7 +147,7 @@ namespace Rebellion.Game.Units
             if (authored == null)
                 return;
 
-            foreach (OfficerVoiceLineType type in Enum.GetValues(typeof(OfficerVoiceLineType)))
+            foreach (OfficerVoiceLineType type in _voiceLineTypes)
                 ReplaceWhenAuthored(authored.GetMutablePaths(type), GetMutablePaths(type));
         }
 
@@ -254,8 +257,7 @@ namespace Rebellion.Game.Units
         private const int _ratingPercentScale = 100;
 
         [PersistableIgnore]
-        private IReadOnlyDictionary<string, OfficerTraitDefinition> _traitDefinitions =
-            new Dictionary<string, OfficerTraitDefinition>(StringComparer.Ordinal);
+        private IReadOnlyDictionary<string, OfficerTraitDefinition> _traitDefinitions;
 
         [PersistableMember(Name = nameof(CanBetray))]
         private bool _canBetray;
@@ -264,8 +266,7 @@ namespace Rebellion.Game.Units
         private int _loyalty;
 
         public string EncyclopediaImagePath { get; set; }
-        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
-            new List<EncyclopediaEntryStat>();
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; }
         public string EncyclopediaDescription { get; set; }
 
         // Research Info.
@@ -277,7 +278,7 @@ namespace Rebellion.Game.Units
         public bool IsMain { get; set; }
 
         public bool IsRecruitable { get; set; }
-        public List<string> RecruitingFactionInstanceIDs { get; set; } = new List<string>();
+        public List<string> RecruitingFactionInstanceIDs { get; set; }
 
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
@@ -356,8 +357,8 @@ namespace Rebellion.Game.Units
         public bool IsRetired { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
-        public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
-        public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+        public OfficerVoiceSet VoiceSet { get; set; }
+        public OfficerImageSet ImageSet { get; set; }
 
         /// <summary>
         /// Gets or sets content-only AI configuration; saved officers use the active catalog instead.
@@ -366,20 +367,13 @@ namespace Rebellion.Game.Units
         public OfficerAIBehavior AIBehavior { get; set; }
 
         [PersistableCollectionItem(Name = "TraitID")]
-        public List<string> Traits { get; set; } = new List<string>();
+        public List<string> Traits { get; set; }
 
         [PersistableCollectionItem(Name = "Grant")]
-        public List<OfficerTraitGrant> TraitGrants { get; set; } = new List<OfficerTraitGrant>();
+        public List<OfficerTraitGrant> TraitGrants { get; set; }
 
         // Mission rating info.
-        public Dictionary<SkillRating, int> Ratings { get; set; } =
-            new Dictionary<SkillRating, int>
-            {
-                { SkillRating.Diplomacy, 0 },
-                { SkillRating.Espionage, 0 },
-                { SkillRating.Combat, 0 },
-                { SkillRating.Leadership, 0 },
-            };
+        public Dictionary<SkillRating, int> Ratings { get; set; }
         public bool CanImproveMissionRating => true;
 
         /// <summary>
@@ -449,9 +443,37 @@ namespace Rebellion.Game.Units
             missionTypeId != ReconnaissanceMission.MissionTypeID;
 
         /// <summary>
-        /// Default constructor used for deserialization.
+        /// Creates an officer with the default state used for gameplay and deserialization.
         /// </summary>
-        public Officer() { }
+        public Officer()
+            : this(initializeDefaultState: true) { }
+
+        /// <summary>
+        /// Creates an officer with optional defaults before copied state is populated.
+        /// </summary>
+        /// <param name="initializeDefaultState">Whether to initialize fresh state instead of leaving it for the copy pipeline.</param>
+        private Officer(bool initializeDefaultState)
+        {
+            if (!initializeDefaultState)
+                return;
+
+            _traitDefinitions = new Dictionary<string, OfficerTraitDefinition>(
+                StringComparer.Ordinal
+            );
+            EncyclopediaStats = new List<EncyclopediaEntryStat>();
+            RecruitingFactionInstanceIDs = new List<string>();
+            VoiceSet = new OfficerVoiceSet();
+            ImageSet = new OfficerImageSet();
+            Traits = new List<string>();
+            TraitGrants = new List<OfficerTraitGrant>();
+            Ratings = new Dictionary<SkillRating, int>
+            {
+                { SkillRating.Diplomacy, 0 },
+                { SkillRating.Espionage, 0 },
+                { SkillRating.Combat, 0 },
+                { SkillRating.Leadership, 0 },
+            };
+        }
 
         /// <summary>
         /// Applies a signed loyalty adjustment when this officer's loyalty can change.
@@ -472,10 +494,13 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Creates an empty officer copy.
+        /// Creates an officer for copying, retaining default state for derived factory callers.
         /// </summary>
         /// <returns>The created node copy.</returns>
-        protected override BaseSceneNode CreateNodeCopy() => new Officer();
+        protected override BaseSceneNode CreateNodeCopy() =>
+            GetType() == typeof(Officer)
+                ? new Officer(initializeDefaultState: false)
+                : new Officer();
 
         /// <summary>
         /// Copies officer state into an empty destination.
@@ -721,18 +746,31 @@ namespace Rebellion.Game.Units
         /// <returns>True when the trait is active; otherwise false.</returns>
         private bool HasActiveTrait(string traitID)
         {
-            if (
-                Traits?.Any(authoredTraitID =>
-                    string.Equals(authoredTraitID, traitID, StringComparison.Ordinal)
-                ) == true
-            )
+            List<string> traits = Traits;
+            if (traits != null)
             {
-                return true;
+                for (int index = 0; index < traits.Count; index++)
+                {
+                    if (string.Equals(traits[index], traitID, StringComparison.Ordinal))
+                        return true;
+                }
             }
 
-            return TraitGrants?.Any(grant =>
-                    grant != null && string.Equals(grant.TraitID, traitID, StringComparison.Ordinal)
-                ) == true;
+            List<OfficerTraitGrant> grants = TraitGrants;
+            if (grants != null)
+            {
+                for (int index = 0; index < grants.Count; index++)
+                {
+                    OfficerTraitGrant grant = grants[index];
+                    if (
+                        grant != null
+                        && string.Equals(grant.TraitID, traitID, StringComparison.Ordinal)
+                    )
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

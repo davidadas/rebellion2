@@ -1,5 +1,6 @@
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Proposals
 {
@@ -134,6 +135,9 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
+            if (!CanDefendAtArrival(context))
+                return false;
+
             FleetOrder order = Fleet.Order;
             return order == null
                 || order.OrderType == FleetOrderType.Defend
@@ -141,6 +145,39 @@ namespace Rebellion.AI.Proposals
                 || order.Status == FleetOrderStatus.Staging
                     && Fleet.Movement == null
                     && !Fleet.IsInCombat;
+        }
+
+        /// <summary>
+        /// Checks whether a departing relief fleet can face the known orbital force at arrival.
+        /// </summary>
+        /// <param name="context">The current faction turn and travel queries.</param>
+        /// <returns>True when protection is already committed or the fleet meets the arrival requirement.</returns>
+        internal bool CanDefendAtArrival(AITurnContext context)
+        {
+            if (
+                context.Assessment.IsPriorityDefensePlanet(TargetPlanet)
+                || Fleet.Movement != null
+                || Fleet.IsInCombat
+                || context.Assessment.GetFleetPlanet(Fleet)?.InstanceID == TargetPlanet.InstanceID
+            )
+                return true;
+
+            if (!context.StrategicPlan.CanDefend(Fleet, TargetPlanet))
+                return false;
+
+            int arrivalTicks = context.GetAttackArrivalTicks(Fleet, TargetPlanet);
+            if (arrivalTicks == int.MaxValue)
+                return false;
+
+            int hostileStrength = context
+                .Assessment.GetHostileOrbitalCapabilitiesAtArrival(TargetPlanet, arrivalTicks)
+                .Combat;
+            int requiredStrength = IntegerMath.ScaleByPercent(
+                hostileStrength,
+                context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            return context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(Fleet)
+                >= requiredStrength;
         }
 
         /// <summary>
