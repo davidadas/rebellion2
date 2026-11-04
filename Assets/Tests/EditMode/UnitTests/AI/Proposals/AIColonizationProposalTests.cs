@@ -120,7 +120,8 @@ namespace Rebellion.Tests.AI.Fleets
             proposal.Execute(context);
 
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
-            Assert.AreEqual(100, target.GetPopularSupport(empire.InstanceID));
+            Assert.AreEqual(0, target.GetPopularSupport(empire.InstanceID));
+            Assert.IsFalse(target.IsPopulated());
             Assert.AreSame(target, regiment.GetParent());
             Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
         }

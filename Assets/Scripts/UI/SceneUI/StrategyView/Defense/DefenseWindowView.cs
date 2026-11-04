@@ -222,6 +222,68 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDr
     }
 
     /// <summary>
+    /// Resolves a pointer within the unit viewport to scroll-content coordinates.
+    /// </summary>
+    /// <param name="eventData">The pointer gesture.</param>
+    /// <param name="point">Receives the source-space content position.</param>
+    /// <returns>True when the pointer is inside the unit viewport.</returns>
+    internal bool TryGetSelectionPoint(PointerEventData eventData, out Vector2 point)
+    {
+        point = default;
+        if (eventData == null)
+            return false;
+
+        Camera camera = eventData.pressEventCamera ?? eventData.enterEventCamera;
+        if (
+            !RectTransformUtility.RectangleContainsScreenPoint(
+                itemsScrollArea.ViewportRoot,
+                eventData.position,
+                camera
+            )
+            || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                itemsScrollArea.ContentRoot,
+                eventData.position,
+                camera,
+                out Vector2 local
+            )
+        )
+            return false;
+
+        point = new Vector2(local.x, -local.y);
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the rendered cards intersecting a selection rectangle in scroll-content coordinates.
+    /// </summary>
+    /// <param name="start">The selection anchor.</param>
+    /// <param name="end">The new pointer position.</param>
+    /// <returns>The intersecting card indexes.</returns>
+    internal List<int> GetItemsInSelectionRectangle(Vector2 start, Vector2 end)
+    {
+        float left = Mathf.Min(start.x, end.x);
+        float right = Mathf.Max(start.x, end.x);
+        float top = Mathf.Min(start.y, end.y);
+        float bottom = Mathf.Max(start.y, end.y);
+        List<int> indexes = new List<int>();
+        foreach (StrategyUnitCardView card in itemCards)
+        {
+            if (!card.gameObject.activeInHierarchy)
+                continue;
+
+            RectInt bounds = card.GetSelectionBounds();
+            if (
+                bounds.xMin <= right
+                && left <= bounds.xMax
+                && bounds.yMin <= bottom
+                && top <= bounds.yMax
+            )
+                indexes.Add(card.Index);
+        }
+        return indexes;
+    }
+
+    /// <summary>
     /// Resolves a rendered unit-card index from the pointer raycast.
     /// </summary>
     /// <param name="eventData">The pointer event to inspect.</param>

@@ -120,6 +120,17 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     }
 
     /// <summary>
+    /// Gets the card's complete selection area relative to its content parent.
+    /// </summary>
+    /// <returns>The selection rectangle in source coordinates.</returns>
+    internal RectInt GetSelectionBounds()
+    {
+        RectInt card = UILayout.GetSourceRect(transform as RectTransform);
+        RectInt hitArea = UILayout.GetSourceRect(hitAreaImage.rectTransform);
+        return new RectInt(card.x + hitArea.x, card.y + hitArea.y, hitArea.width, hitArea.height);
+    }
+
+    /// <summary>
     /// Applies one complete unit-card presentation snapshot.
     /// </summary>
     /// <param name="data">The immutable card presentation.</param>

@@ -195,6 +195,57 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void HandleSurfaceClicked_RangeSelectionOnEmptyGridSpace_SelectsIntersectingCards()
+        {
+            for (int index = 1; index < 6; index++)
+            {
+                _planet.Planet.AddTestChild(
+                    new Officer
+                    {
+                        InstanceID = $"officer-{index}",
+                        OwnerInstanceID = _playerFactionId,
+                        DisplayImagePath = "entity",
+                    }
+                );
+            }
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            Canvas.ForceUpdateCanvases();
+            StrategyUnitCardView firstCard = view.GetComponentsInChildren<StrategyUnitCardView>()
+                .Single(card => card.Index == 0);
+            UIComponentTestHelper.InvokeLifecycle(firstCard, "Awake");
+            RectTransform firstCardRect = (RectTransform)firstCard.transform;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    firstCardRect.TransformPoint(30, -35, 0)
+                ),
+                pointerCurrentRaycast = new RaycastResult { gameObject = firstCard.gameObject },
+            };
+            firstCard.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+            _selectionModifiers = new SelectionModifierState(false, true);
+            ScrollAreaView scroll = view.GetComponentInChildren<ScrollAreaView>();
+            eventData.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                scroll.ContentRoot.TransformPoint(210, -100, 0)
+            );
+            eventData.pointerCurrentRaycast = new RaycastResult
+            {
+                gameObject = scroll.ViewportRoot.gameObject,
+            };
+
+            view.OnPointerClick(eventData);
+
+            CollectionAssert.AreEquivalent(
+                Enumerable.Range(0, 6),
+                _controller.GetSelectedItems(view)
+            );
+        }
+
+        [Test]
         public void ItemPress_ModifiedPortraitSelection_RendersSelectionBeforeStartingDrag()
         {
             Officer secondOfficer = new Officer

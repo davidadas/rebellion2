@@ -733,7 +733,20 @@ public sealed class DefenseWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        SelectionModifierState modifiers = getSelectionModifiers();
+        bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
+        if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
+        {
+            session.SelectItemsInRectangle(
+                view.GetItemsInSelectionRectangle(session.SelectionAnchor ?? point, point)
+            );
+        }
+        else
+        {
+            session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        }
+        if (hasPoint)
+            session.SelectionAnchor = point;
         RenderSelection(view, session);
         if (
             session.CanDragSelectedItems()
@@ -852,7 +865,7 @@ public sealed class DefenseWindowController
     }
 
     /// <summary>
-    /// Handles a Defense-window surface click as targeting or selection clearing.
+    /// Handles a Defense-window surface click as targeting, range selection, or selection clearing.
     /// </summary>
     /// <param name="view">The source Defense view.</param>
     /// <param name="eventData">The pointer event.</param>
@@ -863,7 +876,20 @@ public sealed class DefenseWindowController
         if (TrySelectTarget(session, null) || view.IsSelectionItemClick(eventData))
             return;
 
-        session.ClearSelection();
+        bool hasPoint = view.TryGetSelectionPoint(eventData, out Vector2 point);
+        SelectionModifierState modifiers = getSelectionModifiers();
+        if (hasPoint && modifiers.RangeSelect && !modifiers.MultiSelect)
+        {
+            session.SelectItemsInRectangle(
+                view.GetItemsInSelectionRectangle(session.SelectionAnchor ?? point, point)
+            );
+        }
+        else if (!hasPoint || !modifiers.MultiSelect)
+        {
+            session.ClearSelection();
+        }
+        if (hasPoint)
+            session.SelectionAnchor = point;
         markDirty();
     }
 

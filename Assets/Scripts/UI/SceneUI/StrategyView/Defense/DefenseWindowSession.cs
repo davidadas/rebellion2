@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using UnityEngine;
 
 /// <summary>
 /// Owns the ordered domain snapshot and mutable interaction state for one Defense window.
@@ -24,6 +25,8 @@ internal sealed class DefenseWindowSession
     public GalaxyMapPlanet Planet { get; private set; }
 
     public IReadOnlyCollection<int> SelectedItemIndexes => selectedIndexes;
+
+    public Vector2? SelectionAnchor { get; set; }
 
     public UIWindow Window { get; }
 
@@ -156,6 +159,7 @@ internal sealed class DefenseWindowSession
     {
         selectedNodes.Clear();
         selectedIndexes.Clear();
+        SelectionAnchor = null;
         ClearTransientTargets();
     }
 
@@ -247,6 +251,21 @@ internal sealed class DefenseWindowSession
             getSelectionModifiers(),
             itemsPerRow
         );
+        CaptureSelection(items);
+    }
+
+    /// <summary>
+    /// Adds cards intersected by a range-selection gesture to the current selection.
+    /// </summary>
+    /// <param name="indexes">The intersecting indexes in the active tab.</param>
+    public void SelectItemsInRectangle(IReadOnlyList<int> indexes)
+    {
+        IReadOnlyList<ISceneNode> items = GetItems(ActiveTab);
+        foreach (int index in indexes)
+        {
+            if (index >= 0 && index < items.Count)
+                selectedIndexes.Add(index);
+        }
         CaptureSelection(items);
     }
 
