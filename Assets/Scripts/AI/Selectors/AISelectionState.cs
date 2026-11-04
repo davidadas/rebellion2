@@ -5,7 +5,6 @@ using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Selectors
 {
@@ -26,10 +25,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when none has already been reserved.</returns>
         internal bool CanReserve(IEnumerable<AISelectionReservation> reservations)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanReserve),
-                subjectType: typeof(AISelectionState)
-            );
             return reservations?.Any(reservation =>
                 {
                     if (reservation.Kind == AISelectionReservationKind.FleetOrderContinuation)
@@ -61,10 +56,6 @@ namespace Rebellion.AI.Selectors
             IEnumerable<AISelectionReservation> reservations
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanReserveTransferResources),
-                subjectType: typeof(AISelectionState)
-            );
             if (
                 proposal.Unit is not CapitalShip
                 || proposal.Destination is not Fleet fleet
@@ -91,10 +82,6 @@ namespace Rebellion.AI.Selectors
         /// <param name="reservations">Resources to reserve.</param>
         internal void Reserve(IEnumerable<AISelectionReservation> reservations)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Reserve),
-                subjectType: typeof(AISelectionState)
-            );
             if (reservations == null)
                 return;
 
@@ -110,11 +97,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the transfer preserves its donor and fills an uncommitted need.</returns>
         internal bool CanReserveTransfer(AITurnContext context, AITransferUnitProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanReserveTransfer),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AISelectionState)
-            );
             if (
                 proposal.Unit is not CapitalShip ship
                 || proposal.SourceContainer is not Fleet donor
@@ -222,10 +204,6 @@ namespace Rebellion.AI.Selectors
         /// <param name="proposal">The accepted transfer.</param>
         internal void ReserveTransfer(AITransferUnitProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ReserveTransfer),
-                subjectType: typeof(AISelectionState)
-            );
             if (proposal.Unit is CapitalShip ship)
             {
                 _capitalShipTransferTargets.Add(proposal.TargetFleet.InstanceID);
@@ -245,10 +223,6 @@ namespace Rebellion.AI.Selectors
         /// <param name="hull">The committed hull or manufacturing template.</param>
         internal void ReserveFleetHull(Fleet fleet, CapitalShip hull)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ReserveFleetHull),
-                subjectType: typeof(AISelectionState)
-            );
             if (!_fleetReinforcements.TryGetValue(fleet.InstanceID, out List<CapitalShip> selected))
                 _fleetReinforcements[fleet.InstanceID] = selected = new();
             selected.Add(hull);
@@ -267,11 +241,6 @@ namespace Rebellion.AI.Selectors
             CapitalShip hull
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FillsFleetNeed),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AISelectionState)
-            );
             AIProductionDemand remaining = GetRemainingFleetDemand(context, demand);
             bool hasRequirements = demand
                 .GetCapitalShipRequirements(context.Assessment)
@@ -289,10 +258,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>Accepted manufacturing and transfer contributions.</returns>
         internal IReadOnlyList<CapitalShip> GetCommittedFleetHulls(Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetCommittedFleetHulls),
-                subjectType: typeof(AISelectionState)
-            );
             return _fleetReinforcements.TryGetValue(fleet.InstanceID, out var hulls)
                 ? hulls
                 : Array.Empty<CapitalShip>();
@@ -309,11 +274,6 @@ namespace Rebellion.AI.Selectors
             AIProductionDemand demand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetRemainingFleetDemand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AISelectionState)
-            );
             return demand.WithoutCommittedShips(
                 context.Assessment,
                 GetCommittedFleetHulls(demand.DestinationFleet)

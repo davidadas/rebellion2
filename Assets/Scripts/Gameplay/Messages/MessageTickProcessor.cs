@@ -4,7 +4,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -25,18 +24,9 @@ namespace Rebellion.Gameplay
         /// <returns>No gameplay results.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(MessageTickProcessor)
-            );
             int retentionTicks = game.Config.Messages.RetentionTicks;
             foreach (Faction faction in game.GetFactions())
             {
-                using var factionMeasurement = PerformanceLogger.Measure(
-                    "Faction system tick",
-                    faction?.PeekInstanceID(),
-                    subjectType: typeof(MessageTickProcessor)
-                );
                 if (faction?.Messages == null)
                     continue;
 

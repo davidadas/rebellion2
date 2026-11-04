@@ -10,7 +10,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Planners
@@ -90,11 +89,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Production proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Plan),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             ResetPlanningCache();
             List<AIProductionDemand> demands = ExpandProductionDemands(
                 context,
@@ -116,11 +110,6 @@ namespace Rebellion.AI.Planners
             IEnumerable<AIProductionDemand> demands
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ExpandProductionDemands),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             List<AIProductionDemand> expanded = new List<AIProductionDemand>();
             List<AIProductionDemand> source = demands.ToList();
             AIInfrastructurePlacementScorer placementScorer = new AIInfrastructurePlacementScorer(
@@ -154,11 +143,6 @@ namespace Rebellion.AI.Planners
             AIInfrastructurePlacementScorer placementScorer
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AllocateInfrastructureHubs),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             var result =
                 new Dictionary<
                     (string SectorId, BuildingType Type, int Index),
@@ -249,11 +233,6 @@ namespace Rebellion.AI.Planners
             AIProductionDemand facilityDemand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(RankInfrastructureReferencePlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             ManufacturingType production = facilityDemand.BuildingType switch
             {
                 BuildingType.Shipyard => ManufacturingType.Ship,
@@ -297,11 +276,6 @@ namespace Rebellion.AI.Planners
             IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(SelectInfrastructureLayout),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
             Dictionary<
                 string,
@@ -419,11 +393,6 @@ namespace Rebellion.AI.Planners
             IDictionary<(Planet Planet, BuildingType Type, int Target), int> capacities
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BuildInfrastructureLayout),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             var layout =
                 new Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)>();
             foreach (AIProductionDemand demand in order)
@@ -567,11 +536,6 @@ namespace Rebellion.AI.Planners
             IEnumerable<AIProductionDemand> demands
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ExpandEconomyDemands),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             List<AIProductionDemand> expanded = new();
             HashSet<string> mineTargetIds = new(StringComparer.Ordinal);
             foreach (AIProductionDemand demand in demands)
@@ -633,11 +597,6 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CreateBuildingDemand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return new AIProductionDemand(
                 AIProductionDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
                 kind,
@@ -661,11 +620,6 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindMineTargets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return demand.QuantityNeeded <= 0
                 ? Enumerable.Empty<Planet>()
                 : RankEconomyDestinations(
@@ -693,11 +647,6 @@ namespace Rebellion.AI.Planners
             HashSet<string> excludedPlanetIds
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindRefineryTargets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int count = demand.QuantityNeeded;
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
@@ -746,11 +695,6 @@ namespace Rebellion.AI.Planners
             IEnumerable<Planet> destinations
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(RankEconomyDestinations),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             IManufacturable product = GetUnlockedTechnology(context, demand)?.GetReference();
             if (product is not IMovable movable)
                 return destinations;
@@ -788,11 +732,6 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetBuildingDestinations),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return context.Assessment.OwnedPlanets.Where(planet =>
                 planet?.IsDestroyed == false
                 && context.StrategicPlan.GetAvailableConstructionSpace(planet, buildingType) > 0
@@ -816,11 +755,6 @@ namespace Rebellion.AI.Planners
             > hubLayout
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddFacilityExpansionDemands),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             ManufacturingType supportedType = capacityDemand.Kind switch
             {
                 AIProductionDemandKind.Shipyard => ManufacturingType.Ship,
@@ -966,11 +900,6 @@ namespace Rebellion.AI.Planners
             int hubIndex
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddSectorFacilityDemand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int availableSpace = context.StrategicPlan.GetAvailableConstructionSpace(
                 target,
                 capacityDemand.BuildingType
@@ -1062,11 +991,6 @@ namespace Rebellion.AI.Planners
             List<AIProductionDemand> demands
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GenerateProposals),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Faction == null || demands == null || demands.Count == 0)
                 return proposals;
@@ -1091,11 +1015,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddManufactureProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (
                 demand.Kind
                 is AIProductionDemandKind.FleetCapitalShip
@@ -1234,11 +1153,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddFleetCapitalShipProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             Technology preferred = GetUnlockedCapitalShipTechnology(context, demand);
             if (preferred == null || demand.QuantityNeeded <= 0)
                 return;
@@ -1320,11 +1234,6 @@ namespace Rebellion.AI.Planners
             Technology technology
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CreateCapitalShipChoice),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             IManufacturable hull = technology.GetReference();
             AIManufactureProposal[] candidates = FindProducerPlanets(context, demand, hull, 1)
                 .Where(producer =>
@@ -1359,11 +1268,6 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanBuildCapitalShip),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int limit = context.Game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks;
             if (limit <= 0)
                 return true;
@@ -1395,11 +1299,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddEquivalentProducerProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (producerPlanets.Count == 0)
                 return;
 
@@ -1452,11 +1351,6 @@ namespace Rebellion.AI.Planners
             bool distributesDemand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddProducerSpecificProposal),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             var resources = context.StrategicPlan.GetResourceFacilitiesToReclaim(
                 demand.DestinationPlanet,
                 demand.BuildingType,
@@ -1506,11 +1400,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedTechnology(AITurnContext context, AIProductionDemand demand)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand == null)
                 return null;
 
@@ -1581,11 +1470,6 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedBuildingTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (context?.Faction == null || demand?.BuildingType == BuildingType.None)
                 return null;
 
@@ -1649,11 +1533,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The available maintenance budget.</returns>
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetBuildingMaintenanceBudget),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
@@ -1678,11 +1557,6 @@ namespace Rebellion.AI.Planners
             int remainingQuantity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetProposalDemand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return demand;
 
@@ -1748,11 +1622,6 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetRequestedManufacturingCount),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve)
             {
                 return Math.Min(1, Math.Max(0, demand.QuantityNeeded));
@@ -1788,11 +1657,6 @@ namespace Rebellion.AI.Planners
             int remainingQuantity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDistributedBatchSize),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int queueCapacity = GetQueueBatchCapacity(context, producerPlanet, product);
             return Math.Max(0, Math.Min(remainingQuantity, queueCapacity));
         }
@@ -1810,11 +1674,6 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetQueueBatchCapacity),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (
                 !producerPlanet
                     .GetManufacturingQueue()
@@ -1843,11 +1702,6 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetFleetUnitDiversityLimit),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand.DestinationFleet == null)
                 return int.MaxValue;
 
@@ -1929,11 +1783,6 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDefensiveBatchSize),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             int maintenanceLimit =
                 product.GetMaintenanceCost() > 0
@@ -1964,11 +1813,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetDefensiveMaintenanceBudget(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDefensiveMaintenanceBudget),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
@@ -1983,11 +1827,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetDefensiveMaintenanceFloor(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDefensiveMaintenanceFloor),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return Math.Max(
                 context.Game.Config.AI.Selection.MaintenanceHeadroomReserve,
                 IntegerMath.ScaleByPercentRoundedUp(
@@ -2012,11 +1851,6 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetFacilityBatchSize),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
             int maintenanceLimit =
                 building.MaintenanceCost > 0
@@ -2121,11 +1955,6 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedUnitTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (context?.Faction == null || demand == null)
                 return null;
 
@@ -2167,11 +1996,6 @@ namespace Rebellion.AI.Planners
             string productTypeId
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedSpecialForcesTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (string.IsNullOrEmpty(productTypeId))
                 return null;
 
@@ -2199,11 +2023,6 @@ namespace Rebellion.AI.Planners
             Planet producer = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedCapitalShipTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (context?.Faction == null || demand == null)
                 return null;
 
@@ -2249,11 +2068,6 @@ namespace Rebellion.AI.Planners
             Planet producer = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedCapitalShipTechnologies),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             List<Technology> technologies = GetUnlockedTechnologies(context, ManufacturingType.Ship)
                 .Where(technology =>
                     technology.GetReference() is CapitalShip capitalShip
@@ -2308,11 +2122,6 @@ namespace Rebellion.AI.Planners
             IReadOnlyList<Technology> technologies
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetBestFleetCapitalShipTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             List<Technology> eligible = new List<Technology>(technologies.Count);
             int preferredInterdictionCount = context
                 .Game
@@ -2434,11 +2243,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedStarfighterTechnology(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedStarfighterTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             return GetUnlockedFleetTechnology<Starfighter>(
                 context,
@@ -2456,11 +2260,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedPlanetaryStarfighterTechnology(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedPlanetaryStarfighterTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             return GetUnlockedTechnologies(context, ManufacturingType.Ship)
                 .Where(technology =>
@@ -2518,11 +2317,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedRegimentTechnology(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedRegimentTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             return GetUnlockedFleetTechnology<Regiment>(
                 context,
@@ -2576,11 +2370,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedGarrisonRegimentTechnology(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedGarrisonRegimentTechnology),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
             return GetUnlockedTechnologies(context, ManufacturingType.Troop)
@@ -2691,11 +2480,6 @@ namespace Rebellion.AI.Planners
             int quantity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindProducerPlanets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (context?.Assessment == null || demand?.Destination == null)
                 return Enumerable.Empty<Planet>();
 
@@ -2778,11 +2562,6 @@ namespace Rebellion.AI.Planners
             Planet destinationPlanet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetProducerFulfillmentTicks),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (product is IMovable movable)
             {
                 return GetReinforcementArrivalTicks(
@@ -2817,11 +2596,6 @@ namespace Rebellion.AI.Planners
             int quantity
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetReinforcementArrivalTicks),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (producer == null || destination == null || product == null || movable == null)
                 return int.MaxValue;
 
@@ -2888,11 +2662,6 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanUseProducerForDemand),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand?.ManufacturingType != ManufacturingType.Ship)
                 return true;
 
@@ -2925,11 +2694,6 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the planet is operational and has construction capacity.</returns>
         private bool CanQueueFacilityExpansion(AITurnContext context, Planet planet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanQueueFacilityExpansion),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return planet?.IsColonized == true
                 && !planet.IsDestroyed
                 && context.Assessment.GetPlanetProductionFacilityCount(
@@ -2946,11 +2710,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The destination planet, or null.</returns>
         private Planet GetDestinationPlanet(AITurnContext context, AIProductionDemand demand)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDestinationPlanet),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (demand?.DeliveryDestination is Planet planet)
                 return planet;
 
@@ -2973,11 +2732,6 @@ namespace Rebellion.AI.Planners
             ManufacturingType manufacturingType
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanProduce),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (planet == null)
                 return false;
 
@@ -3005,11 +2759,6 @@ namespace Rebellion.AI.Planners
             ManufacturingType manufacturingType
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(HasProductionFacility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             return planet?.IsColonized == true
                 && !planet.IsDestroyed
                 && context.Assessment.GetPlanetProductionFacilityCount(planet, manufacturingType)
@@ -3108,11 +2857,6 @@ namespace Rebellion.AI.Planners
             ManufacturingType manufacturingType
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnlockedTechnologies),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIProductionPlanner)
-            );
             if (
                 _unlockedTechnologies.TryGetValue(
                     manufacturingType,

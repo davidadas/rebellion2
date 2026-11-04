@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -37,11 +36,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The mission proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Score),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             return Score(context, proposal, null);
         }
 
@@ -62,11 +56,6 @@ namespace Rebellion.AI.Scorers
             long? travelTicks = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Score),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             AIMissionStagingProposal staging = proposal as AIMissionStagingProposal;
             (
                 long DirectTicks,
@@ -277,11 +266,6 @@ namespace Rebellion.AI.Scorers
             double successProbability
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(MeetsUprisingMissionProbabilityFloor),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (
                 proposal.MissionTypeID != MissionTypeIDs.InciteUprising
                 && proposal.MissionTypeID != MissionTypeIDs.SubdueUprising
@@ -305,11 +289,6 @@ namespace Rebellion.AI.Scorers
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetScoreUpperBound),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (context?.Faction == null || context.Game?.Config == null || proposal == null)
                 return 0;
 
@@ -389,11 +368,6 @@ namespace Rebellion.AI.Scorers
             double intelligenceProbability = 100
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetMissionScore),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AIMissionObjectiveUtilityConfig utility = context
                 .Game
                 .Config
@@ -458,11 +432,6 @@ namespace Rebellion.AI.Scorers
             double successProbability = 100
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetOfficerTargetUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AIOfficerTargetUtilityConfig utility = context
                 .Game
                 .Config
@@ -535,11 +504,6 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetAttackPreparationIntelPriority),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (proposal.MissionTypeID != MissionTypeIDs.Espionage)
                 return 0;
 
@@ -584,11 +548,6 @@ namespace Rebellion.AI.Scorers
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSupportBombardmentIntelPriority),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             if (
                 context.MovementQueries == null
@@ -644,11 +603,6 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetBlockedAttackIntelPriority),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (
                 proposal.MissionTypeID != MissionTypeIDs.Espionage
                 || !context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
@@ -707,11 +661,6 @@ namespace Rebellion.AI.Scorers
             IManufacturable target
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddSabotageTargetUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AISabotageUtilityConfig utility = context
                 ?.Game
                 ?.Config
@@ -775,11 +724,6 @@ namespace Rebellion.AI.Scorers
             IManufacturable target
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetSabotageTargetValue),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             AIUtilityScore score = new AIUtilityScore();
             AddSabotageTargetUtility(ref score, context, planet, target);
             return score.Value;
@@ -800,11 +744,6 @@ namespace Rebellion.AI.Scorers
             double value
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplyDiplomacyModifiers),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (context?.Assessment == null || planet == null)
                 return value;
 
@@ -908,11 +847,6 @@ namespace Rebellion.AI.Scorers
             IReadOnlyDictionary<Officer, Planet> commitments
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddDiplomacyUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (!enabled)
                 return;
 
@@ -933,11 +867,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The normalized diplomacy-target value.</returns>
         internal static double GetDiplomacyTargetValue(AITurnContext context, Planet planet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDiplomacyTargetValue),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             AIUtilityScore score = new AIUtilityScore();
             AddDiplomacyTargetUtility(ref score, context, planet);
             return ApplyDiplomacyModifiers(context, planet, null, score.Value);
@@ -959,11 +888,6 @@ namespace Rebellion.AI.Scorers
             IReadOnlyDictionary<Officer, Planet> commitments = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddDiplomacyTargetUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (context?.Assessment == null || context.StrategicPlan == null || planet == null)
                 return;
 
@@ -1078,11 +1002,6 @@ namespace Rebellion.AI.Scorers
             GameConfig.AIConsiderationConfig consideration
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddInfrastructureAcquisitionUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             double deficitRatio = context.StrategicPlan.GetInfrastructureDeficitRatio(buildingType);
             double supply = AIUtility.Fulfillment(
                 planet.GetProductionFacilityCount(manufacturingType),
@@ -1126,11 +1045,6 @@ namespace Rebellion.AI.Scorers
             double successProbability = 100
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddMissionPriorityUtility),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             string missionTypeId = proposal.MissionTypeID;
             score.Add(
                 missionTypeId == MissionTypeIDs.Reconnaissance ? 1 : 0,
@@ -1187,11 +1101,6 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(HasOfficerReplacementRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (
                 (
                     proposal.IsTeamFinal
@@ -1224,11 +1133,6 @@ namespace Rebellion.AI.Scorers
             long? returnTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(IsOvertakenByCommittedAttack),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             Planet target = mission.TargetPlanet;
             double objectiveTicks =
                 (travelTicks ?? mission.EstimateTravelTicks(context))
@@ -1301,11 +1205,6 @@ namespace Rebellion.AI.Scorers
             AIMissionProposal mission
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateExecutionTicks),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             return context.MissionQueries.EstimateExecutionTicks(
                 mission.MissionTypeID,
                 context.Faction.InstanceID
@@ -1331,11 +1230,6 @@ namespace Rebellion.AI.Scorers
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetParticipantPriority),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AIConsiderationConfig cost = context
                 .Game
                 .Config
@@ -1391,11 +1285,6 @@ namespace Rebellion.AI.Scorers
             long travelTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AddMissionTimeCost),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             GameConfig.AIMissionObjectiveUtilityConfig utility = context
                 .Game
                 .Config
@@ -1436,11 +1325,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The normalized travel penalty.</returns>
         private static double GetTravelCost(AITurnContext context, AIMissionProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetTravelCost),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             double distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
             if (proposal.TargetPlanet == null || distanceDivisor <= 0)
                 return 0;
@@ -1464,11 +1348,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The normalized need for new military information.</returns>
         private static double GetIntelligenceNeed(AITurnContext context, AIMissionProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetIntelligenceNeed),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionProposalScorer)
-            );
             if (proposal.MissionTypeID != MissionTypeIDs.Espionage)
                 return 0;
 

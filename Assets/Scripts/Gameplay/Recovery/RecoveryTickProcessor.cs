@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -26,10 +25,6 @@ namespace Rebellion.Gameplay
         /// <returns>Results emitted when a unit fully recovers.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(RecoveryTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             GameConfig.RecoveryConfig config = game.Config.Recovery;
 

@@ -2,7 +2,6 @@ using System;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -26,11 +25,6 @@ namespace Rebellion.AI.Scorers
             double readiness
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreAttack),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProductionAllocationScorer)
-            );
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             AIAssessment assessment = context.Assessment;
             AIUtilityScore score = new AIUtilityScore();
@@ -62,11 +56,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The fleet's production-allocation score.</returns>
         public static double ScoreColonization(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreColonization),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProductionAllocationScorer)
-            );
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             AIUtilityScore score = new AIUtilityScore();
             score.Add(
@@ -88,11 +77,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The fleet's production-allocation score.</returns>
         public static double ScoreAssembly(AITurnContext context, Fleet fleet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreAssembly),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProductionAllocationScorer)
-            );
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             double combat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             double capacity = fleet.GetRegimentCapacity();
@@ -120,11 +104,6 @@ namespace Rebellion.AI.Scorers
             int targetCount
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDeficit),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProductionAllocationScorer)
-            );
             double deficitRatio = deficit / (double)Math.Max(1, targetCount);
             return Math.Min(
                 100,
@@ -149,11 +128,6 @@ namespace Rebellion.AI.Scorers
             int availableStrength
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ScoreDefenseNeed),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIFleetProductionAllocationScorer)
-            );
             int requiredStrength = context.StrategicPlan.GetDefenseStrength(targetPlanet);
             int strengthGap = Math.Max(0, requiredStrength - availableStrength);
             return AIUtility.Evaluate(

@@ -10,18 +10,6 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
-        [ThreadStatic]
-        private static Func<string, IDisposable> _performanceMeasurementFactory;
-
-        /// <summary>
-        /// Gets or sets the current thread's optional operation measurements.
-        /// </summary>
-        internal static Func<string, IDisposable> PerformanceMeasurementFactory
-        {
-            get => _performanceMeasurementFactory;
-            set => _performanceMeasurementFactory = value;
-        }
-
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -233,7 +221,6 @@ namespace Rebellion.SceneGraph
             bool includeDisabled = false
         )
         {
-            using var performanceMeasurement = MeasureOperation(nameof(GetChildren));
             if (!recursive)
                 return GetDirectChildren<ISceneNode>(includeDisabled);
 
@@ -250,7 +237,6 @@ namespace Rebellion.SceneGraph
         public IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode
         {
-            using var performanceMeasurement = MeasureOperation(nameof(GetChildren));
             if (recursive)
                 return GetDescendants<T>(includeDisabled);
 
@@ -266,7 +252,6 @@ namespace Rebellion.SceneGraph
         private IReadOnlyList<T> GetDescendants<T>(bool includeDisabled)
             where T : class, ISceneNode
         {
-            using var performanceMeasurement = MeasureOperation(nameof(GetDescendants));
             List<T> descendants = new List<T>();
             HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
             CollectDescendants(this, includeDisabled, currentPath, descendants);
@@ -306,15 +291,6 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        /// Begins an optional runtime-provided measurement for this operation.
-        /// </summary>
-        /// <param name="operation">The operation being measured.</param>
-        /// <returns>The current measurement, or null when diagnostics are inactive.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static IDisposable MeasureOperation(string operation) =>
-            _performanceMeasurementFactory?.Invoke(operation);
-
-        /// <summary>
         /// Copies direct children while sharing each parent hierarchy's validation within this query only.
         /// </summary>
         /// <typeparam name="T">The child type to include.</typeparam>
@@ -323,7 +299,6 @@ namespace Rebellion.SceneGraph
         private IReadOnlyList<T> GetDirectChildren<T>(bool includeDisabled)
             where T : class, ISceneNode
         {
-            using var performanceMeasurement = MeasureOperation(nameof(GetDirectChildren));
             DirectChildCollector<T> collector = new DirectChildCollector<T>(this, includeDisabled);
             CollectDirectChildren(ref collector);
             return collector.GetSnapshot();
@@ -342,7 +317,6 @@ namespace Rebellion.SceneGraph
             Action<ISceneNode> configureCopy = null
         )
         {
-            using var performanceMeasurement = MeasureOperation(nameof(CreateCopy));
             BaseSceneNode copy = CreateNodeCopy();
             if (copy == null || copy.GetType() != GetType())
             {
@@ -400,7 +374,6 @@ namespace Rebellion.SceneGraph
             Action<ISceneNode> configureCopy
         )
         {
-            using var performanceMeasurement = MeasureOperation(nameof(CopyChildrenTo));
             foreach (ISceneNode child in EnumerateChildren())
             {
                 if (!includeDisabled && !child.IsActive())

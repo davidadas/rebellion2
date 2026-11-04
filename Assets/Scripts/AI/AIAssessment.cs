@@ -10,7 +10,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -364,10 +363,6 @@ namespace Rebellion.AI
             int Fighters
         ) GetHostileOrbitalCapabilitiesAtArrival(Planet planet, int arrivalTicks)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetHostileOrbitalCapabilitiesAtArrival),
-                subjectType: typeof(AIAssessment)
-            );
             if (planet == null)
                 return default;
             int age = GetPlanetIntelAge(planet);
@@ -517,10 +512,6 @@ namespace Rebellion.AI
             MovementQueries movement
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetReachableHostileFleetStrength),
-                subjectType: typeof(AIAssessment)
-            );
             if (planet == null || movement == null || arrivalTicks == int.MaxValue)
                 return 0;
             var key = (Planet: planet.InstanceID, Ticks: Math.Max(0, arrivalTicks));
@@ -792,10 +783,6 @@ namespace Rebellion.AI
             IReadOnlyDictionary<string, OfficerAIBehavior> officerBehaviors = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                "Constructor",
-                subjectType: typeof(AIAssessment)
-            );
             _game = game;
             _faction = faction;
             _factionView = factionView;
@@ -1993,10 +1980,6 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanMeetOperationalMissionSuccess),
-                subjectType: typeof(AIAssessment)
-            );
             Mission mission;
             bool valid =
                 departure == null
@@ -2059,10 +2042,6 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetCachedMissionOdds),
-                subjectType: typeof(AIAssessment)
-            );
             if (context == null)
                 return null;
             var key = (
@@ -2160,10 +2139,6 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetMissionOddsCore),
-                subjectType: typeof(AIAssessment)
-            );
             Mission mission;
             bool valid =
                 departure == null
@@ -2313,10 +2288,6 @@ namespace Rebellion.AI
             IReadOnlyList<ISceneNode>
         > GetMissionDefenseBaselineSource(MissionContext context, Planet target)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetMissionDefenseBaselineSource),
-                subjectType: typeof(AIAssessment)
-            );
             string enemyId =
                 context.SelectedTarget?.GetOwnerInstanceID() ?? target.GetOwnerInstanceID();
             Func<
@@ -2346,10 +2317,6 @@ namespace Rebellion.AI
         /// </summary>
         private void BuildMissionDefenseBaselines()
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BuildMissionDefenseBaselines),
-                subjectType: typeof(AIAssessment)
-            );
             if (_game == null)
                 return;
             MissionQueries queries = new(_game, GetMissionDetectorCommander);
@@ -2526,10 +2493,6 @@ namespace Rebellion.AI
             ISceneNode objective
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetMissionDetectors),
-                subjectType: typeof(AIAssessment)
-            );
             if (
                 mission == null
                 || planet == null
@@ -2568,10 +2531,6 @@ namespace Rebellion.AI
         /// </summary>
         private void BuildMissionDetectorIndex()
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BuildMissionDetectorIndex),
-                subjectType: typeof(AIAssessment)
-            );
             if (_factionView == null)
                 return;
 
@@ -3282,10 +3241,6 @@ namespace Rebellion.AI
         /// <returns>The strongest same-owner force available at a future trapping arrival.</returns>
         internal long GetKnownIncomingTrappingFleetStrength(Planet planet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetKnownIncomingTrappingFleetStrength),
-                subjectType: typeof(AIAssessment)
-            );
             Planet knownPlanet = GetKnownPlanet(planet?.InstanceID);
             if (knownPlanet == null)
                 return 0;
@@ -3730,10 +3685,6 @@ namespace Rebellion.AI
             bool projected = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetPlanetaryAssaultSuccessPercent),
-                subjectType: typeof(AIAssessment)
-            );
             if (fleet == null || targetPlanet == null || _game?.Config == null)
                 return 0;
 
@@ -4494,10 +4445,6 @@ namespace Rebellion.AI
             out int reportAge
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetOfficerMissionWindow),
-                subjectType: typeof(AIAssessment)
-            );
             if (officer == null)
             {
                 arrivalTicks = 0;
@@ -4557,10 +4504,6 @@ namespace Rebellion.AI
             out int reportAge
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ComputeOfficerMissionWindow),
-                subjectType: typeof(AIAssessment)
-            );
             arrivalTicks = 0;
             remainingTicks = 0;
             reportAge = 0;

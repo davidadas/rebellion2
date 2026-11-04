@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -82,10 +81,6 @@ namespace Rebellion.Gameplay
             SpaceCombatCommandModifiers defenderCommand = default
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Resolve),
-                subjectType: typeof(SpaceCombatAutoResolver)
-            );
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,

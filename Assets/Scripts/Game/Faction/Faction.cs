@@ -8,7 +8,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
@@ -320,10 +319,6 @@ namespace Rebellion.Game.Factions
         public List<T> GetOwnedUnitsByType<T>(bool includeDisabled = false)
             where T : ISceneNode
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetOwnedUnitsByType),
-                subjectType: typeof(Faction)
-            );
             if (_ownedEntities.TryGetValue(typeof(T), out List<ISceneNode> exactMatches))
             {
                 return exactMatches

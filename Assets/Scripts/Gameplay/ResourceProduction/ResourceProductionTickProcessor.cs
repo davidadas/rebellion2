@@ -5,7 +5,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Gameplay
@@ -42,19 +41,10 @@ namespace Rebellion.Gameplay
         /// <returns>State-change results produced while processing the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(ResourceProductionTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>(_smuggling.ProcessTick(game));
 
             foreach (Faction faction in game.GetFactions())
             {
-                using var factionMeasurement = PerformanceLogger.Measure(
-                    "Faction system tick",
-                    faction?.PeekInstanceID(),
-                    subjectType: typeof(ResourceProductionTickProcessor)
-                );
                 ProcessFaction(game, faction);
             }
 
@@ -68,10 +58,6 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction to process.</param>
         private void ProcessFaction(GameRoot game, Faction faction)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Faction resource production",
-                faction?.PeekInstanceID()
-            );
             ServicePendingRawMaterialRequests(game, faction);
             ServicePendingRefinedMaterialRequests(game, faction);
 

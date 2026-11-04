@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -30,10 +29,6 @@ namespace Rebellion.Gameplay
         /// <returns>The Force-related results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(JediTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             foreach (Officer officer in game.GetSceneNodesByType<Officer>())
                 _commands.UpdateForceDiscoveryState(officer, results);
