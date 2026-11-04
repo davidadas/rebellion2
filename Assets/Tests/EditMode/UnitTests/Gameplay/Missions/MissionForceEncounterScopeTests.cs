@@ -297,6 +297,42 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsEmpty(scope.GetDefenders(_game.RegisteredOfficers, _game.Config.Jedi));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetDefenders_OfficerCarriedInTransit_ExcludesDefender(bool fleetTransit)
+        {
+            _game.MoveNode(_defender, _ship);
+            IMovable carrier = fleetTransit ? (Fleet)_ship.GetParent() : _ship;
+            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            MissionForceEncounterScope scope = CreateScope(MissionEncounterPhase.Arrival);
+
+            List<Officer> selected = scope.GetDefenders(
+                _game.RegisteredOfficers,
+                _game.Config.Jedi
+            );
+
+            Assert.IsEmpty(selected);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetParticipants_OfficerCarriedInTransit_ExcludesParticipant(bool fleetTransit)
+        {
+            _game.ChangeOwnership(_ship, "empire");
+            _game.MoveNode(_participant, _ship);
+            IMovable carrier = fleetTransit ? (Fleet)_ship.GetParent() : _ship;
+            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            MissionForceEncounterScope scope = CreateScope(MissionEncounterPhase.DepartureComplete);
+
+            List<Officer> selected = scope.GetParticipants(
+                new[] { _participant },
+                Array.Empty<IMissionParticipant>(),
+                _game.Config.Jedi
+            );
+
+            Assert.IsEmpty(selected);
+        }
+
         /// <summary>
         /// Creates a checkpoint with a stationary hostile fleet and the requested target scope.
         /// </summary>

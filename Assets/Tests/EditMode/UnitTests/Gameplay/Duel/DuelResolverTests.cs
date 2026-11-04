@@ -427,6 +427,41 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(0, opposing.InjuryPoints);
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void Resolve_OfficerCarriedInTransit_ReturnsNoResults(
+            bool opposingTravels,
+            bool fleetTransit
+        )
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            Officer passenger = opposingTravels ? opposing : encountered;
+            Planet planet = passenger.GetParentOfType<Planet>();
+            Fleet fleet = new()
+            {
+                InstanceID = "fleet",
+                OwnerInstanceID = passenger.OwnerInstanceID,
+            };
+            game.AttachNode(fleet, planet);
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = passenger.OwnerInstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+            game.MoveNode(passenger, ship);
+            IMovable carrier = fleetTransit ? fleet : ship;
+            carrier.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            DuelResolver commands = new(game, new ThrowingRNG());
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsEmpty(results);
+        }
+
         /// <summary>
         /// Builds encounter.
         /// </summary>

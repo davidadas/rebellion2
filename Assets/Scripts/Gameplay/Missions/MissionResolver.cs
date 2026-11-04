@@ -101,6 +101,8 @@ namespace Rebellion.Gameplay
                 out string foilingFactionInstanceID
             );
             AddMissionResults(mission, departureResults, results);
+            if (mission.GetParent() == null)
+                return;
             if (departureFoiled)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
@@ -161,18 +163,17 @@ namespace Rebellion.Gameplay
                         .GetDecoyParticipants()
                         .Where(participant => participant.GetParentOfType<Planet>() == origin)
                         .ToList();
-                    if (
-                        ResolveEncounter(
-                            mission,
-                            phase,
-                            origin,
-                            mainParticipants,
-                            decoys,
-                            results,
-                            out foilingFactionInstanceID
-                        )
-                    )
-                        return true;
+                    bool foiled = ResolveEncounter(
+                        mission,
+                        phase,
+                        origin,
+                        mainParticipants,
+                        decoys,
+                        results,
+                        out foilingFactionInstanceID
+                    );
+                    if (foiled || mission.GetParent() == null)
+                        return foiled;
                 }
             }
 
@@ -384,7 +385,11 @@ namespace Rebellion.Gameplay
                 )
                 .ToDictionary(pair => pair.Participant, pair => pair.Defender);
             HashSet<Officer> primaryOfficers = mainParticipants.OfType<Officer>().ToHashSet();
-            bool foiled = opponents.Keys.Any(primaryOfficers.Contains);
+            Officer foilingDefender = opponents
+                .FirstOrDefault(pair => primaryOfficers.Contains(pair.Key))
+                .Value;
+            bool foiled = foilingDefender != null;
+            foilingFactionInstanceID = foilingDefender?.GetOwnerInstanceID();
             if (!foiled && phase == MissionEncounterPhase.PreObjective)
             {
                 foiled = _betrayalResolver.TryResolve(
@@ -395,6 +400,27 @@ namespace Rebellion.Gameplay
             }
 
             ResolveForceEncounters(mission, decoys, opponents, results);
+            if (mission.GetParent() == null)
+            {
+                ApplyOfficerDeaths(results);
+                return foiled;
+            }
+            if (
+                phase
+                is MissionEncounterPhase.DepartureStart
+                    or MissionEncounterPhase.DepartureComplete
+            )
+            {
+                foreach (IMissionParticipant decoy in decoys)
+                {
+                    if (
+                        decoy is Officer officer
+                        && opponents.ContainsKey(officer)
+                        && (!IsFreeParticipant(officer) || officer.InjuryPoints != 0)
+                    )
+                        mission.RemoveDecoyParticipant(officer);
+                }
+            }
             if (!foiled && detectors.Count > 0)
             {
                 List<IMissionParticipant> availableDecoys = decoys
@@ -427,14 +453,15 @@ namespace Rebellion.Gameplay
             if (foiled)
             {
                 ResolveForceEncounters(mission, mainParticipants, opponents, results);
-                ResolveFoiledParticipants(
-                    mission,
-                    mainParticipants,
-                    opponents,
-                    detectors,
-                    planet,
-                    results
-                );
+                if (mission.GetParent() != null)
+                    ResolveFoiledParticipants(
+                        mission,
+                        mainParticipants,
+                        opponents,
+                        detectors,
+                        planet,
+                        results
+                    );
             }
             ApplyOfficerDeaths(results);
             return foiled;
@@ -443,6 +470,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Resolves the selected pairs for one participant role in major-officer and roster order.
         /// Paired officers do not take an additional ordinary detector confrontation.
+        /// Stops when synchronous authored reactions remove the mission.
         /// </summary>
         /// <param name="mission">The mission that reached the checkpoint.</param>
         /// <param name="participants">The primary or decoy role being resolved.</param>
@@ -462,6 +490,8 @@ namespace Rebellion.Gameplay
                     .ThenBy(officer => officer.RosterOrder)
             )
             {
+                if (mission.GetParent() == null)
+                    return;
                 if (opponents.TryGetValue(officer, out Officer defender))
                     results.AddRange(
                         _duelCommands.Resolve(

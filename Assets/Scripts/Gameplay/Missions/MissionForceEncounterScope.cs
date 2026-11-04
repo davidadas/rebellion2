@@ -178,7 +178,7 @@ namespace Rebellion.Gameplay
         private static bool IsAvailable(Officer officer) =>
             !officer.IsCaptured
             && !officer.IsKilled
-            && officer.Movement == null
+            && ((IMovable)officer).GetTransitMovement() == null
             && officer.IsActive();
     }
 }

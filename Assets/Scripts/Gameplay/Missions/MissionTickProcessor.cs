@@ -151,6 +151,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {
@@ -185,6 +187,8 @@ namespace Rebellion.Gameplay
                     results,
                     out foilingFactionInstanceID
                 );
+                if (mission.GetParent() == null)
+                    return CompleteStep(mission, results);
             }
             if (wasDetected)
             {

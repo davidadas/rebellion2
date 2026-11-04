@@ -833,6 +833,34 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_ScannerMovedBeforeSave_PreservesDiscoveryPriorityAfterReload()
+        {
+            Officer first = CreateJediTrainer("FIRST", forceValue: 80);
+            Officer second = CreateJediTrainer("SECOND", forceValue: 80);
+            Planet otherPlanet = new()
+            {
+                InstanceID = "OTHER",
+                OwnerInstanceID = _alliance.InstanceID,
+                IsColonized = true,
+            };
+            _game.AttachNode(otherPlanet, _tatooine.GetParent());
+            _game.MoveNode(first, otherPlanet);
+            _game.MoveNode(first, _tatooine);
+            CreateDormantJedi("STUDENT");
+            GameRoot restored = RestoreDiscoveryGame(false);
+            restored.CurrentTick = 1;
+            using JediCommands commands = new(restored, new FixedRNG());
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(commands)
+                .ProcessTick(restored)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer.InstanceID == "STUDENT");
+
+            Assert.AreEqual(second.InstanceID, restored.RegisteredOfficers[0].InstanceID);
+            Assert.AreEqual(first.InstanceID, discovery.Discoverer.InstanceID);
+        }
+
+        [Test]
         public void ProcessTick_RestoredScanners_AddingScannerDoesNotLoseItsScan()
         {
             CreateJediTrainer("EXISTING", forceValue: 80);
