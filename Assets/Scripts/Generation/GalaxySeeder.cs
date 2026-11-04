@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Generation
@@ -284,8 +285,14 @@ namespace Rebellion.Generation
                 new List<(string factionID, int strongCount, int weakCount)>();
             foreach (FactionBucketConfig fb in factionBuckets)
             {
-                (int strongPct, int weakPct) = ResolveBucketPercentages(fb, summary);
-                int strong = totalCore * strongPct / 100;
+                (int strongPct, int weakPct, int additionalStrongPlanets) = ResolveBucketAllocation(
+                    fb,
+                    summary
+                );
+                int strong = IntegerMath.SaturatingAdd(
+                    totalCore * strongPct / 100,
+                    additionalStrongPlanets
+                );
                 int weak = totalCore * weakPct / 100;
 
                 if (strongCountAdjustments.TryGetValue(fb.FactionID, out int adj))
@@ -333,22 +340,23 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Resolves a faction's ownership percentages for the selected difficulty and controller.
+        /// Resolves a faction's starting territory for the selected difficulty and controller.
         /// </summary>
         /// <param name="config">Faction ownership bucket configuration.</param>
         /// <param name="summary">Selected difficulty and player faction.</param>
-        /// <returns>The applicable strong and weak ownership percentages.</returns>
-        private static (int StrongPct, int WeakPct) ResolveBucketPercentages(
-            FactionBucketConfig config,
-            GameSummary summary
-        )
+        /// <returns>The strong and weak percentages and the additional strong planet count.</returns>
+        private static (
+            int StrongPct,
+            int WeakPct,
+            int AdditionalStrongPlanets
+        ) ResolveBucketAllocation(FactionBucketConfig config, GameSummary summary)
         {
             if (
                 summary == null
                 || string.IsNullOrEmpty(summary.PlayerFactionID)
                 || config.Overrides == null
             )
-                return (config.StrongPct, config.WeakPct);
+                return (config.StrongPct, config.WeakPct, 0);
 
             PlayerControllerType controllerType =
                 config.FactionID == summary.PlayerFactionID
@@ -360,8 +368,12 @@ namespace Rebellion.Generation
             );
 
             return matchingOverride == null
-                ? (config.StrongPct, config.WeakPct)
-                : (matchingOverride.StrongPct, matchingOverride.WeakPct);
+                ? (config.StrongPct, config.WeakPct, 0)
+                : (
+                    matchingOverride.StrongPct,
+                    matchingOverride.WeakPct,
+                    matchingOverride.AdditionalStrongPlanets
+                );
         }
 
         /// <summary>

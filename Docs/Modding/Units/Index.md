@@ -110,6 +110,9 @@ unit catalog. The campaign owns those values.
 Adding a definition makes it available to the loader; it does not guarantee that an instance starts
 on the map. Scenario generation controls initial deployment:
 
+- `GalaxyClassification` allocates starting territory. A `FactionBucketOverride` can set
+  `AdditionalStrongPlanets` to add a fixed number of strongly loyal core planets after applying
+  `StrongPct`. The override selects the difficulty and controller; it applies to new campaigns.
 - `FacilityGeneration` selects starting facilities and headquarters loadouts.
 - `UnitDeployment` creates fixed and budgeted fleets and garrisons from unit `TypeID` values.
 - `Officers` selects starting officers by their authored `InstanceID` values.

@@ -52,6 +52,54 @@ namespace Rebellion.Tests.Generation
             _game = builder.Build();
         }
 
+        [TestCase("FNALL1")]
+        [TestCase("FNEMP1")]
+        public void Build_HardStartingPlanetBonus_AddsTwoPlanetsOnlyToAiFaction(
+            string playerFactionID
+        )
+        {
+            GameSummary summary = new()
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Hard,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                PlayerFactionID = playerFactionID,
+                Seed = 1977,
+            };
+            GameSummary baselineSummary = summary.GetDeepCopy();
+            baselineSummary.CustomSettings = new CustomGameSettings
+            {
+                GenerationConfig = TestContent.Data.GenerationConfig.GetDeepCopy(),
+            };
+            foreach (
+                FactionBucketConfig bucket in baselineSummary
+                    .CustomSettings
+                    .GenerationConfig
+                    .GalaxyClassification
+                    .FactionBuckets
+            )
+            foreach (FactionBucketOverride allocation in bucket.Overrides)
+                allocation.AdditionalStrongPlanets = 0;
+            GameRoot baseline = new GameBuilder(baselineSummary, TestContent.Data).Build();
+
+            GameRoot increased = new GameBuilder(summary, TestContent.Data).Build();
+
+            Dictionary<string, int> before = baseline
+                .GetSceneNodesByType<Planet>()
+                .Where(planet => planet.OwnerInstanceID != null)
+                .GroupBy(planet => planet.OwnerInstanceID)
+                .ToDictionary(group => group.Key, group => group.Count());
+            Dictionary<string, int> after = increased
+                .GetSceneNodesByType<Planet>()
+                .Where(planet => planet.OwnerInstanceID != null)
+                .GroupBy(planet => planet.OwnerInstanceID)
+                .ToDictionary(group => group.Key, group => group.Count());
+            string aiFactionID = playerFactionID == "FNALL1" ? "FNEMP1" : "FNALL1";
+            Assert.AreEqual(before[playerFactionID], after[playerFactionID], playerFactionID);
+            Assert.AreEqual(before[aiFactionID] + 2, after[aiFactionID], aiFactionID);
+        }
+
         [Test]
         public void Build_ValidConfig_SetsConsistentOwners()
         {

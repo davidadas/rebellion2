@@ -152,6 +152,62 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [TestCase(null, 0)]
+        [TestCase(0, 0)]
+        [TestCase(2, 2)]
+        public void Validate_AdditionalStrongPlanets_DeserializesOptionalCount(
+            int? additionalPlanets,
+            int expected
+        )
+        {
+            string additional = additionalPlanets.HasValue
+                ? $"<AdditionalStrongPlanets>{additionalPlanets.Value}</AdditionalStrongPlanets>"
+                : string.Empty;
+            string overrides =
+                $@"<Overrides>
+              <FactionBucketOverride>
+                <Difficulty>Hard</Difficulty>
+                <ControllerType>AI</ControllerType>
+                <StrongPct>25</StrongPct>
+                <WeakPct>0</WeakPct>
+                {additional}
+              </FactionBucketOverride>
+            </Overrides>";
+            string xml = CreateGenerationXml(string.Empty, overrides);
+            ValidateGenerationConfigXml(xml);
+            using StringReader reader = new(xml);
+
+            GameGenerationConfig config = (GameGenerationConfig)
+                new GameSerializer(typeof(GameGenerationConfig)).Deserialize(reader);
+
+            Assert.AreEqual(
+                expected,
+                config
+                    .GalaxyClassification.FactionBuckets.Single()
+                    .Overrides.Single()
+                    .AdditionalStrongPlanets
+            );
+        }
+
+        [Test]
+        public void Validate_NegativeAdditionalStrongPlanets_RejectsDocument()
+        {
+            const string overrides =
+                @"<Overrides>
+              <FactionBucketOverride>
+                <Difficulty>Hard</Difficulty>
+                <ControllerType>AI</ControllerType>
+                <StrongPct>25</StrongPct>
+                <WeakPct>0</WeakPct>
+                <AdditionalStrongPlanets>-1</AdditionalStrongPlanets>
+              </FactionBucketOverride>
+            </Overrides>";
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                ValidateGenerationConfigXml(CreateGenerationXml(string.Empty, overrides))
+            );
+        }
+
         [Test]
         public void Validate_PersistedSupportSettings_AcceptsDocument()
         {

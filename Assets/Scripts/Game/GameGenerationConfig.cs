@@ -139,7 +139,7 @@ namespace Rebellion.Game
     }
 
     /// <summary>
-    /// Overrides one faction's ownership percentages for a difficulty and controller role.
+    /// Overrides one faction's starting territory for a difficulty and controller role.
     /// </summary>
     [PersistableObject]
     public class FactionBucketOverride
@@ -148,6 +148,7 @@ namespace Rebellion.Game
         public PlayerControllerType ControllerType { get; set; }
         public int StrongPct { get; set; }
         public int WeakPct { get; set; }
+        public int AdditionalStrongPlanets { get; set; }
     }
 
     #endregion

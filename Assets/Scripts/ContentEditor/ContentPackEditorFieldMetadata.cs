@@ -56,6 +56,8 @@ internal static class ContentPackEditorFieldMetadata
             "The strong core-planet percentage used instead of the faction's default for this difficulty and controller.",
         [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.WeakPct))] =
             "The weak core-planet percentage used instead of the faction's default for this difficulty and controller.",
+        [(typeof(FactionBucketOverride), nameof(FactionBucketOverride.AdditionalStrongPlanets))] =
+            "Extra core planets with strong starting support, added after the percentage allocation.",
         [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.Availability))] =
             "The resource-availability setting that selects this profile for a new game.",
         [(typeof(PlanetResourceProfile), nameof(PlanetResourceProfile.EnergyMin))] =

@@ -244,6 +244,7 @@ namespace Rebellion.Tests.Generation
                         Difficulty = GameDifficulty.Hard,
                         ControllerType = PlayerControllerType.AI,
                         StrongPct = 40,
+                        AdditionalStrongPlanets = 2,
                         WeakPct = 0,
                     }
                 );
@@ -314,6 +315,159 @@ namespace Rebellion.Tests.Generation
                     kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Weak
                 )
             );
+        }
+
+        [TestCase(30)]
+        [TestCase(40)]
+        [TestCase(60)]
+        public void Seed_AdditionalStrongPlanets_AddsFlatBonusAfterPercentage(int planetCount)
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(planetCount);
+            GameGenerationConfig rules = CreateRules(10, 0, 25, 0);
+            _summary.Difficulty = GameDifficulty.Hard;
+            rules
+                .GalaxyClassification.FactionBuckets[0]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.Human,
+                        StrongPct = 10,
+                        AdditionalStrongPlanets = 2,
+                    }
+                );
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 25,
+                        AdditionalStrongPlanets = 2,
+                    }
+                );
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(
+                planetCount * 10 / 100 + 2,
+                result.BucketMap.Count(pair => pair.Value.FactionID == "FNALL1")
+            );
+            Assert.AreEqual(
+                planetCount * 25 / 100 + 2,
+                result.BucketMap.Count(pair => pair.Value.FactionID == "FNEMP1")
+            );
+        }
+
+        [TestCase(GameDifficulty.Easy)]
+        [TestCase(GameDifficulty.Medium)]
+        public void Seed_AdditionalStrongPlanetsOnAnotherDifficulty_PreservesBaseAllocation(
+            GameDifficulty difficulty
+        )
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(30);
+            GameGenerationConfig rules = CreateRules(10, 0, 25, 0);
+            _summary.Difficulty = difficulty;
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 25,
+                        AdditionalStrongPlanets = 2,
+                    }
+                );
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(7, result.BucketMap.Count(pair => pair.Value.FactionID == "FNEMP1"));
+        }
+
+        [Test]
+        public void Seed_AdditionalStrongPlanetsWithFixedHeadquarters_CountsHeadquartersOnce()
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
+            GameGenerationConfig rules = CreateRules(0, 0, 20, 0);
+            _summary.Difficulty = GameDifficulty.Hard;
+            rules
+                .GalaxyClassification.FactionSetups[1]
+                .StartingPlanets.Add(
+                    new StartingPlanet
+                    {
+                        PlanetTypeID = "p0",
+                        IsHeadquarters = true,
+                        Loyalty = 100,
+                    }
+                );
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 20,
+                        AdditionalStrongPlanets = 2,
+                    }
+                );
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(4, result.BucketMap.Count(pair => pair.Value.FactionID == "FNEMP1"));
+            Assert.AreEqual("p0", result.FactionHQs["FNEMP1"].TypeID);
+        }
+
+        [TestCase(2)]
+        [TestCase(int.MaxValue)]
+        public void Seed_AdditionalStrongPlanetsExceedCapacity_AllocatesAvailablePlanets(
+            int additionalPlanets
+        )
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(3);
+            GameGenerationConfig rules = CreateRules(0, 0, 50, 0);
+            _summary.Difficulty = GameDifficulty.Hard;
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 50,
+                        AdditionalStrongPlanets = additionalPlanets,
+                    }
+                );
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(3, result.BucketMap.Count(pair => pair.Value.FactionID == "FNEMP1"));
         }
 
         [Test]
