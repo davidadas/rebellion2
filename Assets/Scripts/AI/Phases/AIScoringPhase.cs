@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Phases
 {
@@ -49,6 +50,11 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Execute),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIScoringPhase)
+            );
             if (context?.Proposals == null)
                 return;
 
@@ -63,6 +69,11 @@ namespace Rebellion.AI.Phases
         /// <param name="proposal">The proposal to score.</param>
         private void ScoreProposal(AITurnContext context, AIProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ScoreProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIScoringPhase)
+            );
             if (proposal == null)
                 return;
 
@@ -71,7 +82,17 @@ namespace Rebellion.AI.Phases
 
             foreach (IAIProposalScorer proposalScorer in _proposalScorers)
             {
-                if (!proposalScorer.CanScore(proposal))
+                bool canScore;
+                using (
+                    PerformanceLogger.Measure(
+                        "CanScore",
+                        context?.Faction?.PeekInstanceID(),
+                        items: 1,
+                        subjectType: proposalScorer.GetType()
+                    )
+                )
+                    canScore = proposalScorer.CanScore(proposal);
+                if (!canScore)
                     continue;
 
                 proposal.SetScore(proposalScorer.Score(context, proposal));

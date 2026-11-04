@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Candidate = Rebellion.AI.Proposals.AIMaintenanceRecoveryProposal.Candidate;
 using Requirement = Rebellion.AI.Proposals.AIMaintenanceRecoveryProposal.Requirement;
@@ -25,6 +26,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The available recovery request, or no proposals when solvent.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIMaintenanceRecoveryPlanner)
+            );
             if (
                 context?.Maintenance == null
                 || !context.Game.Config.AI.Selection.MaintenanceRecovery.Enabled
@@ -64,6 +70,11 @@ namespace Rebellion.AI.Planners
             Dictionary<IManufacturable, List<KeyValuePair<Requirement, double>>> contributions
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetRequirements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIMaintenanceRecoveryPlanner)
+            );
             var config = context.Game.Config.AI.Selection.MaintenanceRecovery;
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
             {
@@ -267,6 +278,11 @@ namespace Rebellion.AI.Planners
             Dictionary<IManufacturable, List<KeyValuePair<Requirement, double>>> contributions
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetRequirements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIMaintenanceRecoveryPlanner)
+            );
             var config = context.Game.Config.AI.Selection.MaintenanceRecovery;
             foreach (Planet planet in context.Assessment.OwnedPlanets)
             {
@@ -338,6 +354,11 @@ namespace Rebellion.AI.Planners
             Dictionary<IManufacturable, List<KeyValuePair<Requirement, double>>> contributions
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddIndustryRequirements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIMaintenanceRecoveryPlanner)
+            );
             double weight = context.Game.Config.AI.Selection.MaintenanceRecovery.ProductionWeight;
             foreach (
                 BuildingType type in new[]
@@ -398,6 +419,11 @@ namespace Rebellion.AI.Planners
             Dictionary<IManufacturable, List<KeyValuePair<Requirement, double>>> contributions
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddAgentRequirements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIMaintenanceRecoveryPlanner)
+            );
             double weight = context.Game.Config.AI.Selection.MaintenanceRecovery.AgentWeight;
             foreach (
                 var role in units

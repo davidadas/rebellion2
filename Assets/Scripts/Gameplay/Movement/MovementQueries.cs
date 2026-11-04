@@ -124,6 +124,10 @@ namespace Rebellion.Gameplay
             out int transitTicks
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetSelectionTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             transitTicks = 0;
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
@@ -194,6 +198,10 @@ namespace Rebellion.Gameplay
             out int transitTicks
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             transitTicks = 0;
             if (units == null || units.Count == 0 || destination == null)
                 return false;
@@ -442,6 +450,10 @@ namespace Rebellion.Gameplay
             out List<ContainerNode> resolvedDestinations
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryResolveMoveGroupDestinations),
+                subjectType: typeof(MovementQueries)
+            );
             resolvedDestinations = new List<ContainerNode>();
             Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
@@ -1176,6 +1188,87 @@ namespace Rebellion.Gameplay
             bool allowOriginPlanet = false
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanUseSafeRelocationDestination),
+                subjectType: typeof(MovementQueries)
+            );
+            return CanUseSafeRelocationDestination(
+                unit,
+                destination,
+                originPlanet,
+                canTravelRemotely,
+                allowOriginPlanet,
+                null
+            );
+        }
+
+        /// <summary>
+        /// Returns whether every unit can use one safe destination while sharing immutable blockade
+        /// observations only for this synchronous query.
+        /// </summary>
+        /// <param name="units">The units requiring the common destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="canTravelRemotely">
+        /// Whether the units or their calling mechanic can cross between planets.
+        /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether each unit's origin planet may receive it without relocation.
+        /// </param>
+        /// <returns>True when every unit can safely use the destination.</returns>
+        internal bool CanUseSafeRelocationDestination(
+            IReadOnlyList<IMovable> units,
+            ContainerNode destination,
+            bool canTravelRemotely = true,
+            bool allowOriginPlanet = false
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanUseSafeRelocationDestination),
+                subjectType: typeof(MovementQueries)
+            );
+            if (units == null)
+                return false;
+
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades =
+                units.Count > 1 ? new() : null;
+            foreach (IMovable unit in units)
+                if (
+                    !CanUseSafeRelocationDestination(
+                        unit,
+                        destination,
+                        unit.GetParentOfType<Planet>(),
+                        canTravelRemotely,
+                        allowOriginPlanet,
+                        blockades
+                    )
+                )
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Evaluates one relocation destination with optional query-local blockade reuse.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="originPlanet">The planet from which the unit would relocate or remain.</param>
+        /// <param name="canTravelRemotely">Whether the unit can cross between planets.</param>
+        /// <param name="allowOriginPlanet">Whether the origin planet may receive the unit.</param>
+        /// <param name="blockades">Optional blockade results shared within one synchronous query.</param>
+        /// <returns>True when the destination can safely receive the unit.</returns>
+        private bool CanUseSafeRelocationDestination(
+            IMovable unit,
+            ContainerNode destination,
+            Planet originPlanet,
+            bool canTravelRemotely,
+            bool allowOriginPlanet,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanUseSafeRelocationDestination),
+                subjectType: typeof(MovementQueries)
+            );
             if (unit == null || destination == null)
                 return false;
 
@@ -1196,7 +1289,7 @@ namespace Rebellion.Gameplay
                 liveDestination as Planet ?? liveDestination.GetParentOfType<Planet>();
             if (
                 destinationPlanet?.IsDestroyed != false
-                || destinationPlanet.IsBlockadedFor(ownerInstanceId)
+                || IsBlockadedFor(destinationPlanet, ownerInstanceId, blockades)
                     && (destinationPlanet != originPlanet || liveDestination is Planet)
                 || liveDestination == originPlanet && !allowOriginPlanet
                 || destinationPlanet != originPlanet && !canTravelRemotely
@@ -1214,6 +1307,31 @@ namespace Rebellion.Gameplay
             };
 
             return isFriendlyDestination && liveDestination.CanAcceptChild(unit);
+        }
+
+        /// <summary>
+        /// Returns a blockade result, optionally reusing the result within one synchronous query.
+        /// </summary>
+        /// <param name="planet">The destination planet.</param>
+        /// <param name="factionInstanceId">The faction whose access is evaluated.</param>
+        /// <param name="blockades">Optional query-local blockade results.</param>
+        /// <returns>True when another faction blockades the planet.</returns>
+        private static bool IsBlockadedFor(
+            Planet planet,
+            string factionInstanceId,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
+            if (blockades == null)
+                return planet.IsBlockadedFor(factionInstanceId);
+
+            var key = (planet, factionInstanceId);
+            if (!blockades.TryGetValue(key, out bool isBlockaded))
+            {
+                isBlockaded = planet.IsBlockadedFor(factionInstanceId);
+                blockades.Add(key, isBlockaded);
+            }
+            return isBlockaded;
         }
 
         /// <summary>
@@ -1426,6 +1544,10 @@ namespace Rebellion.Gameplay
         /// <returns>The movement duration in ticks.</returns>
         internal int CalculateTransitTicks(IMovable unit, Planet origin, Planet destination)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             return CalculateTransitTicks(
                 unit,
                 origin.GetPosition(),
@@ -1450,6 +1572,10 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             return CalculateTransitTicks(
                 unit,
                 origin.GetPosition(),
@@ -1474,6 +1600,10 @@ namespace Rebellion.Gameplay
             Planet destination
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1500,6 +1630,10 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1524,6 +1658,10 @@ namespace Rebellion.Gameplay
             bool sameSector
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1591,6 +1729,10 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateTransitTicks),
+                subjectType: typeof(MovementQueries)
+            );
             int distance = (int)destination.GetRawDistanceTo(originPos);
             double distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
             if (distanceDivisor <= 0)

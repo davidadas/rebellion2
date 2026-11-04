@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -19,6 +20,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The preferred removable building, or null when no removal is required or possible.</returns>
         internal Building SelectBuildingToRemove(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(SelectBuildingToRemove),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             return SelectRemoval(context, planet).Building;
         }
 
@@ -30,6 +36,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The preferred removal, or an empty value when no removal is possible.</returns>
         internal Removal SelectRemoval(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(SelectRemoval),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             if (
                 context?.Assessment == null
                 || context.Faction == null
@@ -86,6 +97,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the building is an owned, removable direct child.</returns>
         private static bool IsRemovable(AITurnContext context, Planet planet, Building building)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(IsRemovable),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             return building != null
                 && building.GetParent() == planet
                 && building.GetOwnerInstanceID() == context.Faction.InstanceID
@@ -111,6 +127,11 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EvaluateRemoval),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             AIPlanetBuildingRemovalPriority priority = GetRemovalPriority(
                 context,
                 economics,
@@ -150,6 +171,11 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetRemovalPriority),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             if (building.ManufacturingStatus == ManufacturingStatus.Building)
                 return AIPlanetBuildingRemovalPriority.Unfinished;
 
@@ -191,6 +217,11 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProductionDeficitAfterRemoval),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIPlanetBuildingSpacePolicy)
+            );
             int target = context.StrategicPlan.GetInfrastructureTarget(buildingType);
             if (target <= 0)
                 return 0;
@@ -314,6 +345,11 @@ namespace Rebellion.AI.Planners
                 int activeMineCount
             )
             {
+                using var performanceMeasurement = PerformanceLogger.Measure(
+                    nameof(RemovalEconomics),
+                    context?.Faction?.PeekInstanceID(),
+                    subjectType: typeof(AIPlanetBuildingSpacePolicy)
+                );
                 AIAssessment assessment = context.Assessment;
                 int projectedCapacity = assessment.ProjectedMaterialCapacity;
                 int minedAfterRemoval = Math.Max(

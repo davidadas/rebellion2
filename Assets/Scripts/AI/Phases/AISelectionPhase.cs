@@ -5,6 +5,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Phases
 {
@@ -36,6 +37,11 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Execute),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AISelectionPhase)
+            );
             if (context == null)
                 return;
 
@@ -73,6 +79,11 @@ namespace Rebellion.AI.Phases
         /// <returns>The selected proposals.</returns>
         public List<AIProposal> Select(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Select),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AISelectionPhase)
+            );
             AISelectionState state = new AISelectionState();
             return Select(
                 context,
@@ -100,6 +111,11 @@ namespace Rebellion.AI.Phases
             List<AIProposal> selectedProposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Select),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AISelectionPhase)
+            );
             if (context?.Proposals == null || candidates == null)
                 return selectedProposals;
 
@@ -299,6 +315,11 @@ namespace Rebellion.AI.Phases
         /// <returns>The minimum selectable score.</returns>
         private static float GetMinimumSelectableScore(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMinimumSelectableScore),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AISelectionPhase)
+            );
             return context.Game?.Config?.AI?.Selection?.MinimumSelectableScore
                 ?? new GameConfig.AISelectionConfig().MinimumSelectableScore;
         }
@@ -331,6 +352,11 @@ namespace Rebellion.AI.Phases
             bool shuffleTies
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetSortedProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AISelectionPhase)
+            );
             List<AIProposal> proposals = candidates
                 .Where(proposal => proposal != null)
                 .OrderByDescending(proposal => proposal.Priority)

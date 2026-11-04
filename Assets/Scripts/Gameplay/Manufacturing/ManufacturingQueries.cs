@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -288,6 +289,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> removedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanAcceptManufacturingOrder),
+                subjectType: typeof(ManufacturingQueries)
+            );
             IReadOnlyCollection<IManufacturable> released = removedItems;
             if (replacedOrder != null)
                 released =
@@ -320,6 +325,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasDestinationCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             string ownerInstanceId = producer.GetOwnerInstanceID();
             if (destination is Planet planet)
             {
@@ -408,6 +417,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasFleetCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             if (
                 !string.Equals(
                     fleet.GetOwnerInstanceID(),
@@ -474,6 +487,10 @@ namespace Rebellion.Gameplay
             IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasCapitalShipCapacity),
+                subjectType: typeof(ManufacturingQueries)
+            );
             if (
                 !string.Equals(
                     capitalShip.GetOwnerInstanceID(),

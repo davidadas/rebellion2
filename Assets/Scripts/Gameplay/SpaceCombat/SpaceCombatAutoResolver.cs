@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -81,6 +82,10 @@ namespace Rebellion.Gameplay
             SpaceCombatCommandModifiers defenderCommand = default
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Resolve),
+                subjectType: typeof(SpaceCombatAutoResolver)
+            );
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,
@@ -118,8 +123,6 @@ namespace Rebellion.Gameplay
                 ApplyPendingDamage(pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
-                double attackerStrength = GetTacticalStrength(attacker, defender);
-                double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
@@ -139,7 +142,12 @@ namespace Rebellion.Gameplay
 
                 if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
-                    ResolveStalemate(attacker, defender, attackerStrength, defenderStrength);
+                    ResolveStalemate(
+                        attacker,
+                        defender,
+                        GetTacticalStrength(attacker, defender),
+                        GetTacticalStrength(defender, attacker)
+                    );
                     break;
                 }
             }

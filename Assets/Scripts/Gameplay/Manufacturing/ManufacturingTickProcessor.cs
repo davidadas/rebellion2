@@ -42,6 +42,10 @@ namespace Rebellion.Gameplay
         /// <returns>The manufacturing results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(ManufacturingTickProcessor)
+            );
             List<GameResult> results = new List<GameResult>();
             foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
                 results.AddRange(step);
@@ -63,7 +67,12 @@ namespace Rebellion.Gameplay
 
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
-                foreach (IReadOnlyList<GameResult> step in ProcessPlanetIncrementally(planet))
+                foreach (
+                    IReadOnlyList<GameResult> step in PerformanceLogger.MeasureSteps(
+                        ProcessPlanetIncrementally(planet),
+                        "Planet manufacturing active work"
+                    )
+                )
                     yield return step;
             }
         }

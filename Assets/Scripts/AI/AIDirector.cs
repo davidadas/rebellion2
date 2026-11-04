@@ -10,6 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
@@ -164,9 +165,24 @@ namespace Rebellion.AI
 
             foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
             {
-                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                GalaxyMap factionView;
+                using (
+                    PerformanceLogger.Measure(
+                        "BuildFactionView",
+                        faction.PeekInstanceID(),
+                        subjectType: typeof(AIDirector)
+                    )
+                )
+                    factionView = _fogOfWar.BuildFactionView(faction);
                 FactionTurnStarted?.Invoke(faction);
-                foreach (object step in ProcessFactionIncrementally(faction, factionView, results))
+                foreach (
+                    object step in PerformanceLogger.MeasureSteps(
+                        ProcessFactionIncrementally(faction, factionView, results),
+                        "ProcessFaction",
+                        faction.PeekInstanceID(),
+                        subjectType: typeof(AIDirector)
+                    )
+                )
                     yield return step;
                 FactionTurnCompleted?.Invoke(faction);
             }
@@ -204,34 +220,52 @@ namespace Rebellion.AI
             AITurnContext context;
             try
             {
-                AIAssessment assessment = new AIAssessment(
-                    _game,
-                    faction,
-                    factionView,
-                    _officerBehaviors
-                );
-                AIStrategicPlan strategicPlan = new AIStrategicPlan(_game, assessment);
-                context = new AITurnContext(
-                    _game,
-                    faction,
-                    _missions,
-                    _movement,
-                    _manufacturing,
-                    _bombardment,
-                    _planetaryAssault,
-                    _random,
-                    assessment,
-                    strategicPlan,
-                    factionView,
-                    _maintenance,
-                    _headquarters,
-                    _officerCommands,
-                    new MissionQueries(
-                        _game,
-                        assessment.GetMissionDetectorCommander,
-                        _missionEncounterCache
+                AIAssessment assessment;
+                using (
+                    PerformanceLogger.Measure(
+                        "CreateAssessment",
+                        faction.PeekInstanceID(),
+                        subjectType: typeof(AIDirector)
                     )
-                );
+                )
+                    assessment = new AIAssessment(_game, faction, factionView, _officerBehaviors);
+                AIStrategicPlan strategicPlan;
+                using (
+                    PerformanceLogger.Measure(
+                        "CreateStrategicPlan",
+                        faction.PeekInstanceID(),
+                        subjectType: typeof(AIDirector)
+                    )
+                )
+                    strategicPlan = new AIStrategicPlan(_game, assessment);
+                using (
+                    PerformanceLogger.Measure(
+                        "CreateTurnContext",
+                        faction.PeekInstanceID(),
+                        subjectType: typeof(AIDirector)
+                    )
+                )
+                    context = new AITurnContext(
+                        _game,
+                        faction,
+                        _missions,
+                        _movement,
+                        _manufacturing,
+                        _bombardment,
+                        _planetaryAssault,
+                        _random,
+                        assessment,
+                        strategicPlan,
+                        factionView,
+                        _maintenance,
+                        _headquarters,
+                        _officerCommands,
+                        new MissionQueries(
+                            _game,
+                            assessment.GetMissionDetectorCommander,
+                            _missionEncounterCache
+                        )
+                    );
             }
             finally
             {
@@ -247,11 +281,25 @@ namespace Rebellion.AI
                 {
                     if (phase is IAIIncrementalTurnPhase incrementalPhase)
                     {
-                        foreach (object step in incrementalPhase.ExecuteIncrementally(context))
+                        foreach (
+                            object step in PerformanceLogger.MeasureSteps(
+                                incrementalPhase.ExecuteIncrementally(context),
+                                "Phase",
+                                faction.PeekInstanceID(),
+                                subjectType: phase.GetType()
+                            )
+                        )
                             yield return step;
                     }
                     else
-                        phase.Execute(context);
+                        using (
+                            PerformanceLogger.Measure(
+                                "Phase",
+                                faction.PeekInstanceID(),
+                                subjectType: phase.GetType()
+                            )
+                        )
+                            phase.Execute(context);
                 }
                 finally
                 {

@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -52,7 +53,10 @@ namespace Rebellion.AI
         > _resourceReclamationByPlanetId = new(StringComparer.Ordinal);
         private readonly Dictionary<
             string,
-            (int MaintenanceHeadroom, double RawOutputPerTick, double RefinedOutputPerTick)
+            (
+                int MaintenanceHeadroom,
+                (double RawOutputPerTick, double RefinedOutputPerTick)? Output
+            )
         > _resourceEconomyCache = new(StringComparer.Ordinal);
 
         /// <summary>
@@ -579,6 +583,10 @@ namespace Rebellion.AI
             bool refresh = false
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetResourceFacilitiesToReclaim),
+                subjectType: typeof(AIStrategicPlan)
+            );
             if (
                 !IsInfrastructureType(buildingType)
                 || planet == null
@@ -691,6 +699,10 @@ namespace Rebellion.AI
             long additionalMaterials
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanFundResourceReclamation),
+                subjectType: typeof(AIStrategicPlan)
+            );
             if (resources == null || resources.Count == 0)
                 return true;
             string owner = resources[0].GetOwnerInstanceID();
@@ -699,12 +711,22 @@ namespace Rebellion.AI
             var faction = _game.GetFactionByOwnerInstanceID(owner);
             if (faction == null)
                 return false;
-            var after = GetOperatingEconomyAfterReclamation(owner, resources);
+            var after = GetOperatingEconomyAfterReclamation(owner, resources, includeOutput: false);
+            if (
+                (long)after.MaintenanceHeadroom - additionalMaintenance
+                < _game.Config.AI.Selection.MaintenanceHeadroomReserve
+            )
+                return false;
+            var output = GetOperatingEconomyAfterReclamation(
+                owner,
+                resources,
+                includeOutput: true
+            ).Output.Value;
             int horizon = Math.Max(
                 0,
                 _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
             );
-            double production = Math.Min(after.RawOutputPerTick, after.RefinedOutputPerTick);
+            double production = Math.Min(output.RawOutputPerTick, output.RefinedOutputPerTick);
             double materials =
                 faction.RefinedMaterialStockpile
                 + production * horizon
@@ -714,10 +736,8 @@ namespace Rebellion.AI
                 _assessment.RefinedMaterialSupply
                 * _game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 / 100d;
-            return (long)after.MaintenanceHeadroom - additionalMaintenance
-                    >= _game.Config.AI.Selection.MaintenanceHeadroomReserve
-                && after.RawOutputPerTick > 0
-                && after.RefinedOutputPerTick > 0
+            return output.RawOutputPerTick > 0
+                && output.RefinedOutputPerTick > 0
                 && materials >= materialReserve;
         }
 
@@ -735,9 +755,14 @@ namespace Rebellion.AI
                 0,
                 GetOperatingEconomyAfterReclamation(
                     owner,
-                    Array.Empty<Building>()
+                    Array.Empty<Building>(),
+                    includeOutput: false
                 ).MaintenanceHeadroom
-                    - GetOperatingEconomyAfterReclamation(owner, resources).MaintenanceHeadroom
+                    - GetOperatingEconomyAfterReclamation(
+                        owner,
+                        resources,
+                        includeOutput: false
+                    ).MaintenanceHeadroom
             );
         }
 
@@ -746,13 +771,21 @@ namespace Rebellion.AI
         /// </summary>
         /// <param name="owner">The faction whose resource facilities are being considered.</param>
         /// <param name="excluded">The facilities excluded from the measured economy.</param>
-        /// <returns>The remaining maintenance headroom and material output.</returns>
+        /// <param name="includeOutput">Whether material output must be evaluated for this quote.</param>
+        /// <returns>The exact maintenance headroom and output when requested or already evaluated.</returns>
         private (
             int MaintenanceHeadroom,
-            double RawOutputPerTick,
-            double RefinedOutputPerTick
-        ) GetOperatingEconomyAfterReclamation(string owner, IReadOnlyList<Building> excluded)
+            (double RawOutputPerTick, double RefinedOutputPerTick)? Output
+        ) GetOperatingEconomyAfterReclamation(
+            string owner,
+            IReadOnlyList<Building> excluded,
+            bool includeOutput
+        )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOperatingEconomyAfterReclamation),
+                subjectType: typeof(AIStrategicPlan)
+            );
             string key = string.Join(
                 "|",
                 excluded
@@ -760,12 +793,24 @@ namespace Rebellion.AI
                     .Distinct()
                     .OrderBy(id => id, StringComparer.Ordinal)
             );
-            if (!_resourceEconomyCache.TryGetValue(key, out var economy))
+            if (
+                !_resourceEconomyCache.TryGetValue(key, out var economy)
+                || includeOutput && !economy.Output.HasValue
+            )
             {
                 _resourceEconomyProjection ??= new ResourceProductionQueries(
                     _game
                 ).CaptureOperatingEconomy(_game.GetFactionByOwnerInstanceID(owner));
-                economy = _resourceEconomyProjection.GetOperatingEconomy(excluded);
+                if (includeOutput)
+                {
+                    var complete = _resourceEconomyProjection.GetOperatingEconomy(excluded);
+                    economy = (
+                        complete.MaintenanceHeadroom,
+                        (complete.RawOutputPerTick, complete.RefinedOutputPerTick)
+                    );
+                }
+                else
+                    economy = (_resourceEconomyProjection.GetMaintenanceHeadroom(excluded), null);
                 _resourceEconomyCache[key] = economy;
             }
             return economy;
@@ -784,6 +829,10 @@ namespace Rebellion.AI
             int targetCount
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetReclaimableInfrastructureSpace),
+                subjectType: typeof(AIStrategicPlan)
+            );
             int currentCount = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
             int maximumTarget = Math.Min(targetCount, planet?.EnergyCapacity ?? 0);
             for (int candidate = maximumTarget; candidate > currentCount; candidate--)
@@ -1076,6 +1125,10 @@ namespace Rebellion.AI
             IReadOnlyDictionary<string, Dictionary<BuildingType, int>> selectedBuildings
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPrimaryInfrastructureProgress),
+                subjectType: typeof(AIStrategicPlan)
+            );
             int preferred = GetInfrastructureHubTargets(buildingType).FirstOrDefault();
             List<Planet> candidates = planets
                 .Where(planet => !planet.IsDestroyed && planet.IsColonized)
@@ -1356,6 +1409,10 @@ namespace Rebellion.AI
         /// <returns>The required shield-generator count.</returns>
         public int GetPlanetaryShieldTarget(Planet planet, bool plannedInfrastructure = false)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPlanetaryShieldTarget),
+                subjectType: typeof(AIStrategicPlan)
+            );
             if (
                 _game?.Config == null
                 || planet?.IsDestroyed != false
@@ -1442,6 +1499,10 @@ namespace Rebellion.AI
             int plannedInfrastructureCount = 0
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetConstructionSpace),
+                subjectType: typeof(AIStrategicPlan)
+            );
             if (
                 _game?.Config == null
                 || planet?.IsDestroyed != false
@@ -1822,6 +1883,10 @@ namespace Rebellion.AI
         /// <param name="assessment">The cached faction assessment.</param>
         public AIStrategicPlan(GameRoot game, AIAssessment assessment)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                "Constructor",
+                subjectType: typeof(AIStrategicPlan)
+            );
             _game = game;
             _assessment = assessment;
             if (_game?.Config == null)

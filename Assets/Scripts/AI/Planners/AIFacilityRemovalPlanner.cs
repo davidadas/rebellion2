@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -19,6 +20,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Facility-retirement proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFacilityRemovalPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (
                 context?.Assessment == null

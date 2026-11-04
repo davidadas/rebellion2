@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay.GameEvents
 {
@@ -28,6 +29,10 @@ namespace Rebellion.Gameplay.GameEvents
         /// <returns>The results produced by activated events.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(GameEventTickProcessor)
+            );
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 

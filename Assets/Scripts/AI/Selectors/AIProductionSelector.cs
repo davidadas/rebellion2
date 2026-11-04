@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Selectors
 {
@@ -72,6 +73,11 @@ namespace Rebellion.AI.Selectors
             out AIMaintenanceRecoveryProposal selectedProposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryResolve),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             selectedProposal = proposal;
             if (!proposal.CanSelect(context))
                 return false;
@@ -163,6 +169,11 @@ namespace Rebellion.AI.Selectors
         /// <param name="unit">The retiring unit.</param>
         private void ReserveAffectedDefense(AITurnContext context, IManufacturable unit)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ReserveAffectedDefense),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             Planet planet = unit.GetParentOfType<Planet>();
             bool affectsDefense =
                 planet != null
@@ -242,6 +253,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the proposal is valid and nonconflicting.</returns>
         internal bool TrySelect(AITurnContext context, AIFacilityRemovalProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TrySelect),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             List<AISelectionReservation> reservations = GetReservations(proposal);
             IReadOnlyList<Building> resources =
                 proposal != null && proposal.ResourceHubType != BuildingType.None
@@ -285,6 +301,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the proposal is valid and nonconflicting.</returns>
         internal bool TrySelect(AITurnContext context, AIHeadquartersRelocationProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TrySelect),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             List<AISelectionReservation> reservations = GetReservations(proposal);
             if (!_selectionState.CanReserve(reservations) || proposal?.CanSelect(context) != true)
                 return false;
@@ -312,6 +333,11 @@ namespace Rebellion.AI.Selectors
             out AIManufactureProposal selectedProposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryResolve),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (proposal.CapitalShipChoices.Count > 0)
             {
                 AIProductionDemand remaining = _selectionState.GetRemainingFleetDemand(
@@ -373,6 +399,11 @@ namespace Rebellion.AI.Selectors
             out AIManufactureProposal next
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryCreateNextProductionProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             next = null;
             if (request.Demand.Kind == AIProductionDemandKind.ConstructionFacility)
             {
@@ -466,6 +497,11 @@ namespace Rebellion.AI.Selectors
             AIProposal selectedProposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ScoreResolved),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (
                 selectedProposal is AIManufactureProposal selectedManufactureProposal
                 && !ReferenceEquals(selectedProposal, proposal)
@@ -481,6 +517,10 @@ namespace Rebellion.AI.Selectors
         /// <param name="proposal">The accepted manufacturing action.</param>
         internal void Reserve(AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Reserve),
+                subjectType: typeof(AIProductionSelector)
+            );
             _selectionState.Reserve(GetReservations(proposal));
             ReserveProducerCapacity(proposal);
             ReserveDestinationEnergy(proposal);
@@ -506,6 +546,11 @@ namespace Rebellion.AI.Selectors
         /// <param name="proposal">The accepted manufacturing action.</param>
         internal void Reserve(AITurnContext context, AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Reserve),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             List<Building> resources = GetResourceRetirementUnion(proposal);
             int resourceCost = context.StrategicPlan.GetResourceReclamationMaintenanceCost(
                 resources
@@ -531,6 +576,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the action can reserve its maintenance cost.</returns>
         internal bool CanReserve(AITurnContext context, AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReserve),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             return _selectionState.CanReserve(GetReservations(proposal, shareConstruction: true))
                 && (proposal.IsContinuation || !WouldExceedMaintenanceHeadroom(context, proposal))
                 && CanFundResourceRetirements(context, proposal)
@@ -548,6 +598,11 @@ namespace Rebellion.AI.Selectors
             IList<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(OrderFleetProduction),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (context?.FleetProductionPriorities.Count is null or 0)
                 return;
 
@@ -594,6 +649,11 @@ namespace Rebellion.AI.Selectors
             IEnumerable<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(OrderInfrastructureProduction),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             List<AIProposal> ordered = proposals.ToList();
             Dictionary<string, (BuildingType NextType, double Completion)> development = new(
                 StringComparer.Ordinal
@@ -705,6 +765,11 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReserveIdleShipyardCapacity),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (proposal?.Demand?.UsesIdleShipyardCapacity != true)
                 return true;
 
@@ -728,6 +793,11 @@ namespace Rebellion.AI.Selectors
             out AIManufactureProposal selectedProposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryResolveProducer),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             selectedProposal = proposal;
             return proposal.GetManufacturingCount() > 0 && CanSelect(context, proposal);
         }
@@ -740,6 +810,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when its claims and production resources are available.</returns>
         private bool CanSelect(AITurnContext context, AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanSelect),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             return proposal?.CanSelect(context) == true
                 && CanReplaceCurrentOrder(context, proposal)
                 && FillsUncommittedFleetNeed(context, proposal)
@@ -759,6 +834,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the incoming work outranks the current order.</returns>
         private bool CanReplaceCurrentOrder(AITurnContext context, AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReplaceCurrentOrder),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             IManufacturable current = proposal.CurrentOrder;
             if (current == null || proposal.IsContinuation)
                 return true;
@@ -793,6 +873,11 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FillsUncommittedFleetNeed),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             AIProductionDemand demand = proposal.Demand;
             if (
                 demand?.Kind != AIProductionDemandKind.FleetCapitalShip
@@ -812,6 +897,11 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the facility fits its declared target and preserves the destination role.</returns>
         private bool CanReserveFacilityRole(AITurnContext context, AIManufactureProposal proposal)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReserveFacilityRole),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (
                 proposal?.IsProductionFacilityExpansion != true
                 || proposal.Destination is not Planet destination
@@ -971,6 +1061,11 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetAvailableDestinationEnergy),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (proposal.IsContinuation)
                 return int.MaxValue;
             if (
@@ -1075,6 +1170,11 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(WouldExceedMaintenanceHeadroom),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             if (proposal.Demand?.RestoresMaintenanceCapacity == true)
                 return false;
 
@@ -1104,6 +1204,11 @@ namespace Rebellion.AI.Selectors
             AIManufactureProposal proposal
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanFundResourceRetirements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionSelector)
+            );
             List<Building> resources = GetResourceRetirementUnion(proposal);
             return resources.Count == 0
                 || context.StrategicPlan.CanFundResourceReclamation(

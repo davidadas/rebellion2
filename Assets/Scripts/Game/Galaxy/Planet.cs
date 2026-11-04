@@ -1482,25 +1482,68 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(Planet))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            List<Fleet> fleets = _fleets;
+            for (int index = 0; index < fleets.Count; index++)
+                collector.Add(fleets[index]);
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                collector.Add(officers[index]);
+            List<Mission> missions = _missions;
+            for (int index = 0; index < missions.Count; index++)
+                collector.Add(missions[index]);
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                collector.Add(regiments[index]);
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                collector.Add(specialForces[index]);
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                collector.Add(starfighters[index]);
+            List<Building> buildings = _buildings;
+            for (int index = 0; index < buildings.Count; index++)
+                collector.Add(buildings[index]);
+        }
+
+        /// <summary>
         /// Gets the child nodes of the planet.
         /// </summary>
         /// <returns>An enumerable of child nodes.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            foreach (Fleet fleet in _fleets)
-                yield return fleet;
-            foreach (Officer officer in _officers)
-                yield return officer;
-            foreach (Mission mission in _missions)
-                yield return mission;
-            foreach (Regiment regiment in _regiments)
-                yield return regiment;
-            foreach (SpecialForces unit in _specialForces)
-                yield return unit;
-            foreach (Starfighter fighter in _starfighters)
-                yield return fighter;
-            foreach (Building building in _buildings)
-                yield return building;
+            List<Fleet> fleets = _fleets;
+            for (int index = 0; index < fleets.Count; index++)
+                yield return fleets[index];
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                yield return officers[index];
+            List<Mission> missions = _missions;
+            for (int index = 0; index < missions.Count; index++)
+                yield return missions[index];
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                yield return regiments[index];
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                yield return specialForces[index];
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                yield return starfighters[index];
+            List<Building> buildings = _buildings;
+            for (int index = 0; index < buildings.Count; index++)
+                yield return buildings[index];
         }
     }
 }

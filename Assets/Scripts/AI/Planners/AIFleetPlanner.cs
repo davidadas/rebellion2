@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -25,6 +26,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Fleet proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
 
             if (context?.Game == null || context.Faction == null)
@@ -96,6 +102,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddOfficerCommandProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (context.OfficerCommands == null)
                 return;
             foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
@@ -124,6 +135,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Fleet-defense proposals generated for the faction.</returns>
         private List<AIProposal> PlanDefense(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(PlanDefense),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Game == null || context.Faction == null)
                 return proposals;
@@ -144,6 +160,11 @@ namespace Rebellion.AI.Planners
             ICollection<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddHeadquartersDefenseProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet headquarters = context.Assessment.OwnedPlanets.FirstOrDefault(
                 context.Assessment.IsFactionHeadquarters
             );
@@ -204,6 +225,11 @@ namespace Rebellion.AI.Planners
             Fleet headquartersDefense
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetDefenseProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             HashSet<Fleet> assignedFleets = new HashSet<Fleet>();
             if (headquartersDefense != null)
                 assignedFleets.Add(headquartersDefense);
@@ -243,6 +269,11 @@ namespace Rebellion.AI.Planners
             ISet<Fleet> assignedFleets
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindPlanetDefenseFleet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
                     !assignedFleets.Contains(fleet)
@@ -278,6 +309,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet is available for defense.</returns>
         private static bool CanAssignPlanetDefense(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanAssignPlanetDefense),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (
                 fleet?.RoleType != FleetRoleType.Battle
                 || fleet.Movement != null
@@ -311,6 +347,11 @@ namespace Rebellion.AI.Planners
             int requiredDefense
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindHeadquartersDefenseFleet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             List<Fleet> candidates = context
                 .Assessment.OwnedFleets.Where(fleet =>
                     CanAssignHeadquartersDefense(context, fleet, headquarters)
@@ -348,6 +389,11 @@ namespace Rebellion.AI.Planners
             Planet headquarters
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanAssignHeadquartersDefense),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return fleet?.RoleType == FleetRoleType.Battle
                 && fleet.Order == null
                 && fleet.Movement == null
@@ -373,6 +419,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when a matching defense order exists.</returns>
         private static bool HasDefenseOrder(AITurnContext context, Planet targetPlanet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasDefenseOrder),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return context.Assessment.OwnedFleets.Any(fleet =>
                 fleet.Order?.OrderType == FleetOrderType.Defend
                 && fleet.Order.TargetPlanetId == targetPlanet.InstanceID
@@ -411,6 +462,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             FleetOrder order = fleet.Order;
             Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
 
@@ -658,6 +714,11 @@ namespace Rebellion.AI.Planners
             Planet currentPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetEvacuationDestination),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return AIFleetEvacuationProposal.IsRequired(context, fleet, currentPlanet)
                 ? AIFleetMovement.FindNearestSafeOwnedPlanet(context, fleet, currentPlanet)
                 : null;
@@ -676,6 +737,11 @@ namespace Rebellion.AI.Planners
             Planet currentPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetReinforcementRedirectionDestination),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return AIFleetReinforcementRedirectionProposal.IsRequired(context, fleet, currentPlanet)
                 ? AIFleetReinforcementRedirectionProposal.FindDestination(context, currentPlanet)
                 : null;
@@ -691,6 +757,11 @@ namespace Rebellion.AI.Planners
             IReadOnlyList<Planet>
         > GetUnexploredOuterRimSystems(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetUnexploredOuterRimSystems),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return context
                 .Assessment.UnexploredPlanets.Where(planet =>
                     planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
@@ -725,6 +796,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddColonizationCampaignProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (!CanStartColonizationOrder(context, fleet))
                 return false;
 
@@ -756,6 +832,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddExistingColonizationCampaignProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (fleet.Movement != null || fleet.HasWaypoints() || fleet.IsInCombat)
                 return;
 
@@ -808,6 +889,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddRetargetAttackOrderProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet currentTarget = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
             string campaignSystemId = context.Assessment.GetPlanetSystemId(currentTarget);
             bool addedProposal = false;
@@ -846,6 +932,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet can be retargeted.</returns>
         private bool CanRetargetAttackOrder(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanRetargetAttackOrder),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return fleet?.Order?.OrderType == FleetOrderType.Attack
                 && fleet.Order.Status is FleetOrderStatus.Building or FleetOrderStatus.Staging
                 && fleet.Movement == null
@@ -869,6 +960,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddExistingColonizationOrderProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
             if (IsKnownColonizationTarget(targetPlanet))
             {
@@ -901,6 +997,11 @@ namespace Rebellion.AI.Planners
             string systemId
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindNextColonizationTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (string.IsNullOrEmpty(systemId))
                 return null;
 
@@ -922,6 +1023,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The colony target utility score.</returns>
         private static double ScoreColonizationTarget(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ScoreColonizationTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (context?.Game?.Config == null || planet == null)
                 return 0;
 
@@ -957,6 +1063,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddExistingDefenseProposal),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
             if (context.Assessment.IsFactionHeadquarters(targetPlanet))
                 return;
@@ -1001,6 +1112,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddAttackOrderProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet[] targets = context
                 .Assessment.EnemyPlanets.Where(target =>
                     !activeAttackTargetIds.Contains(target.InstanceID)
@@ -1033,6 +1149,11 @@ namespace Rebellion.AI.Planners
             bool requireReady = false
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(SelectAttack),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             AIFleetAttackProposal selected = null;
             IReadOnlyList<Fleet> availableFleets = fleets.ToList();
             IEnumerable<(Planet Target, double UpperBound)> orderedTargets = targets
@@ -1103,6 +1224,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Planet identifiers with active attack orders.</returns>
         private HashSet<string> GetActiveAttackTargetIds(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetActiveAttackTargetIds),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return context
                 .Assessment.AttackOrderedFleets.Select(fleet => fleet.Order?.TargetPlanetId)
                 .Where(targetPlanetId => !string.IsNullOrEmpty(targetPlanetId))
@@ -1117,6 +1243,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet is available to attack.</returns>
         private bool CanStartAttackOrder(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanStartAttackOrder),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (fleet.RoleType != FleetRoleType.Battle)
                 return false;
 
@@ -1141,6 +1272,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddColonizationOrderProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (!CanStartColonizationOrder(context, fleet))
                 return;
 
@@ -1170,6 +1306,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet is available to colonize.</returns>
         private bool CanStartColonizationOrder(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanStartColonizationOrder),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return fleet.RoleType == FleetRoleType.Colonization
                 && fleet.Movement == null
                 && !fleet.IsInCombat
@@ -1195,6 +1336,11 @@ namespace Rebellion.AI.Planners
             Fleet ignoredFleet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasColonizationFleetForTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return context.Assessment.ColonizationOrderedFleets.Any(fleet =>
                 fleet != ignoredFleet
                 && fleet.Order?.TargetPlanetId == targetPlanet.InstanceID
@@ -1237,6 +1383,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddCapitalShipTransferProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Fleet targetFleet = GetCapitalShipTransferTargetFleet(context);
             Planet targetPlanet = GetReinforcementTargetPlanet(context, targetFleet);
             if (!CanReceiveCapitalShipTransfer(context, targetFleet, targetPlanet))
@@ -1264,6 +1415,11 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetRegimentTransferProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             List<Regiment> spareRegiments = context
                 .Assessment.OwnedPlanets.SelectMany(planet =>
                     GetAvailablePlanetRegiments(context, planet)
@@ -1295,6 +1451,11 @@ namespace Rebellion.AI.Planners
                 AITransferUnitProposal best = null;
                 double bestScore = 0;
                 int bestTransitTicks = int.MaxValue;
+                (
+                    bool WaitingForRegiments,
+                    int RequiredCount,
+                    int RequiredStrength
+                )? targetRequirements = null;
                 foreach (Regiment regiment in spareRegiments)
                 {
                     Planet sourcePlanet = regiment.GetParentOfType<Planet>();
@@ -1316,7 +1477,12 @@ namespace Rebellion.AI.Planners
                     )
                         continue;
 
-                    double score = _scorer.Score(context, proposal);
+                    double score = _scorer.Score(
+                        context,
+                        proposal,
+                        transitTicks,
+                        ref targetRequirements
+                    );
                     if (
                         score > bestScore
                         || score == bestScore
@@ -1352,6 +1518,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when a planet regiment can fill an unmet ground requirement.</returns>
         private bool CanReceivePlanetRegimentTransfer(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReceivePlanetRegimentTransfer),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Planet targetPlanet = GetReinforcementTargetPlanet(context, fleet);
             if (
                 fleet == null
@@ -1380,6 +1551,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The regiments available for transfer.</returns>
         private int GetAvailablePlanetRegimentCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetAvailablePlanetRegimentCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (planet == null || context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0)
                 return 0;
 
@@ -1412,6 +1588,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The regiments available for transfer.</returns>
         private List<Regiment> GetAvailablePlanetRegiments(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetAvailablePlanetRegiments),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             int availableCount = GetAvailablePlanetRegimentCount(context, planet);
             return context
                 .Assessment.GetPlanetRegiments(planet)
@@ -1442,6 +1623,11 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddCapitalShipTransferProposals),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (!CanDonateCapitalShip(context, sourceFleet, targetFleet))
                 return;
 
@@ -1483,6 +1669,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The fleet target planet, or null.</returns>
         private Planet GetReinforcementTargetPlanet(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetReinforcementTargetPlanet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             string targetPlanetId = fleet?.Order?.TargetPlanetId;
             if (string.IsNullOrEmpty(targetPlanetId))
                 return null;
@@ -1520,6 +1711,11 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReceiveCapitalShipTransfer),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (
                 targetFleet == null
                 || targetPlanet == null
@@ -1546,6 +1742,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The target fleet, or null.</returns>
         private Fleet GetCapitalShipTransferTargetFleet(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetCapitalShipTransferTargetFleet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             Fleet defenseFleet = context
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.Order?.OrderType == FleetOrderType.Defend
@@ -1604,6 +1805,11 @@ namespace Rebellion.AI.Planners
             Fleet targetFleet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanDonateCapitalShip),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (
                 sourceFleet == null
                 || targetFleet == null
@@ -1651,6 +1857,11 @@ namespace Rebellion.AI.Planners
             CapitalShip capitalShip
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanTransferCapitalShip),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (
                 capitalShip == null
                 || capitalShip.Movement != null
@@ -1693,6 +1904,11 @@ namespace Rebellion.AI.Planners
             CapitalShip capitalShip
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetCapitalShipTransferValue),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             return _scorer.ScoreTransferReadinessGain(
                 context,
                 targetFleet,
@@ -1710,6 +1926,11 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet can make immediate progress.</returns>
         private static bool CanAdvance(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanAdvance),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             if (context.CanUseMilitaryBombardment(fleet, targetPlanet))
                 return true;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
@@ -1738,6 +1959,11 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(IsBlockedByShields),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             return demand?.IsAssaultBlockedByShields == true
                 && context.Assessment.GetFleetBombardmentStrength(fleet)
@@ -1757,6 +1983,11 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(WillMeetAttackDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIFleetPlanner)
+            );
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, true);
 

@@ -10,6 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -38,6 +39,11 @@ namespace Rebellion.AI
         private readonly Dictionary<(string Planet, int Ticks), int> _reachableHostileStrengths =
             new();
         private IReadOnlyList<(Fleet Fleet, Planet Planet, int Age)> _knownHostileFleetLocations;
+
+        private readonly Dictionary<
+            Officer,
+            (bool Available, int Arrival, int Remaining, int Age)
+        > _observedOfficerMissionWindows = new();
 
         private readonly HashSet<string> _heldOfficerIDs;
         private readonly GameRoot _game;
@@ -69,6 +75,10 @@ namespace Rebellion.AI
             string,
             int
         >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (Planet Planet, BuildingType Type),
+            int
+        > _planetBuildingTypeCounts = new();
         private readonly Dictionary<string, IReadOnlyList<Building>> _planetBuildings =
             new Dictionary<string, IReadOnlyList<Building>>(StringComparer.Ordinal);
         private readonly Dictionary<string, IReadOnlyList<Regiment>> _planetRegiments =
@@ -354,6 +364,10 @@ namespace Rebellion.AI
             int Fighters
         ) GetHostileOrbitalCapabilitiesAtArrival(Planet planet, int arrivalTicks)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetHostileOrbitalCapabilitiesAtArrival),
+                subjectType: typeof(AIAssessment)
+            );
             if (planet == null)
                 return default;
             int age = GetPlanetIntelAge(planet);
@@ -503,6 +517,10 @@ namespace Rebellion.AI
             MovementQueries movement
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetReachableHostileFleetStrength),
+                subjectType: typeof(AIAssessment)
+            );
             if (planet == null || movement == null || arrivalTicks == int.MaxValue)
                 return 0;
             var key = (Planet: planet.InstanceID, Ticks: Math.Max(0, arrivalTicks));
@@ -774,6 +792,10 @@ namespace Rebellion.AI
             IReadOnlyDictionary<string, OfficerAIBehavior> officerBehaviors = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                "Constructor",
+                subjectType: typeof(AIAssessment)
+            );
             _game = game;
             _faction = faction;
             _factionView = factionView;
@@ -1703,6 +1725,26 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the total count of one building type during this assessment, including unfinished buildings.
+        /// </summary>
+        /// <param name="planet">The planet whose attached buildings are counted.</param>
+        /// <param name="buildingType">The building category to count.</param>
+        /// <returns>The cached total building count, or zero for a missing planet.</returns>
+        public int GetPlanetBuildingCount(Planet planet, BuildingType buildingType)
+        {
+            if (planet == null)
+                return 0;
+
+            var key = (planet, buildingType);
+            if (!_planetBuildingTypeCounts.TryGetValue(key, out int count))
+            {
+                count = planet.GetTotalBuildingTypeCount(buildingType);
+                _planetBuildingTypeCounts.Add(key, count);
+            }
+            return count;
+        }
+
+        /// <summary>
         /// Returns the buildings attached to a planet during this AI turn.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1951,12 +1993,28 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
-            double? observed = queries.GetMissionSuccessUpperBound(
-                context,
-                GetMissionDetectors,
-                minimumOverallProbability,
-                departure
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanMeetOperationalMissionSuccess),
+                subjectType: typeof(AIAssessment)
             );
+            Mission mission;
+            bool valid =
+                departure == null
+                    ? queries.TryCreateMission(context, out mission)
+                    : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+            if (!valid)
+                return false;
+
+            double? observed = queries
+                .GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    GetMissionDetectors,
+                    includePersonnelLoss: false,
+                    minimumOverallProbability: minimumOverallProbability,
+                    reusableDecoys: true
+                )
+                ?.OverallSuccessProbability;
             if (!observed.HasValue)
                 return false;
             Planet target = context.Location as Planet;
@@ -1967,12 +2025,16 @@ namespace Rebellion.AI
                 0,
                 (minimumOverallProbability - (1d - weight) * observed.Value) / weight
             );
-            double? baseline = queries.GetMissionSuccessUpperBound(
-                context,
-                GetMissionDefenseBaselineSource(context, target),
-                baselineFloor,
-                departure
-            );
+            double? baseline = queries
+                .GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    GetMissionDefenseBaselineSource(context, target),
+                    includePersonnelLoss: false,
+                    minimumOverallProbability: baselineFloor,
+                    reusableDecoys: true
+                )
+                ?.OverallSuccessProbability;
             return baseline.HasValue
                 && Math.Min(
                     observed.Value,
@@ -1997,6 +2059,10 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetCachedMissionOdds),
+                subjectType: typeof(AIAssessment)
+            );
             if (context == null)
                 return null;
             var key = (
@@ -2094,24 +2160,49 @@ namespace Rebellion.AI
             Planet departure = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMissionOddsCore),
+                subjectType: typeof(AIAssessment)
+            );
+            Mission mission;
+            bool valid =
+                departure == null
+                    ? queries.TryCreateMission(context, out mission)
+                    : queries.TryCreateMissionAfterArrival(context, departure, out mission);
+            if (!valid)
+                return null;
+
             MissionOdds observed;
             if (departure != null)
-                observed = queries.GetMissionOddsAfterArrival(
+                observed = queries.GetMissionOddsForValidatedMission(
                     context,
-                    departure,
+                    mission,
                     GetMissionDetectors,
                     !operationalOnly,
                     minimumOverallProbability
                 );
             else if (operationalOnly)
-                queries.TryGetOperationalMissionOdds(
+            {
+                observed = queries.GetMissionOddsForValidatedMission(
                     context,
+                    mission,
                     GetMissionDetectors,
-                    minimumOverallProbability,
-                    out observed
+                    includePersonnelLoss: false,
+                    minimumOverallProbability: minimumOverallProbability
                 );
+                if (
+                    observed != null
+                    && !(observed.OverallSuccessProbability >= minimumOverallProbability)
+                )
+                    observed = null;
+            }
             else
-                observed = queries.GetMissionOdds(context, GetMissionDetectors);
+                observed = queries.GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    GetMissionDetectors,
+                    includePersonnelLoss: true
+                );
             if (
                 observed == null
                 || context?.Location is not Planet target
@@ -2126,9 +2217,9 @@ namespace Rebellion.AI
             MissionOdds baseline;
             if (departure != null)
             {
-                baseline = queries.GetMissionOddsAfterArrival(
+                baseline = queries.GetMissionOddsForValidatedMission(
                     context,
-                    departure,
+                    mission,
                     baselineSource,
                     !operationalOnly,
                     Math.Max(
@@ -2149,18 +2240,23 @@ namespace Rebellion.AI
                     (minimumOverallProbability - (1d - weight) * observed.OverallSuccessProbability)
                         / weight
                 );
-                if (
-                    !queries.TryGetOperationalMissionOdds(
-                        context,
-                        baselineSource,
-                        baselineFloor,
-                        out baseline
-                    )
-                )
+                baseline = queries.GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    baselineSource,
+                    includePersonnelLoss: false,
+                    minimumOverallProbability: baselineFloor
+                );
+                if (baseline == null || !(baseline.OverallSuccessProbability >= baselineFloor))
                     return null;
             }
             else
-                baseline = queries.GetMissionOdds(context, baselineSource);
+                baseline = queries.GetMissionOddsForValidatedMission(
+                    context,
+                    mission,
+                    baselineSource,
+                    includePersonnelLoss: true
+                );
             if (baseline == null)
                 return observed;
 
@@ -2217,6 +2313,10 @@ namespace Rebellion.AI
             IReadOnlyList<ISceneNode>
         > GetMissionDefenseBaselineSource(MissionContext context, Planet target)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMissionDefenseBaselineSource),
+                subjectType: typeof(AIAssessment)
+            );
             string enemyId =
                 context.SelectedTarget?.GetOwnerInstanceID() ?? target.GetOwnerInstanceID();
             Func<
@@ -2246,6 +2346,10 @@ namespace Rebellion.AI
         /// </summary>
         private void BuildMissionDefenseBaselines()
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildMissionDefenseBaselines),
+                subjectType: typeof(AIAssessment)
+            );
             if (_game == null)
                 return;
             MissionQueries queries = new(_game, GetMissionDetectorCommander);
@@ -2422,6 +2526,10 @@ namespace Rebellion.AI
             ISceneNode objective
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMissionDetectors),
+                subjectType: typeof(AIAssessment)
+            );
             if (
                 mission == null
                 || planet == null
@@ -2460,6 +2568,10 @@ namespace Rebellion.AI
         /// </summary>
         private void BuildMissionDetectorIndex()
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildMissionDetectorIndex),
+                subjectType: typeof(AIAssessment)
+            );
             if (_factionView == null)
                 return;
 
@@ -3547,6 +3659,10 @@ namespace Rebellion.AI
             bool projected = false
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPlanetaryAssaultSuccessPercent),
+                subjectType: typeof(AIAssessment)
+            );
             if (fleet == null || targetPlanet == null || _game?.Config == null)
                 return 0;
 
@@ -4293,9 +4409,9 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Estimates an observed officer's arrival and mission departure from dated transit intelligence.
+        /// Reuses arrival and mission-departure estimates for fixed intelligence while reading authoritative officers afresh.
         /// </summary>
-        /// <param name="officer">The officer copied from the faction's mission intelligence.</param>
+        /// <param name="officer">The copied intelligence officer or authoritative officer to inspect.</param>
         /// <param name="arrivalTicks">Ticks until the officer is expected to arrive, or zero after arrival.</param>
         /// <param name="remainingTicks">Ticks until the observed mission is expected to finish.</param>
         /// <param name="reportAge">Ticks since the dated mission observation.</param>
@@ -4307,6 +4423,73 @@ namespace Rebellion.AI
             out int reportAge
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetOfficerMissionWindow),
+                subjectType: typeof(AIAssessment)
+            );
+            if (officer == null)
+            {
+                arrivalTicks = 0;
+                remainingTicks = 0;
+                reportAge = 0;
+                return false;
+            }
+            if (
+                ReferenceEquals(
+                    _game?.GetSceneNodeByInstanceID<Officer>(
+                        officer.PeekInstanceID(),
+                        includeDisabled: true
+                    ),
+                    officer
+                )
+            )
+                return ComputeOfficerMissionWindow(
+                    officer,
+                    out arrivalTicks,
+                    out remainingTicks,
+                    out reportAge
+                );
+
+            if (!_observedOfficerMissionWindows.TryGetValue(officer, out var window))
+            {
+                bool available = ComputeOfficerMissionWindow(
+                    officer,
+                    out arrivalTicks,
+                    out remainingTicks,
+                    out reportAge
+                );
+                _observedOfficerMissionWindows.Add(
+                    officer,
+                    (available, arrivalTicks, remainingTicks, reportAge)
+                );
+                return available;
+            }
+
+            arrivalTicks = window.Arrival;
+            remainingTicks = window.Remaining;
+            reportAge = window.Age;
+            return window.Available;
+        }
+
+        /// <summary>
+        /// Calculates the mission window from the officer's current observed or authoritative state.
+        /// </summary>
+        /// <param name="officer">The officer whose mission and dated movement are inspected.</param>
+        /// <param name="arrivalTicks">Ticks until the officer is expected to arrive, or zero after arrival.</param>
+        /// <param name="remainingTicks">Ticks until the observed mission is expected to finish.</param>
+        /// <param name="reportAge">Ticks since the dated mission observation.</param>
+        /// <returns>True when dated transit and unfinished mission progress define a usable window.</returns>
+        private bool ComputeOfficerMissionWindow(
+            Officer officer,
+            out int arrivalTicks,
+            out int remainingTicks,
+            out int reportAge
+        )
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ComputeOfficerMissionWindow),
+                subjectType: typeof(AIAssessment)
+            );
             arrivalTicks = 0;
             remainingTicks = 0;
             reportAge = 0;

@@ -8,6 +8,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
@@ -32,6 +33,9 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
+        [ThreadStatic]
+        private static HashSet<ISceneNode> _ownedUnitQueryBuffer;
+
         private FactionSettings _settings = new FactionSettings();
 
         [PersistableMember(Name = "NextFleetNumber")]
@@ -316,6 +320,10 @@ namespace Rebellion.Game.Factions
         public List<T> GetOwnedUnitsByType<T>(bool includeDisabled = false)
             where T : ISceneNode
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOwnedUnitsByType),
+                subjectType: typeof(Faction)
+            );
             if (_ownedEntities.TryGetValue(typeof(T), out List<ISceneNode> exactMatches))
             {
                 return exactMatches
@@ -324,13 +332,26 @@ namespace Rebellion.Game.Factions
                     .ToList();
             }
 
-            return _ownedEntities
-                .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
-                .SelectMany(entry => entry.Value)
-                .Distinct()
-                .Where(node => includeDisabled || node.IsActive())
-                .Cast<T>()
-                .ToList();
+            HashSet<ISceneNode> seen = _ownedUnitQueryBuffer ?? new();
+            _ownedUnitQueryBuffer = null;
+            try
+            {
+                List<T> matches = new();
+                foreach (var entry in _ownedEntities)
+                {
+                    if (!typeof(T).IsAssignableFrom(entry.Key))
+                        continue;
+                    foreach (ISceneNode node in entry.Value)
+                        if (seen.Add(node) && (includeDisabled || node.IsActive()))
+                            matches.Add((T)node);
+                }
+                return matches;
+            }
+            finally
+            {
+                seen.Clear();
+                _ownedUnitQueryBuffer ??= seen;
+            }
         }
 
         /// <summary>

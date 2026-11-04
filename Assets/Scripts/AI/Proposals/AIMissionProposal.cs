@@ -6,6 +6,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Proposals
 {
@@ -23,7 +24,8 @@ namespace Rebellion.AI.Proposals
                 : base.Priority;
 
         // Cached Identity.
-        private readonly string _sortKey;
+        private readonly string[] _sortKeyParts;
+        private string _sortKey;
 
         // Participants.
         public IReadOnlyList<IMissionParticipant> Participants { get; }
@@ -90,7 +92,7 @@ namespace Rebellion.AI.Proposals
             Discipline = discipline;
             IsTeamFinal = teamIsFinal;
             IsInterception = isInterception;
-            _sortKey = BuildSortKey();
+            _sortKeyParts = BuildSortKeyParts();
         }
 
         /// <summary>
@@ -99,17 +101,17 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
-            return _sortKey;
+            return _sortKey ??= string.Join(":", _sortKeyParts);
         }
 
         /// <summary>
-        /// Builds the immutable proposal identity used for deterministic ordering.
+        /// Captures immutable identity components before deterministic ordering is requested.
         /// </summary>
-        /// <returns>The stable proposal sort key.</returns>
-        private string BuildSortKey()
+        /// <returns>The eagerly evaluated proposal identity components.</returns>
+        private string[] BuildSortKeyParts()
         {
-            return string.Join(
-                ":",
+            return new[]
+            {
                 "mission",
                 MissionTypeID,
                 TargetPlanet?.InstanceID,
@@ -117,8 +119,8 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget?.InstanceID,
                 Discipline?.ToString(),
                 string.Join(",", MainParticipants.Select(participant => participant.InstanceID)),
-                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID))
-            );
+                string.Join(",", DecoyParticipants.Select(participant => participant.InstanceID)),
+            };
         }
 
         /// <summary>
@@ -128,21 +130,38 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsStillValid()
-                && Participants
-                    .OfType<SpecialForces>()
-                    .All(unit =>
-                        context.CanAssignManufacturingInterceptor(unit, MissionTypeID, TargetPlanet)
-                    )
-                && (
-                    MissionTypeID != MissionTypeIDs.Assassination
-                    || context.Assessment.IsHostileMissionAtOwnedPlanet(TargetPlanet, TargetOfficer)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanSelect),
+                subjectType: typeof(AIMissionProposal)
+            );
+            if (!IsStillValid())
+                return false;
+
+            foreach (IMissionParticipant participant in Participants)
+            {
+                if (
+                    participant is SpecialForces unit
+                    && !context.CanAssignManufacturingInterceptor(unit, MissionTypeID, TargetPlanet)
                 )
-                && Participants
-                    .OfType<Officer>()
-                    .All(officer =>
-                        context.Assessment.CanAssignOfficerToPlanet(officer, TargetPlanet)
-                    );
+                    return false;
+            }
+
+            if (
+                MissionTypeID == MissionTypeIDs.Assassination
+                && !context.Assessment.IsHostileMissionAtOwnedPlanet(TargetPlanet, TargetOfficer)
+            )
+                return false;
+
+            foreach (IMissionParticipant participant in Participants)
+            {
+                if (
+                    participant is Officer officer
+                    && !context.Assessment.CanAssignOfficerToPlanet(officer, TargetPlanet)
+                )
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -152,6 +171,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission can still be created.</returns>
         public override bool CanExecute(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanExecute),
+                subjectType: typeof(AIMissionProposal)
+            );
             if (context?.Missions == null || !CanSelect(context))
                 return false;
             if (
@@ -258,17 +281,28 @@ namespace Rebellion.AI.Proposals
         /// <returns>The slowest participant's outbound travel duration.</returns>
         internal long EstimateOutboundTravelTicks(AITurnContext context, Planet departure = null)
         {
-            return Participants.Max(participant =>
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateOutboundTravelTicks),
+                subjectType: typeof(AIMissionProposal)
+            );
+            if (Participants.Count == 0)
+                return Enumerable.Empty<int>().Max();
+
+            int maximum = int.MinValue;
+            foreach (IMissionParticipant participant in Participants)
             {
                 Planet origin = departure ?? participant.GetParentOfType<Planet>();
-                return origin.InstanceID == TargetPlanet.InstanceID
-                    ? 0
-                    : context.MovementQueries.CalculateTransitTicks(
-                        participant,
-                        origin,
-                        TargetPlanet
-                    );
-            });
+                int transitTicks =
+                    origin.InstanceID == TargetPlanet.InstanceID
+                        ? 0
+                        : context.MovementQueries.CalculateTransitTicks(
+                            participant,
+                            origin,
+                            TargetPlanet
+                        );
+                maximum = System.Math.Max(maximum, transitTicks);
+            }
+            return maximum;
         }
 
         /// <summary>
@@ -279,6 +313,13 @@ namespace Rebellion.AI.Proposals
         /// <returns>The time until every surviving participant could return.</returns>
         internal long EstimateReturnTravelTicks(AITurnContext context, Planet departure = null)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateReturnTravelTicks),
+                subjectType: typeof(AIMissionProposal)
+            );
+            if (departure != null)
+                return EstimateGroupReturnTravelTicks(context, Participants, departure);
+
             int returning = 0;
             foreach (
                 IGrouping<string, IMissionParticipant> group in Participants.GroupBy(participant =>
@@ -286,23 +327,46 @@ namespace Rebellion.AI.Proposals
                 )
             )
             {
-                int percent = MovementQueries.GetPersonnelGroupTravelTimePercent(
-                    group.Cast<IMovable>().ToArray()
+                returning = System.Math.Max(
+                    returning,
+                    EstimateGroupReturnTravelTicks(context, group.Cast<IMovable>().ToArray())
                 );
-                foreach (IMissionParticipant participant in group)
-                {
-                    Planet destination = departure ?? participant.GetParentOfType<Planet>();
-                    if (destination.InstanceID != TargetPlanet.InstanceID)
-                        returning = System.Math.Max(
-                            returning,
-                            context.MovementQueries.CalculateTransitTicks(
-                                participant,
-                                TargetPlanet,
-                                destination,
-                                percent
-                            )
-                        );
-                }
+            }
+            return returning;
+        }
+
+        /// <summary>
+        /// Estimates one movement group's return using its shared personnel travel modifier.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="participants">The complete movement group in participant order.</param>
+        /// <param name="departure">An optional common return planet instead of each participant's current planet.</param>
+        /// <returns>The slowest participant's return duration, or zero for an empty group.</returns>
+        private int EstimateGroupReturnTravelTicks(
+            AITurnContext context,
+            IReadOnlyList<IMovable> participants,
+            Planet departure = null
+        )
+        {
+            if (participants.Count == 0)
+                return 0;
+
+            string departureId = departure?.InstanceID;
+            int percent = MovementQueries.GetPersonnelGroupTravelTimePercent(participants);
+            int returning = 0;
+            foreach (IMovable participant in participants)
+            {
+                Planet destination = departure ?? participant.GetParentOfType<Planet>();
+                if ((departureId ?? destination.InstanceID) != TargetPlanet.InstanceID)
+                    returning = System.Math.Max(
+                        returning,
+                        context.MovementQueries.CalculateTransitTicks(
+                            participant,
+                            TargetPlanet,
+                            destination,
+                            percent
+                        )
+                    );
             }
             return returning;
         }
@@ -324,6 +388,10 @@ namespace Rebellion.AI.Proposals
             long preparationTicks = 0
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetInterceptionTiming),
+                subjectType: typeof(AIMissionProposal)
+            );
             waitingTicks = 0;
             confidence = 0;
             if (

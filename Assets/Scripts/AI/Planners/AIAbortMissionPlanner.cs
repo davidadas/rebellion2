@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -17,6 +18,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Mission-abort proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAbortMissionPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Assessment == null || context.Missions == null)
                 return proposals;

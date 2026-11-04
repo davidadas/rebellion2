@@ -458,15 +458,34 @@ namespace Rebellion.AI
             int additionalRegimentCapacity = 0
         )
         {
+            return GetAttackReadiness(fleet, planet, out _, additionalRegimentCapacity);
+        }
+
+        /// <summary>
+        /// Separates launch readiness while returning the ready army requirements measured during this evaluation.
+        /// </summary>
+        /// <param name="fleet">The attacking fleet.</param>
+        /// <param name="planet">The faction-visible attack target.</param>
+        /// <param name="readyRequirements">Receives ready regiment requirements after naval readiness passes, or the default tuple otherwise.</param>
+        /// <param name="additionalRegimentCapacity">Additional ready troop berths to assess without changing the fleet.</param>
+        /// <returns>Whether the fleet and its regiments satisfy their launch requirements.</returns>
+        internal (bool FleetReady, bool RegimentsReady) GetAttackReadiness(
+            Fleet fleet,
+            Planet planet,
+            out (int Count, int Strength) readyRequirements,
+            int additionalRegimentCapacity = 0
+        )
+        {
+            readyRequirements = default;
             AIAttackDemand demand = GetAttackDemand(planet, fleet);
             if (!HasAttackNavalReadiness(fleet, planet, demand))
                 return default;
 
-            var required = GetAttackRegimentRequirements(planet, fleet);
+            readyRequirements = GetAttackRegimentRequirements(planet, fleet);
             if (
                 (long)Assessment.GetReadyFleetRegimentCapacity(fleet)
                     + Math.Max(0, additionalRegimentCapacity)
-                < required.Count
+                < readyRequirements.Count
             )
                 return default;
 
@@ -475,8 +494,9 @@ namespace Rebellion.AI
                 return default;
 
             bool regimentsReady =
-                Assessment.GetReadyFleetRegimentCount(fleet) >= required.Count
-                && Assessment.GetReadyFleetRegimentAttackStrength(fleet) >= required.Strength
+                Assessment.GetReadyFleetRegimentCount(fleet) >= readyRequirements.Count
+                && Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= readyRequirements.Strength
                 && (
                     canBombard
                     || Assessment.GetPlanetaryAssaultSuccessPercent(fleet, planet)

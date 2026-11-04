@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
@@ -21,6 +22,11 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         public void Generate(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Generate),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             IReadOnlyList<AIAttackDemand> demands = BuildDemands(context);
             context?.SetAttackDemands(demands);
             if (context?.Assessment == null || context.MovementQueries == null)
@@ -87,6 +93,11 @@ namespace Rebellion.AI.Demands
             AIAttackDemand demand
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildArrivalDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             Planet origin = context.Assessment.GetFleetPlanet(fleet);
             if (origin == null)
                 return demand;
@@ -189,6 +200,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The generated attack demands.</returns>
         internal IReadOnlyList<AIAttackDemand> BuildDemands(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             if (
                 context?.Game?.Config == null
                 || context.Faction == null
@@ -223,6 +239,11 @@ namespace Rebellion.AI.Demands
             int orbitalStrength
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             GameConfig config = context.Game.Config;
             AIAssessment assessment = context.Assessment;
             var shields = assessment.GetPlanetaryShieldsAtArrival(
@@ -284,6 +305,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required carried-starfighter capacity.</returns>
         private static int GetStarfighterCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetStarfighterCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             int fleetCount = context.Assessment.GetStrongestHostileFleetStarfighterCount(planet);
             int planetaryCount = context.Assessment.GetHostilePlanetaryStarfighterCount(planet);
             return IntegerMath.ScaleByPercent(
@@ -300,6 +326,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required fighter-target strength.</returns>
         private static int GetStarfighterFirepower(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetStarfighterFirepower),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             int fleetFirepower =
                 context.Assessment.GetStrongestHostileFleetFirepowerAgainstStarfighters(planet);
             int planetaryFirepower =
@@ -322,6 +353,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required capital-ship firepower.</returns>
         private static int GetCapitalShipFirepower(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetCapitalShipFirepower),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             return IntegerMath.ScaleByPercent(
                 context.Assessment.GetStrongestHostileFleetFirepowerAgainstCapitalShips(planet),
                 context.Game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent
@@ -336,6 +372,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required orbital strength.</returns>
         private static int GetOrbitalStrength(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOrbitalStrength),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             int hostileStrength =
                 context.Assessment.GetStrongestHostileFleetCombatValueAgainstCapitalShips(planet)
                 + planet
@@ -366,6 +407,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True for recently observed non-headquarters targets without known interdiction.</returns>
         private static bool IsLocalAttackTarget(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(IsLocalAttackTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             AIAssessment assessment = context.Assessment;
             int age = Math.Max(
@@ -404,6 +450,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when a nearby fleet may assess a limited bombardment opportunity.</returns>
         private static bool IsSupportOpportunityTarget(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(IsSupportOpportunityTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             AIAssessment assessment = context.Assessment;
             return config.SupportOpportunityMinimumAttackStrengthPercent < 100
@@ -424,6 +475,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when an occupation force is unnecessary after one full support penalty.</returns>
         private static bool HasBombardmentSupportReserve(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasBombardmentSupportReserve),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             long penalty = GetBombardmentSupportPenalty(context, planet);
             long projectedSupport = context.Assessment.GetFactionPopularSupport(planet) + penalty;
             long opposingSupport = planet.GetPopularSupport(planet.GetOwnerInstanceID()) - penalty;
@@ -438,6 +494,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The configured direct and sector support penalties combined.</returns>
         private static long GetBombardmentSupportPenalty(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBombardmentSupportPenalty),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             Faction faction = context.Faction;
             int sectorPenalty =
                 planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
@@ -455,6 +516,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required combat percentage.</returns>
         private static int GetIntelReservePercent(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetIntelReservePercent),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             int maximumAge = Math.Max(
                 1,
                 context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
@@ -488,6 +554,11 @@ namespace Rebellion.AI.Demands
             int? popularSupport = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOccupationRegimentCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIAttackDemandGenerator)
+            );
             Faction faction = context.Faction;
             GameConfig config = context.Game.Config;
             int minimum = Math.Max(

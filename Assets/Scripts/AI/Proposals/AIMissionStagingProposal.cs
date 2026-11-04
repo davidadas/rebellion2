@@ -6,6 +6,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Proposals
 {
@@ -75,25 +76,57 @@ namespace Rebellion.AI.Proposals
             Mission = mission;
             Destination = destination;
             ExpectedMissionCount = Math.Max(1, expectedMissionCount);
-            IsWaiting =
-                isWaiting
-                || mission?.IsInterception == true
-                    && mission.Participants.All(participant =>
-                        participant.GetParent()?.InstanceID == destination?.InstanceID
-                    );
-            Participants =
-                mission
-                    ?.Participants.Where(participant =>
+            bool waiting = isWaiting;
+            if (!waiting && mission?.IsInterception == true)
+            {
+                waiting = true;
+                foreach (IMissionParticipant participant in mission.Participants)
+                {
+                    if (participant.GetParent()?.InstanceID != destination?.InstanceID)
                     {
-                        if (mission.IsInterception)
-                            return participant.GetTransitMovement() == null;
-                        if (isWaiting)
-                            return participant.GetParent()?.InstanceID == destination?.InstanceID
-                                && participant.GetTransitMovement() == null;
-                        return participant.GetParent()?.InstanceID != destination?.InstanceID;
-                    })
-                    .ToArray()
-                ?? Array.Empty<IMissionParticipant>();
+                        waiting = false;
+                        break;
+                    }
+                }
+            }
+            IsWaiting = waiting;
+
+            if (mission == null)
+            {
+                Participants = Array.Empty<IMissionParticipant>();
+                return;
+            }
+            int participantCount = mission.Participants.Count;
+            if (participantCount == 0)
+            {
+                Participants = Array.Empty<IMissionParticipant>();
+                return;
+            }
+
+            IMissionParticipant[] participants = new IMissionParticipant[participantCount];
+            int retainedCount = 0;
+            foreach (IMissionParticipant participant in mission.Participants)
+            {
+                bool include;
+                if (mission.IsInterception)
+                    include = participant.GetTransitMovement() == null;
+                else if (isWaiting)
+                    include =
+                        participant.GetParent()?.InstanceID == destination?.InstanceID
+                        && participant.GetTransitMovement() == null;
+                else
+                    include = participant.GetParent()?.InstanceID != destination?.InstanceID;
+                if (include)
+                    participants[retainedCount++] = participant;
+            }
+            if (retainedCount == 0)
+                Participants = Array.Empty<IMissionParticipant>();
+            else
+            {
+                if (retainedCount < participantCount)
+                    Array.Resize(ref participants, retainedCount);
+                Participants = participants;
+            }
         }
 
         /// <summary>
@@ -112,6 +145,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when relocation is valid and improves the mission round trip.</returns>
         public override bool CanSelect(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanSelect),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             return Participants.Count > 0 && TryGetTravelTicks(context, out _);
         }
 
@@ -122,6 +159,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when the normal movement command remains available and valid.</returns>
         public override bool CanExecute(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanExecute),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             return context?.Movement != null && CanSelect(context);
         }
 
@@ -131,6 +172,10 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current faction turn.</param>
         public override void Execute(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Execute),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             if (!CanExecute(context) || IsWaiting)
                 return;
 
@@ -161,21 +206,27 @@ namespace Rebellion.AI.Proposals
             out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetTravelTicks),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             travel = default;
             if (context?.Assessment == null || Mission == null)
                 return false;
-            if (
-                Mission
-                    .Participants.OfType<Officer>()
-                    .Any(officer =>
+            foreach (IMissionParticipant participant in Mission.Participants)
+            {
+                if (
+                    participant is Officer officer
+                    && (
                         !context.Assessment.CanAssignOfficerToPlanet(officer, Destination)
                         || !context.Assessment.CanAssignOfficerToPlanet(
                             officer,
                             Mission.TargetPlanet
                         )
                     )
-            )
-                return false;
+                )
+                    return false;
+            }
             if (Mission.IsInterception)
                 return TryGetInterceptionTravelTicks(context, out travel);
             if (
@@ -192,29 +243,29 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            foreach (IMissionParticipant participant in Participants)
-                if (
-                    !context.MovementQueries.CanUseSafeRelocationDestination(
-                        participant,
-                        Destination,
-                        participant.GetParentOfType<Planet>(),
-                        allowOriginPlanet: true
-                    )
+            if (
+                !context.MovementQueries.CanUseSafeRelocationDestination(
+                    Participants,
+                    Destination,
+                    allowOriginPlanet: true
                 )
-                    return false;
+            )
+                return false;
 
             if (IsWaiting)
             {
-                if (
-                    WaitingTicks <= 0
-                    || Mission.Participants.Any(participant =>
+                if (WaitingTicks <= 0)
+                    return false;
+                foreach (IMissionParticipant participant in Mission.Participants)
+                {
+                    if (
                         participant.GetParent() is not Planet planet
                         || planet.InstanceID != Destination.InstanceID
                         || participant.IsOnMission()
                         || participant.GetOwnerInstanceID() != context.Faction.InstanceID
                     )
-                )
-                    return false;
+                        return false;
+                }
                 long waitingOutboundTicks = Mission.EstimateOutboundTravelTicks(
                     context,
                     Destination
@@ -289,6 +340,10 @@ namespace Rebellion.AI.Proposals
             out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryGetInterceptionTravelTicks),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             travel = default;
             if (
                 context?.MovementQueries == null
@@ -305,6 +360,9 @@ namespace Rebellion.AI.Proposals
                 || targetArrival <= 0
             )
                 return false;
+            long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
+            if (!Mission.TryGetInterceptionTiming(context, outbound, out _, out _))
+                return false;
             int relocation = 0;
             foreach (
                 IGrouping<ISceneNode, IMissionParticipant> group in Participants.GroupBy(
@@ -312,8 +370,9 @@ namespace Rebellion.AI.Proposals
                 )
             )
             {
-                if (
-                    group.Any(participant =>
+                foreach (IMissionParticipant participant in group)
+                {
+                    if (
                         !context.MovementQueries.CanUseSafeRelocationDestination(
                             participant,
                             Destination,
@@ -321,8 +380,8 @@ namespace Rebellion.AI.Proposals
                             allowOriginPlanet: true
                         )
                     )
-                )
-                    return false;
+                        return false;
+                }
                 if (group.Key?.InstanceID == Destination.InstanceID)
                     continue;
                 if (
@@ -336,9 +395,6 @@ namespace Rebellion.AI.Proposals
                     return false;
                 relocation = Math.Max(relocation, ticks);
             }
-            long outbound = Mission.EstimateOutboundTravelTicks(context, Destination);
-            if (relocation > 0 && HasInboundInterceptor(context, outbound))
-                return false;
             if (
                 !Mission.TryGetInterceptionTiming(
                     context,
@@ -348,6 +404,8 @@ namespace Rebellion.AI.Proposals
                     relocation
                 )
             )
+                return false;
+            if (relocation > 0 && HasInboundInterceptor(context, outbound))
                 return false;
             long directTicks = Mission.EstimateTravelTicks(context);
             long returnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
@@ -365,6 +423,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when an equally capable incoming participant can complete the interception.</returns>
         private bool HasInboundInterceptor(AITurnContext context, long outboundTicks)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasInboundInterceptor),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             foreach (
                 IMissionParticipant participant in context.Faction.GetOwnedUnitsByType<IMissionParticipant>()
             )
@@ -400,11 +462,17 @@ namespace Rebellion.AI.Proposals
         /// Estimates comparable travel costs before performing full movement validation.
         /// </summary>
         /// <param name="context">The current faction turn containing the available team.</param>
+        /// <param name="directTicks">The unchanged team's direct round trip already measured in the current synchronous destination search, or null to calculate it.</param>
         /// <returns>The direct, prepared, and local-mission round trips.</returns>
         internal (long DirectTicks, long StagedTicks, long MissionTicks) EstimateTravelTicks(
-            AITurnContext context
+            AITurnContext context,
+            long? directTicks = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateTravelTicks),
+                subjectType: typeof(AIMissionStagingProposal)
+            );
             int relocation = 0;
             foreach (
                 IGrouping<ISceneNode, IMissionParticipant> group in Participants.GroupBy(
@@ -430,11 +498,11 @@ namespace Rebellion.AI.Proposals
                         );
                 }
             }
-            long directTicks = Mission.EstimateTravelTicks(context);
+            long directTravelTicks = directTicks ?? Mission.EstimateTravelTicks(context);
             long outboundTicks = Mission.EstimateOutboundTravelTicks(context, Destination);
             long returnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
             long missionTicks = outboundTicks + returnTicks;
-            return (directTicks, relocation + missionTicks, missionTicks);
+            return (directTravelTicks, relocation + missionTicks, missionTicks);
         }
     }
 }

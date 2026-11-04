@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
@@ -30,6 +31,15 @@ namespace Rebellion.Gameplay
             (Officer Commander, int Detection, bool Orbital)
         > _encounterDefenders;
         private Dictionary<(ISceneNode Scope, Type Type, string Owner), Officer> _commanders;
+        private Dictionary<
+            (Dictionary<int, int> Table, int Score, int Default),
+            int
+        > _probabilityLookupBuffer;
+        private Dictionary<
+            (ISceneNode Detector, Planet Planet),
+            (Officer Commander, int Detection, bool Orbital)
+        > _encounterDefenderBuffer;
+        private Dictionary<(ISceneNode Scope, Type Type, string Owner), Officer> _commanderBuffer;
 
         /// <summary>
         /// Creates mission queries for the supplied game state.
@@ -72,6 +82,10 @@ namespace Rebellion.Gameplay
         /// <returns>True when the mission can be created.</returns>
         public bool CanCreateMission(MissionContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanCreateMission),
+                subjectType: typeof(MissionQueries)
+            );
             MissionContext resolvedContext = ResolveMissionContext(context);
             return resolvedContext != null
                 && _missionFactory.TryCreateMission(resolvedContext, out _);
@@ -85,6 +99,10 @@ namespace Rebellion.Gameplay
         /// <returns>True when the context creates a valid mission.</returns>
         public bool TryCreateMission(MissionContext context, out Mission mission)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryCreateMission),
+                subjectType: typeof(MissionQueries)
+            );
             MissionContext resolvedContext = ResolveMissionContext(context);
             if (resolvedContext == null)
             {
@@ -108,6 +126,10 @@ namespace Rebellion.Gameplay
             out Mission mission
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryCreateMissionAfterArrival),
+                subjectType: typeof(MissionQueries)
+            );
             mission = null;
             MissionContext resolved = ResolveMissionContext(context);
             if (resolved == null || departure?.GetOwnerInstanceID() != resolved.OwnerInstanceId)
@@ -172,6 +194,46 @@ namespace Rebellion.Gameplay
                     projectedMission: mission
                 )
                 : null;
+        }
+
+        /// <summary>
+        /// Evaluates detector odds for a mission validated and created in the current synchronous query.
+        /// </summary>
+        /// <param name="context">The context used to create the mission.</param>
+        /// <param name="mission">The mission created by this query instance for the same current context.</param>
+        /// <param name="observedDetectorSource">Supplies detector candidates from the caller's observed state.</param>
+        /// <param name="includePersonnelLoss">Whether to calculate detailed personnel-loss odds.</param>
+        /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
+        /// <param name="reusableDecoys">Whether decoys may be reused to calculate an optimistic success bound.</param>
+        /// <returns>The calculated mission odds, or null when the requested floor is unreachable.</returns>
+        internal MissionOdds GetMissionOddsForValidatedMission(
+            MissionContext context,
+            Mission mission,
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                ISceneNode,
+                IReadOnlyList<ISceneNode>
+            > observedDetectorSource,
+            bool includePersonnelLoss,
+            double minimumOverallProbability = 0,
+            bool reusableDecoys = false
+        )
+        {
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+            if (observedDetectorSource == null)
+                throw new ArgumentNullException(nameof(observedDetectorSource));
+
+            return GetMissionOddsCore(
+                context,
+                observedDetectorSource,
+                includePersonnelLoss,
+                minimumOverallProbability,
+                reusableDecoys,
+                projectedMission: mission
+            );
         }
 
         /// <summary>
@@ -429,12 +491,22 @@ namespace Rebellion.Gameplay
             Mission projectedMission = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMissionOddsCore),
+                subjectType: typeof(MissionQueries)
+            );
             var previousLookups = _probabilityLookups;
             var previousDefenders = _encounterDefenders;
             var previousCommanders = _commanders;
-            _probabilityLookups = new();
-            _encounterDefenders = new();
-            _commanders = new();
+            var probabilityLookups = _probabilityLookupBuffer ?? new();
+            _probabilityLookupBuffer = null;
+            _probabilityLookups = probabilityLookups;
+            var encounterDefenders = _encounterDefenderBuffer ?? new();
+            _encounterDefenderBuffer = null;
+            _encounterDefenders = encounterDefenders;
+            var commanders = _commanderBuffer ?? new();
+            _commanderBuffer = null;
+            _commanders = commanders;
             try
             {
                 Mission mission = projectedMission;
@@ -495,6 +567,12 @@ namespace Rebellion.Gameplay
                 _probabilityLookups = previousLookups;
                 _encounterDefenders = previousDefenders;
                 _commanders = previousCommanders;
+                probabilityLookups.Clear();
+                encounterDefenders.Clear();
+                commanders.Clear();
+                _probabilityLookupBuffer ??= probabilityLookups;
+                _encounterDefenderBuffer ??= encounterDefenders;
+                _commanderBuffer ??= commanders;
             }
         }
 
@@ -529,29 +607,39 @@ namespace Rebellion.Gameplay
             IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateFoilProbability),
+                subjectType: typeof(MissionQueries)
+            );
             if (mission == null || target == null)
                 return 0;
 
-            BigInteger availableDecoys =
-                allDecoys.Count == 0
-                    ? BigInteger.Zero
-                    : (BigInteger.One << allDecoys.Count) - BigInteger.One;
-            Dictionary<BigInteger, double> survivingByDecoyPool = new Dictionary<BigInteger, double>
+            double reusableSurvival = 1d;
+            Dictionary<BigInteger, double> survivingByDecoyPool = null;
+            if (!reusableDecoys)
             {
-                { availableDecoys, 1d },
-            };
+                BigInteger availableDecoys =
+                    allDecoys.Count == 0
+                        ? BigInteger.Zero
+                        : (BigInteger.One << allDecoys.Count) - BigInteger.One;
+                survivingByDecoyPool = new Dictionary<BigInteger, double>
+                {
+                    { availableDecoys, 1d },
+                };
+            }
 
-            List<Planet> origins = mainParticipants
-                .Concat(allDecoys)
-                .Select(participant => participant.GetParentOfType<Planet>())
-                .Where(planet => planet != null)
-                .Distinct()
-                .ToList();
+            List<Planet> origins = new List<Planet>();
+            HashSet<Planet> seenOrigins = new HashSet<Planet>();
+            AddMissionOrigins(mainParticipants, seenOrigins, origins);
+            AddMissionOrigins(allDecoys, seenOrigins, origins);
             foreach (Planet origin in origins)
             {
-                IReadOnlyList<IMissionParticipant> departingParticipants = mainParticipants
-                    .Where(participant => participant.GetParentOfType<Planet>() == origin)
-                    .ToList();
+                List<IMissionParticipant> departingParticipants = new List<IMissionParticipant>();
+                foreach (IMissionParticipant participant in mainParticipants)
+                {
+                    if (participant.GetParentOfType<Planet>() == origin)
+                        departingParticipants.Add(participant);
+                }
                 if (
                     !ApplyFoilEncounterOdds(
                         mission,
@@ -563,6 +651,7 @@ namespace Rebellion.Gameplay
                         GetDecoyIndexesAtPlanet(allDecoys, origin),
                         observedDetectorSource,
                         ref survivingByDecoyPool,
+                        ref reusableSurvival,
                         minimumOverallProbability,
                         objectiveSuccessProbability,
                         reusableDecoys
@@ -580,6 +669,7 @@ namespace Rebellion.Gameplay
                         GetDecoyIndexesAtPlanet(allDecoys, origin),
                         observedDetectorSource,
                         ref survivingByDecoyPool,
+                        ref reusableSurvival,
                         minimumOverallProbability,
                         objectiveSuccessProbability,
                         reusableDecoys
@@ -600,6 +690,7 @@ namespace Rebellion.Gameplay
                     allDecoyIndexes,
                     observedDetectorSource,
                     ref survivingByDecoyPool,
+                    ref reusableSurvival,
                     minimumOverallProbability,
                     objectiveSuccessProbability,
                     reusableDecoys
@@ -617,6 +708,7 @@ namespace Rebellion.Gameplay
                     allDecoyIndexes,
                     observedDetectorSource,
                     ref survivingByDecoyPool,
+                    ref reusableSurvival,
                     minimumOverallProbability,
                     objectiveSuccessProbability,
                     reusableDecoys
@@ -624,8 +716,35 @@ namespace Rebellion.Gameplay
             )
                 return null;
 
-            double survivalProbability = survivingByDecoyPool.Values.Sum();
+            double survivalProbability;
+            if (reusableDecoys)
+            {
+                survivalProbability = 0d;
+                survivalProbability += reusableSurvival;
+            }
+            else
+                survivalProbability = survivingByDecoyPool.Values.Sum();
             return Math.Clamp((1d - survivalProbability) * 100d, 0, 100);
+        }
+
+        /// <summary>
+        /// Appends first-seen participant origins while preserving the complete roster's order.
+        /// </summary>
+        /// <param name="participants">The ordered, non-null validated roster whose origins are inspected.</param>
+        /// <param name="seenOrigins">The origins already found in this evaluation.</param>
+        /// <param name="origins">The distinct, ordered origins collected so far.</param>
+        private static void AddMissionOrigins(
+            IReadOnlyList<IMissionParticipant> participants,
+            HashSet<Planet> seenOrigins,
+            List<Planet> origins
+        )
+        {
+            foreach (IMissionParticipant participant in participants)
+            {
+                Planet origin = participant.GetParentOfType<Planet>();
+                if (origin != null && seenOrigins.Add(origin))
+                    origins.Add(origin);
+            }
         }
 
         /// <summary>
@@ -640,6 +759,7 @@ namespace Rebellion.Gameplay
         /// <param name="encounterDecoyIndexes">Indexes of decoys present at this encounter.</param>
         /// <param name="observedDetectorSource">Optional observed detector candidates by planet.</param>
         /// <param name="survivingByDecoyPool">No-foil probability by available decoy pool.</param>
+        /// <param name="reusableSurvival">The surviving probability when decoys remain available after every encounter.</param>
         /// <param name="minimumOverallProbability">The required overall success percentage.</param>
         /// <param name="objectiveSuccessProbability">The team's objective success percentage.</param>
         /// <param name="reusableDecoys">Whether decoys may be reused to calculate an optimistic bound.</param>
@@ -660,12 +780,17 @@ namespace Rebellion.Gameplay
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
             ref Dictionary<BigInteger, double> survivingByDecoyPool,
+            ref double reusableSurvival,
             double minimumOverallProbability = 0,
             double objectiveSuccessProbability = 100,
             bool reusableDecoys = false
         )
         {
-            if (survivingByDecoyPool.Count == 0)
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ApplyFoilEncounterOdds),
+                subjectType: typeof(MissionQueries)
+            );
+            if (!reusableDecoys && survivingByDecoyPool.Count == 0)
                 return minimumOverallProbability <= 0;
             if (mainParticipants.Count == 0)
                 return true;
@@ -683,37 +808,49 @@ namespace Rebellion.Gameplay
             int participantScore = GetFoilParticipantScore(mainParticipants);
             if (reusableDecoys)
             {
-                double incoming = survivingByDecoyPool.Values.Sum();
+                double incoming = 0d;
+                incoming += reusableSurvival;
                 double survival = 1d;
                 int modifier = GetFoilChanceModifier(mission);
-                IMissionParticipant[] distinctDecoys = encounterDecoyIndexes
-                    .Select(index => allDecoys[index])
-                    .GroupBy(decoy => decoy.GetEffectiveRating(SkillRating.Espionage))
-                    .Select(group => group.First())
-                    .ToArray();
+                IMissionParticipant[] distinctDecoys = GetFirstDecoysByEspionage(
+                    allDecoys,
+                    encounterDecoyIndexes
+                );
                 foreach (ISceneNode detector in detectors)
                 {
                     Planet defenderPlanet = detector.GetParentOfType<Planet>() ?? planet;
+                    (Officer Commander, int Detection, bool Orbital)? defender = null;
                     double diversion = 0;
                     foreach (IMissionParticipant decoy in distinctDecoys)
-                        diversion = Math.Max(
-                            diversion,
-                            Math.Clamp(
-                                GetDecoyProbability(mission, decoy, detector, defenderPlanet)
-                                    / 100d,
-                                0,
-                                1
-                            )
-                        );
+                    {
+                        int probability;
+                        if (defender.HasValue)
+                        {
+                            probability = GetDecoyProbability(
+                                mission,
+                                decoy,
+                                detector,
+                                defender.Value
+                            );
+                        }
+                        else
+                        {
+                            probability = GetDecoyProbability(
+                                mission,
+                                decoy,
+                                detector,
+                                defenderPlanet,
+                                out defender
+                            );
+                        }
+                        diversion = Math.Max(diversion, Math.Clamp(probability / 100d, 0, 1));
+                    }
+                    var foilDefender = defender ?? GetEncounterDefender(detector, defenderPlanet);
                     double unfoiled =
                         1d
                         - Math.Clamp(
-                            GetFoilProbabilityForScore(
-                                detector,
-                                modifier,
-                                participantScore,
-                                defenderPlanet
-                            ) / 100d,
+                            GetFoilProbabilityForScore(foilDefender, modifier, participantScore)
+                                / 100d,
                             0,
                             1
                         );
@@ -726,8 +863,7 @@ namespace Rebellion.Gameplay
                     )
                         return false;
                 }
-                foreach (BigInteger pool in survivingByDecoyPool.Keys.ToArray())
-                    survivingByDecoyPool[pool] *= survival;
+                reusableSurvival *= survival;
                 return true;
             }
 
@@ -753,27 +889,21 @@ namespace Rebellion.Gameplay
             for (int detectorIndex = 0; detectorIndex < detectors.Count; detectorIndex++)
             {
                 ISceneNode detector = detectors[detectorIndex];
+                Planet defenderPlanet = detector.GetParentOfType<Planet>() ?? planet;
+                var defender = GetEncounterDefender(detector, defenderPlanet);
                 foilSurvivalProbabilities[detectorIndex] =
                     1d
                     - Math.Clamp(
-                        GetFoilProbabilityForScore(
-                            detector,
-                            foilChanceModifier,
-                            participantScore,
-                            detector.GetParentOfType<Planet>() ?? planet
-                        ) / 100d,
+                        GetFoilProbabilityForScore(defender, foilChanceModifier, participantScore)
+                            / 100d,
                         0,
                         1
                     );
                 foreach (int decoyIndex in encounterDecoyIndexes)
                 {
                     diversionProbabilities[decoyIndex, detectorIndex] = Math.Clamp(
-                        GetDecoyProbability(
-                            mission,
-                            allDecoys[decoyIndex],
-                            detector,
-                            detector.GetParentOfType<Planet>() ?? planet
-                        ) / 100d,
+                        GetDecoyProbability(mission, allDecoys[decoyIndex], detector, defender)
+                            / 100d,
                         0,
                         1
                     );
@@ -865,6 +995,10 @@ namespace Rebellion.Gameplay
             double objectiveSuccessProbability
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AccumulateFoilEncounterOdds),
+                subjectType: typeof(MissionQueries)
+            );
             var (pools, remainingPools, selectableCounts) = GetDecoyPoolTransitions(
                 incoming.Keys,
                 allDecoys.Count,
@@ -881,21 +1015,18 @@ namespace Rebellion.Gameplay
             {
                 ISceneNode node = detectors[detector];
                 Planet planet = node.GetParentOfType<Planet>() ?? encounterPlanet;
+                var defender = GetEncounterDefender(node, planet);
                 double survival =
                     1d
                     - Math.Clamp(
-                        GetFoilProbabilityForScore(
-                            node,
-                            foilChanceModifier,
-                            participantScore,
-                            planet
-                        ) / 100d,
+                        GetFoilProbabilityForScore(defender, foilChanceModifier, participantScore)
+                            / 100d,
                         0,
                         1
                     );
                 foreach (int decoy in encounterDecoyIndexes)
                     diversions[decoy] = Math.Clamp(
-                        GetDecoyProbability(mission, allDecoys[decoy], node, planet) / 100d,
+                        GetDecoyProbability(mission, allDecoys[decoy], node, defender) / 100d,
                         0,
                         1
                     );
@@ -956,6 +1087,10 @@ namespace Rebellion.Gameplay
             IReadOnlyList<int> encounterDecoyIndexes
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDecoyPoolTransitions),
+                subjectType: typeof(MissionQueries)
+            );
             List<BigInteger> pools = incoming.ToList();
             Dictionary<BigInteger, int> poolIndexes = new();
             for (int poolIndex = 0; poolIndex < pools.Count; poolIndex++)
@@ -1088,6 +1223,10 @@ namespace Rebellion.Gameplay
             IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateEncounterOdds),
+                subjectType: typeof(MissionQueries)
+            );
             if (mission == null || target == null)
                 return (0, 0);
 
@@ -1235,37 +1374,50 @@ namespace Rebellion.Gameplay
             foreach (ISceneNode detector in detectors)
             {
                 Planet defenderPlanet = detector.GetParentOfType<Planet>() ?? planet;
+                var defender = GetEncounterDefender(detector, defenderPlanet);
                 double noFoil =
                     1d
                     - Math.Clamp(
-                        GetFoilProbabilityForScore(
-                            detector,
-                            foilModifier,
-                            participantScore,
-                            defenderPlanet
-                        ) / 100d,
+                        GetFoilProbabilityForScore(defender, foilModifier, participantScore) / 100d,
                         0,
                         1
                     );
                 double[] diversions = new double[allDecoys.Count];
                 double[] decoyLosses = new double[allDecoys.Count];
+                bool hasEvasionDefender = false;
+                int defenderCombat = 0;
                 foreach (int index in encounterDecoyIndexes)
                 {
                     diversions[index] = Math.Clamp(
-                        GetDecoyProbability(mission, allDecoys[index], detector, defenderPlanet)
-                            / 100d,
+                        GetDecoyProbability(mission, allDecoys[index], detector, defender) / 100d,
                         0,
                         1
                     );
-                    decoyLosses[index] = allDecoys[index] is Officer decoy
-                        ? GetOfficerEncounterLossProbability(mission, decoy, detector)
-                        : 0;
+                    if (allDecoys[index] is Officer decoy)
+                    {
+                        if (!hasEvasionDefender)
+                        {
+                            Officer commander = GetEncounterDefender(
+                                detector,
+                                mission.GetParent() as Planet
+                            ).Commander;
+                            defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+                            hasEvasionDefender = true;
+                        }
+                        decoyLosses[index] = GetOfficerEncounterLossProbability(
+                            decoy,
+                            defenderCombat
+                        );
+                    }
                 }
-                Officer commander = GetEncounterDefender(
-                    detector,
-                    mission.GetParent() as Planet
-                ).Commander;
-                int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+                if (!hasEvasionDefender)
+                {
+                    Officer commander = GetEncounterDefender(
+                        detector,
+                        mission.GetParent() as Planet
+                    ).Commander;
+                    defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+                }
                 int[] evasion = officers
                     .Select(officer =>
                         (int)
@@ -1321,18 +1473,36 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Returns the chance that a confrontation kills or captures one officer.
         /// </summary>
-        /// <param name="mission">The mission whose evasion rules apply.</param>
         /// <param name="officer">The officer exposed to the confrontation.</param>
-        /// <param name="detector">The opposing detector.</param>
+        /// <param name="defenderCombat">The opposing commander's effective Combat rating.</param>
         /// <returns>The probability of death or capture from zero to one.</returns>
-        private double GetOfficerEncounterLossProbability(
-            Mission mission,
-            Officer officer,
-            ISceneNode detector
-        ) =>
+        private double GetOfficerEncounterLossProbability(Officer officer, int defenderCombat) =>
             1d
-            - GetParticipantEvasionProbability(mission, officer, detector)
+            - GetParticipantEvasionProbability(officer, defenderCombat)
                 * (1d - Mission.GetEvasionDeathProbability(officer, _game.Config));
+
+        /// <summary>
+        /// Keeps the first decoy for each effective Espionage rating in encounter order.
+        /// </summary>
+        /// <param name="decoys">The complete validated decoy roster.</param>
+        /// <param name="encounterIndexes">The ordered indexes of decoys present at this encounter.</param>
+        /// <returns>The first representative of each distinct rating, in first-occurrence order.</returns>
+        private static IMissionParticipant[] GetFirstDecoysByEspionage(
+            IReadOnlyList<IMissionParticipant> decoys,
+            IReadOnlyList<int> encounterIndexes
+        )
+        {
+            HashSet<int> seenRatings = new HashSet<int>();
+            List<IMissionParticipant> representatives = new List<IMissionParticipant>();
+            foreach (int index in encounterIndexes)
+            {
+                IMissionParticipant decoy = decoys[index];
+                int rating = decoy.GetEffectiveRating(SkillRating.Espionage);
+                if (seenRatings.Add(rating))
+                    representatives.Add(decoy);
+            }
+            return representatives.ToArray();
+        }
 
         /// <summary>
         /// Returns the indexes of decoys currently stationed at a planet.
@@ -1345,10 +1515,14 @@ namespace Rebellion.Gameplay
             Planet planet
         )
         {
-            return Enumerable
-                .Range(0, decoys.Count)
-                .Where(index => decoys[index].GetParentOfType<Planet>() == planet)
-                .ToList();
+            int count = decoys.Count;
+            List<int> indexes = new List<int>();
+            for (int index = 0; index < count; index++)
+            {
+                if (decoys[index].GetParentOfType<Planet>() == planet)
+                    indexes.Add(index);
+            }
+            return indexes;
         }
 
         /// <summary>
@@ -1517,24 +1691,17 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Returns the chance that a mission participant evades a detector.
         /// </summary>
-        /// <param name="mission">The mission whose evasion rules apply.</param>
         /// <param name="participant">The participant attempting to evade detection.</param>
-        /// <param name="detector">The unit confronting the participant.</param>
+        /// <param name="defenderCombat">The opposing commander's effective Combat rating.</param>
         /// <returns>The evasion probability from zero to one.</returns>
         private double GetParticipantEvasionProbability(
-            Mission mission,
             IMissionParticipant participant,
-            ISceneNode detector
+            int defenderCombat
         )
         {
             if (participant is not Officer && participant is not SpecialForces)
                 return 1d;
 
-            Officer commander = GetEncounterDefender(
-                detector,
-                mission.GetParent() as Planet
-            ).Commander;
-            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
         }
@@ -1565,14 +1732,72 @@ namespace Rebellion.Gameplay
             Planet encounterPlanet = null
         )
         {
+            return GetDecoyProbability(mission, decoy, detector, encounterPlanet, out _);
+        }
+
+        /// <summary>
+        /// Returns one decoy's diversion probability and the defender inputs resolved for the encounter.
+        /// </summary>
+        /// <param name="mission">The mission assigning the decoy.</param>
+        /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="detector">The detector being diverted.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
+        /// <param name="defender">The resolved defender inputs, or null when the request is invalid.</param>
+        /// <returns>The decoy success probability.</returns>
+        private int GetDecoyProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector,
+            Planet encounterPlanet,
+            out (Officer Commander, int Detection, bool Orbital)? defender
+        )
+        {
+            defender = null;
             if (mission == null || decoy == null || detector == null)
                 return 0;
 
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
-            var defender = GetEncounterDefender(
+            defender = GetEncounterDefender(
                 detector,
                 encounterPlanet ?? mission.GetParent() as Planet
             );
+            return CalculateDecoyProbability(decoy, defender.Value, missionTables);
+        }
+
+        /// <summary>
+        /// Returns one decoy's diversion probability using defender inputs already resolved for the current encounter.
+        /// </summary>
+        /// <param name="mission">The mission assigning the decoy.</param>
+        /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="detector">The detector being diverted.</param>
+        /// <param name="defender">The defender inputs resolved for the current encounter.</param>
+        /// <returns>The decoy success probability.</returns>
+        private int GetDecoyProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector,
+            (Officer Commander, int Detection, bool Orbital) defender
+        )
+        {
+            if (mission == null || decoy == null || detector == null)
+                return 0;
+
+            return CalculateDecoyProbability(decoy, defender, GetMissionTables());
+        }
+
+        /// <summary>
+        /// Applies the configured decoy table to already resolved defender inputs.
+        /// </summary>
+        /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="defender">The defender inputs resolved for the current encounter.</param>
+        /// <param name="missionTables">The configured mission probability tables.</param>
+        /// <returns>The decoy success probability.</returns>
+        private int CalculateDecoyProbability(
+            IMissionParticipant decoy,
+            (Officer Commander, int Detection, bool Orbital) defender,
+            GameConfig.MissionProbabilityTablesConfig missionTables
+        )
+        {
             long score =
                 (long)decoy.GetEffectiveRating(SkillRating.Espionage)
                 - defender.Detection
@@ -1641,8 +1866,28 @@ namespace Rebellion.Gameplay
             Planet encounterPlanet
         )
         {
+            return GetFoilProbabilityForScore(
+                GetEncounterDefender(detector, encounterPlanet),
+                foilChanceModifier,
+                participantScore
+            );
+        }
+
+        /// <summary>
+        /// Resolves foiling from one unchanged team's score and already resolved defender inputs.
+        /// </summary>
+        /// <param name="defender">The defender inputs resolved for the current encounter.</param>
+        /// <param name="foilChanceModifier">The mission owner's percentage-point adjustment.</param>
+        /// <param name="participantScore">The main team's concealment contribution.</param>
+        /// <returns>The configured, adjusted foiling percentage.</returns>
+        private int GetFoilProbabilityForScore(
+            (Officer Commander, int Detection, bool Orbital) defender,
+            int foilChanceModifier,
+            int participantScore
+        )
+        {
             int score = IntegerMath.SaturateToInt(
-                (long)participantScore - GetMissionDetectorStrength(detector, encounterPlanet)
+                (long)participantScore - GetMissionDetectorStrength(defender)
             );
             int probability = LookupProbability(GetMissionTables().Foil, score);
             return Math.Clamp(probability + foilChanceModifier, 0, 100);
@@ -1669,7 +1914,18 @@ namespace Rebellion.Gameplay
         /// <returns>The defender contribution subtracted from a mission team's Espionage rating.</returns>
         internal int GetMissionDetectorStrength(ISceneNode detector, Planet planet = null)
         {
-            var defender = GetEncounterDefender(detector, planet);
+            return GetMissionDetectorStrength(GetEncounterDefender(detector, planet));
+        }
+
+        /// <summary>
+        /// Returns the effective foiling strength from already resolved defender inputs.
+        /// </summary>
+        /// <param name="defender">The defender inputs resolved for the current encounter.</param>
+        /// <returns>The defender contribution subtracted from a mission team's Espionage rating.</returns>
+        private int GetMissionDetectorStrength(
+            (Officer Commander, int Detection, bool Orbital) defender
+        )
+        {
             return IntegerMath.SaturateToInt(
                 (long)defender.Detection
                     + GetScaledCommanderEspionage(
@@ -1690,6 +1946,10 @@ namespace Rebellion.Gameplay
             Planet planet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetEncounterDefender),
+                subjectType: typeof(MissionQueries)
+            );
             var key = (detector, planet);
             if (_encounterDefenders != null && _encounterDefenders.TryGetValue(key, out var cached))
                 return cached;
@@ -1711,6 +1971,10 @@ namespace Rebellion.Gameplay
         /// <returns>The eligible defending commander, or null.</returns>
         private Officer GetEncounterCommander(ISceneNode detector, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetEncounterCommander),
+                subjectType: typeof(MissionQueries)
+            );
             Planet resolvedPlanet = planet ?? detector?.GetParentOfType<Planet>();
             ISceneNode scope = detector?.GetParentOfType<Fleet>();
             scope ??= resolvedPlanet;

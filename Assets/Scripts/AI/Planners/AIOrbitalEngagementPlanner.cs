@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -18,6 +19,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Orbital-engagement proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Plan),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIOrbitalEngagementPlanner)
+            );
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Game == null || context.Faction == null)
                 return proposals;
@@ -43,6 +49,11 @@ namespace Rebellion.AI.Planners
             ICollection<AIProposal> proposals
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddExistingEngagements),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIOrbitalEngagementPlanner)
+            );
             foreach (Fleet fleet in context.Assessment.EngagementOrderedFleets)
             {
                 Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
@@ -95,6 +106,11 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetTargets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIOrbitalEngagementPlanner)
+            );
             if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 

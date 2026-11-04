@@ -803,19 +803,50 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(CapitalShip))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                collector.Add(officers[index]);
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                collector.Add(starfighters[index]);
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                collector.Add(regiments[index]);
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                collector.Add(specialForces[index]);
+        }
+
+        /// <summary>
         /// Returns the ship's carried units and officers.
         /// </summary>
         /// <returns>The children carried by this ship.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            foreach (Officer officer in _officers)
-                yield return officer;
-            foreach (Starfighter fighter in _starfighters)
-                yield return fighter;
-            foreach (Regiment regiment in _regiments)
-                yield return regiment;
-            foreach (SpecialForces unit in _specialForces)
-                yield return unit;
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                yield return officers[index];
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                yield return starfighters[index];
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                yield return regiments[index];
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                yield return specialForces[index];
         }
     }
 }

@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -42,6 +43,10 @@ namespace Rebellion.Gameplay
             Planet defendingPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Resolve),
+                subjectType: typeof(PlanetaryAssaultResolver)
+            );
             if (attackingFleets == null)
                 throw new ArgumentNullException(nameof(attackingFleets));
             if (defendingPlanet == null)
@@ -175,6 +180,10 @@ namespace Rebellion.Gameplay
             bool projected = false
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(EstimateSuccessPercent),
+                subjectType: typeof(PlanetaryAssaultResolver)
+            );
             if (fleets?.Any() != true || planet == null || config == null)
                 return 0;
 
@@ -248,6 +257,10 @@ namespace Rebellion.Gameplay
             List<Regiment> destroyedAttackers
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ResolveDefenseFire),
+                subjectType: typeof(PlanetaryAssaultResolver)
+            );
             int initialAttackerCount = attackers.Count;
             foreach (
                 Building facility in planet
@@ -290,6 +303,10 @@ namespace Rebellion.Gameplay
             List<Regiment> destroyedDefenders
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(ResolveGroundCombat),
+                subjectType: typeof(PlanetaryAssaultResolver)
+            );
             int initialDefenderCount = defenders.Count;
             int actualDuels = 0;
             List<AssaultTroop> attackerTurnOrder = GetSurvivingAttackers(
@@ -610,6 +627,10 @@ namespace Rebellion.Gameplay
             int defenderCount
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CalculateGroundSuccessProbability),
+                subjectType: typeof(PlanetaryAssaultResolver)
+            );
             if (defenderCount == 0)
                 return 1;
 

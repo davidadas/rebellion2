@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -37,6 +38,10 @@ namespace Rebellion.Gameplay
             BombardmentType type
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanExecute),
+                subjectType: typeof(BombardmentQueries)
+            );
             if (
                 !TryResolveCommand(
                     fleets,
@@ -67,6 +72,10 @@ namespace Rebellion.Gameplay
             out Planet liveTarget
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(TryResolveCommand),
+                subjectType: typeof(BombardmentQueries)
+            );
             liveFleets = new List<Fleet>();
             liveTarget = string.IsNullOrEmpty(targetPlanet?.InstanceID)
                 ? null
@@ -138,6 +147,10 @@ namespace Rebellion.Gameplay
             GameConfig.BombardmentConfig config
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBombardmentStrength),
+                subjectType: typeof(BombardmentQueries)
+            );
             if (fleets == null || config == null)
                 return 0;
 
@@ -188,6 +201,10 @@ namespace Rebellion.Gameplay
             GameConfig.BombardmentConfig config
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBombardmentStrengthAfterDefenseFire),
+                subjectType: typeof(BombardmentQueries)
+            );
             if (fleets == null || planet == null || config == null)
                 return 0;
             List<Fleet> attackers = fleets.Where(fleet => fleet != null).ToList();
@@ -304,6 +321,10 @@ namespace Rebellion.Gameplay
             GameConfig.BombardmentConfig config
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProjectedBombardmentStrength),
+                subjectType: typeof(BombardmentQueries)
+            );
             if (fleet == null || config == null)
                 return 0;
 

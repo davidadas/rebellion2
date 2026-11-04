@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
@@ -29,6 +30,11 @@ namespace Rebellion.AI.Demands
             List<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddProductionFacilityDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             AddProductionFacilityDemand(
                 context,
@@ -63,6 +69,11 @@ namespace Rebellion.AI.Demands
             List<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddProductionFacilityUpgradeDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (
                 Planet planet in context
                     .Assessment.OwnedPlanets.Where(planet =>
@@ -102,6 +113,11 @@ namespace Rebellion.AI.Demands
             BuildingType buildingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddProductionFacilityUpgradeDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (HasPendingFacility(context, planet, buildingType))
                 return;
 
@@ -187,6 +203,11 @@ namespace Rebellion.AI.Demands
             int baseDemandPercent
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddProductionFacilityDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int desiredFacilityCount = context.StrategicPlan.GetInfrastructureTarget(buildingType);
             int remainingFacilityCount = context.StrategicPlan.GetInfrastructureDeficit(
                 buildingType
@@ -222,6 +243,11 @@ namespace Rebellion.AI.Demands
             BuildingType buildingType
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasPendingFacility),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.GetPlanetBuildings(target)
                 .Any(building =>
@@ -244,6 +270,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetaryStarfighterDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             foreach (
                 Planet planet in context
@@ -294,6 +325,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetaryDefenseDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (
                 Planet planet in context
                     .Assessment.OwnedPlanets.Where(IsUsablePlanet)
@@ -315,6 +351,11 @@ namespace Rebellion.AI.Demands
             Planet planet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddPlanetaryDefenseDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             int availableEnergy = planet.GetAvailableEnergy();
             int shieldTarget = GetPlanetaryShieldCount(context, planet);
@@ -385,6 +426,11 @@ namespace Rebellion.AI.Demands
             bool isInitialShield
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CreateDefenseDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return new AIProductionDemand(
                 AIProductionDemand.CreateId(
                     context.Faction.InstanceID,
@@ -416,6 +462,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddGarrisonDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsUsablePlanet))
             {
                 int targetCount = context.StrategicPlan.GetPlanetaryGarrisonTarget(planet);
@@ -457,6 +508,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required shield-generator count.</returns>
         internal int GetPlanetaryShieldCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPlanetaryShieldCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context?.StrategicPlan?.GetPlanetaryShieldTarget(planet) ?? 0;
         }
 
@@ -468,6 +524,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required weapon-emplacement count.</returns>
         internal int GetPlanetaryWeaponCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPlanetaryWeaponCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context?.StrategicPlan?.GetPlanetaryWeaponTarget(planet) ?? 0;
         }
 
@@ -479,6 +540,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when the planet has at least one production facility.</returns>
         internal bool HasProductionInfrastructure(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasProductionInfrastructure),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context?.Assessment != null
                 && (
                     context.Assessment.GetPlanetProductionFacilityCount(
@@ -504,6 +570,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when shield and weapon requirements are satisfied.</returns>
         private bool HasCompletedStaticDefense(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasCompletedStaticDefense),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int shieldTarget = GetPlanetaryShieldCount(context, planet);
             int shieldCount = 0;
             int weaponCount = 0;
@@ -529,6 +600,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The required starfighter count.</returns>
         private static int GetPlanetaryStarfighterCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPlanetaryStarfighterCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context.StrategicPlan.GetPlanetaryStarfighterTarget(planet);
         }
 
@@ -540,6 +616,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The assigned starfighter count.</returns>
         private static int GetOwnedStarfighterCount(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetOwnedStarfighterCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.GetPlanetStarfighters(planet)
                 .Count(starfighter =>
@@ -563,6 +644,11 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         public void Generate(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(Generate),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (context == null)
                 return;
 
@@ -577,6 +663,11 @@ namespace Rebellion.AI.Demands
         /// <returns>Production requirements generated for this faction.</returns>
         public List<AIProductionDemand> BuildDemands(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(BuildDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             List<AIProductionDemand> requirements = new List<AIProductionDemand>();
 
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
@@ -608,6 +699,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddColonyDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int plannedMines = context.Faction.GetTotalRawMinedResources();
             int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
             foreach (
@@ -679,6 +775,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when the planet has a settled regiment but no colony infrastructure.</returns>
         private static bool RequiresFoundingFacility(AITurnContext context, Planet planet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(RequiresFoundingFacility),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return planet?.IsColonized == false
                 && !planet.IsDestroyed
                 && planet.GetAvailableEnergy() > 0
@@ -701,6 +802,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddResourceDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             if (!NeedsExpansion(context))
                 return;
@@ -770,6 +876,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when economy expansion is required.</returns>
         private static bool NeedsExpansion(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(NeedsExpansion),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context.StrategicPlan.EconomyPlanningRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom < 0
@@ -855,6 +966,11 @@ namespace Rebellion.AI.Demands
             GameConfig.AIInfrastructureConfig config
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetBatchSize),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int availableLanes = context.Assessment.GetAvailableProductionLaneCount(
                 ManufacturingType.Building
             );
@@ -871,6 +987,11 @@ namespace Rebellion.AI.Demands
         /// <param name="demands">The demand list to update.</param>
         private void AddFleetSeedDemands(AITurnContext context, List<AIProductionDemand> demands)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetSeedDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int targetCount = context.StrategicPlan.TargetBattleFleetCount;
             int committedCount = context.Assessment.OwnedFleets.Count(IsCommittedBattleFleet);
             int deficit = targetCount - committedCount;
@@ -917,6 +1038,11 @@ namespace Rebellion.AI.Demands
             List<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddColonizationFleetSeedDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int targetCount = Math.Max(
                 0,
                 context.Game.Config.AI.FleetDeployment.ColonizationFleetTargetCount
@@ -968,6 +1094,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when a colonization fleet has useful work available.</returns>
         private static bool HasColonizationOpportunity(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(HasColonizationOpportunity),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context.Assessment.KnownUncolonizedPlanets.Count > 0
                 || context.Assessment.UnexploredPlanets.Any(planet =>
                     planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
@@ -981,6 +1112,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The unguarded headquarters, or null.</returns>
         private Planet FindUnguardedHeadquarters(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindUnguardedHeadquarters),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedPlanets.Where(planet =>
                     context.Assessment.IsFactionHeadquarters(planet)
@@ -1000,6 +1136,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The assembly planet, or null.</returns>
         private Planet FindFleetAssemblyPlanet(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindFleetAssemblyPlanet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedPlanets.Where(planet => planet.IsColonized && !planet.IsDestroyed)
                 .OrderByDescending(context.Assessment.IsFactionHeadquarters)
@@ -1032,6 +1173,11 @@ namespace Rebellion.AI.Demands
             List<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetReinforcementDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             Fleet defenseFleet = GetPriorityDefenseFleet(context);
             AddFleetDemands(context, demands, defenseFleet);
 
@@ -1068,6 +1214,11 @@ namespace Rebellion.AI.Demands
             IDictionary<Planet, int> availablePlanetRegiments = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (fleet == null)
                 return;
 
@@ -1088,6 +1239,11 @@ namespace Rebellion.AI.Demands
             IReadOnlyList<Fleet> fleets
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddAttackShipDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (Fleet fleet in fleets)
             {
                 AddFleetCapitalShipDemand(context, demands, fleet);
@@ -1109,6 +1265,11 @@ namespace Rebellion.AI.Demands
             IDictionary<Planet, int> availablePlanetRegiments
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddAttackRegimentDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (Fleet fleet in fleets)
             {
                 AddFleetRegimentDemand(context, demands, fleet, availablePlanetRegiments);
@@ -1122,6 +1283,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The priority defense fleet, or null.</returns>
         private Fleet GetPriorityDefenseFleet(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPriorityDefenseFleet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedFleets.Where(fleet => CanReinforceFleet(context, fleet))
                 .Select(fleet => new { Fleet = fleet, Target = GetDefenseTarget(context, fleet) })
@@ -1145,6 +1311,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The ordered attack fleets that can receive reinforcements.</returns>
         private IReadOnlyList<Fleet> GetPriorityAttackFleets(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPriorityAttackFleets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.AttackOrderedFleets.Where(fleet => CanReinforceFleet(context, fleet))
                 .Select(fleet => new
@@ -1179,6 +1350,11 @@ namespace Rebellion.AI.Demands
             Planet target
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProjectedAttackReadiness),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (fleet == null || target == null)
                 return 0;
 
@@ -1223,6 +1399,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The colonization fleet, or null.</returns>
         private IReadOnlyList<Fleet> GetPriorityColonizationFleets(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetPriorityColonizationFleets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.RoleType == FleetRoleType.Colonization
@@ -1242,6 +1423,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The eligible assembly fleets, weakest first.</returns>
         private IReadOnlyList<Fleet> GetFleetAssemblyFleets(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFleetAssemblyFleets),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.RoleType == FleetRoleType.Battle
@@ -1268,6 +1454,11 @@ namespace Rebellion.AI.Demands
             Fleet fleet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetCapitalShipDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
             bool isColonizationFleet = fleet.RoleType == FleetRoleType.Colonization;
             bool isColonizationOrder = fleet.Order?.OrderType == FleetOrderType.Colonize;
@@ -1457,6 +1648,11 @@ namespace Rebellion.AI.Demands
             Planet target
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetFleetLaunchTransportDeficit),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (target == null || fleet.Order?.OrderType != FleetOrderType.Attack)
                 return 0;
 
@@ -1489,6 +1685,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True when an unlocked gravity-well ship is needed.</returns>
         private static bool NeedsInterdictionCapitalShip(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(NeedsInterdictionCapitalShip),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             bool supportsInterdiction =
                 fleet.Order == null
                 || fleet.Order.OrderType is FleetOrderType.Attack or FleetOrderType.Defend;
@@ -1520,6 +1721,11 @@ namespace Rebellion.AI.Demands
             Fleet fleet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetStarfighterDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (fleet.RoleType == FleetRoleType.Colonization)
                 return;
 
@@ -1555,6 +1761,11 @@ namespace Rebellion.AI.Demands
             IDictionary<Planet, int> availablePlanetRegiments = null
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddFleetRegimentDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             Planet assemblyPlanet =
                 availablePlanetRegiments == null ? null : GetRegimentAssemblyPlanet(context, fleet);
             int desiredCount = GetDesiredRegimentCount(context, fleet);
@@ -1610,6 +1821,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The safe assembly planet, or null when planetary supply is unavailable.</returns>
         private Planet GetRegimentAssemblyPlanet(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetRegimentAssemblyPlanet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (
                 fleet?.RoleType != FleetRoleType.Battle
                 || !CanReinforceFleet(context, fleet)
@@ -1646,6 +1862,11 @@ namespace Rebellion.AI.Demands
             AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CreateFleetDemand),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return new AIProductionDemand(
                 AIProductionDemand.CreateId(context.Faction.InstanceID, kind, fleet.InstanceID),
                 kind,
@@ -1678,6 +1899,11 @@ namespace Rebellion.AI.Demands
         /// <returns>True if the fleet can receive reinforcement.</returns>
         private bool CanReinforceFleet(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(CanReinforceFleet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return fleet?.RoleType is FleetRoleType.Battle or FleetRoleType.Colonization
                 && context.StrategicPlan.CanReinforce(fleet)
                 && (
@@ -1694,6 +1920,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The defense target, or null.</returns>
         private Planet GetDefenseTarget(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDefenseTarget),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (fleet?.Order?.OrderType != FleetOrderType.Defend)
                 return null;
 
@@ -1723,6 +1954,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The target starfighter count.</returns>
         private int GetTargetStarfighterCount(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetTargetStarfighterCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             int capacity = fleet.GetStarfighterCapacity();
             return Math.Min(
                 capacity,
@@ -1741,6 +1977,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The desired regiment count.</returns>
         private int GetDesiredRegimentCount(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetDesiredRegimentCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (fleet.Order?.OrderType == FleetOrderType.Defend)
                 return 0;
 
@@ -1801,6 +2042,11 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProjectedRegimentCount),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Count;
         }
 
@@ -1817,6 +2063,11 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetProjectedRegimentStrength),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Strength;
         }
 
@@ -1828,6 +2079,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The attack target planet, or null.</returns>
         private Planet GetAttackTargetPlanet(AITurnContext context, Fleet fleet)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetAttackTargetPlanet),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             string targetPlanetId = fleet.Order?.TargetPlanetId;
             if (
                 fleet.Order?.OrderType != FleetOrderType.Attack
@@ -1853,6 +2109,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddContinuationDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             foreach (Planet producer in context.Assessment.OwnedPlanets)
             foreach (ManufacturingType type in producer.GetManufacturingQueue().Keys)
             {
@@ -2013,6 +2274,11 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> demands
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddSpecialForcesDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             (string espionageRole, int espionageQuantity) = AddManufacturingSpecialForcesDemands(
                 context,
@@ -2136,6 +2402,11 @@ namespace Rebellion.AI.Demands
             int baseDemandPercent
         )
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(AddManufacturingSpecialForcesDemands),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             if (targetCount <= 0 || baseDemandPercent <= 0)
                 return (null, 0);
             SpecialForces template = SelectPreferredSpecialForcesTemplate(
@@ -2193,6 +2464,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The headquarters planet, or null when this policy does not apply.</returns>
         private static Planet GetMobileHeadquarters(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetMobileHeadquarters),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             Planet headquarters = context?.Assessment?.FactionHeadquarters;
             return
                 context?.Faction?.Settings?.Headquarters?.IsMobile == true
@@ -2248,6 +2524,11 @@ namespace Rebellion.AI.Demands
         /// <returns>The selected destination, or null when no owned colony is available.</returns>
         private static Planet FindDestination(AITurnContext context)
         {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(FindDestination),
+                context?.Faction?.PeekInstanceID(),
+                subjectType: typeof(AIProductionDemandGenerator)
+            );
             return context
                 .Assessment.OwnedPlanets.Where(planet => planet.IsColonized && !planet.IsDestroyed)
                 .OrderBy(planet => planet.GetChildren<SpecialForces>().Count)

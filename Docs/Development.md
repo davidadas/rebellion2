@@ -55,6 +55,34 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
 
+## Performance logging
+
+Set `REB2_PERFORMANCE_LOG_PATH` to an absolute output filename before starting Unity or the game.
+Logging is disabled when this environment variable is unset. An enabled session replaces the file
+and writes a JSON-lines header followed by one record per strategic tick segment.
+
+```bash
+REB2_PERFORMANCE_LOG_PATH=/tmp/rebellion2-performance.jsonl /path/to/game
+```
+
+Measurements cover game systems, faction-view creation, AI planning, scoring, selection and
+execution, expensive queries, and individual result callbacks. Each operation records its faction,
+immediate parent, call count, inclusive time, self time, and maximum call time. Inclusive time
+contains child work; self time excludes it. Do not add overlapping inclusive measurements together.
+
+`ActiveMs` counts measured work without coroutine yield gaps. `WallMs` also includes the time
+between those steps, but excludes final report serialization. Combat pauses can split a strategic
+tick into multiple segments with the same tick number. Optional CPU and allocation counters report
+whether the runtime supports them; CPU measures the whole process. `GcMaxGeneration` identifies
+which generation counters the runtime provides.
+
+Output is buffered. Diagnostic runners must call `PerformanceLogger.Flush()` before archiving a
+running session's log. Logging adds overhead, especially to frequently called queries. Use it to
+identify expensive paths and call counts, then measure performance with logging disabled. Recording
+does not add campaign save data or alter gameplay decisions; an output failure disables recording.
+Scene-node queries receive their optional measurements from the tick runner. These measurements
+box their disposable tokens while logging is enabled; disabled logging leaves the callback unset.
+
 ## Content-pack editor and packaging
 
 Windows and Linux builds include `rebellion2-editor` beside `rebellion2`. The macOS editor is a

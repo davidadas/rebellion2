@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -30,6 +31,10 @@ namespace Rebellion.Gameplay
         /// <returns>The smuggling changes produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(SmugglingTickProcessor)
+            );
             List<GameResult> results = new List<GameResult>();
             foreach (
                 Planet planet in game.GetGalaxyMap()

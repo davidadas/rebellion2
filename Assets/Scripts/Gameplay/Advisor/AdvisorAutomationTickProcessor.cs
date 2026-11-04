@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -29,8 +30,19 @@ namespace Rebellion.Gameplay
         /// <returns>No gameplay results.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            using var measurement = PerformanceLogger.Measure(
+                "Game system tick",
+                subjectType: typeof(AdvisorAutomationTickProcessor)
+            );
             foreach (Faction faction in game.GetFactions())
+            {
+                using var factionMeasurement = PerformanceLogger.Measure(
+                    "Faction system tick",
+                    faction?.PeekInstanceID(),
+                    subjectType: typeof(AdvisorAutomationTickProcessor)
+                );
                 _commands.ProcessFaction(faction);
+            }
 
             return Array.Empty<GameResult>();
         }
