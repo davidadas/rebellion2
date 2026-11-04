@@ -359,29 +359,40 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns whether known counterfire leaves enough bombardment to damage military targets.
+        /// Returns whether ready forces can clear military targets and complete the resulting occupation.
         /// </summary>
         /// <param name="fleet">The fleet supplying ready bombardment.</param>
         /// <param name="planet">The faction-visible target.</param>
-        /// <returns>True when a conservative surviving volley exceeds current and expected shields.</returns>
+        /// <returns>True when surviving bombardment penetrates shields and the required occupation force is ready.</returns>
         internal bool CanUseMilitaryBombardment(Fleet fleet, Planet planet)
         {
             if (fleet == null || planet == null || !Assessment.HasBombardmentTargets(planet))
                 return false;
 
+            AIAttackDemand demand = GetAttackDemand(planet, fleet);
+            if (demand == null)
+                return false;
+
+            var required = demand.GetRegimentRequirements(
+                canBombardDefenders: true,
+                Assessment.GetReadyFleetRegimentCapacity(fleet)
+            );
+            if (Assessment.GetReadyFleetRegimentCount(fleet) < required.Count)
+                return false;
+
             int shields = Math.Max(
-                GetAttackDemand(planet, fleet)?.ShieldStrength ?? 0,
+                demand.ShieldStrength,
                 Assessment.GetBombardmentShieldStrength(planet)
             );
             return Assessment.GetBombardmentStrengthAfterDefenseFire(fleet, planet) > shields;
         }
 
         /// <summary>
-        /// Returns whether a fleet can launch a useful military bombardment without waiting for its army.
+        /// Returns whether a fleet can launch bombardment with the force required to secure the target.
         /// </summary>
         /// <param name="fleet">The attacking fleet.</param>
         /// <param name="planet">The faction-visible attack target.</param>
-        /// <returns>True when the naval departure requirements and surviving bombardment are sufficient.</returns>
+        /// <returns>True when naval departure, surviving bombardment, and occupation requirements are satisfied.</returns>
         internal bool CanLaunchBombardment(Fleet fleet, Planet planet)
         {
             return Assessment.GetPlanetOrbitalIntelAge(planet) != int.MaxValue
