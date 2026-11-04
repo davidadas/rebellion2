@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Mathematics;
 
@@ -139,15 +138,9 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            int incomingStrength = context
-                .Assessment.GetHostileFleets(planet)
-                .Where(hostile =>
-                    hostile.Movement != null
-                    && SpaceCombatQueries.IsRetreatBlockedByGravityWell(planet, new[] { hostile })
-                )
-                .Select(context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips)
-                .DefaultIfEmpty()
-                .Max();
+            long incomingStrength = context.Assessment.GetKnownIncomingTrappingFleetStrength(
+                planet
+            );
             if (incomingStrength <= 0)
                 return false;
 

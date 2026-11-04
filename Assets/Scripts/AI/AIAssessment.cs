@@ -3276,6 +3276,77 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Combines observed ready hostile forces at each incoming gravity-well fleet's arrival.
+        /// </summary>
+        /// <param name="planet">The planet whose known approaching forces are evaluated.</param>
+        /// <returns>The strongest same-owner force available at a future trapping arrival.</returns>
+        internal long GetKnownIncomingTrappingFleetStrength(Planet planet)
+        {
+            using var performanceMeasurement = PerformanceLogger.Measure(
+                nameof(GetKnownIncomingTrappingFleetStrength),
+                subjectType: typeof(AIAssessment)
+            );
+            Planet knownPlanet = GetKnownPlanet(planet?.InstanceID);
+            if (knownPlanet == null)
+                return 0;
+
+            List<(string Owner, int ArrivalTicks, int Strength, bool HasGravityWell)> forces =
+                new();
+            foreach (
+                Fleet hostile in knownPlanet
+                    .GetChildren<Fleet>()
+                    .GroupBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
+                    .Select(group => group.Last())
+            )
+            {
+                string owner = hostile.GetOwnerInstanceID();
+                if (string.IsNullOrEmpty(owner) || owner == _faction.InstanceID)
+                    continue;
+
+                int arrivalTicks = 0;
+                if (hostile.Movement is MovementState movement)
+                {
+                    long age = movement
+                        is { IsObservation: true, ObservedAtTick: int observedAtTick }
+                        ? Math.Max(0L, (long)_game.CurrentTick - observedAtTick)
+                        : 0;
+                    long remaining = (long)movement.TransitTicks - movement.TicksElapsed - age;
+                    if (remaining <= 0)
+                        continue;
+                    arrivalTicks = (int)Math.Min(int.MaxValue, remaining);
+                }
+
+                forces.Add(
+                    (
+                        owner,
+                        arrivalTicks,
+                        GetReadyFleetCombatValueAgainstCapitalShips(hostile),
+                        SpaceCombatQueries
+                            .GetActiveCapitalShips(hostile)
+                            .Any(ship => ship.HasGravityWell)
+                    )
+                );
+            }
+
+            long strongest = 0;
+            foreach (var trapping in forces)
+            {
+                if (!trapping.HasGravityWell || trapping.ArrivalTicks <= 0)
+                    continue;
+
+                long combinedStrength = 0;
+                foreach (var hostile in forces)
+                    if (
+                        hostile.Owner == trapping.Owner
+                        && hostile.ArrivalTicks <= trapping.ArrivalTicks
+                    )
+                        combinedStrength += Math.Max(0, hostile.Strength);
+                strongest = Math.Max(strongest, combinedStrength);
+            }
+            return strongest;
+        }
+
+        /// <summary>
         /// Returns whether the faction's current intelligence contains a hostile fleet at a
         /// planet.
         /// </summary>
