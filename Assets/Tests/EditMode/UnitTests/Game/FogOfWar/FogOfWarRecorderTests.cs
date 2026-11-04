@@ -1036,6 +1036,66 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordIntelligenceSnapshot_ControlReport_HidesUnknownUprising()
+        {
+            _coruscant.IsInUprising = true;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+
+            Assert.IsFalse(GetSnapshot(_coreSector, _coruscant).IsInUprising);
+        }
+
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void RecordIntelligenceSnapshot_ControlReport_PreservesKnownUprising(
+            bool rememberedUprising,
+            bool currentUprising
+        )
+        {
+            _coruscant.IsInUprising = rememberedUprising;
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.IsInUprising = currentUprising;
+
+            recorder.RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                42,
+                PlanetIntelligenceCategory.PlanetControl
+            );
+
+            Assert.AreEqual(rememberedUprising, GetSnapshot(_coreSector, _coruscant).IsInUprising);
+        }
+
+        [TestCase(PlanetIntelligenceCategory.Planet, false)]
+        [TestCase(PlanetIntelligenceCategory.Planet, true)]
+        [TestCase(PlanetIntelligenceCategory.PlanetMilitaryProduction, false)]
+        [TestCase(PlanetIntelligenceCategory.PlanetMilitaryProduction, true)]
+        [TestCase(PlanetIntelligenceCategory.All, false)]
+        [TestCase(PlanetIntelligenceCategory.All, true)]
+        public void RecordIntelligenceSnapshot_PlanetReport_RefreshesUprising(
+            PlanetIntelligenceCategory category,
+            bool rememberedUprising
+        )
+        {
+            _coruscant.IsInUprising = rememberedUprising;
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _coruscant.IsInUprising = !rememberedUprising;
+
+            recorder.RecordIntelligenceSnapshot(_alliance, _coruscant, _coreSector, 42, category);
+
+            Assert.AreEqual(!rememberedUprising, GetSnapshot(_coreSector, _coruscant).IsInUprising);
+        }
+
+        [Test]
         public void RecordIntelligenceSnapshot_PlanetResources_DoesNotRevealAllocatedEnergy()
         {
             _coruscant.EnergyCapacity = 12;

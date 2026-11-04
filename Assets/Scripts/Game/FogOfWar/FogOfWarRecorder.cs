@@ -1800,7 +1800,6 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             UpdatePlanetStatusState(snapshot, planet, currentTick);
-            snapshot.IsInUprising = planet.IsInUprising;
             snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
         }
 
@@ -1846,6 +1845,7 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The live planet state.</param>
         private static void UpdatePlanetDetailState(PlanetSnapshot snapshot, Planet planet)
         {
+            snapshot.IsInUprising = planet.IsInUprising;
             snapshot.IsHeadquarters = planet.IsHeadquarters;
             snapshot.AllocatedEnergy = planet.AllocatedEnergy;
         }
@@ -2062,6 +2062,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             PreserveManufacturingQueue(previousSnapshot, snapshot);
+            HashSet<string> observedIds = new();
             HashSet<string> liveEntityIds = planet
                 .GetChildren<ISceneNode>(recursive: true)
                 .Select(entity => entity.InstanceID)
