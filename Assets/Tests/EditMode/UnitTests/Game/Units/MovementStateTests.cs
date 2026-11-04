@@ -67,6 +67,92 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_ContinuedJourney_CopiesBothLegsIndependently()
+        {
+            MovementState movement = new MovementState
+            {
+                TransitTicks = 10,
+                TicksElapsed = 4,
+                PreviousLocationInstanceID = "origin",
+                DestinationPlanetInstanceID = "first-stop",
+                NextLeg = new MovementState
+                {
+                    TransitTicks = 10,
+                    PreviousLocationInstanceID = "origin",
+                    DestinationPlanetInstanceID = "final-stop",
+                },
+            };
+
+            MovementState copy = movement.CreateCopy();
+            copy.NextLeg.TicksElapsed = 3;
+
+            Assert.AreEqual("origin", copy.PreviousLocationInstanceID);
+            Assert.AreEqual("first-stop", copy.DestinationPlanetInstanceID);
+            Assert.AreEqual("final-stop", copy.NextLeg.DestinationPlanetInstanceID);
+            Assert.AreEqual("origin", copy.NextLeg.PreviousLocationInstanceID);
+            Assert.AreEqual(0, movement.NextLeg.TicksElapsed);
+            Assert.AreEqual(16, movement.TicksRemaining());
+            Assert.AreEqual(13, copy.TicksRemaining());
+        }
+
+        [Test]
+        public void Serialize_ContinuedJourney_RoundTripsTimingAndPreviousLocation()
+        {
+            MovementState movement = new MovementState
+            {
+                TransitTicks = 10,
+                TicksElapsed = 4,
+                PreviousLocationInstanceID = "origin",
+                DestinationPlanetInstanceID = "first-stop",
+                NextLeg = new MovementState
+                {
+                    TransitTicks = 10,
+                    OriginPosition = new Point(100, 20),
+                    CurrentPosition = new Point(100, 20),
+                    PreviousLocationInstanceID = "origin",
+                    DestinationPlanetInstanceID = "final-stop",
+                },
+            };
+
+            MovementState restored = SerializationHelper.Deserialize<MovementState>(
+                SerializationHelper.Serialize(movement)
+            );
+
+            Assert.AreEqual("origin", restored.PreviousLocationInstanceID);
+            Assert.AreEqual("first-stop", restored.DestinationPlanetInstanceID);
+            Assert.AreEqual("final-stop", restored.NextLeg.DestinationPlanetInstanceID);
+            Assert.AreEqual("origin", restored.NextLeg.PreviousLocationInstanceID);
+            Assert.AreEqual(new Point(100, 20), restored.NextLeg.OriginPosition);
+            Assert.AreEqual(16, restored.TicksRemaining());
+        }
+
+        [Test]
+        public void Serialize_ClearedPreviousLocation_RetainsKnownEmptyValue()
+        {
+            MovementState restored = SerializationHelper.Deserialize<MovementState>(
+                SerializationHelper.Serialize(
+                    new MovementState { PreviousLocationInstanceID = string.Empty }
+                )
+            );
+
+            Assert.AreEqual(string.Empty, restored.PreviousLocationInstanceID);
+        }
+
+        [Test]
+        public void IsComplete_OnlyFirstLegFinished_ReturnsFalse()
+        {
+            MovementState movement = new MovementState
+            {
+                TransitTicks = 10,
+                TicksElapsed = 10,
+                NextLeg = new MovementState { TransitTicks = 6 },
+            };
+
+            Assert.IsFalse(movement.IsComplete());
+            Assert.AreEqual(6, movement.TicksRemaining());
+        }
+
+        [Test]
         public void Serialize_TransitState_RoundTripsPositionsAndOrigin()
         {
             MovementState movement = new MovementState

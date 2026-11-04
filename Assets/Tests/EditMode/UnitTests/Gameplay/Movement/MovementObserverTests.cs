@@ -124,7 +124,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreSame(scene.origin, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
-            Assert.AreEqual(movement.CurrentPosition, starfighter.Movement.OriginPosition);
+            Assert.AreSame(movement, starfighter.Movement);
+            Assert.AreEqual(scene.origin.GetPosition(), starfighter.Movement.OriginPosition);
             Assert.AreEqual(movement.CurrentPosition, starfighter.Movement.CurrentPosition);
             Assert.AreEqual(movement.MovementGroupID, starfighter.Movement.MovementGroupID);
             Assert.AreEqual("movement-source", starfighter.Movement.SourceEventInstanceID);
@@ -141,6 +142,189 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [TestCase(0)]
+        [TestCase(1)]
+        public void HandleResults_InboundStarfighter_KeepsOutboundTimeBeforeReturnTrip(
+            int hyperdrive
+        )
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = hyperdrive;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            int outboundTicks = fighter.Movement.TransitTicks;
+            fighter.Movement.TicksElapsed = 1;
+            fighter.Movement.CurrentPosition = new Point(10, 0);
+            int returnTicks = new MovementQueries(scene.game).CalculateTransitTicks(
+                fighter,
+                scene.blockadedDestination,
+                scene.origin
+            );
+
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreEqual(outboundTicks - 1 + returnTicks, fighter.Movement.TicksRemaining());
+            MovementTickProcessor processor = new(scene.movement);
+            for (int tick = 0; tick < outboundTicks - 1; tick++)
+                processor.ProcessTick(scene.game);
+
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreEqual(
+                scene.blockadedDestination.GetPosition(),
+                fighter.Movement.CurrentPosition
+            );
+            Assert.AreEqual(returnTicks, fighter.Movement.TicksRemaining());
+            for (int tick = 0; tick < returnTicks; tick++)
+                processor.ProcessTick(scene.game);
+
+            Assert.IsNull(fighter.Movement);
+            Assert.AreSame(scene.origin, fighter.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_RetargetedStarfighter_ReturnsToVisitedOrigin()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            fighter.Movement.CurrentPosition = new Point(90, 0);
+            var originBlockade = AddBlockadingFleet(scene.game, scene.origin);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+            Assert.AreSame(scene.nearestSafeDestination, fighter.GetParent());
+            Assert.AreEqual(scene.blockadedDestination.InstanceID, fighter.LastParentInstanceID);
+            fighter.Movement = SerializationHelper.Deserialize<MovementState>(
+                SerializationHelper.Serialize(fighter.Movement)
+            );
+            fighter.LastParentNode = null;
+
+            scene.game.DeleteNode(originBlockade.fleet);
+            AddBlockadingFleet(scene.game, scene.nearestSafeDestination);
+            ProcessBlockadeStart(scene.game, scene.nearestSafeDestination, scene.resultBus);
+
+            Assert.AreSame(scene.origin, fighter.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_UnavailableOrigin_OrdersFallbacksFromBlockedDestination()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            fighter.Movement.CurrentPosition = new Point(195, 0);
+            scene.origin.OwnerInstanceID = "rebels";
+
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(scene.nearestSafeDestination, fighter.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_NearerCarrier_PrefersFriendlyWorldBeforeRemoteFleet()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Planet carrierPlanet = new Planet
+            {
+                InstanceID = "carrier-planet",
+                PositionX = 101,
+                IsColonized = true,
+            };
+            scene.game.AttachNode(carrierPlanet, scene.origin.GetParentOfType<PlanetSector>());
+            AddFriendlyCarrier(scene.game, carrierPlanet, "carrier", 2);
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            fighter.Movement.CurrentPosition = new Point(100, 0);
+            scene.origin.OwnerInstanceID = "rebels";
+
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(scene.nearestSafeDestination, fighter.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_PreviousCarrierFull_ReturnsToItsPlanet()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            CapitalShip carrier = AddFriendlyCarrier(scene.game, scene.origin, "carrier", 1);
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, carrier);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            scene.game.AttachNode(EntityFactory.CreateStarfighter("occupant", "empire"), carrier);
+            fighter.Movement.CurrentPosition = new Point(90, 0);
+
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(scene.origin, fighter.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_InboundCarrierStillValid_RetainsItsDestinationAndTiming()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            CapitalShip carrier = AddFriendlyCarrier(
+                scene.game,
+                scene.blockadedDestination,
+                "carrier",
+                1
+            );
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            Assert.IsTrue(scene.movement.TryRequestMove(fighter, carrier));
+            MovementState movement = fighter.Movement;
+            scene.blockadedDestination.OwnerInstanceID = "third-faction";
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreSame(movement, fighter.Movement);
+            Assert.IsNull(movement.NextLeg);
+            Assert.IsEmpty(results.OfType<GameObjectEnrouteResult>());
+        }
+
+        [Test]
+        public void HandleResults_CurrentSystemHasCarriers_PrefersMostAvailableCapacity()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            AddFriendlyCarrier(scene.game, scene.blockadedDestination, "small-carrier", 1);
+            CapitalShip largeCarrier = AddFriendlyCarrier(
+                scene.game,
+                scene.blockadedDestination,
+                "large-carrier",
+                5
+            );
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, scene.blockadedDestination);
+            scene.blockadedDestination.OwnerInstanceID = "third-faction";
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+
+            Assert.IsTrue(scene.blockadedDestination.IsBlockaded());
+
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
+
+            Assert.AreSame(largeCarrier, fighter.GetParent());
+        }
+
         [Test]
         public void HandleResults_DeliveringStarfighter_PrefersItsProductionPlanet()
         {
@@ -150,6 +334,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ProducerPlanetID = scene.origin.InstanceID;
             scene.game.AttachNode(starfighter, scene.blockadedDestination);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination, scene.origin);
+            int outboundTicks = starfighter.Movement.TransitTicks;
             starfighter.Movement.CurrentPosition = new Point(90, 0);
             Assert.IsNull(starfighter.GetLastParent());
 
@@ -159,6 +344,25 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(scene.origin, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
             Assert.AreEqual(ManufacturingStatus.Delivering, starfighter.ManufacturingStatus);
+            int remainingTicks =
+                outboundTicks
+                + new MovementQueries(scene.game).CalculateTransitTicks(
+                    starfighter,
+                    scene.blockadedDestination,
+                    scene.origin
+                );
+            Assert.AreEqual(remainingTicks, starfighter.Movement.TicksRemaining());
+            List<GameResult> arrivalResults = new();
+            MovementTickProcessor processor = new(scene.movement);
+            for (int tick = 0; tick < remainingTicks; tick++)
+                arrivalResults.AddRange(processor.ProcessTick(scene.game));
+
+            Assert.IsNull(starfighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, starfighter.ManufacturingStatus);
+            Assert.AreSame(
+                scene.origin,
+                arrivalResults.OfType<UnitArrivedResult>().Single().Destination
+            );
         }
 
         [Test]
@@ -516,6 +720,8 @@ namespace Rebellion.Tests.Gameplay
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
             starfighter.Movement.CurrentPosition = new Point(100, 0);
             scene.origin.OwnerInstanceID = "rebels";
+            scene.nearestSafeDestination.OwnerInstanceID = "rebels";
+            scene.fartherSafeDestination.OwnerInstanceID = "rebels";
             scene.blockadedDestination.OwnerInstanceID = "third-faction";
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
@@ -1327,6 +1533,34 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Adds a stationary friendly carrier with the requested capacity.
+        /// </summary>
+        /// <param name="game">The scene containing the carrier.</param>
+        /// <param name="planet">The carrier's planetary system.</param>
+        /// <param name="id">The carrier identifier.</param>
+        /// <param name="capacity">The fighter capacity.</param>
+        /// <returns>The registered carrier.</returns>
+        private static CapitalShip AddFriendlyCarrier(
+            GameRoot game,
+            Planet planet,
+            string id,
+            int capacity
+        )
+        {
+            Fleet fleet = EntityFactory.CreateFleet(id + "-fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = id,
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = capacity,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            return ship;
+        }
+
+        /// <summary>
         /// Adds blockading fleet.
         /// </summary>
         /// <param name="game">The game.</param>
@@ -1369,6 +1603,7 @@ namespace Rebellion.Tests.Gameplay
                 .GetChildren<Fleet>()
                 .First(fleet =>
                     fleet.Movement == null
+                    && fleet.OwnerInstanceID == "rebels"
                     && fleet.OwnerInstanceID != blockade.OwnerInstanceID
                     && fleet.HasOperationalCapitalShips()
                 );

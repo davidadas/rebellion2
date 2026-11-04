@@ -1011,7 +1011,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects a safe destination for an inbound unit, preferring a fighter's previous location.
+        /// Selects a safe destination for an inbound unit using its relocation priorities.
         /// </summary>
         /// <param name="unit">The unit requiring a new destination.</param>
         /// <param name="blockadedPlanet">The destination that became blockaded.</param>
@@ -1021,21 +1021,116 @@ namespace Rebellion.Gameplay
             Planet blockadedPlanet
         )
         {
-            if (unit is Starfighter fighter)
+            if (unit is not Starfighter fighter)
+                return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
+
+            ContainerNode currentDestination = FindFighterDestinationInContext(
+                fighter,
+                fighter.GetParent() as ContainerNode
+            );
+            if (currentDestination != null)
+                return currentDestination;
+
+            ContainerNode previousLocation = GetPreviousLocation(fighter);
+            if (previousLocation != fighter.GetParent())
             {
-                string previousLocationID =
-                    fighter.ManufacturingStatus == ManufacturingStatus.Delivering
-                    && !string.IsNullOrEmpty(fighter.ProducerPlanetID)
-                        ? fighter.ProducerPlanetID
-                        : fighter.LastParentInstanceID;
-                ContainerNode previousLocation = _game.GetSceneNodeByInstanceID<ContainerNode>(
-                    previousLocationID
-                );
-                if (CanUseSafeRelocationDestination(fighter, previousLocation, blockadedPlanet))
-                    return previousLocation;
+                for (
+                    ContainerNode context = previousLocation;
+                    context != null;
+                    context = context.GetParent() as ContainerNode
+                )
+                {
+                    ContainerNode destination = FindFighterDestinationInContext(fighter, context);
+                    if (destination != null)
+                        return destination;
+                    if (context is Planet)
+                        break;
+                }
             }
 
-            return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
+            List<Planet> planets = _game
+                .GetSceneNodesByType<Planet>()
+                .Where(planet => !planet.IsDestroyed)
+                .OrderBy(planet => planet.GetRawDistanceTo(blockadedPlanet.GetPosition()))
+                .ToList();
+            string ownerInstanceID = fighter.GetOwnerInstanceID();
+            foreach (Planet planet in planets)
+            {
+                if (
+                    planet.GetOwnerInstanceID() != ownerInstanceID
+                    || planet.IsBlockadedFor(ownerInstanceID)
+                )
+                    continue;
+                ContainerNode destination = FindFighterDestinationInContext(fighter, planet);
+                if (destination != null)
+                    return destination;
+            }
+
+            foreach (Planet planet in planets)
+            {
+                foreach (Fleet fleet in planet.GetChildren<Fleet>())
+                {
+                    if (fleet.GetOwnerInstanceID() != ownerInstanceID || fleet.Movement != null)
+                        continue;
+                    ContainerNode destination = FindFighterDestinationInContext(fighter, fleet);
+                    if (destination != null)
+                        return destination;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Resolves the last visited container retained by a movement, including older deliveries.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <returns>The previous live container, or null if it was cleared or removed.</returns>
+        internal ContainerNode GetPreviousLocation(IMovable unit)
+        {
+            if (unit == null)
+                return null;
+            string previousLocationID = unit.Movement?.PreviousLocationInstanceID;
+            if (previousLocationID == null)
+                previousLocationID =
+                    unit
+                        is IManufacturable
+                        {
+                            ManufacturingStatus: ManufacturingStatus.Delivering
+                        } delivery
+                    && !string.IsNullOrEmpty(delivery.ProducerPlanetID)
+                        ? delivery.ProducerPlanetID
+                        : unit.LastParentInstanceID;
+            return _game.GetSceneNodeByInstanceID<ContainerNode>(previousLocationID);
+        }
+
+        /// <summary>
+        /// Finds an accepting planet or carrier within one destination context.
+        /// Planets require an unobstructed surface; carriers require room aboard a friendly stationary ship.
+        /// </summary>
+        /// <param name="fighter">The fighter requiring a destination.</param>
+        /// <param name="context">The container or planetary system to search.</param>
+        /// <returns>The accepting container, or null when this context cannot receive the fighter.</returns>
+        private ContainerNode FindFighterDestinationInContext(
+            Starfighter fighter,
+            ContainerNode context
+        )
+        {
+            if (context == null || ResolveRegisteredContainer(context) == null)
+                return null;
+            if (
+                context is Planet planet
+                && !planet.IsBlockadedFor(fighter.GetOwnerInstanceID())
+                && CanReceiveRelocatedUnit(fighter, planet)
+            )
+                return planet;
+            if (context is CapitalShip carrier)
+                return CanReceiveRelocatedUnit(fighter, carrier) ? carrier : null;
+            if (context is not Planet && context is not Fleet)
+                return null;
+            return context
+                .GetChildren<CapitalShip>(recursive: true)
+                .OrderByDescending(ship => ship.GetExcessStarfighterCapacity())
+                .FirstOrDefault(ship => CanReceiveRelocatedUnit(fighter, ship));
         }
 
         /// <summary>
@@ -1207,17 +1302,40 @@ namespace Rebellion.Gameplay
             )
                 return false;
 
+            return CanReceiveRelocatedUnit(unit, liveDestination);
+        }
+
+        /// <summary>
+        /// Returns whether a registered friendly container is operational and has room for a unit.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed receiving container.</param>
+        /// <returns>True when the container can receive or retain this unit.</returns>
+        private bool CanReceiveRelocatedUnit(IMovable unit, ContainerNode destination)
+        {
+            ContainerNode liveDestination = ResolveRegisteredContainer(destination);
+            Planet planet = liveDestination as Planet ?? liveDestination?.GetParentOfType<Planet>();
+            if (planet?.IsDestroyed != false)
+                return false;
+            string ownerInstanceId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
             bool isFriendlyDestination = liveDestination switch
             {
-                Planet planet => planet.GetOwnerInstanceID() == ownerInstanceId
-                    && (planet.IsColonized || unit is Officer { IsCaptured: false }),
+                Planet destinationPlanet => destinationPlanet.GetOwnerInstanceID()
+                    == ownerInstanceId
+                    && (destinationPlanet.IsColonized || unit is Officer { IsCaptured: false }),
                 CapitalShip ship => ship.GetOwnerInstanceID() == ownerInstanceId
                     && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ((IMovable)ship).GetTransitMovement() == null,
                 _ => false,
             };
 
-            return isFriendlyDestination && liveDestination.CanAcceptChild(unit);
+            return isFriendlyDestination
+                && (
+                    ReferenceEquals(unit.GetParent(), liveDestination)
+                    || liveDestination.CanAcceptChild(unit)
+                );
         }
 
         /// <summary>

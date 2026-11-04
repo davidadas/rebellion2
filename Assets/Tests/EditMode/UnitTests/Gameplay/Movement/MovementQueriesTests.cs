@@ -20,6 +20,35 @@ namespace Rebellion.Tests.Gameplay
     public class MovementQueriesTests
     {
         [Test]
+        public void GetPreviousLocation_ClearedSavedLocation_DoesNotReviveGraphHistory()
+        {
+            var scene = BuildScene();
+            scene.game.MoveNode(scene.officer, scene.destination);
+            scene.officer.Movement = SerializationHelper.Deserialize<MovementState>(
+                SerializationHelper.Serialize(
+                    new MovementState { PreviousLocationInstanceID = string.Empty }
+                )
+            );
+
+            Assert.AreEqual(scene.origin.InstanceID, scene.officer.LastParentInstanceID);
+            Assert.IsNull(scene.movement.GetPreviousLocation(scene.officer));
+        }
+
+        [Test]
+        public void GetPreviousLocation_OlderDelivery_ResolvesProducerWithoutParentHistory()
+        {
+            var scene = BuildScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivery", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            fighter.ProducerPlanetID = scene.origin.InstanceID;
+            fighter.Movement = new MovementState { TransitTicks = 10 };
+            scene.game.AttachNode(fighter, scene.destination);
+
+            Assert.IsNull(fighter.LastParentInstanceID);
+            Assert.AreSame(scene.origin, scene.movement.GetPreviousLocation(fighter));
+        }
+
+        [Test]
         public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
         {
             (

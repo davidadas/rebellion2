@@ -32,6 +32,25 @@ namespace Rebellion.Game.Units
 
         public bool ResolveEncounterOnArrival { get; set; }
 
+        /// <summary>
+        /// Gets or sets the last visited container before this journey. Null denotes older
+        /// movement without this information; an empty ID denotes a cleared previous location.
+        /// </summary>
+        [PersistableAttribute]
+        public string PreviousLocationInstanceID { get; set; }
+
+        /// <summary>
+        /// Gets or sets the planet at the end of the current leg, which can differ from the
+        /// unit's final destination after redirection.
+        /// </summary>
+        public string DestinationPlanetInstanceID { get; set; }
+
+        /// <summary>
+        /// Gets or sets the onward leg that starts after the current leg finishes.
+        /// Its origin also identifies the current leg's endpoint while redirecting.
+        /// </summary>
+        public MovementState NextLeg { get; set; }
+
         [PersistableIgnore]
         public Point OriginPosition
         {
@@ -79,6 +98,9 @@ namespace Rebellion.Game.Units
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
                 ResolveEncounterOnArrival = ResolveEncounterOnArrival,
+                PreviousLocationInstanceID = PreviousLocationInstanceID,
+                DestinationPlanetInstanceID = DestinationPlanetInstanceID,
+                NextLeg = NextLeg?.CreateCopy(),
                 OriginPositionX = OriginPositionX,
                 OriginPositionY = OriginPositionY,
                 CurrentPositionX = CurrentPositionX,
@@ -86,7 +108,7 @@ namespace Rebellion.Game.Units
             };
 
         /// <summary>
-        /// Progress fraction in [0.0, 1.0] - 0.0 = just departed, 1.0 = arrived.
+        /// Progress through the current leg: zero at departure and one at its endpoint.
         /// </summary>
         /// <returns>Progress as a float in [0.0, 1.0].</returns>
         public float Progress()
@@ -99,12 +121,12 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// True if the unit has completed transit.
+        /// True if the unit has completed its final transit leg.
         /// </summary>
         /// <returns>True if transit is complete.</returns>
         public bool IsComplete()
         {
-            return TicksElapsed >= TransitTicks;
+            return NextLeg == null && TicksElapsed >= TransitTicks;
         }
 
         /// <summary>
@@ -113,7 +135,7 @@ namespace Rebellion.Game.Units
         /// <returns>Number of ticks remaining.</returns>
         public int TicksRemaining()
         {
-            return TransitTicks - TicksElapsed;
+            return TransitTicks - TicksElapsed + (NextLeg?.TicksRemaining() ?? 0);
         }
     }
 }

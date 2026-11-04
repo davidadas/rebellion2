@@ -19,6 +19,108 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [Test]
+        public void RedirectMovement_SecondRedirect_ReplacesOnlyTheOnwardLeg()
+        {
+            var scene = BuildScene(TestConfig.Create());
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            MovementState outbound = scene.officer.Movement;
+            outbound.TicksElapsed = 1;
+            outbound.SourceEventInstanceID = "movement-source";
+            outbound.ResolveEncounterOnArrival = true;
+            List<GameResult> results = new();
+            scene.movement.RedirectMovement(scene.officer, scene.origin, results);
+            Planet finalDestination = new Planet
+            {
+                InstanceID = "final-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 100,
+            };
+            scene.game.AttachNode(finalDestination, scene.origin.GetParentOfType<PlanetSector>());
+
+            scene.movement.RedirectMovement(scene.officer, finalDestination, results);
+
+            Assert.AreSame(outbound, scene.officer.Movement);
+            Assert.AreEqual(1, outbound.TicksElapsed);
+            Assert.AreEqual(scene.destination.GetPosition(), outbound.NextLeg.OriginPosition);
+            Assert.AreEqual("movement-source", outbound.NextLeg.SourceEventInstanceID);
+            Assert.AreEqual(outbound.MovementGroupID, outbound.NextLeg.MovementGroupID);
+            Assert.IsTrue(outbound.NextLeg.ResolveEncounterOnArrival);
+            Assert.AreEqual(string.Empty, outbound.PreviousLocationInstanceID);
+            Assert.IsNull(new MovementQueries(scene.game).GetPreviousLocation(scene.officer));
+            Assert.IsNull(outbound.NextLeg.NextLeg);
+            Assert.AreEqual(2, results.OfType<GameObjectEnrouteResult>().Count());
+            Assert.AreEqual(
+                outbound.TransitTicks
+                    - 1
+                    + new MovementQueries(scene.game).CalculateTransitTicks(
+                        scene.officer,
+                        scene.destination,
+                        finalDestination
+                    ),
+                outbound.TicksRemaining()
+            );
+        }
+
+        [Test]
+        public void RedirectMovement_LocalCarrier_ArrivesWhenCurrentLegEnds()
+        {
+            var scene = BuildScene(TestConfig.Create());
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            int outboundTicks = scene.officer.Movement.TicksRemaining();
+            Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", "empire");
+            CapitalShip carrier = CreateMovableCapitalShip("carrier");
+            scene.game.AttachNode(fleet, scene.destination);
+            scene.game.AttachNode(carrier, fleet);
+            List<GameResult> results = new();
+
+            scene.movement.RedirectMovement(scene.officer, carrier, results);
+            Assert.AreEqual(outboundTicks, scene.officer.Movement.TicksRemaining());
+            MovementTickProcessor processor = new(scene.movement);
+            for (int tick = 0; tick < outboundTicks - 1; tick++)
+                processor.ProcessTick(scene.game);
+            Assert.IsNotNull(scene.officer.Movement);
+            IReadOnlyList<GameResult> arrival = processor.ProcessTick(scene.game);
+
+            Assert.IsNull(scene.officer.Movement);
+            Assert.AreSame(carrier, scene.officer.GetParent());
+            Assert.AreEqual(1, arrival.OfType<UnitArrivedResult>().Count());
+        }
+
+        [Test]
+        public void RedirectMovement_CurrentDestination_LeavesJourneyUnchanged()
+        {
+            var scene = BuildScene();
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            MovementState movement = scene.officer.Movement;
+            List<GameResult> results = new();
+
+            scene.movement.RedirectMovement(scene.officer, scene.destination, results);
+
+            Assert.AreSame(movement, scene.officer.Movement);
+            Assert.IsNull(movement.NextLeg);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void RedirectMovement_StationaryUnit_RejectsWithoutChangingIt()
+        {
+            var scene = BuildScene();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                scene.movement.RedirectMovement(
+                    scene.officer,
+                    scene.destination,
+                    new List<GameResult>()
+                )
+            );
+
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.IsNull(scene.officer.Movement);
+        }
+
         [TestCase(typeof(Building))]
         [TestCase(typeof(Regiment))]
         [TestCase(typeof(SpecialForces))]

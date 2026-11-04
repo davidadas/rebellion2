@@ -133,6 +133,12 @@ namespace Rebellion.Gameplay
                     continue;
                 }
 
+                if (unit is Starfighter)
+                {
+                    _commands.RedirectMovement(unit, destination, reactions);
+                    continue;
+                }
+
                 _game.MoveNode(unit, destination);
                 RetargetMovement(unit, destinationPlanet);
                 reactions.Add(
