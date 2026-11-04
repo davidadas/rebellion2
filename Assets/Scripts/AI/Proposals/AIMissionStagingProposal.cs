@@ -112,7 +112,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when relocation is valid and improves the mission round trip.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return Participants.Count > 0 && TryGetTravelTicks(context, out _, out _);
+            return Participants.Count > 0 && TryGetTravelTicks(context, out _);
         }
 
         /// <summary>
@@ -154,17 +154,14 @@ namespace Rebellion.AI.Proposals
         /// Compares direct mission travel with relocation followed by a local mission and return.
         /// </summary>
         /// <param name="context">The current faction turn.</param>
-        /// <param name="directTicks">Receives the direct outbound and return travel duration.</param>
-        /// <param name="stagedTicks">Receives relocation plus the local outbound and return duration.</param>
+        /// <param name="travel">Receives direct, prepared, local-mission, and return durations.</param>
         /// <returns>True when staging is safe, valid, and saves travel for the complete team.</returns>
         internal bool TryGetTravelTicks(
             AITurnContext context,
-            out long directTicks,
-            out long stagedTicks
+            out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
-            directTicks = 0;
-            stagedTicks = 0;
+            travel = default;
             if (context?.Assessment == null || Mission == null)
                 return false;
             if (
@@ -180,7 +177,7 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
             if (Mission.IsInterception)
-                return TryGetInterceptionTravelTicks(context, out directTicks, out stagedTicks);
+                return TryGetInterceptionTravelTicks(context, out travel);
             if (
                 context.MovementQueries == null
                 || Mission.MissionTypeID != MissionTypeIDs.Sabotage
@@ -218,8 +215,18 @@ namespace Rebellion.AI.Proposals
                     )
                 )
                     return false;
-                directTicks = Mission.EstimateTravelTicks(context, Destination);
-                stagedTicks = WaitingTicks + directTicks;
+                long waitingOutboundTicks = Mission.EstimateOutboundTravelTicks(
+                    context,
+                    Destination
+                );
+                long waitingReturnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
+                long waitingMissionTicks = waitingOutboundTicks + waitingReturnTicks;
+                travel = (
+                    waitingMissionTicks,
+                    WaitingTicks + waitingMissionTicks,
+                    waitingMissionTicks,
+                    waitingReturnTicks
+                );
                 return true;
             }
 
@@ -247,23 +254,26 @@ namespace Rebellion.AI.Proposals
                 relocationTicks = Math.Max(relocationTicks, groupTicks);
             }
 
-            directTicks = Mission.EstimateTravelTicks(context);
-            stagedTicks = relocationTicks + Mission.EstimateTravelTicks(context, Destination);
-            return GetTravelTicksPerMission(context, stagedTicks) < directTicks;
+            long directTicks = Mission.EstimateTravelTicks(context);
+            long outboundTicks = Mission.EstimateOutboundTravelTicks(context, Destination);
+            long returnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
+            long missionTicks = outboundTicks + returnTicks;
+            long stagedTicks = relocationTicks + missionTicks;
+            travel = (directTicks, stagedTicks, missionTicks, returnTicks);
+            return GetTravelTicksPerMission(stagedTicks, missionTicks) < directTicks;
         }
 
         /// <summary>
         /// Spreads relocation over the current objectives without shortening actual movement estimates.
         /// </summary>
-        /// <param name="context">The current faction turn.</param>
         /// <param name="stagedTicks">The actual preparation and first mission travel duration.</param>
+        /// <param name="missionTicks">The mission round trip from the prepared departure.</param>
         /// <returns>The average travel cost per objective at this departure planet.</returns>
-        internal double GetTravelTicksPerMission(AITurnContext context, long stagedTicks)
+        internal double GetTravelTicksPerMission(long stagedTicks, long missionTicks)
         {
             if (ExpectedMissionCount == 1)
                 return stagedTicks;
 
-            long missionTicks = Mission.EstimateTravelTicks(context, Destination);
             return missionTicks
                 + Math.Max(0, stagedTicks - missionTicks) / (double)ExpectedMissionCount;
         }
@@ -272,17 +282,14 @@ namespace Rebellion.AI.Proposals
         /// Validates normal relocation or local waiting against an observed officer's mission window.
         /// </summary>
         /// <param name="context">The current turn and movement operations.</param>
-        /// <param name="directTicks">Direct mission travel without preparation.</param>
-        /// <param name="stagedTicks">Relocation, waiting, and mission travel.</param>
+        /// <param name="travel">Receives direct, prepared, local-mission, and return durations.</param>
         /// <returns>True when safe preparation leaves time to complete the interception.</returns>
         private bool TryGetInterceptionTravelTicks(
             AITurnContext context,
-            out long directTicks,
-            out long stagedTicks
+            out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
-            directTicks = 0;
-            stagedTicks = 0;
+            travel = default;
             if (
                 context?.MovementQueries == null
                 || Participants.Count == 0
@@ -342,8 +349,11 @@ namespace Rebellion.AI.Proposals
                 )
             )
                 return false;
-            directTicks = Mission.EstimateTravelTicks(context);
-            stagedTicks = relocation + waiting + Mission.EstimateTravelTicks(context, Destination);
+            long directTicks = Mission.EstimateTravelTicks(context);
+            long returnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
+            long missionTicks = outbound + returnTicks;
+            long stagedTicks = relocation + waiting + missionTicks;
+            travel = (directTicks, stagedTicks, missionTicks, returnTicks);
             return true;
         }
 
@@ -390,8 +400,10 @@ namespace Rebellion.AI.Proposals
         /// Estimates comparable travel costs before performing full movement validation.
         /// </summary>
         /// <param name="context">The current faction turn containing the available team.</param>
-        /// <returns>The direct round trip and the round trip including relocation.</returns>
-        internal (long DirectTicks, long StagedTicks) EstimateTravelTicks(AITurnContext context)
+        /// <returns>The direct, prepared, and local-mission round trips.</returns>
+        internal (long DirectTicks, long StagedTicks, long MissionTicks) EstimateTravelTicks(
+            AITurnContext context
+        )
         {
             int relocation = 0;
             foreach (
@@ -418,10 +430,11 @@ namespace Rebellion.AI.Proposals
                         );
                 }
             }
-            return (
-                Mission.EstimateTravelTicks(context),
-                relocation + Mission.EstimateTravelTicks(context, Destination)
-            );
+            long directTicks = Mission.EstimateTravelTicks(context);
+            long outboundTicks = Mission.EstimateOutboundTravelTicks(context, Destination);
+            long returnTicks = Mission.EstimateReturnTravelTicks(context, Destination);
+            long missionTicks = outboundTicks + returnTicks;
+            return (directTicks, relocation + missionTicks, missionTicks);
         }
     }
 }

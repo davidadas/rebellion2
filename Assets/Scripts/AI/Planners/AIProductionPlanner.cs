@@ -391,8 +391,11 @@ namespace Rebellion.AI.Planners
                     _ => ManufacturingType.Building,
                 };
                 int hubTarget = 0;
+                Dictionary<Planet, int> adjustedSpaces = new();
                 Func<Planet, int> availableSpace = planet =>
                 {
+                    if (adjustedSpaces.TryGetValue(planet, out int available))
+                        return available;
                     var key = (planet, type, hubTarget);
                     if (!capacities.TryGetValue(key, out int capacity))
                     {
@@ -403,7 +406,7 @@ namespace Rebellion.AI.Planners
                         );
                         capacities.Add(key, capacity);
                     }
-                    return Math.Max(
+                    available = Math.Max(
                         0,
                         capacity
                             - layout
@@ -418,6 +421,8 @@ namespace Rebellion.AI.Planners
                                     )
                                 )
                     );
+                    adjustedSpaces.Add(planet, available);
+                    return available;
                 };
                 IReadOnlyList<int> targets = context.StrategicPlan.GetInfrastructureHubTargets(
                     type
@@ -425,6 +430,7 @@ namespace Rebellion.AI.Planners
                 int minimumNewTarget = targets.Where(target => target > 0).DefaultIfEmpty(0).Min();
                 for (int index = 0; index < Math.Min(planets.Count, targets.Count); index++)
                 {
+                    adjustedSpaces.Clear();
                     int preferred = targets[index];
                     hubTarget = preferred;
                     if (preferred <= 0)

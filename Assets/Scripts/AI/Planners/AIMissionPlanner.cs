@@ -26,6 +26,14 @@ namespace Rebellion.AI.Planners
             new AIMissionCandidatePool();
         private readonly Dictionary<string, List<IManufacturable>> _sabotageTargets =
             new Dictionary<string, List<IManufacturable>>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (Planet Planet, IManufacturable Target),
+            double
+        > _sabotageTargetValues = new();
+        private readonly Dictionary<
+            (Planet Planet, IManufacturable Target),
+            int
+        > _sabotageMissionCounts = new();
         private readonly HashSet<string> _activeMissionTypes = new HashSet<string>(
             StringComparer.Ordinal
         );
@@ -102,6 +110,8 @@ namespace Rebellion.AI.Planners
             _candidateSelector.Reset();
             _waitingCandidateSelector.Reset();
             _sabotageTargets.Clear();
+            _sabotageTargetValues.Clear();
+            _sabotageMissionCounts.Clear();
             _sabotageParticipants.Clear();
             _sabotageTeams.Clear();
             _sabotageTeamCache.Clear();
@@ -200,9 +210,12 @@ namespace Rebellion.AI.Planners
                 AIMissionStagingProposal candidate = new(mission, planet, missionCount);
                 if (candidate.Participants.Count == 0)
                     continue;
-                (long direct, long staged) = candidate.EstimateTravelTicks(context);
-                double perMission = candidate.GetTravelTicksPerMission(context, staged);
-                if (perMission < direct)
+                var travel = candidate.EstimateTravelTicks(context);
+                double perMission = candidate.GetTravelTicksPerMission(
+                    travel.StagedTicks,
+                    travel.MissionTicks
+                );
+                if (perMission < travel.DirectTicks)
                     candidates.Add((candidate, perMission));
             }
             AIMissionStagingProposal best = candidates
@@ -224,19 +237,17 @@ namespace Rebellion.AI.Planners
         /// <returns>The number of worthwhile objectives sharing the mission's target planet.</returns>
         private int GetSabotageMissionCount(AITurnContext context, AIMissionProposal mission)
         {
-            double targetValue = AIMissionProposalScorer.GetSabotageTargetValue(
-                context,
-                mission.TargetPlanet,
-                mission.SelectedTarget as IManufacturable
-            );
-            return GetEligibleSabotageTargets(context, mission.TargetPlanet)
-                .Count(target =>
-                    AIMissionProposalScorer.GetSabotageTargetValue(
-                        context,
-                        mission.TargetPlanet,
-                        target
-                    ) >= targetValue
-                );
+            Planet planet = mission.TargetPlanet;
+            IManufacturable selectedTarget = mission.SelectedTarget as IManufacturable;
+            var key = (planet, selectedTarget);
+            if (_sabotageMissionCounts.TryGetValue(key, out int missionCount))
+                return missionCount;
+
+            double targetValue = GetSabotageTargetValue(context, planet, selectedTarget);
+            missionCount = GetSabotageTargets(context, planet)
+                .Count(target => GetSabotageTargetValue(context, planet, target) >= targetValue);
+            _sabotageMissionCounts.Add(key, missionCount);
+            return missionCount;
         }
 
         /// <summary>
@@ -1623,9 +1634,7 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(context.Assessment.IsAttackPreparationTarget)
                 .ThenByDescending(planet =>
                     GetSabotageTargets(context, planet)
-                        .Max(target =>
-                            AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
-                        )
+                        .Max(target => GetSabotageTargetValue(context, planet, target))
                 )
                 .ThenByDescending(context.Assessment.GetPlanetBuildingCount)
                 .ThenBy(planet => planet.InstanceID)
@@ -1647,9 +1656,7 @@ namespace Rebellion.AI.Planners
                 return targets;
 
             targets = GetEligibleSabotageTargets(context, planet)
-                .OrderByDescending(target =>
-                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
-                )
+                .OrderByDescending(target => GetSabotageTargetValue(context, planet, target))
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()
                 )
@@ -1657,6 +1664,28 @@ namespace Rebellion.AI.Planners
                 .ToList();
             _sabotageTargets.Add(planet.InstanceID, targets);
             return targets;
+        }
+
+        /// <summary>
+        /// Returns a sabotage target's unchanged utility during the current planning pass.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet containing the target.</param>
+        /// <param name="target">The target to evaluate.</param>
+        /// <returns>The cached or calculated target utility.</returns>
+        private double GetSabotageTargetValue(
+            AITurnContext context,
+            Planet planet,
+            IManufacturable target
+        )
+        {
+            var key = (planet, target);
+            if (!_sabotageTargetValues.TryGetValue(key, out double value))
+            {
+                value = AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target);
+                _sabotageTargetValues.Add(key, value);
+            }
+            return value;
         }
 
         /// <summary>

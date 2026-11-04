@@ -57,11 +57,17 @@ namespace Rebellion.AI.Scorers
         )
         {
             AIMissionStagingProposal staging = proposal as AIMissionStagingProposal;
+            (
+                long DirectTicks,
+                long StagedTicks,
+                long MissionTicks,
+                long ReturnTicks
+            ) stagingTravel = default;
             if (staging != null)
             {
-                if (!staging.TryGetTravelTicks(context, out _, out long stagedTicks))
+                if (!staging.TryGetTravelTicks(context, out stagingTravel))
                     return 0;
-                travelTicks = stagedTicks;
+                travelTicks = stagingTravel.StagedTicks;
                 proposal = staging.Mission;
             }
 
@@ -84,9 +90,10 @@ namespace Rebellion.AI.Scorers
                     ? System.Math.Max(
                         0,
                         travelTicks.Value
-                            - missionProposal.EstimateReturnTravelTicks(
-                                context,
-                                staging?.Destination
+                            - (
+                                staging == null
+                                    ? missionProposal.EstimateReturnTravelTicks(context)
+                                    : stagingTravel.ReturnTicks
                             )
                     )
                     : missionProposal.EstimateOutboundTravelTicks(context);
@@ -129,7 +136,13 @@ namespace Rebellion.AI.Scorers
                 return 0;
             if (
                 isSabotage
-                && IsOvertakenByCommittedAttack(context, missionProposal, staging, travelTicks)
+                && IsOvertakenByCommittedAttack(
+                    context,
+                    missionProposal,
+                    staging,
+                    travelTicks,
+                    staging == null ? null : stagingTravel.ReturnTicks
+                )
             )
                 return 0;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
@@ -183,23 +196,27 @@ namespace Rebellion.AI.Scorers
                     ? Math.Max(
                         0,
                         completeTravelTicks
-                            - missionProposal.EstimateReturnTravelTicks(
-                                context,
-                                staging?.Destination
+                            - (
+                                staging == null
+                                    ? missionProposal.EstimateReturnTravelTicks(context)
+                                    : stagingTravel.ReturnTicks
                             )
                     )
                     : missionProposal.EstimateOutboundTravelTicks(context);
                 if (isSabotage)
                 {
                     double scoredTravel =
-                        staging?.GetTravelTicksPerMission(context, completeTravelTicks)
-                        ?? completeTravelTicks;
+                        staging?.GetTravelTicksPerMission(
+                            completeTravelTicks,
+                            stagingTravel.MissionTicks
+                        ) ?? completeTravelTicks;
                     outboundTicks = Math.Max(
                         0,
                         scoredTravel
-                            - missionProposal.EstimateReturnTravelTicks(
-                                context,
-                                staging?.Destination
+                            - (
+                                staging == null
+                                    ? missionProposal.EstimateReturnTravelTicks(context)
+                                    : stagingTravel.ReturnTicks
                             )
                     );
                     missionTimeDiscount = GetElapsedDiscount(
@@ -1106,18 +1123,20 @@ namespace Rebellion.AI.Scorers
         /// <param name="mission">The sabotage objective under consideration.</param>
         /// <param name="staging">Optional preparation before starting the mission.</param>
         /// <param name="travelTicks">Optional complete preparation and round-trip travel.</param>
+        /// <param name="returnTicks">Optional prepared return duration already calculated for staging.</param>
         /// <returns>True when a committed fleet can address the defenses before the mission does.</returns>
         private static bool IsOvertakenByCommittedAttack(
             AITurnContext context,
             AIMissionProposal mission,
             AIMissionStagingProposal staging,
-            long? travelTicks
+            long? travelTicks,
+            long? returnTicks
         )
         {
             Planet target = mission.TargetPlanet;
             double objectiveTicks =
                 (travelTicks ?? mission.EstimateTravelTicks(context))
-                - mission.EstimateReturnTravelTicks(context, staging?.Destination)
+                - (returnTicks ?? mission.EstimateReturnTravelTicks(context, staging?.Destination))
                 + EstimateExecutionTicks(context, mission);
             foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
             {

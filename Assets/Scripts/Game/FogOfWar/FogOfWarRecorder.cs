@@ -645,7 +645,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             snapshot.Fleets.Clear();
-            AddFleetsToSnapshot(faction, planet, snapshot, true);
+            AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
             FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
         }
 
@@ -980,17 +980,28 @@ namespace Rebellion.Game.FogOfWar
 
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
             planetSnapshot.OrbitalTickCaptured = currentTick;
-            AddOfficersToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
-            AddFleetsToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
+            IReadOnlyList<ISceneNode> activeChildren = planet.GetChildren();
+            AddOfficersToSnapshot(
+                faction,
+                activeChildren.OfType<Officer>(),
+                planetSnapshot,
+                includeEspionageIntelligence
+            );
+            AddFleetsToSnapshot(
+                faction,
+                activeChildren.OfType<Fleet>(),
+                planetSnapshot,
+                includeEspionageIntelligence
+            );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<Regiment>(),
+                activeChildren.OfType<Regiment>(),
                 planetSnapshot.Regiments,
                 faction,
                 includeEspionageIntelligence,
                 currentTick
             );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<SpecialForces>(),
+                activeChildren.OfType<SpecialForces>(),
                 planetSnapshot.SpecialForces,
                 faction,
                 includeEspionageIntelligence,
@@ -1004,7 +1015,7 @@ namespace Rebellion.Game.FogOfWar
                 currentTick
             );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<Starfighter>(),
+                activeChildren.OfType<Starfighter>(),
                 planetSnapshot.Starfighters,
                 faction,
                 includeEspionageIntelligence,
@@ -1422,17 +1433,17 @@ namespace Rebellion.Game.FogOfWar
         /// Adds visible officers to a planet snapshot.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="planet">The observed planet.</param>
+        /// <param name="officers">The active officers at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeInTransit">Whether moving officers should be included.</param>
         private void AddOfficersToSnapshot(
             Faction faction,
-            Planet planet,
+            IEnumerable<Officer> officers,
             PlanetSnapshot snapshot,
             bool includeInTransit
         )
         {
-            foreach (Officer officer in planet.GetChildren<Officer>())
+            foreach (Officer officer in officers)
             {
                 if (officer.OwnerInstanceID == faction.InstanceID && !officer.IsCaptured)
                 {
@@ -1451,17 +1462,17 @@ namespace Rebellion.Game.FogOfWar
         /// Adds visible fleets to a planet snapshot.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="planet">The observed planet.</param>
+        /// <param name="fleets">The active fleets at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
-            Planet planet,
+            IEnumerable<Fleet> fleets,
             PlanetSnapshot snapshot,
             bool includeEspionageIntelligence
         )
         {
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            foreach (Fleet fleet in fleets)
             {
                 if (fleet.GetChildren<CapitalShip>().Count == 0)
                     continue;

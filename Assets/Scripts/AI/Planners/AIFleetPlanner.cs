@@ -1361,14 +1361,12 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            int requiredCount = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
-                .Count;
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, true);
             int currentCount = context.Assessment.GetFleetLoadedRegimentCount(fleet);
             bool needsRegiments =
-                currentCount < requiredCount
+                currentCount < required.Count
                 || context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    < context.GetAttackRegimentRequirements(targetPlanet, fleet, true).Strength;
+                    < required.Strength;
             var readiness = context.GetAttackReadiness(fleet, targetPlanet);
             return (needsRegiments || readiness.FleetReady && !readiness.RegimentsReady)
                 && fleet.FindShipForRegiment() != null;
@@ -1718,10 +1716,11 @@ namespace Rebellion.AI.Planners
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
 
-            return context.Assessment.GetReadyFleetRegimentCount(fleet)
-                    >= context.GetAttackRegimentRequirements(targetPlanet, fleet).Count
+            int readyCount = context.Assessment.GetReadyFleetRegimentCount(fleet);
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet);
+            return readyCount >= required.Count
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                    >= context.GetAttackRegimentRequirements(targetPlanet, fleet).Strength
+                    >= required.Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
         }
@@ -1759,21 +1758,17 @@ namespace Rebellion.AI.Planners
         )
         {
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            int requiredCount = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
-                .Count;
-            int requiredStrength = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, true)
-                .Strength;
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, true);
+
             return demand != null
                 && fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet) > 0
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                     >= demand.CombatStrength
-                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= requiredCount
-                && context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredCount
+                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= required.Count
+                && context.Assessment.GetFleetRegimentCapacity(fleet) >= required.Count
                 && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    >= requiredStrength
+                    >= required.Strength
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= demand.BombardmentStrength;
         }

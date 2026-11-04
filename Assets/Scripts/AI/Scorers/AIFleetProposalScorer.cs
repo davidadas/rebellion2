@@ -1078,20 +1078,11 @@ namespace Rebellion.AI.Scorers
 
             var readiness = context.GetAttackReadiness(proposal.TargetFleet, proposal.TargetPlanet);
             bool waitingForRegiments = readiness.FleetReady && !readiness.RegimentsReady;
-            int requiredCount = context
-                .GetAttackRegimentRequirements(
-                    proposal.TargetPlanet,
-                    proposal.TargetFleet,
-                    !waitingForRegiments
-                )
-                .Count;
-            int requiredStrength = context
-                .GetAttackRegimentRequirements(
-                    proposal.TargetPlanet,
-                    proposal.TargetFleet,
-                    !waitingForRegiments
-                )
-                .Strength;
+            var required = context.GetAttackRegimentRequirements(
+                proposal.TargetPlanet,
+                proposal.TargetFleet,
+                !waitingForRegiments
+            );
             var arriving = assessment.GetFleetRegimentCapabilitiesAtArrival(
                 proposal.TargetFleet,
                 transitTicks
@@ -1103,11 +1094,11 @@ namespace Rebellion.AI.Scorers
                 ? arriving.Strength
                 : assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet);
             double countGain =
-                GetFulfillmentRatio(currentCount + 1, requiredCount)
-                - GetFulfillmentRatio(currentCount, requiredCount);
+                GetFulfillmentRatio(currentCount + 1, required.Count)
+                - GetFulfillmentRatio(currentCount, required.Count);
             double strengthGain =
-                GetFulfillmentRatio(currentStrength + regiment.AttackRating, requiredStrength)
-                - GetFulfillmentRatio(currentStrength, requiredStrength);
+                GetFulfillmentRatio(currentStrength + regiment.AttackRating, required.Strength)
+                - GetFulfillmentRatio(currentStrength, required.Strength);
             double readinessGain = AIUtility.Fulfillment(
                 Math.Max(0, countGain) + Math.Max(0, strengthGain),
                 1
@@ -1192,24 +1183,22 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            int requiredRegimentCount = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
-                .Count;
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, false);
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),
                 demand?.CombatStrength ?? 0
             );
             double regimentReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentCount(fleet),
-                requiredRegimentCount
+                required.Count
             );
             double transportReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentCapacity(fleet),
-                requiredRegimentCount
+                required.Count
             );
             double groundReadiness = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentAttackStrength(fleet),
-                context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
+                required.Strength
             );
             double readinessSum =
                 combatReadiness + regimentReadiness + transportReadiness + groundReadiness;
@@ -1293,22 +1282,12 @@ namespace Rebellion.AI.Scorers
                 targetFleet,
                 capitalShip
             );
-            int requiredRegimentCount = context
-                .GetAttackRegimentRequirements(
-                    targetPlanet,
-                    targetFleet,
-                    true,
-                    additionalBombardment
-                )
-                .Count;
-            int requiredRegimentStrength = context
-                .GetAttackRegimentRequirements(
-                    targetPlanet,
-                    targetFleet,
-                    true,
-                    additionalBombardment
-                )
-                .Strength;
+            var required = context.GetAttackRegimentRequirements(
+                targetPlanet,
+                targetFleet,
+                true,
+                additionalBombardment
+            );
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet)
                     + assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(capitalShip),
@@ -1317,12 +1296,12 @@ namespace Rebellion.AI.Scorers
             double regimentReadiness = GetFulfillmentRatio(
                 assessment.GetFleetLoadedRegimentCount(targetFleet)
                     + assessment.GetReadyCapitalShipRegimentCount(capitalShip),
-                requiredRegimentCount
+                required.Count
             );
             double transportReadiness = GetFulfillmentRatio(
                 assessment.GetFleetRegimentCapacity(targetFleet)
                     + assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
-                requiredRegimentCount
+                required.Count
             );
             double groundReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetRegimentAttackStrength(targetFleet)
@@ -1330,7 +1309,7 @@ namespace Rebellion.AI.Scorers
                         targetFleet,
                         capitalShip
                     ),
-                requiredRegimentStrength
+                required.Strength
             );
             List<double> readiness = new List<double>
             {
@@ -1372,16 +1351,14 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
-            int requiredRegimentCount = context
-                .GetAttackRegimentRequirements(targetPlanet, fleet, false)
-                .Count;
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, false);
             double groundStrengthRatio = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentAttackStrength(fleet),
-                context.GetAttackRegimentRequirements(targetPlanet, fleet, false).Strength
+                required.Strength
             );
             double troopRatio = GetFulfillmentRatio(
                 assessment.GetReadyFleetRegimentCount(fleet),
-                requiredRegimentCount
+                required.Count
             );
             List<double> viability = new List<double> { groundStrengthRatio, troopRatio };
             int requiredBombardment = demand?.BombardmentStrength ?? 0;
