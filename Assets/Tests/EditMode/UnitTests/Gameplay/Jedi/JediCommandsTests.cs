@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -696,6 +697,228 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsFalse(scanner.IsDiscoveringForceUser);
             Assert.IsFalse(candidate.IsForceEligible);
+        }
+
+        [Test]
+        public void ProcessTick_EqualDueScanners_DiscoveryFollowsActivationOrder()
+        {
+            Officer first = CreateJediTrainer("FIRST", forceValue: 50);
+            Officer second = CreateJediTrainer("SECOND", forceValue: 80);
+            first.ForceValue = 80;
+            Officer candidate = CreateDormantJedi("STUDENT");
+            _game.CurrentTick = 1;
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer == candidate);
+
+            Assert.AreSame(second, discovery.Discoverer);
+        }
+
+        [Test]
+        public void ProcessTick_OverdueScanners_DiscoveryFollowsEarliestDeadline()
+        {
+            Officer first = CreateJediTrainer("FIRST", forceValue: 50);
+            Officer second = CreateJediTrainer("SECOND", forceValue: 80);
+            _game.CurrentTick = 1;
+            first.ForceValue = 80;
+            Officer candidate = CreateDormantJedi("STUDENT");
+            _game.CurrentTick = 3;
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer == candidate);
+
+            Assert.AreSame(second, discovery.Discoverer);
+            Assert.AreEqual(4, first.NextForceDiscoveryTick);
+            Assert.AreEqual(4, second.NextForceDiscoveryTick);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        public void ProcessTick_OverdueScan_RechecksCandidatesAtEachMissedDeadline(int dueTick)
+        {
+            Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);
+            scanner.NextForceDiscoveryTick = dueTick;
+            Officer dependent = CreateDormantJedi("DEPENDENT");
+            dependent.RosterOrder = 1;
+            Officer prerequisite = CreateDormantJedi("PREREQUISITE");
+            prerequisite.RosterOrder = 2;
+            dependent.ForceDiscoveryConditionals.Add(
+                new IsForceEligibleConditional { OfficerInstanceID = prerequisite.InstanceID }
+            );
+            _game.CurrentTick = 3;
+
+            List<ForceDiscoveryResult> discovered = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            CollectionAssert.AreEqual(
+                new[] { prerequisite, dependent },
+                discovered.Select(result => result.Officer)
+            );
+            Assert.AreEqual(4, scanner.NextForceDiscoveryTick);
+        }
+
+        [Test]
+        public void ProcessTick_RecurringScan_TakesItsPlaceAfterAlreadyScheduledPeers()
+        {
+            CreateJediTrainer("FIRST", forceValue: 80);
+            Officer second = CreateJediTrainer("SECOND", forceValue: 50);
+            _game.CurrentTick = 1;
+            second.ForceValue = 80;
+            new JediTickProcessor(_system).ProcessTick(_game);
+            Officer candidate = CreateDormantJedi("STUDENT");
+            _game.CurrentTick = 2;
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer == candidate);
+
+            Assert.AreSame(second, discovery.Discoverer);
+        }
+
+        [Test]
+        public void ProcessTick_ScannerRemovedDuringEarlierScan_DoesNotRunRemovedScan()
+        {
+            CreateJediTrainer("FIRST", forceValue: 80);
+            Officer second = CreateJediTrainer("SECOND", forceValue: 80);
+            Officer newTrainer = CreateDormantJedi("NEW_TRAINER");
+            newTrainer.IsJediTrainer = true;
+            newTrainer.JediLevel = 80;
+            Officer candidate = CreateDormantJedi("STUDENT");
+            candidate.ForceDiscoveryConditionals.Add(
+                new BindingIncludesUnitConditional
+                {
+                    Binding = "$discoverer",
+                    UnitInstanceID = second.InstanceID,
+                }
+            );
+            _game.ForceDiscoveryStarted += officer =>
+            {
+                if (officer == newTrainer)
+                    _game.DetachNode(second);
+            };
+            _game.CurrentTick = 1;
+
+            new JediTickProcessor(_system).ProcessTick(_game);
+
+            Assert.IsTrue(newTrainer.IsForceEligible);
+            Assert.IsFalse(candidate.IsForceEligible);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_RestoredScanners_PreservesSavedOrLegacyScanOrder(bool legacySave)
+        {
+            Officer first = CreateJediTrainer("FIRST", forceValue: 50);
+            CreateJediTrainer("SECOND", forceValue: 80);
+            first.ForceValue = 80;
+            CreateDormantJedi("STUDENT");
+            GameRoot restored = RestoreDiscoveryGame(legacySave);
+            restored.CurrentTick = 1;
+            using JediCommands commands = new(restored, new FixedRNG());
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(commands)
+                .ProcessTick(restored)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer.InstanceID == "STUDENT");
+
+            Assert.AreEqual(legacySave ? "FIRST" : "SECOND", discovery.Discoverer.InstanceID);
+        }
+
+        [Test]
+        public void ProcessTick_RestoredScanners_AddingScannerDoesNotLoseItsScan()
+        {
+            CreateJediTrainer("EXISTING", forceValue: 80);
+            Officer candidate = CreateDormantJedi("STUDENT");
+            candidate.ForceDiscoveryConditionals.Add(
+                new BindingIncludesUnitConditional
+                {
+                    Binding = "$discoverer",
+                    UnitInstanceID = "NEW_TRAINER",
+                }
+            );
+            GameRoot restored = RestoreDiscoveryGame(false);
+            Officer newTrainer = new()
+            {
+                InstanceID = "NEW_TRAINER",
+                OwnerInstanceID = _alliance.InstanceID,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                IsJediTrainer = true,
+                ForceValue = 80,
+            };
+            restored.AttachNode(
+                newTrainer,
+                restored.GetSceneNodeByInstanceID<Planet>(_tatooine.InstanceID)
+            );
+            restored.CurrentTick = 1;
+            using JediCommands commands = new(restored, new FixedRNG());
+
+            ForceDiscoveryResult discovery = new JediTickProcessor(commands)
+                .ProcessTick(restored)
+                .OfType<ForceDiscoveryResult>()
+                .Single(result => result.Officer.InstanceID == candidate.InstanceID);
+
+            Assert.AreSame(newTrainer, discovery.Discoverer);
+        }
+
+        [Test]
+        public void ProcessTick_LegacySaveWithoutDeadline_StartsWithoutReplayingPastScans()
+        {
+            CreateJediTrainer("TRAINER", forceValue: 80);
+            Officer dependent = CreateDormantJedi("DEPENDENT");
+            dependent.RosterOrder = 1;
+            Officer prerequisite = CreateDormantJedi("PREREQUISITE");
+            prerequisite.RosterOrder = 2;
+            dependent.ForceDiscoveryConditionals.Add(
+                new IsForceEligibleConditional { OfficerInstanceID = prerequisite.InstanceID }
+            );
+            _game.CurrentTick = 1000;
+            GameRoot restored = RestoreDiscoveryGame(true, omitDeadline: true);
+            Officer restoredDependent = restored.GetSceneNodeByInstanceID<Officer>(
+                dependent.InstanceID
+            );
+            Officer restoredPrerequisite = restored.GetSceneNodeByInstanceID<Officer>(
+                prerequisite.InstanceID
+            );
+            using JediCommands commands = new(restored, new FixedRNG());
+
+            new JediTickProcessor(commands).ProcessTick(restored);
+            Assert.IsFalse(restoredPrerequisite.IsForceEligible);
+            restored.CurrentTick++;
+            new JediTickProcessor(commands).ProcessTick(restored);
+
+            Assert.IsTrue(restoredPrerequisite.IsForceEligible);
+            Assert.IsFalse(restoredDependent.IsForceEligible);
+            restored.CurrentTick++;
+            new JediTickProcessor(commands).ProcessTick(restored);
+            Assert.IsTrue(restoredDependent.IsForceEligible);
+        }
+
+        /// <summary>
+        /// Reloads the campaign, optionally removing queue orders to represent an older save.
+        /// </summary>
+        /// <param name="legacySave">Whether to omit saved insertion orders.</param>
+        /// <param name="omitDeadline">Whether to omit the deadline absent from older saves.</param>
+        /// <returns>The restored campaign with its runtime Force rules reconnected.</returns>
+        private GameRoot RestoreDiscoveryGame(bool legacySave, bool omitDeadline = false)
+        {
+            XDocument document = XDocument.Parse(SerializationHelper.Serialize(_game));
+            if (legacySave)
+                document.Descendants(nameof(Officer.ForceDiscoveryOrder)).Remove();
+            if (omitDeadline)
+                document.Descendants(nameof(Officer.NextForceDiscoveryTick)).Remove();
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(document.ToString());
+            restored.SetConfig(_game.Config);
+            restored.RebuildSceneState();
+            return restored;
         }
 
         /// <summary>

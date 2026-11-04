@@ -16,6 +16,15 @@ namespace Rebellion.Gameplay
     /// </summary>
     public class JediCommands : IDisposable
     {
+        private static readonly IComparer<(int Tick, long Order, Officer Scanner)> _scanComparer =
+            Comparer<(int Tick, long Order, Officer Scanner)>.Create(
+                (left, right) =>
+                {
+                    int dueOrder = left.Tick.CompareTo(right.Tick);
+                    return dueOrder != 0 ? dueOrder : left.Order.CompareTo(right.Order);
+                }
+            );
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly List<GameResult> _pendingDiscoveryResults = new();
@@ -144,21 +153,59 @@ namespace Rebellion.Gameplay
                 candidates.Add(candidate);
             }
 
+            SortedSet<(int Tick, long Order, Officer Scanner)> scans = new(_scanComparer);
             foreach (Officer scanner in officers)
+                if (scanner.IsDiscoveringForceUser)
+                    scans.Add(
+                        (scanner.NextForceDiscoveryTick, scanner.ForceDiscoveryOrder, scanner)
+                    );
+
+            while (scans.Count > 0)
+            {
+                (int Tick, long Order, Officer Scanner) scan = scans.Min;
+                if (scan.Tick > _game.CurrentTick)
+                    break;
+                scans.Remove(scan);
+                if (!IsCurrentDiscoveryScan(scan))
+                    continue;
+
+                ISceneNode location = scan.Scanner.GetParent();
                 if (
-                    scanner.IsDiscoveringForceUser
-                    && _game.CurrentTick >= scanner.NextForceDiscoveryTick
+                    location != null
+                    && candidatesByLocation.TryGetValue(location, out List<Officer> candidates)
                 )
-                {
-                    ISceneNode location = scanner.GetParent();
-                    if (
-                        location != null
-                        && candidatesByLocation.TryGetValue(location, out List<Officer> candidates)
+                    ScanScannerLocation(scan.Scanner, candidates, results);
+                if (!IsCurrentDiscoveryScan(scan))
+                    continue;
+
+                scan.Scanner.NextForceDiscoveryTick = unchecked(scan.Tick + 1);
+                scan.Scanner.ForceDiscoveryOrder = _game.AllocateForceDiscoveryOrder();
+                scans.Add(
+                    (
+                        scan.Scanner.NextForceDiscoveryTick,
+                        scan.Scanner.ForceDiscoveryOrder,
+                        scan.Scanner
                     )
-                        ScanScannerLocation(scanner, candidates, results);
-                    scanner.NextForceDiscoveryTick = _game.CurrentTick + 1;
-                }
+                );
+            }
         }
+
+        /// <summary>
+        /// Rejects scans canceled, replaced, or removed while an earlier scan was running.
+        /// </summary>
+        /// <param name="scan">The saved scheduling state captured for this due scan.</param>
+        /// <returns>True when the registered officer still owns this active scan.</returns>
+        private bool IsCurrentDiscoveryScan((int Tick, long Order, Officer Scanner) scan) =>
+            scan.Scanner.IsDiscoveringForceUser
+            && scan.Scanner.NextForceDiscoveryTick == scan.Tick
+            && scan.Scanner.ForceDiscoveryOrder == scan.Order
+            && ReferenceEquals(
+                _game.GetSceneNodeByInstanceID<Officer>(
+                    scan.Scanner.InstanceID,
+                    includeDisabled: true
+                ),
+                scan.Scanner
+            );
 
         /// <summary>
         /// Scans officers sharing the scanner's immediate container and faction.

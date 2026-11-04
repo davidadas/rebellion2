@@ -140,6 +140,9 @@ namespace Rebellion.Game
         [PersistableIgnore]
         private readonly List<Officer> _registeredOfficers = new List<Officer>();
 
+        [PersistableIgnore]
+        private long _forceDiscoveryOrder;
+
         /// <summary>
         /// Gets the registered officer roster, including disabled officers, without traversing the scene.
         /// Callers must finish enumeration before adding or removing registered officers.
@@ -773,6 +776,12 @@ namespace Rebellion.Game
                 if (node is Officer officer)
                 {
                     _registeredOfficers.Add(officer);
+                    _forceDiscoveryOrder = Math.Max(
+                        _forceDiscoveryOrder,
+                        officer.ForceDiscoveryOrder
+                    );
+                    if (officer.IsDiscoveringForceUser && officer.ForceDiscoveryOrder == 0)
+                        officer.ForceDiscoveryOrder = AllocateForceDiscoveryOrder();
                 }
             }
             catch (ArgumentException)
@@ -807,6 +816,13 @@ namespace Rebellion.Game
         {
             ForceDiscoveryStarted?.Invoke(officer);
         }
+
+        /// <summary>
+        /// Allocates the next insertion order for a discovery scan, including recurring scans.
+        /// Restored officer orders advance this counter as the scene registry is rebuilt.
+        /// </summary>
+        /// <returns>An order greater than every previously registered or scheduled scan.</returns>
+        internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
 
         /// <summary>
         /// Disconnects a removed officer before containment changes can schedule new work.

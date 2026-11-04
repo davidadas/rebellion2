@@ -95,9 +95,14 @@ including numeric rank changes within the same displayed rank label. Initializin
 does not produce a separate growth report.
 
 Qualified trainers scan stationary officers sharing their immediate container and faction.
-The first scan runs on the following campaign tick. Discovery initializes a zero stored Force
-value and preserves an existing nonzero value. Additional `ForceDiscoveryConditionals` use the
-existing [condition syntax](../Scripting/Conditionals.md).
+The first scan runs on the following campaign tick. Scans run by deadline, with insertion order
+breaking ties. Recurring scans advance from their previous deadline and process overdue scans
+before advancing beyond the current tick. Saves retain that insertion order; older saves without
+it initialize scans in their existing officer order. Older saves without a scan deadline start
+scanning on the following campaign tick instead of replaying scans from before the save.
+
+Discovery initializes a zero stored Force value and preserves an existing nonzero value.
+Additional `ForceDiscoveryConditionals` use the existing [condition syntax](../Scripting/Conditionals.md).
 
 ## AI behavior
 

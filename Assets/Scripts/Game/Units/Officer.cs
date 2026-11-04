@@ -451,7 +451,20 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Gets or sets the next campaign tick when an enabled discovery scan may run.
         /// </summary>
-        public int NextForceDiscoveryTick { get; set; }
+        [PersistableIgnore]
+        public int NextForceDiscoveryTick
+        {
+            get => _nextForceDiscoveryTick ?? 0;
+            set => _nextForceDiscoveryTick = value;
+        }
+
+        [PersistableMember(Name = nameof(NextForceDiscoveryTick))]
+        private int? _nextForceDiscoveryTick;
+
+        /// <summary>
+        /// Gets or sets the saved insertion order used when discovery scans share a due tick.
+        /// </summary>
+        public long ForceDiscoveryOrder { get; set; }
 
         // Rank Info.
         public OfficerRank[] AllowedRanks { get; set; }
@@ -666,7 +679,8 @@ namespace Rebellion.Game.Units
             copy._fastHealing = _fastHealing;
             copy._forceRules = _forceRules;
             copy._isDiscoveringForceUser = _isDiscoveringForceUser;
-            copy.NextForceDiscoveryTick = NextForceDiscoveryTick;
+            copy._nextForceDiscoveryTick = _nextForceDiscoveryTick;
+            copy.ForceDiscoveryOrder = ForceDiscoveryOrder;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
             copy.InitialParentTypeID = InitialParentTypeID;
@@ -733,6 +747,8 @@ namespace Rebellion.Game.Units
         /// </summary>
         internal void ReconcileForceDiscoveryState()
         {
+            if (_forceGame != null && _isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
+                NextForceDiscoveryTick = unchecked(_forceGame.CurrentTick + 1);
             if (ForceRank != 0)
                 RefreshForceDiscoveryState();
         }
@@ -777,6 +793,7 @@ namespace Rebellion.Game.Units
 
             _isDiscoveringForceUser = shouldDiscover;
             NextForceDiscoveryTick = shouldDiscover ? unchecked(_forceGame.CurrentTick + 1) : 0;
+            ForceDiscoveryOrder = shouldDiscover ? _forceGame.AllocateForceDiscoveryOrder() : 0;
             if (shouldDiscover)
                 _forceGame.RecordForceDiscoveryStarted(this);
         }
