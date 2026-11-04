@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Selectors
 {
@@ -42,11 +41,6 @@ namespace Rebellion.AI.Selectors
             out AIMissionProposal resolved
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryResolve),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             resolved = proposal;
             SpecialForces partner = FindLocalInterceptionPartner(context, proposal);
             if (partner != null)
@@ -166,11 +160,6 @@ namespace Rebellion.AI.Selectors
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindLocalInterceptionPartner),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             if (
                 proposal.IsTeamFinal
                 || !proposal.IsInterception
@@ -205,11 +194,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the proposal is valid and nonconflicting.</returns>
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TrySelect),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             if (
                 proposal is AIMissionProposal { IsTeamFinal: true } completeTeam
                 && completeTeam.MissionTypeID == MissionTypeIDs.Sabotage
@@ -262,11 +246,6 @@ namespace Rebellion.AI.Selectors
         /// <param name="pending">The unprocessed proposal queue.</param>
         internal void RefreshDiplomacyScores(AITurnContext context, LinkedList<AIProposal> pending)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(RefreshDiplomacyScores),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             AIMissionProposalScorer scorer = new();
             LinkedListNode<AIProposal> node = pending.First;
             while (node != null)
@@ -405,11 +384,6 @@ namespace Rebellion.AI.Selectors
         /// <param name="context">The faction turn containing the selected proposals.</param>
         internal void FinalizeSelection(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FinalizeSelection),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             if (context?.SelectedProposals == null || context.Assessment == null)
                 return;
 
@@ -471,11 +445,6 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the participant is available for decoy assignment.</returns>
         private static bool IsAvailableDecoy(AITurnContext context, IMissionParticipant participant)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(IsAvailableDecoy),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             return participant is Officer
                 || participant is SpecialForces specialForces
                     && context.GetSpecialForcesIntent(specialForces) == SpecialForcesIntent.Decoy;
@@ -492,11 +461,6 @@ namespace Rebellion.AI.Selectors
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetUnprotectedFoilRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
             if (config.MissionDefenseIntelFullWeightTicks > 0)
                 return proposal.FoilProbability;
@@ -522,11 +486,6 @@ namespace Rebellion.AI.Selectors
             AIMissionProposal proposal
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ExceedsUnprotectedFoilRisk),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             return GetUnprotectedFoilRisk(context, proposal)
                 > context
                     .Game
@@ -553,11 +512,6 @@ namespace Rebellion.AI.Selectors
             long teamTravelTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(SelectDecoy),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             IMissionParticipant selected = null;
             foreach (IMissionParticipant candidate in decoys)
             {
@@ -596,11 +550,6 @@ namespace Rebellion.AI.Selectors
             long teamTravelTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(IsPreferred),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionSelector)
-            );
             bool candidateIsSpecialForces = candidate is SpecialForces;
             bool selectedIsSpecialForces = selected is SpecialForces;
             if (candidateIsSpecialForces != selectedIsSpecialForces)

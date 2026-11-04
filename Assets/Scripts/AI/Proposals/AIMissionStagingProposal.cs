@@ -6,7 +6,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Proposals
 {
@@ -145,10 +144,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when relocation is valid and improves the mission round trip.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanSelect),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             return Participants.Count > 0 && TryGetTravelTicks(context, out _);
         }
 
@@ -159,10 +154,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when the normal movement command remains available and valid.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanExecute),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             return context?.Movement != null && CanSelect(context);
         }
 
@@ -172,10 +163,6 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current faction turn.</param>
         public override void Execute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Execute),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             if (!CanExecute(context) || IsWaiting)
                 return;
 
@@ -206,10 +193,6 @@ namespace Rebellion.AI.Proposals
             out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetTravelTicks),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             travel = default;
             if (context?.Assessment == null || Mission == null)
                 return false;
@@ -340,10 +323,6 @@ namespace Rebellion.AI.Proposals
             out (long DirectTicks, long StagedTicks, long MissionTicks, long ReturnTicks) travel
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetInterceptionTravelTicks),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             travel = default;
             if (
                 context?.MovementQueries == null
@@ -423,10 +402,6 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when an equally capable incoming participant can complete the interception.</returns>
         private bool HasInboundInterceptor(AITurnContext context, long outboundTicks)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(HasInboundInterceptor),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             foreach (
                 IMissionParticipant participant in context.Faction.GetOwnedUnitsByType<IMissionParticipant>()
             )
@@ -469,10 +444,6 @@ namespace Rebellion.AI.Proposals
             long? directTicks = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateTravelTicks),
-                subjectType: typeof(AIMissionStagingProposal)
-            );
             int relocation = 0;
             foreach (
                 IGrouping<ISceneNode, IMissionParticipant> group in Participants.GroupBy(

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -29,10 +28,6 @@ namespace Rebellion.Gameplay
         /// <returns>The planetary-control results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            using var measurement = PerformanceLogger.Measure(
-                "Game system tick",
-                subjectType: typeof(PlanetaryControlTickProcessor)
-            );
             List<GameResult> results = new List<GameResult>();
             _commands.UpdateBlockadeSupport();
             _commands.UpdateUncolonizedPlanets(results);

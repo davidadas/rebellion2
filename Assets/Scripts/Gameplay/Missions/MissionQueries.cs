@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
@@ -82,10 +81,6 @@ namespace Rebellion.Gameplay
         /// <returns>True when the mission can be created.</returns>
         public bool CanCreateMission(MissionContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanCreateMission),
-                subjectType: typeof(MissionQueries)
-            );
             MissionContext resolvedContext = ResolveMissionContext(context);
             return resolvedContext != null
                 && _missionFactory.TryCreateMission(resolvedContext, out _);
@@ -99,10 +94,6 @@ namespace Rebellion.Gameplay
         /// <returns>True when the context creates a valid mission.</returns>
         public bool TryCreateMission(MissionContext context, out Mission mission)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryCreateMission),
-                subjectType: typeof(MissionQueries)
-            );
             MissionContext resolvedContext = ResolveMissionContext(context);
             if (resolvedContext == null)
             {
@@ -126,10 +117,6 @@ namespace Rebellion.Gameplay
             out Mission mission
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryCreateMissionAfterArrival),
-                subjectType: typeof(MissionQueries)
-            );
             mission = null;
             MissionContext resolved = ResolveMissionContext(context);
             if (resolved == null || departure?.GetOwnerInstanceID() != resolved.OwnerInstanceId)
@@ -491,10 +478,6 @@ namespace Rebellion.Gameplay
             Mission projectedMission = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetMissionOddsCore),
-                subjectType: typeof(MissionQueries)
-            );
             var previousLookups = _probabilityLookups;
             var previousDefenders = _encounterDefenders;
             var previousCommanders = _commanders;
@@ -607,10 +590,6 @@ namespace Rebellion.Gameplay
             IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateFoilProbability),
-                subjectType: typeof(MissionQueries)
-            );
             if (mission == null || target == null)
                 return 0;
 
@@ -786,10 +765,6 @@ namespace Rebellion.Gameplay
             bool reusableDecoys = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ApplyFoilEncounterOdds),
-                subjectType: typeof(MissionQueries)
-            );
             if (!reusableDecoys && survivingByDecoyPool.Count == 0)
                 return minimumOverallProbability <= 0;
             if (mainParticipants.Count == 0)
@@ -995,10 +970,6 @@ namespace Rebellion.Gameplay
             double objectiveSuccessProbability
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(AccumulateFoilEncounterOdds),
-                subjectType: typeof(MissionQueries)
-            );
             var (pools, remainingPools, selectableCounts) = GetDecoyPoolTransitions(
                 incoming.Keys,
                 allDecoys.Count,
@@ -1087,10 +1058,6 @@ namespace Rebellion.Gameplay
             IReadOnlyList<int> encounterDecoyIndexes
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetDecoyPoolTransitions),
-                subjectType: typeof(MissionQueries)
-            );
             List<BigInteger> pools = incoming.ToList();
             Dictionary<BigInteger, int> poolIndexes = new();
             for (int poolIndex = 0; poolIndex < pools.Count; poolIndex++)
@@ -1223,10 +1190,6 @@ namespace Rebellion.Gameplay
             IReadOnlyList<IMissionParticipant> allDecoys
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(EstimateEncounterOdds),
-                subjectType: typeof(MissionQueries)
-            );
             if (mission == null || target == null)
                 return (0, 0);
 
@@ -1946,10 +1909,6 @@ namespace Rebellion.Gameplay
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetEncounterDefender),
-                subjectType: typeof(MissionQueries)
-            );
             var key = (detector, planet);
             if (_encounterDefenders != null && _encounterDefenders.TryGetValue(key, out var cached))
                 return cached;
@@ -1971,10 +1930,6 @@ namespace Rebellion.Gameplay
         /// <returns>The eligible defending commander, or null.</returns>
         private Officer GetEncounterCommander(ISceneNode detector, Planet planet)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetEncounterCommander),
-                subjectType: typeof(MissionQueries)
-            );
             Planet resolvedPlanet = planet ?? detector?.GetParentOfType<Planet>();
             ISceneNode scope = detector?.GetParentOfType<Fleet>();
             scope ??= resolvedPlanet;

@@ -124,10 +124,6 @@ namespace Rebellion.Gameplay
             out int transitTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetSelectionTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             transitTicks = 0;
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
@@ -198,10 +194,6 @@ namespace Rebellion.Gameplay
             out int transitTicks
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryGetTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             transitTicks = 0;
             if (units == null || units.Count == 0 || destination == null)
                 return false;
@@ -450,10 +442,6 @@ namespace Rebellion.Gameplay
             out List<ContainerNode> resolvedDestinations
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryResolveMoveGroupDestinations),
-                subjectType: typeof(MovementQueries)
-            );
             resolvedDestinations = new List<ContainerNode>();
             Dictionary<ContainerNode, List<ISceneNode>> reservedChildren =
                 new Dictionary<ContainerNode, List<ISceneNode>>();
@@ -1188,10 +1176,6 @@ namespace Rebellion.Gameplay
             bool allowOriginPlanet = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanUseSafeRelocationDestination),
-                subjectType: typeof(MovementQueries)
-            );
             return CanUseSafeRelocationDestination(
                 unit,
                 destination,
@@ -1222,10 +1206,6 @@ namespace Rebellion.Gameplay
             bool allowOriginPlanet = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanUseSafeRelocationDestination),
-                subjectType: typeof(MovementQueries)
-            );
             if (units == null)
                 return false;
 
@@ -1265,10 +1245,6 @@ namespace Rebellion.Gameplay
             Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanUseSafeRelocationDestination),
-                subjectType: typeof(MovementQueries)
-            );
             if (unit == null || destination == null)
                 return false;
 
@@ -1544,10 +1520,6 @@ namespace Rebellion.Gameplay
         /// <returns>The movement duration in ticks.</returns>
         internal int CalculateTransitTicks(IMovable unit, Planet origin, Planet destination)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             return CalculateTransitTicks(
                 unit,
                 origin.GetPosition(),
@@ -1572,10 +1544,6 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             return CalculateTransitTicks(
                 unit,
                 origin.GetPosition(),
@@ -1600,10 +1568,6 @@ namespace Rebellion.Gameplay
             Planet destination
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1630,10 +1594,6 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1658,10 +1618,6 @@ namespace Rebellion.Gameplay
             bool sameSector
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             return CalculateTransitTicks(
                 unit,
                 originPos,
@@ -1729,10 +1685,6 @@ namespace Rebellion.Gameplay
             int personnelTravelTimePercent
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CalculateTransitTicks),
-                subjectType: typeof(MovementQueries)
-            );
             int distance = (int)destination.GetRawDistanceTo(originPos);
             double distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
             if (distanceDivisor <= 0)

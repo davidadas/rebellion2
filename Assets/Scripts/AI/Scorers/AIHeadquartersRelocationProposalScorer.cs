@@ -1,5 +1,4 @@
 using Rebellion.AI.Proposals;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Scorers
 {
@@ -26,11 +25,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The unfulfilled share of the known incoming threat.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Score),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationProposalScorer)
-            );
             if (proposal is not AIHeadquartersRelocationProposal relocation)
                 return 0;
 

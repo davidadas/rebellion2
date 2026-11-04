@@ -7,7 +7,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Gameplay
@@ -84,10 +83,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(BeginMission),
-                subjectType: typeof(MissionResolver)
-            );
             List<GameResult> departureResults = new List<GameResult>();
             bool departureFoiled = ResolveDepartureEncounters(
                 mission,
@@ -134,10 +129,6 @@ namespace Rebellion.Gameplay
             out string foilingFactionInstanceID
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveDepartureEncounters),
-                subjectType: typeof(MissionResolver)
-            );
             foilingFactionInstanceID = null;
             List<Planet> origins = startingParticipants
                 .Select(participant => participant.GetParentOfType<Planet>())
@@ -279,10 +270,6 @@ namespace Rebellion.Gameplay
             out string foilingFactionInstanceID
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveEncounter),
-                subjectType: typeof(MissionResolver)
-            );
             Planet planet = mission?.GetParent() as Planet;
             return ResolveEncounter(
                 mission,
@@ -316,10 +303,6 @@ namespace Rebellion.Gameplay
             out string foilingFactionInstanceID
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveEncounter),
-                subjectType: typeof(MissionResolver)
-            );
             foilingFactionInstanceID = null;
             bool betrayed = false;
             if (phase == MissionEncounterPhase.PreObjective)
@@ -366,10 +349,6 @@ namespace Rebellion.Gameplay
         /// <returns>The results produced by mission resolution.</returns>
         internal List<GameResult> ResolveCompletedObjective(Mission mission)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveCompletedObjective),
-                subjectType: typeof(MissionResolver)
-            );
             List<GameResult> results;
             if (!_uprisingSystem.TryExecuteMission(mission, out results))
             {
@@ -411,10 +390,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FinishMission),
-                subjectType: typeof(MissionResolver)
-            );
             if (completedResult == null)
                 TearDownMission(mission, null, results);
             else if (completedResult.CanContinue)
@@ -435,10 +410,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TearDownMission),
-                subjectType: typeof(MissionResolver)
-            );
             int resultStart = results.Count;
             Planet missionPlanet = mission.GetParent() as Planet;
             List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
@@ -534,10 +505,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveStrandedMissionUnits),
-                subjectType: typeof(MissionResolver)
-            );
             foreach (IMovable unit in units)
             {
                 unit.Movement = null;
@@ -648,10 +615,6 @@ namespace Rebellion.Gameplay
             out string foilingFactionInstanceID
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveDetection),
-                subjectType: typeof(MissionResolver)
-            );
             foilingFactionInstanceID = null;
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
@@ -776,10 +739,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveDecoys),
-                subjectType: typeof(MissionResolver)
-            );
             foreach (ISceneNode detector in activeDetectors.ToList())
             {
                 if (availableDecoys.Count == 0)
@@ -847,10 +806,6 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(ResolveEvasion),
-                subjectType: typeof(MissionResolver)
-            );
             Officer commander = mission.FindDetectorCommander(detector, planet);
             int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;

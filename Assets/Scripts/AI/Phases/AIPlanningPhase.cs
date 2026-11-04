@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Linq;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Phases
 {
@@ -51,11 +50,6 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Execute),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIPlanningPhase)
-            );
             foreach (object _ in ExecuteIncrementally(context)) { }
         }
 
@@ -78,12 +72,7 @@ namespace Rebellion.AI.Phases
                         context.Game?.Config?.GameSpeed?.TickWorkBudgetMilliseconds ?? 0;
                     long started = _getTimestamp();
                     foreach (
-                        object step in PerformanceLogger.MeasureSteps(
-                            incrementalPlanner.PlanIncrementally(context, proposals),
-                            "Planner step",
-                            context.Faction?.PeekInstanceID(),
-                            subjectType: planner.GetType()
-                        )
+                        object step in incrementalPlanner.PlanIncrementally(context, proposals)
                     )
                     {
                         if (
@@ -98,14 +87,7 @@ namespace Rebellion.AI.Phases
                     context.AddProposals(proposals);
                 }
                 else
-                    using (
-                        PerformanceLogger.Measure(
-                            "Planner",
-                            context.Faction?.PeekInstanceID(),
-                            subjectType: planner.GetType()
-                        )
-                    )
-                        context.AddProposals(planner.Plan(context));
+                    context.AddProposals(planner.Plan(context));
                 yield return planner;
             }
         }

@@ -4,7 +4,6 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Phases
 {
@@ -30,11 +29,6 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Execute),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIExecutionPhase)
-            );
             foreach (object _ in ExecuteIncrementally(context)) { }
         }
 
@@ -50,52 +44,16 @@ namespace Rebellion.AI.Phases
 
             using IDisposable resultObservation = _results?.ObserveAll(_ =>
             {
-                using var performanceObservation = PerformanceLogger.Measure(
-                    "Observe result",
-                    context.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIExecutionPhase)
-                );
                 context.InvalidateManufacturingBudget();
             });
-            foreach (
-                AIProposal proposal in PerformanceLogger.MeasureSteps(
-                    GetExecutionOrder(context),
-                    "Execution order",
-                    context.Faction?.PeekInstanceID(),
-                    subjectType: typeof(AIExecutionPhase)
-                )
-            )
+            foreach (AIProposal proposal in GetExecutionOrder(context))
             {
-                bool canExecute;
-                using (
-                    PerformanceLogger.Measure(
-                        "CanExecute",
-                        context.Faction?.PeekInstanceID(),
-                        items: 1,
-                        subjectType: proposal?.GetType()
-                    )
-                )
-                    canExecute = proposal?.CanExecute(context) == true;
+                bool canExecute = proposal?.CanExecute(context) == true;
                 if (canExecute)
                 {
-                    using (
-                        PerformanceLogger.Measure(
-                            "Execute proposal",
-                            context.Faction?.PeekInstanceID(),
-                            items: 1,
-                            subjectType: proposal.GetType()
-                        )
-                    )
-                        proposal.Execute(context);
+                    proposal.Execute(context);
                     if (proposal is not AIManufactureProposal)
-                        using (
-                            PerformanceLogger.Measure(
-                                "Invalidate manufacturing budget",
-                                context.Faction?.PeekInstanceID(),
-                                subjectType: typeof(AIExecutionPhase)
-                            )
-                        )
-                            context.InvalidateManufacturingBudget();
+                        context.InvalidateManufacturingBudget();
                 }
                 yield return proposal;
             }

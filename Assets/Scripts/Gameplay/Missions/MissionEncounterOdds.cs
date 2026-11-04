@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Gameplay
 {
@@ -56,10 +55,6 @@ namespace Rebellion.Gameplay
                 IReadOnlyDictionary<BigInteger, double> noLossSurvivors = null
             )
             {
-                using var performanceMeasurement = PerformanceLogger.Measure(
-                    nameof(Evaluate),
-                    subjectType: typeof(MissionEncounterOdds.Cache)
-                );
                 if (_capacity == 0)
                     return Apply(detectors, decoyIndexes, survivors, noLossSurvivors);
                 Input input = new(detectors, decoyIndexes, survivors, noLossSurvivors);
@@ -231,10 +226,6 @@ namespace Rebellion.Gameplay
             IReadOnlyDictionary<BigInteger, double> noLossSurvivors = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Apply),
-                subjectType: typeof(MissionEncounterOdds)
-            );
             if (detectors == null)
                 throw new ArgumentNullException(nameof(detectors));
             if (decoyIndexes == null)

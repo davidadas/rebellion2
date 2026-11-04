@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -42,11 +41,6 @@ namespace Rebellion.AI.Planners
             AIMissionStagingProposal preparation = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryAdd),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionCandidatePool)
-            );
             if (!CanRetain(context, proposal, preparation?.Destination))
                 return;
 
@@ -84,11 +78,6 @@ namespace Rebellion.AI.Planners
             Planet departure = null
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanRetain),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIMissionCandidatePool)
-            );
             if (proposal == null)
                 return false;
             double upperBound = _scorer.GetScoreUpperBound(context, proposal, departure);

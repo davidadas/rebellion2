@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -583,10 +582,6 @@ namespace Rebellion.AI
             bool refresh = false
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetResourceFacilitiesToReclaim),
-                subjectType: typeof(AIStrategicPlan)
-            );
             if (
                 !IsInfrastructureType(buildingType)
                 || planet == null
@@ -699,10 +694,6 @@ namespace Rebellion.AI
             long additionalMaterials
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(CanFundResourceReclamation),
-                subjectType: typeof(AIStrategicPlan)
-            );
             if (resources == null || resources.Count == 0)
                 return true;
             string owner = resources[0].GetOwnerInstanceID();
@@ -782,10 +773,6 @@ namespace Rebellion.AI
             bool includeOutput
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetOperatingEconomyAfterReclamation),
-                subjectType: typeof(AIStrategicPlan)
-            );
             string key = string.Join(
                 "|",
                 excluded
@@ -829,10 +816,6 @@ namespace Rebellion.AI
             int targetCount
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetReclaimableInfrastructureSpace),
-                subjectType: typeof(AIStrategicPlan)
-            );
             int currentCount = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
             int maximumTarget = Math.Min(targetCount, planet?.EnergyCapacity ?? 0);
             for (int candidate = maximumTarget; candidate > currentCount; candidate--)
@@ -1125,10 +1108,6 @@ namespace Rebellion.AI
             IReadOnlyDictionary<string, Dictionary<BuildingType, int>> selectedBuildings
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetPrimaryInfrastructureProgress),
-                subjectType: typeof(AIStrategicPlan)
-            );
             int preferred = GetInfrastructureHubTargets(buildingType).FirstOrDefault();
             List<Planet> candidates = planets
                 .Where(planet => !planet.IsDestroyed && planet.IsColonized)
@@ -1409,10 +1388,6 @@ namespace Rebellion.AI
         /// <returns>The required shield-generator count.</returns>
         public int GetPlanetaryShieldTarget(Planet planet, bool plannedInfrastructure = false)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetPlanetaryShieldTarget),
-                subjectType: typeof(AIStrategicPlan)
-            );
             if (
                 _game?.Config == null
                 || planet?.IsDestroyed != false
@@ -1499,10 +1474,6 @@ namespace Rebellion.AI
             int plannedInfrastructureCount = 0
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetConstructionSpace),
-                subjectType: typeof(AIStrategicPlan)
-            );
             if (
                 _game?.Config == null
                 || planet?.IsDestroyed != false
@@ -1883,10 +1854,6 @@ namespace Rebellion.AI
         /// <param name="assessment">The cached faction assessment.</param>
         public AIStrategicPlan(GameRoot game, AIAssessment assessment)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                "Constructor",
-                subjectType: typeof(AIStrategicPlan)
-            );
             _game = game;
             _assessment = assessment;
             if (_game?.Config == null)

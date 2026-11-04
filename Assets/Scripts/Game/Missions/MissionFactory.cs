@@ -5,7 +5,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Game.Missions
 {
@@ -216,10 +215,6 @@ namespace Rebellion.Game.Missions
         /// <returns>True when a mission was created.</returns>
         public bool TryCreateMission(MissionContext context, out Mission mission)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(TryCreateMission),
-                subjectType: typeof(MissionFactory)
-            );
             mission = null;
             if (_game == null || context == null || string.IsNullOrEmpty(context.MissionTypeID))
                 return false;

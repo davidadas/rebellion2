@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.AI.Planners
 {
@@ -25,11 +24,6 @@ namespace Rebellion.AI.Planners
         /// <returns>Zero or one headquarters-relocation proposal.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(Plan),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             List<AIProposal> proposals = new();
             if (
                 context?.Assessment == null
@@ -86,11 +80,6 @@ namespace Rebellion.AI.Planners
         /// <returns>The headquarters building, or null when it is unavailable.</returns>
         private static Building FindHeadquarters(AITurnContext context, Planet origin)
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindHeadquarters),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             if (origin == null)
                 return null;
 
@@ -117,11 +106,6 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindDefensiveFleets),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             List<Fleet> localCandidates = context
                 .Assessment.GetFriendlyFleets(origin)
                 .Where(fleet =>
@@ -161,11 +145,6 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(FindHeadquartersEspionageAssignment),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             foreach (
                 Mission mission in context
                     .Assessment.ActiveMissions.Where(mission =>
@@ -212,11 +191,6 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(SelectDestination),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             Dictionary<string, int> knownEnemyPlanetsBySystem = context
                 .Assessment.EnemyPlanets.GroupBy(context.Assessment.GetPlanetSystemId)
                 .Where(group => !string.IsNullOrEmpty(group.Key))
@@ -313,11 +287,6 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetKnownEnemyPlanetCount),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             return knownEnemyPlanetsBySystem.TryGetValue(
                 context.Assessment.GetPlanetSystemId(planet),
                 out int count
@@ -339,11 +308,6 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
-            using var performanceMeasurement = PerformanceLogger.Measure(
-                nameof(GetRemainingPlanetValue),
-                context?.Faction?.PeekInstanceID(),
-                subjectType: typeof(AIHeadquartersRelocationPlanner)
-            );
             double remainingValue = context.Assessment.GetPlanetValue(planet) - 1;
             int processRate = building.GetProcessRate();
             if (
