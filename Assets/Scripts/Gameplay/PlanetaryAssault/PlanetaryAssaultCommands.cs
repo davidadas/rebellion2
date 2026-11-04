@@ -122,6 +122,7 @@ namespace Rebellion.Gameplay
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
             string defenderId = defendingPlanet.GetOwnerInstanceID();
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
+            result.AttackingFleets.AddRange(attackingFleets);
             result.AttackerOwnerInstanceID = attackerId;
             result.DefenderOwnerInstanceID = defenderId;
             result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
@@ -153,6 +154,7 @@ namespace Rebellion.Gameplay
                 resolvedResult.Planet = result.Planet;
                 resolvedResult.Tick = result.Tick;
                 resolvedResult.AttackingFaction = result.AttackingFaction;
+                resolvedResult.AttackingFleets = result.AttackingFleets;
                 resolvedResult.AttackerOwnerInstanceID = result.AttackerOwnerInstanceID;
                 resolvedResult.DefenderOwnerInstanceID = result.DefenderOwnerInstanceID;
                 resolvedResult.AttackingUnits = result.AttackingUnits;

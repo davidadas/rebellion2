@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Gameplay
             PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(result.Success);
+            CollectionAssert.AreEqual(new[] { fleet }, result.AttackingFleets);
             Assert.AreEqual(1, publications);
         }
 

@@ -168,17 +168,17 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records the attacking regiments observed landing after a successful planetary assault.
+        /// Records the attacking fleet and landed regiments observed during a successful planetary assault.
         /// </summary>
         /// <param name="result">The completed planetary assault.</param>
         private void RecordAssaultLanding(PlanetaryAssaultResult result)
         {
-            if (result?.Success != true || result.LandedRegiments.Count == 0)
+            if (result?.Success != true)
                 return;
 
             _commands.ObserveEntities(
                 FindFaction(result.DefenderOwnerInstanceID),
-                result.LandedRegiments,
+                result.AttackingFleets.Cast<ISceneNode>().Concat(result.LandedRegiments),
                 result.Tick
             );
         }
