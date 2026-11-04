@@ -26,9 +26,6 @@ internal sealed class OptionsBindingSession : IDisposable
     private readonly InputManager _inputManager;
     private readonly List<OptionsBindingRow> _rows = new List<OptionsBindingRow>();
     private readonly List<BindingTarget> _targets = new List<BindingTarget>();
-    private readonly Dictionary<InputAction, bool> _suppressedActionStates =
-        new Dictionary<InputAction, bool>();
-
     private InputActionRebindingExtensions.RebindingOperation _operation;
     private InputAction _listeningAction;
     private string[] _previousActionOverrides;
@@ -38,7 +35,7 @@ internal sealed class OptionsBindingSession : IDisposable
     private InputAction _conflictNewAction;
     private bool _rebindOwnsShortcutInput;
     private bool _textEntryOwnsShortcutInput;
-    private bool _shortcutRestoreScheduled;
+    private bool _shortcutReleaseScheduled;
 
     /// <summary>
     /// Raised after a binding override changes.
@@ -211,9 +208,12 @@ internal sealed class OptionsBindingSession : IDisposable
     {
         _textEntryOwnsShortcutInput = active;
         if (active)
-            SuppressShortcutInput();
+        {
+            CancelScheduledShortcutRelease();
+            ApplyShortcutSuppression();
+        }
         else
-            RestoreShortcutInput();
+            ReleaseShortcutSuppression();
     }
 
     /// <summary>
@@ -235,8 +235,8 @@ internal sealed class OptionsBindingSession : IDisposable
         _listeningAction = null;
         _rebindOwnsShortcutInput = false;
         _textEntryOwnsShortcutInput = false;
-        CancelScheduledShortcutRestore();
-        RestoreShortcutInput();
+        CancelScheduledShortcutRelease();
+        ReleaseShortcutSuppression();
         ClearConflict();
     }
 
@@ -489,44 +489,32 @@ internal sealed class OptionsBindingSession : IDisposable
         _rebindOwnsShortcutInput = active;
         if (active)
         {
-            CancelScheduledShortcutRestore();
-            SuppressShortcutInput();
+            CancelScheduledShortcutRelease();
+            ApplyShortcutSuppression();
             return;
         }
 
         if (!_textEntryOwnsShortcutInput)
-            ScheduleShortcutRestore();
+            ScheduleShortcutRelease();
     }
 
     /// <summary>
-    /// Disables bindable application shortcuts while an editor owns keyboard input.
+    /// Marks application shortcuts as suppressed while an editor owns keyboard input.
     /// </summary>
-    private void SuppressShortcutInput()
+    private void ApplyShortcutSuppression()
     {
-        if (_suppressedActionStates.Count > 0)
-            return;
-
-        foreach (InputActionMap map in _inputManager.Asset.actionMaps)
-        {
-            if (!IsBindableMap(map.name))
-                continue;
-            foreach (InputAction action in map.actions)
-            {
-                _suppressedActionStates[action] = action.enabled;
-                action.Disable();
-            }
-        }
+        _inputManager.SetApplicationShortcutsSuppressed(true);
     }
 
     /// <summary>
     /// Restores shortcuts after the input event that ended capture has been fully dispatched.
     /// </summary>
-    private void ScheduleShortcutRestore()
+    private void ScheduleShortcutRelease()
     {
-        if (_shortcutRestoreScheduled)
+        if (_shortcutReleaseScheduled)
             return;
 
-        _shortcutRestoreScheduled = true;
+        _shortcutReleaseScheduled = true;
         InputSystem.onAfterUpdate += HandleInputUpdateFinished;
     }
 
@@ -535,36 +523,31 @@ internal sealed class OptionsBindingSession : IDisposable
     /// </summary>
     private void HandleInputUpdateFinished()
     {
-        CancelScheduledShortcutRestore();
-        RestoreShortcutInput();
+        CancelScheduledShortcutRelease();
+        ReleaseShortcutSuppression();
     }
 
     /// <summary>
     /// Removes a pending shortcut-restore callback.
     /// </summary>
-    private void CancelScheduledShortcutRestore()
+    private void CancelScheduledShortcutRelease()
     {
-        if (!_shortcutRestoreScheduled)
+        if (!_shortcutReleaseScheduled)
             return;
 
         InputSystem.onAfterUpdate -= HandleInputUpdateFinished;
-        _shortcutRestoreScheduled = false;
+        _shortcutReleaseScheduled = false;
     }
 
     /// <summary>
-    /// Restores the enabled state captured before exclusive keyboard input began.
+    /// Allows application shortcuts after exclusive keyboard input ends.
     /// </summary>
-    private void RestoreShortcutInput()
+    private void ReleaseShortcutSuppression()
     {
         if (_rebindOwnsShortcutInput || _textEntryOwnsShortcutInput)
             return;
 
-        foreach (KeyValuePair<InputAction, bool> entry in _suppressedActionStates)
-        {
-            if (entry.Key != null && entry.Value)
-                entry.Key.Enable();
-        }
-        _suppressedActionStates.Clear();
+        _inputManager.SetApplicationShortcutsSuppressed(false);
     }
 
     /// <summary>
