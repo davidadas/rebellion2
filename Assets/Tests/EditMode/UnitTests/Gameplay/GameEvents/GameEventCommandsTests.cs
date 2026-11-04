@@ -1721,14 +1721,15 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             );
         }
 
-        [TestCase(false, false, false)]
-        [TestCase(true, false, false)]
-        [TestCase(true, true, false)]
-        [TestCase(true, true, true)]
+        [TestCase(false, false, "ground")]
+        [TestCase(true, false, "ground")]
+        [TestCase(true, true, "ground")]
+        [TestCase(true, true, "ship")]
+        [TestCase(true, true, "mission")]
         public void ProcessTriggeredEvents_CapturedHeritage_RequiresSharedMissionToEmperorsPhysicalLocation(
             bool assigned,
             bool sameDestination,
-            bool shipboard
+            string emperorLocation
         )
         {
             _game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
@@ -1755,7 +1756,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 _game.AttachNode(emperorPlanet, sector);
             }
             ISceneNode emperorParent = emperorPlanet;
-            if (shipboard)
+            if (emperorLocation == "ship")
             {
                 Fleet fleet = EntityFactory.CreateFleet("emperor-fleet", "FNEMP1");
                 CapitalShip ship = new CapitalShip
@@ -1767,6 +1768,15 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 _game.AttachNode(fleet, emperorPlanet);
                 _game.AttachNode(ship, fleet);
                 emperorParent = ship;
+            }
+            else if (emperorLocation == "mission")
+            {
+                StubMission assignment = new("FNEMP1", emperorPlanet.InstanceID)
+                {
+                    InstanceID = "emperor-mission",
+                };
+                _game.AttachNode(assignment, emperorPlanet);
+                emperorParent = assignment;
             }
             Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
             emperor.IsCaptured = emperorParent.OwnerInstanceID != emperor.OwnerInstanceID;
@@ -1800,7 +1810,12 @@ namespace Rebellion.Tests.Gameplay.GameEvents
                 .ProcessTriggeredEvents(
                     new[]
                     {
-                        new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
+                        new DuelResult
+                        {
+                            EncounteredOfficer = luke,
+                            OpposingOfficer = vader,
+                            Location = planet,
+                        },
                     }
                 )
                 .OfType<MessageDeliveredResult>()
@@ -1812,7 +1827,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             );
             foreach (MessageDeliveredResult result in delivered)
                 Assert.AreEqual(
-                    assigned && sameDestination && !shipboard,
+                    assigned && sameDestination && emperorLocation == "ground",
                     result.Message.Body.Contains("taken to the Emperor")
                 );
         }

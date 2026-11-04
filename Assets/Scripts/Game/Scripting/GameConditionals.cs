@@ -346,12 +346,6 @@ namespace Rebellion.Game.Scripting
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
-
-        /// <summary>
-        /// Gets or sets the unit whose immediate physical parent must match the mission destination.
-        /// </summary>
-        [PersistableAttribute]
-        public string DestinationParentOfUnitInstanceID { get; set; }
     }
 
     /// <summary>
@@ -395,6 +389,9 @@ namespace Rebellion.Game.Scripting
 
         [PersistableAttribute]
         public string ParentInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string ParentBinding { get; set; }
     }
     #endregion
 }
