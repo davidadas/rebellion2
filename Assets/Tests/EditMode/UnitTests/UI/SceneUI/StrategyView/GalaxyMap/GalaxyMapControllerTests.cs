@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GalaxyMapController _controller;
         private GalaxyMapSector _sector;
         private GameObject _rootObject;
+        private bool _quickOpenMapItems;
         private GalaxyMapView _view;
 
         /// <summary>
@@ -46,7 +47,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
             Canvas.ForceUpdateCanvases();
             _actions = new TestActions();
-            _controller = new GalaxyMapController(() => uiContext);
+            _quickOpenMapItems = false;
+            _controller = new GalaxyMapController(() => uiContext, () => _quickOpenMapItems);
             _controller.Initialize(_actions);
             _controller.BindView(_view);
             _sector = CreateSector();
@@ -112,6 +114,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(_sector.PlanetSector, _actions.OpenedSector);
             Assert.AreEqual(426, _actions.OpenedX);
             Assert.AreEqual(240, _actions.OpenedY);
+        }
+
+        [Test]
+        public void Render_SingleClickWithoutQuickOpen_DoesNotOpenSector()
+        {
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+            PlanetSectorClusterView cluster = FindRenderedCluster();
+            PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
+            eventData.button = PointerEventData.InputButton.Left;
+            eventData.clickCount = 1;
+
+            cluster.OnPointerClick(eventData);
+
+            Assert.IsNull(_actions.OpenedSector);
+        }
+
+        [Test]
+        public void Render_SingleClickWithQuickOpen_OpensSector()
+        {
+            _quickOpenMapItems = true;
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+            PlanetSectorClusterView cluster = FindRenderedCluster();
+            PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
+            eventData.button = PointerEventData.InputButton.Left;
+            eventData.clickCount = 1;
+
+            cluster.OnPointerClick(eventData);
+
+            Assert.AreSame(_sector.PlanetSector, _actions.OpenedSector);
         }
 
         [Test]

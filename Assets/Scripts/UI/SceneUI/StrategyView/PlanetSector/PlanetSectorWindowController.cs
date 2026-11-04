@@ -76,6 +76,7 @@ public sealed class PlanetSectorWindowController
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Func<GalacticInformationFilterMode> getFilterMode;
     private readonly Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds;
+    private readonly Func<bool> getQuickOpenMapItems;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<int, Vector2Int> getWindowPosition;
     private readonly StrategyFleetCommandController fleetCommandController;
@@ -109,6 +110,7 @@ public sealed class PlanetSectorWindowController
     /// <param name="canCreateMission">Returns whether the active selection has a mission available for a target.</param>
     /// <param name="getFilterMode">Returns the active galactic-information filter.</param>
     /// <param name="getSelectedFleetInstanceIds">Returns fleets selected across strategy windows.</param>
+    /// <param name="getQuickOpenMapItems">Returns whether map items open on their first click.</param>
     public PlanetSectorWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
@@ -121,7 +123,8 @@ public sealed class PlanetSectorWindowController
         Action markDirty,
         Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission,
         Func<GalacticInformationFilterMode> getFilterMode = null,
-        Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null
+        Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null,
+        Func<bool> getQuickOpenMapItems = null
     )
     {
         this.fleetCommandController =
@@ -143,6 +146,7 @@ public sealed class PlanetSectorWindowController
         this.getFilterMode = getFilterMode ?? (() => GalacticInformationFilterMode.DisplayOff);
         this.getSelectedFleetInstanceIds =
             getSelectedFleetInstanceIds ?? (() => Array.Empty<string>());
+        this.getQuickOpenMapItems = getQuickOpenMapItems ?? (() => false);
         projector = new PlanetSectorWindowProjector(getUIContext);
     }
 
@@ -1044,7 +1048,7 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Handles a semantic planet double click.
+    /// Handles an eligible semantic planet click.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
@@ -1057,7 +1061,8 @@ public sealed class PlanetSectorWindowController
     {
         PlanetSectorWindowHit hit = ResolveHit(view, element);
         if (
-            targetingController.IsTargeting
+            (eventData?.clickCount ?? 0) < (getQuickOpenMapItems() ? 1 : 2)
+            || targetingController.IsTargeting
             || hit?.Icon == PlanetIcon.None
             || !TryGetDesktopPosition(view, eventData, out int x, out int y)
         )
