@@ -135,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Render_SingleClickWithQuickOpen_OpensSector()
+        public void Render_SingleClickWithQuickOpen_DispatchesThroughHierarchyAndOpensSector()
         {
             _quickOpenMapItems = true;
             _controller.Render(
@@ -147,10 +147,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
             eventData.clickCount = 1;
+            GameObject hitArea = cluster.transform.Find("HitAreaImage").gameObject;
+            eventData.pointerCurrentRaycast = new RaycastResult { gameObject = hitArea };
 
-            cluster.OnPointerClick(eventData);
+            GameObject clickHandler = ExecuteEvents.GetEventHandler<IPointerClickHandler>(hitArea);
+            ExecuteEvents.Execute(clickHandler, eventData, ExecuteEvents.pointerClickHandler);
 
+            Assert.AreSame(cluster.gameObject, clickHandler);
             Assert.AreSame(_sector.PlanetSector, _actions.OpenedSector);
+        }
+
+        [Test]
+        public void Render_RenderedCluster_ResolvesStrategyGestureHandlersFromHitArea()
+        {
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+            PlanetSectorClusterView cluster = FindRenderedCluster();
+            GameObject hitArea = cluster.transform.Find("HitAreaImage").gameObject;
+            GameObject strategyController = _rootObject
+                .GetComponentInChildren<StrategyController>(true)
+                .gameObject;
+
+            GameObject pointerDownHandler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(
+                hitArea
+            );
+            GameObject pointerUpHandler = ExecuteEvents.GetEventHandler<IPointerUpHandler>(hitArea);
+            GameObject dragHandler = ExecuteEvents.GetEventHandler<IDragHandler>(hitArea);
+            GameObject endDragHandler = ExecuteEvents.GetEventHandler<IEndDragHandler>(hitArea);
+
+            Assert.AreSame(strategyController, pointerDownHandler);
+            Assert.AreSame(strategyController, pointerUpHandler);
+            Assert.AreSame(strategyController, dragHandler);
+            Assert.AreSame(strategyController, endDragHandler);
         }
 
         [Test]

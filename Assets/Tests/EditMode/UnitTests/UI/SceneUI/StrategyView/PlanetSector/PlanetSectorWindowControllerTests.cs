@@ -181,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void PlanetClicked_SingleClickWithQuickOpen_OpensWindow()
+        public void PlanetClicked_SingleClickWithQuickOpen_DispatchesThroughHierarchyAndOpensWindow()
         {
             _quickOpenMapItems = true;
             PlanetSectorWindowView view = OpenWindow(out _);
@@ -191,9 +191,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 1
             );
             PlanetSectorPlanetView planetView = GetPlanetView(view);
+            GameObject fleetImage = eventData.pointerCurrentRaycast.gameObject;
 
-            planetView.OnPointerClick(eventData);
+            GameObject pointerDownHandler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(
+                fleetImage
+            );
+            GameObject clickHandler = ExecuteEvents.GetEventHandler<IPointerClickHandler>(
+                fleetImage
+            );
+            ExecuteEvents.Execute(pointerDownHandler, eventData, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(clickHandler, eventData, ExecuteEvents.pointerClickHandler);
 
+            Assert.AreSame(planetView.gameObject, pointerDownHandler);
+            Assert.AreSame(planetView.gameObject, clickHandler);
             Assert.AreSame(_planet, _actions.OpenedPlanet);
             Assert.AreEqual(PlanetIcon.Fleet, _actions.OpenedPlanetIcon);
         }
