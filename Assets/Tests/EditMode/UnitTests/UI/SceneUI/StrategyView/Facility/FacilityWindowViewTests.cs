@@ -161,6 +161,94 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void DestinationLinkClick_ActiveManufacturingItem_RaisesRequestedLaneIndex()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Manufacturing,
+                    new[]
+                    {
+                        new ManufacturingLaneCardRenderData(
+                            _texture,
+                            _texture,
+                            0,
+                            1,
+                            "Title",
+                            "Empty",
+                            "Current",
+                            "Count",
+                            "Destination: Corellia",
+                            "Facilities",
+                            true
+                        ),
+                    },
+                    Array.Empty<FacilityInventoryItemRenderData>()
+                )
+            );
+            FacilityWindowView requestedView = null;
+            int requestedIndex = -1;
+            _view.ManufacturingItemRequested += (view, index) =>
+            {
+                requestedView = view;
+                requestedIndex = index;
+            };
+            ManufacturingLaneCardView card = FindCard("ShipyardsManufacturingLaneCard");
+            RawImage link = card.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "DestinationLinkImage");
+
+            link.GetComponent<Button>().onClick.Invoke();
+
+            Assert.AreSame(_view, requestedView);
+            Assert.AreEqual(0, requestedIndex);
+            Assert.IsTrue(link.gameObject.activeSelf);
+            Assert.IsTrue(link.raycastTarget);
+            TextMeshProUGUI destination = card.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "DestinationTextField");
+            Assert.AreEqual(
+                1f,
+                -link.rectTransform.anchoredPosition.y
+                    + destination.rectTransform.anchoredPosition.y,
+                0.001f
+            );
+            Assert.AreEqual(
+                Selectable.Transition.ColorTint,
+                link.GetComponent<Button>().transition
+            );
+        }
+
+        [Test]
+        public void Render_IdleManufacturingLane_HidesDestinationLink()
+        {
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Manufacturing,
+                    new[]
+                    {
+                        new ManufacturingLaneCardRenderData(
+                            _texture,
+                            null,
+                            0,
+                            0,
+                            "Title",
+                            "Empty",
+                            string.Empty,
+                            string.Empty,
+                            "Destination: Corellia",
+                            "Facilities"
+                        ),
+                    },
+                    Array.Empty<FacilityInventoryItemRenderData>()
+                )
+            );
+
+            ManufacturingLaneCardView card = FindCard("ShipyardsManufacturingLaneCard");
+            RawImage link = card.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "DestinationLinkImage");
+
+            Assert.IsFalse(link.gameObject.activeSelf);
+        }
+
+        [Test]
         public void Render_HalfManufacturingProgress_AppliesInclusiveFillWidth()
         {
             ManufacturingLaneCardRenderData[] cards =

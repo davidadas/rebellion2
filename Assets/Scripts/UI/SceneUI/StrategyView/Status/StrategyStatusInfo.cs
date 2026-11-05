@@ -52,14 +52,20 @@ public sealed class StrategyStatusRow
 
     public string Right { get; }
 
+    public bool OpensManufacturingSource { get; }
+
     /// <summary>
     /// Creates one paired status value.
     /// </summary>
     /// <param name="left">The left-column value.</param>
     /// <param name="right">The right-column value.</param>
-    public StrategyStatusRow(string left, string right)
+    /// <param name="opensManufacturingSource">
+    /// Whether the row links to the manufacturing source represented by the status target.
+    /// </param>
+    public StrategyStatusRow(string left, string right, bool opensManufacturingSource = false)
     {
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
+        OpensManufacturingSource = opensManufacturingSource;
     }
 }

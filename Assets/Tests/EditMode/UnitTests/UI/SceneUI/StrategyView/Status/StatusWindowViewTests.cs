@@ -274,14 +274,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         {
             StatusWindowView closeView = null;
             StatusWindowView infoView = null;
+            StatusWindowView manufacturingSourceView = null;
             _view.CloseRequested += view => closeView = view;
             _view.InfoRequested += view => infoView = view;
+            _view.ManufacturingSourceRequested += view => manufacturingSourceView = view;
 
             _view.RequestClose();
             _view.RequestInfo();
+            _view.RequestManufacturingSource();
 
             Assert.AreSame(_view, closeView);
             Assert.AreSame(_view, infoView);
+            Assert.AreSame(_view, manufacturingSourceView);
+        }
+
+        [Test]
+        public void Render_ManufacturingSourceRow_ShowsLinkedActionBesideStatusText()
+        {
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Status",
+                    Array.Empty<Texture2D>(),
+                    "Ship",
+                    new[] { new StatusWindowRowRenderData("Producer:", "Corellia", true) }
+                )
+            );
+
+            RawImage action = FindComponent<RawImage>("ManufacturingSourceButtonImage");
+            Assert.IsTrue(action.gameObject.activeSelf);
+            Assert.IsTrue(action.raycastTarget);
+            Assert.AreEqual(
+                Selectable.Transition.ColorTint,
+                action.GetComponent<Button>().transition
+            );
+            Assert.LessOrEqual(
+                UILayout.GetSourceRect(action.rectTransform).xMax,
+                UILayout.GetSourceRect(FindText("RightRowTextField0").rectTransform).xMax + 16
+            );
         }
 
         [Test]
@@ -290,9 +321,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             int controlCount = 0;
             int closeCount = 0;
             int infoCount = 0;
+            int manufacturingSourceCount = 0;
             _view.ControlPressed += _ => controlCount++;
             _view.CloseRequested += _ => closeCount++;
             _view.InfoRequested += _ => infoCount++;
+            _view.ManufacturingSourceRequested += _ => manufacturingSourceCount++;
             _view.Render(
                 CreateRenderData(
                     false,
@@ -300,7 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     "Status",
                     Array.Empty<Texture2D>(),
                     string.Empty,
-                    Array.Empty<StatusWindowRowRenderData>()
+                    new[] { new StatusWindowRowRenderData("Producer:", "Corellia", true) }
                 )
             );
             PointerEventData eventData = new PointerEventData(null)
@@ -317,10 +350,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(2, controlCount);
             Assert.AreEqual(0, infoCount);
             FindComponent<Button>("InfoButtonImage").onClick.Invoke();
+            FindComponent<RawImagePressVisual>("ManufacturingSourceButtonImage")
+                .OnPointerDown(eventData);
+            Assert.AreEqual(3, controlCount);
+            Assert.AreEqual(0, manufacturingSourceCount);
+            FindComponent<Button>("ManufacturingSourceButtonImage").onClick.Invoke();
 
-            Assert.AreEqual(2, controlCount);
+            Assert.AreEqual(3, controlCount);
             Assert.AreEqual(1, closeCount);
             Assert.AreEqual(1, infoCount);
+            Assert.AreEqual(1, manufacturingSourceCount);
         }
 
         [Test]
@@ -330,10 +369,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             int controlCount = 0;
             int closeCount = 0;
             int infoCount = 0;
+            int manufacturingSourceCount = 0;
             _view.Destroyed += view => destroyedView = view;
             _view.ControlPressed += _ => controlCount++;
             _view.CloseRequested += _ => closeCount++;
             _view.InfoRequested += _ => infoCount++;
+            _view.ManufacturingSourceRequested += _ => manufacturingSourceCount++;
             _view.Render(
                 CreateRenderData(
                     false,
@@ -352,11 +393,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 );
             FindComponent<Button>("CloseButtonImage").onClick.Invoke();
             FindComponent<Button>("InfoButtonImage").onClick.Invoke();
+            FindComponent<Button>("ManufacturingSourceButtonImage").onClick.Invoke();
 
             Assert.AreSame(_view, destroyedView);
             Assert.AreEqual(0, controlCount);
             Assert.AreEqual(0, closeCount);
             Assert.AreEqual(0, infoCount);
+            Assert.AreEqual(0, manufacturingSourceCount);
         }
 
         /// <summary>

@@ -168,6 +168,8 @@ public sealed class ManufacturingLaneCardRenderData
 
     public string DestinationText { get; }
 
+    public bool CanOpenCurrentItem { get; }
+
     public string FacilityCount { get; }
 
     /// <summary>
@@ -183,6 +185,7 @@ public sealed class ManufacturingLaneCardRenderData
     /// <param name="currentCount">The current queued count.</param>
     /// <param name="destinationText">The configured destination label.</param>
     /// <param name="facilityCount">The active and total facility count.</param>
+    /// <param name="canOpenCurrentItem">Whether the current item can be opened at its destination.</param>
     public ManufacturingLaneCardRenderData(
         Texture2D stateTexture,
         Texture entityTexture,
@@ -193,7 +196,8 @@ public sealed class ManufacturingLaneCardRenderData
         string currentName,
         string currentCount,
         string destinationText,
-        string facilityCount
+        string facilityCount,
+        bool canOpenCurrentItem = false
     )
     {
         StateTexture = stateTexture;
@@ -206,6 +210,7 @@ public sealed class ManufacturingLaneCardRenderData
         CurrentCount = currentCount ?? string.Empty;
         DestinationText = destinationText ?? string.Empty;
         FacilityCount = facilityCount ?? string.Empty;
+        CanOpenCurrentItem = canOpenCurrentItem;
     }
 }
 
