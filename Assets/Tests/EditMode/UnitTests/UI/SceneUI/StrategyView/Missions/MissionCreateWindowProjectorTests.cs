@@ -384,7 +384,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             Officer officer = CreateOfficer("officer", "Officer", false);
             CapitalShip ship = new CapitalShip();
-            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            GameFleet fleet = new GameFleet { Movement = TestMovement.Create() };
             ship.SetParent(fleet);
             officer.SetParent(ship);
             MissionCreateWindowSession session = CreateSession(
@@ -476,7 +476,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 DisplayImagePath = _entityImagePath,
                 SmallDisplayImagePath = _entityImagePath,
                 InTransitSmallImagePath = _entityImagePath,
-                Movement = inTransit ? new MovementState() : null,
+                Movement = inTransit ? TestMovement.Create() : null,
             };
         }
 

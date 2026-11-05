@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Gameplay
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Regiment defender = AddRegiment(game, planet, "defender", "empire");
             Fleet defendingFleet = AddBombardmentFleet(game, planet, "empire", bombardment: 0);
-            defendingFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            defendingFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             CapitalShip inTransitShip = defendingFleet.GetChildren<CapitalShip>()[0];
             Fleet attackingFleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
@@ -971,7 +971,7 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             Regiment regiment = AddRegiment(game, planet, "departed", "empire");
-            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            regiment.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", 0);
             fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 

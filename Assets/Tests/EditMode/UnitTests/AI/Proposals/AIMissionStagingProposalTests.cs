@@ -184,7 +184,7 @@ namespace Rebellion.Tests.AI.Proposals
             var (context, staging) = CreateStagingContext();
             foreach (var participant in staging.Mission.Participants)
                 context.Game.MoveNode(participant, staging.Destination);
-            staging.Mission.Participants[0].Movement = new MovementState { TransitTicks = 13 };
+            staging.Mission.Participants[0].Movement = TestMovement.Create(transitTicks: 13);
             return (
                 context,
                 AIMissionStagingProposal.WaitForArrivals(staging.Mission, staging.Destination)

@@ -1000,7 +1000,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 _game.AttachNode(unit, _empirePlanet);
                 _movementSystem.RequestMove(unit, _targetPlanet);
-                unit.Movement.CurrentPosition = new Point(30, 0);
+                unit.Movement.SetPosition(new Point(30, 0));
             }
 
             return (garrison, inboundUnits);

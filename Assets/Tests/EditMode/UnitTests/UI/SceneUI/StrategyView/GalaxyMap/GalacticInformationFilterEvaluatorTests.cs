@@ -197,7 +197,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new Regiment
                 {
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = new MovementState(),
+                    Movement = TestMovement.Create(),
                 }
             );
             GalacticInformationFilterTheme filter = CreateFilter(
@@ -323,7 +323,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new Officer { OwnerInstanceID = _playerFactionId, IsKilled = true }
             );
             planet.AddTestChild(
-                new Officer { OwnerInstanceID = _playerFactionId, Movement = new MovementState() }
+                new Officer { OwnerInstanceID = _playerFactionId, Movement = TestMovement.Create() }
             );
             planet.AddTestChild(
                 new SpecialForces
@@ -356,7 +356,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             Planet planet = CreatePlanet(_playerFactionId);
             planet.AddTestChild(
-                new Officer { OwnerInstanceID = _opponentFactionId, Movement = new MovementState() }
+                new Officer
+                {
+                    OwnerInstanceID = _opponentFactionId,
+                    Movement = TestMovement.Create(),
+                }
             );
             planet.AddTestChild(
                 new Officer { OwnerInstanceID = _opponentFactionId, IsCaptured = true }
@@ -381,7 +385,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GameFleet fleet = new GameFleet
             {
                 OwnerInstanceID = _playerFactionId,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = _playerFactionId };
             Officer officer = new Officer { OwnerInstanceID = _playerFactionId };
@@ -579,7 +583,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GameFleet fleet = new GameFleet
             {
                 OwnerInstanceID = ownerId,
-                Movement = enroute ? new MovementState() : null,
+                Movement = enroute ? TestMovement.Create() : null,
             };
             fleet.AddTestChild(
                 new CapitalShip { OwnerInstanceID = ownerId, ManufacturingStatus = shipStatus }

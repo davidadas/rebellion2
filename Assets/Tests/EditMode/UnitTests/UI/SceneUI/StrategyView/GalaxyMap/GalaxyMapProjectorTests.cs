@@ -65,7 +65,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.AttachNode(destination, sector);
             GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
             {
-                Movement = new MovementState { OriginPosition = new System.Drawing.Point(12, 14) },
+                Movement = TestMovement.Create(originPosition: new System.Drawing.Point(12, 14)),
             };
             playerFleet.Waypoints.Add(destination.InstanceID);
             _game.AttachNode(playerFleet, origin);

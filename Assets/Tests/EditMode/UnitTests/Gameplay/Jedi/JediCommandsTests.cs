@@ -412,7 +412,7 @@ namespace Rebellion.Tests.Gameplay
             Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
             Officer leia = CreateDormantJedi("LEIA");
-            leia.Movement = new MovementState { TransitTicks = 10 };
+            leia.Movement = TestMovement.Create(transitTicks: 10);
             _system = new JediCommands(_game, new FixedRNG(0.0));
 
             List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
@@ -434,7 +434,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet fleet = new Fleet(_alliance.InstanceID, "Alliance Fleet")
             {
                 InstanceID = "ALLIANCE_FLEET",
-                Movement = new MovementState { TransitTicks = 10 },
+                Movement = TestMovement.Create(transitTicks: 10),
             };
             CapitalShip ship = new CapitalShip
             {
@@ -462,7 +462,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
-            luke.Movement = new MovementState { TransitTicks = 10 };
+            luke.Movement = TestMovement.Create(transitTicks: 10);
             Officer leia = CreateDormantJedi("LEIA");
             _system = new JediCommands(_game, new FixedRNG(0.0));
 

@@ -639,7 +639,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
             GameRoot game = BuildHierarchy(out _, out Fleet fleet, out CapitalShip ship);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, ship);
-            fleet.Movement = new MovementState();
+            fleet.Movement = TestMovement.Create();
             IsInTransitConditional condition = new IsInTransitConditional
             {
                 UnitInstanceID = officer.InstanceID,

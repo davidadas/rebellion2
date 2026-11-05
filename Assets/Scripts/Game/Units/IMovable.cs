@@ -58,7 +58,7 @@ namespace Rebellion.Game.Units
                 );
             }
 
-            Movement.CurrentPosition = position;
+            Movement.SetPosition(position);
         }
 
         /// <summary>

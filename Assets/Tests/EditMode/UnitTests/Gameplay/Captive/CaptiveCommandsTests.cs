@@ -462,7 +462,7 @@ namespace Rebellion.Tests.Gameplay
                 CapitalShip ship,
                 MovementCommands movement
             ) = BuildFleetCustodyScene();
-            fleet.Movement = new MovementState { TransitTicks = 2 };
+            fleet.Movement = TestMovement.Create(transitTicks: 2);
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
             new CaptiveTickProcessor(system).ProcessTick(game);
@@ -476,7 +476,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
-            MovementState transfer = new MovementState { TransitTicks = 5 };
+            MovementState transfer = TestMovement.Create(transitTicks: 5);
             captive.Movement = transfer;
             CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
 

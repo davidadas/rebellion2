@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(regiment, sourcePlanet);
             MovementCommands movement = _session.GetService<MovementCommands>();
             movement.RequestMove(regiment, blockadedPlanet);
-            regiment.Movement.TransitTicks = 10;
+            regiment.Movement.RetimeCurrentLeg(10);
 
             _tick.ProcessTick();
 
@@ -449,7 +449,7 @@ namespace Rebellion.Tests.Gameplay
                     allianceId
                 )
             );
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
 
             Building delivery = new Building
             {
@@ -458,13 +458,12 @@ namespace Rebellion.Tests.Gameplay
                 OwnerInstanceID = empireId,
                 BuildingType = BuildingType.TrainingFacility,
                 ManufacturingStatus = ManufacturingStatus.Delivering,
-                Movement = new MovementState
-                {
-                    TransitTicks = 1,
-                    TicksElapsed = 0,
-                    OriginPosition = origin.GetPosition(),
-                    CurrentPosition = origin.GetPosition(),
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 1,
+                    ticksElapsed: 0,
+                    originPosition: origin.GetPosition(),
+                    currentPosition: origin.GetPosition()
+                ),
             };
             _game.AttachNode(delivery, blockadedPlanet);
 

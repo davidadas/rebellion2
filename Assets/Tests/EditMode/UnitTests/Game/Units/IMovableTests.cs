@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetTransitMovement_WithDirectMovement_ReturnsDirectMovement()
         {
-            MovementState movement = new MovementState();
+            MovementState movement = TestMovement.Create();
             IMovable movable = new Officer { Movement = movement };
 
             MovementState result = movable.GetTransitMovement();
@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetTransitMovement_AboardMovingCapitalShip_ReturnsCapitalShipMovement()
         {
-            MovementState movement = new MovementState();
+            MovementState movement = TestMovement.Create();
             Officer officer = new Officer { OwnerInstanceID = "faction" };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "faction", Movement = movement };
             officer.SetParent(ship);
@@ -36,7 +36,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetTransitMovement_AboardMovingFleet_ReturnsFleetMovement()
         {
-            MovementState movement = new MovementState();
+            MovementState movement = TestMovement.Create();
             Officer officer = new Officer { OwnerInstanceID = "faction" };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "faction" };
             Fleet fleet = new Fleet { OwnerInstanceID = "faction", Movement = movement };
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Game.Units
         {
             IMovable movable = new Fleet
             {
-                Movement = new MovementState { CurrentPosition = new Point(56, 78) },
+                Movement = TestMovement.Create(currentPosition: new Point(56, 78)),
             };
 
             Point result = movable.GetPosition();
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SetPosition_InTransit_UpdatesCurrentPosition()
         {
-            IMovable movable = new Fleet { Movement = new MovementState() };
+            IMovable movable = new Fleet { Movement = TestMovement.Create() };
 
             movable.SetPosition(new Point(90, 123));
 

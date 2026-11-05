@@ -1404,7 +1404,7 @@ namespace Rebellion.Tests.AI.Planners
             Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", rebels.InstanceID);
             ship.ManufacturingStatus = status;
-            ship.Movement = inTransit ? new MovementState { TransitTicks = 10 } : null;
+            ship.Movement = inTransit ? TestMovement.Create(transitTicks: 10) : null;
             game.AttachNode(hostileFleet, target);
             game.AttachNode(ship, hostileFleet);
             Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
@@ -2062,7 +2062,7 @@ namespace Rebellion.Tests.AI.Planners
             Officer prisoner = EntityFactory.CreateOfficer("prisoner", empire.InstanceID);
             prisoner.IsCaptured = true;
             prisoner.CaptorInstanceID = rebels.InstanceID;
-            prisoner.Movement = new MovementState { TransitTicks = 10 };
+            prisoner.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(prisoner, prison);
             SpecialForces participant = CreateSpecialForces(
                 "rescuer",

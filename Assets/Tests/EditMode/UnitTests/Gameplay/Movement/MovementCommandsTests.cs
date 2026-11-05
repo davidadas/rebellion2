@@ -19,6 +19,202 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(0, false)]
+        [TestCase(1, false)]
+        [TestCase(0, true)]
+        [TestCase(1, true)]
+        public void RequestMove_FleetWithRedirectedInboundFighter_PreservesActiveLegAndDepartureHistory(
+            int hyperdrive,
+            bool moveAgain
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            config.Movement.SameSectorMinTransitTicks = 5;
+            var scene = BuildScene(config);
+            Planet blocked = new Planet
+            {
+                InstanceID = "blocked-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+            };
+            scene.game.AttachNode(blocked, scene.origin.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("receiving-fleet", "empire");
+            CapitalShip carrier = CreateMovableCapitalShip("receiving-carrier");
+            carrier.StarfighterCapacity = 1;
+            scene.game.AttachNode(fleet, scene.destination);
+            scene.game.AttachNode(carrier, fleet);
+            Starfighter fighter = EntityFactory.CreateStarfighter("incoming-fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = hyperdrive;
+            scene.game.AttachNode(fighter, scene.origin);
+            scene.movement.RequestMove(fighter, blocked);
+            MovementTickProcessor processor = new(scene.movement);
+            processor.ProcessTick(scene.game);
+            scene.movement.RedirectMovement(fighter, carrier, new List<GameResult>());
+            MovementState movement = fighter.Movement;
+            MovementState before = movement.CreateCopy();
+
+            scene.movement.RequestMove(fleet, scene.origin);
+            if (moveAgain)
+            {
+                while (fleet.Movement != null)
+                    processor.ProcessTick(scene.game);
+                Assert.IsNotNull(fighter.Movement);
+                before = movement.CreateCopy();
+                Assert.IsTrue(scene.movement.TryRequestMove(fleet, blocked));
+            }
+
+            Planet destination = moveAgain ? blocked : scene.origin;
+            Planet legDestination = scene.game.GetSceneNodeByInstanceID<Planet>(
+                before.DestinationPlanetInstanceID
+            );
+            MovementQueries queries = new(scene.game);
+            int onwardTicks =
+                legDestination.GetPosition() == destination.GetPosition()
+                    ? 0
+                    : queries.CalculateTransitTicks(fighter, legDestination, destination);
+            int expectedTicks = before.TransitTicks - before.TicksElapsed + onwardTicks;
+
+            Assert.AreEqual(scene.origin.InstanceID, fighter.Movement.PreviousLocationInstanceID);
+            Assert.AreSame(movement, fighter.Movement);
+            Assert.AreEqual(before.OriginPosition, movement.OriginPosition);
+            Assert.AreEqual(before.CurrentPosition, movement.CurrentPosition);
+            Assert.AreEqual(before.TicksElapsed, movement.TicksElapsed);
+            Assert.AreEqual(legDestination.InstanceID, movement.DestinationPlanetInstanceID);
+            Assert.AreEqual(legDestination.GetPosition(), movement.NextLeg.OriginPosition);
+            Assert.AreEqual(destination.InstanceID, movement.NextLeg.DestinationPlanetInstanceID);
+            Assert.AreEqual(onwardTicks, movement.NextLeg.TransitTicks);
+            Assert.AreEqual(expectedTicks, movement.TicksRemaining());
+
+            List<GameResult> results = new();
+            for (int tick = 0; tick < expectedTicks - 1; tick++)
+                results.AddRange(processor.ProcessTick(scene.game));
+            Assert.IsNotNull(fighter.Movement);
+            Assert.IsFalse(
+                results.OfType<UnitArrivedResult>().Any(result => result.Unit == fighter)
+            );
+
+            results.AddRange(processor.ProcessTick(scene.game));
+
+            Assert.IsNull(fighter.Movement);
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == fighter)
+            );
+        }
+
+        [Test]
+        public void RedirectMovement_SecondRedirect_ReplacesOnlyTheOnwardLeg()
+        {
+            var scene = BuildScene(TestConfig.Create());
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            MovementState outbound = scene.officer.Movement;
+            TestMovement.AdvanceTo(outbound, 1);
+            outbound = TestMovement.Create(
+                transitTicks: outbound.TransitTicks,
+                ticksElapsed: outbound.TicksElapsed,
+                originPosition: outbound.OriginPosition,
+                currentPosition: outbound.CurrentPosition,
+                movementGroupID: outbound.MovementGroupID,
+                sourceEventInstanceID: "movement-source",
+                resolveEncounterOnArrival: true,
+                previousLocationInstanceID: outbound.PreviousLocationInstanceID,
+                destinationPlanetInstanceID: outbound.DestinationPlanetInstanceID
+            );
+            scene.officer.Movement = outbound;
+            List<GameResult> results = new();
+            scene.movement.RedirectMovement(scene.officer, scene.origin, results);
+            Planet finalDestination = new Planet
+            {
+                InstanceID = "final-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 100,
+            };
+            scene.game.AttachNode(finalDestination, scene.origin.GetParentOfType<PlanetSector>());
+
+            scene.movement.RedirectMovement(scene.officer, finalDestination, results);
+
+            Assert.AreSame(outbound, scene.officer.Movement);
+            Assert.AreEqual(1, outbound.TicksElapsed);
+            Assert.AreEqual(scene.destination.GetPosition(), outbound.NextLeg.OriginPosition);
+            Assert.AreEqual("movement-source", outbound.SourceEventInstanceID);
+            Assert.IsTrue(outbound.ResolveEncounterOnArrival);
+            Assert.AreEqual(string.Empty, outbound.PreviousLocationInstanceID);
+            Assert.IsNull(new MovementQueries(scene.game).GetPreviousLocation(scene.officer));
+            Assert.AreEqual(2, results.OfType<GameObjectEnrouteResult>().Count());
+            Assert.AreEqual(
+                outbound.TransitTicks
+                    - 1
+                    + new MovementQueries(scene.game).CalculateTransitTicks(
+                        scene.officer,
+                        scene.destination,
+                        finalDestination
+                    ),
+                outbound.TicksRemaining()
+            );
+        }
+
+        [Test]
+        public void RedirectMovement_LocalCarrier_ArrivesWhenCurrentLegEnds()
+        {
+            var scene = BuildScene(TestConfig.Create());
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            int outboundTicks = scene.officer.Movement.TicksRemaining();
+            Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", "empire");
+            CapitalShip carrier = CreateMovableCapitalShip("carrier");
+            scene.game.AttachNode(fleet, scene.destination);
+            scene.game.AttachNode(carrier, fleet);
+            List<GameResult> results = new();
+
+            scene.movement.RedirectMovement(scene.officer, carrier, results);
+            Assert.AreEqual(outboundTicks, scene.officer.Movement.TicksRemaining());
+            MovementTickProcessor processor = new(scene.movement);
+            for (int tick = 0; tick < outboundTicks - 1; tick++)
+                processor.ProcessTick(scene.game);
+            Assert.IsNotNull(scene.officer.Movement);
+            IReadOnlyList<GameResult> arrival = processor.ProcessTick(scene.game);
+
+            Assert.IsNull(scene.officer.Movement);
+            Assert.AreSame(carrier, scene.officer.GetParent());
+            Assert.AreEqual(1, arrival.OfType<UnitArrivedResult>().Count());
+        }
+
+        [Test]
+        public void RedirectMovement_CurrentDestination_LeavesJourneyUnchanged()
+        {
+            var scene = BuildScene();
+            scene.movement.RequestMove(scene.officer, scene.destination);
+            MovementState movement = scene.officer.Movement;
+            List<GameResult> results = new();
+
+            scene.movement.RedirectMovement(scene.officer, scene.destination, results);
+
+            Assert.AreSame(movement, scene.officer.Movement);
+            Assert.IsNull(movement.NextLeg);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void RedirectMovement_StationaryUnit_RejectsWithoutChangingIt()
+        {
+            var scene = BuildScene();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                scene.movement.RedirectMovement(
+                    scene.officer,
+                    scene.destination,
+                    new List<GameResult>()
+                )
+            );
+
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.IsNull(scene.officer.Movement);
+        }
+
         [TestCase(typeof(Building))]
         [TestCase(typeof(Regiment))]
         [TestCase(typeof(SpecialForces))]
@@ -40,11 +236,10 @@ namespace Rebellion.Tests.Gameplay
             if (unit is Starfighter fighter)
                 fighter.Hyperdrive = 1;
             game.AttachNode(unit, destination);
-            unit.Movement = new MovementState
-            {
-                OriginPosition = origin.GetPosition(),
-                TransitTicks = 1,
-            };
+            unit.Movement = TestMovement.Create(
+                originPosition: origin.GetPosition(),
+                transitTicks: 1
+            );
             destination.IsDestroyed = true;
             game.NeutralizeDestroyedPlanet(destination);
 
@@ -60,7 +255,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(game.GetFactionByOwnerInstanceID("empire").HQInstanceID);
             Assert.IsEmpty(results.OfType<UnitArrivedResult>());
 
-            unit.Movement.TicksElapsed = unit.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(unit.Movement, unit.Movement.TransitTicks - 1);
             IReadOnlyList<GameResult> arrival = new MovementTickProcessor(movement).ProcessTick(
                 game
             );
@@ -81,11 +276,10 @@ namespace Rebellion.Tests.Gameplay
             Fleet fleet = EntityFactory.CreateFleet("incoming-fleet", "empire");
             game.AttachNode(fleet, destination);
             game.AttachNode(CreateMovableCapitalShip("incoming-ship"), fleet);
-            fleet.Movement = new MovementState
-            {
-                OriginPosition = origin.GetPosition(),
-                TransitTicks = 1,
-            };
+            fleet.Movement = TestMovement.Create(
+                originPosition: origin.GetPosition(),
+                transitTicks: 1
+            );
             destination.IsDestroyed = true;
             game.NeutralizeDestroyedPlanet(destination);
 
@@ -1476,9 +1670,24 @@ namespace Rebellion.Tests.Gameplay
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
-            Dictionary<IMovable, MovementState> previousMovements = inboundUnits.ToDictionary(
+            Dictionary<IMovable, MovementState> activeMovements = inboundUnits.ToDictionary(
                 unit => unit,
                 unit => unit.Movement
+            );
+            Dictionary<IMovable, MovementState> previousMovements = inboundUnits.ToDictionary(
+                unit => unit,
+                unit => unit.Movement.CreateCopy()
+            );
+            MovementQueries queries = new(game);
+            Dictionary<IMovable, int> estimatedDurations = inboundUnits.ToDictionary(
+                unit => unit,
+                unit =>
+                {
+                    Assert.IsTrue(
+                        queries.TryEstimateRetargetedTransitTicks(unit, planetC, out int ticks)
+                    );
+                    return ticks;
+                }
             );
 
             movement.RequestMove(destinationFleet, planetC);
@@ -1487,9 +1696,11 @@ namespace Rebellion.Tests.Gameplay
             {
                 MovementState previousMovement = previousMovements[inboundUnit];
                 Assert.IsNotNull(inboundUnit.Movement);
-                Assert.AreNotSame(previousMovement, inboundUnit.Movement);
+                Assert.AreSame(activeMovements[inboundUnit], inboundUnit.Movement);
                 Assert.AreEqual(
-                    previousMovement.CurrentPosition,
+                    inboundUnit is Starfighter
+                        ? previousMovement.OriginPosition
+                        : previousMovement.CurrentPosition,
                     inboundUnit.Movement.OriginPosition
                 );
                 Assert.AreEqual(
@@ -1500,9 +1711,16 @@ namespace Rebellion.Tests.Gameplay
                     previousMovement.MovementGroupID,
                     inboundUnit.Movement.MovementGroupID
                 );
-                Assert.AreEqual(0, inboundUnit.Movement.TicksElapsed);
+                Assert.AreEqual(
+                    inboundUnit is Starfighter ? previousMovement.TicksElapsed : 0,
+                    inboundUnit.Movement.TicksElapsed
+                );
+                Assert.AreEqual(
+                    estimatedDurations[inboundUnit],
+                    inboundUnit.Movement.TicksRemaining()
+                );
                 Assert.Greater(
-                    inboundUnit.Movement.TransitTicks,
+                    inboundUnit.Movement.TicksRemaining(),
                     previousMovement.TicksRemaining()
                 );
             }
@@ -2543,7 +2761,7 @@ namespace Rebellion.Tests.Gameplay
             Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
             game.MoveNode(hostile, destination);
             AddPersonnelTransitDetector(game, destination);
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks - 1);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -2573,8 +2791,8 @@ namespace Rebellion.Tests.Gameplay
             Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
             game.MoveNode(hostile, destination);
             AddPersonnelTransitDetector(game, destination);
-            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
-            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(first.Movement, first.Movement.TransitTicks - 1);
+            TestMovement.AdvanceTo(second.Movement, second.Movement.TransitTicks - 1);
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -2609,8 +2827,8 @@ namespace Rebellion.Tests.Gameplay
             Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
             game.MoveNode(hostile, destination);
             AddPersonnelTransitDetector(game, destination);
-            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
-            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(first.Movement, first.Movement.TransitTicks - 1);
+            TestMovement.AdvanceTo(second.Movement, second.Movement.TransitTicks - 1);
 
             Assert.DoesNotThrow(() => new MovementTickProcessor(movement).ProcessTick(game));
 
@@ -2793,7 +3011,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "inbound-regiment",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             game.AttachNode(inboundRegiment, destination);
 
@@ -3564,7 +3782,7 @@ namespace Rebellion.Tests.Gameplay
             );
             Assert.IsFalse(officer.IsCaptured, "Departure must not resolve the encounter.");
             game.MoveNode(hostileFleet, returnPlanet);
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks - 1);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -3721,8 +3939,8 @@ namespace Rebellion.Tests.Gameplay
                 new List<GameResult>()
             );
             game.MoveNode(hostileFleet, returnPlanet);
-            forceTraveler.Movement.TicksElapsed = forceTraveler.Movement.TransitTicks - 1;
-            companion.Movement.TicksElapsed = companion.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(forceTraveler.Movement, forceTraveler.Movement.TransitTicks - 1);
+            TestMovement.AdvanceTo(companion.Movement, companion.Movement.TransitTicks - 1);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -3764,8 +3982,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(safe.Movement.MovementGroupID, exposed.Movement.MovementGroupID);
             game.MoveNode(safe, origin);
             game.MoveNode(detector.GetParentOfType<Fleet>(), destination);
-            safe.Movement.TicksElapsed = safe.Movement.TransitTicks - 1;
-            exposed.Movement.TicksElapsed = exposed.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(safe.Movement, safe.Movement.TransitTicks - 1);
+            TestMovement.AdvanceTo(exposed.Movement, exposed.Movement.TransitTicks - 1);
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -3801,7 +4019,7 @@ namespace Rebellion.Tests.Gameplay
                 new List<GameResult>()
             );
             game.MoveNode(hostileFleet, returnPlanet);
-            specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(specialForces.Movement, specialForces.Movement.TransitTicks - 1);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -4085,7 +4303,7 @@ namespace Rebellion.Tests.Gameplay
                 MovementCommands movement
             ) = BuildScene();
             movement.RequestMove(officer, destination);
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -4114,7 +4332,7 @@ namespace Rebellion.Tests.Gameplay
             ) = BuildScene();
             movement.RequestMove(officer, destination);
             string movementGroupId = officer.Movement.MovementGroupID;
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks);
 
             UnitArrivedResult arrival = new MovementTickProcessor(movement)
                 .ProcessTick(game)
@@ -4135,7 +4353,7 @@ namespace Rebellion.Tests.Gameplay
                 MovementCommands movement
             ) = BuildScene();
             movement.RequestMove(officer, destination);
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks);
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -4165,7 +4383,7 @@ namespace Rebellion.Tests.Gameplay
             mission.AddChild(officer);
 
             movement.RequestMove(officer, mission);
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -4213,7 +4431,7 @@ namespace Rebellion.Tests.Gameplay
             mission.AddChild(specialForces);
 
             movement.RequestMove(specialForces, mission);
-            specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks;
+            TestMovement.AdvanceTo(specialForces.Movement, specialForces.Movement.TransitTicks);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -4239,8 +4457,8 @@ namespace Rebellion.Tests.Gameplay
 
             movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
             string movementGroupId = officer.Movement.MovementGroupID;
-            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
-            officer2.Movement.TicksElapsed = officer2.Movement.TransitTicks;
+            TestMovement.AdvanceTo(officer.Movement, officer.Movement.TransitTicks);
+            TestMovement.AdvanceTo(officer2.Movement, officer2.Movement.TransitTicks);
 
             List<UnitArrivedResult> arrivals = new MovementTickProcessor(movement)
                 .ProcessTick(game)
@@ -4928,7 +5146,7 @@ namespace Rebellion.Tests.Gameplay
                 fleet.Waypoints
             );
 
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
             IReadOnlyList<GameResult> firstArrivalResults = new MovementTickProcessor(
                 movement
             ).ProcessTick(game);
@@ -4943,7 +5161,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(fleet.Movement);
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
 
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
             IReadOnlyList<GameResult> finalArrivalResults = new MovementTickProcessor(
                 movement
             ).ProcessTick(game);
@@ -5035,7 +5253,7 @@ namespace Rebellion.Tests.Gameplay
                 routeFleet.Waypoints
             );
 
-            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(ship.Movement, ship.Movement.TransitTicks - 1);
             new MovementTickProcessor(movement).ProcessTick(game);
             movement.ContinueFleetWaypointRoutes();
 
@@ -5043,7 +5261,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(secondDestination, routeFleet.GetParent());
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
 
-            routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(routeFleet.Movement, routeFleet.Movement.TransitTicks - 1);
             IReadOnlyList<GameResult> finalResults = new MovementTickProcessor(
                 movement
             ).ProcessTick(game);
@@ -5079,7 +5297,7 @@ namespace Rebellion.Tests.Gameplay
                 "empire"
             );
             Assert.IsTrue(routeSet);
-            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(ship.Movement, ship.Movement.TransitTicks - 1);
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -5159,7 +5377,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(firstDestination, fleet.GetParent());
             Assert.IsEmpty(fleet.Waypoints);
 
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
             new MovementTickProcessor(movement).ProcessTick(game);
             movement.ContinueFleetWaypointRoutes();
 
@@ -5183,7 +5401,7 @@ namespace Rebellion.Tests.Gameplay
                 new[] { firstDestination.InstanceID, secondDestination.InstanceID },
                 "empire"
             );
-            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(fleet.Movement, fleet.Movement.TransitTicks - 1);
             new MovementTickProcessor(movement).ProcessTick(game);
 
             bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, origin, "empire");
@@ -5489,7 +5707,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(destinationFleet, origin);
             CapitalShip ship = CreateMovableCapitalShip("ship");
             game.AttachNode(ship, sourceFleet);
-            sourceFleet.Movement = new MovementState();
+            sourceFleet.Movement = TestMovement.Create();
 
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { ship },
@@ -5703,8 +5921,8 @@ namespace Rebellion.Tests.Gameplay
                 new System.Collections.Generic.List<IMovable> { escort, captive },
                 destination
             );
-            escort.Movement.TicksElapsed = escort.Movement.TransitTicks;
-            captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
+            TestMovement.AdvanceTo(escort.Movement, escort.Movement.TransitTicks);
+            TestMovement.AdvanceTo(captive.Movement, captive.Movement.TransitTicks);
 
             IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
                 game
@@ -5735,13 +5953,12 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet fleet = new Fleet("empire", "Empire Fleet");
             game.AttachNode(fleet, destination);
-            fleet.Movement = new MovementState
-            {
-                TransitTicks = 1,
-                TicksElapsed = 1,
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            fleet.Movement = TestMovement.Create(
+                transitTicks: 1,
+                ticksElapsed: 1,
+                originPosition: origin.GetPosition(),
+                currentPosition: origin.GetPosition()
+            );
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -5767,13 +5984,12 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet fleet = new Fleet("empire", "Empire Fleet");
             game.AttachNode(fleet, destination);
-            fleet.Movement = new MovementState
-            {
-                TransitTicks = 1,
-                TicksElapsed = 1,
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            fleet.Movement = TestMovement.Create(
+                transitTicks: 1,
+                ticksElapsed: 1,
+                originPosition: origin.GetPosition(),
+                currentPosition: origin.GetPosition()
+            );
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -5800,13 +6016,12 @@ namespace Rebellion.Tests.Gameplay
 
             game.DetachNode(officer);
             game.AttachNode(officer, destination);
-            officer.Movement = new MovementState
-            {
-                TransitTicks = 1,
-                TicksElapsed = 1,
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            officer.Movement = TestMovement.Create(
+                transitTicks: 1,
+                ticksElapsed: 1,
+                originPosition: origin.GetPosition(),
+                currentPosition: origin.GetPosition()
+            );
 
             new MovementTickProcessor(movement).ProcessTick(game);
 
@@ -5831,13 +6046,12 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet fleet = new Fleet("empire", "Empire Fleet");
             game.AttachNode(fleet, destination);
-            fleet.Movement = new MovementState
-            {
-                TransitTicks = 1,
-                TicksElapsed = 1,
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            fleet.Movement = TestMovement.Create(
+                transitTicks: 1,
+                ticksElapsed: 1,
+                originPosition: origin.GetPosition(),
+                currentPosition: origin.GetPosition()
+            );
 
             new MovementTickProcessor(movement).ProcessTick(game);
 

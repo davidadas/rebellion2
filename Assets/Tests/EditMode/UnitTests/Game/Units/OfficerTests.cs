@@ -313,7 +313,7 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer
             {
                 DisplayName = "Test Officer",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             bool captured = officer.TryCapture("captor");
 
@@ -331,7 +331,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "owner",
             };
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "owner" };
-            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = new MovementState() };
+            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = TestMovement.Create() };
             officer.SetParent(ship);
             ship.SetParent(fleet);
             bool captured = officer.TryCapture("captor");

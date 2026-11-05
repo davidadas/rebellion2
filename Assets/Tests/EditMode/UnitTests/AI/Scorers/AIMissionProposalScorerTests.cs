@@ -28,7 +28,7 @@ namespace Rebellion.Tests.AI.Scorers
             var (context, waiting, _) = CreateWaitingScenario();
             AIMissionProposalScorer scorer = new();
             double sooner = scorer.Score(context, waiting);
-            waiting.Mission.Participants[0].Movement.TransitTicks = 130;
+            waiting.Mission.Participants[0].Movement.RetimeCurrentLeg(130);
 
             double later = scorer.Score(context, waiting);
 
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.AI.Scorers
         public void GetScoreUpperBound_InboundTeam_NeverUnderstatesWaitingScore(int arrivalTicks)
         {
             var (context, waiting, _) = CreateWaitingScenario();
-            waiting.Mission.Participants[0].Movement.TransitTicks = arrivalTicks;
+            waiting.Mission.Participants[0].Movement.RetimeCurrentLeg(arrivalTicks);
             AIMissionProposalScorer scorer = new();
 
             Assert.GreaterOrEqual(
@@ -1949,7 +1949,7 @@ namespace Rebellion.Tests.AI.Scorers
             game.AttachNode(incoming, origin);
             game.AttachNode(present, origin);
             game.AttachNode(spare, origin);
-            incoming.Movement = new MovementState { TransitTicks = 13 };
+            incoming.Movement = TestMovement.Create(transitTicks: 13);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AIMissionProposal future = new(
                 new[] { incoming },

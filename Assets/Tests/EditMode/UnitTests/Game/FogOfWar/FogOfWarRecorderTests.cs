@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Game.FogOfWar
         public void RecordSelectedObservations_LaterUnrelatedObservation_PreservesMovementObservationTime()
         {
             Officer officer = CreateOfficer("traveller", _empire);
-            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 };
+            officer.Movement = TestMovement.Create(transitTicks: 20, ticksElapsed: 10);
             _game.AttachNode(officer, _coruscant);
             Officer another = CreateOfficer("another", _empire);
             _game.AttachNode(another, _coruscant);

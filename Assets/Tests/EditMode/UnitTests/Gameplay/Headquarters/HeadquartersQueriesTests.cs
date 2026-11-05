@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Gameplay
         public void CanRelocate_HeadquartersInTransit_ReturnsFalse()
         {
             (GameRoot game, _, _, Planet destination, Building hq) = CreateGame(isMobile: true);
-            hq.Movement = new MovementState();
+            hq.Movement = TestMovement.Create();
 
             Assert.IsFalse(new HeadquartersQueries(game).CanRelocate(hq, destination));
         }
