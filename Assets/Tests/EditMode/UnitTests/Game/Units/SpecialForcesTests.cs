@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
-            _specialForces.Movement = new MovementState();
+            _specialForces.Movement = TestMovement.Create();
 
             bool isMovable = _specialForces.IsMovable();
 
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Game.Units
         public void IsMovable_WhenOnMission_ReturnsFalse()
         {
             StubMission mission = new StubMission();
-            _specialForces.Movement = new MovementState();
+            _specialForces.Movement = TestMovement.Create();
             _specialForces.SetParent(mission);
 
             bool isMovable = _specialForces.IsMovable();

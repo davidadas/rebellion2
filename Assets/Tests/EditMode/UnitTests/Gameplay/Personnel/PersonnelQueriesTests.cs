@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Gameplay
             Officer capturedOfficer = CreateOfficer("captured");
             capturedOfficer.IsCaptured = true;
             Officer movingOfficer = CreateOfficer("moving");
-            movingOfficer.Movement = new MovementState();
+            movingOfficer.Movement = TestMovement.Create();
             SpecialForces buildingForces = CreateSpecialForces("building");
             buildingForces.ManufacturingStatus = ManufacturingStatus.Building;
             _game.AttachNode(capturedOfficer, _planet);

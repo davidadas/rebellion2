@@ -391,7 +391,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateTargetingMissionContext(target)
             );
             new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
-            target.GetParentOfType<Fleet>().Movement = new MovementState();
+            target.GetParentOfType<Fleet>().Movement = TestMovement.Create();
 
             ProcessUnavailableTarget(mission);
 

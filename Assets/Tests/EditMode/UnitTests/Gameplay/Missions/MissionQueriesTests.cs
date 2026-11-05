@@ -1077,7 +1077,7 @@ namespace Rebellion.Tests.Gameplay
             Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
             Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
             viewTarget.SetParent(viewPlanet);
-            target.Movement = new MovementState();
+            target.Movement = TestMovement.Create();
 
             bool canCreate = missions.CanCreateMission(
                 CreateContext(

@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             )
             {
                 InstanceID = "second-fleet",
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddChild(_fleet);
             _planet.AddChild(_secondFleet);
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_StationaryFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
         {
-            _capitalShip.Movement = new MovementState { TransitTicks = 10 };
+            _capitalShip.Movement = TestMovement.Create(transitTicks: 10);
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
 
@@ -294,8 +294,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_ArrivedFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
         {
-            _fleet.Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 };
-            _capitalShip.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 };
+            _fleet.Movement = TestMovement.Create(transitTicks: 5, ticksElapsed: 5);
+            _capitalShip.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 4);
             _fleet.Movement = null;
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
@@ -329,7 +329,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         public void Build_StarfighterUnderConstruction_UsesConstructionBackground()
         {
             _starfighter.ManufacturingStatus = ManufacturingStatus.Building;
-            _starfighter.Movement = new MovementState();
+            _starfighter.Movement = TestMovement.Create();
             _session.SelectTab(FleetWindowTab.Starfighters);
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);

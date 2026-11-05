@@ -50,8 +50,18 @@ namespace Rebellion.Tests.Gameplay
             IMovable[] units = { regiment, specialForces };
             foreach (IMovable unit in units)
             {
-                unit.Movement.CurrentPosition = new Point(10, 0);
-                unit.Movement.ResolveEncounterOnArrival = true;
+                unit.Movement.SetPosition(new Point(10, 0));
+                MovementState movement = unit.Movement;
+                unit.Movement = TestMovement.Create(
+                    transitTicks: movement.TransitTicks,
+                    ticksElapsed: movement.TicksElapsed,
+                    originPosition: movement.OriginPosition,
+                    currentPosition: movement.CurrentPosition,
+                    movementGroupID: movement.MovementGroupID,
+                    resolveEncounterOnArrival: true,
+                    previousLocationInstanceID: movement.PreviousLocationInstanceID,
+                    destinationPlanetInstanceID: movement.DestinationPlanetInstanceID
+                );
             }
 
             Dictionary<IMovable, Point> currentPositions = units.ToDictionary(
@@ -112,8 +122,17 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
             MovementState movement = starfighter.Movement;
-            movement.CurrentPosition = new Point(90, 0);
-            movement.SourceEventInstanceID = "movement-source";
+            movement.SetPosition(new Point(90, 0));
+            movement = TestMovement.Create(
+                transitTicks: movement.TransitTicks,
+                originPosition: movement.OriginPosition,
+                currentPosition: movement.CurrentPosition,
+                movementGroupID: movement.MovementGroupID,
+                sourceEventInstanceID: "movement-source",
+                previousLocationInstanceID: movement.PreviousLocationInstanceID,
+                destinationPlanetInstanceID: movement.DestinationPlanetInstanceID
+            );
+            starfighter.Movement = movement;
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             List<GameResult> results = ProcessBlockadeStart(
@@ -155,8 +174,8 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(fighter, scene.origin);
             scene.movement.RequestMove(fighter, scene.blockadedDestination);
             int outboundTicks = fighter.Movement.TransitTicks;
-            fighter.Movement.TicksElapsed = 1;
-            fighter.Movement.CurrentPosition = new Point(10, 0);
+            TestMovement.AdvanceTo(fighter.Movement, 1);
+            fighter.Movement.SetPosition(new Point(10, 0));
             int returnTicks = new MovementQueries(scene.game).CalculateTransitTicks(
                 fighter,
                 scene.blockadedDestination,
@@ -192,7 +211,7 @@ namespace Rebellion.Tests.Gameplay
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(fighter, scene.origin);
             scene.movement.RequestMove(fighter, scene.blockadedDestination);
-            fighter.Movement.CurrentPosition = new Point(90, 0);
+            fighter.Movement.SetPosition(new Point(90, 0));
             var originBlockade = AddBlockadingFleet(scene.game, scene.origin);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
@@ -218,7 +237,7 @@ namespace Rebellion.Tests.Gameplay
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(fighter, scene.origin);
             scene.movement.RequestMove(fighter, scene.blockadedDestination);
-            fighter.Movement.CurrentPosition = new Point(195, 0);
+            fighter.Movement.SetPosition(new Point(195, 0));
             scene.origin.OwnerInstanceID = "rebels";
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
@@ -243,7 +262,7 @@ namespace Rebellion.Tests.Gameplay
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(fighter, scene.origin);
             scene.movement.RequestMove(fighter, scene.blockadedDestination);
-            fighter.Movement.CurrentPosition = new Point(100, 0);
+            fighter.Movement.SetPosition(new Point(100, 0));
             scene.origin.OwnerInstanceID = "rebels";
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
@@ -262,7 +281,7 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(fighter, carrier);
             scene.movement.RequestMove(fighter, scene.blockadedDestination);
             scene.game.AttachNode(EntityFactory.CreateStarfighter("occupant", "empire"), carrier);
-            fighter.Movement.CurrentPosition = new Point(90, 0);
+            fighter.Movement.SetPosition(new Point(90, 0));
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
@@ -335,7 +354,7 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(starfighter, scene.blockadedDestination);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination, scene.origin);
             int outboundTicks = starfighter.Movement.TransitTicks;
-            starfighter.Movement.CurrentPosition = new Point(90, 0);
+            starfighter.Movement.SetPosition(new Point(90, 0));
             Assert.IsNull(starfighter.GetLastParent());
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
@@ -373,7 +392,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
-            starfighter.Movement.CurrentPosition = new Point(90, 0);
+            starfighter.Movement.SetPosition(new Point(90, 0));
             starfighter.LastParentNode = null;
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
@@ -395,7 +414,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
-            starfighter.Movement.CurrentPosition = new Point(90, 0);
+            starfighter.Movement.SetPosition(new Point(90, 0));
             if (unavailableReason == "captured")
                 scene.origin.OwnerInstanceID = "rebels";
             else if (unavailableReason == "blockaded")
@@ -446,7 +465,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.CurrentSquadronSize = 12;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
-            starfighter.Movement.TicksElapsed = starfighter.Movement.TransitTicks - 1;
+            TestMovement.AdvanceTo(starfighter.Movement, starfighter.Movement.TransitTicks - 1);
             CapitalShip blockader = AddBlockadingFleet(scene.game, scene.blockadedDestination).ship;
             blockader.MaxHullStrength = 100;
             blockader.CurrentHullStrength = 100;
@@ -718,7 +737,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
-            starfighter.Movement.CurrentPosition = new Point(100, 0);
+            starfighter.Movement.SetPosition(new Point(100, 0));
             scene.origin.OwnerInstanceID = "rebels";
             scene.nearestSafeDestination.OwnerInstanceID = "rebels";
             scene.fartherSafeDestination.OwnerInstanceID = "rebels";
@@ -748,7 +767,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
-            starfighter.Movement.CurrentPosition = new Point(140, 0);
+            starfighter.Movement.SetPosition(new Point(140, 0));
             scene.origin.OwnerInstanceID = "rebels";
             scene.blockadedDestination.OwnerInstanceID = "third-faction";
             AddBlockadingFleet(scene.game, scene.nearestSafeDestination);
@@ -869,11 +888,10 @@ namespace Rebellion.Tests.Gameplay
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             scene.game.AttachNode(otherFleet, scene.fallback);
             scene.game.AttachNode(otherCarrier, otherFleet);
-            otherFleet.Movement = new MovementState
-            {
-                OriginPosition = scene.origin.GetPosition(),
-                CurrentPosition = scene.origin.GetPosition(),
-            };
+            otherFleet.Movement = TestMovement.Create(
+                originPosition: scene.origin.GetPosition(),
+                currentPosition: scene.origin.GetPosition()
+            );
             scene.game.AttachNode(officer, scene.carrier);
             scene.game.DeleteNode(scene.carrier);
 
@@ -1202,11 +1220,10 @@ namespace Rebellion.Tests.Gameplay
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             scene.game.AttachNode(otherFleet, scene.fallback);
             scene.game.AttachNode(otherCarrier, otherFleet);
-            otherFleet.Movement = new MovementState
-            {
-                OriginPosition = scene.origin.GetPosition(),
-                CurrentPosition = scene.origin.GetPosition(),
-            };
+            otherFleet.Movement = TestMovement.Create(
+                originPosition: scene.origin.GetPosition(),
+                currentPosition: scene.origin.GetPosition()
+            );
             scene.game.AttachNode(officer, scene.carrier);
             scene.game.DeleteNode(scene.carrier);
 

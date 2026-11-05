@@ -1144,7 +1144,7 @@ namespace Rebellion.Tests.AI.Planners
             Officer prisoner = EntityFactory.CreateOfficer("prisoner", empire.InstanceID);
             prisoner.IsCaptured = true;
             prisoner.CaptorInstanceID = rebels.InstanceID;
-            prisoner.Movement = new MovementState { TransitTicks = 10 };
+            prisoner.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(prisoner, prison);
             SpecialForces participant = CreateSpecialForces(
                 "rescuer",

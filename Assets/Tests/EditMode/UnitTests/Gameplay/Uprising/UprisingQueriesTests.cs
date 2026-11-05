@@ -291,10 +291,10 @@ namespace Rebellion.Tests.Gameplay
                     fleet.IsEnabled = false;
                     break;
                 case "moving-ship":
-                    ship.Movement = new MovementState();
+                    ship.Movement = TestMovement.Create();
                     break;
                 case "moving-fleet":
-                    fleet.Movement = new MovementState();
+                    fleet.Movement = TestMovement.Create();
                     break;
             }
             Assert.AreEqual(6, Requirement(game, faction, planet));

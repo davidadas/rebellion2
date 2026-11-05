@@ -679,7 +679,7 @@ namespace Rebellion.Tests.AI
                 OrderType = FleetOrderType.Defend,
                 TargetPlanetId = headquarters.InstanceID,
             };
-            inboundFleet.Movement = new MovementState { TransitTicks = 5 };
+            inboundFleet.Movement = TestMovement.Create(transitTicks: 5);
             game.AttachNode(inboundFleet, staging);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(
@@ -971,7 +971,7 @@ namespace Rebellion.Tests.AI
                 combatStrength: 300,
                 starfighterCapacity: 1
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             Starfighter inboundFighter = new Starfighter
             {
                 InstanceID = "inbound-fighter",
@@ -1162,7 +1162,7 @@ namespace Rebellion.Tests.AI
                 "inbound-ship",
                 empire.InstanceID
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             Regiment readyRegiment = AITestSceneBuilder.CreateRegiment(
                 "ready-regiment",
                 empire.InstanceID,
@@ -1836,7 +1836,7 @@ namespace Rebellion.Tests.AI
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Fleet inboundFleet = EntityFactory.CreateFleet("inbound", rebels.InstanceID);
-            inboundFleet.Movement = new MovementState { TransitTicks = 10 };
+            inboundFleet.Movement = TestMovement.Create(transitTicks: 10);
             CapitalShip inboundShip = AITestSceneBuilder.CreateCapitalShip(
                 "inbound-ship",
                 rebels.InstanceID,
@@ -1860,7 +1860,7 @@ namespace Rebellion.Tests.AI
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Fleet firstFleet = EntityFactory.CreateFleet("first-inbound", rebels.InstanceID);
-            firstFleet.Movement = new MovementState { TransitTicks = 10 };
+            firstFleet.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(firstFleet, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(
@@ -1871,7 +1871,7 @@ namespace Rebellion.Tests.AI
                 firstFleet
             );
             Fleet secondFleet = EntityFactory.CreateFleet("second-inbound", rebels.InstanceID);
-            secondFleet.Movement = new MovementState { TransitTicks = 20 };
+            secondFleet.Movement = TestMovement.Create(transitTicks: 20);
             game.AttachNode(secondFleet, planet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(

@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new Officer
                 {
                     OwnerInstanceID = _playerFactionId,
-                    Movement = new MovementState { TransitTicks = 10 },
+                    Movement = TestMovement.Create(transitTicks: 10),
                 }
             );
 

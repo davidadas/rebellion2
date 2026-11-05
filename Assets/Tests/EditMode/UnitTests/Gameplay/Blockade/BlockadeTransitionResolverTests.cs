@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Gameplay
             BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
             bool wasBlockaded = planet.IsBlockaded();
-            fleet.Movement = new MovementState { TransitTicks = 1 };
+            fleet.Movement = TestMovement.Create(transitTicks: 1);
 
             BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded);
 

@@ -3736,7 +3736,7 @@ namespace Rebellion.Tests.Gameplay
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             game.AttachNode(carrier, fleet);
 

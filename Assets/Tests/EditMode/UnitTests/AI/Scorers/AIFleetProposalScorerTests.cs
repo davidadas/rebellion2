@@ -721,7 +721,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "inbound-ship",
                 empire.InstanceID
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(inboundShip, targetFleet);
             game.AttachNode(
                 AITestSceneBuilder.CreateRegiment(
@@ -735,7 +735,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "second-inbound-ship",
                 empire.InstanceID
             );
-            secondInboundShip.Movement = new MovementState { TransitTicks = 10 };
+            secondInboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(secondInboundShip, targetFleet);
             game.AttachNode(
                 AITestSceneBuilder.CreateRegiment(
@@ -749,7 +749,7 @@ namespace Rebellion.Tests.AI.Fleets
                 "third-inbound-ship",
                 empire.InstanceID
             );
-            thirdInboundShip.Movement = new MovementState { TransitTicks = 10 };
+            thirdInboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(thirdInboundShip, targetFleet);
             game.AttachNode(
                 AITestSceneBuilder.CreateRegiment(
@@ -1037,7 +1037,7 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID,
                 combatStrength: 900
             );
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            inboundShip.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(sourceFleet, staging);
             game.AttachNode(reinforcement, sourceFleet);
             game.AttachNode(defenseFleet, staging);

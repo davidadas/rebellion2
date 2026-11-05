@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsMovable_InTransitStatus_ReturnsFalse()
         {
-            Building building = new Building { Movement = new MovementState() };
+            Building building = new Building { Movement = TestMovement.Create() };
 
             Assert.IsFalse(building.IsMovable());
         }

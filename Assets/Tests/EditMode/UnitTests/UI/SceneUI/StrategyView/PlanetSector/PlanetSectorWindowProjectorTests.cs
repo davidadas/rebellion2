@@ -73,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _game.AttachNode(secondDestination, _planetSector);
             GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet")
             {
-                Movement = new MovementState { OriginPosition = origin.GetPosition() },
+                Movement = TestMovement.Create(originPosition: origin.GetPosition()),
             };
             playerFleet.Waypoints.Add(firstDestination.InstanceID);
             playerFleet.Waypoints.Add(secondDestination.InstanceID);

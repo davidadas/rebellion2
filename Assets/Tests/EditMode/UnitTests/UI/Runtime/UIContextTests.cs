@@ -194,7 +194,7 @@ namespace Rebellion.Tests.UI.Runtime
             Fleet fleet = new Fleet
             {
                 InstanceID = "fleet",
-                Movement = new MovementState { TransitTicks = 10 },
+                Movement = TestMovement.Create(transitTicks: 10),
             };
             CapitalShip ship = new CapitalShip { InstanceID = "ship", InTransitImagePath = path };
             _game.AttachNode(planetSector, _game.GetGalaxyMap());

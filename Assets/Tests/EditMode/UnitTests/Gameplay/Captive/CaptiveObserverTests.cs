@@ -360,13 +360,12 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet destination, Officer captive, MovementCommands movement) =
                 BuildScene();
             Planet capturePlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
-            MovementState establishedMovement = new MovementState
-            {
-                TransitTicks = 5,
-                MovementGroupID = "return-group",
-                OriginPosition = capturePlanet.GetPosition(),
-                CurrentPosition = capturePlanet.GetPosition(),
-            };
+            MovementState establishedMovement = TestMovement.Create(
+                transitTicks: 5,
+                movementGroupID: "return-group",
+                originPosition: capturePlanet.GetPosition(),
+                currentPosition: capturePlanet.GetPosition()
+            );
             game.MoveNode(captive, destination);
             captive.Movement = establishedMovement;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
@@ -430,7 +429,7 @@ namespace Rebellion.Tests.Gameplay
             Officer observed = snapshot.Officers.Single(officer =>
                 officer.InstanceID == captive.InstanceID
             );
-            captive.Movement.TransitTicks = 1;
+            captive.Movement.RetimeCurrentLeg(1);
 
             game.CurrentTick = 12;
             new MovementTickProcessor(movement).ProcessTick(game);

@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Gameplay
             scene.game.MoveNode(scene.officer, scene.destination);
             scene.officer.Movement = SerializationHelper.Deserialize<MovementState>(
                 SerializationHelper.Serialize(
-                    new MovementState { PreviousLocationInstanceID = string.Empty }
+                    TestMovement.Create(previousLocationInstanceID: string.Empty)
                 )
             );
 
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Gameplay
             Starfighter fighter = EntityFactory.CreateStarfighter("delivery", "empire");
             fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
             fighter.ProducerPlanetID = scene.origin.InstanceID;
-            fighter.Movement = new MovementState { TransitTicks = 10 };
+            fighter.Movement = TestMovement.Create(transitTicks: 10);
             scene.game.AttachNode(fighter, scene.destination);
 
             Assert.IsNull(fighter.LastParentInstanceID);
@@ -810,11 +810,10 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(livePositionNearest, assignedDestination.GetParent());
             game.AttachNode(assignedDestinationNearest, assignedDestination.GetParent());
             game.MoveNode(officer, assignedDestination);
-            officer.Movement = new MovementState
-            {
-                OriginPosition = excludedOrigin.GetPosition(),
-                CurrentPosition = new Point(10, 0),
-            };
+            officer.Movement = TestMovement.Create(
+                originPosition: excludedOrigin.GetPosition(),
+                currentPosition: new Point(10, 0)
+            );
 
             IReadOnlyList<ContainerNode> destinations = movement.FindSafeRelocationDestinations(
                 officer,

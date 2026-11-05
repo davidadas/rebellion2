@@ -864,7 +864,7 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(fleet, planet);
             CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
                 "capital-template",

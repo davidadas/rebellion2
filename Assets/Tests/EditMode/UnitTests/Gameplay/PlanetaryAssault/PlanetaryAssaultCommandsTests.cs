@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Gameplay
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
             Regiment defender = AddDefender(game, planet, "defender");
             Fleet defendingFleet = AddAssaultFleet(game, planet, "alliance", regimentCount: 1);
-            defendingFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            defendingFleet.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 1);
             CapitalShip inTransitShip = defendingFleet.GetChildren<CapitalShip>()[0];
             Regiment inTransitRegiment = inTransitShip.GetChildren<Regiment>()[0];
             Fleet attackingFleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
@@ -403,7 +403,7 @@ namespace Rebellion.Tests.Gameplay
                     .GetChildren<Regiment>()
                     .Skip(2)
             )
-                regiment.Movement = new MovementState();
+                regiment.Movement = TestMovement.Create();
             PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
 
             PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);

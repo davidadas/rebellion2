@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Game.Units
         public void GetCombatValue_WhenUnavailable_ReturnsZero()
         {
             _starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
-            _starfighter.Movement = new MovementState();
+            _starfighter.Movement = TestMovement.Create();
 
             int combatValue = _starfighter.GetCombatValue();
 
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
-            _starfighter.Movement = new MovementState();
+            _starfighter.Movement = TestMovement.Create();
 
             bool isMovable = _starfighter.IsMovable();
 

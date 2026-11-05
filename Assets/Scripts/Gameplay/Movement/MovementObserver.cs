@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -140,7 +139,7 @@ namespace Rebellion.Gameplay
                 }
 
                 _game.MoveNode(unit, destination);
-                RetargetMovement(unit, destinationPlanet);
+                _commands.RetargetMovement(unit, destinationPlanet);
                 reactions.Add(
                     new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
                 );
@@ -184,32 +183,6 @@ namespace Rebellion.Gameplay
                     Tick = _game.CurrentTick,
                 }
             );
-        }
-
-        /// <summary>
-        /// Retargets a moving unit from its current position.
-        /// </summary>
-        /// <param name="unit">The unit being rerouted.</param>
-        /// <param name="destination">The new destination planet.</param>
-        private void RetargetMovement(IMovable unit, Planet destination)
-        {
-            MovementState movement = unit.Movement;
-            Point currentPosition = movement.CurrentPosition;
-            unit.Movement = new MovementState
-            {
-                TransitTicks = _queries.CalculateTransitTicks(
-                    unit,
-                    currentPosition,
-                    destination,
-                    sameSector: false
-                ),
-                TicksElapsed = 0,
-                MovementGroupID = movement.MovementGroupID,
-                SourceEventInstanceID = movement.SourceEventInstanceID,
-                ResolveEncounterOnArrival = movement.ResolveEncounterOnArrival,
-                OriginPosition = currentPosition,
-                CurrentPosition = currentPosition,
-            };
         }
 
         /// <summary>
@@ -374,7 +347,7 @@ namespace Rebellion.Gameplay
             bool remainsWithFleet =
                 destination is CapitalShip && destination.GetParentOfType<Fleet>() == fleet;
             if (!remainsWithFleet && destinationPlanet != origin)
-                StartTransit(occupant, origin, destination, results);
+                _commands.StartTransit(occupant, origin, destination, results);
         }
 
         /// <summary>
@@ -483,7 +456,7 @@ namespace Rebellion.Gameplay
             )
             {
                 _game.MoveNode(mobileFighter, fleetDestination);
-                StartTransit(mobileFighter, origin, fleetDestination, results);
+                _commands.StartTransit(mobileFighter, origin, fleetDestination, results);
                 return;
             }
 
@@ -502,42 +475,6 @@ namespace Rebellion.Gameplay
             return fleetDestination != origin
                     && _queries.CanUseSafeRelocationDestination(fighter, fleetDestination, origin)
                 || _queries.CanEvacuateToNearestFriendlyPlanet(fighter);
-        }
-
-        /// <summary>
-        /// Starts transit for a recovered unit already attached to its destination.
-        /// </summary>
-        /// <param name="occupant">The recovered unit.</param>
-        /// <param name="origin">The removal planet.</param>
-        /// <param name="destination">The receiving container.</param>
-        /// <param name="results">The collection receiving movement facts.</param>
-        private void StartTransit(
-            IMovable occupant,
-            Planet origin,
-            ContainerNode destination,
-            ICollection<GameResult> results
-        )
-        {
-            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            occupant.Movement = new MovementState
-            {
-                TransitTicks = _queries.CalculateTransitTicks(occupant, origin, destinationPlanet),
-                TicksElapsed = 0,
-                MovementGroupID = Guid.NewGuid().ToString("N"),
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
-            results.Add(
-                new GameObjectEnrouteResult { GameObject = occupant, Tick = _game.CurrentTick }
-            );
-            results.Add(
-                new GameObjectEnrouteActiveResult
-                {
-                    GameObject = occupant,
-                    IsActive = true,
-                    Tick = _game.CurrentTick,
-                }
-            );
         }
 
         /// <summary>

@@ -2052,7 +2052,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship
             );
             shipyard.OwnerInstanceID = empire.InstanceID;
-            shipyard.Movement = new MovementState { TransitTicks = 10 };
+            shipyard.Movement = TestMovement.Create(transitTicks: 10);
             game.AttachNode(shipyard, pendingPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             new AIProductionDemandGenerator().Generate(context);

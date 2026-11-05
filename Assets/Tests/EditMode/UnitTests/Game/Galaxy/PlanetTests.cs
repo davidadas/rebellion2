@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Game.Galaxy
             {
                 OwnerInstanceID = "FNALL1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState(),
+                Movement = TestMovement.Create(),
             };
             _planet.AddChild(inboundRegiment);
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
@@ -1134,7 +1134,7 @@ namespace Rebellion.Tests.Game.Galaxy
                 {
                     OwnerInstanceID = "ENEMY",
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = new MovementState { TransitTicks = 10 },
+                    Movement = TestMovement.Create(transitTicks: 10),
                 }
             );
             _planet.AddChild(enemyFleet);
@@ -1180,7 +1180,7 @@ namespace Rebellion.Tests.Game.Galaxy
         public void IsBlockaded_EnemyFleetInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            enemyFleet.Movement = new MovementState { TransitTicks = 10 };
+            enemyFleet.Movement = TestMovement.Create(transitTicks: 10);
             _planet.AddChild(enemyFleet);
 
             bool isBlockaded = _planet.IsBlockaded();
@@ -1192,10 +1192,9 @@ namespace Rebellion.Tests.Game.Galaxy
         public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            enemyFleet.GetChildren<CapitalShip>().Single().Movement = new MovementState
-            {
-                TransitTicks = 10,
-            };
+            enemyFleet.GetChildren<CapitalShip>().Single().Movement = TestMovement.Create(
+                transitTicks: 10
+            );
             _planet.AddChild(enemyFleet);
 
             Assert.IsFalse(_planet.IsBlockaded());
@@ -1222,7 +1221,7 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             Fleet friendlyFleet = CreateOperationalFleet("FNALL1");
-            friendlyFleet.Movement = new MovementState { TransitTicks = 10 };
+            friendlyFleet.Movement = TestMovement.Create(transitTicks: 10);
             _planet.AddChild(enemyFleet);
             _planet.AddChild(friendlyFleet);
 

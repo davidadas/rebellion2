@@ -287,13 +287,12 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "inbound-regiment",
                 OwnerInstanceID = _empire.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                    OriginPosition = _empirePlanet.GetPosition(),
-                    CurrentPosition = currentPosition,
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 10,
+                    ticksElapsed: 5,
+                    originPosition: _empirePlanet.GetPosition(),
+                    currentPosition: currentPosition
+                ),
             };
             _game.AttachNode(inboundRegiment, _targetPlanet);
             _game.DetachNode(stationedRegiment);
@@ -676,13 +675,12 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "inbound-starfighter",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                Movement = new MovementState
-                {
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                    OriginPosition = _empirePlanet.GetPosition(),
-                    CurrentPosition = currentPosition,
-                },
+                Movement = TestMovement.Create(
+                    transitTicks: 10,
+                    ticksElapsed: 5,
+                    originPosition: _empirePlanet.GetPosition(),
+                    currentPosition: currentPosition
+                ),
             };
             _game.AttachNode(fighter, _targetPlanet);
 
@@ -703,13 +701,12 @@ namespace Rebellion.Tests.Gameplay
             // Fleet already reparented to target (our immediate-reparent model) but mid-flight.
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
             _game.AttachNode(empireFleet, _targetPlanet);
-            empireFleet.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 2,
-                OriginPosition = _empirePlanet.GetPosition(),
-                CurrentPosition = _empirePlanet.GetPosition(),
-            };
+            empireFleet.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 2,
+                originPosition: _empirePlanet.GetPosition(),
+                currentPosition: _empirePlanet.GetPosition()
+            );
 
             TransferPlanet(_targetPlanet, _rebels);
 
@@ -726,13 +723,12 @@ namespace Rebellion.Tests.Gameplay
             _game.ChangeOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
-            officer.Movement = new MovementState
-            {
-                TransitTicks = 5,
-                TicksElapsed = 2,
-                OriginPosition = _empirePlanet.GetPosition(),
-                CurrentPosition = _empirePlanet.GetPosition(),
-            };
+            officer.Movement = TestMovement.Create(
+                transitTicks: 5,
+                ticksElapsed: 2,
+                originPosition: _empirePlanet.GetPosition(),
+                currentPosition: _empirePlanet.GetPosition()
+            );
 
             TransferPlanet(_targetPlanet, _rebels);
 
@@ -755,13 +751,12 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(officer, _targetPlanet);
 
             Point midPoint = new Point(50, 0);
-            officer.Movement = new MovementState
-            {
-                TransitTicks = 10,
-                TicksElapsed = 5,
-                OriginPosition = _empirePlanet.GetPosition(),
-                CurrentPosition = midPoint,
-            };
+            officer.Movement = TestMovement.Create(
+                transitTicks: 10,
+                ticksElapsed: 5,
+                originPosition: _empirePlanet.GetPosition(),
+                currentPosition: midPoint
+            );
 
             TransferPlanet(_targetPlanet, _rebels);
 
