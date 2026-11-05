@@ -132,13 +132,13 @@ namespace Rebellion.Util.Serialization
 
         /// <summary>
         /// Deserializes the first XML element matching <paramref name="elementName"/> from the given stream.
-        /// When <paramref name="elementName"/> is null, falls back to the type name of <typeparamref name="T"/>.
+        /// When <paramref name="elementName"/> is null, accepts the type's canonical, CLR, and read-alias names.
         /// Use an explicit name when the element is stored under a member name that differs from the type
         /// (e.g. the <c>GameMetadata</c> type stored under a <c>Metadata</c> field).
         /// </summary>
         /// <typeparam name="T">The target type to deserialize.</typeparam>
         /// <param name="stream">The stream to read from.</param>
-        /// <param name="elementName">Optional explicit XML element name; defaults to <c>typeof(T).Name</c>.</param>
+        /// <param name="elementName">Optional explicit XML name; omission accepts the declared type's read names.</param>
         /// <returns>The deserialized instance of <typeparamref name="T"/>.</returns>
         /// <exception cref="InvalidDataException">The requested element was not found.</exception>
         public T DeserializeNode<T>(Stream stream, string elementName = null)
@@ -151,7 +151,14 @@ namespace Rebellion.Util.Serialization
 
             do
             {
-                if (reader.NodeType == XmlNodeType.Element && reader.Name == name)
+                if (
+                    reader.NodeType == XmlNodeType.Element
+                    && (
+                        elementName != null
+                            ? reader.Name == name
+                            : ReflectionHelper.MatchesPersistableName(typeof(T), reader.Name)
+                    )
+                )
                 {
                     return (T)XmlDeserializer.ReadValue(typeof(T), reader, _settings);
                 }
@@ -902,9 +909,25 @@ namespace Rebellion.Util.Serialization
                 {
                     string elementName = reader.Name;
 
-                    Type actualElementType = persistableMap.ContainsKey(elementName)
-                        ? persistableMap[elementName]
-                        : elementType;
+                    bool usesReadAlias = ReflectionHelper
+                        .GetPersistableTypes(elementName)
+                        .Any(type =>
+                            ReflectionHelper
+                                .GetReadAliases(type)
+                                .Any(alias => alias.Name == elementName)
+                        );
+                    Type actualElementType = elementType;
+                    if (usesReadAlias)
+                    {
+                        if (!TypeHelper.IsScalar(elementType))
+                            actualElementType = ResolveActualType(
+                                elementType,
+                                elementName,
+                                default
+                            );
+                    }
+                    else if (persistableMap.TryGetValue(elementName, out Type mappedType))
+                        actualElementType = mappedType;
 
                     object value = ReadValue(actualElementType, reader, settings);
                     collection.Add(value);
@@ -979,6 +1002,10 @@ namespace Rebellion.Util.Serialization
                 ? ReadAttributes(reader, attributes, obj)
                 : new HashSet<MemberInfo>();
 
+            HashSet<MemberInfo> populatedAliasedMembers = new HashSet<MemberInfo>(
+                populatedAttributes
+            );
+
             if (reader.IsEmptyElement)
             {
                 reader.Read();
@@ -1012,6 +1039,13 @@ namespace Rebellion.Util.Serialization
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
                             );
+                        if (
+                            ReflectionHelper.HasReadAliases(member)
+                            && !populatedAliasedMembers.Add(member)
+                        )
+                            throw new InvalidOperationException(
+                                $"Member '{member.Name}' is provided more than once."
+                            );
                         object value = ReadMember(member, reader, settings);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
@@ -1020,6 +1054,13 @@ namespace Rebellion.Util.Serialization
                         if (populatedAttributes.Contains(attributeMember))
                             throw new InvalidOperationException(
                                 $"Member '{elementName}' cannot be provided as both an attribute and an element."
+                            );
+                        if (
+                            ReflectionHelper.HasReadAliases(attributeMember)
+                            && !populatedAliasedMembers.Add(attributeMember)
+                        )
+                            throw new InvalidOperationException(
+                                $"Member '{attributeMember.Name}' is provided more than once."
                             );
                         object value = ReadMember(attributeMember, reader, settings);
                         ReflectionHelper.SetMemberValue(attributeMember, obj, value);
@@ -1084,20 +1125,24 @@ namespace Rebellion.Util.Serialization
             PersistableAttributes objAttributes
         )
         {
-            if (objAttributes.IncludeAttributes != null)
-            {
-                foreach (PersistableIncludeAttribute includeAttr in objAttributes.IncludeAttributes)
-                {
-                    if (
-                        includeAttr.PersistableType.Name == actualTypeName
-                        || ReflectionHelper.GetPersistableElementName(includeAttr.PersistableType)
-                            == actualTypeName
-                    )
-                    {
-                        return includeAttr.PersistableType;
-                    }
-                }
-            }
+            Type[] includedTypes =
+                objAttributes
+                    .IncludeAttributes?.Select(attribute => attribute.PersistableType)
+                    .Where(type => ReflectionHelper.MatchesPersistableName(type, actualTypeName))
+                    .Distinct()
+                    .ToArray()
+                ?? Array.Empty<Type>();
+            if (
+                includedTypes.Length > 1
+                && includedTypes.Any(type =>
+                    ReflectionHelper.GetReadAliases(type).Any(alias => alias.Name == actualTypeName)
+                )
+            )
+                throw new InvalidOperationException(
+                    $"XML element '{actualTypeName}' is ambiguous for '{objType.Name}'."
+                );
+            if (includedTypes.Length > 0)
+                return includedTypes[0];
 
             Type[] candidates = ReflectionHelper
                 .GetPersistableTypes(actualTypeName)
@@ -1136,9 +1181,10 @@ namespace Rebellion.Util.Serialization
 
             if (
                 objAttributes.IncludeAttributes?.Any(includeAttribute =>
-                    includeAttribute.PersistableType.Name == actualTypeName
-                    || ReflectionHelper.GetPersistableElementName(includeAttribute.PersistableType)
-                        == actualTypeName
+                    ReflectionHelper.MatchesPersistableName(
+                        includeAttribute.PersistableType,
+                        actualTypeName
+                    )
                 ) == true
             )
             {
@@ -1169,10 +1215,13 @@ namespace Rebellion.Util.Serialization
                 reader.MoveToAttribute(i);
                 if (attributes.TryGetValue(reader.Name, out MemberInfo attribute))
                 {
+                    if (!populated.Add(attribute) && ReflectionHelper.HasReadAliases(attribute))
+                        throw new InvalidOperationException(
+                            $"Member '{attribute.Name}' is provided more than once."
+                        );
                     Type attributeType = ReflectionHelper.GetMemberType(attribute);
                     object value = TypeHelper.ConvertToScalar(reader.Value, attributeType);
                     ReflectionHelper.SetMemberValue(attribute, obj, value);
-                    populated.Add(attribute);
                 }
             }
             reader.MoveToElement();
@@ -1244,6 +1293,11 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Instance
             | BindingFlags.Static;
 
+        private static readonly ConcurrentDictionary<
+            MemberInfo,
+            IReadOnlyList<PersistableReadAliasAttribute>
+        > _readAliasCache = new();
+        private static readonly ConcurrentDictionary<MemberInfo, bool> _aliasedMemberCache = new();
         private static readonly ConcurrentDictionary<Type, string> _typeNameCache = new();
         private static IDictionary<string, Type> _persistableObjectMap;
         private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
@@ -1527,12 +1581,14 @@ namespace Rebellion.Util.Serialization
             }
 
             Dictionary<string, MemberInfo> attributeMap = new Dictionary<string, MemberInfo>();
+            List<MemberInfo> attributeMembers = new List<MemberInfo>();
             Type currentType = classType;
 
             while (currentType != null)
             {
                 foreach (MemberInfo member in GetPersistableAttributes(currentType, operationType))
                 {
+                    attributeMembers.Add(member);
                     PersistableAttributeAttribute attr = (PersistableAttributeAttribute)
                         Attribute.GetCustomAttribute(member, typeof(PersistableAttributeAttribute));
                     string key = attr?.Name ?? member.Name;
@@ -1545,6 +1601,10 @@ namespace Rebellion.Util.Serialization
 
                 currentType = currentType.BaseType;
             }
+
+            if (operationType == OperationType.Read)
+                foreach (MemberInfo member in attributeMembers.Distinct())
+                    AddReadAliases(attributeMap, member, GetReadAliases(member));
 
             _persistableAttributeMapCache[cacheKey] = attributeMap;
             return attributeMap;
@@ -1598,8 +1658,82 @@ namespace Rebellion.Util.Serialization
                 AddElementName(lookup, member.Name, member);
             }
 
+            foreach (MemberInfo member in GetPersistableMembers(classType, OperationType.Read))
+            {
+                AddReadAliases(lookup, member, GetReadAliases(member));
+                foreach (
+                    PersistableIncludeAttribute include in member.GetCustomAttributes<PersistableIncludeAttribute>()
+                )
+                    AddReadAliases(lookup, member, GetReadAliases(include.PersistableType));
+            }
+
             _elementMemberLookupCache[classType] = lookup;
             return lookup;
+        }
+
+        /// <summary>
+        /// Returns the additional names accepted when reading one declared type or member.
+        /// </summary>
+        /// <param name="member">The type or member declaring read aliases.</param>
+        /// <returns>The declared aliases without inherited type aliases.</returns>
+        public static IReadOnlyList<PersistableReadAliasAttribute> GetReadAliases(
+            MemberInfo member
+        ) =>
+            _readAliasCache.GetOrAdd(
+                member,
+                item =>
+                    item.GetCustomAttributes<PersistableReadAliasAttribute>(inherit: false)
+                        .ToArray()
+            );
+
+        /// <summary>
+        /// Checks whether a member accepts aliases directly or through explicitly included types.
+        /// </summary>
+        /// <param name="member">The persisted member being read.</param>
+        /// <returns>True when additional read names identify the member.</returns>
+        public static bool HasReadAliases(MemberInfo member) =>
+            _aliasedMemberCache.GetOrAdd(
+                member,
+                item =>
+                    GetReadAliases(item).Count > 0
+                    || item.GetCustomAttributes<PersistableIncludeAttribute>()
+                        .Any(include => GetReadAliases(include.PersistableType).Count > 0)
+            );
+
+        /// <summary>
+        /// Checks the canonical, CLR, and additional read names of a persistable type.
+        /// </summary>
+        /// <param name="type">The type being resolved.</param>
+        /// <param name="name">The XML name supplied by the document.</param>
+        /// <returns>True when the name identifies the type.</returns>
+        public static bool MatchesPersistableName(Type type, string name) =>
+            type.Name == name
+            || GetPersistableElementName(type) == name
+            || GetReadAliases(type).Any(alias => alias.Name == name);
+
+        /// <summary>
+        /// Adds read aliases while rejecting names already assigned to another member.
+        /// </summary>
+        /// <param name="lookup">The completed canonical name lookup.</param>
+        /// <param name="member">The member the aliases identify.</param>
+        /// <param name="aliases">The additional XML names to register.</param>
+        private static void AddReadAliases(
+            IDictionary<string, MemberInfo> lookup,
+            MemberInfo member,
+            IEnumerable<PersistableReadAliasAttribute> aliases
+        )
+        {
+            foreach (PersistableReadAliasAttribute alias in aliases)
+            {
+                if (
+                    lookup.TryGetValue(alias.Name, out MemberInfo existing)
+                    && !existing.Equals(member)
+                )
+                    throw new InvalidOperationException(
+                        $"Read alias '{alias.Name}' on '{member.DeclaringType.Name}.{member.Name}' conflicts with '{existing.DeclaringType.Name}.{existing.Name}'."
+                    );
+                lookup[alias.Name] = member;
+            }
         }
 
         /// <summary>
@@ -1685,6 +1819,8 @@ namespace Rebellion.Util.Serialization
             {
                 AddPersistableType(typesByName, GetPersistableElementName(type), type);
                 AddPersistableType(typesByName, type.Name, type);
+                foreach (PersistableReadAliasAttribute alias in GetReadAliases(type))
+                    AddPersistableType(typesByName, alias.Name, type);
             }
 
             _persistableTypesByName = typesByName.ToDictionary(

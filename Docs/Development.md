@@ -146,6 +146,28 @@ coordinates to clear overlaps and the window frame, moving planets in a sector o
 clusters on the galaxy map. Layout runs off the UI thread, supports Escape to cancel, and applies
 as one undoable edit after the complete placement is valid.
 
+## XML serialization
+
+`PersistableObject`, `PersistableMember`, and `PersistableAttribute` retain the names used when
+writing XML. Add stackable `PersistableReadAlias` declarations to accept additional input names
+for a persistable class, field, or property:
+
+```csharp
+[PersistableMember(Name = "CurrentName")]
+[PersistableReadAlias("AlternateName")]
+[PersistableReadAlias("OldName", Deprecated = true)]
+public string Value { get; set; }
+```
+
+Both aliases load into `Value`; serialization continues to write `CurrentName`. `Deprecated`
+defaults to `false` and records an alias's status without rejecting it. Aliases do not make an
+otherwise unpersisted member persistable. Conflicting member aliases and ambiguous polymorphic
+type aliases are rejected. A member declaring aliases may be supplied only once per object,
+including when a document mixes its canonical name with an alias.
+
+The serializer and `SerializationMetadata` share the same read-name lookups. Schema-validated
+content must also allow the accepted names in its XSD; read aliases do not bypass schema validation.
+
 ## Game scripting
 
 `GameActionInterpreter` interprets branching and action sequences. It passes concrete actions through `IGameActionExecutor`, implemented by `GameActionCommands`, which owns movement, mission, ownership, message, and encounter dependencies.

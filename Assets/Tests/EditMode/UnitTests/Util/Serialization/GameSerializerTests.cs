@@ -287,6 +287,114 @@ namespace Rebellion.Tests.Util.Serialization
         public ItemWithRuntimeTypeName() { }
     }
 
+    [PersistableObject(Name = "CurrentAliasItem")]
+    [PersistableReadAlias("LegacyAliasItem")]
+    [PersistableReadAlias("DeprecatedAliasItem", Deprecated = true)]
+    public class ReadAliasItem : ITestItem
+    {
+        public string Name { get; set; }
+
+        [PersistableMember(Name = "CurrentValue")]
+        [PersistableReadAlias("LegacyValue")]
+        [PersistableReadAlias("DeprecatedValue", Deprecated = true)]
+        public int Value { get; set; }
+
+        [PersistableAttribute(Name = "CurrentID")]
+        [PersistableReadAlias("LegacyID")]
+        [PersistableReadAlias("DeprecatedID", Deprecated = true)]
+        public string ID { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasDerivedItem : ReadAliasItem { }
+
+    [PersistableObject]
+    public sealed class ReadAliasContainer
+    {
+        public List<ITestItem> Items { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasTypedContainer
+    {
+        public List<ReadAliasFirstItem> Items { get; set; } = new List<ReadAliasFirstItem>();
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasAmbiguousIncludeContainer
+    {
+        [PersistableInclude(typeof(ReadAliasFirstItem))]
+        [PersistableInclude(typeof(ReadAliasSecondItem))]
+        public ITestItem Item { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasInlineContainer
+    {
+        [PersistableInlineCollection]
+        public List<ITestItem> Items { get; set; } = new List<ITestItem>();
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasIncludeContainer
+    {
+        [PersistableInclude(typeof(ReadAliasItem))]
+        public ITestItem Item { get; set; }
+    }
+
+    [PersistableObject]
+    public class ReadAliasAttributeBase
+    {
+        [PersistableAttribute(Name = "CurrentID")]
+        [PersistableReadAlias("BaseLegacyID", Deprecated = true)]
+        private string _legacyID = string.Empty;
+
+        [PersistableIgnore]
+        public string LegacyID => _legacyID;
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasAttributeDerived : ReadAliasAttributeBase
+    {
+        [PersistableAttribute(Name = "CurrentID")]
+        public string ID { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasMemberCollision
+    {
+        [PersistableMember(Name = "claimed")]
+        public int First { get; set; }
+
+        [PersistableReadAlias("claimed")]
+        public int Second { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class ReadAliasAttributeCollision
+    {
+        [PersistableAttribute(Name = "claimed")]
+        public int First { get; set; }
+
+        [PersistableAttribute]
+        [PersistableReadAlias("claimed")]
+        public int Second { get; set; }
+    }
+
+    [PersistableObject]
+    [PersistableReadAlias("AmbiguousReadAlias")]
+    public sealed class ReadAliasFirstItem : ITestItem
+    {
+        public string Name { get; set; }
+    }
+
+    [PersistableObject]
+    [PersistableReadAlias("AmbiguousReadAlias")]
+    public sealed class ReadAliasSecondItem : ITestItem
+    {
+        public string Name { get; set; }
+    }
+
     [TestFixture]
     public class GameSerializerTests
     {
@@ -2055,6 +2163,247 @@ namespace Rebellion.Tests.Util.Serialization
                 stream.Seek(0, SeekOrigin.Begin);
                 serializer.DeserializeNode<SimpleItem>(stream);
             });
+        }
+
+        [TestCase("CurrentValue")]
+        [TestCase("LegacyValue")]
+        [TestCase("DeprecatedValue")]
+        public void Deserialize_StackedMemberNames_ReadsValue(string name)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            ReadAliasItem item = (ReadAliasItem)DeserializeFromString(
+                serializer,
+                $"<ReadAliasItem><{name}>42</{name}></ReadAliasItem>"
+            );
+
+            Assert.AreEqual(42, item.Value);
+        }
+
+        [TestCase("CurrentID")]
+        [TestCase("LegacyID")]
+        [TestCase("DeprecatedID")]
+        public void Deserialize_StackedAttributeNames_ReadsValue(string name)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            ReadAliasItem item = (ReadAliasItem)DeserializeFromString(
+                serializer,
+                $"<ReadAliasItem {name}=\"item\"/>"
+            );
+
+            Assert.AreEqual("item", item.ID);
+        }
+
+        [TestCase("LegacyID")]
+        [TestCase("DeprecatedID")]
+        public void Deserialize_AttributeAliasAsElement_ReadsValue(string name)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+            ReadAliasItem item = (ReadAliasItem)DeserializeFromString(
+                serializer,
+                $"<ReadAliasItem><{name}>item</{name}></ReadAliasItem>"
+            );
+
+            Assert.AreEqual("item", item.ID);
+        }
+
+        [TestCase("CurrentAliasItem")]
+        [TestCase("LegacyAliasItem")]
+        [TestCase("DeprecatedAliasItem")]
+        public void Deserialize_StackedTypeNames_ResolvesPolymorphicItem(string name)
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasContainer));
+            ReadAliasContainer item = (ReadAliasContainer)DeserializeFromString(
+                serializer,
+                $"<ReadAliasContainer><Items><{name}><CurrentValue>42</CurrentValue></{name}></Items></ReadAliasContainer>"
+            );
+
+            Assert.AreEqual(42, ((ReadAliasItem)item.Items.Single()).Value);
+        }
+
+        [TestCase("LegacyAliasItem")]
+        [TestCase("DeprecatedAliasItem")]
+        public void Deserialize_InlineTypeAliasWithUnknownSkipping_KeepsKnownItem(string name)
+        {
+            GameSerializer serializer = new GameSerializer(
+                typeof(ReadAliasInlineContainer),
+                new GameSerializerSettings { IgnoreUnknownElements = true }
+            );
+            ReadAliasInlineContainer item = (ReadAliasInlineContainer)DeserializeFromString(
+                serializer,
+                $"<ReadAliasInlineContainer><{name}><CurrentValue>42</CurrentValue></{name}></ReadAliasInlineContainer>"
+            );
+
+            Assert.AreEqual(42, ((ReadAliasItem)item.Items.Single()).Value);
+        }
+
+        [Test]
+        public void Deserialize_ShadowedBaseAttributeAlias_ReadsInheritedField()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasAttributeDerived));
+            ReadAliasAttributeDerived item = (ReadAliasAttributeDerived)DeserializeFromString(
+                serializer,
+                "<ReadAliasAttributeDerived CurrentID=\"current\" BaseLegacyID=\"legacy\"/>"
+            );
+
+            Assert.AreEqual("legacy", item.LegacyID);
+            Assert.AreEqual("current", item.ID);
+        }
+
+        [Test]
+        public void Deserialize_IncludedTypeAlias_ResolvesMember()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasIncludeContainer));
+            ReadAliasIncludeContainer item = (ReadAliasIncludeContainer)DeserializeFromString(
+                serializer,
+                "<ReadAliasIncludeContainer><LegacyAliasItem><CurrentValue>42</CurrentValue></LegacyAliasItem></ReadAliasIncludeContainer>"
+            );
+
+            Assert.AreEqual(42, ((ReadAliasItem)item.Item).Value);
+        }
+
+        [Test]
+        public void Serialize_DeserializedAliases_WritesCanonicalNames()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasContainer));
+            ReadAliasContainer item = (ReadAliasContainer)DeserializeFromString(
+                serializer,
+                "<ReadAliasContainer><Items><DeprecatedAliasItem DeprecatedID=\"item\"><DeprecatedValue>42</DeprecatedValue></DeprecatedAliasItem></Items></ReadAliasContainer>"
+            );
+
+            XmlDocument document = LoadDocument(SerializeToString(serializer, item));
+            XmlElement element = (XmlElement)
+                document.DocumentElement.SelectSingleNode("Items/CurrentAliasItem");
+            Assert.IsNotNull(element);
+            Assert.AreEqual("item", element.GetAttribute("CurrentID"));
+            Assert.AreEqual("42", element.SelectSingleNode("CurrentValue").InnerText);
+            Assert.IsFalse(element.HasAttribute("DeprecatedID"));
+            Assert.IsFalse(element.HasAttribute("LegacyID"));
+            Assert.IsNull(element.SelectSingleNode("DeprecatedValue"));
+        }
+
+        [TestCase("ReadAliasItem")]
+        [TestCase("CurrentAliasItem")]
+        [TestCase("LegacyAliasItem")]
+        [TestCase("DeprecatedAliasItem")]
+        public void DeserializeNode_TypeReadNames_FindsNestedElement(string name)
+        {
+            using MemoryStream input = new MemoryStream(
+                System.Text.Encoding.UTF8.GetBytes(
+                    $"<Envelope><{name}><CurrentValue>42</CurrentValue></{name}></Envelope>"
+                )
+            );
+
+            ReadAliasItem item = new GameSerializer(
+                typeof(ReadAliasItem)
+            ).DeserializeNode<ReadAliasItem>(input);
+
+            Assert.AreEqual(42, item.Value);
+        }
+
+        [Test]
+        public void DeserializeNode_ExplicitElementName_KeepsCallerSelection()
+        {
+            using MemoryStream input = new MemoryStream(
+                System.Text.Encoding.UTF8.GetBytes(
+                    "<Envelope><LegacyAliasItem><CurrentValue>1</CurrentValue></LegacyAliasItem><Selected><CurrentValue>2</CurrentValue></Selected></Envelope>"
+                )
+            );
+
+            ReadAliasItem item = new GameSerializer(
+                typeof(ReadAliasItem)
+            ).DeserializeNode<ReadAliasItem>(input, "Selected");
+
+            Assert.AreEqual(2, item.Value);
+        }
+
+        [TestCase(typeof(ReadAliasMemberCollision))]
+        [TestCase(typeof(ReadAliasAttributeCollision))]
+        public void Deserialize_AliasConflictsWithCanonicalMember_Throws(Type type)
+        {
+            GameSerializer serializer = new GameSerializer(type);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(serializer, $"<{type.Name}/>")
+            );
+        }
+
+        [Test]
+        public void Deserialize_AmbiguousTypeAlias_Throws()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasContainer));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(
+                    serializer,
+                    "<ReadAliasContainer><Items><AmbiguousReadAlias/></Items></ReadAliasContainer>"
+                )
+            );
+        }
+
+        [Test]
+        public void Deserialize_TypeAliasWithNarrowItemType_ResolvesCompatibleType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasTypedContainer));
+            ReadAliasTypedContainer item = (ReadAliasTypedContainer)DeserializeFromString(
+                serializer,
+                "<ReadAliasTypedContainer><Items><AmbiguousReadAlias><Name>item</Name></AmbiguousReadAlias></Items></ReadAliasTypedContainer>"
+            );
+
+            Assert.AreEqual("item", item.Items.Single().Name);
+        }
+
+        [Test]
+        public void Deserialize_AmbiguousIncludedTypeAlias_Throws()
+        {
+            GameSerializer serializer = new GameSerializer(
+                typeof(ReadAliasAmbiguousIncludeContainer)
+            );
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(
+                    serializer,
+                    "<ReadAliasAmbiguousIncludeContainer><AmbiguousReadAlias/></ReadAliasAmbiguousIncludeContainer>"
+                )
+            );
+        }
+
+        [Test]
+        public void Deserialize_IncludedTypeAliasAndCanonicalForOneMember_Throws()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasIncludeContainer));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(
+                    serializer,
+                    "<ReadAliasIncludeContainer><ReadAliasItem/><LegacyAliasItem/></ReadAliasIncludeContainer>"
+                )
+            );
+        }
+
+        [Test]
+        public void Deserialize_MultipleMemberAliasesForOneValue_Throws()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(
+                    serializer,
+                    "<ReadAliasItem><CurrentValue>1</CurrentValue><LegacyValue>2</LegacyValue></ReadAliasItem>"
+                )
+            );
+        }
+
+        [Test]
+        public void Deserialize_MultipleAttributeAliasesForOneValue_Throws()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ReadAliasItem));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(
+                    serializer,
+                    "<ReadAliasItem CurrentID=\"one\" LegacyID=\"two\"/>"
+                )
+            );
         }
 
         /// <summary>
