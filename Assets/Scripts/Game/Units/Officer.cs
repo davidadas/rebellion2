@@ -271,21 +271,6 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(ForceTrainingAdjustment))]
         private int _forceTrainingAdjustment;
 
-        [PersistableMember(Name = nameof(InjuryPoints))]
-        private int _injuryPoints;
-
-        [PersistableMember(Name = "EnhancedDiplomacy")]
-        private int? _enhancedDiplomacy;
-
-        [PersistableMember(Name = "EnhancedEspionage")]
-        private int? _enhancedEspionage;
-
-        [PersistableMember(Name = "EnhancedCombat")]
-        private int? _enhancedCombat;
-
-        [PersistableMember(Name = "FastHealing")]
-        private bool? _fastHealing;
-
         [PersistableIgnore]
         private GameConfig.JediConfig _forceRules;
 
@@ -353,18 +338,7 @@ namespace Rebellion.Game.Units
         public int Loyalty => _loyalty;
 
         // Injury Info.
-        [PersistableIgnore]
-        public int InjuryPoints
-        {
-            get => _injuryPoints;
-            set
-            {
-                if (_injuryPoints == value)
-                    return;
-                _injuryPoints = value;
-                _enhancedCombat = CalculateForceRating(SkillRating.Combat);
-            }
-        }
+        public int InjuryPoints { get; set; }
 
         // Force Info.
         public int JediProbability { get; set; }
@@ -416,9 +390,8 @@ namespace Rebellion.Game.Units
                 int stored = unchecked((short)value);
                 if (ForceValue == stored)
                     return;
-                InitializeForceState();
                 _forceValue = stored;
-                RefreshForceState();
+                RefreshForceDiscoveryState();
             }
         }
 
@@ -434,9 +407,8 @@ namespace Rebellion.Game.Units
                 int stored = unchecked((short)value);
                 if (ForceTrainingAdjustment == stored)
                     return;
-                InitializeForceState();
                 _forceTrainingAdjustment = stored;
-                RefreshForceState();
+                RefreshForceDiscoveryState();
             }
         }
 
@@ -685,7 +657,7 @@ namespace Rebellion.Game.Units
             copy.IsKilled = IsKilled;
             copy._canBetray = _canBetray;
             copy._loyalty = _loyalty;
-            copy._injuryPoints = _injuryPoints;
+            copy.InjuryPoints = InjuryPoints;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;
             copy.JediLevelVariance = JediLevelVariance;
@@ -698,10 +670,6 @@ namespace Rebellion.Game.Units
             copy.IsForceEligible = IsForceEligible;
             copy._forceValue = _forceValue;
             copy._forceTrainingAdjustment = _forceTrainingAdjustment;
-            copy._enhancedDiplomacy = _enhancedDiplomacy;
-            copy._enhancedEspionage = _enhancedEspionage;
-            copy._enhancedCombat = _enhancedCombat;
-            copy._fastHealing = _fastHealing;
             copy._forceRules = _forceRules;
             copy._isDiscoveringForceUser = _isDiscoveringForceUser;
             copy._nextForceDiscoveryTick = _nextForceDiscoveryTick;
@@ -747,8 +715,8 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Connects retained Force state to the rules injected into the owning game.
-        /// Binding does not replay transitions or overwrite stored eligibility.
+        /// Connects Force discovery and healing to the rules injected into the owning game.
+        /// Binding does not change the officer's saved Force values.
         /// </summary>
         /// <param name="rules">The current game's Force rules.</param>
         /// <param name="game">The authoritative game owning the officer and its discovery clock.</param>
@@ -760,7 +728,7 @@ namespace Rebellion.Game.Units
 
         /// <summary>
         /// Disconnects live discovery scheduling when this officer leaves the game registry.
-        /// Retained ratings remain readable from the bound rules.
+        /// Keeps the configured rules available for healing queries.
         /// </summary>
         internal void UnbindForceRuntime()
         {
@@ -768,14 +736,13 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Reconciles discovery after registration without replaying a zero-rank transition.
+        /// Reconciles discovery eligibility and restores a missing deadline after registration.
         /// </summary>
         internal void ReconcileForceDiscoveryState()
         {
             if (_forceGame != null && _isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
                 NextForceDiscoveryTick = unchecked(_forceGame.CurrentTick + 1);
-            if (ForceRank != 0)
-                RefreshForceDiscoveryState();
+            RefreshForceDiscoveryState();
         }
 
         /// <summary>
@@ -950,10 +917,7 @@ namespace Rebellion.Game.Units
                 case SkillRating.None:
                     return 0;
                 default:
-                    if (GetBaseRating(rating) == value)
-                        return value;
                     Ratings[rating] = value;
-                    RefreshForceRating(rating);
                     return value;
             }
         }
@@ -968,11 +932,9 @@ namespace Rebellion.Game.Units
             switch (rating)
             {
                 case SkillRating.Diplomacy:
-                    return GetForceRating(ref _enhancedDiplomacy, rating);
                 case SkillRating.Espionage:
-                    return GetForceRating(ref _enhancedEspionage, rating);
                 case SkillRating.Combat:
-                    return GetForceRating(ref _enhancedCombat, rating);
+                    return CalculateForceRating(rating);
             }
             int officerRating = GetBaseRating(rating);
 
@@ -1187,27 +1149,17 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the retained eligibility for the accelerated Force-user healing rate.
+        /// Returns whether the current Force rank meets the configured fast-healing threshold.
         /// </summary>
-        /// <returns>The stored eligibility, initialized from a nonzero rank when absent.</returns>
+        /// <returns>True when the current rank meets the configured threshold.</returns>
         public bool HealsFast()
-        {
-            _fastHealing ??= CalculateFastHealing();
-            return _fastHealing.Value;
-        }
-
-        /// <summary>
-        /// Calculates healing eligibility using the bound rules without treating zero as a rank.
-        /// </summary>
-        /// <returns>True when a nonzero effective rank meets the configured threshold.</returns>
-        private bool CalculateFastHealing()
         {
             GameConfig.JediConfig rules =
                 _forceRules
                 ?? throw new InvalidOperationException(
                     "Force rules are not configured for this officer."
                 );
-            return ForceRank != 0 && ForceRank >= rules.FastHealThreshold;
+            return ForceRank >= rules.FastHealThreshold;
         }
 
         /// <summary>
@@ -1285,76 +1237,16 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Calculates the signed stored rating after Force and injury modifiers.
+        /// Calculates the current signed rating after Force and injury modifiers.
         /// </summary>
         /// <param name="rating">The diplomacy, espionage, or combat rating to calculate.</param>
-        /// <returns>The signed sixteen-bit enhanced rating.</returns>
+        /// <returns>The signed sixteen-bit Force-adjusted rating.</returns>
         private int CalculateForceRating(SkillRating rating)
         {
             int enhanced = ApplyForceRatingBonus(GetBaseRating(rating));
             if (rating == SkillRating.Combat)
                 enhanced = Math.Max(0, enhanced - InjuryPoints);
             return unchecked((short)enhanced);
-        }
-
-        /// <summary>
-        /// Restores a missing stored rating from the officer's current state before returning it.
-        /// </summary>
-        /// <param name="stored">The enhanced rating retained across state transitions.</param>
-        /// <param name="rating">The rating whose modifiers apply.</param>
-        /// <returns>The retained enhanced rating.</returns>
-        private int GetForceRating(ref int? stored, SkillRating rating)
-        {
-            stored ??= CalculateForceRating(rating);
-            return stored.Value;
-        }
-
-        /// <summary>
-        /// Initializes missing derived Force state before a transition replaces its inputs.
-        /// </summary>
-        private void InitializeForceState()
-        {
-            GetForceRating(ref _enhancedDiplomacy, SkillRating.Diplomacy);
-            GetForceRating(ref _enhancedEspionage, SkillRating.Espionage);
-            GetForceRating(ref _enhancedCombat, SkillRating.Combat);
-            if (_forceRules != null)
-                _fastHealing ??= CalculateFastHealing();
-        }
-
-        /// <summary>
-        /// Refreshes derived ratings, healing, and discovery after a nonzero rank change.
-        /// At zero, base ratings and injury still refresh their corresponding skill values.
-        /// </summary>
-        private void RefreshForceState()
-        {
-            if (ForceRank == 0)
-                return;
-            RefreshForceRating(SkillRating.Diplomacy);
-            RefreshForceRating(SkillRating.Espionage);
-            RefreshForceRating(SkillRating.Combat);
-            if (_forceRules != null)
-                _fastHealing = CalculateFastHealing();
-            RefreshForceDiscoveryState();
-        }
-
-        /// <summary>
-        /// Refreshes only the enhanced rating owned by a changed base rating.
-        /// </summary>
-        /// <param name="rating">The rating whose base value changed.</param>
-        private void RefreshForceRating(SkillRating rating)
-        {
-            switch (rating)
-            {
-                case SkillRating.Diplomacy:
-                    _enhancedDiplomacy = CalculateForceRating(rating);
-                    break;
-                case SkillRating.Espionage:
-                    _enhancedEspionage = CalculateForceRating(rating);
-                    break;
-                case SkillRating.Combat:
-                    _enhancedCombat = CalculateForceRating(rating);
-                    break;
-            }
         }
 
         /// <summary>

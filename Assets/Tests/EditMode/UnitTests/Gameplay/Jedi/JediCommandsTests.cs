@@ -701,19 +701,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_ZeroRankScanner_UsesRetainedDiscoveryState()
-        {
-            Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);
-            scanner.ForceValue = 0;
-            Officer candidate = CreateDormantJedi("STUDENT");
-            _game.CurrentTick++;
-
-            new JediTickProcessor(_system).ProcessTick(_game);
-
-            Assert.IsTrue(candidate.IsForceEligible);
-        }
-
-        [Test]
         public void ProcessTick_TravelCompletedBeforeTick_ScansOnFollowingTick()
         {
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);

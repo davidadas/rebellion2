@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -33,37 +32,29 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        [TestCase(80, true)]
-        [TestCase(50, false)]
-        [TestCase(-1, false)]
-        public void ForceValue_ZeroRank_RetainsDiscoveryState(int previousRank, bool expected)
+        [TestCase(29, false)]
+        [TestCase(30, true)]
+        [TestCase(31, true)]
+        public void ForceTrainingAdjustment_RankCrossesDiscoveryThreshold_UpdatesBeforeNextTick(
+            int adjustment,
+            bool expectedDiscovery
+        )
         {
-            (_, Officer officer) = RegisterDiscoveryOfficer(previousRank);
-            int previousDueTick = officer.NextForceDiscoveryTick;
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
-            officer.ForceValue = 0;
+            officer.ForceTrainingAdjustment = adjustment;
 
-            Assert.AreEqual(expected, officer.IsDiscoveringForceUser);
-            Assert.AreEqual(previousDueTick, officer.NextForceDiscoveryTick);
+            Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
+            Assert.AreEqual(
+                expectedDiscovery ? game.CurrentTick + 1 : 0,
+                officer.NextForceDiscoveryTick
+            );
         }
 
         [Test]
-        public void ForceTrainingAdjustment_ZeroEffectiveRank_RetainsDiscoveryTimer()
+        public void IsCaptured_ActiveScanner_CancelsDiscoveryImmediately()
         {
             (_, Officer officer) = RegisterDiscoveryOfficer(80);
-            int previousDueTick = officer.NextForceDiscoveryTick;
-
-            officer.ForceTrainingAdjustment = -80;
-
-            Assert.IsTrue(officer.IsDiscoveringForceUser);
-            Assert.AreEqual(previousDueTick, officer.NextForceDiscoveryTick);
-        }
-
-        [Test]
-        public void IsCaptured_ZeroRankScanner_CancelsDiscoveryImmediately()
-        {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.ForceValue = 0;
 
             officer.IsCaptured = true;
 
@@ -98,16 +89,16 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void IsEnabled_ChangedAtZeroRank_ReevaluatesDiscoveryEligibility()
+        public void IsEnabled_ReenabledScanner_ArmsFromActualTick()
         {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.ForceValue = 0;
-
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             officer.IsEnabled = false;
+            game.CurrentTick = 70;
+
             officer.IsEnabled = true;
 
-            Assert.IsFalse(officer.IsDiscoveringForceUser);
-            Assert.Zero(officer.NextForceDiscoveryTick);
+            Assert.IsTrue(officer.IsDiscoveringForceUser);
+            Assert.AreEqual(71, officer.NextForceDiscoveryTick);
         }
 
         [Test]
@@ -167,23 +158,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.Zero(officer.NextForceDiscoveryTick);
         }
 
-        [Test]
-        public void Serialize_ZeroRankScanner_RetainsDiscoveryStateAfterRegistration()
-        {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.ForceValue = 0;
-            Officer restored = SerializationHelper.Deserialize<Officer>(
-                SerializationHelper.Serialize(officer)
-            );
-            GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Config.Jedi.DiscoveringForceUserThreshold = 80;
-
-            game.AddSceneNodeByInstanceID(restored);
-
-            Assert.IsTrue(restored.IsDiscoveringForceUser);
-            Assert.AreEqual(43, restored.NextForceDiscoveryTick);
-        }
-
         [TestCase(false, 79, false)]
         [TestCase(false, 80, true)]
         [TestCase(false, 81, true)]
@@ -203,36 +177,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(expected, officer.HealsFast());
         }
 
-        [TestCase(80, true)]
-        [TestCase(79, false)]
-        [TestCase(-1, false)]
-        public void HealsFast_RankFallsToZero_PreservesPreviousEligibility(int rank, bool expected)
-        {
-            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = rank });
-
-            officer.ForceValue = 0;
-
-            Assert.AreEqual(expected, officer.HealsFast());
-        }
-
-        [Test]
-        public void HealsFast_TrainingAdjustmentFallsToZero_PreservesPreviousEligibility()
-        {
-            Officer officer = RegisterHealingOfficer(new Officer { ForceTrainingAdjustment = 80 });
-
-            officer.ForceTrainingAdjustment = 0;
-
-            Assert.IsTrue(officer.HealsFast());
-        }
-
-        [Test]
-        public void HealsFast_NewZeroRankWithZeroThreshold_RemainsDisabled()
-        {
-            Officer officer = RegisterHealingOfficer(new Officer(), threshold: 0);
-
-            Assert.IsFalse(officer.HealsFast());
-        }
-
         [Test]
         public void HealsFast_NonzeroRankFallsBelowThreshold_ClearsEligibility()
         {
@@ -241,69 +185,6 @@ namespace Rebellion.Tests.Game.Units
             officer.ForceValue = 79;
 
             Assert.IsFalse(officer.HealsFast());
-        }
-
-        [Test]
-        public void HealsFast_BaseRatingAndInjuryChangeAtZero_PreserveEligibility()
-        {
-            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
-            officer.ForceValue = 0;
-
-            officer.SetBaseRating(SkillRating.Diplomacy, 50);
-            officer.ApplyInjury(10, 100);
-            officer.Heal(5);
-
-            Assert.IsTrue(officer.HealsFast());
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Deserialize_ZeroRankWithRetainedHealing_PreservesEligibilityInAnyElementOrder(
-            bool reverseElementOrder
-        )
-        {
-            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
-            officer.ForceValue = 0;
-            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
-            if (reverseElementOrder)
-                xml.ReplaceNodes(xml.Elements().Reverse().ToArray());
-
-            Officer restored = RegisterHealingOfficer(
-                SerializationHelper.Deserialize<Officer>(xml.ToString())
-            );
-
-            Assert.Zero(restored.ForceRank);
-            Assert.IsTrue(restored.HealsFast());
-        }
-
-        [Test]
-        public void Deserialize_NonzeroRankWithoutHealingState_InitializesBeforeRankTransition()
-        {
-            XElement xml = XElement.Parse(
-                SerializationHelper.Serialize(new Officer { ForceValue = 80 })
-            );
-            xml.Elements("FastHealing").Remove();
-            Officer restored = RegisterHealingOfficer(
-                SerializationHelper.Deserialize<Officer>(xml.ToString())
-            );
-
-            restored.ForceValue = 0;
-
-            Assert.IsTrue(restored.HealsFast());
-        }
-
-        [Test]
-        public void CreateCopy_ZeroRankWithRetainedHealing_PreservesIndependentState()
-        {
-            Officer officer = RegisterHealingOfficer(new Officer { ForceValue = 80 });
-            officer.ForceValue = 0;
-
-            Officer copy = (Officer)officer.CreateCopy();
-            Assert.IsTrue(copy.HealsFast());
-            copy.ForceValue = 1;
-
-            Assert.IsFalse(copy.HealsFast());
-            Assert.IsTrue(officer.HealsFast());
         }
 
         [Test]
@@ -321,7 +202,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void HealsFast_ConfigurationRebound_RetainsStateUntilRankChanges()
+        public void HealsFast_ConfigurationRebound_UsesCurrentThreshold()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.Jedi.FastHealThreshold = 80;
@@ -333,8 +214,6 @@ namespace Rebellion.Tests.Game.Units
 
             game.SetConfig(changed);
 
-            Assert.IsFalse(officer.HealsFast());
-            officer.ForceValue = 80;
             Assert.IsTrue(officer.HealsFast());
         }
 
@@ -565,88 +444,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, officer.GetEffectiveRating(SkillRating.Combat));
         }
 
-        [Test]
-        public void ForceValue_ChangedToZero_PreservesEnhancedRatings()
-        {
-            Officer officer = CreateForceRatingOfficer();
-
-            officer.ForceValue = 0;
-
-            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
-            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
-        }
-
-        [Test]
-        public void ForceTrainingAdjustment_CancelsExperience_PreservesEnhancedRatings()
-        {
-            Officer officer = CreateForceRatingOfficer();
-
-            officer.ForceTrainingAdjustment = -50;
-
-            Assert.AreEqual(0, officer.ForceRank);
-            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
-            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
-        }
-
-        [TestCase(SkillRating.Diplomacy, 51)]
-        [TestCase(SkillRating.Espionage, 41)]
-        [TestCase(SkillRating.Combat, 41)]
-        public void SetBaseRating_ChangedAtZeroForce_RefreshesOnlyChangedRating(
-            SkillRating rating,
-            int expected
-        )
-        {
-            Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
-
-            officer.SetBaseRating(rating, officer.GetBaseRating(rating) + 1);
-
-            Assert.AreEqual(expected, officer.GetEffectiveRating(rating));
-            if (rating != SkillRating.Diplomacy)
-                Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
-            if (rating != SkillRating.Espionage)
-                Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
-            if (rating != SkillRating.Combat)
-                Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
-        }
-
-        [Test]
-        public void SetBaseRating_UnchangedAtZeroForce_PreservesEnhancedRating()
-        {
-            Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
-
-            officer.SetBaseRating(SkillRating.Diplomacy, 50);
-
-            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
-        }
-
-        [Test]
-        public void Heal_AtZeroForce_RefreshesCombatWithoutRefreshingOtherRatings()
-        {
-            Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
-
-            officer.Heal(1);
-
-            Assert.AreEqual(41, officer.GetEffectiveRating(SkillRating.Combat));
-            Assert.AreEqual(75, officer.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Espionage));
-        }
-
-        [Test]
-        public void InjuryPoints_UnchangedAtZeroForce_PreservesEnhancedCombat()
-        {
-            Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
-
-            officer.InjuryPoints = 10;
-
-            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Combat));
-        }
-
         [TestCase(SkillRating.Diplomacy)]
         [TestCase(SkillRating.Espionage)]
         [TestCase(SkillRating.Combat)]
@@ -661,55 +458,57 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(-32669, officer.GetEffectiveRating(rating));
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Deserialize_ZeroForceWithRetainedRatings_PreservesValuesInAnyElementOrder(
-            bool reverseElementOrder
+        [TestCase(SkillRating.Diplomacy, 90)]
+        [TestCase(SkillRating.Espionage, 90)]
+        [TestCase(SkillRating.Combat, 80)]
+        public void GetEffectiveRating_BaseRatingChangesAfterRead_UsesCurrentRating(
+            SkillRating rating,
+            int expected
         )
         {
             Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
-            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
-            if (reverseElementOrder)
-                xml.ReplaceNodes(xml.Elements().Reverse().ToArray());
+            officer.GetEffectiveRating(rating);
 
-            Officer restored = SerializationHelper.Deserialize<Officer>(xml.ToString());
+            officer.Ratings[rating] = 60;
 
-            Assert.AreEqual(0, restored.ForceRank);
-            Assert.AreEqual(10, restored.InjuryPoints);
-            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
-            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
+            Assert.AreEqual(expected, officer.GetEffectiveRating(rating));
         }
 
         [Test]
-        public void Deserialize_NonzeroForceWithoutStoredRatings_InitializesBeforeForceTransition()
+        public void Serialize_ComputedOfficerRatings_DoesNotWriteDerivedValues()
         {
-            XElement xml = XElement.Parse(
-                SerializationHelper.Serialize(CreateForceRatingOfficer())
-            );
-            xml.Elements().Where(element => element.Name.LocalName.StartsWith("Enhanced")).Remove();
-            Officer restored = SerializationHelper.Deserialize<Officer>(xml.ToString());
+            Officer officer = RegisterHealingOfficer(CreateForceRatingOfficer());
+            officer.GetEffectiveRating(SkillRating.Diplomacy);
+            officer.GetEffectiveRating(SkillRating.Espionage);
+            officer.GetEffectiveRating(SkillRating.Combat);
+            officer.HealsFast();
 
-            restored.ForceValue = 0;
+            XElement xml = XElement.Parse(SerializationHelper.Serialize(officer));
 
-            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
-            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
+            foreach (
+                string field in new[]
+                {
+                    "EnhancedDiplomacy",
+                    "EnhancedEspionage",
+                    "EnhancedCombat",
+                    "FastHealing",
+                }
+            )
+                Assert.IsNull(xml.Element(field), field);
         }
 
         [Test]
-        public void CreateCopy_ZeroForceWithRetainedRatings_PreservesIndependentValues()
+        public void SerializeDeserialize_ForceRatings_RecomputesFromSavedInputs()
         {
             Officer officer = CreateForceRatingOfficer();
-            officer.ForceValue = 0;
 
-            Officer copy = (Officer)officer.CreateCopy();
-            officer.Heal(1);
+            Officer restored = SerializationHelper.Deserialize<Officer>(
+                SerializationHelper.Serialize(officer)
+            );
 
-            Assert.AreEqual(75, copy.GetEffectiveRating(SkillRating.Diplomacy));
-            Assert.AreEqual(60, copy.GetEffectiveRating(SkillRating.Espionage));
-            Assert.AreEqual(65, copy.GetEffectiveRating(SkillRating.Combat));
+            Assert.AreEqual(75, restored.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(60, restored.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(65, restored.GetEffectiveRating(SkillRating.Combat));
         }
 
         [Test]
@@ -1192,7 +991,7 @@ namespace Rebellion.Tests.Game.Units
         /// <summary>
         /// Registers an officer with the configured game rules used by healing eligibility.
         /// </summary>
-        /// <param name="officer">The officer whose saved state is retained.</param>
+        /// <param name="officer">The officer whose healing eligibility is evaluated.</param>
         /// <param name="threshold">The configured minimum rank for fast healing.</param>
         /// <returns>The registered officer.</returns>
         private static Officer RegisterHealingOfficer(Officer officer, int threshold = 80)
@@ -1225,7 +1024,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         /// <summary>
-        /// Creates an officer whose three enhanced ratings differ from their base values.
+        /// Creates an officer whose Force-adjusted ratings differ from their base values.
         /// </summary>
         /// <returns>The officer with a nonzero Force rank and an injury.</returns>
         private static Officer CreateForceRatingOfficer()
