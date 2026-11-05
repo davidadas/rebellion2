@@ -32,6 +32,9 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
+        [ThreadStatic]
+        private static HashSet<ISceneNode> _ownedUnitQueryBuffer;
+
         private FactionSettings _settings = new FactionSettings();
 
         [PersistableMember(Name = "NextFleetNumber")]
@@ -324,13 +327,26 @@ namespace Rebellion.Game.Factions
                     .ToList();
             }
 
-            return _ownedEntities
-                .Where(entry => typeof(T).IsAssignableFrom(entry.Key))
-                .SelectMany(entry => entry.Value)
-                .Distinct()
-                .Where(node => includeDisabled || node.IsActive())
-                .Cast<T>()
-                .ToList();
+            HashSet<ISceneNode> seen = _ownedUnitQueryBuffer ?? new();
+            _ownedUnitQueryBuffer = null;
+            try
+            {
+                List<T> matches = new();
+                foreach (var entry in _ownedEntities)
+                {
+                    if (!typeof(T).IsAssignableFrom(entry.Key))
+                        continue;
+                    foreach (ISceneNode node in entry.Value)
+                        if (seen.Add(node) && (includeDisabled || node.IsActive()))
+                            matches.Add((T)node);
+                }
+                return matches;
+            }
+            finally
+            {
+                seen.Clear();
+                _ownedUnitQueryBuffer ??= seen;
+            }
         }
 
         /// <summary>
@@ -587,11 +603,22 @@ namespace Rebellion.Game.Factions
         /// <returns>The available refined capacity count.</returns>
         public int GetTotalAvailableMaterialsRaw()
         {
-            return CalculateRefinedCapacity(
-                GetTotalAvailableResourceNodes(),
-                GetTotalAvailableMinedResources(),
-                GetTotalAvailableRefinementCapacity()
-            );
+            int resourceNodes = 0;
+            int minedResources = 0;
+            int refinementCapacity = 0;
+            foreach (Planet planet in GetOwnedUnitsByType<Planet>())
+            {
+                if (planet.IsResourceProductionSuspended())
+                    continue;
+                checked
+                {
+                    resourceNodes += planet.GetRawResourceNodes();
+                    minedResources += planet.GetActiveMinedResources();
+                    refinementCapacity += planet.GetActiveRefinementCapacity();
+                }
+            }
+
+            return CalculateRefinedCapacity(resourceNodes, minedResources, refinementCapacity);
         }
 
         /// <summary>

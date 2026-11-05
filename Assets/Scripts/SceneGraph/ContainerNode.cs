@@ -33,10 +33,25 @@ namespace Rebellion.SceneGraph
         internal void RemoveChildren<T>(Func<T, bool> predicate)
             where T : class, ISceneNode
         {
-            foreach (
-                T child in GetChildren(includeDisabled: true).OfType<T>().Where(predicate).ToList()
-            )
-                RemoveChild(child);
+            IReadOnlyList<T> children = GetChildren<T>(includeDisabled: true);
+            if (predicate == null)
+                throw new ArgumentNullException(nameof(predicate));
+
+            List<T> matches = null;
+            for (int index = 0; index < children.Count; index++)
+            {
+                T child = children[index];
+                if (!predicate(child))
+                    continue;
+                matches ??= new List<T>();
+                matches.Add(child);
+            }
+
+            if (matches != null)
+            {
+                foreach (T child in matches)
+                    RemoveChild(child);
+            }
         }
 
         /// <summary>

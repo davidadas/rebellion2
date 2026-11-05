@@ -12,7 +12,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds fleet proposals for attack orders and fleet reinforcement.
+    /// Builds fleet orders and reinforcement choices for each active turn.
     /// </summary>
     public sealed class AIFleetPlanner : IAIProposalPlanner
     {
@@ -49,6 +49,9 @@ namespace Rebellion.AI.Planners
                         fleet.RoleType == FleetRoleType.Colonization
                     )
             );
+            if (context.Game.CurrentTick > context.Game.Config.AI.TickInterval)
+                colonizationSlots = 0;
+
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
             {
                 if (fleet.RoleType == FleetRoleType.None)
@@ -74,12 +77,44 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            AddAttackOrderProposal(context, activeAttackTargetIds, proposals);
+            AddAttackOrderProposals(context, activeAttackTargetIds, proposals);
 
             AddCapitalShipTransferProposals(context, proposals);
             AddPlanetRegimentTransferProposals(context, proposals);
+            AddOfficerCommandProposals(context, proposals);
 
             return proposals;
+        }
+
+        /// <summary>
+        /// Offers available officers for attack-fleet command without reserving them during planning.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">The proposals receiving legal command alternatives.</param>
+        private static void AddOfficerCommandProposals(
+            AITurnContext context,
+            List<AIProposal> proposals
+        )
+        {
+            if (context.OfficerCommands == null)
+                return;
+            foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
+            {
+                Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
+                if (context.GetAttackDemand(target, fleet) == null)
+                    continue;
+                foreach (
+                    Officer officer in context.Assessment.AvailableMissionParticipants.OfType<Officer>()
+                )
+                foreach (
+                    OfficerRank rank in officer.AllowedRanks ?? Enumerable.Empty<OfficerRank>()
+                )
+                {
+                    AIOfficerCommandProposal proposal = new(officer, fleet, target, rank);
+                    if (proposal.CanSelect(context))
+                        proposals.Add(proposal);
+                }
+            }
         }
 
         /// <summary>
@@ -87,7 +122,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>Fleet-defense proposals generated for the faction.</returns>
-        private static List<AIProposal> PlanDefense(AITurnContext context)
+        private List<AIProposal> PlanDefense(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Game == null || context.Faction == null)
@@ -163,7 +198,7 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The proposal collection to update.</param>
         /// <param name="headquartersDefense">The fleet already reserved for headquarters defense.</param>
-        private static void AddPlanetDefenseProposals(
+        private void AddPlanetDefenseProposals(
             AITurnContext context,
             ICollection<AIProposal> proposals,
             Fleet headquartersDefense
@@ -202,7 +237,7 @@ namespace Rebellion.AI.Planners
         /// <param name="targetPlanet">The threatened planet.</param>
         /// <param name="assignedFleets">Fleets already assigned during this planning pass.</param>
         /// <returns>The selected fleet, or null when none can defend the planet.</returns>
-        private static Fleet FindPlanetDefenseFleet(
+        private Fleet FindPlanetDefenseFleet(
             AITurnContext context,
             Planet targetPlanet,
             ISet<Fleet> assignedFleets
@@ -214,10 +249,24 @@ namespace Rebellion.AI.Planners
                     && CanAssignPlanetDefense(context, fleet)
                     && context.StrategicPlan.CanDefend(fleet, targetPlanet)
                 )
-                .OrderByDescending(fleet =>
-                    AIFleetProposalScorer.ScoreDefenseAssignment(context, fleet, targetPlanet)
+                .Select(fleet => new AIFleetDefenseProposal(fleet, targetPlanet))
+                .Where(proposal => proposal.CanSelect(context))
+                .Select(proposal =>
+                    (Fleet: proposal.Fleet, Score: _scorer.Score(context, proposal))
                 )
-                .ThenBy(fleet => fleet.InstanceID)
+                .Where(candidate =>
+                    candidate.Score > context.Game.Config.AI.Selection.MinimumSelectableScore
+                )
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenByDescending(candidate =>
+                    AIFleetProposalScorer.ScoreDefenseAssignment(
+                        context,
+                        candidate.Fleet,
+                        targetPlanet
+                    )
+                )
+                .ThenBy(candidate => candidate.Fleet.InstanceID)
+                .Select(candidate => candidate.Fleet)
                 .FirstOrDefault();
         }
 
@@ -234,6 +283,12 @@ namespace Rebellion.AI.Planners
                 || fleet.Movement != null
                 || fleet.IsInCombat
                 || !fleet.HasOperationalCapitalShips()
+                || !fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        !ship.HasRole(CapitalShipRole.Transport)
+                        && context.Assessment.GetReadyCapitalShipCombatValue(ship) > 0
+                    )
                 || !context.StrategicPlan.CanFleetDepart(fleet)
             )
                 return false;
@@ -298,6 +353,12 @@ namespace Rebellion.AI.Planners
                 && fleet.Movement == null
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
+                && fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        !ship.HasRole(CapitalShipRole.Transport)
+                        && context.Assessment.GetReadyCapitalShipCombatValue(ship) > 0
+                    )
                 && (
                     context.Assessment.GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
                     || context.StrategicPlan.CanFleetDepart(fleet)
@@ -356,9 +417,41 @@ namespace Rebellion.AI.Planners
             Planet evacuationDestination = GetEvacuationDestination(context, fleet, currentPlanet);
             if (evacuationDestination != null)
             {
-                proposals.Add(
-                    new AIFleetEvacuationProposal(fleet, currentPlanet, evacuationDestination)
-                );
+                AIFleetAttackProposal alternative = null;
+                if (
+                    order?.OrderType == FleetOrderType.Attack
+                    && order.TargetPlanetId == currentPlanet.InstanceID
+                    && CanStartAttackOrder(context, fleet)
+                    && context.Assessment.GetHostileFleets(currentPlanet).Count == 0
+                    && context.GetAttackDemand(currentPlanet, fleet)?.OrbitalStrength == 0
+                )
+                {
+                    alternative = SelectAttack(
+                        context,
+                        new[] { fleet },
+                        context.Assessment.EnemyPlanets.Where(target =>
+                            target.InstanceID != currentPlanet.InstanceID
+                            && !context.Assessment.HasAttackFleetForTarget(target, fleet)
+                            && context.GetAttackArrivalTicks(fleet, target)
+                                <= Math.Max(
+                                    0,
+                                    context
+                                        .Game
+                                        .Config
+                                        .AI
+                                        .FleetDeployment
+                                        .LocalAttackMaximumTravelTicks
+                                )
+                        ),
+                        requireReady: true
+                    );
+                }
+                if (alternative != null)
+                    proposals.Add(alternative);
+                else
+                    proposals.Add(
+                        new AIFleetEvacuationProposal(fleet, currentPlanet, evacuationDestination)
+                    );
                 return;
             }
 
@@ -432,10 +525,44 @@ namespace Rebellion.AI.Planners
 
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
             string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
+            if (targetOwnerId == context.Faction.InstanceID)
+            {
+                AIFleetAttackProposal followOn = null;
+                if (
+                    currentPlanet?.InstanceID == targetPlanet.InstanceID
+                    && !context.Assessment.IsPriorityDefensePlanet(targetPlanet)
+                    && context.StrategicPlan.GetPlanetDefenseStrength(targetPlanet) <= 0
+                    && CanStartAttackOrder(context, fleet)
+                )
+                {
+                    Planet[] followOnTargets = context
+                        .Assessment.EnemyPlanets.Where(target =>
+                            !context.Assessment.HasAttackFleetForTarget(target, fleet)
+                        )
+                        .ToArray();
+                    followOn = SelectAttack(
+                        context,
+                        new[] { fleet },
+                        followOnTargets,
+                        requireReady: true
+                    );
+                }
+
+                if (followOn != null)
+                    proposals.Add(followOn);
+                else if (
+                    !proposals
+                        .OfType<AIFleetDefenseProposal>()
+                        .Any(proposal => proposal.Fleet == fleet)
+                )
+                    proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
             if (
                 targetPlanet == null
                 || string.IsNullOrEmpty(targetOwnerId)
-                || targetOwnerId == context.Faction.InstanceID
+                    && !context.StrategicPlan.CanCompleteOccupation(fleet, targetPlanet)
             )
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
@@ -451,6 +578,16 @@ namespace Rebellion.AI.Planners
             if (order.Status == FleetOrderStatus.Returning)
             {
                 proposals.Add(continuation);
+                return;
+            }
+
+            if (
+                fleet.Movement == null
+                && !fleet.IsInCombat
+                && !context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
+            )
+            {
+                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
                 return;
             }
 
@@ -496,8 +633,7 @@ namespace Rebellion.AI.Planners
             }
 
             bool mayLeaveCampaign = IsBlockedByShields(context, fleet, targetPlanet);
-            if (!mayLeaveCampaign)
-                proposals.Add(continuation);
+            proposals.Add(continuation);
 
             AddRetargetAttackOrderProposals(
                 context,
@@ -506,17 +642,6 @@ namespace Rebellion.AI.Planners
                 mayLeaveCampaign,
                 proposals
             );
-            if (mayLeaveCampaign)
-            {
-                proposals.Add(
-                    new AIFleetAttackProposal(
-                        fleet,
-                        order.OrderType,
-                        FleetOrderStatus.Returning,
-                        targetPlanet
-                    )
-                );
-            }
         }
 
         /// <summary>
@@ -667,12 +792,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds alternative targets within an assembling fleet's current campaign.
+        /// Adds campaign alternatives and ready attacks for an assembling fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet being retargeted.</param>
         /// <param name="currentPlanet">Fleet's current planet.</param>
-        /// <param name="mayLeaveCampaign">Whether targets outside the current system are eligible.</param>
+        /// <param name="mayLeaveCampaign">Whether unready targets outside the current system are eligible.</param>
         /// <param name="proposals">Proposal list to update.</param>
         /// <returns>True when at least one alternative target was added.</returns>
         private bool AddRetargetAttackOrderProposals(
@@ -689,22 +814,24 @@ namespace Rebellion.AI.Planners
             foreach (
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
-                    && (
-                        mayLeaveCampaign
-                        || context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
-                    )
-                    && !HasAttackFleetForTarget(context, targetPlanet, fleet)
+                    && context.HasCurrentHeadquartersAttackIntel(fleet, targetPlanet)
+                    && !context.Assessment.HasAttackFleetForTarget(targetPlanet, fleet)
                 )
             )
             {
-                proposals.Add(
-                    new AIFleetAttackProposal(
-                        fleet,
-                        FleetOrderType.Attack,
-                        GetInitialAttackStatus(currentPlanet, targetPlanet),
-                        targetPlanet
-                    )
+                AIFleetAttackProposal alternative = new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    GetInitialAttackStatus(currentPlanet, targetPlanet),
+                    targetPlanet
                 );
+                if (
+                    !mayLeaveCampaign
+                    && context.Assessment.GetPlanetSystemId(targetPlanet) != campaignSystemId
+                    && !alternative.CanLaunch(context)
+                )
+                    continue;
+                proposals.Add(alternative);
                 addedProposal = true;
             }
 
@@ -844,33 +971,51 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            proposals.Add(new AIFleetDefenseProposal(fleet, targetPlanet));
+            AIFleetDefenseProposal proposal = new AIFleetDefenseProposal(fleet, targetPlanet);
+            if (
+                fleet.RoleType == FleetRoleType.Battle
+                && fleet.HasOperationalCapitalShips()
+                && (
+                    order.Status != FleetOrderStatus.Staging
+                    || context.StrategicPlan.CanFleetDepart(fleet)
+                )
+                && !proposal.CanDefendAtArrival(context)
+            )
+            {
+                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
+            proposals.Add(proposal);
         }
 
         /// <summary>
-        /// Adds the strongest new attack order proposal for the faction.
+        /// Adds the strongest new attack option for each eligible idle fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="activeAttackTargetIds">Planets already assigned to attack fleets.</param>
         /// <param name="proposals">The proposal list to update.</param>
-        private void AddAttackOrderProposal(
+        private void AddAttackOrderProposals(
             AITurnContext context,
             HashSet<string> activeAttackTargetIds,
             List<AIProposal> proposals
         )
         {
-            IEnumerable<Planet> targets = context.Assessment.EnemyPlanets.Where(target =>
-                !activeAttackTargetIds.Contains(target.InstanceID)
-            );
-            AIFleetAttackProposal proposal = SelectAttack(
-                context,
-                context.Assessment.OwnedFleets.Where(fleet =>
+            Planet[] targets = context
+                .Assessment.EnemyPlanets.Where(target =>
+                    !activeAttackTargetIds.Contains(target.InstanceID)
+                )
+                .ToArray();
+            foreach (
+                Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
                     fleet.Order == null && CanStartAttackOrder(context, fleet)
-                ),
-                targets
-            );
-            if (proposal != null)
-                proposals.Add(proposal);
+                )
+            )
+            {
+                AIFleetAttackProposal proposal = SelectAttack(context, new[] { fleet }, targets);
+                if (proposal != null)
+                    proposals.Add(proposal);
+            }
         }
 
         /// <summary>
@@ -879,16 +1024,19 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleets">The fleets available for a new attack order.</param>
         /// <param name="targets">Eligible attack targets.</param>
+        /// <param name="requireReady">Whether the fleet must be able to launch immediately.</param>
         /// <returns>The highest-scoring proposal, or null when no target has value.</returns>
         private AIFleetAttackProposal SelectAttack(
             AITurnContext context,
             IEnumerable<Fleet> fleets,
-            IEnumerable<Planet> targets
+            IEnumerable<Planet> targets,
+            bool requireReady = false
         )
         {
             AIFleetAttackProposal selected = null;
             IReadOnlyList<Fleet> availableFleets = fleets.ToList();
             IEnumerable<(Planet Target, double UpperBound)> orderedTargets = targets
+                .Where(target => context.Assessment.HasCurrentHeadquartersAttackIntel(target))
                 .Select(target =>
                     (
                         Target: target,
@@ -913,6 +1061,9 @@ namespace Rebellion.AI.Planners
                             : FleetOrderStatus.Staging,
                         candidate.Target
                     );
+                    if (requireReady && !proposal.CanLaunch(context))
+                        continue;
+
                     proposal.SetScore(_scorer.Score(context, proposal));
                     if (proposal.Score <= 0 || !IsPreferred(proposal, selected))
                         continue;
@@ -1104,8 +1255,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds regiment transfers from a safe owned planet to an attack fleet that can capture
-        /// its target once its ground force is complete.
+        /// Offers the best safe regiment transfer, prioritizing fleets waiting on their ground force.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The proposal list to update.</param>
@@ -1114,57 +1264,102 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            Fleet targetFleet = context
-                .Assessment.AttackOrderedFleets.Where(fleet =>
-                    CanReceivePlanetRegimentTransfer(context, fleet)
+            List<Regiment> spareRegiments = context
+                .Assessment.OwnedPlanets.SelectMany(planet =>
+                    GetAvailablePlanetRegiments(context, planet)
                 )
-                .OrderByDescending(fleet =>
-                    CountTargetCapabilitiesMet(
-                        context,
-                        fleet,
-                        GetReinforcementTargetPlanet(context, fleet)
+                .ToList();
+            if (spareRegiments.Count == 0)
+                return;
+
+            foreach (
+                Fleet targetFleet in context
+                    .Assessment.AttackOrderedFleets.Where(fleet =>
+                        CanReceivePlanetRegimentTransfer(context, fleet)
                     )
-                )
-                .ThenBy(fleet => fleet.InstanceID)
-                .FirstOrDefault();
-            if (targetFleet == null)
-                return;
-
-            Planet receivingPlanet = context.Assessment.GetFleetPlanet(targetFleet);
-            Planet targetPlanet = GetReinforcementTargetPlanet(context, targetFleet);
-            Planet sourcePlanet = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    GetAvailablePlanetRegimentCount(context, planet) > 0
-                )
-                .OrderByDescending(context.Assessment.GetFactionPopularSupport)
-                .ThenBy(context.Assessment.GetDefensiveSupportRisk)
-                .ThenBy(planet => planet.GetRawDistanceTo(receivingPlanet))
-                .ThenBy(planet => planet.InstanceID)
-                .FirstOrDefault();
-            if (sourcePlanet == null)
-                return;
-
-            foreach (Regiment regiment in GetAvailablePlanetRegiments(context, sourcePlanet))
+                    .OrderByDescending(fleet =>
+                        context
+                            .GetAttackReadiness(fleet, GetReinforcementTargetPlanet(context, fleet))
+                            .FleetReady
+                    )
+                    .ThenByDescending(fleet =>
+                        context.CountCurrentAttackCapabilities(
+                            fleet,
+                            GetReinforcementTargetPlanet(context, fleet)
+                        )
+                    )
+                    .ThenBy(fleet => fleet.InstanceID)
+            )
             {
-                proposals.Add(
-                    new AITransferUnitProposal(
+                Planet targetPlanet = GetReinforcementTargetPlanet(context, targetFleet);
+                AITransferUnitProposal best = null;
+                double bestScore = 0;
+                int bestTransitTicks = int.MaxValue;
+                (
+                    bool WaitingForRegiments,
+                    int RequiredCount,
+                    int RequiredStrength
+                )? targetRequirements = null;
+                foreach (Regiment regiment in spareRegiments)
+                {
+                    Planet sourcePlanet = regiment.GetParentOfType<Planet>();
+                    AITransferUnitProposal proposal = new(
                         sourcePlanet,
                         targetFleet,
                         regiment,
                         targetFleet,
                         targetPlanet
+                    );
+                    if (
+                        !proposal.CanSelect(context)
+                        || !context.MovementQueries.TryGetSelectionTransitTicks(
+                            new[] { regiment },
+                            targetFleet,
+                            context.Faction.InstanceID,
+                            out int transitTicks
+                        )
                     )
-                );
+                        continue;
+
+                    double score = _scorer.Score(
+                        context,
+                        proposal,
+                        transitTicks,
+                        ref targetRequirements
+                    );
+                    if (
+                        score > bestScore
+                        || score == bestScore
+                            && score > 0
+                            && (
+                                transitTicks < bestTransitTicks
+                                || transitTicks == bestTransitTicks
+                                    && string.CompareOrdinal(
+                                        proposal.GetSortKey(),
+                                        best?.GetSortKey()
+                                    ) < 0
+                            )
+                    )
+                    {
+                        best = proposal;
+                        bestScore = score;
+                        bestTransitTicks = transitTicks;
+                    }
+                }
+                if (best != null)
+                {
+                    proposals.Add(best);
+                    return;
+                }
             }
         }
 
         /// <summary>
-        /// Returns whether an attack fleet needs ground reinforcements and otherwise has the
-        /// projected strength needed to capture its target.
+        /// Returns whether an assembling attack fleet needs ground reinforcements.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True when a planet regiment can complete the fleet's attack force.</returns>
+        /// <returns>True when a planet regiment can fill an unmet ground requirement.</returns>
         private bool CanReceivePlanetRegimentTransfer(AITurnContext context, Fleet fleet)
         {
             Planet targetPlanet = GetReinforcementTargetPlanet(context, fleet);
@@ -1176,33 +1371,26 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            int requiredCount = GetProjectedRegimentCount(context, fleet, targetPlanet);
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, true);
             int currentCount = context.Assessment.GetFleetLoadedRegimentCount(fleet);
             bool needsRegiments =
-                currentCount < requiredCount
+                currentCount < required.Count
                 || context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    < GetProjectedRegimentStrength(context, fleet, targetPlanet);
-            return needsRegiments
-                && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount
-                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
-                    >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0)
-                && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    >= (context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0);
+                    < required.Strength;
+            var readiness = context.GetAttackReadiness(fleet, targetPlanet);
+            return (needsRegiments || readiness.FleetReady && !readiness.RegimentsReady)
+                && fleet.FindShipForRegiment() != null;
         }
 
         /// <summary>
-        /// Returns completed regiments a safe planet can release without compromising stability.
+        /// Returns completed regiments a safe planet can release while retaining ownership and stability.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The potential source planet.</param>
         /// <returns>The regiments available for transfer.</returns>
         private int GetAvailablePlanetRegimentCount(AITurnContext context, Planet planet)
         {
-            if (
-                planet == null
-                || context.Assessment.IsPriorityDefensePlanet(planet)
-                || context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0
-            )
+            if (planet == null || context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0)
                 return 0;
 
             int readyRegimentCount = context
@@ -1217,13 +1405,13 @@ namespace Rebellion.AI.Planners
                 context.Faction,
                 context.Game.Config.AI.Garrison
             );
-            int ownershipRequirement =
-                planet.GetPopularSupport(context.Faction.InstanceID)
-                < context.Game.Config.SupportShift.OwnershipTransferThreshold
-                    ? 1
-                    : 0;
-            int requiredRegimentCount = Math.Max(requiredGarrison, ownershipRequirement);
-            return Math.Max(0, readyRegimentCount - requiredRegimentCount);
+            if (
+                !planet.IsColonized
+                || planet.GetPopularSupport(context.Faction.InstanceID)
+                    < context.Game.Config.SupportShift.OwnershipTransferThreshold
+            )
+                requiredGarrison = Math.Max(1, requiredGarrison);
+            return Math.Max(0, readyRegimentCount - requiredGarrison);
         }
 
         /// <summary>
@@ -1295,49 +1483,6 @@ namespace Rebellion.AI.Planners
                     )
                 );
             }
-        }
-
-        /// <summary>
-        /// Returns whether an attack fleet already targets a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The planet to inspect.</param>
-        /// <param name="ignoredFleet">Fleet excluded from the check.</param>
-        /// <returns>True if another attack fleet targets the planet.</returns>
-        private bool HasAttackFleetForTarget(
-            AITurnContext context,
-            Planet targetPlanet,
-            Fleet ignoredFleet
-        )
-        {
-            return context.Assessment.AttackOrderedFleets.Any(fleet =>
-                fleet != ignoredFleet && IsAttackFleetAssignedToTarget(context, fleet, targetPlanet)
-            );
-        }
-
-        /// <summary>
-        /// Returns whether a fleet has an active attack order for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet to compare.</param>
-        /// <returns>True if the fleet is assigned to the target.</returns>
-        private bool IsAttackFleetAssignedToTarget(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            if (
-                fleet?.Order?.OrderType != FleetOrderType.Attack
-                || targetPlanet == null
-                || fleet.Order.TargetPlanetId != targetPlanet.InstanceID
-            )
-                return false;
-
-            string targetOwnerId = targetPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(targetOwnerId)
-                && targetOwnerId != context.Faction.InstanceID;
         }
 
         /// <summary>
@@ -1446,7 +1591,7 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    CountTargetCapabilitiesMet(context, candidate.Fleet, candidate.TargetPlanet)
+                    context.CountCurrentAttackCapabilities(candidate.Fleet, candidate.TargetPlanet)
                 )
                 .ThenByDescending(candidate =>
                     context.Assessment.GetPlanetValue(candidate.TargetPlanet)
@@ -1476,90 +1621,27 @@ namespace Rebellion.AI.Planners
                 || sourceFleet.GetOwnerInstanceID() != targetFleet.GetOwnerInstanceID()
                 || sourceFleet.Movement != null
                 || sourceFleet.IsInCombat
-                || sourceFleet.Order != null
+                || sourceFleet.Order != null && sourceFleet.Order.OrderType != FleetOrderType.Defend
+            )
+                return false;
+
+            if (
+                sourceFleet.Order == null
+                && CanStartAttackOrder(context, sourceFleet)
+                && SelectAttack(
+                    context,
+                    new[] { sourceFleet },
+                    context.Assessment.EnemyPlanets.Where(target =>
+                        !context.Assessment.HasAttackFleetForTarget(target, sourceFleet)
+                    ),
+                    requireReady: true
+                ) != null
             )
                 return false;
 
             Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
             return sourcePlanet != null
-                && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID
-                && !context.Assessment.IsFactionHeadquarters(sourcePlanet);
-        }
-
-        /// <summary>
-        /// Returns whether a source fleet can spare a specific capital ship.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="sourceFleet">The potential source fleet.</param>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the ship can be spared.</returns>
-        private bool CanSourceFleetSpareCapitalShip(
-            AITurnContext context,
-            Fleet sourceFleet,
-            CapitalShip capitalShip
-        )
-        {
-            if (
-                sourceFleet == null
-                || capitalShip == null
-                || capitalShip.ManufacturingStatus != ManufacturingStatus.Complete
-                || capitalShip.Movement != null
-            )
-                return false;
-
-            if (
-                sourceFleet
-                    .GetChildren<CapitalShip>()
-                    .Where(ship => ship != capitalShip)
-                    .Count(ship =>
-                        ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.Movement == null
-                    ) <= 0
-            )
-                return false;
-
-            Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
-            if (
-                sourcePlanet == null
-                || sourcePlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-            )
-                return false;
-
-            int requiredDefense = context.Assessment.IsPriorityDefensePlanet(sourcePlanet)
-                ? context.StrategicPlan.GetHeadquartersDefenseStrength(sourcePlanet)
-                : context.StrategicPlan.GetPlanetDefenseStrength(sourcePlanet);
-            if (requiredDefense <= 0)
-                return true;
-
-            return GetLocalDefenseAfterTransfer(context, sourceFleet, sourcePlanet, capitalShip)
-                >= requiredDefense;
-        }
-
-        /// <summary>
-        /// Returns local defense strength after a capital ship transfer.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="sourceFleet">The source fleet.</param>
-        /// <param name="sourcePlanet">The source fleet planet.</param>
-        /// <param name="capitalShip">The capital ship being transferred.</param>
-        /// <returns>The remaining local defense strength.</returns>
-        private int GetLocalDefenseAfterTransfer(
-            AITurnContext context,
-            Fleet sourceFleet,
-            Planet sourcePlanet,
-            CapitalShip capitalShip
-        )
-        {
-            int sourceCombatAfterTransfer =
-                sourceFleet.GetCombatValue()
-                - context.Assessment.GetReadyCapitalShipCombatValue(capitalShip);
-            int otherLocalFleetCombat = context
-                .Assessment.GetFriendlyFleets(sourcePlanet)
-                .Where(fleet => fleet != sourceFleet && fleet.Movement == null)
-                .Select(context.Assessment.GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
-            return Math.Max(Math.Max(0, sourceCombatAfterTransfer), otherLocalFleetCombat);
+                && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID;
         }
 
         /// <summary>
@@ -1586,12 +1668,19 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            if (!CanSourceFleetSpareCapitalShip(context, sourceFleet, capitalShip))
+            if (
+                !context.StrategicPlan.CanReleaseCapitalShip(
+                    sourceFleet,
+                    capitalShip,
+                    destinationFleet: targetFleet
+                )
+            )
                 return false;
 
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
-                return context.Assessment.GetProjectedFleetCombatValue(targetFleet)
+                return !capitalShip.HasRole(CapitalShipRole.Transport)
+                    && context.Assessment.GetProjectedFleetCombatValue(targetFleet)
                         < context.StrategicPlan.GetDefenseStrength(targetPlanet)
                     && context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip) > 0;
             }
@@ -1614,97 +1703,12 @@ namespace Rebellion.AI.Planners
             CapitalShip capitalShip
         )
         {
-            if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
-            {
-                int requiredDefense = context.StrategicPlan.GetDefenseStrength(targetPlanet);
-                int defenseGap = Math.Max(
-                    0,
-                    requiredDefense - context.Assessment.GetProjectedFleetCombatValue(targetFleet)
-                );
-                return Math.Min(
-                    defenseGap,
-                    context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip)
-                );
-            }
-
-            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet);
-            int requiredCombat = attackDemand?.CombatStrength ?? 0;
-            int requiredRegiments = attackDemand?.RegimentCount ?? 0;
-            int requiredRegimentStrength = attackDemand?.RegimentStrength ?? 0;
-            int requiredBombardment = attackDemand?.BombardmentStrength ?? 0;
-
-            int currentRegimentCapacity = context.Assessment.GetFleetRegimentCapacity(targetFleet);
-            if (currentRegimentCapacity < requiredRegiments)
-            {
-                return GetFulfillmentGain(
-                    currentRegimentCapacity,
-                    context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
-                    requiredRegiments
-                );
-            }
-
-            int currentBombardment = context.Assessment.GetProjectedFleetBombardmentStrength(
-                targetFleet
+            return _scorer.ScoreTransferReadinessGain(
+                context,
+                targetFleet,
+                targetPlanet,
+                capitalShip
             );
-            if (currentBombardment < requiredBombardment)
-            {
-                return GetFulfillmentGain(
-                    currentBombardment,
-                    context.Assessment.GetProjectedCapitalShipBombardmentStrength(
-                        targetFleet,
-                        capitalShip
-                    ),
-                    requiredBombardment
-                );
-            }
-
-            int currentRegimentCount = context.Assessment.GetFleetLoadedRegimentCount(targetFleet);
-            int currentRegimentStrength =
-                context.Assessment.GetProjectedFleetRegimentAttackStrength(targetFleet);
-            if (
-                currentRegimentCount < requiredRegiments
-                || currentRegimentStrength < requiredRegimentStrength
-            )
-            {
-                return GetFulfillmentGain(
-                        currentRegimentCount,
-                        context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip),
-                        requiredRegiments
-                    )
-                    + GetFulfillmentGain(
-                        currentRegimentStrength,
-                        context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
-                            targetFleet,
-                            capitalShip
-                        ),
-                        requiredRegimentStrength
-                    );
-            }
-
-            return GetFulfillmentGain(
-                context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet),
-                context.Assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
-                    capitalShip
-                ),
-                requiredCombat
-            );
-        }
-
-        /// <summary>
-        /// Returns the normalized requirement gain from one reinforcement.
-        /// </summary>
-        /// <param name="current">Current requirement value.</param>
-        /// <param name="contribution">Candidate contribution.</param>
-        /// <param name="target">Required target value.</param>
-        /// <returns>The fulfillment gain from zero through one.</returns>
-        private double GetFulfillmentGain(double current, double contribution, double target)
-        {
-            if (target <= 0 || contribution <= 0)
-                return 0;
-
-            double before = Math.Min(1, Math.Max(0, current / target));
-            double after = Math.Min(1, Math.Max(0, (current + contribution) / target));
-            return after - before;
         }
 
         /// <summary>
@@ -1716,16 +1720,17 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet can make immediate progress.</returns>
         private static bool CanAdvance(AITurnContext context, Fleet fleet, Planet targetPlanet)
         {
-            if (CanBombardMilitaryTargets(context, fleet, targetPlanet))
+            if (context.CanUseMilitaryBombardment(fleet, targetPlanet))
                 return true;
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
 
-            return context.Assessment.GetReadyFleetRegimentCount(fleet)
-                    >= GetCurrentRegimentCount(context, fleet, targetPlanet)
+            int readyCount = context.Assessment.GetReadyFleetRegimentCount(fleet);
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet);
+            return readyCount >= required.Count
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                    >= GetCurrentRegimentStrength(context, fleet, targetPlanet)
+                    >= required.Strength
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent;
         }
@@ -1743,47 +1748,10 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             return demand?.IsAssaultBlockedByShields == true
                 && context.Assessment.GetFleetBombardmentStrength(fleet)
                     < demand.BombardmentStrength;
-        }
-
-        /// <summary>
-        /// Counts the target attack capabilities currently satisfied by a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The number of satisfied capabilities.</returns>
-        private static int CountTargetCapabilitiesMet(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-
-            int count = 0;
-            if (fleet?.HasOperationalCapitalShips() == true)
-                count++;
-            int combat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
-            if (combat > 0 && combat >= demand.CombatStrength)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCount(fleet) >= demand.RegimentCount)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCapacity(fleet) >= demand.RegimentCount)
-                count++;
-            if (
-                context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                >= demand.RegimentStrength
-            )
-                count++;
-            if (context.Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
-                count++;
-            return count;
         }
 
         /// <summary>
@@ -1799,143 +1767,20 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
+            var required = context.GetAttackRegimentRequirements(targetPlanet, fleet, true);
+
             return demand != null
                 && fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet) > 0
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                     >= demand.CombatStrength
-                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= demand.RegimentCount
-                && context.Assessment.GetFleetRegimentCapacity(fleet) >= demand.RegimentCount
+                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= required.Count
+                && context.Assessment.GetFleetRegimentCapacity(fleet) >= required.Count
                 && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    >= demand.RegimentStrength
+                    >= required.Strength
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= demand.BombardmentStrength;
-        }
-
-        /// <summary>
-        /// Returns whether current bombardment can strike hostile military targets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when hostile targets are exposed.</returns>
-        private static bool CanBombardMilitaryTargets(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
-                && context.Assessment.HasBombardmentTargets(targetPlanet);
-        }
-
-        /// <summary>
-        /// Returns the current regiment count required after available bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The current regiment count requirement.</returns>
-        private static int GetCurrentRegimentCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-            return CanBombardDefenders(context, fleet, targetPlanet, false)
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-        }
-
-        /// <summary>
-        /// Returns the current regiment strength required after available bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The current regiment strength requirement.</returns>
-        private static int GetCurrentRegimentStrength(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return CanBombardDefenders(context, fleet, targetPlanet, false)
-                ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns the projected regiment count required after available bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The projected regiment count requirement.</returns>
-        private static int GetProjectedRegimentCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-            return CanBombardDefenders(context, fleet, targetPlanet, true)
-                ? demand.OccupationRegimentCount
-                : demand.RegimentCount;
-        }
-
-        /// <summary>
-        /// Returns the projected regiment strength required after available bombardment.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The projected regiment strength requirement.</returns>
-        private static int GetProjectedRegimentStrength(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return CanBombardDefenders(context, fleet, targetPlanet, true)
-                ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether fleet bombardment can remove defending regiments.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <param name="projected">Whether projected bombardment is used.</param>
-        /// <returns>True when bombardment can penetrate target shields.</returns>
-        private static bool CanBombardDefenders(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet,
-            bool projected
-        )
-        {
-            if (
-                fleet == null
-                || targetPlanet == null
-                || context.Assessment.GetDefendingRegimentCount(targetPlanet) == 0
-            )
-                return false;
-            int bombardment = projected
-                ? context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                : context.Assessment.GetFleetBombardmentStrength(fleet);
-            return bombardment > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
     }
 }

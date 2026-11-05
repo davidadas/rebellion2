@@ -9,7 +9,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Proposals
 {
@@ -18,36 +17,98 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
+        private readonly IManufacturable _replacementOrder;
         public AIProductionDemand Demand { get; }
 
         public Planet ProducerPlanet { get; }
 
         internal IReadOnlyList<AIManufactureProposal> ProducerAlternatives { get; }
 
+        internal IReadOnlyList<AIManufactureProposal> CapitalShipChoices { get; } =
+            Array.Empty<AIManufactureProposal>();
+
         internal bool CarriesReducedCountAcrossAlternatives { get; }
 
         public Technology Product { get; }
+
+        /// <summary>
+        /// Gets resource facilities retired only when this construction action executes.
+        /// </summary>
+        internal IReadOnlyList<Building> ResourcesToReclaim { get; }
+
+        /// <summary>
+        /// Gets the maintenance capacity consumed by the proposed resource retirement.
+        /// </summary>
+        internal int ResourceMaintenanceCost { get; }
+
+        /// <summary>
+        /// Gets whether this action keeps an existing queued order running.
+        /// </summary>
+        internal bool IsContinuation => Demand?.ExistingOrder != null;
 
         /// <summary>
         /// Gets the number of manufactured items represented by this proposal.
         /// </summary>
         public int ManufacturingCount => GetManufacturingCount();
 
-        public ContainerNode Destination => Demand?.Destination;
+        public ContainerNode Destination => Demand?.DeliveryDestination;
+
+        /// <summary>
+        /// Gets the current order that this action continues or replaces.
+        /// </summary>
+        internal IManufacturable CurrentOrder
+        {
+            get
+            {
+                IManufacturable order = Demand?.ExistingOrder ?? _replacementOrder;
+                return IsOrderStillQueued(order) ? order : null;
+            }
+        }
+
+        /// <summary>
+        /// Gets maintenance released by replacing an unfinished order.
+        /// </summary>
+        internal int ReplacedMaintenanceCost =>
+            ContinuesExistingOrder ? 0 : CurrentOrder?.MaintenanceCost ?? 0;
+
+        /// <summary>
+        /// Gets whether the unfinished order matches this requested product and destination.
+        /// </summary>
+        internal bool ContinuesExistingOrder =>
+            CurrentOrder is ISceneNode node
+            && CurrentOrder.GetTypeID() == Product?.GetReference()?.GetTypeID()
+            && ReferenceEquals(node.GetParent(), Destination);
+
+        /// <summary>
+        /// Gets destination space released by the producer's replaceable unfinished building.
+        /// </summary>
+        internal int ReleasedDestinationSpace =>
+            (
+                CurrentOrder is Building building
+                && ReferenceEquals(building.GetParent(), Destination)
+                    ? 1
+                    : 0
+            ) + ResourcesToReclaim.Count;
+
+        /// <summary>
+        /// Gets usable producer capacity, including a lane occupied by a replaceable order.
+        /// </summary>
+        internal int AvailableProducerCapacity =>
+            CurrentOrder != null
+                ? ProducerPlanet.GetProductionFacilityCount(Demand.ManufacturingType)
+                : ProducerPlanet.GetAvailableManufacturingCapacity(Demand.ManufacturingType);
 
         internal bool DistributesDemand { get; }
-
-        internal bool UsesSharedProducerCapacity =>
-            !IsFacilityExpansionDemand() && !DistributesDemand;
 
         internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
 
         internal override AIProposalPriority Priority =>
-            Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
-            || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
+            Demand?.IsEmergencyDefense == true ? AIProposalPriority.Mandatory
+            : Demand?.EstablishesInitialStarfighterDefense == true && Destination == ProducerPlanet
                 ? AIProposalPriority.Mandatory
-            : Demand?.Kind == AIProductionDemandKind.PlanetaryDefense
-                ? AIProposalPriority.DeferredPlanetaryDefense
+            : Demand?.Kind == AIProductionDemandKind.IdleSpecialForces ? AIProposalPriority.Filler
+            : Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
+                ? AIProposalPriority.Mandatory
             : AIProposalPriority.Optional;
 
         /// <summary>
@@ -57,65 +118,59 @@ namespace Rebellion.AI.Proposals
         /// <param name="producerPlanet">Planet that will produce the item.</param>
         /// <param name="product">Technology to manufacture.</param>
         /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
+        /// <param name="replacedOrder">The unfinished order evaluated for replacement, if any.</param>
+        /// <param name="resourcesToReclaim">The completed resources retired for this facility order.</param>
+        /// <param name="resourceMaintenanceCost">The maintenance capacity lost by retiring those resources.</param>
         internal AIManufactureProposal(
             AIProductionDemand demand,
             Planet producerPlanet,
             Technology product,
-            bool distributesDemand
+            bool distributesDemand,
+            IManufacturable replacedOrder = null,
+            IReadOnlyList<Building> resourcesToReclaim = null,
+            int resourceMaintenanceCost = 0
         )
         {
             Demand = demand;
             ProducerPlanet = producerPlanet;
             Product = product;
+            ResourcesToReclaim = resourcesToReclaim ?? Array.Empty<Building>();
+            ResourceMaintenanceCost = Math.Max(0, resourceMaintenanceCost);
             DistributesDemand = distributesDemand;
+            if (
+                replacedOrder != null
+                && demand?.ExistingOrder == null
+                && demand?.IsProductionFiller == false
+                && replacedOrder.GetTypeID() != product?.GetReference()?.GetTypeID()
+            )
+                _replacementOrder = replacedOrder;
             ProducerAlternatives = Array.Empty<AIManufactureProposal>();
-        }
-
-        /// <summary>
-        /// Creates a manufacture proposal from one demand and multiple producers.
-        /// </summary>
-        /// <param name="demand">Production demand served by the proposal.</param>
-        /// <param name="producerPlanets">Planets eligible to produce the item.</param>
-        /// <param name="product">Technology to manufacture.</param>
-        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
-        internal AIManufactureProposal(
-            AIProductionDemand demand,
-            IReadOnlyList<Planet> producerPlanets,
-            Technology product,
-            bool distributesDemand
-        )
-        {
-            Demand = demand;
-            ProducerPlanet = producerPlanets?.FirstOrDefault();
-            Product = product;
-            DistributesDemand = distributesDemand;
-            ProducerAlternatives =
-                producerPlanets
-                    ?.Skip(1)
-                    .Select(producerPlanet => new AIManufactureProposal(
-                        demand,
-                        producerPlanet,
-                        product,
-                        distributesDemand
-                    ))
-                    .ToList()
-                ?? new List<AIManufactureProposal>();
-            CarriesReducedCountAcrossAlternatives = true;
         }
 
         /// <summary>
         /// Creates a manufacture proposal from exact ranked alternatives.
         /// </summary>
         /// <param name="candidates">Exact eligible manufacturing actions in preference order.</param>
-        internal AIManufactureProposal(IReadOnlyList<AIManufactureProposal> candidates)
+        /// <param name="carriesReducedCountAcrossAlternatives">Whether each producer retains earlier quantity reductions.</param>
+        /// <param name="capitalShipChoices">Eligible hulls with their ranked producer alternatives.</param>
+        internal AIManufactureProposal(
+            IReadOnlyList<AIManufactureProposal> candidates,
+            bool carriesReducedCountAcrossAlternatives = false,
+            IReadOnlyList<AIManufactureProposal> capitalShipChoices = null
+        )
         {
             AIManufactureProposal first = candidates?.FirstOrDefault();
             Demand = first?.Demand;
             ProducerPlanet = first?.ProducerPlanet;
             Product = first?.Product;
+            ResourcesToReclaim = first?.ResourcesToReclaim ?? Array.Empty<Building>();
+            ResourceMaintenanceCost = first?.ResourceMaintenanceCost ?? 0;
             DistributesDemand = first?.DistributesDemand == true;
+            _replacementOrder = first?._replacementOrder;
             ProducerAlternatives =
-                candidates?.Skip(1).ToList() ?? new List<AIManufactureProposal>();
+                candidates?.Skip(1).ToArray() ?? Array.Empty<AIManufactureProposal>();
+            CarriesReducedCountAcrossAlternatives = carriesReducedCountAcrossAlternatives;
+            CapitalShipChoices = capitalShipChoices ?? Array.Empty<AIManufactureProposal>();
         }
 
         /// <summary>
@@ -182,7 +237,47 @@ namespace Rebellion.AI.Proposals
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context, validateOrderAcceptance: false)
-                && HasMaintenanceHeadroom(context);
+                && (IsContinuation || HasMaintenanceHeadroom(context))
+                && CanReclaimResources(context, refresh: true);
+        }
+
+        /// <summary>
+        /// Revalidates the exact retirement and the budget for its replacement facility.
+        /// </summary>
+        /// <param name="context">The current faction turn and resource budget.</param>
+        /// <param name="refresh">Whether the operating economy must be recaptured from live state.</param>
+        /// <returns>True when construction can still retire this exact resource set safely.</returns>
+        private bool CanReclaimResources(AITurnContext context, bool refresh)
+        {
+            if (ResourcesToReclaim.Count == 0)
+                return true;
+            if (
+                !IsProductionFacilityExpansion
+                || Destination is not Planet planet
+                || context.Maintenance == null
+                || ResourcesToReclaim.Any(resource =>
+                    context.Game.GetSceneNodeByInstanceID<Building>(resource.InstanceID) != resource
+                    || resource.GetParent() != planet
+                    || resource.GetOwnerInstanceID() != context.Faction.InstanceID
+                    || !resource.IsEnabled
+                    || resource.ManufacturingStatus != ManufacturingStatus.Complete
+                    || resource.Movement != null
+                )
+            )
+                return false;
+            var current = context.StrategicPlan.GetResourceFacilitiesToReclaim(
+                planet,
+                Demand.BuildingType,
+                Demand.TargetCount,
+                refresh
+            );
+            return current.Count == ResourcesToReclaim.Count
+                && current.All(ResourcesToReclaim.Contains)
+                && (long)context.AvailableProjectedMaintenanceHeadroom
+                    - context.StrategicPlan.GetResourceReclamationMaintenanceCost(current)
+                    - Product.GetReference().GetMaintenanceCost() * (long)GetManufacturingCount()
+                    + ReplacedMaintenanceCost
+                    >= GetMinimumMaintenanceHeadroom(context);
         }
 
         /// <summary>
@@ -194,6 +289,47 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
+            int maintenanceCredit = ReplacedMaintenanceCost;
+            IManufacturable replacedOrder = CurrentOrder;
+            if (ContinuesExistingOrder)
+            {
+                return;
+            }
+            if (
+                replacedOrder != null
+                && !context.Manufacturing.CancelManufacturing(
+                    replacedOrder,
+                    context.Faction.InstanceID
+                )
+            )
+                return;
+            if (replacedOrder != null)
+            {
+                context.RecordManufacturingMutation(0, maintenanceCredit);
+            }
+
+            if (ResourcesToReclaim.Count > 0)
+            {
+                if (!CanReclaimResources(context, refresh: true))
+                    return;
+                int before = ResourceProductionQueries.CalculateMaintenanceHeadroom(
+                    context.Game,
+                    context.Faction
+                );
+                if (
+                    !context.Maintenance.TryScrap(
+                        ResourcesToReclaim.Cast<IManufacturable>().ToArray(),
+                        context.Faction.InstanceID
+                    )
+                )
+                    return;
+                int after = ResourceProductionQueries.CalculateMaintenanceHeadroom(
+                    context.Game,
+                    context.Faction
+                );
+                context.RecordManufacturingMutation(Math.Max(0, before - after), 0);
+            }
+
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
             {
                 ExecuteBuildingUpgrade(context);
@@ -204,7 +340,7 @@ namespace Rebellion.AI.Proposals
             {
                 bool started = context.Manufacturing.StartManufacturing(
                     ProducerPlanet,
-                    Product.GetReference(),
+                    Product.GetReferenceCopy(),
                     Destination,
                     GetManufacturingCount(),
                     context.Faction.InstanceID,
@@ -238,27 +374,20 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (Destination is Planet planet)
-            {
-                if (!EnqueueAtPlanet(context, planet, manufacturable))
-                    LogEnqueueFailure();
-                return;
-            }
-
-            if (Destination is Fleet fleet)
-            {
-                if (!Enqueue(context, manufacturable, fleet))
-                    LogEnqueueFailure();
-            }
+            if (Destination is Planet or Fleet && !Enqueue(context, manufacturable, Destination))
+                LogEnqueueFailure();
         }
 
         /// <summary>
-        /// Returns the maintenance cost of the proposed product.
+        /// Returns the total maintenance headroom committed by this action.
         /// </summary>
         /// <returns>The maintenance cost.</returns>
         public int GetMaintenanceCost()
         {
-            long totalMaintenanceCost = (long)GetUnitMaintenanceCost() * GetManufacturingCount();
+            if (ContinuesExistingOrder)
+                return 0;
+            long totalMaintenanceCost =
+                (long)GetUnitMaintenanceCost() * GetManufacturingCount() + ResourceMaintenanceCost;
             return totalMaintenanceCost > int.MaxValue ? int.MaxValue : (int)totalMaintenanceCost;
         }
 
@@ -268,6 +397,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>The per-item maintenance cost.</returns>
         internal int GetUnitMaintenanceCost()
         {
+            if (ContinuesExistingOrder)
+                return 0;
             int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
             if (
                 Demand?.Kind != AIProductionDemandKind.BuildingUpgrade
@@ -285,14 +416,21 @@ namespace Rebellion.AI.Proposals
         /// <returns>The proposal representing the accepted prefix.</returns>
         internal AIManufactureProposal WithManufacturingCount(int count)
         {
-            if (!IsCountedManufacturingDemand() || Demand == null)
+            if (
+                !IsCountedManufacturingDemand()
+                || Demand == null
+                || count == GetManufacturingCount()
+            )
                 return this;
 
             AIManufactureProposal resolved = new AIManufactureProposal(
                 Demand.WithQuantity(Math.Max(0, Math.Min(count, Demand.QuantityNeeded))),
                 ProducerPlanet,
                 Product,
-                DistributesDemand
+                DistributesDemand,
+                _replacementOrder,
+                ResourcesToReclaim,
+                ResourceMaintenanceCost
             );
             if (HasScore)
                 resolved.SetScore(Score);
@@ -306,18 +444,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>The required maintenance headroom.</returns>
         public int GetMinimumMaintenanceHeadroom(AITurnContext context)
         {
-            if (Demand?.RestoresMaintenanceCapacity == true)
-                return 0;
-
-            int reserve = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
-            if (Demand?.UsesDefensiveReserve != true)
-                return reserve;
-
-            int percentageFloor = IntegerMath.ScaleByPercentRoundedUp(
-                context.Assessment.MaintenanceCapacity,
-                context.Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
-            );
-            return Math.Max(reserve, percentageFloor);
+            return context.GetMinimumManufacturingHeadroom(Demand);
         }
 
         /// <summary>
@@ -359,6 +486,45 @@ namespace Rebellion.AI.Proposals
             if (!ProducerPlanet.IsColonized || ProducerPlanet.IsDestroyed)
                 return false;
 
+            bool hasQueue = ProducerPlanet
+                .GetManufacturingQueue()
+                .TryGetValue(Demand.ManufacturingType, out List<IManufacturable> queue);
+            IManufacturable currentOrder = CurrentOrder;
+            if (_replacementOrder != null && currentOrder == null && hasQueue && queue.Count > 0)
+                return false;
+            if (
+                !IsContinuation
+                && hasQueue
+                && queue.Any(item => !ReferenceEquals(item, currentOrder))
+            )
+                return false;
+            if (
+                !validateOrderAcceptance
+                && !IsContinuation
+                && currentOrder == null
+                && hasQueue
+                && queue.Any(item => item.GetTypeID() != Product.GetReference().GetTypeID())
+            )
+                return false;
+
+            if (IsContinuation)
+                return currentOrder is ISceneNode current
+                    && current.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && ReferenceEquals(current.GetParent(), Destination)
+                    && current.GetTypeID() == Product.GetReference().GetTypeID();
+
+            if (!CanReclaimResources(context, refresh: false))
+                return false;
+
+            if (
+                Demand.IsProductionFiller
+                && ManufacturingQueries.GetManufacturingOrder(
+                    ProducerPlanet,
+                    Demand.ManufacturingType
+                ) != null
+            )
+                return false;
+
             if (
                 Destination is Fleet destinationFleet
                 && !context.StrategicPlan.CanReinforce(destinationFleet)
@@ -381,9 +547,7 @@ namespace Rebellion.AI.Proposals
                 )
                     return false;
             }
-            else if (
-                ProducerPlanet.GetAvailableManufacturingCapacity(Demand.ManufacturingType) <= 0
-            )
+            else if (AvailableProducerCapacity <= 0)
                 return false;
 
             if (Product.GetReference().GetManufacturingType() != Demand.ManufacturingType)
@@ -398,7 +562,11 @@ namespace Rebellion.AI.Proposals
                     Product.GetReference(),
                     Destination,
                     GetManufacturingCount(),
-                    context.Faction.InstanceID
+                    context.Faction.InstanceID,
+                    CurrentOrder,
+                    ResourcesToReclaim.Count == 0
+                        ? null
+                        : ResourcesToReclaim.Cast<IManufacturable>().ToArray()
                 )
             )
                 return false;
@@ -421,12 +589,40 @@ namespace Rebellion.AI.Proposals
                 AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
                     context
                 ),
-                AIProductionDemandKind.SpecialForces => CanManufactureSpecialForces(context),
+                AIProductionDemandKind.SpecialForces or AIProductionDemandKind.IdleSpecialForces =>
+                    CanManufactureSpecialForces(context),
                 AIProductionDemandKind.FleetSeedCapitalShip
                 or AIProductionDemandKind.ColonizationFleetSeedCapitalShip =>
                     CanManufactureFleetSeed(context),
                 _ => false,
             };
+        }
+
+        /// <summary>
+        /// Checks the identity, ownership and active queue membership of the evaluated order.
+        /// </summary>
+        /// <param name="order">The order recorded when the proposal was formed.</param>
+        /// <returns>True while the same eligible order remains queued by its producer.</returns>
+        private bool IsOrderStillQueued(IManufacturable order)
+        {
+            if (
+                order is not ISceneNode node
+                || ProducerPlanet == null
+                || Demand == null
+                || order.ManufacturingStatus != ManufacturingStatus.Building
+                || order.IsManufacturingComplete()
+                || order.ProducerPlanetID != ProducerPlanet.InstanceID
+                || node.GetOwnerInstanceID() != ProducerPlanet.GetOwnerInstanceID()
+                || !ProducerPlanet
+                    .GetManufacturingQueue()
+                    .TryGetValue(Demand.ManufacturingType, out var queue)
+                || !IsContinuation && queue.Count != 1
+            )
+                return false;
+            foreach (IManufacturable queued in queue)
+                if (ReferenceEquals(queued, order))
+                    return true;
+            return false;
         }
 
         /// <summary>
@@ -504,7 +700,16 @@ namespace Rebellion.AI.Proposals
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return CanReplaceProductionFacility(context, destinationPlanet, building);
 
-            if (destinationPlanet.GetAvailableEnergy() < GetManufacturingCount())
+            if (
+                Math.Min(
+                    destinationPlanet.GetAvailableEnergy() + ReleasedDestinationSpace,
+                    context.StrategicPlan.GetAvailableConstructionSpace(
+                        destinationPlanet,
+                        building.BuildingType,
+                        Demand.IsEmergencyDefense
+                    )
+                ) < GetManufacturingCount()
+            )
                 return false;
 
             if (building.GetBuildingType() != Demand.BuildingType)
@@ -591,22 +796,6 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Queues a manufactured item for delivery to a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">The destination planet.</param>
-        /// <param name="manufacturable">The manufacturable.</param>
-        /// <returns>True when the item was queued.</returns>
-        private bool EnqueueAtPlanet(
-            AITurnContext context,
-            Planet destinationPlanet,
-            IManufacturable manufacturable
-        )
-        {
-            return Enqueue(context, manufacturable, destinationPlanet);
-        }
-
-        /// <summary>
         /// Queues one item and records its exact maintenance change in the AI turn budget.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -648,7 +837,9 @@ namespace Rebellion.AI.Proposals
         /// <returns>The manufacturing count.</returns>
         internal int GetManufacturingCount()
         {
-            return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
+            if (Demand?.IsProductionFiller == true || ContinuesExistingOrder)
+                return 1;
+            return Demand?.QuantityNeeded > 0 ? 1 : 0;
         }
 
         /// <summary>
@@ -722,10 +913,19 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the regiment can be manufactured.</returns>
         private bool CanManufactureRegiment(AITurnContext context)
         {
-            return Destination is Fleet destinationFleet
-                && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
-                && Product.GetReference() is Regiment
-                && destinationFleet.FindShipForRegiment() != null;
+            Fleet fleet = Demand.DestinationFleet;
+            if (
+                fleet == null
+                || fleet.GetOwnerInstanceID() != context.Faction.InstanceID
+                || Product.GetReference() is not Regiment
+            )
+                return false;
+
+            return Destination is Planet planet
+                ? CanManufacturePlanetRegiment(context)
+                    && context.StrategicPlan.CanReinforce(fleet)
+                    && fleet.GetParentOfType<Planet>() == planet
+                : fleet.FindShipForRegiment() != null;
         }
 
         /// <summary>
@@ -784,7 +984,9 @@ namespace Rebellion.AI.Proposals
                 return true;
 
             int minimumHeadroom = GetMinimumMaintenanceHeadroom(context);
-            return (long)context.AvailableProjectedMaintenanceHeadroom - maintenanceCost
+            return (long)context.AvailableProjectedMaintenanceHeadroom
+                    - maintenanceCost
+                    + ReplacedMaintenanceCost
                 >= minimumHeadroom;
         }
     }

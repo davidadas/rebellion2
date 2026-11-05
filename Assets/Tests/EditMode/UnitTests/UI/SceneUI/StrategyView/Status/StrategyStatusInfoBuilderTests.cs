@@ -395,7 +395,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     "Status:|Active",
                     "Maintenance Cost:|7",
                     "Standard Processing Rate:|4",
-                    "Bombardment Value:|2",
+                    "Bombardment Resistance:|2",
                 },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
             );
@@ -412,7 +412,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 BuildingType = BuildingType.Defense,
                 ManufacturingStatus = ManufacturingStatus.Building,
                 MaintenanceCost = 8,
-                WeaponStrength = 13,
+                WeaponPower = 13,
                 ShieldStrength = 21,
                 Bombardment = 5,
             };
@@ -427,7 +427,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "Under Construction",
                 info.Rows.Single(row => row.Left == "Status:").Right
             );
-            Assert.AreEqual("13", info.Rows.Single(row => row.Left == "Weapons Rating:").Right);
+            Assert.AreEqual("13", info.Rows.Single(row => row.Left == "Weapon Power:").Right);
             Assert.AreEqual("21", info.Rows.Single(row => row.Left == "Shield Strength:").Right);
             Assert.AreEqual("5", info.Rows.Single(row => row.Left == "Bombardment Defense:").Right);
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Standard Processing Rate:"));

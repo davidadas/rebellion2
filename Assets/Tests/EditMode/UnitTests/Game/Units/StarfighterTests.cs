@@ -63,6 +63,20 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(45, weaponStrength);
         }
 
+        [TestCase(0, 0)]
+        [TestCase(6, 22)]
+        [TestCase(12, 45)]
+        public void CalculateCombatValue_WithRequestedSquadronSize_ScalesWithoutChangingSquadron(
+            int count,
+            int expected
+        )
+        {
+            int value = _starfighter.CalculateCombatValue(count);
+
+            Assert.AreEqual(expected, value);
+            Assert.AreEqual(12, _starfighter.CurrentSquadronSize);
+        }
+
         [Test]
         public void GetCombatValue_WithPartialSquadron_ReturnsScaledWeaponStrength()
         {

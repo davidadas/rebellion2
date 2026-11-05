@@ -10,6 +10,7 @@ public enum UserInterfaceOption
     ShowUnitCardStats,
     ShowFrameRate,
     KeepIdleBarAboveWindows,
+    QuickOpenMapItems,
 }
 
 /// <summary>
@@ -29,6 +30,7 @@ public enum IdleBarLocation
 [Serializable]
 public sealed class UserInterfaceSettings
 {
+    public bool QuickOpenMapItems;
     public bool ShowIdleBar = true;
     public bool KeepIdleBarOpen;
     public bool ShowUnitCardStats;
@@ -54,6 +56,7 @@ public sealed class UserInterfaceSettings
     {
         return option switch
         {
+            UserInterfaceOption.QuickOpenMapItems => QuickOpenMapItems,
             UserInterfaceOption.ShowIdleBar => ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
@@ -72,6 +75,9 @@ public sealed class UserInterfaceSettings
     {
         switch (option)
         {
+            case UserInterfaceOption.QuickOpenMapItems:
+                QuickOpenMapItems = enabled;
+                break;
             case UserInterfaceOption.ShowIdleBar:
                 ShowIdleBar = enabled;
                 break;
@@ -97,6 +103,7 @@ public sealed class UserInterfaceSettings
     /// </summary>
     public void RestoreDefaults()
     {
+        QuickOpenMapItems = false;
         ShowIdleBar = true;
         KeepIdleBarOpen = false;
         ShowUnitCardStats = false;

@@ -252,12 +252,14 @@ namespace Rebellion.Gameplay
         /// <param name="origin">The production planet.</param>
         /// <param name="destination">The requested destination.</param>
         /// <param name="transitTicks">The estimated delivery duration when transit is required.</param>
+        /// <param name="ownerInstanceId">The prospective owner for an unowned manufacturing template.</param>
         /// <returns>True if the destination can be evaluated; otherwise false.</returns>
         public bool TryEstimateManufacturedTransitTicks(
             IMovable unit,
             Planet origin,
             ContainerNode destination,
-            out int transitTicks
+            out int transitTicks,
+            string ownerInstanceId = null
         )
         {
             transitTicks = 0;
@@ -280,8 +282,14 @@ namespace Rebellion.Gameplay
             }
 
             if (
-                destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
-                && !CanEnterHostileOrbit(unit, destination)
+                destinationPlanet.GetOwnerInstanceID()
+                    != (ownerInstanceId ?? unit.GetOwnerInstanceID())
+                && !(
+                    ownerInstanceId == null
+                        ? CanEnterHostileOrbit(unit, destination)
+                        : destination is Fleet or CapitalShip
+                            && destination.GetOwnerInstanceID() == ownerInstanceId
+                )
             )
             {
                 return false;
@@ -289,7 +297,9 @@ namespace Rebellion.Gameplay
 
             if (
                 unit is Starfighter
-                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit))
+                && destinationPlanet.IsBlockadedFor(
+                    ownerInstanceId ?? GetMovementControlOwner(unit)
+                )
             )
             {
                 return false;
@@ -303,7 +313,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Estimates how long an in-transit unit would take if retargeted from its current position.
+        /// Estimates how long an in-transit unit would take after changing its destination,
+        /// including an unfinished fighter leg or an existing continuation.
         /// </summary>
         /// <param name="unit">The in-transit unit to evaluate.</param>
         /// <param name="destination">The proposed retarget destination.</param>
@@ -319,8 +330,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Estimates how long an in-transit movement group would take if retargeted from each
-        /// member's current position.
+        /// Estimates the shared arrival time after changing a movement group's destination,
+        /// including unfinished fighter legs and existing continuations.
         /// </summary>
         /// <param name="units">The complete in-transit movement group.</param>
         /// <param name="destination">The proposed retarget destination.</param>
@@ -1275,6 +1286,75 @@ namespace Rebellion.Gameplay
             bool allowOriginPlanet = false
         )
         {
+            return CanUseSafeRelocationDestination(
+                unit,
+                destination,
+                originPlanet,
+                canTravelRemotely,
+                allowOriginPlanet,
+                null
+            );
+        }
+
+        /// <summary>
+        /// Returns whether every unit can use one safe destination while sharing immutable blockade
+        /// observations only for this synchronous query.
+        /// </summary>
+        /// <param name="units">The units requiring the common destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="canTravelRemotely">
+        /// Whether the units or their calling mechanic can cross between planets.
+        /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether each unit's origin planet may receive it without relocation.
+        /// </param>
+        /// <returns>True when every unit can safely use the destination.</returns>
+        internal bool CanUseSafeRelocationDestination(
+            IReadOnlyList<IMovable> units,
+            ContainerNode destination,
+            bool canTravelRemotely = true,
+            bool allowOriginPlanet = false
+        )
+        {
+            if (units == null)
+                return false;
+
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades =
+                units.Count > 1 ? new() : null;
+            foreach (IMovable unit in units)
+                if (
+                    !CanUseSafeRelocationDestination(
+                        unit,
+                        destination,
+                        unit.GetParentOfType<Planet>(),
+                        canTravelRemotely,
+                        allowOriginPlanet,
+                        blockades
+                    )
+                )
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Evaluates one relocation destination with optional query-local blockade reuse.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="originPlanet">The planet from which the unit would relocate or remain.</param>
+        /// <param name="canTravelRemotely">Whether the unit can cross between planets.</param>
+        /// <param name="allowOriginPlanet">Whether the origin planet may receive the unit.</param>
+        /// <param name="blockades">Optional blockade results shared within one synchronous query.</param>
+        /// <returns>True when the destination can safely receive the unit.</returns>
+        private bool CanUseSafeRelocationDestination(
+            IMovable unit,
+            ContainerNode destination,
+            Planet originPlanet,
+            bool canTravelRemotely,
+            bool allowOriginPlanet,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
             if (unit == null || destination == null)
                 return false;
 
@@ -1295,7 +1375,7 @@ namespace Rebellion.Gameplay
                 liveDestination as Planet ?? liveDestination.GetParentOfType<Planet>();
             if (
                 destinationPlanet?.IsDestroyed != false
-                || destinationPlanet.IsBlockadedFor(ownerInstanceId)
+                || IsBlockadedFor(destinationPlanet, ownerInstanceId, blockades)
                     && (destinationPlanet != originPlanet || liveDestination is Planet)
                 || liveDestination == originPlanet && !allowOriginPlanet
                 || destinationPlanet != originPlanet && !canTravelRemotely
@@ -1336,6 +1416,31 @@ namespace Rebellion.Gameplay
                     ReferenceEquals(unit.GetParent(), liveDestination)
                     || liveDestination.CanAcceptChild(unit)
                 );
+        }
+
+        /// <summary>
+        /// Returns a blockade result, optionally reusing the result within one synchronous query.
+        /// </summary>
+        /// <param name="planet">The destination planet.</param>
+        /// <param name="factionInstanceId">The faction whose access is evaluated.</param>
+        /// <param name="blockades">Optional query-local blockade results.</param>
+        /// <returns>True when another faction blockades the planet.</returns>
+        private static bool IsBlockadedFor(
+            Planet planet,
+            string factionInstanceId,
+            Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
+        )
+        {
+            if (blockades == null)
+                return planet.IsBlockadedFor(factionInstanceId);
+
+            var key = (planet, factionInstanceId);
+            if (!blockades.TryGetValue(key, out bool isBlockaded))
+            {
+                isBlockaded = planet.IsBlockadedFor(factionInstanceId);
+                blockades.Add(key, isBlockaded);
+            }
+            return isBlockaded;
         }
 
         /// <summary>
@@ -1656,8 +1761,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates the common duration for an existing movement group retargeted from its
-        /// members' current positions.
+        /// Calculates a movement group's common arrival time, preserving unfinished fighter
+        /// legs and existing continuations.
         /// </summary>
         /// <param name="units">The in-transit members of one movement group.</param>
         /// <param name="destination">The new destination planet.</param>
@@ -1681,16 +1786,41 @@ namespace Rebellion.Gameplay
                     );
                 }
 
-                groupTransitTicks = Math.Max(
-                    groupTransitTicks,
-                    CalculateTransitTicks(
+                MovementState movement = unit.Movement;
+                Planet legDestination =
+                    unit is Starfighter || movement.NextLeg != null
+                        ? _game.GetSceneNodeByInstanceID<Planet>(
+                            movement.DestinationPlanetInstanceID
+                        )
+                        : null;
+                Point? legEndpoint =
+                    movement.NextLeg?.OriginPosition ?? legDestination?.GetPosition();
+                int transitTicks;
+                if (legEndpoint.HasValue)
+                {
+                    int onwardTicks =
+                        legEndpoint.Value == destination.GetPosition()
+                            ? 0
+                            : CalculateTransitTicks(
+                                unit,
+                                legEndpoint.Value,
+                                legDestination,
+                                destination,
+                                personnelTravelTimePercent
+                            );
+                    transitTicks = movement.TransitTicks - movement.TicksElapsed + onwardTicks;
+                }
+                else
+                {
+                    transitTicks = CalculateTransitTicks(
                         unit,
-                        unit.Movement.CurrentPosition,
+                        movement.CurrentPosition,
                         destination,
                         sameSector: false,
                         personnelTravelTimePercent: personnelTravelTimePercent
-                    )
-                );
+                    );
+                }
+                groupTransitTicks = Math.Max(groupTransitTicks, transitTicks);
             }
 
             return groupTransitTicks;
@@ -1820,7 +1950,12 @@ namespace Rebellion.Gameplay
         {
             PlanetSector originSector = origin?.GetParentOfType<PlanetSector>();
             PlanetSector destinationSector = destination?.GetParentOfType<PlanetSector>();
-            return originSector != null && ReferenceEquals(originSector, destinationSector);
+            return originSector != null
+                && (
+                    ReferenceEquals(originSector, destinationSector)
+                    || !string.IsNullOrEmpty(originSector.InstanceID)
+                        && originSector.InstanceID == destinationSector?.InstanceID
+                );
         }
 
         /// <summary>

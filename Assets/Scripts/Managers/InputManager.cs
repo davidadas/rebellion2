@@ -11,6 +11,11 @@ public sealed class InputManager : MonoBehaviour
     private PlayerInputActions _actions;
 
     /// <summary>
+    /// Gets whether application shortcuts should ignore input while another UI interaction owns it.
+    /// </summary>
+    internal bool AreApplicationShortcutsSuppressed { get; private set; }
+
+    /// <summary>
     /// Gets the generated input action wrapper.
     /// </summary>
     public PlayerInputActions Actions
@@ -45,6 +50,15 @@ public sealed class InputManager : MonoBehaviour
     {
         actions = _actions;
         return actions != null;
+    }
+
+    /// <summary>
+    /// Changes whether application shortcut callbacks may act on input.
+    /// </summary>
+    /// <param name="suppressed">Whether application shortcuts should ignore input.</param>
+    internal void SetApplicationShortcutsSuppressed(bool suppressed)
+    {
+        AreApplicationShortcutsSuppressed = suppressed;
     }
 
     /// <summary>

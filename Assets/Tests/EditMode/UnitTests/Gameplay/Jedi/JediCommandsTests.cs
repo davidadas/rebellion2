@@ -407,6 +407,77 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessTick_InTransitCandidate_DoesNotDiscoverCandidate()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+            Officer leia = CreateDormantJedi("LEIA");
+            leia.Movement = TestMovement.Create(transitTicks: 10);
+            _system = new JediCommands(_game, new FixedRNG(0.0));
+
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ProcessTick_CandidateAboardInTransitFleet_DoesNotDiscoverCandidate()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+            Officer leia = CreateDormantJedi("LEIA");
+            Fleet fleet = new Fleet(_alliance.InstanceID, "Alliance Fleet")
+            {
+                InstanceID = "ALLIANCE_FLEET",
+                Movement = TestMovement.Create(transitTicks: 10),
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ALLIANCE_SHIP",
+                OwnerInstanceID = _alliance.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _tatooine);
+            _game.AttachNode(ship, fleet);
+            _game.MoveNode(leia, ship);
+            _system = new JediCommands(_game, new FixedRNG(0.0));
+
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ProcessTick_InTransitScanner_DoesNotDiscoverCandidate()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+            luke.Movement = TestMovement.Create(transitTicks: 10);
+            Officer leia = CreateDormantJedi("LEIA");
+            _system = new JediCommands(_game, new FixedRNG(0.0));
+
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
             // Rank 101 + 0 - 100 = 1%. MaximumRNG returns 0.99 -> roll = 99.0 >= 1%

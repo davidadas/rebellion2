@@ -96,7 +96,6 @@ namespace Rebellion.Gameplay
         {
             if (mission == null || mission.GetParent() == null)
                 return new List<GameResult>();
-
             List<GameResult> results = new List<GameResult>();
             List<Officer> killedParticipants = null;
             foreach (IMissionParticipant participant in mission.GetMainParticipants(true))

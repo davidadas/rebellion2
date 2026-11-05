@@ -19,6 +19,48 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementQueriesTests
     {
+        [TestCase(0)]
+        [TestCase(1)]
+        public void TryEstimateRetargetedTransitTicks_ContinuedFighterJourney_IncludesUnfinishedLeg(
+            int hyperdrive
+        )
+        {
+            var scene = BuildScene(TestConfig.Create());
+            Starfighter fighter = EntityFactory.CreateStarfighter("continuing-fighter", "empire");
+            fighter.Hyperdrive = hyperdrive;
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.origin);
+            fighter.Movement = new MovementState(
+                new MovementLeg(10, scene.origin.GetPosition(), scene.destination.InstanceID),
+                scene.origin.InstanceID,
+                "continuing-group"
+            );
+            fighter.Movement.Advance(4, scene.destination.GetPosition());
+            fighter.Movement.Redirect(
+                new MovementLeg(1, scene.destination.GetPosition(), scene.origin.InstanceID),
+                scene.destination.InstanceID,
+                scene.origin.InstanceID
+            );
+            MovementState before = fighter.Movement.CreateCopy();
+            int onwardTicks = scene.movement.CalculateTransitTicks(
+                fighter,
+                scene.destination,
+                scene.origin
+            );
+
+            bool estimated = scene.movement.TryEstimateRetargetedTransitTicks(
+                fighter,
+                scene.origin,
+                out int ticks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.AreEqual(6 + onwardTicks, ticks);
+            Assert.AreEqual(before.TicksElapsed, fighter.Movement.TicksElapsed);
+            Assert.AreEqual(before.CurrentPosition, fighter.Movement.CurrentPosition);
+            Assert.AreEqual(before.NextLeg.TransitTicks, fighter.Movement.NextLeg.TransitTicks);
+        }
+
         [Test]
         public void GetPreviousLocation_ClearedSavedLocation_DoesNotReviveGraphHistory()
         {
@@ -637,6 +679,39 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsFalse(estimated);
+        }
+
+        [TestCase(false, false, true)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        public void TryEstimateManufacturedTransitTicks_UnownedTemplate_UsesProspectiveOwner(
+            bool hostile,
+            bool blockaded,
+            bool expected
+        )
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementQueries movement
+            ) = BuildScene();
+            Starfighter template = new Starfighter();
+            if (hostile)
+                destination.OwnerInstanceID = "rebels";
+            if (blockaded)
+                AddBlockadingFleet(game, destination);
+
+            bool estimated = movement.TryEstimateManufacturedTransitTicks(
+                template,
+                origin,
+                destination,
+                out _,
+                "empire"
+            );
+
+            Assert.AreEqual(expected, estimated);
         }
 
         [Test]

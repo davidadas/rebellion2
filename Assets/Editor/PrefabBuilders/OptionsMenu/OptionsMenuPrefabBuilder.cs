@@ -579,6 +579,7 @@ public static class OptionsMenuPrefabBuilder
         );
         UserInterfaceOption[] options =
         {
+            UserInterfaceOption.QuickOpenMapItems,
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
             UserInterfaceOption.KeepIdleBarAboveWindows,
@@ -587,14 +588,15 @@ public static class OptionsMenuPrefabBuilder
         };
         string[] labels =
         {
+            "Single Click to Open",
             "Show Idle Bar",
             "Keep Idle Bar Open",
             "Keep Idle Bar Above Windows",
             "Show Unit Card Stats",
             "Show FPS Counter",
         };
-        int[] yPositions = { 70, 96, 122, 148, 206 };
-        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
+        int[] yPositions = { 70, 96, 122, 148, 174, 232 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 210, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {

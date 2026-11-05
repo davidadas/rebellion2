@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds proposals for genuinely surplus shipyards during maintenance distress.
+    /// Builds proposals for surplus shipyard retirement.
     /// </summary>
     public sealed class AIFacilityRemovalPlanner : IAIProposalPlanner
     {
@@ -27,7 +27,10 @@ namespace Rebellion.AI.Planners
             )
                 return proposals;
 
-            if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
+            if (
+                context.Game.Config.AI.Selection.MaintenanceRecovery.Enabled
+                || context.Assessment.ProjectedMaintenanceHeadroom >= 0
+            )
                 return proposals;
 
             int minimumShipyardCount = context.StrategicPlan.GetInfrastructureTarget(

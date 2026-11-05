@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -271,6 +272,7 @@ namespace Rebellion.Tests.Game.Units
         {
             _specialForces.ManufacturingQueueSequence = 7;
             string serialized = SerializationHelper.Serialize(_specialForces);
+            StringAssert.DoesNotContain("IsAIProductionFiller", serialized);
             SpecialForces deserialized = SerializationHelper.Deserialize<SpecialForces>(serialized);
 
             Assert.AreEqual(
@@ -356,6 +358,25 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.Ratings[SkillRating.Leadership],
                 "Leadership rating should be correctly deserialized."
             );
+        }
+
+        [Test]
+        public void Deserialize_LegacyAIProductionMarker_PreservesUnit()
+        {
+            string legacy = SerializationHelper
+                .Serialize(_specialForces)
+                .Replace(
+                    "</SpecialForces>",
+                    "<IsAIProductionFiller>True</IsAIProductionFiller></SpecialForces>"
+                );
+            StringAssert.Contains("IsAIProductionFiller", legacy);
+
+            SpecialForces loaded = SerializationHelper.Deserialize<SpecialForces>(
+                legacy,
+                new GameSerializerSettings { IgnoreUnknownElements = true }
+            );
+
+            Assert.AreEqual(_specialForces.InstanceID, loaded.InstanceID);
         }
     }
 }

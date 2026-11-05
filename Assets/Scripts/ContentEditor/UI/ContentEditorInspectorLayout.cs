@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Units;
 
 /// <summary>
 /// Arranges authored fields around identity, skills, production, and media tasks.
@@ -34,6 +35,12 @@ internal static class ContentEditorInspectorLayout
     internal static IReadOnlyList<ContentPackEditorField> GetFields(ContentPackEditorRecord record)
     {
         List<ContentPackEditorField> fields = record.GetFields().ToList();
+        if (record.Kind == "Building")
+            fields.RemoveAll(field =>
+                field.MemberName
+                    is nameof(Building.ProductionType)
+                        or nameof(Building.WeaponStrength)
+            );
         if (
             ContentEditorUnitFactory.CanCreate(record.Kind)
             && !fields.Any(field => field.MemberName == "SmallDisplayImagePath")

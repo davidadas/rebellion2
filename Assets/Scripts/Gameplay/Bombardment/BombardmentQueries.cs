@@ -176,6 +176,124 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Bounds bombardment remaining after one concentrated planetary defense volley.
+        /// </summary>
+        /// <param name="fleets">Ready fleets exposed to the supplied defenses.</param>
+        /// <param name="planet">The known or live planet supplying defense facts.</param>
+        /// <param name="config">The bombardment rules.</param>
+        /// <returns>Conservative strength, or zero when any ready capital ship could be destroyed.</returns>
+        public static int GetBombardmentStrengthAfterDefenseFire(
+            IEnumerable<Fleet> fleets,
+            Planet planet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleets == null || planet == null || config == null)
+                return 0;
+            List<Fleet> attackers = fleets.Where(fleet => fleet != null).ToList();
+            List<Building> weapons = GetActiveDefenseWeapons(planet).ToList();
+            if (weapons.Count == 0)
+                return GetBombardmentStrength(attackers, config);
+
+            int multiplier = GetDefenseFireMultiplier(planet, config);
+            long shieldDamage = 0;
+            long hullDamage = 0;
+            foreach (Building weapon in weapons)
+            {
+                long damage = Math.Max(0L, (long)weapon.WeaponPower * multiplier);
+                if (weapon.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage)
+                    shieldDamage += damage;
+                else if (weapon.DefenseWeaponEffect == DefenseWeaponEffect.HullDamage)
+                    hullDamage += damage;
+            }
+
+            long total = 0;
+            foreach (Fleet fleet in attackers)
+            {
+                long fleetStrength = 0;
+                foreach (
+                    CapitalShip ship in fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(IsActiveBombardmentUnit)
+                )
+                {
+                    long remainingShield = Math.Max(
+                        0L,
+                        GetEffectiveShieldStrength(ship) - shieldDamage
+                    );
+                    long maximumHullDamage = Math.Max(0L, hullDamage - remainingShield);
+                    long minimumHull = (long)ship.CurrentHullStrength - maximumHullDamage;
+                    if (minimumHull <= 0)
+                        return 0;
+                    fleetStrength += ScaleByCondition(
+                        ship.Bombardment,
+                        (int)minimumHull,
+                        ship.MaxHullStrength
+                    );
+                    fleetStrength += ship.GetChildren<Starfighter>()
+                        .Where(IsActiveBombardmentUnit)
+                        .Sum(fighter =>
+                            ScaleByCondition(
+                                fighter.Bombardment,
+                                fighter.CurrentSquadronSize,
+                                fighter.MaxSquadronSize
+                            )
+                        );
+                }
+                total += fleetStrength * GetBombardmentMultiplier(fleet, config);
+            }
+            return (int)Math.Clamp(total, 0, int.MaxValue);
+        }
+
+        /// <summary>
+        /// Returns complete stationary planetary weapons in their current building order.
+        /// </summary>
+        /// <param name="planet">The planet supplying counterfire facilities.</param>
+        /// <returns>The active weapon facilities.</returns>
+        internal static IEnumerable<Building> GetActiveDefenseWeapons(Planet planet)
+        {
+            return planet
+                .GetAllBuildings()
+                .Where(building =>
+                    IsActiveBombardmentUnit(building)
+                    && building.BuildingType == BuildingType.Weapon
+                );
+        }
+
+        /// <summary>
+        /// Returns the defending general's multiplier for planetary weapon fire.
+        /// </summary>
+        /// <param name="planet">The planet supplying its first eligible general.</param>
+        /// <param name="config">The bombardment rules.</param>
+        /// <returns>The defense fire multiplier.</returns>
+        internal static int GetDefenseFireMultiplier(
+            Planet planet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            int leadership = GetBombardmentLeadership(
+                planet.GetAllOfficers(),
+                OfficerRank.General,
+                planet.GetOwnerInstanceID()
+            );
+            return leadership / config.DefenderLeadershipDivisor + 1;
+        }
+
+        /// <summary>
+        /// Returns a capital ship's shield strength at its current hull condition.
+        /// </summary>
+        /// <param name="ship">The capital ship to evaluate.</param>
+        /// <returns>The effective shield strength.</returns>
+        internal static int GetEffectiveShieldStrength(CapitalShip ship)
+        {
+            return ScaleByCondition(
+                ship.MaxShieldStrength,
+                ship.CurrentHullStrength,
+                ship.MaxHullStrength
+            );
+        }
+
+        /// <summary>
         /// Returns projected bombardment strength for a fleet.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>

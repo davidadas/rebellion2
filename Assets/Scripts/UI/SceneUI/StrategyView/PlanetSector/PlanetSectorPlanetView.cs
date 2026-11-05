@@ -445,7 +445,7 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
-    /// Reports a completed left click and double click over a visible planet element.
+    /// Reports a completed left click over a visible planet element.
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
@@ -456,8 +456,7 @@ public sealed class PlanetSectorPlanetView
         )
             return;
 
-        if (eventData.clickCount > 1)
-            Clicked?.Invoke(this, element, eventData);
+        Clicked?.Invoke(this, element, eventData);
         Released?.Invoke(this, element, eventData);
     }
 

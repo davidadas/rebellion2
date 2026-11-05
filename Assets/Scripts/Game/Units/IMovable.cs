@@ -22,8 +22,11 @@ namespace Rebellion.Game.Units
             if (Movement != null)
                 return Movement;
 
-            MovementState capitalShipMovement = GetParentOfType<CapitalShip>()?.Movement;
-            return capitalShipMovement ?? GetParentOfType<Fleet>()?.Movement;
+            ISceneNode parent = GetParent();
+            if (parent is CapitalShip ship)
+                return ship.Movement ?? (ship.GetParent() as Fleet)?.Movement;
+
+            return (parent as Fleet)?.Movement;
         }
 
         /// <summary>

@@ -233,21 +233,17 @@ namespace Rebellion.Game.Galaxy
         {
             if (IsDestroyed)
                 return false;
-            bool hasHostile = GetChildren<Fleet>()
-                .Any(f =>
-                    f.Movement == null
-                    && (
-                        string.IsNullOrEmpty(OwnerInstanceID)
-                        || f.OwnerInstanceID != OwnerInstanceID
-                    )
-                    && f.HasOperationalCapitalShips()
-                );
-            bool hasDefender = GetChildren<Fleet>()
-                .Any(f =>
-                    f.Movement == null
-                    && f.OwnerInstanceID == OwnerInstanceID
-                    && f.HasOperationalCapitalShips()
-                );
+            IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
+            bool hasHostile = fleets.Any(f =>
+                f.Movement == null
+                && (string.IsNullOrEmpty(OwnerInstanceID) || f.OwnerInstanceID != OwnerInstanceID)
+                && f.HasOperationalCapitalShips()
+            );
+            bool hasDefender = fleets.Any(f =>
+                f.Movement == null
+                && f.OwnerInstanceID == OwnerInstanceID
+                && f.HasOperationalCapitalShips()
+            );
 
             return hasHostile && !hasDefender;
         }
@@ -588,16 +584,19 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="faction">The faction whose garrison requirement is evaluated.</param>
         /// <param name="config">The configured support threshold, divisor, and uprising multiplier.</param>
+        /// <param name="popularSupport">The assumed support percentage, or null to use current support.</param>
         /// <returns>The required regiment count.</returns>
-        internal int GetGarrisonRequirement(Faction faction, GameConfig.GarrisonConfig config)
+        internal int GetGarrisonRequirement(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int? popularSupport = null
+        )
         {
-            int popularSupport = GetPopularSupport(faction.InstanceID);
-            if (popularSupport >= config.SupportThreshold)
+            int support = popularSupport ?? GetPopularSupport(faction.InstanceID);
+            if (support >= config.SupportThreshold)
                 return 0;
             int garrison = (int)
-                Math.Ceiling(
-                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
-                );
+                Math.Ceiling((config.SupportThreshold - support) / (double)config.GarrisonDivisor);
             PlanetSector sector = GetParentOfType<PlanetSector>();
             garrison /= sector?.GetSectorSuppressionDivisor(faction.InstanceID) ?? 1;
             if (IsInUprising)
@@ -1483,19 +1482,68 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(Planet))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            List<Fleet> fleets = _fleets;
+            for (int index = 0; index < fleets.Count; index++)
+                collector.Add(fleets[index]);
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                collector.Add(officers[index]);
+            List<Mission> missions = _missions;
+            for (int index = 0; index < missions.Count; index++)
+                collector.Add(missions[index]);
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                collector.Add(regiments[index]);
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                collector.Add(specialForces[index]);
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                collector.Add(starfighters[index]);
+            List<Building> buildings = _buildings;
+            for (int index = 0; index < buildings.Count; index++)
+                collector.Add(buildings[index]);
+        }
+
+        /// <summary>
         /// Gets the child nodes of the planet.
         /// </summary>
         /// <returns>An enumerable of child nodes.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return _fleets
-                .Cast<ISceneNode>()
-                .Concat(_officers)
-                .Concat(_missions)
-                .Concat(_regiments)
-                .Concat(_specialForces)
-                .Concat(_starfighters)
-                .Concat(_buildings);
+            List<Fleet> fleets = _fleets;
+            for (int index = 0; index < fleets.Count; index++)
+                yield return fleets[index];
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                yield return officers[index];
+            List<Mission> missions = _missions;
+            for (int index = 0; index < missions.Count; index++)
+                yield return missions[index];
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                yield return regiments[index];
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                yield return specialForces[index];
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                yield return starfighters[index];
+            List<Building> buildings = _buildings;
+            for (int index = 0; index < buildings.Count; index++)
+                yield return buildings[index];
         }
     }
 }

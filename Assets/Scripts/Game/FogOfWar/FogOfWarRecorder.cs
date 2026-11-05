@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
@@ -33,6 +34,35 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             RecordPlanetSnapshot(faction, planet, sector, currentTick, false);
+        }
+
+        /// <summary>
+        /// Records an ordered refresh using one lookup of previously remembered locations.
+        /// </summary>
+        /// <param name="faction">The faction receiving the observations.</param>
+        /// <param name="planets">The distinct planets in observation order.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        internal void RecordPlanetSnapshots(
+            Faction faction,
+            IEnumerable<Planet> planets,
+            int currentTick
+        )
+        {
+            ILookup<string, string> rememberedLocations = faction.Fog.EntityLastSeenAt.ToLookup(
+                entry => entry.Value,
+                entry => entry.Key
+            );
+            foreach (Planet planet in planets)
+            {
+                RecordPlanetSnapshot(
+                    faction,
+                    planet,
+                    planet.GetParentOfType<PlanetSector>(),
+                    currentTick,
+                    false,
+                    rememberedLocations[planet.InstanceID]
+                );
+            }
         }
 
         /// <summary>
@@ -545,6 +575,13 @@ namespace Rebellion.Game.FogOfWar
             if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
                 UpdatePlanetState(snapshot, planet, currentTick);
             snapshot.RevealedCategories = accumulatedCategories;
+            if (
+                categories.HasFlag(
+                    PlanetIntelligenceCategory.CapitalShips
+                        | PlanetIntelligenceCategory.Starfighters
+                )
+            )
+                snapshot.OrbitalTickCaptured = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories);
             UpdateFleetIntelligence(faction, planet, snapshot, categories, accumulatedCategories);
             UpdateGroundForceIntelligence(faction, planet, snapshot, categories);
@@ -609,7 +646,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             snapshot.Fleets.Clear();
-            AddFleetsToSnapshot(faction, planet, snapshot, true);
+            AddFleetsToSnapshot(faction, planet.GetChildren<Fleet>(), snapshot, true);
             FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
         }
 
@@ -920,12 +957,14 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
         /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
+        /// <param name="rememberedEntityIds">The initially remembered entities, or null for a single observation.</param>
         private void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
             PlanetSector sector,
             int currentTick,
-            bool includeEspionageIntelligence
+            bool includeEspionageIntelligence,
+            IEnumerable<string> rememberedEntityIds = null
         )
         {
             if (faction == null || planet == null || sector == null)
@@ -941,17 +980,29 @@ namespace Rebellion.Game.FogOfWar
             );
 
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
-            AddOfficersToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
-            AddFleetsToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
+            planetSnapshot.OrbitalTickCaptured = currentTick;
+            IReadOnlyList<ISceneNode> activeChildren = planet.GetChildren();
+            AddOfficersToSnapshot(
+                faction,
+                activeChildren.OfType<Officer>(),
+                planetSnapshot,
+                includeEspionageIntelligence
+            );
+            AddFleetsToSnapshot(
+                faction,
+                activeChildren.OfType<Fleet>(),
+                planetSnapshot,
+                includeEspionageIntelligence
+            );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<Regiment>(),
+                activeChildren.OfType<Regiment>(),
                 planetSnapshot.Regiments,
                 faction,
                 includeEspionageIntelligence,
                 currentTick
             );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<SpecialForces>(),
+                activeChildren.OfType<SpecialForces>(),
                 planetSnapshot.SpecialForces,
                 faction,
                 includeEspionageIntelligence,
@@ -965,7 +1016,7 @@ namespace Rebellion.Game.FogOfWar
                 currentTick
             );
             AddEntityCopiesToSnapshot(
-                planet.GetChildren<Starfighter>(),
+                activeChildren.OfType<Starfighter>(),
                 planetSnapshot.Starfighters,
                 faction,
                 includeEspionageIntelligence,
@@ -987,7 +1038,12 @@ namespace Rebellion.Game.FogOfWar
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
             }
 
-            ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
+            ReconcileEntityLocations(
+                faction,
+                planet.InstanceID,
+                planetSnapshot,
+                rememberedEntityIds
+            );
             sectorSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
@@ -1066,18 +1122,26 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction whose fog state is being updated.</param>
         /// <param name="planetId">The observed planet instance ID.</param>
         /// <param name="snapshot">The replacement snapshot for the observed planet.</param>
+        /// <param name="rememberedEntityIds">The initially remembered entities, or null to scan current locations.</param>
         private void ReconcileEntityLocations(
             Faction faction,
             string planetId,
-            PlanetSnapshot snapshot
+            PlanetSnapshot snapshot,
+            IEnumerable<string> rememberedEntityIds = null
         )
         {
             HashSet<string> snapshotEntityIds = GetSnapshotEntityIDs(snapshot);
-            List<string> absentEntityIds = faction
-                .Fog.EntityLastSeenAt.Where(entry =>
-                    entry.Value == planetId && !snapshotEntityIds.Contains(entry.Key)
+            List<string> absentEntityIds = (
+                rememberedEntityIds
+                ?? faction
+                    .Fog.EntityLastSeenAt.Where(entry => entry.Value == planetId)
+                    .Select(entry => entry.Key)
+            )
+                .Where(entityId =>
+                    faction.Fog.EntityLastSeenAt.TryGetValue(entityId, out string location)
+                    && location == planetId
+                    && !snapshotEntityIds.Contains(entityId)
                 )
-                .Select(entry => entry.Key)
                 .ToList();
 
             foreach (string entityId in absentEntityIds)
@@ -1094,24 +1158,64 @@ namespace Rebellion.Game.FogOfWar
         /// <returns>The represented entity instance IDs.</returns>
         private static HashSet<string> GetSnapshotEntityIDs(PlanetSnapshot snapshot)
         {
-            IEnumerable<ISceneNode> fleetEntities = snapshot.Fleets.SelectMany(fleet =>
-                fleet.GetChildren<ISceneNode>(recursive: true).Prepend(fleet)
-            );
-            IEnumerable<ISceneNode> missionEntities = snapshot.Missions.SelectMany(mission =>
-                mission.GetChildren<ISceneNode>(recursive: true).Prepend(mission)
-            );
-            return snapshot
-                .Officers.Cast<ISceneNode>()
-                .Concat(fleetEntities)
-                .Concat(missionEntities)
-                .Concat(snapshot.Regiments)
-                .Concat(snapshot.SpecialForces)
-                .Concat(snapshot.Buildings)
-                .Concat(snapshot.Starfighters)
-                .Concat(snapshot.ManufacturingQueueItems.OfType<ISceneNode>())
-                .Select(entity => entity.InstanceID)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .ToHashSet();
+            List<Fleet> fleets = snapshot.Fleets ?? throw new ArgumentNullException("source");
+            List<Mission> missions = snapshot.Missions ?? throw new ArgumentNullException("source");
+            List<Officer> officers = snapshot.Officers ?? throw new ArgumentNullException("source");
+            List<Regiment> regiments =
+                snapshot.Regiments ?? throw new ArgumentNullException("second");
+            List<SpecialForces> specialForces =
+                snapshot.SpecialForces ?? throw new ArgumentNullException("second");
+            List<Building> buildings =
+                snapshot.Buildings ?? throw new ArgumentNullException("second");
+            List<Starfighter> starfighters =
+                snapshot.Starfighters ?? throw new ArgumentNullException("second");
+            List<IManufacturable> manufacturingItems =
+                snapshot.ManufacturingQueueItems ?? throw new ArgumentNullException("source");
+            HashSet<string> entityIds = new HashSet<string>();
+            foreach (Officer officer in officers)
+                AddSnapshotEntityID(entityIds, officer);
+            foreach (Fleet fleet in fleets)
+            {
+                IReadOnlyList<ISceneNode> descendants = fleet.GetChildren<ISceneNode>(
+                    recursive: true
+                );
+                AddSnapshotEntityID(entityIds, fleet);
+                foreach (ISceneNode descendant in descendants)
+                    AddSnapshotEntityID(entityIds, descendant);
+            }
+            foreach (Mission mission in missions)
+            {
+                IReadOnlyList<ISceneNode> descendants = mission.GetChildren<ISceneNode>(
+                    recursive: true
+                );
+                AddSnapshotEntityID(entityIds, mission);
+                foreach (ISceneNode descendant in descendants)
+                    AddSnapshotEntityID(entityIds, descendant);
+            }
+            foreach (Regiment regiment in regiments)
+                AddSnapshotEntityID(entityIds, regiment);
+            foreach (SpecialForces unit in specialForces)
+                AddSnapshotEntityID(entityIds, unit);
+            foreach (Building building in buildings)
+                AddSnapshotEntityID(entityIds, building);
+            foreach (Starfighter starfighter in starfighters)
+                AddSnapshotEntityID(entityIds, starfighter);
+            foreach (IManufacturable item in manufacturingItems)
+                if (item is ISceneNode entity)
+                    AddSnapshotEntityID(entityIds, entity);
+            return entityIds;
+        }
+
+        /// <summary>
+        /// Adds one represented entity's nonempty identifier to the snapshot's independent set.
+        /// </summary>
+        /// <param name="entityIds">The identifiers already collected for this snapshot.</param>
+        /// <param name="entity">The next entity in snapshot traversal order.</param>
+        private static void AddSnapshotEntityID(HashSet<string> entityIds, ISceneNode entity)
+        {
+            string entityId = entity.InstanceID;
+            if (!string.IsNullOrEmpty(entityId))
+                entityIds.Add(entityId);
         }
 
         /// <summary>
@@ -1370,17 +1474,17 @@ namespace Rebellion.Game.FogOfWar
         /// Adds visible officers to a planet snapshot.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="planet">The observed planet.</param>
+        /// <param name="officers">The active officers at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeInTransit">Whether moving officers should be included.</param>
         private void AddOfficersToSnapshot(
             Faction faction,
-            Planet planet,
+            IEnumerable<Officer> officers,
             PlanetSnapshot snapshot,
             bool includeInTransit
         )
         {
-            foreach (Officer officer in planet.GetChildren<Officer>())
+            foreach (Officer officer in officers)
             {
                 if (officer.OwnerInstanceID == faction.InstanceID && !officer.IsCaptured)
                 {
@@ -1399,17 +1503,17 @@ namespace Rebellion.Game.FogOfWar
         /// Adds visible fleets to a planet snapshot.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="planet">The observed planet.</param>
+        /// <param name="fleets">The active fleets at the observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
-            Planet planet,
+            IEnumerable<Fleet> fleets,
             PlanetSnapshot snapshot,
             bool includeEspionageIntelligence
         )
         {
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            foreach (Fleet fleet in fleets)
             {
                 if (fleet.GetChildren<CapitalShip>().Count == 0)
                     continue;
@@ -1577,21 +1681,27 @@ namespace Rebellion.Game.FogOfWar
 
             MergeManufacturingEntities(
                 snapshot.Regiments,
-                previousSnapshot.Regiments.Where(item => liveEntityIds.Contains(item.InstanceID))
+                previousSnapshot.Regiments.Where(item => liveEntityIds.Contains(item.InstanceID)),
+                observedIds
             );
             MergeManufacturingEntities(
                 snapshot.SpecialForces,
                 previousSnapshot.SpecialForces.Where(item =>
                     liveEntityIds.Contains(item.InstanceID)
-                )
+                ),
+                observedIds
             );
             MergeManufacturingEntities(
                 snapshot.Buildings,
-                previousSnapshot.Buildings.Where(item => liveEntityIds.Contains(item.InstanceID))
+                previousSnapshot.Buildings.Where(item => liveEntityIds.Contains(item.InstanceID)),
+                observedIds
             );
             MergeManufacturingEntities(
                 snapshot.Starfighters,
-                previousSnapshot.Starfighters.Where(item => liveEntityIds.Contains(item.InstanceID))
+                previousSnapshot.Starfighters.Where(item =>
+                    liveEntityIds.Contains(item.InstanceID)
+                ),
+                observedIds
             );
             MergeManufacturingFleets(snapshot.Fleets, previousSnapshot.Fleets, liveEntityIds);
         }
@@ -1608,7 +1718,26 @@ namespace Rebellion.Game.FogOfWar
         )
             where T : class, IManufacturable
         {
-            HashSet<string> existingIds = destination.Select(item => item.InstanceID).ToHashSet();
+            MergeManufacturingEntities(destination, source, new HashSet<string>());
+        }
+
+        /// <summary>
+        /// Adds unfinished entities using an existing identifier set as temporary workspace.
+        /// </summary>
+        /// <typeparam name="T">The manufacturable scene-node type.</typeparam>
+        /// <param name="destination">The snapshot list receiving unfinished entities.</param>
+        /// <param name="source">The previously observed entities to inspect.</param>
+        /// <param name="existingIds">Temporary identifier storage cleared before inspecting the destination.</param>
+        private static void MergeManufacturingEntities<T>(
+            List<T> destination,
+            IEnumerable<T> source,
+            HashSet<string> existingIds
+        )
+            where T : class, IManufacturable
+        {
+            existingIds.Clear();
+            foreach (string instanceID in destination.Select(item => item.InstanceID))
+                existingIds.Add(instanceID);
             foreach (T item in source.Where(IsManufacturingInProgress))
             {
                 if (existingIds.Add(item.InstanceID))
@@ -2093,19 +2222,20 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
         {
-            snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
-            snapshot.Fleets.RemoveAll(f => f.InstanceID == entityId);
-            snapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
-            snapshot.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
-            snapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
-            snapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
+            System.Predicate<ISceneNode> matchesEntity = entity => entity.InstanceID == entityId;
+            snapshot.Officers.RemoveAll(matchesEntity);
+            snapshot.Fleets.RemoveAll(matchesEntity);
+            snapshot.Regiments.RemoveAll(matchesEntity);
+            snapshot.SpecialForces.RemoveAll(matchesEntity);
+            snapshot.Buildings.RemoveAll(matchesEntity);
+            snapshot.Starfighters.RemoveAll(matchesEntity);
             snapshot.Missions.RemoveAll(mission =>
                 mission.InstanceID == entityId
                 || mission
                     .GetChildren<ISceneNode>(recursive: true, includeDisabled: true)
                     .Any(participant => participant.InstanceID == entityId)
             );
-            snapshot.ManufacturingQueueItems.RemoveAll(item => item.InstanceID == entityId);
+            snapshot.ManufacturingQueueItems.RemoveAll(matchesEntity);
 
             foreach (Fleet fleet in snapshot.Fleets)
                 RemoveEntityFromFleet(fleet, entityId);
@@ -2133,12 +2263,11 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
-            ship.RemoveChildren<Officer>(officer => officer.InstanceID == entityId);
-            ship.RemoveChildren<Regiment>(regiment => regiment.InstanceID == entityId);
-            ship.RemoveChildren<SpecialForces>(specialForces =>
-                specialForces.InstanceID == entityId
-            );
-            ship.RemoveChildren<Starfighter>(starfighter => starfighter.InstanceID == entityId);
+            System.Func<ISceneNode, bool> matchesEntity = entity => entity.InstanceID == entityId;
+            ship.RemoveChildren<Officer>(matchesEntity);
+            ship.RemoveChildren<Regiment>(matchesEntity);
+            ship.RemoveChildren<SpecialForces>(matchesEntity);
+            ship.RemoveChildren<Starfighter>(matchesEntity);
         }
 
         /// <summary>

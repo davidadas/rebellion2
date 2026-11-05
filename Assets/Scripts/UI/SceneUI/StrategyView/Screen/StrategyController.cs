@@ -344,7 +344,7 @@ public sealed class StrategyController
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
 
-        galaxyMapController = new GalaxyMapController(() => uiContext);
+        galaxyMapController = new GalaxyMapController(() => uiContext, GetQuickOpenMapItems);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
         contextMenuController = new ContextMenuController();
@@ -645,7 +645,8 @@ public sealed class StrategyController
             () =>
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
-            GetSelectedFleetInstanceIds
+            GetSelectedFleetInstanceIds,
+            GetQuickOpenMapItems
         );
         missionsWindowController = new MissionsWindowController(
             () => uiContext,
@@ -2027,6 +2028,18 @@ public sealed class StrategyController
     {
         return AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowMissionOdds
             ?? true;
+    }
+
+    /// <summary>
+    /// Returns whether campaign-map items should open on their first click.
+    /// </summary>
+    /// <returns>True when quick map opening is enabled; otherwise false.</returns>
+    private static bool GetQuickOpenMapItems()
+    {
+        return AppBootstrap
+                .Instance?.GetUserSettingsManager()
+                ?.Settings?.UserInterface?.QuickOpenMapItems
+            ?? false;
     }
 
     /// <summary>

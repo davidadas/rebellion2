@@ -83,36 +83,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Moves a fleet and keeps units already joining it synchronized with its arrival.
-        /// </summary>
-        /// <param name="fleet">The fleet receiving the movement order.</param>
-        /// <param name="destination">The requested destination.</param>
-        internal void RequestCoordinatedMove(Fleet fleet, ContainerNode destination)
-        {
-            RequestMove(fleet, destination);
-            AlignInboundUnits(fleet);
-        }
-
-        /// <summary>
-        /// Delays units already joining a moving fleet so they arrive with it.
-        /// </summary>
-        /// <param name="fleet">The moving destination fleet.</param>
-        private static void AlignInboundUnits(Fleet fleet)
-        {
-            if (fleet?.Movement == null)
-                return;
-
-            int fleetTransitTicks = fleet.Movement.TicksRemaining();
-            foreach (IMovable joiner in fleet.GetChildren<IMovable>(recursive: true))
-            {
-                if (joiner.Movement == null)
-                    continue;
-
-                joiner.Movement.RetimeCurrentLeg(fleetTransitTicks);
-            }
-        }
-
-        /// <summary>
         /// Attempts to move a complete unit group to the first destination that accepts it.
         /// </summary>
         /// <param name="units">The units that must move together.</param>
@@ -2314,7 +2284,8 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Replaces a movement group's active routes while preserving one common arrival time.
+        /// Updates a movement group's routes while preserving unfinished fighter legs,
+        /// existing continuations, and one common arrival time.
         /// </summary>
         /// <param name="movables">The moving units to retarget together.</param>
         /// <param name="destinationPlanet">The new destination planet.</param>
@@ -2330,10 +2301,37 @@ namespace Rebellion.Gameplay
             foreach (IMovable movable in movables)
             {
                 MovementState movement = movable.Movement;
-                Point currentPosition = movement.CurrentPosition;
-                movement.Retarget(
-                    new MovementLeg(transitTicks, currentPosition, destinationPlanet.InstanceID)
-                );
+                Planet legDestination =
+                    movable is Starfighter || movement.NextLeg != null
+                        ? _game.GetSceneNodeByInstanceID<Planet>(
+                            movement.DestinationPlanetInstanceID
+                        )
+                        : null;
+                Point? legEndpoint =
+                    movement.NextLeg?.OriginPosition ?? legDestination?.GetPosition();
+                if (legEndpoint.HasValue)
+                {
+                    int currentLegTicksRemaining = movement.TransitTicks - movement.TicksElapsed;
+                    movement.Redirect(
+                        new MovementLeg(
+                            transitTicks - currentLegTicksRemaining,
+                            legEndpoint.Value,
+                            destinationPlanet.InstanceID
+                        ),
+                        movement.DestinationPlanetInstanceID,
+                        movement.PreviousLocationInstanceID
+                    );
+                }
+                else
+                {
+                    movement.Retarget(
+                        new MovementLeg(
+                            transitTicks,
+                            movement.CurrentPosition,
+                            destinationPlanet.InstanceID
+                        )
+                    );
+                }
             }
         }
 

@@ -19,10 +19,18 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
-        [Test]
-        public void RequestMove_FleetWithRedirectedInboundFighter_PreservesDepartureHistory()
+        [TestCase(0, false)]
+        [TestCase(1, false)]
+        [TestCase(0, true)]
+        [TestCase(1, true)]
+        public void RequestMove_FleetWithRedirectedInboundFighter_PreservesActiveLegAndDepartureHistory(
+            int hyperdrive,
+            bool moveAgain
+        )
         {
-            var scene = BuildScene(TestConfig.Create());
+            GameConfig config = TestConfig.Create();
+            config.Movement.SameSectorMinTransitTicks = 5;
+            var scene = BuildScene(config);
             Planet blocked = new Planet
             {
                 InstanceID = "blocked-destination",
@@ -38,15 +46,63 @@ namespace Rebellion.Tests.Gameplay
             scene.game.AttachNode(carrier, fleet);
             Starfighter fighter = EntityFactory.CreateStarfighter("incoming-fighter", "empire");
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = hyperdrive;
             scene.game.AttachNode(fighter, scene.origin);
             scene.movement.RequestMove(fighter, blocked);
+            MovementTickProcessor processor = new(scene.movement);
+            processor.ProcessTick(scene.game);
             scene.movement.RedirectMovement(fighter, carrier, new List<GameResult>());
             MovementState movement = fighter.Movement;
+            MovementState before = movement.CreateCopy();
 
             scene.movement.RequestMove(fleet, scene.origin);
+            if (moveAgain)
+            {
+                while (fleet.Movement != null)
+                    processor.ProcessTick(scene.game);
+                Assert.IsNotNull(fighter.Movement);
+                before = movement.CreateCopy();
+                Assert.IsTrue(scene.movement.TryRequestMove(fleet, blocked));
+            }
+
+            Planet destination = moveAgain ? blocked : scene.origin;
+            Planet legDestination = scene.game.GetSceneNodeByInstanceID<Planet>(
+                before.DestinationPlanetInstanceID
+            );
+            MovementQueries queries = new(scene.game);
+            int onwardTicks =
+                legDestination.GetPosition() == destination.GetPosition()
+                    ? 0
+                    : queries.CalculateTransitTicks(fighter, legDestination, destination);
+            int expectedTicks = before.TransitTicks - before.TicksElapsed + onwardTicks;
 
             Assert.AreEqual(scene.origin.InstanceID, fighter.Movement.PreviousLocationInstanceID);
             Assert.AreSame(movement, fighter.Movement);
+            Assert.AreEqual(before.OriginPosition, movement.OriginPosition);
+            Assert.AreEqual(before.CurrentPosition, movement.CurrentPosition);
+            Assert.AreEqual(before.TicksElapsed, movement.TicksElapsed);
+            Assert.AreEqual(legDestination.InstanceID, movement.DestinationPlanetInstanceID);
+            Assert.AreEqual(legDestination.GetPosition(), movement.NextLeg.OriginPosition);
+            Assert.AreEqual(destination.InstanceID, movement.NextLeg.DestinationPlanetInstanceID);
+            Assert.AreEqual(onwardTicks, movement.NextLeg.TransitTicks);
+            Assert.AreEqual(expectedTicks, movement.TicksRemaining());
+
+            List<GameResult> results = new();
+            for (int tick = 0; tick < expectedTicks - 1; tick++)
+                results.AddRange(processor.ProcessTick(scene.game));
+            Assert.IsNotNull(fighter.Movement);
+            Assert.IsFalse(
+                results.OfType<UnitArrivedResult>().Any(result => result.Unit == fighter)
+            );
+
+            results.AddRange(processor.ProcessTick(scene.game));
+
+            Assert.IsNull(fighter.Movement);
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == fighter)
+            );
         }
 
         [Test]
@@ -1622,6 +1678,17 @@ namespace Rebellion.Tests.Gameplay
                 unit => unit,
                 unit => unit.Movement.CreateCopy()
             );
+            MovementQueries queries = new(game);
+            Dictionary<IMovable, int> estimatedDurations = inboundUnits.ToDictionary(
+                unit => unit,
+                unit =>
+                {
+                    Assert.IsTrue(
+                        queries.TryEstimateRetargetedTransitTicks(unit, planetC, out int ticks)
+                    );
+                    return ticks;
+                }
+            );
 
             movement.RequestMove(destinationFleet, planetC);
 
@@ -1631,7 +1698,9 @@ namespace Rebellion.Tests.Gameplay
                 Assert.IsNotNull(inboundUnit.Movement);
                 Assert.AreSame(activeMovements[inboundUnit], inboundUnit.Movement);
                 Assert.AreEqual(
-                    previousMovement.CurrentPosition,
+                    inboundUnit is Starfighter
+                        ? previousMovement.OriginPosition
+                        : previousMovement.CurrentPosition,
                     inboundUnit.Movement.OriginPosition
                 );
                 Assert.AreEqual(
@@ -1642,9 +1711,16 @@ namespace Rebellion.Tests.Gameplay
                     previousMovement.MovementGroupID,
                     inboundUnit.Movement.MovementGroupID
                 );
-                Assert.AreEqual(0, inboundUnit.Movement.TicksElapsed);
+                Assert.AreEqual(
+                    inboundUnit is Starfighter ? previousMovement.TicksElapsed : 0,
+                    inboundUnit.Movement.TicksElapsed
+                );
+                Assert.AreEqual(
+                    estimatedDurations[inboundUnit],
+                    inboundUnit.Movement.TicksRemaining()
+                );
                 Assert.Greater(
-                    inboundUnit.Movement.TransitTicks,
+                    inboundUnit.Movement.TicksRemaining(),
                     previousMovement.TicksRemaining()
                 );
             }

@@ -89,7 +89,8 @@ namespace Rebellion.Gameplay
                 && officer.ForceRank >= threshold
                 && !officer.IsCaptured
                 && !officer.IsKilled
-                && !officer.IsOnMission();
+                && !officer.IsOnMission()
+                && ((IMovable)officer).GetTransitMovement() == null;
 
             if (shouldDiscover && !officer.IsDiscoveringForceUser)
             {
@@ -172,6 +173,7 @@ namespace Rebellion.Gameplay
                 string.IsNullOrEmpty(scannerOwnerInstanceID)
                 || candidate.GetOwnerInstanceID() != scannerOwnerInstanceID
                 || !candidate.IsUndiscoveredForceUser()
+                || ((IMovable)candidate).GetTransitMovement() != null
             )
                 return false;
 
