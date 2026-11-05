@@ -279,6 +279,68 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.IsTrue(game.GetEventPool().Contains(gameEvent));
         }
 
+        [Test]
+        public void HandleResults_CompletedTargetChangesOwnership_PreservesCompletion()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(planet, sector);
+            GameEvent gameEvent = CreateScopedEvent();
+            gameEvent.Schedule.Every.Until.Add(
+                new IsOwnedConditional
+                {
+                    PlanetBinding = "planet",
+                    FactionInstanceID = alliance.InstanceID,
+                }
+            );
+            game.GetEventPool().Add(gameEvent);
+            var random = new FixedRNG();
+            GameEventCommands commands = new(game, random, new GameActionCommands(game, random));
+            GameEventObserver observer = new(commands);
+            commands.ProcessScheduledEvents(game.GetEventPool());
+            GameEventState completed = game
+                .EventRuntime.GetState(gameEvent.InstanceID)
+                .ScopedStates[planet.InstanceID];
+            planet.OwnerInstanceID = empire.InstanceID;
+
+            observer.HandleResults(
+                new GameResult[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        PreviousOwner = alliance,
+                        Tick = 1,
+                    },
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        NewOwner = empire,
+                        Tick = 2,
+                    },
+                }
+            );
+            game.CurrentTick = 100;
+            commands.ProcessScheduledEvents(game.GetEventPool());
+
+            Assert.AreSame(
+                completed,
+                game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[planet.InstanceID]
+            );
+            Assert.IsTrue(completed.IsComplete);
+            Assert.Zero(completed.ActivationCount);
+        }
+
         /// <summary>
         /// Creates a one-shot result-triggered event for observer boundary tests.
         /// </summary>

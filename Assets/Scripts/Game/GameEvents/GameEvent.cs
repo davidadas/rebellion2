@@ -15,7 +15,7 @@ namespace Rebellion.Game.GameEvents
     }
 
     /// <summary>
-    /// Persists the activation history for one authored event definition.
+    /// Persists aggregate event history or one target's independent schedule history.
     /// </summary>
     [PersistableObject]
     public sealed class GameEventState
@@ -30,8 +30,12 @@ namespace Rebellion.Game.GameEvents
     }
 
     /// <summary>
-    /// Executes one scheduled event independently for every selected scene node.
+    /// Gives each deterministically selected scene node an independent recurring schedule.
     /// </summary>
+    /// <remarks>
+    /// The target alias is bound before ordinary event bindings. Target schedules share the
+    /// event's activation limit and aggregate history; target completion remains permanent.
+    /// </remarks>
     [PersistableObject(Name = "ForEach")]
     public sealed class GameEventScope
     {

@@ -154,18 +154,40 @@ namespace Rebellion.Gameplay.Scripting
         /// <param name="game">The game.</param>
         /// <returns>The selected value.</returns>
         private static IEnumerable<ISceneNode> Select(SelectPlanets definition, GameRoot game) =>
-            SelectOwned(definition, game)
-                .Where(planet => !planet.IsDestroyed)
-                .Where(planet =>
-                    !definition.IsOwned.HasValue
-                    || definition.IsOwned.Value
-                        == !string.IsNullOrWhiteSpace(planet.OwnerInstanceID)
-                )
-                .Where(planet =>
-                    !definition.SectorType.HasValue
-                    || planet.GetParentOfType<PlanetSector>()?.SectorType
-                        == definition.SectorType.Value
-                );
+            game.GetRegisteredSceneNodesByType<Planet>(includeDisabled: definition.IncludeInactive)
+                .Where(planet => Matches(definition, planet, planet.OwnerInstanceID));
+
+        /// <summary>
+        /// Tests planet selection using the owner at a particular transition boundary.
+        /// </summary>
+        /// <param name="definition">The authored planet selector.</param>
+        /// <param name="planet">The planet whose selection is evaluated.</param>
+        /// <param name="ownerInstanceID">The owner to use for ownership filters.</param>
+        /// <returns>True when the planet matches every selector filter.</returns>
+        internal static bool Matches(
+            SelectPlanets definition,
+            Planet planet,
+            string ownerInstanceID
+        ) =>
+            planet.GetParent() != null
+            && !planet.IsDestroyed
+            && (definition.IncludeInactive || planet.IsActive())
+            && (
+                string.IsNullOrWhiteSpace(definition.InstanceID)
+                || definition.InstanceID == planet.InstanceID
+            )
+            && (
+                string.IsNullOrWhiteSpace(definition.OwnerFactionInstanceID)
+                || definition.OwnerFactionInstanceID == ownerInstanceID
+            )
+            && (
+                !definition.IsOwned.HasValue
+                || definition.IsOwned.Value == !string.IsNullOrWhiteSpace(ownerInstanceID)
+            )
+            && (
+                !definition.SectorType.HasValue
+                || planet.GetParentOfType<PlanetSector>()?.SectorType == definition.SectorType.Value
+            );
 
         /// <summary>
         /// Returns active planet sectors that match the authored filters.

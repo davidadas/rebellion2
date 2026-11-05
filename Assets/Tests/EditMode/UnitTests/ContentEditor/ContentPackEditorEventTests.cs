@@ -93,6 +93,26 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(project.CanUndo);
         }
 
+        [TestCase("<At Tick=\"10\"/>")]
+        [TestCase("<RandomDelay MinimumTicks=\"1\" MaximumTicks=\"10\"/>")]
+        [TestCase("<After EventInstanceID=\"other\" DelayTicks=\"1\"/>")]
+        public void SetEventXml_ScopedOneShotSchedule_RejectsWithoutChangingContent(string schedule)
+        {
+            string before = events.Document.Text;
+            string xml =
+                "<GameEvent><InstanceID>unique-scoped-event</InstanceID>"
+                + "<ForEach As=\"planet\"><From><SelectPlanets/></From></ForEach>"
+                + $"<Schedule>{schedule}</Schedule></GameEvent>";
+
+            Assert.Throws<InvalidOperationException>(() =>
+                project.SetEventXml(events.Records.First(), xml)
+            );
+
+            Assert.AreEqual(before, events.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+        }
+
         [Test]
         public void SetEventXml_DuplicateIdentity_RejectsTheEdit()
         {

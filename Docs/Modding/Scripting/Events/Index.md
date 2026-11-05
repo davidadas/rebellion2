@@ -104,6 +104,57 @@ until their limit is reached.
 Do not add `MaximumActivations="1"` to a one-shot schedule; it is redundant. A one-shot schedule
 cannot specify a value greater than one.
 
+With `ForEach`, this remains a total across all targets, not a separate allowance for each target.
+Reaching the limit permanently completes the event and stops every target's schedule.
+
+### ForEach
+
+Optionally gives every selected scene node its own recurring schedule. Place `ForEach` immediately
+after `InstanceID`, before optional `Bindings` and the required `Schedule`:
+
+```xml
+<GameEvent>
+  <InstanceID>PER_PLANET_REPORT</InstanceID>
+  <ForEach As="$planet">
+    <From>
+      <SelectPlanets IsOwned="true"/>
+    </From>
+  </ForEach>
+  <Schedule>
+    <RandomInterval MinimumTicks="30" MaximumTicks="1000"/>
+  </Schedule>
+  <Actions>
+    <!-- Use $planet in bindings, conditionals, and actions. -->
+  </Actions>
+</GameEvent>
+```
+
+`As` names the current target using the same binding rules as `Bind`. `From` contains exactly one
+direct planet, officer, special-forces, fleet, mission, capital-ship, starfighter, regiment, building,
+or manufacturing-order selector. Selection must be deterministic and independent of activation
+bindings: `SelectRandom`, `SelectBinding`, composite selectors, and selectors with `PlanetBinding`
+are rejected. Use literal selector filters here; ordinary event bindings and actions can still
+perform random selection after the target is bound.
+
+Only `Every` and `RandomInterval` are supported; `ForEach` cannot accompany `Triggers` or a one-shot
+schedule. Each target's first delay starts when it enters the scope, rather than at campaign tick
+zero. A target that leaves loses its pending timer; returning starts a fresh delay. A change that
+keeps it selected, such as changing between owners with `IsOwned="true"`, preserves the timer.
+Ownership-transition results also update planet membership between scheduled passes.
+
+Targets are discovered at the start of each scheduled pass and processed in ordinal `InstanceID`
+order. After an activation changes game state, remaining targets are checked against the selector
+again. Newly matching targets become candidates on the next pass. Ordinary bindings are evaluated
+separately for each target, after binding `As`; failed conditionals leave that target's due time
+unchanged.
+
+`Until` permanently completes only the current target's schedule. Its completion record survives
+leaving, returning, and saving. An empty selection or completion of all current targets does not
+complete the event, because future targets can still enter. `MaximumActivations` is the event-wide
+completion limit. Event references such as `After`, `HasEventActivated`, and `IsEventComplete`
+continue to use the event's aggregate history. Persistent event variables keep their existing
+shared values; they do not become target-local.
+
 ### Bindings
 
 Optionally assign names to selected scene nodes or matched trigger results and expose them throughout

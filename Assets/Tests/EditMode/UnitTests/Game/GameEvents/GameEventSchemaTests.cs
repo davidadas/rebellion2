@@ -213,6 +213,59 @@ namespace Rebellion.Tests.Game.GameEvents
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        [TestCase("<SelectRandom><From><SelectPlanets/></From></SelectRandom>")]
+        [TestCase("<SelectBinding Binding=\"planet\"/>")]
+        [TestCase("<SelectOfficers PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectSpecialForces PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectFleets PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectMissions PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectCapitalShips PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectStarfighters PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectRegiments PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectBuildings PlanetBinding=\"planet\"/>")]
+        [TestCase("<SelectManufacturingOrders PlanetBinding=\"planet\"/>")]
+        public void Validate_UnsupportedScopeSelector_RejectsDocument(string selector)
+        {
+            string xml =
+                "<GameEvents><GameEvent><InstanceID>SCOPED</InstanceID>"
+                + $"<ForEach As=\"planet\"><From>{selector}</From></ForEach>"
+                + "<Schedule><Every Ticks=\"10\"/></Schedule></GameEvent></GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
+        }
+
+        [TestCase("SelectPlanets")]
+        [TestCase("SelectOfficers")]
+        [TestCase("SelectSpecialForces")]
+        [TestCase("SelectFleets")]
+        [TestCase("SelectMissions")]
+        [TestCase("SelectCapitalShips")]
+        [TestCase("SelectStarfighters")]
+        [TestCase("SelectRegiments")]
+        [TestCase("SelectBuildings")]
+        [TestCase("SelectManufacturingOrders")]
+        public void Validate_DeterministicScopeSelector_AcceptsDocument(string selector)
+        {
+            string xml =
+                "<GameEvents><GameEvent><InstanceID>SCOPED</InstanceID>"
+                + $"<ForEach As=\"target\"><From><{selector}/></From></ForEach>"
+                + "<Schedule><Every Ticks=\"10\"/></Schedule></GameEvent></GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [TestCase("<Triggers><PlanetOwnershipChanged/></Triggers>")]
+        public void Validate_ScopedResultTrigger_RejectsDocument(string activation)
+        {
+            string xml =
+                "<GameEvents><GameEvent><InstanceID>SCOPED</InstanceID>"
+                + "<ForEach As=\"planet\"><From><SelectPlanets/></From></ForEach>"
+                + activation
+                + "</GameEvent></GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
+        }
+
         [Test]
         public void Validate_NamedCompositeCategoryReveal_AcceptsDocument()
         {

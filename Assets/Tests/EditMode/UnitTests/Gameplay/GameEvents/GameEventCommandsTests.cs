@@ -980,6 +980,312 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
+        [TestCase(1)]
+        [TestCase(3)]
+        public void ProcessScheduledEvents_ScopedActivationLimit_CompletesAcrossAllTargets(
+            int maximum
+        )
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = maximum;
+
+            for (_game.CurrentTick = 0; _game.CurrentTick <= 30; _game.CurrentTick += 10)
+                _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(maximum, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.AreEqual(
+                maximum,
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount
+            );
+            Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedLimitReached_UsesTargetIdentityOrder()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = 1;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            CollectionAssert.AreEqual(
+                new[] { first.InstanceID },
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates.Keys
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_CompletedTargetReenters_RemainsComplete()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            gameEvent.Schedule.Every.Until.Add(
+                new IsOwnedConditional
+                {
+                    PlanetBinding = "target",
+                    FactionInstanceID = first.OwnerInstanceID,
+                }
+            );
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[
+                first.InstanceID
+            ];
+            first.OwnerInstanceID = null;
+            _game.CurrentTick = 1;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            first.OwnerInstanceID = "empire";
+            _game.CurrentTick = 2;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreSame(
+                state,
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates[first.InstanceID]
+            );
+            Assert.IsTrue(state.IsComplete);
+            Assert.Zero(state.ActivationCount);
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_EmptyScope_WaitsForNewTargets()
+        {
+            (GameEvent gameEvent, Planet first, Planet second) = CreateScopedPlanetScenario();
+            first.OwnerInstanceID = null;
+            second.OwnerInstanceID = null;
+            gameEvent.Schedule.Every.InitialDelayTicks = 10;
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            first.OwnerInstanceID = "alliance";
+            _game.CurrentTick = 25;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(
+                35,
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates[first.InstanceID]
+                    .NextEligibleTick
+            );
+            Assert.Zero(_game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.Contains(gameEvent, _game.GetEventPool());
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_AllCurrentTargetsComplete_KeepsEventForFutureTargets()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.Schedule.Every.Until.Add(
+                new TickCountConditional
+                {
+                    Ticks = 0,
+                    Comparison = ComparisonOperator.GreaterThanOrEqual,
+                }
+            );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.IsTrue(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates.Values.All(state => state.IsComplete)
+            );
+            Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
+            Assert.Contains(gameEvent, _game.GetEventPool());
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_EarlierTargetDisablesLaterTarget_SkipsLaterTarget()
+        {
+            (GameEvent gameEvent, _, Planet second) = CreateScopedPlanetScenario();
+            gameEvent.Actions.Insert(
+                0,
+                new SetNodeStateAction
+                {
+                    InstanceID = second.InstanceID,
+                    State = SceneNodeState.Inactive,
+                }
+            );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.IsFalse(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates.ContainsKey(second.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedActivation_EnablesDependentEvent()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            GameEvent dependent = new GameEvent
+            {
+                InstanceID = "dependent",
+                Schedule = new GameEventSchedule
+                {
+                    After = new AfterEvent
+                    {
+                        EventInstanceID = gameEvent.InstanceID,
+                        DelayTicks = 5,
+                    },
+                },
+                Conditionals = new List<GameConditional>
+                {
+                    new HasEventActivatedConditional { EventInstanceID = gameEvent.InstanceID },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "dependent-fired", Operand = 1 },
+                },
+            };
+            _game.GetEventPool().Add(dependent);
+            _system.ValidateEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            _game.CurrentTick = 5;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("dependent-fired"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedLimitReached_EnablesCompletionCondition()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.MaximumActivations = 1;
+            _game
+                .GetEventPool()
+                .Add(
+                    new GameEvent
+                    {
+                        InstanceID = "on-complete",
+                        Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 1 } },
+                        Conditionals = new List<GameConditional>
+                        {
+                            new IsEventCompleteConditional
+                            {
+                                EventInstanceID = gameEvent.InstanceID,
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "completed", Operand = 1 },
+                        },
+                    }
+                );
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("completed"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedBindings_ResolveForEachTarget()
+        {
+            (GameEvent gameEvent, Planet first, Planet second) = CreateScopedPlanetScenario();
+            first.NumRawResourceNodes = 3;
+            second.NumRawResourceNodes = 7;
+            gameEvent.Bindings.Add(
+                new GameBinding
+                {
+                    As = "resources",
+                    Sources = new List<GameBindingSource>
+                    {
+                        new PlanetStatBindingSource
+                        {
+                            PlanetBinding = "target",
+                            Stat = PlanetStat.RawResourceNodes,
+                        },
+                    },
+                }
+            );
+            gameEvent.Actions = new List<GameAction>
+            {
+                new SetEventVariableAction
+                {
+                    Key = "total",
+                    Operation = EventVariableOperation.Add,
+                    OperandBinding = "resources",
+                },
+            };
+            _system.ValidateEvents(_game.GetEventPool());
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(10, _game.EventRuntime.GetVariable("total"));
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_ScopedConditionInitiallyFails_PreservesDueTick()
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.Conditionals.Add(
+                new TickCountConditional
+                {
+                    Ticks = 3,
+                    Comparison = ComparisonOperator.GreaterThanOrEqual,
+                }
+            );
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            Assert.Zero(
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates["first"]
+                    .NextEligibleTick
+            );
+            _game.CurrentTick = 3;
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("scoped-fired"));
+            Assert.AreEqual(
+                13,
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID)
+                    .ScopedStates["first"]
+                    .NextEligibleTick
+            );
+        }
+
+        [Test]
+        public void ProcessScheduledEvents_OfficerScope_TracksIndividualSchedules()
+        {
+            (GameEvent gameEvent, Planet first, _) = CreateScopedPlanetScenario();
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = first.OwnerInstanceID,
+            };
+            _game.AttachNode(officer, first);
+            gameEvent.ForEach.Selectors = new List<GameSelector>
+            {
+                new SelectOfficers { PlanetInstanceID = first.InstanceID },
+            };
+            _system.ValidateEvents(_game.GetEventPool());
+
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+
+            CollectionAssert.AreEqual(
+                new[] { officer.InstanceID },
+                _game.EventRuntime.GetState(gameEvent.InstanceID).ScopedStates.Keys
+            );
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scoped-fired"));
+        }
+
+        [TestCaseSource(nameof(UnsupportedScopeSelectors))]
+        public void ValidateEvents_UnsupportedScopeSelector_Throws(GameSelector selector)
+        {
+            (GameEvent gameEvent, _, _) = CreateScopedPlanetScenario();
+            gameEvent.ForEach.Selectors = new List<GameSelector> { selector };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _system.ValidateEvents(_game.GetEventPool())
+            );
+        }
+
         [Test]
         public void ProcessScheduledEvents_OwnedPlanetScope_TracksIndependentSchedules()
         {
@@ -2244,6 +2550,63 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             };
             game.GetEventPool().Add(gameEvent);
             return (game, gameEvent, encountered, opposing);
+        }
+
+        /// <summary>
+        /// Creates two owned planets and a recurring event with independent target schedules.
+        /// </summary>
+        /// <returns>The registered event and its planets in target identity order.</returns>
+        private (GameEvent Event, Planet First, Planet Second) CreateScopedPlanetScenario()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            _game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "scope-sector" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet first = new Planet { InstanceID = "first", OwnerInstanceID = "alliance" };
+            Planet second = new Planet { InstanceID = "second", OwnerInstanceID = "empire" };
+            _game.AttachNode(second, sector);
+            _game.AttachNode(first, sector);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "scoped",
+                ForEach = new GameEventScope
+                {
+                    As = "target",
+                    Selectors = new List<GameSelector> { new SelectPlanets { IsOwned = true } },
+                },
+                Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 10 } },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "scoped-fired",
+                        Operation = EventVariableOperation.Add,
+                        Operand = 1,
+                    },
+                },
+            };
+            _game.GetEventPool().Add(gameEvent);
+            return (gameEvent, first, second);
+        }
+
+        /// <summary>
+        /// Supplies scope selectors whose selection needs randomness or an activation binding.
+        /// </summary>
+        /// <returns>The unsupported scope selector definitions.</returns>
+        private static IEnumerable<GameSelector> UnsupportedScopeSelectors()
+        {
+            yield return new SelectRandom { Selectors = { new SelectPlanets() } };
+            yield return new SelectBinding { Binding = "target" };
+            yield return new SelectFirst { Selectors = { new SelectPlanets() } };
+            yield return new SelectOfficers { PlanetBinding = "target" };
+            yield return new SelectSpecialForces { PlanetBinding = "target" };
+            yield return new SelectFleets { PlanetBinding = "target" };
+            yield return new SelectMissions { PlanetBinding = "target" };
+            yield return new SelectCapitalShips { PlanetBinding = "target" };
+            yield return new SelectStarfighters { PlanetBinding = "target" };
+            yield return new SelectRegiments { PlanetBinding = "target" };
+            yield return new SelectBuildings { PlanetBinding = "target" };
+            yield return new SelectManufacturingOrders { PlanetBinding = "target" };
         }
 
         /// <summary>
