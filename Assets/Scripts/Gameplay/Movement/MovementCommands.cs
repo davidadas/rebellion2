@@ -1513,8 +1513,16 @@ namespace Rebellion.Gameplay
             movable.Movement = null;
             GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
 
-            if (movable is Building && destination is Planet arrivalPlanet)
+            if (
+                movable is Building
+                && destination is Planet arrivalPlanet
+                && !arrivalPlanet.IsColonized
+            )
+            {
                 arrivalPlanet.IsColonized = true;
+                arrivalPlanet.PopularSupport.Clear();
+                arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
+            }
 
             string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);
             if (!string.IsNullOrEmpty(arrivingOwner))
@@ -2398,14 +2406,6 @@ namespace Rebellion.Gameplay
                 .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);
             destinationPlanet.PopularSupport.Clear();
-
-            foreach (Faction supportFaction in _game.GetFactions())
-            {
-                if (supportFaction.InstanceID == ownerInstanceId)
-                    destinationPlanet.SetFullPopularSupport(supportFaction.InstanceID);
-                else
-                    destinationPlanet.SetPopularSupport(supportFaction.InstanceID, 0);
-            }
 
             results.Add(
                 new PlanetOwnershipChangedResult

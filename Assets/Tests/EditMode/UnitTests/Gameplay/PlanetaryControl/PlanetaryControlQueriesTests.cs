@@ -36,6 +36,15 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GetPlanetController_UncolonizedPlanetWithRetainedSupport_ReturnsNoController()
+        {
+            _targetPlanet.IsColonized = false;
+            _targetPlanet.SetFullPopularSupport(_empire.InstanceID);
+
+            Assert.IsNull(_queries.GetPlanetController(_targetPlanet));
+        }
+
+        [Test]
         public void GetPlanetController_EqualQualifyingSupport_ReturnsFirstFaction()
         {
             _game.Config.SupportShift.OwnershipTransferThreshold = 50;
