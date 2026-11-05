@@ -588,15 +588,10 @@ namespace Rebellion.Game.FogOfWar
             UpdatePlanetStatusState(snapshot, planet, currentTick);
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
-            if (
-                categories.HasFlag(PlanetIntelligenceCategory.Planet)
-                || categories.HasFlag(PlanetIntelligenceCategory.PlanetControl)
-            )
+            categories = PlanetSnapshot.ExpandCategories(categories);
+            if (categories.HasFlag(PlanetIntelligenceCategory.PlanetControl))
                 UpdatePlanetControlState(snapshot, planet, currentTick);
-            if (
-                categories.HasFlag(PlanetIntelligenceCategory.Planet)
-                || categories.HasFlag(PlanetIntelligenceCategory.PlanetResources)
-            )
+            if (categories.HasFlag(PlanetIntelligenceCategory.PlanetResources))
                 UpdatePlanetResourceState(snapshot, planet, currentTick);
             if (categories.HasFlag(PlanetIntelligenceCategory.Planet))
                 UpdatePlanetDetailState(snapshot, planet);
@@ -721,10 +716,7 @@ namespace Rebellion.Game.FogOfWar
             bool includeDescendants
         )
         {
-            if (
-                categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                || categories.HasFlag(PlanetIntelligenceCategory.Regiments)
-            )
+            if (categories.HasFlag(PlanetIntelligenceCategory.Regiments))
             {
                 snapshot.Regiments.Clear();
                 if (includeDescendants)
@@ -737,10 +729,7 @@ namespace Rebellion.Game.FogOfWar
                 )
                     RecordUnitIntelligence(snapshot, unit);
             }
-            if (
-                categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                || categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
-            )
+            if (categories.HasFlag(PlanetIntelligenceCategory.SpecialForces))
             {
                 snapshot.SpecialForces.Clear();
                 if (includeDescendants)
@@ -898,15 +887,9 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
                     ship.RemoveChildren<Officer>(_ => true);
-                if (
-                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                    && !categories.HasFlag(PlanetIntelligenceCategory.Regiments)
-                )
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Regiments))
                     ship.RemoveChildren<Regiment>(_ => true);
-                if (
-                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                    && !categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
-                )
+                if (!categories.HasFlag(PlanetIntelligenceCategory.SpecialForces))
                     ship.RemoveChildren<SpecialForces>(_ => true);
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
                     ship.RemoveChildren<Starfighter>(_ => true);
@@ -948,15 +931,9 @@ namespace Rebellion.Game.FogOfWar
 
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
                     PreserveShipChildren(currentShip, previousShip.GetChildren<Officer>());
-                if (
-                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                    && !categories.HasFlag(PlanetIntelligenceCategory.Regiments)
-                )
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Regiments))
                     PreserveShipChildren(currentShip, previousShip.GetChildren<Regiment>());
-                if (
-                    !categories.HasFlag(PlanetIntelligenceCategory.GroundForces)
-                    && !categories.HasFlag(PlanetIntelligenceCategory.SpecialForces)
-                )
+                if (!categories.HasFlag(PlanetIntelligenceCategory.SpecialForces))
                     PreserveShipChildren(currentShip, previousShip.GetChildren<SpecialForces>());
                 if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
                     PreserveShipChildren(currentShip, previousShip.GetChildren<Starfighter>());
@@ -1394,11 +1371,8 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             if (
-                previousSnapshot?.RevealedCategories.HasFlag(
-                    PlanetIntelligenceCategory.CapitalShips
-                ) != true
-                && previousSnapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Fleets)
-                    != true
+                previousSnapshot?.HasIntelligence(PlanetIntelligenceCategory.CapitalShips) != true
+                && previousSnapshot?.HasIntelligence(PlanetIntelligenceCategory.Fleets) != true
             )
                 return;
 

@@ -22,6 +22,26 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(PlanetIntelligenceCategory.GroundForces, PlanetIntelligenceCategory.Regiments)]
+        [TestCase(
+            PlanetIntelligenceCategory.Regiments | PlanetIntelligenceCategory.SpecialForces,
+            PlanetIntelligenceCategory.GroundForces
+        )]
+        public void HasPlanetIntelligence_OverlappingCategories_RecognizesCoverage(
+            PlanetIntelligenceCategory known,
+            PlanetIntelligenceCategory requested
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(empire, enemy, sector, 10, known);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.IsTrue(assessment.HasPlanetIntelligence(enemy, requested));
+        }
+
         [Test]
         public void GetPlanetIntelAge_NarrowReportAfterFullObservation_UsesFullObservationAge()
         {

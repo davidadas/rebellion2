@@ -994,6 +994,51 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
+        public void RecordIntelligenceSnapshot_ExpandedCoverage_PreservesRequestedMaskAndUnknownFullObservation()
+        {
+            PlanetIntelligenceCategory requested =
+                PlanetIntelligenceCategory.All & ~PlanetIntelligenceCategory.GroundForces;
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                20,
+                requested
+            );
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.IsTrue(snapshot.HasIntelligence(PlanetIntelligenceCategory.All));
+            Assert.AreEqual(requested, snapshot.RevealedCategories);
+            Assert.AreEqual(-1, snapshot.FullObservationTick);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_AccumulatedCoverage_PreservesUnknownFullObservation()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            PlanetIntelligenceCategory[] reports =
+            {
+                PlanetIntelligenceCategory.Planet,
+                PlanetIntelligenceCategory.CapitalShips,
+                PlanetIntelligenceCategory.Starfighters,
+                PlanetIntelligenceCategory.Regiments,
+                PlanetIntelligenceCategory.SpecialForces,
+                PlanetIntelligenceCategory.Buildings,
+                PlanetIntelligenceCategory.Officers,
+                PlanetIntelligenceCategory.Missions,
+                PlanetIntelligenceCategory.Manufacturing,
+                PlanetIntelligenceCategory.Fleets,
+            };
+            foreach (PlanetIntelligenceCategory report in reports)
+                recorder.RecordIntelligenceSnapshot(_alliance, _coruscant, _coreSector, 20, report);
+
+            PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
+            Assert.IsTrue(snapshot.HasIntelligence(PlanetIntelligenceCategory.All));
+            Assert.AreEqual(-1, snapshot.FullObservationTick);
+        }
+
+        [Test]
         public void RecordPlanetLossSnapshot_NarrowGroundForceIntelligence_ClearsCategories()
         {
             FogOfWarRecorder recorder = new FogOfWarRecorder();

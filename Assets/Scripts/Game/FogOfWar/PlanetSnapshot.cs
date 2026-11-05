@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
+using Intel = Rebellion.Game.FogOfWar.PlanetIntelligenceCategory;
 
 namespace Rebellion.Game.FogOfWar
 {
@@ -297,6 +298,31 @@ namespace Rebellion.Game.FogOfWar
             _starfighters = new List<Starfighter>();
             _missions = new List<Mission>();
             _manufacturingQueueItems = new List<IManufacturable>();
+        }
+
+        /// <summary>
+        /// Checks whether recorded intelligence covers every requested category.
+        /// </summary>
+        /// <param name="categories">The required categories.</param>
+        /// <returns>True when all required information is known.</returns>
+        public bool HasIntelligence(Intel categories) =>
+            ExpandCategories(RevealedCategories).HasFlag(categories);
+
+        /// <summary>
+        /// Expands category coverage without changing stored values.
+        /// </summary>
+        /// <param name="categories">The categories to interpret.</param>
+        /// <returns>The categories and the information they cover.</returns>
+        internal static Intel ExpandCategories(Intel categories)
+        {
+            const Intel troops = Intel.Regiments | Intel.SpecialForces;
+            if (categories.HasFlag(Intel.GroundForces) || categories.HasFlag(troops))
+                categories |= Intel.GroundForces | troops;
+            if (categories.HasFlag(Intel.Buildings))
+                categories |= Intel.PlanetaryDefenses | Intel.ProductionFacilities;
+            if (categories.HasFlag(Intel.Planet))
+                categories |= Intel.PlanetControl | Intel.PlanetResources;
+            return categories;
         }
     }
 }

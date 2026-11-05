@@ -1192,7 +1192,7 @@ namespace Rebellion.AI
                     planet.InstanceID,
                     out PlanetSnapshot snapshot
                 )
-                && snapshot.RevealedCategories.HasFlag(categories);
+                && snapshot.HasIntelligence(categories);
         }
 
         /// <summary>
