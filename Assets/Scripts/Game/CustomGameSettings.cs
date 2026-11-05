@@ -147,7 +147,13 @@ namespace Rebellion.Game
         /// Captures the campaign's editable garrison rules.
         /// </summary>
         /// <returns>An independent copy of the rule values.</returns>
-        public GarrisonRuleSettings CreateCopy() => (GarrisonRuleSettings)MemberwiseClone();
+        public GarrisonRuleSettings CreateCopy() =>
+            new GarrisonRuleSettings
+            {
+                SupportThreshold = SupportThreshold,
+                SupportDeficitPerRegiment = SupportDeficitPerRegiment,
+                UprisingMultiplier = UprisingMultiplier,
+            };
     }
 
     /// <summary>
@@ -162,6 +168,7 @@ namespace Rebellion.Game
         /// Captures the campaign's editable movement rules.
         /// </summary>
         /// <returns>An independent copy of the rule values.</returns>
-        public MovementRuleSettings CreateCopy() => (MovementRuleSettings)MemberwiseClone();
+        public MovementRuleSettings CreateCopy() =>
+            new MovementRuleSettings { TravelSpeedPercent = TravelSpeedPercent };
     }
 }

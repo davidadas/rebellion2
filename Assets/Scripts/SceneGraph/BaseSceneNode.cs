@@ -365,20 +365,8 @@ namespace Rebellion.SceneGraph
         /// <param name="copy">The destination node.</param>
         protected virtual void CopyStateTo(BaseSceneNode copy)
         {
+            base.CopyStateTo(copy);
             copy.InstanceID = InstanceID;
-            copy.TypeID = TypeID;
-            copy.DisplayName = DisplayName;
-            copy.DisplayStatus = DisplayStatus;
-            copy.DisplayImagePath = DisplayImagePath;
-            copy.SmallDisplayImagePath = SmallDisplayImagePath;
-            copy.MessageImagePath = MessageImagePath;
-            copy.InTransitImagePath = InTransitImagePath;
-            copy.InTransitSmallImagePath = InTransitSmallImagePath;
-            copy.DamagedImagePath = DamagedImagePath;
-            copy.DamagedSmallImagePath = DamagedSmallImagePath;
-            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
-            copy.InjuredImagePath = InjuredImagePath;
-            copy.Description = Description;
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }

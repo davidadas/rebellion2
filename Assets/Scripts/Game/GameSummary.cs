@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -184,12 +185,22 @@ namespace Rebellion.Game
         /// <returns>An independent launch summary retaining the same seed and content identity.</returns>
         public GameSummary CreateCopy()
         {
-            GameSummary copy = (GameSummary)MemberwiseClone();
-            copy._startingFactionIds = (string[])_startingFactionIds?.Clone();
-            copy._modIds = (string[])_modIds?.Clone();
-            copy._modVersions = (string[])_modVersions?.Clone();
-            copy._customSettings = _customSettings?.CreateCopy();
-            return copy;
+            return new GameSummary
+            {
+                GalaxySize = GalaxySize,
+                Difficulty = Difficulty,
+                VictoryCondition = VictoryCondition,
+                ResourceAvailability = ResourceAvailability,
+                CustomSettings = CustomSettings?.CreateCopy(),
+                StartingFactionIDs = StartingFactionIDs?.ToArray(),
+                PlayerFactionID = PlayerFactionID,
+                PackID = PackID,
+                PackVersion = PackVersion,
+                ScenarioID = ScenarioID,
+                ModIDs = ModIDs?.ToArray(),
+                ModVersions = ModVersions?.ToArray(),
+                Seed = Seed,
+            };
         }
     }
 }

@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -49,6 +50,103 @@ namespace Rebellion.Tests.Generation
 
             GameBuilder builder = new GameBuilder(summary, TestContent.Data);
             _game = builder.Build();
+        }
+
+        [Test]
+        public void Build_EditingFactionRules_DoesNotChangeContentDefinition()
+        {
+            Faction definition = TestContent.Data.Factions[0];
+            string before = SerializationHelper.Serialize(definition);
+            GameRoot game = new GameBuilder(
+                new GameSummary
+                {
+                    GalaxySize = _size,
+                    PlayerFactionID = "FNALL1",
+                    Seed = 12345,
+                },
+                TestContent.Data
+            ).Build();
+            Faction faction = game.GetFactions()
+                .Single(value => value.InstanceID == definition.InstanceID);
+
+            faction.Settings.Headquarters.FacilityTypeID = "replacement";
+            faction.DisallowedMissionTypeIDs.Clear();
+            faction.ShipNamePools[0].Names.Clear();
+            faction.ShipNamePools[0].NextNameIndex += 1;
+            faction.RawMaterialStockpile += 1;
+            faction.AdvisorMessageNotifications[MessageType.Conflict] = false;
+            faction.PendingRawMaterialFacilityIDs.Add("facility");
+            faction
+                .Messages[MessageType.Conflict]
+                .Add(new StatusMessage(MessageType.Conflict, "Report", "Body"));
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(definition));
+        }
+
+        [Test]
+        public void Build_AuthoredStartingAdvice_PreservesMessageContent()
+        {
+            Faction definition = TestContent.Data.Factions[0];
+            GameRoot game = new GameBuilder(
+                new GameSummary
+                {
+                    GalaxySize = _size,
+                    PlayerFactionID = "FNALL1",
+                    Seed = 12345,
+                },
+                TestContent.Data
+            ).Build();
+            Faction faction = game.GetFactions()
+                .Single(value => value.InstanceID == definition.InstanceID);
+
+            CollectionAssert.AreEqual(
+                definition
+                    .Messages[MessageType.Advice]
+                    .Select(message =>
+                        (
+                            message.Type,
+                            message.Title,
+                            message.Body,
+                            message.BackgroundImageKey,
+                            message.Read
+                        )
+                    )
+                    .ToArray(),
+                faction
+                    .Messages[MessageType.Advice]
+                    .Select(message =>
+                        (
+                            message.Type,
+                            message.Title,
+                            message.Body,
+                            message.BackgroundImageKey,
+                            message.Read
+                        )
+                    )
+                    .ToArray()
+            );
+        }
+
+        [Test]
+        public void Build_ReadingStartingAdvice_DoesNotMarkContentDefinitionRead()
+        {
+            Faction definition = TestContent.Data.Factions[0];
+            bool before = definition.Messages[MessageType.Advice][0].Read;
+            GameRoot game = new GameBuilder(
+                new GameSummary
+                {
+                    GalaxySize = _size,
+                    PlayerFactionID = "FNALL1",
+                    Seed = 12345,
+                },
+                TestContent.Data
+            ).Build();
+            Faction faction = game.GetFactions()
+                .Single(value => value.InstanceID == definition.InstanceID);
+
+            faction.Messages[MessageType.Advice][0].Read = !before;
+
+            Assert.AreEqual(before, definition.Messages[MessageType.Advice][0].Read);
         }
 
         [Test]

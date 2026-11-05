@@ -30,12 +30,14 @@ namespace Rebellion.Game.Factions
         /// Copies a naming pool without sharing its mutable name list.
         /// </summary>
         /// <returns>A naming pool with the same names and next-name position.</returns>
-        public FactionNamePool CreateCopy()
-        {
-            FactionNamePool copy = (FactionNamePool)MemberwiseClone();
-            copy.Names = Names?.ToList();
-            return copy;
-        }
+        public FactionNamePool CreateCopy() =>
+            new FactionNamePool
+            {
+                NamePoolID = NamePoolID,
+                FallbackNamePoolID = FallbackNamePoolID,
+                Names = Names?.ToList(),
+                NextNameIndex = NextNameIndex,
+            };
     }
 
     /// <summary>
@@ -179,35 +181,41 @@ namespace Rebellion.Game.Factions
         public Faction() { }
 
         /// <summary>
-        /// Instantiates this faction definition with independent settings, names, and runtime collections.
-        /// Campaign history is initialized when the generation pipeline seeds the new game.
+        /// Transfers authored identity, rules, naming pools, and starting messages.
+        /// Runtime ownership, research, and intelligence collections belong to the destination.
         /// </summary>
-        /// <returns>The faction instance owned by the new campaign.</returns>
-        public Faction CreateForNewGame()
+        /// <param name="copy">The newly constructed faction receiving the authored state.</param>
+        internal void CopyDefinitionTo(Faction copy)
         {
-            Faction copy = (Faction)MemberwiseClone();
-            Faction initialState = new Faction();
+            base.CopyStateTo(copy);
             copy._settings = _settings?.CreateCopy();
-            copy.DisallowedMissionTypeIDs = DisallowedMissionTypeIDs?.ToList();
-            copy.ShipNamePools = ShipNamePools?.Select(pool => pool.CreateCopy()).ToList();
+            copy._nextFleetNumber = _nextFleetNumber;
             copy._nextGenericShipNameNumbers = new Dictionary<string, int>(
                 _nextGenericShipNameNumbers
             );
+            copy.HQInstanceID = HQInstanceID;
+            copy.HeadquartersUnitInstanceID = HeadquartersUnitInstanceID;
+            copy.HasLostHeadquarters = HasLostHeadquarters;
+            copy.GarrisonTroopTypeID = GarrisonTroopTypeID;
+            copy.DisallowedMissionTypeIDs = DisallowedMissionTypeIDs?.ToList();
+            copy.ShipNamePools = ShipNamePools?.Select(pool => pool.CreateCopy()).ToList();
+            copy.AdvisorMessageNotificationsEnabled = AdvisorMessageNotificationsEnabled;
             copy.AdvisorMessageNotifications = new Dictionary<MessageType, bool>(
                 AdvisorMessageNotifications
             );
+            copy.TranslateCounterpart = TranslateCounterpart;
+            copy.AgentAdvice = AgentAdvice;
+            copy.ManageGarrisons = ManageGarrisons;
+            copy.ManageProduction = ManageProduction;
+            copy.ManageNaming = ManageNaming;
+            copy._rawMaterialStockpile = _rawMaterialStockpile;
+            copy._refinedMaterialStockpile = _refinedMaterialStockpile;
             copy.PendingRawMaterialFacilityIDs = PendingRawMaterialFacilityIDs?.ToList();
             copy.PendingRefinedMaterialFacilityIDs = PendingRefinedMaterialFacilityIDs?.ToList();
-            copy._ownedEntities = initialState._ownedEntities;
             copy._messages = _messages.ToDictionary(
                 entry => entry.Key,
                 entry => entry.Value.ConvertAll(message => message.CreateCopy())
             );
-            copy.ResearchState = initialState.ResearchState;
-            copy.ResearchCatalog = initialState.ResearchCatalog;
-            copy.ResearchQueue = initialState.ResearchQueue;
-            copy.Fog = initialState.Fog;
-            return copy;
         }
 
         /// <summary>

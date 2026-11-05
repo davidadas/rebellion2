@@ -201,6 +201,31 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Transfers stored message values without invoking derived acknowledgement getters.
+        /// </summary>
+        /// <param name="copy">The independently constructed message receiving the values.</param>
+        protected void CopyStateTo(Message copy)
+        {
+            base.CopyStateTo(copy);
+            copy._type = _type;
+            copy._resultType = _resultType;
+            copy._title = _title;
+            copy._body = _body;
+            copy._backgroundImageKey = _backgroundImageKey;
+            copy._overlayImagePath = _overlayImagePath;
+            copy._backgroundAudioPath = _backgroundAudioPath;
+            copy._officerVoicePath = _officerVoicePath;
+            copy._eventLocationInstanceId = _eventLocationInstanceId;
+            copy._navigationTargetInstanceId = _navigationTargetInstanceId;
+            copy._navigationSecondaryTargetInstanceId = _navigationSecondaryTargetInstanceId;
+            copy._missionInstanceId = _missionInstanceId;
+            copy._missionContinuationPending = _missionContinuationPending;
+            copy._createdTick = _createdTick;
+            copy._read = _read;
+            copy._notificationAcknowledged = _notificationAcknowledged;
+        }
+
+        /// <summary>
         /// Copies a message into an independently mutable campaign history.
         /// </summary>
         /// <returns>A message that owns its mutable presentation and acknowledgement state.</returns>
@@ -231,6 +256,11 @@ namespace Rebellion.Game.Messages
         /// Copies the message text, navigation, and acknowledgement state.
         /// </summary>
         /// <returns>An independent status message retaining all stored values.</returns>
-        public override Message CreateCopy() => (StatusMessage)MemberwiseClone();
+        public override Message CreateCopy()
+        {
+            StatusMessage copy = new StatusMessage();
+            CopyStateTo(copy);
+            return copy;
+        }
     }
 }

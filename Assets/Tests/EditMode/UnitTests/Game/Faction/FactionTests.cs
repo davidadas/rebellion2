@@ -59,50 +59,6 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void CreateForNewGame_EditingFactionRules_DoesNotChangeDefinition()
-        {
-            Faction source = TestContent.Data.Factions[0];
-            string before = SerializationHelper.Serialize(source);
-            Faction copy = source.CreateForNewGame();
-
-            copy.Settings.Headquarters.FacilityTypeID = "replacement";
-            copy.DisallowedMissionTypeIDs.Clear();
-            copy.ShipNamePools[0].Names.Clear();
-            copy.ShipNamePools[0].NextNameIndex += 1;
-            copy.RawMaterialStockpile += 1;
-            copy.AdvisorMessageNotifications[MessageType.Conflict] = false;
-            copy.PendingRawMaterialFacilityIDs.Add("facility");
-            copy.Messages[MessageType.Conflict]
-                .Add(new StatusMessage(MessageType.Conflict, "Report", "Body"));
-
-            Assert.AreEqual(before, SerializationHelper.Serialize(source));
-        }
-
-        [Test]
-        public void CreateForNewGame_AuthoredFaction_PreservesDefinitionValues()
-        {
-            Faction source = TestContent.Data.Factions[0];
-            string before = SerializationHelper.Serialize(source);
-
-            Faction copy = source.CreateForNewGame();
-
-            Assert.AreEqual(before, SerializationHelper.Serialize(copy));
-        }
-
-        [Test]
-        public void CreateForNewGame_ReadingStartingAdvice_DoesNotMarkDefinitionRead()
-        {
-            Faction source = TestContent.Data.Factions[0];
-            Message advice = source.Messages[MessageType.Advice][0];
-            bool before = advice.Read;
-            Faction copy = source.CreateForNewGame();
-
-            copy.Messages[MessageType.Advice][0].Read = !before;
-
-            Assert.AreEqual(before, advice.Read);
-        }
-
-        [Test]
         public void TryTakeNextShipName_AvailableNames_ReturnsNamesInOrder()
         {
             _faction.ShipNamePools.Add(

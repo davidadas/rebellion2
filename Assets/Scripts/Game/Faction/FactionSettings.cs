@@ -112,9 +112,21 @@ namespace Rebellion.Game.Factions
         /// <returns>An independent copy retaining the stored rule values.</returns>
         public FactionSettings CreateCopy()
         {
-            FactionSettings copy = (FactionSettings)MemberwiseClone();
-            copy._headquarters = _headquarters?.CreateCopy();
-            return copy;
+            return new FactionSettings
+            {
+                _refinementMultiplier = _refinementMultiplier,
+                _resourceProcessingPointsPerFacility = _resourceProcessingPointsPerFacility,
+                _garrisonEfficiency = _garrisonEfficiency,
+                _troopEffectiveness = _troopEffectiveness,
+                _uprisingResistance = _uprisingResistance,
+                _headquarters = _headquarters?.CreateCopy(),
+                InvertSupportShift = InvertSupportShift,
+                CivilianBombardmentCoreSupportPenalty = CivilianBombardmentCoreSupportPenalty,
+                CivilianBombardmentOuterRimSupportPenalty =
+                    CivilianBombardmentOuterRimSupportPenalty,
+                BattleLossLoyaltyDivisor = BattleLossLoyaltyDivisor,
+                SupportResistance = SupportResistance,
+            };
         }
     }
 
@@ -132,6 +144,12 @@ namespace Rebellion.Game.Factions
         /// Captures the headquarters rules for one faction.
         /// </summary>
         /// <returns>An independent copy of the rule values.</returns>
-        public HeadquartersSettings CreateCopy() => (HeadquartersSettings)MemberwiseClone();
+        public HeadquartersSettings CreateCopy() =>
+            new HeadquartersSettings
+            {
+                FacilityTypeID = FacilityTypeID,
+                IsMobile = IsMobile,
+                IsBombardable = IsBombardable,
+            };
     }
 }

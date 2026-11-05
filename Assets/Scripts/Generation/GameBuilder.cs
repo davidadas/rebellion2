@@ -108,9 +108,7 @@ namespace Rebellion.Generation
                 ?? _gameData.GenerationConfig.CreateCopy();
             GameConfig gameConfig = _gameData.GameConfig.CreateCopy();
             _summary.CustomSettings?.ApplyRuntimeRules(gameConfig);
-            Faction[] factions = _gameData
-                .Factions.Select(faction => faction.CreateForNewGame())
-                .ToArray();
+            Faction[] factions = _gameData.Factions.Select(CreateFaction).ToArray();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
@@ -130,6 +128,18 @@ namespace Rebellion.Generation
                 Officers = CopyTemplates(_gameData.Officers),
                 Events = _gameData.CreateGameEvents(generationConfig),
             };
+        }
+
+        /// <summary>
+        /// Constructs a campaign faction before the generation seeders populate its runtime state.
+        /// </summary>
+        /// <param name="template">The authored faction definition.</param>
+        /// <returns>A faction with independent authored values and fresh runtime collections.</returns>
+        private static Faction CreateFaction(Faction template)
+        {
+            Faction faction = new Faction();
+            template.CopyDefinitionTo(faction);
+            return faction;
         }
 
         /// <summary>
