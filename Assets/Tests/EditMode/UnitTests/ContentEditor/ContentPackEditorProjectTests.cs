@@ -6,12 +6,40 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.ContentEditor
 {
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase(BuildingType.Mine, ManufacturingType.None)]
+        [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
+        [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
+        [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building)]
+        public void SetField_BuildingType_SynchronizesProductionType(
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            ContentPackEditorProject project = ContentEditorTestData.CreateProject(
+                Path.Combine(contentRoot, "WorkingProject")
+            );
+            ContentPackEditorRecord building = project.AddUnit(
+                project.GetCatalogs().Single(catalog => catalog.Name == "Buildings")
+            );
+
+            project.SetField(
+                building.GetField(nameof(Building.BuildingType)),
+                buildingType.ToString()
+            );
+
+            Assert.AreEqual(
+                productionType.ToString(),
+                building.GetField(nameof(Building.ProductionType)).Value
+            );
+        }
+
         [TestCase("Officers", "RecruitingFactionInstanceIDs", 0)]
         [TestCase("Officers", "RecruitingFactionInstanceIDs", 1)]
         [TestCase("Capital ships", "ManufacturingFactionInstanceIDs", 0)]

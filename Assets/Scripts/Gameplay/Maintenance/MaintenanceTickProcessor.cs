@@ -31,7 +31,9 @@ namespace Rebellion.Gameplay
         {
             List<GameResult> results = new List<GameResult>();
             foreach (Faction faction in game.GetFactions())
+            {
                 _commands.ProcessFactionMaintenance(faction, results);
+            }
 
             return results;
         }

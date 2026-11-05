@@ -16,8 +16,16 @@ namespace Rebellion.AI.Demands
         public int RegimentStrength { get; }
         public int RegimentCount { get; }
         public int OccupationRegimentCount { get; }
+
+        /// <summary>
+        /// Gets the occupation reserve after a civilian support penalty when relying on bombardment.
+        /// </summary>
+        public int BombardmentOccupationRegimentCount { get; }
+
         public int BombardmentStrength { get; }
+        public int ShieldStrength { get; }
         public bool IsAssaultBlockedByShields { get; }
+        public bool IsSupportOpportunity { get; }
 
         /// <summary>
         /// Creates the measured attack demand for one known planet.
@@ -33,6 +41,9 @@ namespace Rebellion.AI.Demands
         /// <param name="occupationRegimentCount">The regiment count required after defenders are removed.</param>
         /// <param name="bombardmentStrength">The bombardment strength required to penetrate shields.</param>
         /// <param name="isAssaultBlockedByShields">Whether shields currently block a ground assault.</param>
+        /// <param name="shieldStrength">The shield strength expected when the fleet attacks.</param>
+        /// <param name="isSupportOpportunity">Whether a nearby bombardment can exploit recently observed favorable support.</param>
+        /// <param name="bombardmentOccupationRegimentCount">The occupation reserve when bombardment clears defenders, or null to use the ordinary occupation count.</param>
         public AIAttackDemand(
             Planet targetPlanet,
             int combatStrength,
@@ -44,7 +55,10 @@ namespace Rebellion.AI.Demands
             int regimentCount,
             int occupationRegimentCount,
             int bombardmentStrength,
-            bool isAssaultBlockedByShields
+            bool isAssaultBlockedByShields,
+            int shieldStrength = 0,
+            bool isSupportOpportunity = false,
+            int? bombardmentOccupationRegimentCount = null
         )
         {
             TargetPlanet = targetPlanet;
@@ -56,8 +70,30 @@ namespace Rebellion.AI.Demands
             RegimentStrength = regimentStrength;
             RegimentCount = regimentCount;
             OccupationRegimentCount = occupationRegimentCount;
+            BombardmentOccupationRegimentCount =
+                bombardmentOccupationRegimentCount ?? occupationRegimentCount;
             BombardmentStrength = bombardmentStrength;
             IsAssaultBlockedByShields = isAssaultBlockedByShields;
+            ShieldStrength = shieldStrength;
+            IsSupportOpportunity = isSupportOpportunity;
+        }
+
+        /// <summary>
+        /// Returns the ground force needed for the assigned attack objective.
+        /// </summary>
+        /// <param name="canBombardDefenders">Whether available bombardment can remove the known garrison.</param>
+        /// <param name="regimentCapacity">The troop berths available for the planned attack.</param>
+        /// <returns>The required regiment count and attack strength.</returns>
+        internal (int Count, int Strength) GetRegimentRequirements(
+            bool canBombardDefenders,
+            int regimentCapacity = 0
+        )
+        {
+            if (!canBombardDefenders)
+                return (RegimentCount, RegimentStrength);
+            return IsSupportOpportunity && regimentCapacity <= 0
+                ? (0, 0)
+                : (BombardmentOccupationRegimentCount, 0);
         }
     }
 }

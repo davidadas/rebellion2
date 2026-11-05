@@ -575,12 +575,15 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Calculate combat value.
+        /// Returns combat value at a supplied hull strength without changing the unit.
         /// </summary>
-        /// <param name="hullStrength">The current hull strength.</param>
+        /// <param name="hullStrength">The remaining hull strength used for the estimate.</param>
         /// <returns>The calculated value.</returns>
-        private int CalculateCombatValue(int hullStrength)
+        public int CalculateCombatValue(int hullStrength)
         {
+            if (MaxHullStrength > 0 && hullStrength <= 0)
+                return 0;
+
             int attackStrength = GetPrimaryWeaponStrength();
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, MaxShieldStrength);
             if (attackStrength <= 0 || durability <= 0)
@@ -812,16 +815,50 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(CapitalShip))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                collector.Add(officers[index]);
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                collector.Add(starfighters[index]);
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                collector.Add(regiments[index]);
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                collector.Add(specialForces[index]);
+        }
+
+        /// <summary>
         /// Returns the ship's carried units and officers.
         /// </summary>
         /// <returns>The children carried by this ship.</returns>
         protected override IEnumerable<ISceneNode> EnumerateChildren()
         {
-            return _officers
-                .Cast<ISceneNode>()
-                .Concat(_starfighters)
-                .Concat(_regiments)
-                .Concat(_specialForces);
+            List<Officer> officers = _officers;
+            for (int index = 0; index < officers.Count; index++)
+                yield return officers[index];
+            List<Starfighter> starfighters = _starfighters;
+            for (int index = 0; index < starfighters.Count; index++)
+                yield return starfighters[index];
+            List<Regiment> regiments = _regiments;
+            for (int index = 0; index < regiments.Count; index++)
+                yield return regiments[index];
+            List<SpecialForces> specialForces = _specialForces;
+            for (int index = 0; index < specialForces.Count; index++)
+                yield return specialForces[index];
         }
     }
 }

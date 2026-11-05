@@ -118,58 +118,26 @@ public static partial class HeadlessSimulationRunner
 
                 if (snapshot.Unit is CapitalShip ship)
                 {
-                    initial += CalculateCapitalShipCombatValue(ship, ship.CurrentHullStrength);
+                    initial += ship.CalculateCombatValue(ship.CurrentHullStrength);
                     int hull =
                         snapshot.Destroyed ? 0
                         : survivingHull.TryGetValue(ship.InstanceID, out int hullAfter) ? hullAfter
                         : ship.CurrentHullStrength;
-                    surviving += CalculateCapitalShipCombatValue(ship, hull);
+                    surviving += hull > 0 ? ship.CalculateCombatValue(hull) : 0;
                 }
                 else if (snapshot.Unit is Starfighter fighter)
                 {
-                    initial += CalculateStarfighterCombatValue(
-                        fighter,
-                        fighter.CurrentSquadronSize
-                    );
+                    initial += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
                     int count =
                         snapshot.Destroyed ? 0
                         : survivingFighters.TryGetValue(fighter.InstanceID, out int countAfter)
                             ? countAfter
                         : fighter.CurrentSquadronSize;
-                    surviving += CalculateStarfighterCombatValue(fighter, count);
+                    surviving += count > 0 ? fighter.CalculateCombatValue(count) : 0;
                 }
             }
 
             return new CombatStrengthSnapshot(initial, surviving);
-        }
-
-        /// <summary>
-        /// Calculates strategic combat value for a capital ship at a specified hull strength.
-        /// </summary>
-        /// <param name="ship">The capital ship definition.</param>
-        /// <param name="hullStrength">The hull strength to evaluate.</param>
-        /// <returns>The strategic combat value.</returns>
-        private static int CalculateCapitalShipCombatValue(CapitalShip ship, int hullStrength)
-        {
-            int attackStrength = ship?.GetPrimaryWeaponStrength() ?? 0;
-            long durability =
-                Math.Max(0L, hullStrength) + Math.Max(0L, ship?.MaxShieldStrength ?? 0);
-            if (attackStrength <= 0 || durability <= 0)
-                return attackStrength;
-
-            double value = Math.Sqrt(attackStrength * (double)durability);
-            return value >= int.MaxValue ? int.MaxValue : (int)value;
-        }
-
-        /// <summary>
-        /// Calculates strategic combat value for a fighter squadron at a specified size.
-        /// </summary>
-        /// <param name="fighter">The fighter definition.</param>
-        /// <param name="squadronSize">The surviving fighter count.</param>
-        /// <returns>The strategic combat value.</returns>
-        private static int CalculateStarfighterCombatValue(Starfighter fighter, int squadronSize)
-        {
-            return fighter == null ? 0 : fighter.GetWeaponStrength() * Math.Max(0, squadronSize);
         }
 
         /// <summary>
@@ -205,6 +173,7 @@ public static partial class HeadlessSimulationRunner
     [Serializable]
     private sealed class SpaceCombatCalibrationSummary
     {
+        public int CalculationVersion = 2;
         public SpaceCombatCalibrationResult[] Results;
     }
 

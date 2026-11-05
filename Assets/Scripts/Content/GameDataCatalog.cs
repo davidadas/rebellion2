@@ -90,6 +90,7 @@ public sealed class GameDataCatalog
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         PlanetSectors = planetSectors ?? throw new ArgumentNullException(nameof(planetSectors));
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
+        ValidateBuildingCapabilities(Buildings);
         ValidateBuildingUpgrades(Buildings);
         CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
         Starfighters = starfighters ?? throw new ArgumentNullException(nameof(starfighters));
@@ -258,6 +259,38 @@ public sealed class GameDataCatalog
                 officer.ForceGrowthRequiresEligibility = template.ForceGrowthRequiresEligibility;
                 officer.ForceDiscoveryConditionals = new(template.ForceDiscoveryConditionals);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates that each building category declares only supported capabilities.
+    /// </summary>
+    /// <param name="buildings">The building templates to validate.</param>
+    internal static void ValidateBuildingCapabilities(IReadOnlyCollection<Building> buildings)
+    {
+        if (buildings == null)
+            throw new ArgumentNullException(nameof(buildings));
+
+        foreach (Building building in buildings)
+        {
+            if (building == null)
+                throw new InvalidDataException("Building templates cannot contain null entries.");
+            if (!Enum.IsDefined(typeof(BuildingType), building.BuildingType))
+                throw new InvalidDataException(
+                    $"Building '{building.TypeID}' declares unsupported building type '{building.BuildingType}'."
+                );
+
+            ManufacturingType expectedProductionType = Building.GetRequiredProductionType(
+                building.BuildingType
+            );
+            if (building.ProductionType != expectedProductionType)
+                throw new InvalidDataException(
+                    $"Building '{building.TypeID}' with type '{building.BuildingType}' requires production type '{expectedProductionType}', but declares '{building.ProductionType}'."
+                );
+            if (building.WeaponStrength != 0)
+                throw new InvalidDataException(
+                    $"Building '{building.TypeID}' declares unsupported weapon strength. Defense weapons use weapon power."
+                );
         }
     }
 

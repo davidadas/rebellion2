@@ -859,6 +859,7 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public List<Fleet> AttackingFleets { get; set; } = new List<Fleet>();
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public bool Success { get; set; }

@@ -239,7 +239,8 @@ namespace Rebellion.Gameplay
                 string.IsNullOrEmpty(scannerOwnerInstanceID)
                 || candidate.GetOwnerInstanceID() != scannerOwnerInstanceID
                 || candidate == scanner
-                || candidate.IsForceEligible
+                || !candidate.IsUndiscoveredForceUser()
+                || ((IMovable)candidate).GetTransitMovement() != null
             )
                 return false;
 

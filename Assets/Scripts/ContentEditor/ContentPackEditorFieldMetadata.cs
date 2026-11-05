@@ -335,6 +335,7 @@ internal static class ContentPackEditorFieldMetadata
             "IsKnownJedi" => "Known Force user",
             "IsJediTrainer" => "Can train Force users",
             "SharesPersonnelTravelTimeModifier" => "Share travel modifier with companions",
+            "Bombardment" when field.Record.Kind == "Building" => "Bombardment resistance",
             "LeadershipBonusPercent" => "Leadership bonus (%)",
             "PersonnelTravelTimePercent" => "Personnel travel time (%)",
             "NamePoolID" => "Pool ID",

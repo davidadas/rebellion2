@@ -267,8 +267,15 @@ namespace Rebellion.Game
         /// <returns>The launch override, configured AI modifier, or a neutral modifier.</returns>
         public DifficultyModifiers GetDifficultyModifier(string ownerInstanceId)
         {
-            Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
-            return GetDifficultyModifier(faction);
+            List<Faction> factions = _factions;
+            for (int index = 0; index < factions.Count; index++)
+            {
+                Faction faction = factions[index];
+                if (faction.InstanceID == ownerInstanceId)
+                    return GetDifficultyModifier(faction);
+            }
+
+            return GetDifficultyModifier((Faction)null);
         }
 
         /// <summary>
@@ -320,7 +327,17 @@ namespace Rebellion.Game
         /// <returns>The controlling participant, or null when none is assigned.</returns>
         public Player GetFactionPlayer(string factionInstanceID)
         {
-            return _players.FirstOrDefault(player => player.FactionID == factionInstanceID);
+            List<Player> players = _players;
+            if (players == null)
+                throw new ArgumentNullException("source");
+            for (int index = 0; index < players.Count; index++)
+            {
+                Player player = players[index];
+                if (player.FactionID == factionInstanceID)
+                    return player;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -396,14 +413,15 @@ namespace Rebellion.Game
         /// <returns>The faction with the specified ID.</returns>
         public Faction GetFactionByOwnerInstanceID(string ownerInstanceId)
         {
-            Faction faction = GetFactions().Find(faction => faction.InstanceID == ownerInstanceId);
-
-            if (faction == null)
+            List<Faction> factions = GetFactions();
+            for (int index = 0; index < factions.Count; index++)
             {
-                throw new SceneNodeNotFoundException(ownerInstanceId);
+                Faction faction = factions[index];
+                if (faction.InstanceID == ownerInstanceId)
+                    return faction;
             }
 
-            return faction;
+            throw new SceneNodeNotFoundException(ownerInstanceId);
         }
 
         /// <summary>

@@ -153,7 +153,6 @@ internal static class ContentEditorUnitFactory
                     Zeroes(
                         nameof(Building.ProcessRate),
                         nameof(Building.Bombardment),
-                        nameof(Building.WeaponStrength),
                         nameof(Building.ShieldStrength),
                         nameof(Building.WeaponPower),
                         nameof(Building.ProductionModifier)

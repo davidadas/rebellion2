@@ -20,6 +20,55 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIPlanningPhaseTests
     {
+        /// <summary>
+        /// Verifies a budget boundary suspends work without publishing partial alternatives.
+        /// </summary>
+        [Test]
+        public void ExecuteIncrementally_BudgetExhausted_PublishesOnlyCompletedPlannerOutput()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = double.Epsilon;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            var first = new TestAIProposal();
+            var second = new TestAIProposal();
+            long timestamp = 0;
+            var phase = new AIPlanningPhase(
+                new IAIProposalPlanner[] { new IncrementalPlanner(first, second) },
+                () => timestamp += System.Diagnostics.Stopwatch.Frequency
+            );
+            using var work = phase.ExecuteIncrementally(context).GetEnumerator();
+
+            Assert.IsTrue(work.MoveNext());
+            Assert.IsEmpty(context.Proposals);
+            Assert.IsTrue(work.MoveNext());
+            Assert.IsEmpty(context.Proposals);
+            Assert.IsTrue(work.MoveNext());
+            CollectionAssert.AreEqual(new[] { first, second }, context.Proposals);
+            Assert.IsFalse(work.MoveNext());
+        }
+
+        /// <summary>
+        /// Verifies disabling suspension retains the complete ordered output.
+        /// </summary>
+        [Test]
+        public void ExecuteIncrementally_ZeroBudget_CompletesPlannerBeforeYielding()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            var first = new TestAIProposal();
+            var second = new TestAIProposal();
+            var phase = new AIPlanningPhase(
+                new IAIProposalPlanner[] { new IncrementalPlanner(first, second) }
+            );
+            using var work = phase.ExecuteIncrementally(context).GetEnumerator();
+
+            Assert.IsTrue(work.MoveNext());
+
+            CollectionAssert.AreEqual(new[] { first, second }, context.Proposals);
+            Assert.IsFalse(work.MoveNext());
+        }
+
         [Test]
         public void Execute_WithDiplomacyOpportunity_AddsMissionProposal()
         {
@@ -103,6 +152,45 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsTrue(planning.MoveNext());
             CollectionAssert.AreEqual(new[] { first, second }, context.Proposals);
             Assert.IsFalse(planning.MoveNext());
+        }
+
+        private sealed class IncrementalPlanner : IAIIncrementalProposalPlanner
+        {
+            private readonly AIProposal[] _proposals;
+
+            /// <summary>
+            /// Creates two ordered pieces of cooperative planning work.
+            /// </summary>
+            /// <param name="first">The first proposal.</param>
+            /// <param name="second">The second proposal.</param>
+            internal IncrementalPlanner(AIProposal first, AIProposal second) =>
+                _proposals = new[] { first, second };
+
+            /// <summary>
+            /// Rejects accidental use of the nonincremental entry point.
+            /// </summary>
+            /// <param name="context">The current context.</param>
+            /// <returns>No result; incremental planning must be selected.</returns>
+            public List<AIProposal> Plan(AITurnContext context) =>
+                throw new System.InvalidOperationException();
+
+            /// <summary>
+            /// Builds the proposals in two independently resumable work units.
+            /// </summary>
+            /// <param name="context">The current context.</param>
+            /// <param name="proposals">The buffered output.</param>
+            /// <returns>One checkpoint after each proposal.</returns>
+            public IEnumerable<object> PlanIncrementally(
+                AITurnContext context,
+                List<AIProposal> proposals
+            )
+            {
+                foreach (AIProposal proposal in _proposals)
+                {
+                    proposals.Add(proposal);
+                    yield return proposal;
+                }
+            }
         }
 
         private sealed class TestPlanner : IAIProposalPlanner

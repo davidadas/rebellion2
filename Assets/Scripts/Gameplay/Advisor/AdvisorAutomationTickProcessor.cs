@@ -30,7 +30,9 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             foreach (Faction faction in game.GetFactions())
+            {
                 _commands.ProcessFaction(faction);
+            }
 
             return Array.Empty<GameResult>();
         }

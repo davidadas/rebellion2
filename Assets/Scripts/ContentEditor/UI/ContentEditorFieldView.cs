@@ -60,7 +60,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
 
     public bool HasError => error != null && !string.IsNullOrEmpty(error.text);
     public bool HasOpenChoice => choiceDropdown.IsExpanded;
-    public ContentPackEditorField Field => field;
+    public ContentPackEditorField Field => this.field;
 
     /// <summary>
     /// Applies the owning form's background palette to the editable value.

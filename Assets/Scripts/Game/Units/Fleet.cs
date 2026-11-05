@@ -371,6 +371,23 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Collects direct children without allocating a raw traversal iterator.
+        /// </summary>
+        /// <typeparam name="T">The child type retained in the snapshot.</typeparam>
+        /// <param name="collector">The current query's validation and collection state.</param>
+        protected override void CollectDirectChildren<T>(ref DirectChildCollector<T> collector)
+        {
+            if (GetType() != typeof(Fleet))
+            {
+                base.CollectDirectChildren(ref collector);
+                return;
+            }
+
+            foreach (CapitalShip child in _capitalShips)
+                collector.Add(child);
+        }
+
+        /// <summary>
         /// Enumerates the fleet's direct children (its capital ships) as scene nodes.
         /// </summary>
         /// <returns>An enumerable over the fleet's capital ships.</returns>
