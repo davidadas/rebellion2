@@ -56,11 +56,13 @@ namespace Rebellion.Game.FogOfWar
         [PersistableMember(Name = nameof(TickCaptured))]
         private int _tickCaptured;
 
-        [PersistableMember(Name = nameof(FullObservationTick))]
-        private int? _fullObservationTick;
+        [PersistableMember(Name = nameof(FullyObservedAtTick))]
+        [PersistableReadAlias("FullObservationTick", Deprecated = true)]
+        private int? _fullyObservedAtTick;
 
-        [PersistableMember(Name = nameof(OrbitalTickCaptured))]
-        private int _orbitalTickCaptured = -1;
+        [PersistableMember(Name = nameof(FleetsObservedAtTick))]
+        [PersistableReadAlias("OrbitalTickCaptured", Deprecated = true)]
+        private int _fleetsObservedAtTick = -1;
 
         [PersistableMember(Name = nameof(OwnerInstanceID))]
         private string _ownerInstanceId;
@@ -131,24 +133,24 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Gets or sets the last planet-wide observation, or -1 when none is known.
+        /// Gets or sets the tick of the last planet-wide observation, or -1 when none is known.
         /// Snapshots without this field retain their saved observation time.
         /// </summary>
         [PersistableIgnore]
-        public int FullObservationTick
+        public int FullyObservedAtTick
         {
-            get => _fullObservationTick ?? _tickCaptured;
-            set => _fullObservationTick = value;
+            get => _fullyObservedAtTick ?? _tickCaptured;
+            set => _fullyObservedAtTick = value;
         }
 
         /// <summary>
-        /// Gets or sets the last complete orbital observation tick, or minus one when unknown.
+        /// Gets or sets the tick when the complete fleet presence was last observed, or -1 when unknown.
         /// </summary>
         [PersistableIgnore]
-        public int OrbitalTickCaptured
+        public int FleetsObservedAtTick
         {
-            get => _orbitalTickCaptured;
-            set => _orbitalTickCaptured = value;
+            get => _fleetsObservedAtTick;
+            set => _fleetsObservedAtTick = value;
         }
 
         [PersistableIgnore]

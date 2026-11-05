@@ -248,13 +248,13 @@ namespace Rebellion.Game.FogOfWar
             faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
             if (!sectorSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
             {
-                snapshot = new PlanetSnapshot { FullObservationTick = -1 };
+                snapshot = new PlanetSnapshot { FullyObservedAtTick = -1 };
                 sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             }
 
-            int fullObservationTick = snapshot.FullObservationTick;
+            int fullyObservedAtTick = snapshot.FullyObservedAtTick;
             snapshot.TickCaptured = currentTick;
-            snapshot.FullObservationTick = fullObservationTick;
+            snapshot.FullyObservedAtTick = fullyObservedAtTick;
             return snapshot;
         }
 
@@ -558,7 +558,7 @@ namespace Rebellion.Game.FogOfWar
             if (sectorSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
                 return snapshot;
 
-            snapshot = new PlanetSnapshot { FullObservationTick = -1 };
+            snapshot = new PlanetSnapshot { FullyObservedAtTick = -1 };
             sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             return snapshot;
         }
@@ -581,10 +581,10 @@ namespace Rebellion.Game.FogOfWar
             bool includeDescendants
         )
         {
-            snapshot.FullObservationTick =
+            snapshot.FullyObservedAtTick =
                 categories == PlanetIntelligenceCategory.All
                     ? currentTick
-                    : snapshot.FullObservationTick;
+                    : snapshot.FullyObservedAtTick;
             UpdatePlanetStatusState(snapshot, planet, currentTick);
             PlanetIntelligenceCategory accumulatedCategories =
                 snapshot.RevealedCategories | categories;
@@ -602,7 +602,7 @@ namespace Rebellion.Game.FogOfWar
                         | PlanetIntelligenceCategory.Starfighters
                 )
             )
-                snapshot.OrbitalTickCaptured = currentTick;
+                snapshot.FleetsObservedAtTick = currentTick;
             UpdateOfficerIntelligence(faction, planet, snapshot, categories, includeDescendants);
             UpdateFleetIntelligence(faction, planet, snapshot, categories);
             UpdateGroundForceIntelligence(
@@ -1085,7 +1085,7 @@ namespace Rebellion.Game.FogOfWar
                 snapshot = new PlanetSnapshot
                 {
                     TickCaptured = currentTick,
-                    FullObservationTick = -1,
+                    FullyObservedAtTick = -1,
                     IsColonized = planet.IsColonized,
                     IsDestroyed = planet.IsDestroyed,
                 };
@@ -1246,7 +1246,7 @@ namespace Rebellion.Game.FogOfWar
             );
 
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
-            planetSnapshot.OrbitalTickCaptured = currentTick;
+            planetSnapshot.FleetsObservedAtTick = currentTick;
             IReadOnlyList<ISceneNode> activeChildren = planet.GetChildren();
             AddOfficersToSnapshot(
                 faction,
@@ -1731,7 +1731,7 @@ namespace Rebellion.Game.FogOfWar
             return new PlanetSnapshot
             {
                 TickCaptured = currentTick,
-                FullObservationTick = currentTick,
+                FullyObservedAtTick = currentTick,
                 OwnerInstanceID = planet.OwnerInstanceID,
                 IsColonized = planet.IsColonized,
                 IsInUprising = planet.IsInUprising,

@@ -815,7 +815,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             );
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
-            Assert.AreEqual(10, snapshot.FullObservationTick);
+            Assert.AreEqual(10, snapshot.FullyObservedAtTick);
             Assert.IsFalse(snapshot.IsColonized);
             Assert.IsTrue(snapshot.IsDestroyed);
             MovementState movement = snapshot.Officers.Single().Movement;
@@ -859,7 +859,7 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.AreEqual(20, snapshot.TickCaptured);
-            Assert.AreEqual(-1, snapshot.FullObservationTick);
+            Assert.AreEqual(-1, snapshot.FullyObservedAtTick);
             Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
             Assert.IsTrue(snapshot.IsColonized);
             Assert.IsTrue(snapshot.IsDestroyed);
@@ -915,7 +915,7 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.AreEqual(20, snapshot.TickCaptured);
-            Assert.AreEqual(10, snapshot.FullObservationTick);
+            Assert.AreEqual(10, snapshot.FullyObservedAtTick);
             Assert.AreEqual(_alliance.InstanceID, snapshot.OwnerInstanceID);
             Assert.IsFalse(snapshot.IsColonized);
             Assert.IsTrue(snapshot.IsDestroyed);
@@ -928,7 +928,7 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
-        public void RecordPlanetSnapshot_OrdinaryObservation_RefreshesFullObservationTick()
+        public void RecordPlanetSnapshot_OrdinaryObservation_RefreshesFullyObservedAtTick()
         {
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -937,11 +937,11 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.AreEqual(20, snapshot.TickCaptured);
-            Assert.AreEqual(20, snapshot.FullObservationTick);
+            Assert.AreEqual(20, snapshot.FullyObservedAtTick);
         }
 
         [Test]
-        public void RecordPlanetLossSnapshot_CurrentObservation_RefreshesFullObservationTick()
+        public void RecordPlanetLossSnapshot_CurrentObservation_RefreshesFullyObservedAtTick()
         {
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -950,7 +950,7 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.AreEqual(20, snapshot.TickCaptured);
-            Assert.AreEqual(20, snapshot.FullObservationTick);
+            Assert.AreEqual(20, snapshot.FullyObservedAtTick);
         }
 
         [Test]
@@ -1010,7 +1010,7 @@ namespace Rebellion.Tests.Game.FogOfWar
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.IsTrue(snapshot.HasIntelligence(PlanetIntelligenceCategory.All));
             Assert.AreEqual(requested, snapshot.RevealedCategories);
-            Assert.AreEqual(-1, snapshot.FullObservationTick);
+            Assert.AreEqual(-1, snapshot.FullyObservedAtTick);
         }
 
         [Test]
@@ -1035,7 +1035,7 @@ namespace Rebellion.Tests.Game.FogOfWar
 
             PlanetSnapshot snapshot = GetSnapshot(_coreSector, _coruscant);
             Assert.IsTrue(snapshot.HasIntelligence(PlanetIntelligenceCategory.All));
-            Assert.AreEqual(-1, snapshot.FullObservationTick);
+            Assert.AreEqual(-1, snapshot.FullyObservedAtTick);
         }
 
         [Test]

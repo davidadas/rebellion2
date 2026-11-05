@@ -179,38 +179,99 @@ namespace Rebellion.Tests.Game.FogOfWar
         }
 
         [Test]
-        public void FullObservationTick_DistinctLatestReport_SurvivesSerializationRoundTrip()
+        public void FullyObservedAtTick_DistinctLatestReport_SurvivesSerializationRoundTrip()
         {
             PlanetSnapshot snapshot = new PlanetSnapshot
             {
                 TickCaptured = 100,
-                FullObservationTick = 10,
+                FullyObservedAtTick = 10,
             };
 
             string xml = SerializationHelper.Serialize(snapshot);
             PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(xml);
 
             Assert.AreEqual(100, restored.TickCaptured);
-            Assert.AreEqual(10, restored.FullObservationTick);
+            Assert.AreEqual(10, restored.FullyObservedAtTick);
         }
 
         [Test]
-        public void FullObservationTick_LegacyXmlWithoutField_FallsBackToCapturedTick()
+        public void FullyObservedAtTick_LegacyXmlWithoutField_FallsBackToCapturedTick()
         {
             PlanetSnapshot snapshot = new PlanetSnapshot
             {
                 TickCaptured = 42,
-                FullObservationTick = 10,
+                FullyObservedAtTick = 10,
             };
             XDocument document = XDocument.Parse(SerializationHelper.Serialize(snapshot));
-            document.Descendants(nameof(PlanetSnapshot.FullObservationTick)).Remove();
+            document.Descendants(nameof(PlanetSnapshot.FullyObservedAtTick)).Remove();
 
             PlanetSnapshot restored = SerializationHelper.Deserialize<PlanetSnapshot>(
                 document.ToString()
             );
 
             Assert.AreEqual(42, restored.TickCaptured);
-            Assert.AreEqual(42, restored.FullObservationTick);
+            Assert.AreEqual(42, restored.FullyObservedAtTick);
+        }
+
+        [TestCase("FullObservationTick", -1)]
+        [TestCase("FullObservationTick", 0)]
+        [TestCase("FullObservationTick", 10)]
+        [TestCase(nameof(PlanetSnapshot.FullyObservedAtTick), -1)]
+        [TestCase(nameof(PlanetSnapshot.FullyObservedAtTick), 0)]
+        [TestCase(nameof(PlanetSnapshot.FullyObservedAtTick), 10)]
+        public void FullyObservedAtTick_SavedXmlName_LoadsObservationTick(string name, int tick)
+        {
+            PlanetSnapshot snapshot = SerializationHelper.Deserialize<PlanetSnapshot>(
+                $"<PlanetSnapshot><TickCaptured>100</TickCaptured><{name}>{tick}</{name}></PlanetSnapshot>"
+            );
+
+            Assert.AreEqual(tick, snapshot.FullyObservedAtTick);
+        }
+
+        [TestCase("OrbitalTickCaptured", -1)]
+        [TestCase("OrbitalTickCaptured", 0)]
+        [TestCase("OrbitalTickCaptured", 25)]
+        [TestCase(nameof(PlanetSnapshot.FleetsObservedAtTick), -1)]
+        [TestCase(nameof(PlanetSnapshot.FleetsObservedAtTick), 0)]
+        [TestCase(nameof(PlanetSnapshot.FleetsObservedAtTick), 25)]
+        public void FleetsObservedAtTick_SavedXmlName_LoadsObservationTick(string name, int tick)
+        {
+            PlanetSnapshot snapshot = SerializationHelper.Deserialize<PlanetSnapshot>(
+                $"<PlanetSnapshot><{name}>{tick}</{name}></PlanetSnapshot>"
+            );
+
+            Assert.AreEqual(tick, snapshot.FleetsObservedAtTick);
+        }
+
+        [Test]
+        public void FleetsObservedAtTick_MissingXmlField_RemainsUnknown()
+        {
+            PlanetSnapshot snapshot = SerializationHelper.Deserialize<PlanetSnapshot>(
+                "<PlanetSnapshot><TickCaptured>100</TickCaptured></PlanetSnapshot>"
+            );
+
+            Assert.AreEqual(-1, snapshot.FleetsObservedAtTick);
+        }
+
+        [Test]
+        public void PlanetSnapshot_DeprecatedObservationNames_WritesCanonicalNames()
+        {
+            PlanetSnapshot snapshot = SerializationHelper.Deserialize<PlanetSnapshot>(
+                "<PlanetSnapshot><TickCaptured>100</TickCaptured><FullObservationTick>10</FullObservationTick><OrbitalTickCaptured>25</OrbitalTickCaptured></PlanetSnapshot>"
+            );
+
+            XDocument document = XDocument.Parse(SerializationHelper.Serialize(snapshot));
+
+            Assert.AreEqual(
+                "10",
+                document.Root.Element(nameof(PlanetSnapshot.FullyObservedAtTick))?.Value
+            );
+            Assert.AreEqual(
+                "25",
+                document.Root.Element(nameof(PlanetSnapshot.FleetsObservedAtTick))?.Value
+            );
+            Assert.IsNull(document.Root.Element("FullObservationTick"));
+            Assert.IsNull(document.Root.Element("OrbitalTickCaptured"));
         }
     }
 }
