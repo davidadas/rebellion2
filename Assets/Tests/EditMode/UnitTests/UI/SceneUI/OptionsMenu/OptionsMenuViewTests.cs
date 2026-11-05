@@ -438,7 +438,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             string[] labels = fields.Select(field => field.text).ToArray();
 
             CollectionAssert.Contains(labels, "GALAXY VIEW");
-            CollectionAssert.Contains(labels, "Quick Open Map Items");
+            CollectionAssert.Contains(labels, "Single Click to Open");
             CollectionAssert.Contains(labels, "Show Idle Bar");
             CollectionAssert.Contains(labels, "Keep Idle Bar Open");
             CollectionAssert.Contains(labels, "Idle Bar Location");

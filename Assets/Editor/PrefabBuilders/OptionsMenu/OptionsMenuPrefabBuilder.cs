@@ -588,7 +588,7 @@ public static class OptionsMenuPrefabBuilder
         };
         string[] labels =
         {
-            "Quick Open Map Items",
+            "Single Click to Open",
             "Show Idle Bar",
             "Keep Idle Bar Open",
             "Keep Idle Bar Above Windows",
