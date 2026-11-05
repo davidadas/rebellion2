@@ -39,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameSession _session;
         private bool _missionCreationAvailable;
         private GalaxyMapPlanet _planet;
+        private bool _quickOpenMapItems;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
         private GalaxyPlanetSector _planetSector;
@@ -56,6 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _dirtyCount = 0;
             _filterMode = GalacticInformationFilterMode.DisplayOff;
             _missionCreationAvailable = true;
+            _quickOpenMapItems = false;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -160,6 +162,67 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(second);
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void PlanetClicked_SingleClickWithoutQuickOpen_DoesNotOpenWindow()
+        {
+            PlanetSectorWindowView view = OpenWindow(out _);
+            PointerEventData eventData = CreateFleetPointerEvent(
+                view,
+                PointerEventData.InputButton.Left,
+                1
+            );
+            PlanetSectorPlanetView planetView = GetPlanetView(view);
+
+            planetView.OnPointerClick(eventData);
+
+            Assert.IsNull(_actions.OpenedPlanet);
+        }
+
+        [Test]
+        public void PlanetClicked_SingleClickWithQuickOpen_DispatchesThroughHierarchyAndOpensWindow()
+        {
+            _quickOpenMapItems = true;
+            PlanetSectorWindowView view = OpenWindow(out _);
+            PointerEventData eventData = CreateFleetPointerEvent(
+                view,
+                PointerEventData.InputButton.Left,
+                1
+            );
+            PlanetSectorPlanetView planetView = GetPlanetView(view);
+            GameObject fleetImage = eventData.pointerCurrentRaycast.gameObject;
+
+            GameObject pointerDownHandler = ExecuteEvents.GetEventHandler<IPointerDownHandler>(
+                fleetImage
+            );
+            GameObject clickHandler = ExecuteEvents.GetEventHandler<IPointerClickHandler>(
+                fleetImage
+            );
+            ExecuteEvents.Execute(pointerDownHandler, eventData, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(clickHandler, eventData, ExecuteEvents.pointerClickHandler);
+
+            Assert.AreSame(planetView.gameObject, pointerDownHandler);
+            Assert.AreSame(planetView.gameObject, clickHandler);
+            Assert.AreSame(_planet, _actions.OpenedPlanet);
+            Assert.AreEqual(PlanetIcon.Fleet, _actions.OpenedPlanetIcon);
+        }
+
+        [Test]
+        public void PlanetClicked_DoubleClickWithoutQuickOpen_OpensWindow()
+        {
+            PlanetSectorWindowView view = OpenWindow(out _);
+            PointerEventData eventData = CreateFleetPointerEvent(
+                view,
+                PointerEventData.InputButton.Left,
+                2
+            );
+            PlanetSectorPlanetView planetView = GetPlanetView(view);
+
+            planetView.OnPointerClick(eventData);
+
+            Assert.AreSame(_planet, _actions.OpenedPlanet);
+            Assert.AreEqual(PlanetIcon.Fleet, _actions.OpenedPlanetIcon);
         }
 
         [Test]
@@ -1017,7 +1080,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 CloseWindow,
                 MarkDirty,
                 (_, _) => _missionCreationAvailable,
-                () => _filterMode
+                () => _filterMode,
+                getQuickOpenMapItems: () => _quickOpenMapItems
             );
         }
 
@@ -1152,7 +1216,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private PlanetSectorWindowView OpenWindow(out UIWindow window)
         {
             _controller.Open(_sector);
-            return GetOpenView(out window);
+            PlanetSectorWindowView view = GetOpenView(out window);
+            _controller.RenderWindow(view, window);
+            return view;
         }
 
         /// <summary>
@@ -1189,22 +1255,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// </summary>
         /// <param name="view">The view.</param>
         /// <param name="button">The button.</param>
+        /// <param name="clickCount">The consecutive pointer click count.</param>
         /// <returns>The created fleet pointer event.</returns>
         private static PointerEventData CreateFleetPointerEvent(
             PlanetSectorWindowView view,
-            PointerEventData.InputButton button = PointerEventData.InputButton.Right
+            PointerEventData.InputButton button = PointerEventData.InputButton.Right,
+            int clickCount = 0
         )
         {
-            PlanetSectorPlanetView planetView =
-                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
-                    .Single(item => item.name == "Planet0");
+            PlanetSectorPlanetView planetView = GetPlanetView(view);
             RawImage fleetImage = GetField<RawImage>(planetView, "fleetImage");
+            Assert.IsTrue(
+                planetView.TryGetIconHitBounds(PlanetIcon.Fleet, out RectInt fleetBounds)
+            );
+            RectTransform planetTransform = (RectTransform)planetView.transform;
+            Vector3 fleetCenter = planetTransform.TransformPoint(
+                new Vector3(
+                    fleetBounds.x + fleetBounds.width / 2f,
+                    -(fleetBounds.y + fleetBounds.height / 2f),
+                    0f
+                )
+            );
             return new PointerEventData(null)
             {
                 button = button,
+                clickCount = clickCount,
+                position = RectTransformUtility.WorldToScreenPoint(null, fleetCenter),
                 pointerCurrentRaycast = new RaycastResult { gameObject = fleetImage.gameObject },
                 pointerPressRaycast = new RaycastResult { gameObject = fleetImage.gameObject },
             };
+        }
+
+        /// <summary>
+        /// Gets the rendered test planet view.
+        /// </summary>
+        /// <param name="view">The containing sector window.</param>
+        /// <returns>The rendered planet view.</returns>
+        private static PlanetSectorPlanetView GetPlanetView(PlanetSectorWindowView view)
+        {
+            return view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                .Single(item => item.name == "Planet0");
         }
 
         /// <summary>
@@ -1369,6 +1459,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             public ISceneNode LastTrackedEntity { get; private set; }
             public StrategyMissionTarget LastTarget { get; private set; }
             public StrategyWindowTargetingSource LastTargetingSource { get; private set; }
+            public GalaxyMapPlanet OpenedPlanet { get; private set; }
+            public PlanetIcon OpenedPlanetIcon { get; private set; } = PlanetIcon.None;
 
             public bool IsIdleBarEnabled => true;
 
@@ -1455,7 +1547,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PlanetIcon icon,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            {
+                OpenedPlanet = planet;
+                OpenedPlanetIcon = icon;
+            }
 
             /// <summary>
             /// Opens planet sector info.

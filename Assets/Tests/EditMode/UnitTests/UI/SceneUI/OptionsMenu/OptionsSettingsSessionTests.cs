@@ -290,6 +290,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceAndPreservesGameplaySettings()
         {
+            _session.ToggleUserInterface(UserInterfaceOption.QuickOpenMapItems);
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarAboveWindows);
@@ -300,6 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             _session.RestoreDefaults(OptionsMenuTab.UserInterface);
 
+            Assert.IsFalse(_session.UserInterface.QuickOpenMapItems);
             Assert.IsTrue(_session.UserInterface.ShowIdleBar);
             Assert.IsFalse(_session.UserInterface.KeepIdleBarOpen);
             Assert.IsFalse(_session.UserInterface.KeepIdleBarAboveWindows);
